@@ -15,9 +15,11 @@
 // throttling applies to the main thread only, so the worker's own time is not in them), animation frames and particle
 // frames per second, the longest animation frame, and the dots drawn.
 //
-// Gates (counts, no milliseconds): on a large diagram (decorations.ts, LARGE_LIVE_ELEMENTS), the layers at x10 within
+// Gates (counts, no milliseconds): on a large diagram (decorations.ts, LARGE_LIVE_ELEMENTS), running CSS transitions
+// under LIVE_TRANSITIONS_PER_100_LIMIT per 100 nodes and edges, the layers at x10 within
 // LIVE_LAYER_RATIO_LIMIT times those at x1, and edges flipping between active and idle per publish under
-// LIVE_FLIPS_PER_100_EDGES_LIMIT per 100 edges. `live gates` holds them in `pnpm bench:gates`.
+// LIVE_FLIPS_PER_100_EDGES_LIMIT per 100 edges (that one in `live gates` only). `live gates` holds them in
+// `pnpm bench:gates`.
 //
 // Memory: the JS heap after load with live on, and after a minute of playback (full mode only).
 
@@ -182,6 +184,11 @@ function gates(
     publishes: number;
     elements: number;
     large: boolean;
+    /**
+     * Gate the edge churn: only in `live gates`. Per publish it depends on how much simulated time a publish covers,
+     * which grows as frames slow down (5,000 nodes), so elsewhere it's reported only.
+     */
+    gateFlips?: boolean;
   },
 ) {
   const ratio = round(layerRatio(o.x1Layers ?? 0, o.x10Layers), 2);
@@ -207,7 +214,7 @@ function gates(
   s.count("edgeFlipsPer100EdgesPerPublish", churn, {
     w: w.info,
     detail,
-    ...limit(LIVE_FLIPS_PER_100_EDGES_LIMIT),
+    ...(o.gateFlips ? limit(LIVE_FLIPS_PER_100_EDGES_LIMIT) : {}),
     why: "edges changing active/idle per publish: the hold keeps a busy edge lit",
   });
 }
@@ -321,6 +328,7 @@ test(`live gates pipeline@${GATE_N}`, async ({ page }) => {
     flips: d1.edgeFlips - d0.edgeFlips,
     publishes: d1.publishes - d0.publishes,
     large: d1.large,
+    gateFlips: true,
   });
   s.count("decoratedElements", d1.elements, { w: w.info, detail: "gates" });
 });
