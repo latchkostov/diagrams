@@ -154,6 +154,8 @@ export function LiveSession({
   onSession,
   privateDiagram,
   paneRevision = 0,
+  onManualPaneChange,
+  manualCamera,
 }: SessionProps) {
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
@@ -410,6 +412,10 @@ export function LiveSession({
   // The AI panel opened, closed or was resized: the pane changed width at its right edge. Refit the
   // same way, or half the diagram stayed past the pane's edge (slow motion keeps its own camera).
   const dock = useAiDock();
+  const manualPaneChange = useRef(onManualPaneChange);
+  useLayoutEffect(() => {
+    manualPaneChange.current = onManualPaneChange;
+  }, [onManualPaneChange]);
   useEffect(() => {
     if (!panel.open) return;
     const phone = window.matchMedia("(max-width: 640px)");
@@ -441,16 +447,23 @@ export function LiveSession({
     dockFitted.current = dockKey;
     if (presenting) return;
     // After React Flow's ResizeObserver has the new pane size.
+    const host = store.getState().domNode?.closest('[data-testid="canvas-wrap"]');
+    host?.setAttribute("data-pane-pending", "true");
     const t = window.setTimeout(() => {
+      host?.removeAttribute("data-pane-pending");
       if (slowRef.current?.session.active) return;
+      if (manualCamera?.current) return manualPaneChange.current?.();
       const duration = reducedMotion ? 0 : FULL_FIT.duration;
       const focus = noteFocusRef.current;
       if (zoomedForNote.current && focus.length)
         void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
       else fitAll(duration ?? 0);
     }, 200);
-    return () => window.clearTimeout(t);
-  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll]);
+    return () => {
+      window.clearTimeout(t);
+      host?.removeAttribute("data-pane-pending");
+    };
+  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll, manualCamera, store]);
 
   // ---------------------------------------------------------------- the frame loop
 
@@ -766,6 +779,7 @@ export function LiveSession({
     reducedMotion,
     panelOpen: panel.open,
     capturing,
+    paneRevision,
   });
   useLayoutEffect(() => {
     slowRef.current = slow;

@@ -53,6 +53,8 @@ export function useSlowMotion(opts: {
   panelOpen: boolean;
   /** A recording is being captured: the trace card is hidden, so the fit can use its room. */
   capturing: boolean;
+  /** Completed Inspector geometry changes, after its drag has settled. */
+  paneRevision?: number | string;
 }): SlowMotionView {
   const { controller, store, setViewport, presenting, reducedMotion, panelOpen, capturing } = opts;
   const live = useRef({ reducedMotion, panelOpen, capturing, presenting });
@@ -62,6 +64,7 @@ export function useSlowMotion(opts: {
   const plan = useRef<CameraPlan | null>(null);
   const following = useRef(true);
   const panUntil = useRef(0);
+  const pausedPaneAt = useRef<number | null>(null);
   const before = useRef<View | null>(null);
   const [painter] = useState(() => new SlowPainter());
 
@@ -191,6 +194,40 @@ export function useSlowMotion(opts: {
     return () => window.clearTimeout(t);
   }, [on, take, presenting, panelOpen, capturing, session, controller, boxes, pane, insets, overlays, setViewport]);
 
+  // A playing, fitted take can be replanned for the new pane without rebuilding its script or
+  // seeking. Paused replays and a camera moved by hand keep their exact view.
+  const fittedPane = useRef(opts.paneRevision);
+  useEffect(() => {
+    if (fittedPane.current === opts.paneRevision) return;
+    fittedPane.current = opts.paneRevision;
+    if (!on) return;
+    const current = session.getState();
+    pausedPaneAt.current = current.playing ? null : current.t;
+    if (!current.playing) {
+      // A follow pan may still be easing from before Pause. Stop it at the current view,
+      // then hold that view until playback or an explicit seek/step changes the replay.
+      const [x, y, zoom] = store.getState().transform;
+      void setViewport({ x, y, zoom }, { duration: 0 });
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const s = session.getState();
+      if (!s.playing || !s.trace || !following.current || plan.current?.mode !== "fit") return;
+      const nodes = buildJourney(s.trace, controller.currentDiagram).nodes;
+      plan.current = planCamera(
+        boxes(nodes),
+        boxes([s.trace.origin]),
+        pane(),
+        insets(),
+        overlays(),
+        live.current.reducedMotion,
+      );
+      if (plan.current) void setViewport(plan.current.view, { duration: live.current.reducedMotion ? 0 : FIT_MS });
+      panUntil.current = performance.now() + (live.current.reducedMotion ? 0 : FIT_MS);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [opts.paneRevision, on, session, controller, boxes, pane, insets, overlays, setViewport, store]);
+
   // Panning or zooming by hand stops following until Replay.
   useEffect(() => {
     const root = store.getState().domNode;
@@ -253,7 +290,14 @@ export function useSlowMotion(opts: {
       // Following: pan between hops only, never while a dot travels.
       const p = plan.current;
       const s = session.getState();
-      if (f && p?.mode === "follow" && following.current && !f.travelling && s.script) {
+      if (
+        f &&
+        p?.mode === "follow" &&
+        following.current &&
+        !f.travelling &&
+        s.script &&
+        (s.playing || pausedPaneAt.current !== s.t)
+      ) {
         const now = performance.now();
         if (now >= panUntil.current) {
           const next = new Set(f.frontier);
@@ -298,6 +342,7 @@ export function useSlowMotion(opts: {
         if (s.playing) session.publish();
         const f = session.frame();
         canvas.dataset.slowmo = s.playing ? "playing" : "paused";
+        canvas.dataset.slowmoCamera = plan.current?.mode ?? "";
         canvas.dataset.slowmoProgress = String(
           s.script ? Math.round((s.t / Math.max(1, s.script.duration)) * 1000) : 0,
         );
@@ -314,6 +359,7 @@ export function useSlowMotion(opts: {
       } else if (canvas.dataset.slowmo) {
         for (const a of [
           "data-slowmo",
+          "data-slowmo-camera",
           "data-slowmo-progress",
           "data-slowmo-beat",
           "data-slowmo-dots",

@@ -616,6 +616,7 @@ function CanvasInner({
   const firstFit = useRef(false);
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
   const showingAll = useRef(true);
+  const manualCamera = useRef(false);
   const overlayFit = useCallback(
     (o?: Parameters<typeof fitView_>[0], animate = false, wholeDiagram = true) => {
       const epoch = fitEpoch.current;
@@ -675,7 +676,10 @@ function CanvasInner({
       if (changed) earlyFit.current?.();
     });
   }, [store]);
-  const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }, true), [overlayFit]);
+  const fit = useCallback(() => {
+    manualCamera.current = false;
+    overlayFit({ maxZoom: 1.25, duration: 300 }, true);
+  }, [overlayFit]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const documentId = getDiagramIdentity(slug);
@@ -731,12 +735,16 @@ function CanvasInner({
     pointer: () => (pointer.current ? screenToFlowPosition(pointer.current) : undefined),
     edgeMarks: () => edgeMarks(wrapper.current),
     fit,
+    onManualCamera: () => {
+      manualCamera.current = true;
+    },
     afterMeasured: whenReady,
     nodeSize: getNodeVariant(nodeVariant).size,
     // Zoom to selection: never past 125% (no huge single node), clear of the panels.
     // Refine after pane measurements too: a pending Inspector reveal must not
     // overwrite Shift+2 with its earlier selection pan at the old zoom.
     zoomTo: (only, onlyEdges) => {
+      manualCamera.current = true;
       inspectorPanCommand.current = fitEpoch.current;
       overlayFit({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }, true, false);
     },
@@ -1783,6 +1791,7 @@ function CanvasInner({
       // A pan by hand closes menus; the app's own (a new node brought into view) doesn't: quick-add
       // opened right after naming the last node must stay open while the view settles.
       if (e) setMenu(null);
+      if (e) manualCamera.current = true;
       hideTip();
       // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
       // our own fit starting), means the view is the user's now, not a fit.
@@ -1799,6 +1808,7 @@ function CanvasInner({
       // Wheel input can interrupt a running transition without another move-start.
       // Only actual viewport movement counts; scrolling a panel or embed page does not.
       if (e) {
+        manualCamera.current = true;
         fitStarting.current = null;
         interruptFit();
         showingAll.current = false;
@@ -2107,7 +2117,8 @@ function CanvasInner({
   useEffect(() => {
     const opened = inspectorWasHidden.current && !inspectorHidden;
     inspectorWasHidden.current = inspectorHidden;
-    if (opened && !readOnly && !nothingSelected) keepPending.current = inspectorPanCommand.current !== fitEpoch.current;
+    if (opened && !readOnly && !nothingSelected && !showingAll.current)
+      keepPending.current = inspectorPanCommand.current !== fitEpoch.current;
     if (inspectorHidden) keepPending.current = false;
     if (!keepPending.current || menu) return;
     const id = requestAnimationFrame(() => {
@@ -2119,7 +2130,7 @@ function CanvasInner({
   }, [inspectorHidden, menu]);
   // A side panel opened or closed while the whole diagram was in view refits it to the new pane,
   // so nothing ends up under the panel or its rail. A view the user panned or zoomed stays put.
-  const panelsKey = `${paletteHidden}:${inspectorHidden}`;
+  const panelsKey = `${paletteHidden}`;
   const lastPanels = useRef(panelsKey);
   useLayoutEffect(() => {
     if (lastPanels.current === panelsKey) return;
@@ -2137,7 +2148,7 @@ function CanvasInner({
   // The AI panel opened, closed or was resized, or an Inspector resize completed: the pane changed size at its
   // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
   // (or, with none, the diagram's centre) in view with a pan.
-  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${sheetResize}`;
+  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${inspectorHidden}:${sheetResize}`;
   const lastDock = useRef(dockKey);
   useEffect(() => {
     if (lastDock.current === dockKey) return;
@@ -2145,7 +2156,10 @@ function CanvasInner({
     // Live view refits around its own chrome (the trace card, a side panel): see LiveView.
     if (presenting || live) return;
     // After React Flow's ResizeObserver has the new pane size, and once a drag on the dock's edge settles.
+    const host = wrapper.current;
+    host?.setAttribute("data-pane-pending", "true");
     const id = setTimeout(() => {
+      host?.removeAttribute("data-pane-pending");
       if (showingAll.current) return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
       if (keepSelectionInView()) return;
       const pane = wrapper.current?.getBoundingClientRect();
@@ -2158,7 +2172,10 @@ function CanvasInner({
       if (cx < 40 || cx > pane.width - 40 || cy < 40 || cy > pane.height - 40)
         void setCenter(b.x + b.width / 2, b.y + b.height / 2, { zoom, duration: motionMs(250) });
     }, 150);
-    return () => clearTimeout(id);
+    return () => {
+      clearTimeout(id);
+      host?.removeAttribute("data-pane-pending");
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the dock changes the pane
   }, [dockKey]);
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
@@ -2658,8 +2675,14 @@ function CanvasInner({
                 showInteractive={false}
                 showFitView={false}
                 position="bottom-left"
-                onZoomIn={() => (showingAll.current = false)}
-                onZoomOut={() => (showingAll.current = false)}
+                onZoomIn={() => {
+                  manualCamera.current = true;
+                  showingAll.current = false;
+                }}
+                onZoomOut={() => {
+                  manualCamera.current = true;
+                  showingAll.current = false;
+                }}
               >
                 {/* Our fit keeps content clear of the title card, minimap and live bar. */}
                 <ControlButton
@@ -2713,7 +2736,9 @@ function CanvasInner({
             {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
             {(nodeCount > 0 || live) && (
               <LiveView
-                paneRevision={sheetResize}
+                paneRevision={`${inspectorHidden}:${sheetResize}`}
+                onManualPaneChange={keepSelectionInView}
+                manualCamera={manualCamera}
                 readOnly={readOnly}
                 initial={viewer?.live}
                 onHandle={receiveLiveHandle}

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useId,
   useMemo,
   useRef,
@@ -718,6 +719,31 @@ function RateLimitField({
   );
 }
 
+function TargetSummary({ labels }: { labels: string[] }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const full = labels.join(", ");
+  const short = labels.length > 1 ? t("routing.moreTargets", { target: labels[0], count: labels.length - 1 }) : full;
+  useLayoutEffect(() => {
+    const span = ref.current!;
+    const range = document.createRange();
+    span.textContent = full;
+    range.selectNodeContents(span);
+    const width = Math.ceil(range.getBoundingClientRect().width);
+    const paint = () => {
+      span.textContent = span.clientWidth < width ? short : full;
+    };
+    paint();
+    const observer = new ResizeObserver(paint);
+    observer.observe(span);
+    return () => observer.disconnect();
+  }, [full, short]);
+  return (
+    <span className="route-target-summary" ref={ref}>
+      {full}
+    </span>
+  );
+}
+
 export function RouteTableFields({
   editor,
   nodeId,
@@ -779,10 +805,15 @@ export function RouteTableFields({
   const fallback = table.default;
   return (
     <div className="route-table-section" data-testid="routes">
-      <div className="route-table" role="group" aria-label={t("routing.tableLabel")} data-testid="routes-table">
+      <div
+        className="route-table route-rules-table"
+        role="group"
+        aria-label={t("routing.tableLabel")}
+        data-testid="routes-table"
+      >
         <div className="route-row route-head" aria-hidden="true">
-          <span>{t("routing.order")}</span>
-          <span>{t("routing.match")}</span>
+          <span data-testid="routes-order-heading">{t("routing.order")}</span>
+          <span data-testid="routes-match-heading">{t("routing.match")}</span>
           <span>{t("routing.sendTo")}</span>
           <span>{t("routing.split")}</span>
         </div>
@@ -820,7 +851,7 @@ export function RouteTableFields({
                 data-testid={`routes-rule-${rule.id}-targets`}
                 title={rule.targets.map((x) => labelOf(x.edgeId)).join(", ")}
               >
-                {rule.targets.map((x) => labelOf(x.edgeId)).join(", ")}
+                <TargetSummary labels={rule.targets.map((x) => labelOf(x.edgeId))} />
               </span>
               <span className="mono route-split">{splitText(rule)}</span>
             </button>
@@ -921,13 +952,17 @@ export function RouteTableFields({
             data-testid="routes-default"
             onClick={() => setOpen(open === "default" ? null : "default")}
           >
-            <span>{t("routing.last")}</span>
+            <span data-testid="routes-last">{t("routing.last")}</span>
             <span>{t("routing.default")}</span>
             <span
               className="route-cut"
               title={fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join(", ") : undefined}
             >
-              {fallback ? fallback.targets.map((x) => labelOf(x.edgeId)).join(", ") : t("routing.reject404")}
+              {fallback ? (
+                <TargetSummary labels={fallback.targets.map((x) => labelOf(x.edgeId))} />
+              ) : (
+                t("routing.reject404")
+              )}
             </span>
             <span className="mono route-split">{fallback ? splitText(fallback) : "—"}</span>
           </button>

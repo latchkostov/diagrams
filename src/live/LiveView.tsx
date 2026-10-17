@@ -38,8 +38,12 @@ export interface LiveHandle {
 }
 
 export interface LiveViewProps {
-  /** Completed Inspector resizes, so Live preserves its own camera policy after the pane changes. */
-  paneRevision?: number;
+  /** Inspector visibility and completed resizes, so Live preserves its camera policy as the pane changes. */
+  paneRevision?: number | string;
+  /** Pan a manual view's selection into the resized pane, keeping its zoom. */
+  onManualPaneChange?: () => void;
+  /** Set by the canvas's actual pan/zoom handlers and explicit camera commands. */
+  manualCamera?: { readonly current: boolean };
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
   editor?: EditorApi;
   presenting: boolean;

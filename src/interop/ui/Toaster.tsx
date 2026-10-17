@@ -71,9 +71,11 @@ export function Toaster() {
       data-toast
       data-editor-overlay
     >
-      <span className="ix-toast-icon">
-        <Glyph name={ICON[t.kind]} size={16} />
-      </span>
+      {(t.kind !== "busy" || t.progress === undefined) && (
+        <span className="ix-toast-icon" data-testid="toast-icon">
+          <Glyph name={ICON[t.kind]} size={16} />
+        </span>
+      )}
       <span className="ix-toast-text">{t.text}</span>
       {t.progress !== undefined && (
         <span

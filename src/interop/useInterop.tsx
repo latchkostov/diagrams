@@ -360,7 +360,7 @@ export function useInterop({
       };
       const cancel = new AbortController();
       const release = holdInput(() => cancel.abort());
-      const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }), {
+      const busy = toast.busy(t("fileToast.exportingImage", { format: kind.toUpperCase() }), {
         blocking: true,
         action: { label: t("common.cancel"), run: () => cancel.abort(), testId: "image-export-cancel", focus: true },
       });

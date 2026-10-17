@@ -6,7 +6,7 @@ export const SHEET_NARROW = 1100;
 /** available excludes the stencil rail and any separate dock. Reserve room for the drawing. */
 export function sheetBounds(viewport: number, available = viewport) {
   if (viewport <= SHEET_NARROW || available < 780) return { min: 296, max: 296 };
-  return { min: 300, max: Math.floor(Math.min(viewport * 0.6, available - 480)) };
+  return { min: 300, max: Math.floor(Math.min(viewport * 0.6, available - 480, 960)) };
 }
 
 export function sheetWidth(viewport: number, available = viewport, preferred: number | null = null) {

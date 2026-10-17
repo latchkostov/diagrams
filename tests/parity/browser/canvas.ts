@@ -75,6 +75,7 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
         const ready = await page.getByTestId(root).evaluate(
           (scope) =>
             scope.dataset.fitPending !== "true" &&
+            scope.dataset.panePending !== "true" &&
             [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every((el) => {
               // A saved empty boundary has no measurable area; its descendants are checked
               // independently. Do not confuse it with a card whose measurement is still missing.

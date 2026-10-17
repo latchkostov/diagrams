@@ -36,7 +36,7 @@ export const ROUTING_MIX: TrafficMix = {
 };
 
 /** Longer, invented API paths for checking the inspector's fluid route columns. */
-export function sheetRoutingFixture(): DiagramFile {
+export function sheetRoutingFixture(spread = 1): DiagramFile {
   const d = routingFixture();
   const path = "/v1/orders/reserve";
   d.groups = [{ id: "api", label: "API region", x: 200, y: -60, width: 600, height: 480 }];
@@ -47,11 +47,26 @@ export function sheetRoutingFixture(): DiagramFile {
       title: "Resize during narration",
       traffic: [],
       durationMs: 2000,
-      timeline: [{ atMs: 0, action: { do: "note", text: "Read the route table before continuing.", pause: true } }],
+      timeline: [
+        {
+          atMs: 0,
+          action: {
+            do: "note",
+            text: "Read the route table before continuing.",
+            pause: true,
+            focus: ["kong", "orders"],
+          },
+        },
+      ],
     },
   ];
   d.planning!.requestRoutes![0].address.path = path;
   (d.nodes.find((node) => node.id === "kong")!.props!.routeTable as RouteTable).rules[0].match.path!.value = path;
+  for (const node of d.nodes) node.x *= spread;
+  for (const group of d.groups) {
+    group.x *= spread;
+    group.width *= spread;
+  }
   return d;
 }
 

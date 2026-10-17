@@ -135,6 +135,7 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
       onProgress: opts.onProgress,
       check: opts.check,
     });
+    slicer.progress(0.02);
     // Edge arrowheads are defined in an <svg><defs> outside the viewport; clone them inside for the shot.
     defsClone = document.querySelector("svg.df-defs")?.cloneNode(true) as SVGElement | undefined;
     if (defsClone) {
@@ -150,6 +151,7 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
     // Embedding web fonts is the slow part (fetch + inline every @font-face): do it once per session.
     fontCss ??= getWebFontCSS(viewport, {}).catch(() => "");
     const fontEmbedCSS = await slicer.wait(fontCss);
+    slicer.progress(0.15);
     const options = {
       fontEmbedCSS,
       width,
@@ -256,17 +258,19 @@ const SVG_PAINT = [
 class SvgPaint {
   private saved: [SVGElement, string | null][] = [];
 
-  async apply(root: HTMLElement, slicer: { breathe(): Promise<void> }) {
+  async apply(root: HTMLElement, slicer: { breathe(): Promise<void>; progress(done: number): void }) {
     const els = [...root.querySelectorAll<SVGElement>("svg *")];
     const values: (readonly (readonly [string, string])[])[] = [];
     for (const el of els) {
       const cs = getComputedStyle(el);
       values.push(SVG_PAINT.map((p) => [p, cs.getPropertyValue(p)] as const));
+      slicer.progress(0.02 + (0.1 * values.length) / Math.max(1, els.length * 2));
       await slicer.breathe();
     }
     for (const [i, el] of els.entries()) {
       this.saved.push([el, el.getAttribute("style")]);
       for (const [p, v] of values[i]) if (v) el.style.setProperty(p, v);
+      slicer.progress(0.07 + (0.05 * (i + 1)) / Math.max(1, els.length));
       await slicer.breathe();
     }
   }
