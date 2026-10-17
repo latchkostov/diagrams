@@ -167,10 +167,9 @@ test.describe("presenting full screen", () => {
   }) => {
     // Slow motion's Esc listener was added before the presentation's.
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
-    await expect(async () => {
-      await page.getByTestId("node-shopper").click({ button: "right" });
-      await page.getByTestId("context-menu-item-sim.slowmo-from").click({ timeout: 1000 });
-    }).toPass({ timeout: 8000 });
+    await waitForStableViewport(page);
+    await page.getByTestId("node-shopper").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.slowmo-from").click();
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
     await page.getByTestId("present-toggle").click();
     await expect(page.getByTestId("present-exit")).toBeVisible();

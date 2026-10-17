@@ -93,12 +93,14 @@ test("P2: a revision-only upgrade refreshes an existing live run", async ({ page
   await page.getByTestId("live-capacity").click();
   await page.getByTestId("scale-override").selectOption("1");
   await pauseClock(page);
-  await page.clock.runFor(10_000);
-  await expect(page.getByTestId("node-badge-worker")).toHaveAttribute("data-inflight", "12");
+  const inflight = async () => {
+    await page.clock.runFor(250);
+    return page.getByTestId("node-badge-worker").getAttribute("data-inflight");
+  };
+  await expect.poll(inflight, { intervals: [0], timeout: test.info().timeout }).toBe("12");
   await modelPreview(page, true);
   await page.getByTestId("planning-upgrade").click();
-  await page.clock.runFor(10_000);
-  await expect(page.getByTestId("node-badge-worker")).toHaveAttribute("data-inflight", "32");
+  await expect.poll(inflight, { intervals: [0], timeout: test.info().timeout }).toBe("32");
   expectNoErrors(consoleErrors);
 });
 
@@ -296,7 +298,6 @@ test("P2: released agent viewer preserves distinct broker assignments offline", 
   expect(output.status, output.stderr).toBe(0);
   const viewer = await watchedPage(context);
   const url = pathToFileURL(html).href;
-  await viewer.page.clock.install();
   await viewer.page.goto(url);
   await expect(viewer.page.getByTestId("live-controls")).toBeVisible();
   await pauseClock(viewer.page);

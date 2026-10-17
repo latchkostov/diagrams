@@ -61,6 +61,60 @@ class Store implements RecoveryStore {
   }
 }
 
+it("persists an edit arriving as the preceding write completes, before its job is released", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(112));
+  const doc = new CollabDoc({ clientId: 112 });
+  doc.hydrate(demoDiagram());
+  const recovery = new RoomRecovery(store, keys);
+  let signalEntered: () => void = () => {
+    throw new Error("Write gate not initialized");
+  };
+  const entered = new Promise<void>((resolve) => {
+    signalEntered = resolve;
+  });
+  const write = store.write.bind(store);
+  let complete: () => void = () => {
+    throw new Error("Write has not started");
+  };
+  const writes = vi.spyOn(store, "write").mockImplementationOnce((record, expected) => {
+    let release: (value: boolean) => void = () => {
+      throw new Error("Write result gate not initialized");
+    };
+    const held = new Promise<boolean>((resolve) => {
+      release = resolve;
+    });
+    complete = () => {
+      void write(record, expected).then((saved) => {
+        release(saved);
+        // The save continuation runs first; this update precedes its catch/finally
+        // reactions, while flush still sees the preceding job as active.
+        queueMicrotask(() =>
+          doc.apply([{ op: "patch", kind: "nodes", id: "api", set: { label: "Edit at write completion" } }]),
+        );
+      });
+    };
+    signalEntered();
+    return held;
+  });
+  onTestFinished(async () => {
+    await recovery.close(doc);
+    doc.destroy();
+    writes.mockRestore();
+  });
+  recovery.watch(doc);
+  await entered;
+  const pending = recovery.flush(doc);
+  complete();
+  await pending;
+  expect(recovery.saved).toBe(true);
+  expect(writes).toHaveBeenCalledTimes(2);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(restored);
+  expect(restored.project().diagram?.nodes.find((n) => n.id === "api")?.label).toBe("Edit at write completion");
+  restored.destroy();
+});
+
 it("recovers encrypted CRDT identity and deletions, merges offline edits, and scopes records by generation", async () => {
   const store = new Store(),
     keys = await deriveRoomKeys(roomFor(101));

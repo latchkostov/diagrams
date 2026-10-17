@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  # GitHub sets CI=true already; explicit because the suites depend on it (Playwright retries, workers and
+  # GitHub sets CI=true already; explicit because the suites depend on it (Playwright workers and
   # E2E_TARGET=build, Vitest timeouts).
   CI: "true"
 

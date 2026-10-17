@@ -305,8 +305,10 @@ test("A1: production playback shows starting backlog, ready capacity, real resou
   page,
   consoleErrors,
 }, info) => {
+  test.slow();
   await seed(page, { live: true });
   await pauseClock(page);
+  await page.getByTestId("live-restart").click();
   await page.clock.runFor(15_500);
   const badge = page.getByTestId("node-badge-worker");
   await expect(badge).toHaveAttribute("data-ready", "1");

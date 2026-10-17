@@ -80,6 +80,12 @@ export function AiMount({
   const [editorSeen, setEditorSeen] = useState(false);
   if (canvas && !editorSeen) setEditorSeen(true);
   if (view !== "canvas" && editorSeen) setEditorSeen(false);
+  // A restored dock can load before the canvas. Do not offer inputs on a panel
+  // that will immediately remount, or remount it during a host's detach/attach.
+  const identity = canvas ? (canvas.documentId ?? "none") : null;
+  const [panelIdentity, setPanelIdentity] = useState(identity);
+  if (identity !== null && identity !== panelIdentity) setPanelIdentity(identity);
+  if (view !== "canvas" && panelIdentity !== null) setPanelIdentity(null);
 
   useEffect(() => {
     const onOpen = (e: Event) => {
@@ -166,12 +172,18 @@ export function AiMount({
             className="ai-dock"
             style={{ width }}
             data-testid="ai-dock"
+            data-ready={canvas ? "true" : "false"}
+            inert={!canvas}
             onContextMenu={(e) => {
               if (!(e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement))
                 e.preventDefault();
             }}
           >
-            <AiPanel key={canvas?.documentId ?? "none"} request={request} />
+            {panelIdentity === null ? (
+              <div className="ai-dock-loading" aria-busy="true" data-testid="ai-panel-waiting-canvas" />
+            ) : (
+              <AiPanel key={panelIdentity} request={request} />
+            )}
           </div>
         ) : (
           <aside className="ai-rail" aria-label={t("ai.aIPanel")} data-testid="ai-rail">

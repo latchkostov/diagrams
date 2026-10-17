@@ -27,7 +27,7 @@ export async function runSteps(root, config, changed, directory, extraEnv = {}, 
   const started = performance.now();
   const rows = [];
   const reports = [];
-  const workers = config.workers ?? workerCount(os.availableParallelism(), os.totalmem());
+  const workers = config.workers ?? workerCount(os.availableParallelism(), os.totalmem(), config);
   const temp = prepareBrowserTemp(root, directory, extraEnv.GATE_CONTAINER === "1");
   const env = {
     CI: "true",
@@ -86,7 +86,12 @@ export async function runSteps(root, config, changed, directory, extraEnv = {}, 
           stepEnv.PLAYWRIGHT_HTML_OUTPUT_DIR = resolve(stepDir, "report");
         }
         if (step.name === "unit")
-          args.push("--reporter=default", "--reporter=json", `--outputFile=${join(stepDir, "results.json")}`);
+          args.push(
+            `--maxWorkers=${workers}`,
+            "--reporter=default",
+            "--reporter=json",
+            `--outputFile=${join(stepDir, "results.json")}`,
+          );
         console.log(`== ${step.name} ${e2e ? `(${workers} workers)` : ""}`);
         if (e2e)
           console.log(

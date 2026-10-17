@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLive, livePaint } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLive, livePaint, pauseClock } from "./fixtures";
+import { waitForStableViewport } from "./fixtures";
 
 // The live view draws its particles, the overlay above the edge label pills, the marching edges and
 // the Live dot's breath in a worker, on OffscreenCanvas (src/live/liveRenderer.ts); where that isn't
@@ -21,10 +22,9 @@ async function goLive(page: Page, renderer: Renderer, query = "") {
 }
 
 async function openNodeMenu(page: Page, nodeId: string, actionId: string) {
-  await expect(async () => {
-    await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
-    await menuItem(page, actionId).click({ timeout: 1000 });
-  }).toPass({ timeout: 8000 });
+  await waitForStableViewport(page);
+  await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
+  await menuItem(page, actionId).click();
 }
 
 /** A layer's pixels in a client rect (the whole pane by default), summed up in the page: the highest alpha and a checksum. */
@@ -216,8 +216,9 @@ for (const renderer of ["worker", "main"] as const) {
       page,
       consoleErrors,
     }) => {
-      // Waiting, the controller still hands out fresh snapshots, at the same simulated time. (The pausing note comes
-      // 4 s into the simulation: half a second at 8×, once the session is up.)
+      // Waiting, the controller still hands out fresh snapshots, at the same simulated time.
+      await page.clock.install();
+      // The pausing note comes 4 s into the simulation, once the session is up.
       await gotoLive(
         page,
         `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8${renderer === "main" ? "&renderer=main" : ""}`,
@@ -239,8 +240,17 @@ for (const renderer of ["worker", "main"] as const) {
         )
         .toBe(true);
       expect(ants.peak).toBeGreaterThan(0);
+      await pauseClock(page);
       await page.getByTestId("live-note-continue").click();
-      await expect(page.getByTestId("rf__wrapper")).not.toHaveAttribute("data-live-still", "1");
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+      // A controller resume and the decorator's next UI publication are separate
+      // boundaries. Keep the fake clock moving until the resumed frame is visible.
+      await expect
+        .poll(async () => {
+          await page.clock.runFor(125);
+          return page.getByTestId("rf__wrapper").getAttribute("data-live-still");
+        })
+        .not.toBe("1");
       expectNoErrors(consoleErrors);
     });
 
@@ -283,12 +293,12 @@ declare global {
 
 /**
  * Main-thread draw calls, frames drawn, and the main thread's busy time per animation frame of the page (not per
- * frame the worker drew: a worker starved of CPU draws fewer), over `ms` of live traffic.
+ * frame the worker drew: a worker starved of CPU draws fewer), over a fixed number of page frames of live traffic.
  * The busy time is Chrome's own count of every task on the page's main thread (CDP Performance `TaskDuration`):
  * animation frames and the UI clock's updates every 125 ms, worker messages, React commits, style and layout. It
  * is counted in the thread's CPU time, so other processes competing for the CPU don't add to it.
  */
-async function busyWindow(page: Page, ms: number) {
+async function busyWindow(page: Page, framesToObserve: number) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Performance.enable", { timeDomain: "threadTicks" });
   const taskSeconds = async () =>
@@ -299,13 +309,24 @@ async function busyWindow(page: Page, ms: number) {
   const frames = await count(page, "frames");
   const ticks = await page.evaluate(() => window.__ticks);
   const busy = await taskSeconds();
-  await page.waitForTimeout(ms);
+  await page.evaluate(
+    (frames) =>
+      new Promise<void>((resolve) => {
+        const tick = () => {
+          if (--frames <= 0) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    framesToObserve,
+  );
   const busyMs = ((await taskSeconds()) - busy) * 1000;
   const pageFrames = (await page.evaluate(() => window.__ticks)) - ticks;
   await cdp.detach();
   return {
     draws: await page.evaluate(() => window.__draws),
     frames: (await count(page, "frames")) - frames,
+    pageFrames,
     msPerFrame: busyMs / Math.max(pageFrames, 1),
     // Animations that would repaint (CSS) or recomposite (compositor) every frame while live: each
     // holds input a frame deeper (docs/BACKLOG.md). Transient transitions don't count.
@@ -318,6 +339,15 @@ async function busyWindow(page: Page, ms: number) {
   };
 }
 
+async function settleRenderer(page: Page) {
+  await expect.poll(() => count(page, "particles"), { timeout: test.info().timeout }).toBeGreaterThan(40);
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise<void>((resolve) => requestIdleCallback(() => resolve()));
+  });
+  await waitForStableViewport(page);
+}
+
 test.describe("live rendering stays off the main thread", () => {
   test("the worker path draws nothing on the main thread and runs no endless animation while live", async ({
     page,
@@ -328,24 +358,31 @@ test.describe("live rendering stays off the main thread", () => {
     test.slow();
     await page.addInitScript(COUNT_DRAWS);
     await goLive(page, "worker");
-    await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
+    await settleRenderer(page);
     await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-glow", "canvas");
-    const playing = await busyWindow(page, 1500);
-    expect(playing.frames, "the worker kept drawing").toBeGreaterThan(20);
-    expect(playing.draws, "main-thread canvas calls per 1.5 s").toBe(0);
-    expect(playing.running).toEqual([]);
+    const playing: Awaited<ReturnType<typeof busyWindow>>[] = [];
+    for (let i = 0; i < 3; i++) {
+      const sample = await busyWindow(page, 30);
+      playing.push(sample);
+      expect(sample.frames, "the worker kept drawing alongside page frames").toBeGreaterThan(sample.pageFrames / 8);
+      expect(sample.draws, "main-thread canvas calls across page frames").toBe(0);
+      expect(sample.running).toEqual([]);
+    }
 
     // The fallback really is on the main thread: the same check counts its drawing.
     await goLive(page, "main");
-    await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
-    const fallback = await busyWindow(page, 1500);
-    expect(fallback.draws).toBeGreaterThan(fallback.frames);
+    await settleRenderer(page);
+    const fallback: typeof playing = [];
+    for (let i = 0; i < 3; i++) {
+      const sample = await busyWindow(page, 30);
+      fallback.push(sample);
+      expect(sample.draws).toBeGreaterThan(sample.frames);
+    }
     // And the point of the worker: the main thread's work per frame (all of it, not only the animation frames) is
     // well under the fallback's, which draws it all there: about 0.4 to 0.6 of it, measured; 0.8 at most. Both
     // measured in the same run, in thread CPU time. Not a budget in ms.
-    expect(playing.msPerFrame, JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(
-      fallback.msPerFrame * 0.8,
-    );
+    const median = (samples: typeof playing) => samples.map((sample) => sample.msPerFrame).sort((a, b) => a - b)[1];
+    expect(median(playing), JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(median(fallback) * 0.8);
     expectNoErrors(consoleErrors);
   });
 });

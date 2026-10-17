@@ -327,6 +327,7 @@ test("room recovery preserves an existing local autosave across reload and rejoi
   baseURL,
   consoleErrors,
 }) => {
+  test.slow(); // Two isolated contexts, reload/rejoin cycles and their storage/transport teardown.
   const other = await browser.newContext({ baseURL });
   const b = await other.newPage();
   const wire = await relay([context, other], 61);

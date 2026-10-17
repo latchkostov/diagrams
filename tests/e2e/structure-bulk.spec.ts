@@ -1,6 +1,15 @@
 import { savedDiagram } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, fitDiagram, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  fitDiagram,
+  waitForStableViewport,
+  waitForSelectionSettled,
+  STORAGE_KEYS,
+} from "./fixtures";
 
 // Structure and bulk (docs/research/drawing-ux.md, batch 4): boundaries that keep up (D12), bulk edit in the
 // inspector and Select similar (D11), tidy the selection (D15), and keyboard selection between nodes (D14).
@@ -229,13 +238,15 @@ test.describe("boundaries that keep up (D12)", () => {
   test("resizing a boundary adopts the nodes now inside it, and says so", async ({ page }) => {
     await seed(page);
     await page.getByTestId("group-label-ship").click();
-    // Selecting it opens the inspector, and the view pans to keep it in view: measure once that's done.
-    await waitForStableViewport(page);
-    // Shipping's bottom-right corner down past Billing (at 1060, 560): Billing's centre comes inside.
-    const ship = await box(page.getByTestId("group-ship"));
+    // The selected boundary's corner can be behind the opening Inspector. Fit
+    // the settled canvas, then target the real handle rather than an old corner.
+    await waitForSelectionSettled(page);
+    await fitDiagram(page);
+    const resize = page.getByTestId("group-resize-ship-bottom-right");
+    await resize.hover();
+    const handle = centre(await box(resize));
     const v = await view(page);
-    const handle = { x: ship.x + ship.width, y: ship.y + ship.height };
-    await page.mouse.move(handle.x, handle.y);
+    // Down past Billing (at 1060, 560): Billing's centre comes inside.
     await page.mouse.down();
     await page.mouse.move(handle.x, handle.y + 300 * v.k, { steps: 10 });
     await page.mouse.up();
@@ -578,6 +589,7 @@ test.describe("keyboard selection between nodes (D14)", () => {
     // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+BracketRight");
     await expect(announced(page)).toContainText("Outgoing 1 of 2");
+    await expect(page.getByTestId("relationship-wrapper-a-w")).toBeFocused();
     // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+BracketRight");
     await expect(announced(page)).toContainText("Outgoing 2 of 2");
@@ -658,6 +670,7 @@ test.describe("review follow-ups", () => {
     // eslint-disable-next-line no-restricted-syntax -- Literal Ctrl+Alt navigates the canvas on every OS (including macOS).
     await page.keyboard.press("Control+Alt+ArrowRight");
     await expect(page.getByTestId("canvas-announce")).toContainText("Alpha, boundary, 0 nodes");
+    await expect(page.getByTestId("rf__node-group:a")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("canvas-announce")).toContainText("Beta, boundary");
   });

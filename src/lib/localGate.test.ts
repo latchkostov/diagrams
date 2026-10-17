@@ -34,6 +34,31 @@ it("invokes standalone pnpm and JS shims without shell interpretation", () => {
 
 const config = (args: string[] = []) => options(["full", ...args]);
 
+it("accepts Linux CPU quotas and Docker memory sizes without requiring worker overrides", () => {
+  expect(config(["--linux", "--cpus", "3", "--memory", "7g"])).toMatchObject({ cpus: 3, memory: "7g" });
+  expect(config(["--linux", "--cpus", "0.5", "--memory", "512M"])).toMatchObject({ cpus: 0.5, memory: "512m" });
+});
+
+it.each([
+  ["--cpus", "3"],
+  ["--memory", "7g"],
+  ["--linux", "--cpus", "0"],
+  ["--linux", "--cpus", "NaN"],
+  ["--linux", "--memory", "0g"],
+  ["--linux", "--memory", "7gb"],
+  ["--linux", "--memory"],
+  ["--linux", "--cpus"],
+])("rejects unusable or native-only resource caps (%s)", (...args) => {
+  expect(() => config(args)).toThrow();
+});
+
+it("sizes auto workers from capped resources even when Node sees the host", () => {
+  expect(workerCount(32, 64 * GIB, { cpus: 3, memory: "7g" })).toBe(1);
+  expect(workerCount(32, 64 * GIB, { cpus: 3, memory: "16g" })).toBe(2);
+  expect(workerCount(32, 64 * GIB, { cpus: 0.5, memory: "512m" })).toBe(1);
+  expect(workerCount(2, 7 * GIB, { cpus: 8, memory: "32g" })).toBe(1);
+});
+
 it("keeps command stdout separate from diagnostic stderr", async () => {
   const result = await command(process.execPath, [
     "-e",
@@ -111,13 +136,22 @@ it.each(["", "bind"])(
       return { code: 0, text: "" };
     };
     try {
-      const result = await linuxRun(process.cwd(), config(), [], dir, "test-head", {
-        command: execute,
-        required: execute,
-      });
+      const result = await linuxRun(
+        process.cwd(),
+        config(["--linux", "--cpus", "3", "--memory", "7g"]),
+        [],
+        dir,
+        "test-head",
+        {
+          command: execute,
+          required: execute,
+        },
+      );
       expect(result.failures).toBe(0);
       const run = calls.find((c) => c[0] === "docker" && c[1] === "run");
       if (!run) throw new Error("No container run");
+      expect(run.slice(run.indexOf("--cpus"), run.indexOf("--cpus") + 2)).toEqual(["--cpus", "3"]);
+      expect(run.slice(run.indexOf("--memory"), run.indexOf("--memory") + 2)).toEqual(["--memory", "7g"]);
       const name = `ld-gate-${process.pid}-${basename(dir)}`;
       const mounts = run.filter((_, i) => ["-v", "--mount"].includes(run[i - 1]));
       expect(mounts).toContain(
@@ -524,6 +558,47 @@ it("fake orchestration retains failures and rejects a flaky zero-exit report", a
   } finally {
     log.mockRestore();
     error.mockRestore();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+it("applies the capped worker count to Vitest as well as Playwright", async () => {
+  mkdirSync("tests/.output", { recursive: true });
+  const dir = mkdtempSync(resolve("tests/.output/gate-resources-"));
+  const calls: string[][] = [];
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    const result = await runSteps(
+      process.cwd(),
+      config(["--linux", "--cpus", "3", "--memory", "7g", "--only", "unit,e2e", "--ports", "6480"]),
+      [],
+      dir,
+      {},
+      async (args, { env }) => {
+        calls.push(args);
+        if (args[0] === "test:coverage") {
+          expect(args).toContain("--maxWorkers=1");
+          writeFileSync(
+            join(dir, "unit/results.json"),
+            JSON.stringify({ success: true, numPassedTests: 1, numFailedTests: 0, numPendingTests: 0 }),
+          );
+        }
+        if (args.includes("playwright")) {
+          expect(args).toContain("--workers=1");
+          writeFileSync(
+            env.PLAYWRIGHT_JSON_OUTPUT_NAME,
+            JSON.stringify({ stats: { expected: 1, unexpected: 0, flaky: 0, skipped: 0 } }),
+          );
+        }
+        return { code: 0, text: "" };
+      },
+    );
+    expect(result.workers).toBe(1);
+    expect(result.failures).toBe(0);
+    expect(calls.filter((args) => args[0] === "test:coverage")).toHaveLength(1);
+    expect(calls.filter((args) => args.includes("playwright"))).toHaveLength(1);
+  } finally {
+    log.mockRestore();
     rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -151,6 +151,26 @@ test.describe("The agent skill's Interactive HTML export", () => {
     await viewer.page.close();
   });
 
+  test("playback checks preserve the viewer's existing animation-clock origin", async ({ context }) => {
+    const { path } = exportHtml(join(process.cwd(), "src", "examples", `${KAFKA}.json`));
+    const viewer = await watchedPage(context);
+    await viewer.page.goto(pathToFileURL(path).href);
+    await expect(viewer.page.getByTestId("live-controls")).toBeVisible();
+    // A consistent monotonic offset models a viewer that has been running before
+    // the playback check starts. No real-time delay or latency budget is needed.
+    await viewer.page.evaluate(async () => {
+      const origin = 60_000;
+      const now = performance.now.bind(performance);
+      const frame = requestAnimationFrame.bind(window);
+      performance.now = () => now() + origin;
+      window.requestAnimationFrame = (callback) => frame((time) => callback(time + origin));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    });
+    await expectPlaying(viewer.page);
+    expect(viewer.errors).toEqual([]);
+    await viewer.page.close();
+  });
+
   test("a private diagram gets an HTML file, never a share link", async ({ context }) => {
     const file = test.info().outputPath("ledger.diagram.json");
     writeFileSync(

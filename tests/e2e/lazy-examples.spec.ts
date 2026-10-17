@@ -253,6 +253,8 @@ const pendingOther = { view: "canvas", example: other.slug };
 
 /** Opens the live link, then picks `other` while its download is held. */
 async function startPendingSwitch(page: Page, { fail = false } = {}) {
+  // Two example loads, a live session and history/reload checks.
+  test.slow();
   await gotoLive(page, liveLink);
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));

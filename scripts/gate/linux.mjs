@@ -59,6 +59,8 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
       "--name",
       name,
       "--ipc=host",
+      ...(config.cpus === undefined ? [] : ["--cpus", String(config.cpus)]),
+      ...(config.memory === undefined ? [] : ["--memory", config.memory]),
       "-v",
       archive ? `${source}:/work` : `${root}:/work`,
       "-v",

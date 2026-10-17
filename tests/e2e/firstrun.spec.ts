@@ -77,6 +77,7 @@ test.describe("first run", () => {
     await page.getByTestId("start-blank").click();
     await expect(page.getByTestId("start-card")).toHaveCount(0);
     await expect(page.getByTestId("palette-search")).toBeFocused();
+    await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("canvas-empty")).toHaveCount(0);
@@ -93,6 +94,7 @@ test.describe("first run", () => {
     await page.goto("./");
     await page.getByTestId("start-blank").click();
     await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "kept"));
+    await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("live-toggle")).toBeVisible();
@@ -107,6 +109,7 @@ test.describe("first run", () => {
   test("File > New diagram starts a blank one and keeps the previous in Your diagrams", async ({ page }) => {
     await page.goto("./");
     await page.getByTestId("start-blank").click();
+    await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("live-toggle")).toBeVisible();

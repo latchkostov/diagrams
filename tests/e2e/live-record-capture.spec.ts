@@ -1,3 +1,4 @@
+import { waitForStableViewport } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
 
@@ -294,10 +295,9 @@ for (const renderer of ["worker", "main"] as const) {
     test("slow motion's captions are in the video", async ({ page, consoleErrors }) => {
       test.setTimeout(90_000);
       await goLive(page, renderer);
-      await expect(async () => {
-        await page.getByTestId("node-shopper").click({ button: "right" });
-        await page.getByTestId("context-menu-item-sim.slowmo-from").click({ timeout: 1000 });
-      }).toPass({ timeout: 8000 });
+      await waitForStableViewport(page);
+      await page.getByTestId("node-shopper").click({ button: "right" });
+      await page.getByTestId("context-menu-item-sim.slowmo-from").click();
       await expect(canvas(page)).toHaveAttribute("data-slowmo", "playing");
       await expect
         .poll(async () => JSON.parse((await canvas(page).getAttribute("data-slowmo-captions")) ?? "[]").length, {

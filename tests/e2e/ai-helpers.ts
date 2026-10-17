@@ -37,6 +37,7 @@ export async function openAdvanced(page: Page) {
     timeout: pageLoadTimeout(),
   });
   if (!(await page.getByTestId("ai-panel").isVisible())) await openAiPanel(page);
+  await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "true");
   if (!(await page.getByTestId("ai-request").isVisible())) await page.getByTestId("ai-advanced-toggle").click();
   await expect(page.getByTestId("ai-request")).toBeVisible();
 }

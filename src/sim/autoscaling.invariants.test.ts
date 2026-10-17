@@ -19,6 +19,7 @@ import { mulberry32 } from "./rng";
 import { assertResourceInvariants } from "./resourceInvariants";
 import { analyzeCapacity } from "./capacity";
 import { resolveNodeProps } from "./defaults";
+import { fuzzSeeds } from "../test/fuzzSeeds";
 
 type Action = { ms: number } & (
   | { do: "refuse" }
@@ -260,9 +261,7 @@ function minimize(d: DiagramFile, seed: number, scale: number, actions: Action[]
 }
 describe("A1 seeded ownership invariants", () => {
   const cases = process.env.A1_FUZZ_NIGHTLY ? 5000 : 200;
-  const seeds = process.env.A1_FUZZ_SEED
-    ? [Number(process.env.A1_FUZZ_SEED)]
-    : [...new Set([...Array.from({ length: cases }, (_, i) => i + 1), 505, 1724])];
+  const seeds = fuzzSeeds(cases, process.env.A1_FUZZ_SEED, process.env.RESOURCE_FUZZ_SHARD, [505, 1724]);
   it.each(seeds)("seed %i", (seed) => {
     const { d, scale, actions } = generate(seed);
     const failure = replay(d, seed, scale, actions);
@@ -443,9 +442,7 @@ function generateCloud(seed: number) {
 }
 describe("A3 cloud adapter seeded invariants", () => {
   const cases = process.env.A1_FUZZ_NIGHTLY ? 5000 : 140;
-  const seeds = process.env.A3_FUZZ_SEED
-    ? [Number(process.env.A3_FUZZ_SEED)]
-    : Array.from({ length: cases }, (_, i) => i + 1);
+  const seeds = fuzzSeeds(cases, process.env.A3_FUZZ_SEED, process.env.RESOURCE_FUZZ_SHARD);
   it.each(seeds)("seed %i", (seed) => {
     const { d, scale, actions } = generateCloud(seed);
     const failure = replay(d, seed, scale, actions);

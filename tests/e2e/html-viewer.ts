@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { BrowserContext, FrameLocator, Page } from "@playwright/test";
-import { expect, publicExamples } from "./fixtures";
+import { expect, publicExamples, pauseClock } from "./fixtures";
 
 // Opening an Interactive HTML file (src/export) the way people do: from file://, framed by a host page, sandboxed.
 // Shared by the app's export (html-export.spec.ts) and the agent skill's (skill-html.spec.ts). Selectors are
@@ -38,6 +38,9 @@ declare global {
 /** A fresh tab that records every request it makes, its CSP violations and its console errors. */
 export async function watchedPage(context: BrowserContext) {
   const page = await context.newPage();
+  // Install before the viewer captures performance.now()/animation-frame stamps.
+  // Installing mid-playback can move their origin backwards and stall UI publication.
+  await page.clock.install();
   const requests: string[] = [];
   const errors: string[] = [];
   page.on("request", (r) => requests.push(r.url()));
@@ -108,22 +111,31 @@ export async function expectPlaying(scope: Page | FrameLocator) {
 
   await expect(scope.getByTestId("live-controls")).toBeVisible();
   await expect(scope.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+  const page = scope.getByTestId("live-play").page();
+  await pauseClock(page);
+  await scope.getByTestId("live-speed").selectOption("1");
+  await scope.getByTestId("live-restart").click();
+  await page.clock.runFor(1000);
   await expect(scope.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
   // Particles move: the painted pixels change from one sample to the next.
   await expect.poll(() => particleSample(scope), { timeout: 10_000 }).not.toBe("");
   const a = await particleSample(scope);
+  await page.clock.runFor(250);
   await expect.poll(() => particleSample(scope), { timeout: 10_000 }).not.toBe(a);
 
   await scope.getByTestId("live-sim-picker").selectOption("payments-outage");
   await expect(scope.getByTestId("live-sim-picker")).toHaveValue("payments-outage");
   await scope.getByTestId("live-speed").selectOption("4");
+  await page.clock.runFor(1250);
   // Its own timeline at 4 s: payments goes down, and its note pauses the run.
   await expect(scope.getByTestId("live-note")).toContainText("Payments is offline", { timeout: 15_000 });
   await expect(scope.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
   await expect(scope.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
   const paused = await scope.getByTestId("live-clock").innerText();
   await scope.getByTestId("live-note-continue").click();
+  await page.clock.runFor(250);
   await expect(scope.getByTestId("live-clock")).not.toHaveText(paused, { timeout: 10_000 });
   const b = await particleSample(scope);
+  await page.clock.runFor(250);
   await expect.poll(() => particleSample(scope), { timeout: 10_000 }).not.toBe(b);
 }

@@ -94,7 +94,7 @@ export async function doctor(root, config) {
         if (!info.code) {
           const vm = JSON.parse(info.stdout);
           console.log(
-            `Linux VM: ${vm.cpus} CPUs, ${(vm.memory / GIB).toFixed(1)} GiB RAM; workers=${config.workers ?? workerCount(vm.cpus, vm.memory)}`,
+            `Linux VM: ${vm.cpus} CPUs, ${(vm.memory / GIB).toFixed(1)} GiB RAM; workers=${config.workers ?? workerCount(vm.cpus, vm.memory, config)}`,
           );
         }
       }
@@ -117,7 +117,7 @@ export async function doctor(root, config) {
     }
   }
   console.log(
-    `Host resources: ${os.availableParallelism()} CPUs, ${(os.totalmem() / GIB).toFixed(1)} GiB RAM; workers=${config.workers ?? workerCount(os.availableParallelism(), os.totalmem())}`,
+    `Host resources: ${os.availableParallelism()} CPUs, ${(os.totalmem() / GIB).toFixed(1)} GiB RAM; workers=${config.workers ?? workerCount(os.availableParallelism(), os.totalmem(), config)}`,
   );
   return failures === 0;
 }

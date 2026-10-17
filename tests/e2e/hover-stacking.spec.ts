@@ -130,7 +130,10 @@ for (const theme of ["light", "dark"] as const) {
       await page.keyboard.press("Escape");
       const pips = page.getByTestId("node-pips-api");
       await waitForStableBox(pips);
-      await pips.hover();
+      // The tooltip's hover bridge may already cover the pip after pointer entry.
+      // Move the real pointer; a second actionability hit-test would hit that bridge.
+      const pip = await box(pips);
+      await page.mouse.move(pip.x + pip.width / 2, pip.y + pip.height / 2);
       await expect(page.getByTestId("node-dependencies-api")).toBeVisible();
       expect(await cardOnTop(page, "node-dependencies-api", "node-below", 0)).toBe(1);
       expectNoErrors(consoleErrors);
