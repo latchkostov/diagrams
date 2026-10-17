@@ -28,6 +28,8 @@ import {
   layerRatio,
   LIVE_FLIPS_PER_100_EDGES_LIMIT,
   LIVE_LAYER_RATIO_LIMIT,
+  LIVE_TRANSITIONS_PER_100_LIMIT,
+  per100,
   slowPhase,
   steadyTail,
 } from "../../../src/bench/liveMetrics";
@@ -165,18 +167,37 @@ async function watch(b: Bench, ms = 5_000) {
   };
 }
 
-/** Records the gates for one x10 window: layers against x1 and edge churn, held on a large diagram only. */
+/**
+ * Records the gates for one x10 window, held on a large diagram only: running transitions, layers against x1, edge
+ * churn.
+ */
 function gates(
   w: ReturnType<typeof loadWorkload>,
   detail: string,
-  o: { x1Layers: number | null; x10Layers: number; flips: number; publishes: number; large: boolean },
+  o: {
+    x1Layers: number | null;
+    x10Layers: number;
+    x10Transitions: number;
+    flips: number;
+    publishes: number;
+    elements: number;
+    large: boolean;
+  },
 ) {
   const ratio = round(layerRatio(o.x1Layers ?? 0, o.x10Layers), 2);
   const churn = round(flipsPer100Edges(o.flips, o.publishes, w.info.edges), 2);
+  const fades = round(per100(o.x10Transitions, o.elements), 2);
   s.count("layersX1", o.x1Layers ?? NaN, { w: w.info, detail });
   s.count("layersX10Peak", o.x10Layers, { w: w.info, detail });
   // Small diagrams keep their fades on purpose (decorations.ts): the gates hold where they're dropped.
   const limit = (l: number) => (o.large ? { limit: l } : {});
+  s.count("transitionsX10Peak", o.x10Transitions, { w: w.info, detail });
+  s.count("transitionsX10Per100Elements", fades, {
+    w: w.info,
+    detail,
+    ...limit(LIVE_TRANSITIONS_PER_100_LIMIT),
+    why: "CSS transitions running at x10 per 100 nodes and edges: each is animated on its own",
+  });
   s.count("layerRatioX10", ratio, {
     w: w.info,
     detail,
@@ -223,10 +244,11 @@ async function liveCase(
       s.count("slowPhaseFps", round(t.slowPhaseFps, 2), { w: w.info, detail, unit: "frames/s" });
       s.count("steadyFps", round(t.steadyFps, 2), { w: w.info, detail, unit: "frames/s" });
       s.count("transitionsX1", x1.transitions, { w: w.info, detail });
-      s.count("transitionsX10Peak", t.peakTransitions, { w: w.info, detail });
       gates(w, detail, {
         x1Layers: x1.layers,
         x10Layers: t.peakLayers,
+        x10Transitions: t.peakTransitions,
+        elements: d1.elements,
         flips: d1.edgeFlips - d0.edgeFlips,
         publishes: d1.publishes - d0.publishes,
         large: d1.large,
@@ -283,14 +305,19 @@ test(`live gates pipeline@${GATE_N}`, async ({ page }) => {
   await timesTen(page);
   const d0 = await decorations(page);
   let peak = 0;
+  let fades = 0;
   for (let i = 0; i < 4; i++) {
     await page.waitForTimeout(1_500);
-    peak = Math.max(peak, (await layers(b.cdp)) ?? 0);
+    const now = await scene(b);
+    peak = Math.max(peak, now.layers ?? 0);
+    fades = Math.max(fades, now.transitions);
   }
   const d1 = await decorations(page);
   gates(w, "gates", {
     x1Layers: x1.layers,
     x10Layers: peak,
+    x10Transitions: fades,
+    elements: d1.elements,
     flips: d1.edgeFlips - d0.edgeFlips,
     publishes: d1.publishes - d0.publishes,
     large: d1.large,

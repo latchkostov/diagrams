@@ -9,7 +9,11 @@ const s = suite("workloads");
 
 const wanted =
   MODE === "gates"
-    ? (["pipeline", "mesh"] as const).flatMap((family) => [100, 500].map((n) => ({ family, n })))
+    ? [
+        ...(["pipeline", "mesh"] as const).flatMap((family) => [100, 500].map((n) => ({ family, n }))),
+        // Live view's gates hold on a large diagram (tests/bench/ui/live.bench.ts).
+        { family: "pipeline" as const, n: 1_500 },
+      ]
     : FAMILY_IDS.flatMap((family) => SIZES_RUN.map((n) => ({ family, n })));
 
 // A gating test, so every mode materialises what its browser benchmarks open.

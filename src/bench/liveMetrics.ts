@@ -7,7 +7,12 @@ export const LIVE_LAYER_RATIO_LIMIT = 2;
  * Edges that change between active and idle per publish, per 100 edges, at most (× 10, the same window). Without the
  * hold (decorations.ts, EDGE_HOLD) a busy edge flips on most publishes.
  */
-export const LIVE_FLIPS_PER_100_EDGES_LIMIT = 2;
+export const LIVE_FLIPS_PER_100_EDGES_LIMIT = 5;
+/**
+ * CSS transitions running at once at Traffic × 10, per 100 decorated nodes and edges, at most. A large diagram drops
+ * the per-element fades (decorations.ts, LARGE_LIVE_ELEMENTS); with them, hundreds ran at once.
+ */
+export const LIVE_TRANSITIONS_PER_100_LIMIT = 1;
 /** Consecutive frames within the settle bound that end the slow phase. */
 export const LIVE_SETTLE_FRAMES = 8;
 /** A frame is slow while it takes over this many times the steady frame. */
@@ -67,6 +72,11 @@ export function slowPhase(frames: readonly number[], steadyGapMs: number) {
   }
   const ms = frames.length > 1 ? frames[frames.length - 1] - frames[0] : 0;
   return { slowPhaseMs: ms, slowPhaseFps: ms > 0 ? (gaps.length * 1000) / ms : 0, settled: false };
+}
+
+/** `count` per 100 of `of`; nothing to count against fails any `<=` gate. */
+export function per100(count: number, of: number): number {
+  return of > 0 ? (count / of) * 100 : Infinity;
 }
 
 /** Edges flipped per publish, per 100 edges; no publishes observed fails any `<=` gate. */

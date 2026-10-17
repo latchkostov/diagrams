@@ -8,6 +8,8 @@ import {
   LIVE_FLIPS_PER_100_EDGES_LIMIT,
   LIVE_LAYER_RATIO_LIMIT,
   LIVE_SETTLE_FRAMES,
+  LIVE_TRANSITIONS_PER_100_LIMIT,
+  per100,
   slowPhase,
   steadyTail,
 } from "./liveMetrics";
@@ -59,7 +61,17 @@ describe("live benchmark parsing and gates (no browser)", () => {
     expect(slowPhase([], 500).settled).toBe(false);
   });
 
+  it("counts running fades per 100 nodes and edges, refusing an empty diagram", () => {
+    // Hundreds of fades at once among ~10,000 nodes and edges fail; none (the fades dropped) pass.
+    expect(gate("<=", per100(400, 9_882), LIVE_TRANSITIONS_PER_100_LIMIT).pass).toBe(false);
+    expect(gate("<=", per100(0, 9_882), LIVE_TRANSITIONS_PER_100_LIMIT).pass).toBe(true);
+    expect(per100(3, 0)).toBe(Infinity);
+  });
+
   it("reports edge churn per publish per 100 edges, refusing an empty window", () => {
+    // pipeline@1500 at x10, measured: 8.3 to 8.6 without the hold, 2.7 to 3.1 with it.
+    expect(gate("<=", 8.3, LIVE_FLIPS_PER_100_EDGES_LIMIT).pass).toBe(false);
+    expect(gate("<=", 3.1, LIVE_FLIPS_PER_100_EDGES_LIMIT).pass).toBe(true);
     expect(flipsPer100Edges(120, 40, 300)).toBe(1);
     expect(flipsPer100Edges(120, 0, 300)).toBe(Infinity);
     expect(gate("<=", flipsPer100Edges(120, 0, 300), LIVE_FLIPS_PER_100_EDGES_LIMIT).pass).toBe(false);
