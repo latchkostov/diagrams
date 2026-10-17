@@ -7,6 +7,8 @@ import {
   pauseClock,
   waitForStableBox,
   waitForStableViewport,
+  fitDiagram,
+  emptyCanvasPoint,
 } from "./fixtures";
 
 // Editor UX: context menus, keyboard, undo / redo, clipboard, inspector, arrange.
@@ -17,8 +19,7 @@ const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 /** A point on the empty pane: top-centre of the canvas (fit view keeps ~150px clear there). */
 async function emptySpot(page: Page, dx = 0) {
-  const box = await requiredBox(page.getByTestId("canvas-wrap"));
-  return { x: box.width / 2 + dx, y: 90 };
+  return emptyCanvasPoint(page, dx);
 }
 
 async function openCanvasMenu(page: Page, dx = 0) {
@@ -77,6 +78,7 @@ test.describe("editor", () => {
     await page.keyboard.press("Escape");
 
     // Edge labels open the edge menu too (a straight edge's <g> has no height to click).
+    await fitDiagram(page);
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
     await expect(menuItem(page, "edge.relationship")).toBeVisible();
     await expect(menuItem(page, "edge.route")).toBeVisible();
@@ -275,6 +277,8 @@ test.describe("editor", () => {
 
   test("align a multi-selection from the menu", async ({ page }) => {
     await page.getByTestId("node-orders").click();
+    await expect(page.getByTestId("inspector-title")).toHaveText("Node");
+    await fitDiagram(page);
     await page.getByTestId("node-inventory").click({ modifiers: [MOD] });
     await page.getByTestId("node-inventory").click({ button: "right" });
     await expect(menuItem(page, "selection.align")).toBeVisible();
@@ -336,7 +340,9 @@ test.describe("editor", () => {
   test("selection shortcuts leave focused inspector and toolbar controls alone", async ({ page }) => {
     const node = page.getByTestId("node-orders");
     await node.click();
-    const before = await requiredBox(node);
+    await expect(page.getByTestId("inspector-title")).toHaveText("Node");
+    await waitForStableViewport(page);
+    const before = await settledBox(node);
     for (const id of ["inspector-field-stencil", "inspector-field-group", "theme-toggle"]) {
       await page.getByTestId(id).focus();
       await page.keyboard.press("ArrowRight");
@@ -346,12 +352,14 @@ test.describe("editor", () => {
       await expect(node).toBeVisible();
       expect((await requiredBox(node)).x).toBe(before.x);
     }
+    await fitDiagram(page);
     await page.getByTestId("node-shopper").click();
     await page.getByTestId("node-gateway").click({ modifiers: [MOD] });
     await page.keyboard.press(`${MOD}+g`);
     await page.getByTestId("inspector-field-label").press("Enter");
     const group = page.getByTestId("group-boundary-1");
-    const groupBefore = await requiredBox(group);
+    await waitForStableViewport(page);
+    const groupBefore = await settledBox(group);
     const tone = page.getByTestId("inspector-tone-neutral");
     await tone.focus();
     await page.keyboard.press("ArrowRight");

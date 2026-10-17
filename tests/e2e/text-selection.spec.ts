@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox, fitDiagram } from "./fixtures";
 
 // "App, not page": drawing on the canvas never selects text or icons in the nodes (the user's report:
 // connecting nodes highlighted labels and icons across the diagram). React Flow marks every node and edge
@@ -115,6 +115,7 @@ test.describe("no text selection on the canvas", () => {
     await connect(page, "handle-orders-right", "handle-payments-left");
     await expectNoSelection(page);
     // Double-click rename, then connect.
+    await fitDiagram(page);
     await page.getByTestId("node-payments").dblclick();
     await expect(label).toBeFocused();
     await page.keyboard.press("Enter");

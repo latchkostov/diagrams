@@ -15,6 +15,7 @@ import {
   gotoCanvas,
   gotoLive,
   pauseClock,
+  fitDiagram,
   waitForStableViewport,
   expectNoErrors,
   STORAGE_KEYS,
@@ -109,8 +110,7 @@ for (const [stencil, label] of [
   test(`P2: ${stencil} shows its assignment vocabulary and named group`, async ({ page, consoleErrors }, info) => {
     await seed(page, stencil);
     await page.getByTestId("node-broker").click();
-    await page.keyboard.press("Shift+Digit1");
-    await waitForStableViewport(page);
+    await fitDiagram(page);
     const field = page.getByTestId("inspector-field-partitions");
     await expect(field).toBeVisible();
     await expect(page.getByTestId("inspector")).toContainText(label);
@@ -136,8 +136,7 @@ for (const [stencil, label] of [
   test(`P2: ${stencil} never exposes partitions or a partition fix`, async ({ page, consoleErrors }, info) => {
     await seed(page, stencil);
     await page.getByTestId("node-broker").click();
-    await page.keyboard.press("Shift+Digit1");
-    await waitForStableViewport(page);
+    await fitDiagram(page);
     await expect(page.getByTestId("inspector-field-partitions")).toHaveCount(0);
     await expect(page.getByTestId("inspector")).not.toContainText(/partitions/i);
     await expect(page.getByTestId("broker-fanout")).toContainText(`${label}s`);

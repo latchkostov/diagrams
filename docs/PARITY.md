@@ -16,6 +16,15 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Resizable Inspector (2026-10-16)
+
+Exactly 19 goldens change intentionally: the three new Inspector messages update
+`node/i18n/catalogs.json`; 18 `browser/layout/*.json` files change only the horizontal translation
+in `tidy.viewport`, because selecting everything opens a wider Inspector. The complete filename list
+and explanation are in [the release note](RELEASE-NOTES.md#resizable-inspector-2026-10-16).
+Every node/edge coordinate, path, label, zoom, Auto-layout result, simulation, export and image is
+unchanged. `pnpm parity:update` regenerates these files; none are hand-edited.
+
 ## Autoscaling A3: what changed and why (2026-10-16)
 
 A3 adds ten frozen `a3-*` corpus diagrams (one per adapter: ECS ALB target tracking, ECS step scaling,

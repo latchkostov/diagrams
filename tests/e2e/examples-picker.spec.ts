@@ -13,6 +13,7 @@ import {
   pageLoadTimeout,
   pauseClock,
   savedDiagram,
+  waitForSelectionSettled,
 } from "./fixtures";
 
 import type { Page } from "@playwright/test";
@@ -65,6 +66,7 @@ test("opening and fitting an edited example never saves or promotes; a real edit
   );
 
   await page.getByTestId("node-retained").click();
+  await page.clock.runFor(32); // Deliver the deferred pointer-up Inspector reveal.
   await page.getByTestId("inspector-field-label").fill("A real edit");
   await page.clock.runFor(350);
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
@@ -113,12 +115,18 @@ test("inactive shared work stays reachable with an overflowing library", async (
 });
 
 test("ordinary autosaves serialize the diagram once and reuse that result", async ({ page }) => {
+  // Install before mounting: an already scheduled native save timer survives a later clock install.
+  await page.clock.install();
   await seedWork(page);
   await page.goto("./");
   await page.getByTestId("node-worker").click();
-  await page.clock.install();
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
+  await waitForSelectionSettled(page);
   await pauseClock(page);
   await page.getByTestId("inspector-field-label").fill("Edited worker");
+  // The input action can finish before the canvas commit updates the pagehide snapshot.
+  // Keep the save timer paused, but wait for the edit itself before counting the flush's work.
+  await expect(page.getByTestId("node-worker")).toContainText("Edited worker");
   const serializations = await page.evaluate(() => {
     const stringify = JSON.stringify;
     let calls = 0;
@@ -403,6 +411,7 @@ test("promotion preserves another tab after its storage refresh", async ({ page,
   const other = await context.newPage();
   await other.goto(`./?example=${SLUG}`);
   await other.getByTestId("node-shopper").click();
+  await expect(other.getByTestId("inspector-field-label")).toBeVisible();
   await other.clock.install();
   await pauseClock(other);
   await other.getByTestId("inspector-field-label").fill("Pending in other tab");
@@ -419,6 +428,7 @@ test("promotion preserves another tab after its storage refresh", async ({ page,
     });
   });
   await page.getByTestId("node-shopper").click();
+  await page.keyboard.press("F2"); // Explicit rename opens the field without advancing the other tab's clock.
   await page.getByTestId("inspector-field-label").fill("Owned in first tab");
   // Playwright's clock is context-wide: flush this tab without advancing the other's pending timer.
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
@@ -538,6 +548,7 @@ test("storage-full promotion preserves conversation, pending edits and undo, the
   await page.goto(`./?example=${SLUG}`);
   await page.getByTestId("node-shopper").click();
   await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "retained"));
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
   await page.clock.install();
   await pauseClock(page);
   await page.getByTestId("inspector-field-label").fill("Edited while full");
@@ -568,6 +579,7 @@ test("storage-full promotion preserves conversation, pending edits and undo, the
 test("a failed example copy debounces retries, warns once and recovers the latest edits", async ({ page }) => {
   await page.goto(`./?example=${SLUG}`);
   await page.getByTestId("node-shopper").click();
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
   await page.clock.install();
   await pauseClock(page);
   await page.evaluate(() => {

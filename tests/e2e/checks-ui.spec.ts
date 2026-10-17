@@ -8,6 +8,7 @@ import {
   gotoCanvas,
   expectNoErrors,
   waitForStableViewport,
+  fitDiagram,
 } from "./fixtures";
 import { typingWork, median } from "./typing-work";
 
@@ -150,6 +151,7 @@ test.describe("the Checks card", () => {
     await page.getByTestId("inspector-open-checks").click();
     await expect(card(page)).toBeVisible();
     // A node without findings has none.
+    await fitDiagram(page);
     await page.getByTestId("node-ingest").click();
     await expect(page.getByTestId("inspector-findings")).toHaveCount(0);
   });

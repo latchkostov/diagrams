@@ -65,6 +65,7 @@ for (const n of uiSizes([100, 500, 1_500]))
 
     // Tidy up everything: Select all, then a selected node's menu.
     await b.page.keyboard.press("Control+a");
+    await b.selectionSettled();
     const node = await b.nodeNearCentre(w.d.nodes.map((x) => x.id));
     const at = await b.pointOn(node);
     await page.mouse.click(at.x, at.y, { button: "right" });

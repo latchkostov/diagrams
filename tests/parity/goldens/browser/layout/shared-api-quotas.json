@@ -26,7 +26,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(119.034px, 27.0345px) scale(1.12414)",
+    "viewport": "translate(33.0345px, 27.0345px) scale(1.12414)",
     "nodes": {
       "questions": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Acme help desk 2 questions/s" },
       "gateway": { "kind": "node", "box": "translate(40px, 200px) 260×72", "text": "Assistant gateway Account preset · assumed latency" },

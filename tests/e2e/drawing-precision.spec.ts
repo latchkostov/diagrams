@@ -7,6 +7,7 @@ import {
   expectNoErrors,
   waitForStableViewport,
   viewportTransform,
+  pauseClock,
   STORAGE_KEYS,
 } from "./fixtures";
 
@@ -176,41 +177,69 @@ test.describe("smart guides and snapping (D6)", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Alt-dragging a multi-selection by its frame copies it exactly once", async ({ page, consoleErrors }) => {
-    const nodes = page.getByTestId(/^node-(?!tooltip$|editor)/);
-    const before = await nodes.count();
-    const { zoom } = await view(page);
-    const a = await box(page.getByTestId("node-a"));
-    const b = await box(page.getByTestId("node-b"));
-    // The selection box over a and b (it picks what it touches), started on the empty pane above them (clear
-    // of the boundary's name chip, which would drag the boundary).
-    await page.mouse.move(a.x + a.width - 10, a.y - 15);
-    await page.mouse.down();
-    await page.mouse.move(b.x + 20, a.y + 20, { steps: 6 });
-    await page.mouse.up();
-    // Between the two cards, inside the selection's frame and on neither card.
-    const grip = { x: (a.x + a.width + b.x) / 2, y: a.y + 6 };
-    const onCard = await page.evaluate(
-      ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-testid^="node-"]'),
-      grip,
-    );
-    expect(onCard).toBe(false);
-    await page.keyboard.down("Alt");
-    await page.mouse.move(grip.x, grip.y);
-    await page.mouse.down();
-    await page.mouse.move(grip.x + 3, grip.y + 3);
-    await page.mouse.move(grip.x + 3, grip.y + 200 * zoom, { steps: 8 });
-    await page.waitForTimeout(150);
-    await page.mouse.up();
-    await page.keyboard.up("Alt");
-    // Two copies (a and b), each id once; the originals stay where they were.
-    await expect(nodes).toHaveCount(before + 2);
-    const ids = await nodes.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")));
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(await flowPos(page, "node-a")).toEqual({ x: 0, y: 0 });
-    expect(await flowPos(page, "node-b")).toEqual({ x: 400, y: 0 });
-    expectNoErrors(consoleErrors);
-  });
+  for (const preferredWidth of [null, 672])
+    test(`Alt-dragging a multi-selection by its frame copies it exactly once (sheet: ${preferredWidth ?? "default"})`, async ({
+      page,
+      consoleErrors,
+    }) => {
+      if (preferredWidth !== null) {
+        await page.evaluate(
+          (width) => localStorage.setItem("diagrams.inspector.width.v1", String(width)),
+          preferredWidth,
+        );
+      }
+      await page.clock.install();
+      await page.reload();
+      await waitForStableViewport(page);
+      if (preferredWidth !== null) {
+        // A person may pan before selecting. The wider sheet then pans these cards back into view.
+        await page.getByTestId("canvas-wrap").hover({ position: { x: 300, y: 70 } });
+        await page.mouse.wheel(-300, 0);
+        await waitForStableViewport(page);
+      }
+      await pauseClock(page);
+      const nodes = page.getByTestId(/^node-(?!tooltip$|editor)/);
+      const before = await nodes.count();
+      const a = await box(page.getByTestId("node-a"));
+      const b = await box(page.getByTestId("node-b"));
+      // The selection box over a and b (it picks what it touches), started on the empty pane above them (clear
+      // of the boundary's name chip, which would drag the boundary).
+      await page.mouse.move(a.x + a.width - 10, a.y - 15);
+      await page.mouse.down();
+      await page.mouse.move(b.x + 20, a.y + 20, { steps: 6 });
+      await page.mouse.up();
+      await page.clock.runFor(32);
+      await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+      await page.clock.runFor(500); // Finish the deferred reveal and its selection pan.
+      await expect(page.getByTestId("inspector-title")).toHaveText("3 selected");
+      await waitForStableViewport(page);
+      const selectedA = await box(page.getByTestId("node-a"));
+      const selectedB = await box(page.getByTestId("node-b"));
+      const { zoom } = await view(page);
+      // Between the two cards, inside the selection's frame and on neither card.
+      const grip = { x: (selectedA.x + selectedA.width + selectedB.x) / 2, y: selectedA.y + 6 };
+      const onCard = await page.evaluate(
+        ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-testid^="node-"]'),
+        grip,
+      );
+      expect(onCard).toBe(false);
+      await page.keyboard.down("Alt");
+      await page.mouse.move(grip.x, grip.y);
+      await page.mouse.down();
+      await page.mouse.move(grip.x + 3, grip.y + 3);
+      await page.mouse.move(grip.x + 3, grip.y + 200 * zoom, { steps: 8 });
+      await page.clock.runFor(150);
+      await page.mouse.up();
+      await page.clock.runFor(32);
+      await page.keyboard.up("Alt");
+      // Two copies (a and b), each id once; the originals stay where they were.
+      await expect(nodes).toHaveCount(before + 2);
+      const ids = await nodes.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")));
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(await flowPos(page, "node-a")).toEqual({ x: 0, y: 0 });
+      expect(await flowPos(page, "node-b")).toEqual({ x: 400, y: 0 });
+      expectNoErrors(consoleErrors);
+    });
 
   test("arrow keys nudge onto the grid: 10 px, Shift 50 px; with Snapping off 1 px", async ({
     page,

@@ -1,5 +1,60 @@
 # Release notes
 
+## Benchmark off-pane recovery on Linux (#145, 2026-10-16)
+
+- CI's off-pane benchmark regression exhausted the whole-test timeout after its 80-frame
+  setup pan consumed 20–22 seconds. The final fit-pending assertion had under a second left, rather than its stated
+  seven-second assertion timeout; the traces do not show a stuck fit request.
+- Move the target beyond the pane with one geometry-derived middle-button drag, then keep
+  the existing settled-canvas, off-pane rejection, app Fit and hit-test assertions. The
+  benchmark's measured pan workload and render budgets stay unchanged.
+- No product behavior, UI text or parity goldens change. UX review keeps the current
+  Inspector reveal, fit and reserved canvas space; no controls are added.
+- Linux verification: six production-build specs repeated three times in the pinned two-CPU
+  container, 393 passed, zero failed, flaky or skipped. At 4× browser CPU throttle the fixed
+  off-pane case passes all three runs; temporarily restoring the old setup produces three
+  whole-test timeouts. All 2,196 parity goldens remain unchanged.
+
+## Resizable Inspector benchmark harness (#145, 2026-10-16)
+
+- The UI benchmark harness waits for the Inspector's deferred reveal, pane resize and camera pan
+  before measuring another card. It searches the visible canvas pane, including cards outside the
+  old centre circle, and uses the app's Fit diagram action to recover off-pane targets.
+- Prepare the selection endpoints before render counting and CPU profiling. The render reading
+  still covers six selection clicks, twelve name keys and ten frames each of pan and drag; camera
+  preparation stays outside it. Render budgets are unchanged.
+- The successful pre-fix 500-node observation counted 9 commits and 139.5 renders per selection
+  click; the fixed full sweep counts 10 and 144.5. At 100 nodes it counts 9.17 and 142.67.
+  Waiting for complete selections changes the observed follow-up counts; all remain within the
+  existing limits (10 commits, 250 renders). Typing counts 3.5/3.75 commits per key at 100/500 nodes.
+- Browser regressions cover the held reveal clock, full-pane hit testing and off-pane recovery.
+  The interaction timing suite also prepares its click before starting the selection measurement.
+- No product behavior, UI text or parity golden changes. UX review retains the existing sheet
+  width, reveal behavior and chrome.
+
+## Resizable Inspector Linux selection sweep (#145, 2026-10-16)
+
+- Reproduced the third CI failure in the pinned Playwright Linux container. Selecting an edge
+  reveals the Inspector and pans the canvas; a box around an unrelated node can then start outside
+  the narrower pane. Waiting for the pan alone still fails.
+- Share the Inspector-reveal, pane-size and viewport waits across selection, flow-building and
+  caption-drag coverage. Fit before measuring box-selection corners, and exercise edge preservation
+  at 1280×800 and 1440×900 with the default and a remembered wide Inspector. Temporarily removing
+  the preparation reproduces the failure; the selection assertions and real pointer gestures stay.
+- The Linux sweep also caught an embed-test assumption about server writes racing browser reads.
+  Hold the streamed response open just beyond the size limit and require cancellation before EOF,
+  instead of using TCP buffering as a read counter. Removing stream cancellation fails the connection
+  closure assertion; restoring it retains the real HTTP coverage.
+- Install the autosave-count test's fake clock before mounting, settle the selection and observe the
+  edited label before flushing. Previously, a native timer scheduled before clock installation could
+  save before the counter was installed. The exact one-serialization assertion is unchanged.
+- Install the admission simulation's clock before Live starts and restart from zero before advancing
+  it. Rejections must come from the controlled run, while failure and caller-cascade assertions stay.
+- No product behavior, UI text or parity goldens change. UX review retains the reserved canvas space,
+  deferred Inspector reveal and existing chrome.
+- The complete Linux production-build Chromium + dev sweep passes with four workers and no retries:
+  1,488 passed (1,438 Chromium, 50 dev), zero failed, flaky or skipped.
+
 ## Collaboration export Linux synchronization (#143, 2026-10-16)
 
 - Reproduced CI's 0% progress failure in the two-CPU Playwright Linux container. The test held
@@ -37,6 +92,20 @@
   only `node/i18n/catalogs.json` changes: the 27 English `collab.*` keys raise all 38 catalog message
   counts from 1,976 to 2,003, add 27 English fallbacks in the 37 translated catalogs (pseudo-locale
   stays at zero), and add the collaboration-area fingerprint. All other golden outputs are unchanged.
+
+## Resizable Inspector coordinate sweep (#145, 2026-10-16)
+
+- Corrected caption contrast drag coverage after the Inspector opens: select and fit before measuring
+  both endpoints. The second CI trace confirmed a selection pan invalidating the return gesture's
+  screen box, rather than a sheet overlay. Coverage includes 1280×800 and 1440×900 and verifies that
+  the return moves the caption out of the zone without resizing it.
+- Remeasure selection-frame drag geometry after the Inspector reveal, including a remembered wide
+  sheet. Swept canvas/selection specs across Chromium and the development project; the audit and
+  gesture rules are documented in `QUALITY.md`.
+- Kept the Inspector's default width and reserved canvas space. No product output or parity golden
+  changes in this follow-up.
+- Rebased onto master's responsive image export work after it advanced, preserving both documentation
+  histories. Refreshed the agent viewer at plugin 1.1.36, exactly one patch above master's 1.1.35.
 
 ## Linux image export regression workload (#142, 2026-10-16)
 
@@ -82,6 +151,27 @@
 - The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
   production chunk, with image export loading only when used. The scoped UX review finds no new
   controls, wording or chrome; export progress and cancellation retain their existing tests.
+
+## Resizable Inspector CI follow-up (#145, 2026-10-16)
+
+- Fixed the development-project interaction benchmark's viewport assumption: open the Inspector and
+  fit the diagram before measuring node clicks, typing and dragging. The sheet already reserves canvas
+  space and keeps the selected node visible; the next, unrelated target could be outside that pane.
+  Performance assertions remain unchanged. Audited canvas interactions across all five E2E projects
+  (details in `QUALITY.md`); the drawing-basics multi-selection check passes unchanged.
+- No product output or parity goldens change.
+
+## Resizable Inspector rebase onto Review follow-ups 3 (#144, 2026-10-16)
+
+- Rebased onto #144, preserving both documentation histories and all translation keys. Kept
+  master's complete IPv4/IPv6 port-fixture checks; the earlier branch implementation is superseded.
+- Regenerated skill files from master's release and refreshed the viewer at plugin 1.1.35,
+  exactly one patch above master's 1.1.34. No additional controls, copy or UX changes.
+- Regenerated goldens with `pnpm parity:update`, retaining #144's 80px boundary-subtree corrections
+  in all eight skill-layout records. Relative to master, only the 19 Inspector goldens documented
+  below change: `node/i18n/catalogs.json` for the three Inspector messages, and the horizontal
+  `tidy.viewport` translation in the 18 listed `browser/layout/*.json` records. All other fields
+  and goldens remain identical to master; no golden was hand-merged.
 
 ## Collaboration C1a: review round 3 and rebase (2026-10-16)
 
@@ -276,6 +366,21 @@
   per-consumer route scans fails at 1,440,001 reads instead of one; removing shared ID allocation still
   fails the Compose regression. Production behavior and timeouts are unchanged.
 
+## Resizable Inspector rebase onto Collaboration C0 (#141, 2026-10-16)
+
+- Rebased onto C0, preserving both documentation histories and the union of translation keys. The
+  collaboration Lab's client panels and status indicators remain readable after widening the Inspector:
+  three columns at 1920px, two columns with vertical scrolling at 1366px. A production-build browser
+  regression covers panel bounds, overflow and reachable status indicators; visual review adds no chrome.
+- Generated skill files start from master's release; the refreshed viewer ships at plugin 1.1.34,
+  exactly one patch above master's 1.1.33. Full parity regeneration retains only the 19 intentional changes
+  listed under Resizable Inspector below: catalog metadata for three messages and horizontal
+  `tidy.viewport` translations in 18 layout records. No additional golden changes are accepted.
+- The first full gate caught an occupied-port test setup that assumed an OS-assigned port's neighbours
+  were free. Its setup now verifies the complete five-port range before keeping the intended blocker.
+  An occupied-neighbour regression fails when that check is removed; the exact-port assertions remain.
+  This changes test setup only and adds no output golden changes.
+
 ## Collaboration reply-byte regression coverage (2026-10-16)
 
 - The reply-throttling test now builds its large room through steps checked against the active byte
@@ -303,6 +408,51 @@
   signal. A held-sizing regression counts polling calls rather than elapsed time and fails with the old helper.
   This changes test synchronization only; the diagram privacy and evidence assertions stay intact.
 - Source UX review: no new controls, copy or chrome; the collaboration proof remains in the Lab.
+
+## Resizable Inspector (2026-10-16)
+
+- The Inspector defaults to `clamp(360px, 26.5vw, 640px)`, rounded to whole pixels: 362px at
+  1366, 509px at 1920, and 640px at 2560 and 3440. Its inner edge supports pointer capture,
+  keyboard steps (16px; Shift 64px), Home/End and Enter/double-click reset. The chosen width stays
+  on this device; reset removes it so the default scales again. Every Inspector mode shares it.
+- Manual widths run from 300px to the smaller of 60vw and the available space minus 480px of
+  canvas, accounting for the stencil rail and separate AI dock. At 1100px and below, or when those
+  bounds cannot fit, the existing 296px sheet and folding behavior remain; resizing is hidden.
+  Shrinking the window clamps the displayed width without overwriting the saved preference.
+- Pointer frames update a CSS variable through animation frames; only a finished resize requests
+  canvas refitting or selection preservation. Cancel restores the prior width. The handle supplies
+  focus, separator semantics, current bounds and localized instructions, with no settings control.
+  Geometry is read before the width write, avoiding forced layout in a drag frame. Live receives
+  completed resizes through its existing camera policy, including narration focus and slow-motion
+  ownership. Operation-count and Live-camera regressions fail with those review fixes removed.
+  The focused handle keeps its arrow keys during slow motion and resets with Enter without also
+  continuing a waiting narration; both keyboard regressions fail with the exclusions removed.
+- A pointer release now stays unsettled through the existing deferred sheet reveal. An intervening
+  selection render cannot open the sheet and move a note between its two clicks; a later press
+  cancels the earlier reveal. The fake-clock regression and native note-editing regression both
+  fail when the previous release behavior is restored. Toolbar commands and text controls keep
+  immediate selection updates; the fake-clock regression also checks Undo without advancing time.
+  Existing test flows now fit off-pane targets,
+  hit-test empty canvas points and settle their viewport baselines, retaining all behavioral assertions
+  and the editor's existing no-zoom selection policy.
+- Route Match and Send to columns already divide the available width proportionally. Send to now
+  displays the full target list instead of an unconditional `+1`; both columns retain full-value
+  titles when space still runs out. The Lab includes a longer-path routing preview. The AI panel
+  occupies a separate dock and retains its existing persisted resizer, avoiding changes to its
+  separate state and loading behavior. UX review corrected constrained-window readability and
+  preserving the fitted drawing after resizing.
+- `pnpm parity:update` changes exactly 19 goldens. `node/i18n/catalogs.json` adds the three Inspector
+  messages and their area fingerprint (English fallback in untranslated catalogs). Each of the
+  following `browser/layout/<name>.json` files changes only `tidy.viewport`'s horizontal translation
+  to account for the wider open Inspector: `aks-app-config-key-vault`, `aws-fanout`,
+  `aws-serverless-orders`, `azure-service-bus-integration`, `branch-to-datacentre`, `cdc-analytics`,
+  `contoso-dmz`, `cqrs-event-sourcing`, `gcp-streaming-analytics`, `iot-telemetry`,
+  `kafka-order-pipeline`, `multi-region-active-active`, `nightly-batch-elt`,
+  `partitions-vs-subscriptions`, `serverless-burst-buffer`, `shared-api-quotas`, `shared-worker-pool`
+  and `webhook-ingestion`. All geometry, zoom, Auto-layout, simulation and export records remain
+  unchanged; no screenshot golden changes. The stale skill viewer is refreshed at plugin 1.1.34,
+  one patch above origin/master's 1.1.33. The generated agent bundle is refreshed for the shifted
+  translation IDs; its freshness regression passes.
 
 ## Routing R1 rejected admission transactions (2026-10-16)
 

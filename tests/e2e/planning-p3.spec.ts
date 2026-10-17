@@ -33,10 +33,14 @@ test("P3: external admission reports rejections separately with no caller cascad
   page,
   consoleErrors,
 }, info) => {
+  await page.clock.install();
   await seed(page, "generic.external-api", true);
   await pauseClock(page);
-  await page.clock.runFor(5000);
+  // Only progress driven by this clock counts, rather than traffic before the page was paused.
+  await page.getByTestId("live-restart").click();
   const badge = page.getByTestId("node-badge-api");
+  await expect(badge).toHaveAttribute("data-rejected", "0");
+  await page.clock.runFor(5000);
   await expect.poll(async () => Number(await badge.getAttribute("data-rejected"))).toBeGreaterThan(0);
   await expect(badge).toHaveAttribute("data-failed", "0");
   await expect(page.getByTestId("node-badge-source")).toHaveAttribute("data-failed", "0");
@@ -107,8 +111,9 @@ test("P3: admission undo groups slow typing by field", async ({ page, consoleErr
   await page.clock.install(); // Install before mounting history, so every debounce timer uses this clock.
   await seed(page, "generic.external-api");
   await page.getByTestId("node-api").click();
-  await pauseClock(page);
   const latency = page.getByTestId("admission-latency");
+  await expect(latency).toBeVisible(); // Let the pointer-up Inspector reveal finish before freezing its frame.
+  await pauseClock(page);
   await latency.fill("1");
   await page.clock.runFor(1000); // Advance the history clock beyond its debounce, without a wall-clock wait.
   await latency.pressSequentially("2");

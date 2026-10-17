@@ -167,6 +167,7 @@ for (const code of ["de", "ja", "ar"] as const) {
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("Database");
     await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("database");
 
+    await fitDiagram(page);
     await page.getByTestId("node-payments").click();
     const label = await page.getByTestId("inspector-field-label").inputValue();
     await page.getByTestId("inspector-field-stencil").click();
@@ -344,6 +345,7 @@ for (const code of ["de", "ar", "en-XA"]) {
       await page.screenshot({ path: testInfo.outputPath("boundary-chrome.png") });
       await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
+      await fitDiagram(page);
       await page.getByTestId("node-payments").click();
       await canvas.focus();
       await page.keyboard.press("Control+k");

@@ -7,6 +7,7 @@ import {
   gotoLive,
   expectNoErrors,
   waitForStableViewport,
+  fitDiagram,
   waitForStableBox,
   pauseClock,
   STORAGE_KEYS,
@@ -737,6 +738,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expectVisibleSelection(page.getByTestId("annotation-editor"));
       await page.keyboard.press("Escape");
       // The inspector's Label, opened by a double-click on a boundary (the owner's report).
+      await fitDiagram(page);
       await page.getByTestId("group-label-core").dblclick();
       await expectVisibleSelection(page.getByTestId("inspector-field-label"));
       await page.keyboard.press("Escape");

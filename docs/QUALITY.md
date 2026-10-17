@@ -152,6 +152,75 @@ React's development-only fiber timings or component names (`perf.spec.ts`), or i
 the page (`import("/src/...")`, as `library-regressions.spec.ts` does). Prefer `data-testid` and app
 behaviour over either.
 
+Canvas interaction measurements open the Inspector and fit the diagram before counting renders.
+Selecting a node normally opens the Inspector and pans to keep that selection and its connections visible;
+an unrelated node may then lie outside the narrower pane. A test switching to that node must first fit
+or pan it into view, rather than force a click through the sheet. Keep panel/camera setup outside
+performance measurements.
+The first #145 audit covered selection clicks but missed screen boxes reused across a pointer-up.
+The second CI failure's trace shows the caption measured before the Inspector's selection pan finished;
+the return gesture used that stale box. The sheet occupies its own flex column, rather than overlaying
+the canvas. A screen box is still invalid after that column opens and the camera pans.
+
+For repeated coordinate gestures, open the Inspector and fit all endpoints before measuring, or wait
+for its reveal and pan, then remeasure every endpoint. Locator visibility alone does not prove that a
+coordinate is uncovered. Keep deliberate tests of the deferred reveal on a fake clock; do not disable
+the Inspector globally, force clicks, enlarge the viewport or replace pointer coverage with a nudge.
+
+The follow-up sweep selects whole specs with `mouse.`, `dragTo(`, `boxOf(`, canvas test ids or node,
+annotation, boundary, edge and handle test ids, and runs their `chromium` and `dev` projects against
+`E2E_TARGET=build`, Node 24.22.0 and ports 6400–6404 at the configured CI viewports. The audit includes:
+
+| Interaction                                         | Resolution                                                                                                                               |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Caption drags after selection or Escape             | Open the sheet and fit both endpoints before measuring; cover 1280×800 and 1440×900, a deferred reveal and unchanged caption dimensions. |
+| Alt-drag of a selection frame                       | Wait for the sheet and pan, then remeasure both cards and zoom; cover the default and a remembered wide sheet.                           |
+| Drawing-basics box selections and boundary resizing | Existing reveal/viewport waits and remeasurement remain; intentional back-to-back drags use a fake clock.                                |
+| Flow building and multiple unrelated selections     | The selection helper waits for the reveal; existing fits bring subsequent targets into the narrowed pane.                                |
+| Annotation handles, read-only views and Lab drags   | Handles are measured after selection settles, or no Inspector opens.                                                                     |
+| Development-project interactions                    | The benchmark prepares its pane before measurement; other cases use a single selection or synthetic fixtures.                            |
+| Subpath, locked and internal projects               | Subpath and locked have no canvas-node clicks; internal selects only its initial target, with subsequent actions in menus.               |
+
+No default width or canvas-layout change is needed for these stale-coordinate failures. The UX review
+keeps the reserved canvas space and selection reveal, and checks both compact and CI-sized viewports.
+Temporarily removing the caption preparation reproduces the CI colour failure at 1440px. Reusing the
+old selection-frame boxes after a manual pan and a wide-sheet reveal prevents the copies from being
+created. Restoring the preparation and remeasurement passes both regressions.
+
+The third #145 CI failure exposed a second constraint: even a fresh box can start outside the pane.
+After selecting an edge, the selection pan can leave an unrelated node near the left edge; the
+selection box's corner, 14 px farther left, then falls on the stencil rail. The pinned Linux container
+reproduces the missing-node selection. Waiting for the pan alone failed all five repetitions.
+Use `waitForSelectionSettled()` before measuring after selection: it waits for the Inspector reveal,
+the canvas size and the viewport. If the next gesture targets an unrelated object, fit all endpoints
+with `fitDiagram()` before measuring, including the empty canvas where a box drag starts.
+The edge-preservation cases cover both 1280×800 and 1440×900 with default and remembered wide sheets.
+Removing their preparation reproduces the failure without weakening selection or pointer coverage.
+
+The full Linux sweep also caught the embed stream test treating HTTP server writes as browser reads.
+TCP buffers can accept extra writes before cancellation reaches the server. The fixture now sends
+9 MB (past the 8 MB limit) and holds the response open: the test requires `too_large` and connection
+closure before EOF. This proves bounded reading and cancellation without a network-throughput budget.
+Removing `reader.cancel()` fails the connection-closure assertion, and restoring it passes.
+Keep unit compiler probes out of a running dev sweep: creating/removing their temporary tsconfig files
+clears Vite's module cache and forces reloads. Refresh the optimizer before the isolated final sweep;
+do not weaken the `devReloads` fixture to hide them.
+Install a page clock before navigation when it must control every autosave timer. A timer scheduled
+before a late installation can still run while the fake clock is paused. The serialization-count
+test settles selection, pauses the already-installed clock and observes the edited node before
+measuring `pagehide`; its exact count remains one.
+The admission playback test likewise installs its clock before Live mounts, then restarts at zero
+before advancing it. Rejections must come from controlled simulation progress, never traffic that
+happened to run before the pause.
+The final #145 Linux sweep runs both complete projects with four workers and `--retries=0`:
+1,438 Chromium plus 50 dev cases pass, with zero failures, flaky cases or skips.
+
+The expanded dev sweep also covers the image-clone resource tests brought in from master. After a
+rebase introduces new deep imports, rescan a previous checkout's optimizer cache with `pnpm dev --force`
+before sweeping: its stale dependency list can otherwise reload active test pages on first use.
+The resource tests pass after that rescan with the original Vite configuration; no prebundle override
+or relaxation of the existing `devReloads` fixture is needed.
+
 Run them locally:
 
 - Like CI: `E2E_TARGET=build E2E_PORT=5301 E2E_PREVIEW_PORT=5303 pnpm test:e2e` (builds both bundles first).
@@ -274,6 +343,14 @@ menu), not for time. A page opened in live view (`live=1`, `sim=`) waits for its
 session's code loads on first use, after the canvas's, and takes seconds on a busy dev server (nightly #78).
 Measuring performance itself (workloads to 5,000 nodes, timings as trends, gates for ratios, counts and bundle sizes, a
 committed baseline and the ranked hotspots) is the benchmark suite's job: `pnpm bench`, `pnpm bench:gates`, docs/BENCHMARKS.md.
+
+The benchmark harness's off-pane regression uses one geometry-derived middle drag to move a card
+fully beyond the pane, then exercises the app's Fit action. Reusing an 80-frame benchmark pan for
+setup consumed 20–22 seconds in CI: the whole-test timeout interrupted the final settle check,
+sometimes only 2 ms after it started. That did not establish a stuck `data-fit-pending` request.
+Keep the fit readiness wait and off-pane/hit-test assertions; frame-paced performance workloads
+belong in the benchmark suite. The original setup also fails at 4× browser CPU throttle in the
+two-CPU Linux container, which provides a same-configuration check of the shorter gesture.
 
 ## Accessibility
 

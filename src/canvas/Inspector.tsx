@@ -1,4 +1,5 @@
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
+import { SheetResizeHandle } from "./SheetResizeHandle";
 import { ANNOTATION_LIMITS } from "../model/annotations";
 import { eligibleParentGroupIds } from "../model/groupHierarchy";
 import {
@@ -251,6 +252,8 @@ export interface InspectorProps {
   counts: { nodes: number; edges: number; groups: number };
   collapsed: boolean;
   onToggle: () => void;
+  /** A completed resize lets the canvas preserve the fitted diagram or selection. */
+  onResize?: () => void;
   /**
    * Focus request: `inspector-field-<name>`, its text all selected (`caret: "end"`: the caret after it, for a name
    * typed before the field could take it); `seq` re-triggers for the same name.
@@ -375,6 +378,7 @@ export function Inspector(p: InspectorProps) {
         n === 1 ? (p.selectedNodes[0] ?? p.selectedEdges[0] ?? p.selectedGroups[0] ?? annotations[0])?.id : undefined
       }
     >
+      <SheetResizeHandle onResize={p.onResize} />
       <div className="insp-head">
         <span className="insp-title" data-testid="inspector-title">
           {title}

@@ -252,6 +252,8 @@ test.describe("bulk edit and Select similar (D11)", () => {
     await seed(page);
     const selectThree = async () => {
       await page.getByTestId("node-api").click();
+      await expect(page.getByTestId("inspector-title")).toHaveText("Node");
+      await fitDiagram(page);
       await page.getByTestId("node-worker").click({ modifiers: [MOD] });
       await page.getByTestId("node-carrier").click({ modifiers: [MOD] });
       await expect(page.getByTestId("inspector-title")).toHaveText("3 selected");
@@ -616,6 +618,7 @@ test.describe("review follow-ups", () => {
     await page.getByTestId("group-label-ship").click();
     await page.getByTestId("node-cache").click({ modifiers: [MOD] });
     // Cache (700, 560) into Payments, Shipping along with it.
+    await fitDiagram(page); // Bring Payments back into the pane before measuring the drop point.
     const v = await view(page);
     const at = centre(await box(page.getByTestId("node-cache")));
     await dragTo(page, "cache", { x: at.x - 400 * v.k, y: at.y - 360 * v.k });

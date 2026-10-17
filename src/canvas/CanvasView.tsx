@@ -365,6 +365,7 @@ function CanvasInner({
   });
   useEffect(() => void safeStorage.setItem(PALETTE_KEY, paletteCollapsed ? "1" : "0"), [paletteCollapsed]);
   const [prefs, setPref] = useEditorPrefs();
+  const [sheetResize, setSheetResize] = useState(0);
   // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
   const [live, setLive] = useState(false);
   const [livePanelOpen, setLivePanelOpen] = useState(false);
@@ -2037,18 +2038,39 @@ function CanvasInner({
   useEffect(() => {
     const wrap = wrapper.current;
     if (!editGestures || !wrap) return;
+    let generation = 0;
+    let frame = 0;
+    let timer = 0;
+    let release = () => {};
+    const cancel = () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
     const hold = (e: MouseEvent) => {
       if (e.button !== 0) return;
+      // Toolbar commands and text controls are not diagram gestures. Their selection changes
+      // must remain immediate (Undo can select nodes before a subsequent palette command).
+      if (e.target instanceof Element && e.target.closest("button, input, textarea, select, [contenteditable=true]"))
+        return;
+      const press = ++generation;
+      cancel();
+      release();
       pointerHeld.current = true;
       const up = () => {
-        pointerHeld.current = false;
+        release();
         // After the drop has painted: the inspector opening is its own frame, not the pointer-up's.
-        requestAnimationFrame(() =>
-          setTimeout(() => {
-            // A new drag may have begun before the previous drop's frame gets to run.
-            if (!pointerHeld.current) setSettledEmpty(latestEmpty.current);
-          }, 0),
-        );
+        // Keep the interaction unsettled until then: a selection render after pointer-up must not
+        // bypass this boundary and move a double-click's target between its two clicks.
+        frame = requestAnimationFrame(() => {
+          timer = window.setTimeout(() => {
+            if (press !== generation) return;
+            pointerHeld.current = false;
+            setSettledEmpty(latestEmpty.current);
+          }, 0);
+          frame = 0;
+        });
+      };
+      release = () => {
         window.removeEventListener("pointerup", up, true);
         window.removeEventListener("pointercancel", up, true);
       };
@@ -2056,7 +2078,13 @@ function CanvasInner({
       window.addEventListener("pointercancel", up, true);
     };
     wrap.addEventListener("mousedown", hold, true);
-    return () => wrap.removeEventListener("mousedown", hold, true);
+    return () => {
+      generation++;
+      cancel();
+      release();
+      pointerHeld.current = false;
+      wrap.removeEventListener("mousedown", hold, true);
+    };
   }, [editGestures]);
   const inspectorHidden =
     livePanelOpen ||
@@ -2102,10 +2130,10 @@ function CanvasInner({
     if (!showingAll.current || live || presenting) return;
     overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
   };
-  // The AI panel opened, closed or was resized by more than a little: the pane changed size at its
+  // The AI panel opened, closed or was resized, or an Inspector resize completed: the pane changed size at its
   // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
   // (or, with none, the diagram's centre) in view with a pan.
-  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}`;
+  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${sheetResize}`;
   const lastDock = useRef(dockKey);
   useEffect(() => {
     if (lastDock.current === dockKey) return;
@@ -2681,6 +2709,7 @@ function CanvasInner({
             {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
             {(nodeCount > 0 || live) && (
               <LiveView
+                paneRevision={sheetResize}
                 readOnly={readOnly}
                 initial={viewer?.live}
                 onHandle={receiveLiveHandle}
@@ -2812,6 +2841,7 @@ function CanvasInner({
             nodeLabel={(id) => labels.get(id) ?? id}
             counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
             collapsed={inspectorHidden}
+            onResize={() => setSheetResize((revision) => revision + 1)}
             onTextSettled={settleText}
             onToggle={() => {
               setPref("inspector", inspectorHidden);

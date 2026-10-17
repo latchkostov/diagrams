@@ -56,7 +56,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-133.262px, 332.701px) scale(0.374175)",
+    "viewport": "translate(-176.262px, 332.701px) scale(0.374175)",
     "nodes": {
       "group:aws": { "kind": "group", "box": "translate(380px, 0px) 2240×632", "text": "AWS · commerce production" },
       "client": { "kind": "node", "box": "translate(40px, 280px) 229×72", "text": "Retail checkout Authenticated storefront" },

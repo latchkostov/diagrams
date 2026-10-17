@@ -42,7 +42,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-274.641px, 245.998px) scale(0.585534)",
+    "viewport": "translate(-317.641px, 245.998px) scale(0.585534)",
     "nodes": {
       "group:azure": { "kind": "group", "box": "translate(400px, 0px) 1600×680", "text": "Azure · prod" },
       "group:aks": { "kind": "group", "box": "translate(820px, 236px) 320×172", "text": "AKS cluster" },

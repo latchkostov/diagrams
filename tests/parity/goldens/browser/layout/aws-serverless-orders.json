@@ -60,7 +60,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-28.3602px, 315.716px) scale(0.322275)",
+    "viewport": "translate(-98.4123px, 315.716px) scale(0.322275)",
     "nodes": {
       "group:aws": { "kind": "group", "box": "translate(380px, 120px) 2480×692", "text": "AWS · us-east-1" },
       "client": { "kind": "node", "box": "translate(40px, 280px) 220×72", "text": "Web shop Signed-in customers" },

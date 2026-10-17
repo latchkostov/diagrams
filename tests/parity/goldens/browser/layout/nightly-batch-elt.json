@@ -40,7 +40,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-858.837px, 113.587px) scale(0.982318)",
+    "viewport": "translate(-901.837px, 113.587px) scale(0.982318)",
     "nodes": {
       "group:snowflake": { "kind": "group", "box": "translate(760px, 280px) 1100×152", "text": "Snowflake · ANALYTICS" },
       "airflow": { "kind": "node", "box": "translate(800px, 40px) 223×72", "text": "Airflow Nightly DAG · 02:00 UTC" },

@@ -31,7 +31,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(185.551px, 29.3258px) scale(1.01685)",
+    "viewport": "translate(99.5506px, 29.3258px) scale(1.01685)",
     "nodes": {
       "requests": { "kind": "node", "box": "translate(200px, 40px) 235×72", "text": "Contoso requests 6 requests/s to each path" },
       "gateway": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "API Gateway Managed account preset" },

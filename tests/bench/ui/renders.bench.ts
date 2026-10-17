@@ -130,12 +130,14 @@ for (const [family, sizes] of CASES)
       // Select: the first click opens the inspector; count the next six clicks (three nodes, twice: a stray commit is
       // then a sixth of a count per click).
       await b.clickNode(await b.nodeNearCentre(ids));
+      // clickNode waits for the narrower pane and its pan. Prepare every endpoint before counting;
+      // a recovery fit inside the reading would count camera setup as selection work.
       const targets: string[] = [];
       for (let i = 0; i < 3; i++) targets.push(await b.nodeNearCentre(ids.filter((_, k) => k % 3 === i)));
       targets.push(...targets);
       results.select = await counted(b, targets.length, async () => {
         for (const t of targets) {
-          await b.clickNode(t);
+          await b.clickNode(t, { fit: false });
           await b.frames(2);
         }
       });
