@@ -5,7 +5,9 @@
 //   pnpm bench:node | bench:ui | bench:bundle | bench:sim
 //   pnpm bench:prepare               only materialise the workloads (before running a browser spec by hand)
 //   node scripts/bench/run.mjs [--mode full|gates|quick] [--only workloads,node,ui,bundle] [--node sim,checks] [--ui live,load]
-//                              [--label name] [--out dir] [--no-build] [--keep]
+//                              [--label name] [--out dir] [--no-build] [--keep] [--grep pattern]
+//
+// --grep passes a title pattern to Playwright: only the browser benchmarks it matches run (e.g. "live pipeline@5000").
 //
 // Steps: build the benchmark builds (scripts/bench/build.mjs), materialise the workloads, the Node suites (Vitest,
 // tests/bench/node), the browser suites (Playwright, tests/bench/ui, on ports 6210 and 6211), the shipped bundle's
@@ -115,6 +117,7 @@ if (only.has("ui"))
     "--config",
     "tests/bench/playwright.config.ts",
     ...uiSpecs.map((s) => `${s}.bench.ts`),
+    ...(typeof args.grep === "string" ? ["--grep", args.grep] : []),
   ]);
 if (only.has("bundle")) step("bundle", "node", ["scripts/bench/bundle.mjs"]);
 
