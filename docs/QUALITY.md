@@ -296,8 +296,38 @@ a production build, at a CPU and network throttle (`--cold`: each on a fresh pag
 Large image exports wait on the progress phase and success toast within the whole-test hang backstop,
 then check the observed download's completion. The action timeout is not an export-duration budget.
 The cancelled-load retries and decode-progress regression keep a 4× CPU throttle to exercise slow CI
-rendering locally. A live dim attribute likewise precedes the opacity transition: poll the rendered
-opacity when asserting the visual result, rather than sampling it immediately after the attribute.
+rendering locally, but use 45 nodes: their held requests/decode promise guarantee the boundary under test.
+The 300-node workload belongs to the separate responsiveness and byte-parity tests. Combining it with
+the throttle made healthy retries exhaust the 90-second whole-test backstop on Linux (#142);
+waiting on success within that backstop alone did not fix it. A live dim attribute likewise precedes
+the opacity transition: poll the rendered opacity when asserting the visual result, rather than
+sampling it immediately after the attribute.
+
+### Linux browser reproduction on Windows
+
+Run from this checkout in PowerShell. This uses parity's pinned Playwright Linux image and separate
+Linux dependencies, three browser workers, a two-CPU container and a fresh production E2E build.
+There are no retries; all fourteen Chromium tests run five times. Playwright owns and stops its server,
+and Docker removes the container. Change the explicit five-port range if needed.
+
+```powershell
+$inside = @'
+set -e
+corepack enable >/dev/null 2>&1 || npm install -g pnpm@12.11.2 >/dev/null
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+pnpm install --frozen-lockfile --prefer-offline --reporter=silent
+npx playwright test tests/e2e/image-slices.spec.ts --project=chromium --repeat-each=5 --workers=3 --retries=0 --reporter=line
+'@
+docker run --rm --name perf3-linux-repro --cpus=2 --ipc=host `
+  -v "${PWD}:/work" `
+  -v livediagrams-perf3-e2e-node-modules:/work/node_modules `
+  -v livediagrams-parity-pnpm-store:/pnpm-store `
+  -e pnpm_config_store_dir=/pnpm-store -e CI=1 -e E2E_TARGET=build `
+  -e E2E_PORT=6420 -e E2E_DEV_PORT=6421 -e E2E_PREVIEW_PORT=6422 `
+  -e E2E_INTERNAL_PORT=6423 -e E2E_LOCKED_PORT=6424 `
+  -e E2E_CHROMIUM_ONLY=1 -e E2E_GATE=1 -w /work `
+  mcr.microsoft.com/playwright:v1.64.1-noble bash -c $inside
+```
 
 ## A1 bookkeeping invariants
 

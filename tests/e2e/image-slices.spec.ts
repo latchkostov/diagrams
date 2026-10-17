@@ -209,15 +209,15 @@ function lanes(count = 20) {
   return { format: "diagrams/v1", title: "Lanes", nodes, edges };
 }
 
-async function openLanes(page: Page) {
+async function openLanes(page: Page, count = 20) {
   await gotoCanvas(page, publicExamples[0].slug);
   await page.getByTestId("import-input").setInputFiles({
     name: "lanes.diagram.json",
     mimeType: "application/json",
-    buffer: Buffer.from(JSON.stringify(lanes())),
+    buffer: Buffer.from(JSON.stringify(lanes(count))),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Lanes", { timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("node-p19n14")).toBeAttached();
+  await expect(page.getByTestId(`node-p${count - 1}n14`)).toBeAttached();
 }
 
 /** Counts animation frames from now on (the page painting), read with `frames()`. */
@@ -410,7 +410,9 @@ for (const [stalled, pattern, kind] of [
       await (await route.request().response())?.finished();
       finished++;
     });
-    await openLanes(page);
+    // The held request guarantees the cancellation boundary, regardless of diagram size. Keep the retry small:
+    // 300 nodes at 4× throttling exhaust the whole-test backstop on Linux even when loading resumes correctly.
+    await openLanes(page, 3);
     await slowExports(page);
     const downloads = imageDownloads(page);
     await page.getByTestId("file-button").click();
@@ -594,7 +596,8 @@ test("PNG progress stays unfinished through decoding and finishes with the downl
   consoleErrors,
 }) => {
   test.slow();
-  await openLanes(page);
+  // Decode is held explicitly below; the separate long-export test covers the 300-node workload.
+  await openLanes(page, 3);
   await slowExports(page);
   await page.evaluate(() => {
     const decode = HTMLImageElement.prototype.decode;
@@ -612,7 +615,7 @@ test("PNG progress stays unfinished through decoding and finishes with the downl
   await page.getByTestId("file-button").click();
   const downloads = imageDownloads(page);
   await page.getByTestId("export-png").click();
-  // Reaching decode includes the entire clone, embedding and serialization of this large diagram.
+  // Reaching decode includes the entire clone, embedding and serialization.
   await expect(page.getByTestId("toast-progress")).toHaveAttribute("aria-valuenow", "90", {
     timeout: test.info().timeout,
   });

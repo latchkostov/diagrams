@@ -1,5 +1,21 @@
 # Release notes
 
+## Linux image export regression workload (#142, 2026-10-16)
+
+- CI run 38983826029 and a two-CPU Playwright Linux container reproduce whole-test timeouts
+  after cancellation, resumed loading and a successfully started retry. The 300-node PNG at
+  4× CPU throttling consumes the remaining 90-second test backstop; changing the completion
+  wait in the previous fix was insufficient. CI screenshots even show a completed PNG at the
+  timeout boundary. This is a test workload assumption, not a stuck dynamic import or retry.
+- The loading-cancellation and held-decode tests now use 45 nodes, retaining the 4× throttle,
+  controlled stalls, input/focus recovery, late-completion checks and successful saved download.
+  The separate 300-node responsiveness and byte-parity tests keep their large workload.
+  Product code, timeouts and output goldens are unchanged; no golden is re-recorded.
+- Documented the exact Docker reproduction command in `docs/QUALITY.md` for future Linux checks.
+- The full Chromium spec passes five Linux repetitions (70 passed, zero failed or flaky). Temporarily
+  restoring the 300-node workload reproduces the timeout under full-spec scheduling; an isolated
+  three-case control passes, confirming load sensitivity. Full parity preserves all 2,196 goldens.
+
 ## Image export CI synchronization (#142, 2026-10-16)
 
 - Fixed export regressions that assumed the 300-node PNG would download within the action timeout
