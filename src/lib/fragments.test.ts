@@ -3,8 +3,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { combinedNotes, readFragments, streams, validateFragment } from "../../scripts/fragments";
+import { assertTextEncoding, checkRepositoryTextEncoding } from "../../scripts/text-encoding";
 
 describe("documentation fragments", () => {
+  it("keeps marketplace, skill text, fragments and frozen histories free of mojibake and BOMs", () => {
+    checkRepositoryTextEncoding(process.cwd());
+  });
+
+  it("rejects raw and JSON-escaped encoding corruption", () => {
+    for (const bad of ["\u00c3", "\u00e2\u20ac\u00a6", "\u00c2", "\uFEFFwords"])
+      expect(() => assertTextEncoding("fragment.md", bad)).toThrow(/UTF-8/);
+    expect(() => assertTextEncoding("marketplace.json", '"\\u00e2\\u20ac\\u00a6"')).toThrow(/UTF-8/);
+    expect(() => assertTextEncoding("marketplace.json", '"Pub/Sub…"')).not.toThrow();
+  });
   it("validates every repository fragment as part of pnpm test", () => {
     for (const stream of Object.keys(streams) as (keyof typeof streams)[]) readFragments(process.cwd(), stream);
   });

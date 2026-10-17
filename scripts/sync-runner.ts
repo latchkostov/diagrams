@@ -1,10 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { format } from "prettier";
-import generated from "./generated-files.json";
-import { classifyConflict, mergeEnglish, withoutGeneratedRegions } from "./sync-lib";
+import { classifyConflict, mergeEnglish, withoutGeneratedRegions, type GeneratedPolicy } from "./sync-lib";
+
+/** Read the policy from the current checkout, never the module loader's pre-rebase cache. */
+export function loadPolicy(root: string): GeneratedPolicy {
+  return JSON.parse(readFileSync(path.join(root, "scripts/generated-files.json"), "utf8")) as GeneratedPolicy;
+}
 
 type Result = { status: number | null; stdout: string; stderr: string };
 export type Run = (command: string, args: string[]) => Result;
@@ -23,7 +27,7 @@ export function sync(root: string, run: Run, log: (text: string) => void, contin
     checked(git("diff", "--name-only", "--diff-filter=U", "-z"))
       .split("\0")
       .filter(Boolean);
-  const regenerate = () => {
+  const regenerate = (generated: GeneratedPolicy) => {
     checked(run("pnpm", ["regen"]));
     // Explicit allowlist; never stage another source file, a user's edit or parity output.
     for (const file of [...generated.files, ...generated.regions])
@@ -45,8 +49,9 @@ export function sync(root: string, run: Run, log: (text: string) => void, contin
     let result = continuing ? { status: 1, stdout: "", stderr: "" } : git("rebase", "--gpg-sign", "origin/master");
     while (result.status !== 0) {
       if (!active()) checked(result);
+      const generated = loadPolicy(root);
       for (const file of conflicts()) {
-        const kind = classifyConflict(file);
+        const kind = classifyConflict(file, generated);
         if (kind === "manual" || kind === "golden") continue;
         if (kind === "generated") {
           const ours = git("show", `:2:${file}`);
@@ -91,13 +96,13 @@ export function sync(root: string, run: Run, log: (text: string) => void, contin
         throw new Error(
           `Resolve these conflicts, git add each resolved file, then pnpm sync --continue:\n${remaining.map((f) => `  ${f}`).join("\n")}\nParity goldens are never resolved by sync. Run pnpm parity:update and review any intended output changes. Abort with git rebase --abort.`,
         );
-      regenerate();
+      regenerate(loadPolicy(root));
       const hasChanges = checked(git("diff", "--cached", "--name-only")).trim();
       result = git("-c", "core.editor=true", "rebase", hasChanges ? "--continue" : "--skip");
       // A signing/exec/locking failure is not a merge conflict. Never retry it in a loop.
       if (result.status !== 0 && !conflicts().length) checked(result);
     }
-    regenerate();
+    regenerate(loadPolicy(root));
     const staged = checked(git("diff", "--cached", "--name-only")).trim();
     if (staged) {
       const head = checked(git("rev-parse", "HEAD")).trim();

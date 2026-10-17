@@ -1026,7 +1026,7 @@ describe("releasing the viewer", () => {
     const icons = path.join(dir, "icons.json");
     writeFileSync(asset, "old template");
     writeFileSync(icons, "old icons");
-    const files = { [asset]: "new template", [icons]: "new icons" };
+    const files = { [asset]: "new template…", [icons]: "new icons" };
     const state = () => [asset, icons].map((f) => readFileSync(f, "utf8"));
     const listing = () => readdirSync(dir).sort();
     const before = state();
@@ -1035,7 +1035,10 @@ describe("releasing the viewer", () => {
     let failIcons = true;
     const fs: ReleaseFs = {
       readFileSync: (f, e) => readFileSync(f, e),
-      writeFileSync: (f, t) => writeFileSync(f, t),
+      writeFileSync: (f, t, encoding) => {
+        expect(encoding).toBe("utf8");
+        writeFileSync(f, t, encoding);
+      },
       renameSync: (from, to) => {
         if (failIcons && to === icons) throw new Error("disk full");
         renameSync(from, to);
@@ -1059,7 +1062,8 @@ describe("releasing the viewer", () => {
 
     // The retry sees the same stale files, and completes.
     applyRelease(files, fs);
-    expect(state()).toEqual(["new template", "new icons"]);
+    expect(state()).toEqual(["new template…", "new icons"]);
+    expect(readFileSync(asset).subarray(0, 3).toString("hex")).not.toBe("efbbbf");
     expect(listing()).toEqual(["icons.json", "viewer-template.html"]);
   });
 

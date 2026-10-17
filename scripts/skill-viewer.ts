@@ -80,7 +80,7 @@ export function releasedFiles(root: string, template: string): Record<string, st
 /** The file operations a release uses (the test fails one of them). */
 export interface ReleaseFs {
   readFileSync(file: string, encoding: "utf8"): string;
-  writeFileSync(file: string, text: string): void;
+  writeFileSync(file: string, text: string, encoding: "utf8"): void;
   renameSync(from: string, to: string): void;
   rmSync(file: string, options: { force: true }): void;
   existsSync(file: string): boolean;
@@ -102,7 +102,7 @@ export function applyRelease(files: Readonly<Record<string, string>>, fs: Releas
     for (const [file] of writes) fs.rmSync(staged(file), { force: true });
   };
   try {
-    for (const [file, text] of writes) fs.writeFileSync(staged(file), text);
+    for (const [file, text] of writes) fs.writeFileSync(staged(file), text, "utf8");
   } catch (err) {
     cleanUp();
     throw err;
@@ -117,7 +117,7 @@ export function applyRelease(files: Readonly<Record<string, string>>, fs: Releas
     for (const file of swapped) {
       const old = before.get(file);
       if (old === null || old === undefined) fs.rmSync(file, { force: true });
-      else fs.writeFileSync(file, old);
+      else fs.writeFileSync(file, old, "utf8");
     }
     cleanUp();
     throw err;

@@ -17,6 +17,8 @@ if (unknown.length) {
 
 const load = async (file) =>
   (await runnerImport(path.join(root, file), { root, configFile: false, logLevel: "error" })).module;
+const { checkRepositoryTextEncoding } = await load("scripts/text-encoding.ts");
+checkRepositoryTextEncoding(root);
 const viewer = await load("scripts/skill-viewer.ts");
 const { buildViewerTemplate } = await load("scripts/interactive-viewer.ts");
 const { SKILL_DIR } = await load("scripts/skill-gen.ts");

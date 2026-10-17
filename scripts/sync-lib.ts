@@ -1,7 +1,10 @@
 import ts from "typescript";
-import generated from "./generated-files.json";
+export type GeneratedPolicy = { files: string[]; regions: string[] };
 
-export function classifyConflict(file: string): "golden" | "generated" | "regions" | "english" | "manual" {
+export function classifyConflict(
+  file: string,
+  generated: GeneratedPolicy,
+): "golden" | "generated" | "regions" | "english" | "manual" {
   if (file.startsWith("tests/parity/goldens/")) return "golden";
   if (generated.files.includes(file)) return "generated";
   if (generated.regions.includes(file)) return "regions";

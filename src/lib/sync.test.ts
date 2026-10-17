@@ -1,18 +1,88 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { classifyConflict, mergeEnglish, withoutGeneratedRegions } from "../../scripts/sync-lib";
-import { invocation, sync, type Run } from "../../scripts/sync-runner";
+import generated from "../../scripts/generated-files.json";
+import { gitRunner, invocation, sync, type Run } from "../../scripts/sync-runner";
+
+const fakeRoot = (prefix: string) => {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  mkdirSync(join(root, "scripts"));
+  writeFileSync(join(root, "scripts/generated-files.json"), JSON.stringify(generated), "utf8");
+  return root;
+};
 
 const en = (entries: Record<string, string>) => `const en = ${JSON.stringify(entries)} as const;\nexport default en;\n`;
 
+/** Real index stages and merge-file, with only network, signing and regeneration replaced. */
+function repository(
+  base: Record<string, string>,
+  upstream: Record<string, string>,
+  branch: Record<string, string>,
+  regenerate: (root: string) => void,
+) {
+  const root = fakeRoot("diagrams-sync-repository-");
+  const execute = gitRunner(root);
+  const git = (...args: string[]) => {
+    const result = execute("git", args);
+    if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+    return result.stdout;
+  };
+  const write = (files: Record<string, string>) => {
+    for (const [name, text] of Object.entries(files)) {
+      mkdirSync(join(root, name, ".."), { recursive: true });
+      writeFileSync(join(root, name), text, "utf8");
+    }
+  };
+  git("init", "-b", "feature");
+  git("config", "user.name", "Sync test");
+  git("config", "user.email", "sync@example.invalid");
+  git("config", "commit.gpgsign", "false");
+  git("config", "core.autocrlf", "false");
+  const commit = () => {
+    git("add", ".");
+    git("commit", "-m", "fixture");
+  };
+  write(base);
+  commit();
+  git("checkout", "-b", "upstream");
+  write(upstream);
+  commit();
+  git("update-ref", "refs/remotes/origin/master", "HEAD");
+  git("checkout", "feature");
+  write(branch);
+  commit();
+  const calls: string[][] = [];
+  const versions = new Map<string, string>();
+  const staged = new Map<string, string>();
+  const run: Run = (command, args) => {
+    calls.push([command, ...args]);
+    if (command === "pnpm") {
+      regenerate(root);
+      return { status: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "fetch") return { status: 0, stdout: "", stderr: "" };
+    const result = execute(
+      command,
+      args.filter((arg) => arg !== "--gpg-sign" && arg !== "-S"),
+    );
+    if (args[0] === "show" && result.status === 0) versions.set(args[1], result.stdout);
+    if (args[0] === "add") {
+      const name = args.at(-1)!;
+      staged.set(name, git("show", `:0:${name}`));
+    }
+    return result;
+  };
+  return { root, git, run, calls, versions, staged };
+}
+
 describe("sync conflict classification", () => {
   it("only regenerates explicit outputs, preserving handwritten docs, translations, sources and goldens", () => {
-    expect(classifyConflict("skills/livediagrams/scripts/lib/app.mjs")).toBe("generated");
-    expect(classifyConflict("skills/livediagrams/reference/format.md")).toBe("regions");
-    expect(classifyConflict("src/i18n/en.ts")).toBe("english");
-    expect(classifyConflict("tests/parity/goldens/node/skill.json")).toBe("golden");
+    expect(classifyConflict("skills/livediagrams/scripts/lib/app.mjs", generated)).toBe("generated");
+    expect(classifyConflict("skills/livediagrams/reference/format.md", generated)).toBe("regions");
+    expect(classifyConflict("src/i18n/en.ts", generated)).toBe("english");
+    expect(classifyConflict("tests/parity/goldens/node/skill.json", generated)).toBe("golden");
     for (const file of [
       "skills/livediagrams/SKILL.md",
       "src/i18n/locales/de.json",
@@ -21,7 +91,7 @@ describe("sync conflict classification", () => {
       ".claude-plugin/marketplace.json",
       "src/canvas/CanvasView.tsx",
     ])
-      expect(classifyConflict(file)).toBe("manual");
+      expect(classifyConflict(file, generated)).toBe("manual");
   });
 
   it("strips generated regions alone, leaving authored skill prose for a normal three-way merge", () => {
@@ -57,6 +127,94 @@ describe("English three-way union", () => {
 });
 
 describe("sync git orchestration", () => {
+  it.each([false, true])(
+    "reloads upstream policy after checkout (conflicted output: %s) and ends clean",
+    async (conflicted) => {
+      const policy = (files: string[]) => JSON.stringify({ files, regions: [] });
+      const fixture = repository(
+        { "scripts/generated-files.json": policy([]), "authored.md": "base" },
+        { "scripts/generated-files.json": policy(["new-output.json"]), "new-output.json": "upstream" },
+        { "authored.md": "branch", ...(conflicted ? { "new-output.json": "branch" } : {}) },
+        (root) => writeFileSync(join(root, "new-output.json"), "regenerated", "utf8"),
+      );
+      try {
+        await sync(fixture.root, fixture.run, () => {});
+        expect(fixture.staged.get("new-output.json")).toBe("regenerated");
+        expect(fixture.git("show", "HEAD:new-output.json")).toBe("regenerated");
+        expect(fixture.git("status", "--porcelain")).toBe("");
+      } finally {
+        rmSync(fixture.root, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("sync preserves both sides of authored conflicts", async () => {
+    const reference = "skills/livediagrams/reference/format.md";
+    const region = (opening: string, closing: string, generated: string) =>
+      `${opening}\n\nMiddle.\n\n${closing}\n\n<!-- BEGIN GENERATED fields -->\n${generated}\n<!-- END GENERATED fields -->\n`;
+    const english = "src/i18n/en.ts";
+    const fixture = repository(
+      { [english]: en({ base: "Base" }), [reference]: region("Opening.", "Closing.", "base") },
+      {
+        [english]: en({ base: "Base", "round.upstream": "Upstream" }),
+        [reference]: region("Upstream prose.", "Closing.", "upstream"),
+      },
+      {
+        [english]: en({ base: "Base", "round.branch": "Branch" }),
+        [reference]: region("Opening.", "Branch prose.", "branch"),
+      },
+      (root) => {
+        const file = join(root, reference);
+        writeFileSync(
+          file,
+          readFileSync(file, "utf8").replace("<!-- regenerated by pnpm regen -->", "fresh fields"),
+          "utf8",
+        );
+      },
+    );
+    try {
+      await sync(fixture.root, fixture.run, () => {});
+      for (const name of [english, reference]) {
+        const stages = [1, 2, 3].map((stage) => fixture.versions.get(`:${stage}:${name}`));
+        expect(stages.every((text) => text !== undefined)).toBe(true);
+        expect(new Set(stages).size).toBe(3);
+      }
+      const mergedEnglish = fixture.staged.get(english);
+      expect(mergedEnglish).toContain('"round.upstream": "Upstream"');
+      expect(mergedEnglish).toContain('"round.branch": "Branch"');
+      const mergedReference = fixture.staged.get(reference);
+      expect(mergedReference).toContain("Upstream prose.");
+      expect(mergedReference).toContain("Branch prose.");
+      expect(mergedReference).toContain("fresh fields");
+      expect(fixture.git("status", "--porcelain")).toBe("");
+      expect(fixture.calls).toContainEqual(["git", "-c", "core.editor=true", "rebase", "--continue"]);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("sync leaves competing authored edits unresolved", async () => {
+    const reference = "skills/livediagrams/reference/format.md";
+    const english = "src/i18n/en.ts";
+    const fixture = repository(
+      { [english]: en({ same: "Base" }), [reference]: "Base prose.\n" },
+      { [english]: en({ same: "Upstream" }), [reference]: "Upstream prose.\n" },
+      { [english]: en({ same: "Branch" }), [reference]: "Branch prose.\n" },
+      () => {
+        throw new Error("Must not regenerate unresolved authored edits");
+      },
+    );
+    try {
+      await expect(sync(fixture.root, fixture.run, () => {})).rejects.toThrow(/Resolve these conflicts/);
+      expect(fixture.git("diff", "--name-only", "--diff-filter=U").trim().split("\n")).toEqual([reference, english]);
+      expect(fixture.staged.size).toBe(0);
+      expect(fixture.calls.some(([command, ...args]) => command === "pnpm" || args.includes("--continue"))).toBe(false);
+      expect(fixture.git("rev-parse", "--verify", "REBASE_HEAD").trim()).not.toBe("");
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
   it("uses a fixed Windows regeneration command and argv on macOS without interpolating shell arguments", () => {
     expect(invocation("pnpm", ["regen"], "darwin")).toEqual({ command: "pnpm", args: ["regen"] });
     expect(invocation("pnpm", ["regen"], "win32").args).toEqual(["/d", "/s", "/c", "pnpm regen"]);
@@ -68,7 +226,7 @@ describe("sync git orchestration", () => {
   });
 
   it("creates a signed regeneration commit when the rebased branch has no commits beyond master", async () => {
-    const root = mkdtempSync(join(tmpdir(), "diagrams-sync-upstream-"));
+    const root = fakeRoot("diagrams-sync-upstream-");
     const calls: string[][] = [];
     try {
       const run: Run = (command, args) => {
@@ -91,7 +249,7 @@ describe("sync git orchestration", () => {
   it.each([false, true])(
     "regenerates before continuing (empty commit: %s), and signs final output changes",
     async (empty) => {
-      const root = mkdtempSync(join(tmpdir(), "diagrams-fake-sync-"));
+      const root = fakeRoot("diagrams-fake-sync-");
       const calls: string[][] = [];
       let rebasing = true;
       let conflict = true;
@@ -143,7 +301,7 @@ describe("sync git orchestration", () => {
   );
 
   it("stops on a failed generator before continuing the rebase", async () => {
-    const root = mkdtempSync(join(tmpdir(), "diagrams-failed-sync-"));
+    const root = fakeRoot("diagrams-failed-sync-");
     const calls: string[][] = [];
     try {
       mkdirSync(join(root, ".git/rebase-merge"), { recursive: true });
@@ -173,7 +331,7 @@ describe("sync git orchestration", () => {
   });
 
   it("lists real and golden conflicts without running generators or staging them", async () => {
-    const root = mkdtempSync(join(tmpdir(), "diagrams-fake-git-"));
+    const root = fakeRoot("diagrams-fake-git-");
     const calls: string[][] = [];
     let rebasing = false;
     try {
