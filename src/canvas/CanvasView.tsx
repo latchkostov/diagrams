@@ -2110,24 +2110,6 @@ function CanvasInner({
   useLayoutEffect(() => {
     keepInView.current = keepSelectionInView;
   });
-  // A right-click that selected (and so opened the inspector) waits for its menu to close: moving
-  // the view would close the menu under the pointer.
-  const inspectorWasHidden = useRef(inspectorHidden);
-  const keepPending = useRef(false);
-  useEffect(() => {
-    const opened = inspectorWasHidden.current && !inspectorHidden;
-    inspectorWasHidden.current = inspectorHidden;
-    if (opened && !readOnly && !nothingSelected && !showingAll.current)
-      keepPending.current = inspectorPanCommand.current !== fitEpoch.current;
-    if (inspectorHidden) keepPending.current = false;
-    if (!keepPending.current || menu) return;
-    const id = requestAnimationFrame(() => {
-      keepPending.current = false;
-      keepSelectionInView();
-    });
-    return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the inspector opens or a menu closes
-  }, [inspectorHidden, menu]);
   // A side panel opened or closed while the whole diagram was in view refits it to the new pane,
   // so nothing ends up under the panel or its rail. A view the user panned or zoomed stays put.
   const panelsKey = `${paletteHidden}`;
@@ -2147,11 +2129,15 @@ function CanvasInner({
   };
   // The AI panel opened, closed or was resized, or an Inspector resize completed: the pane changed size at its
   // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
-  // (or, with none, the diagram's centre) in view with a pan.
+  // (or, with none, the diagram's centre) in view with a pan. Inspector reveals use this same handler:
+  // two concurrent pans could capture an intermediate animation zoom and make it permanent.
   const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}:${inspectorHidden}:${sheetResize}`;
   const lastDock = useRef(dockKey);
   useEffect(() => {
     if (lastDock.current === dockKey) return;
+    // A connected menu reserves camera space for its outline. Apply the pane policy
+    // only after it closes, just like the deferred Inspector selection reveal.
+    if (menu) return;
     lastDock.current = dockKey;
     // Live view refits around its own chrome (the trace card, a side panel): see LiveView.
     if (presenting || live) return;
@@ -2161,6 +2147,9 @@ function CanvasInner({
     const id = setTimeout(() => {
       host?.removeAttribute("data-pane-pending");
       if (camera.owner === "fit") return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
+      // Shift+2 already refines against the new pane. A pan here would interrupt
+      // that transition at an intermediate zoom and invalidate its refinement.
+      if (inspectorPanCommand.current === fitEpoch.current) return;
       if (keepSelectionInView()) return;
       const pane = wrapper.current?.getBoundingClientRect();
       const nodes = getNodes().filter((n) => !n.hidden);
@@ -2177,7 +2166,7 @@ function CanvasInner({
       host?.removeAttribute("data-pane-pending");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the dock changes the pane
-  }, [dockKey]);
+  }, [dockKey, menu]);
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
     setPaletteCollapsed(!paletteHidden);

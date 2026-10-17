@@ -4,7 +4,16 @@ import type { LabPacket } from "../../src/collab/lab/bridge";
 import { demoDiagram } from "../../src/collab/lab/demo";
 import { RECOVERY_RETRY } from "../../src/collab/recovery";
 import { COLLAB_LIMITS } from "../../src/collab/limits";
-import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport, E2E_TARGET, fitDiagram } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  gotoLab,
+  pauseClock,
+  waitForStableViewport,
+  E2E_TARGET,
+  fitDiagram,
+} from "./fixtures";
 import { isViteHmrHandshake } from "../../scripts/e2e-network";
 
 async function bounds(locator: Locator) {
