@@ -4,7 +4,7 @@
 
 | Environment |  |
 | --- | ---: |
-| Machine | AMD Ryzen 9 7950X 16-Core Processor, 32 threads, 68 GB, Windows_NT 10.0.26300 (x64) |
+| Machine | a local machine (not recorded) |
 | Runtime | Node v24.22.0, Chromium 156.0.8078.4, Playwright 1.64.1, Vite 8.3.4, React 19.3.1 |
 | Browser settings | CPU throttle 2× (main thread), 1440 × 900 at device scale factor 1, light, en-US, UTC |
 | Calibration | Node 11 ms, browser 23 ms (same-run baseline; "cu" = ms ÷ calibration) |
