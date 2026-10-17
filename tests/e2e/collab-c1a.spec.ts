@@ -1,6 +1,8 @@
 import type { BrowserContext, Page, Locator } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import type { LabPacket } from "../../src/collab/lab/bridge";
+import { demoDiagram } from "../../src/collab/lab/demo";
+import { RECOVERY_RETRY } from "../../src/collab/recovery";
 import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport } from "./fixtures";
 
 async function bounds(locator: Locator) {
@@ -15,6 +17,7 @@ type TestWindow = Window & {
   __c1CipherReads?: number;
   __releaseRecoveryOpen?: () => void;
   __recoveryChannelsClosed?: number;
+  __restoreRecoveryWrites?: () => void;
 };
 
 /** Only encrypted transport packets cross isolated browser contexts. No socket or external service. */
@@ -307,6 +310,47 @@ test("corrupt IndexedDB checkpoint recovers safely and quota failure preserves d
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   expect(Buffer.concat(chunks).toString()).toContain("Keep quota-failed work");
+  expectNoErrors(consoleErrors);
+});
+
+test("storage retry backoff keeps edits unsaved until a successful retry", async ({ context, page, consoleErrors }) => {
+  await relay([context], 145);
+  await open(page);
+  await name(page, "api", "Durable before storage failure");
+  await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
+  await page.getByTestId("node-api").dblclick();
+  const field = page.getByTestId("inspector-field-label");
+  await expect(field).toBeFocused();
+  await pauseClock(page);
+  await page.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    (window as TestWindow).__restoreRecoveryWrites = () => {
+      IDBObjectStore.prototype.put = put;
+    };
+    IDBObjectStore.prototype.put = function (...args: Parameters<IDBObjectStore["put"]>) {
+      if (this.transaction.db.name === "livediagrams-collab-recovery-v1")
+        throw new DOMException("quota", "QuotaExceededError");
+      return put.apply(this, args);
+    };
+  });
+  await field.fill("Storage failure");
+  await expect(page.getByTestId("collab-recovery-problem")).toContainText("Could not save on this device");
+  for (let i = 0; i < 8; i++) {
+    await field.fill(`Still editable ${i}`);
+    await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
+    await expect(page.getByTestId("collab-recovery-problem")).toContainText("Could not save on this device");
+  }
+  await expect(page.getByTestId("collab-save-copy")).toBeVisible();
+  await page.evaluate(() => (window as TestWindow).__restoreRecoveryWrites?.());
+  await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
+  await page.clock.runFor(RECOVERY_RETRY.initialMs);
+  await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
+  await expect(page.getByTestId("collab-recovery-problem")).toHaveCount(0);
+  await expect(field).toHaveValue("Still editable 7");
+  await field.press("Enter");
+  await page.clock.resume();
+  await page.reload();
+  await expect(page.getByTestId("node-api")).toContainText("Still editable 7");
   expectNoErrors(consoleErrors);
 });
 
@@ -758,3 +802,78 @@ for (const abortAfter of [1, 2]) {
     expectNoErrors(consoleErrors);
   });
 }
+
+test("a peer edit between image export slices aborts with a retry toast and preserves scoped Undo", async ({
+  browser,
+  context,
+  page,
+  baseURL,
+  consoleErrors,
+}) => {
+  const other = await browser.newContext({ baseURL });
+  const b = await other.newPage();
+  const errors: string[] = [];
+  b.on("pageerror", (e) => errors.push(e.message));
+  const initial = demoDiagram();
+  initial.nodes.push(
+    ...Array.from({ length: 45 }, (_, i) => ({
+      id: `service-${i}`,
+      stencil: "service.go",
+      label: `Service ${i}`,
+      x: (i % 5) * 260,
+      y: 250 + Math.floor(i / 5) * 120,
+    })),
+  );
+  await relay([context, other], 163, initial);
+  await context.addInitScript(() => {
+    if (window.__collabC1) window.__collabC1.imageExport = true;
+  });
+  let downloads = 0;
+  page.on("download", () => downloads++);
+  try {
+    await open(page);
+    await open(b, true);
+    await name(page, "api", "My local API");
+    await expect(b.getByTestId("node-api")).toContainText("My local API");
+    // Hold the first clone slice's macrotask, rather than racing a fast export against peer input.
+    await page.evaluate(() => {
+      const NativeChannel = window.MessageChannel;
+      const w = window as unknown as { __exportSliceHeld: boolean; __resumeExportSlice: () => void };
+      w.__exportSliceHeld = false;
+      window.MessageChannel = class extends NativeChannel {
+        constructor() {
+          super();
+          window.MessageChannel = NativeChannel;
+          const post = this.port2.postMessage.bind(this.port2);
+          this.port2.postMessage = (message: unknown) => {
+            w.__exportSliceHeld = true;
+            w.__resumeExportSlice = () => post(message);
+          };
+        }
+      };
+    });
+    await page.getByTestId("collab-export-png").click();
+    await page.waitForFunction(() => (window as unknown as { __exportSliceHeld: boolean }).__exportSliceHeld);
+    const progress = Number(await page.getByTestId("toast-progress").getAttribute("aria-valuenow"));
+    expect(progress).toBeGreaterThan(0);
+    expect(progress).toBeLessThan(70);
+    await name(b, "db", "Database by peer during export");
+    await expect(page.getByTestId("node-db")).toContainText("Database by peer during export");
+    await page.evaluate(() => (window as unknown as { __resumeExportSlice: () => void }).__resumeExportSlice());
+    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
+    await expect(page.getByTestId("toast")).toContainText("Couldn't export the PNG. Try again");
+    expect(downloads).toBe(0);
+    await expect(page.getByTestId("export-header")).toHaveCount(0);
+    await page.getByTestId("undo-button").click();
+    await expect(b.getByTestId("node-api")).toContainText("API");
+    await expect(b.getByTestId("node-api")).not.toContainText("My local");
+    await expect(page.getByTestId("node-db")).toContainText("Database by peer during export");
+    await page.getByTestId("redo-button").click();
+    await expect(b.getByTestId("node-api")).toContainText("My local API");
+    await expect(b.getByTestId("node-db")).toContainText("Database by peer during export");
+    expectNoErrors(consoleErrors);
+    expectNoErrors(errors);
+  } finally {
+    await other.close();
+  }
+});

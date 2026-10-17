@@ -3,7 +3,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import { toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { createEditor, type EditorDeps } from "./useEditor";
-import { snapshotKey } from "./historySelection";
+import { roomSnapshotKey, snapshotKey } from "./historySelection";
 
 it("versions every document edit, including external replacements and undo, with constant-time reads", () => {
   let flow = toFlow({
@@ -68,4 +68,32 @@ it("versions every document edit, including external replacements and undo, with
   editor.updateDeps(rf, { ...deps(), documentId: "replacement" });
   expect(api.getDocumentVersion().identity).not.toBe(initial.identity);
   expect(api.getDocumentVersion().revision).toBeGreaterThan(stable.revision);
+});
+
+it("versions remote room projections and reversions without counting selection or measurements", () => {
+  let flow = toFlow({
+    format: "diagrams/v1",
+    title: "Room",
+    nodes: [{ id: "api", stencil: "service.go", label: "API", x: 0, y: 0 }],
+    edges: [],
+  });
+  const rf = { getNodes: () => flow.nodes, getEdges: () => flow.edges } as unknown as ReactFlowInstance<
+    FlowNode,
+    DiagramFlowEdge
+  >;
+  const deps = () => ({ slug: "room", documentKey: roomSnapshotKey(flow) }) as unknown as EditorDeps;
+  const editor = createEditor(rf, deps());
+  const initial = editor.api.getDocumentVersion();
+  flow = { ...flow, nodes: flow.nodes.map((n) => ({ ...n, selected: true, measured: { width: 220, height: 72 } })) };
+  editor.updateDeps(rf, deps());
+  expect(editor.api.getDocumentVersion()).toBe(initial);
+  for (const label of ["Peer edit", "API"]) {
+    const before = editor.api.getDocumentVersion();
+    flow = { ...flow, nodes: flow.nodes.map((n) => ({ ...n, data: { ...n.data, label } }) as FlowNode) };
+    editor.updateDeps(rf, deps());
+    const after = editor.api.getDocumentVersion();
+    expect(after.identity).toBe(initial.identity);
+    expect(after.revision).toBeGreaterThan(before.revision);
+  }
+  expect(editor.api.getDocumentVersion()).not.toBe(initial);
 });

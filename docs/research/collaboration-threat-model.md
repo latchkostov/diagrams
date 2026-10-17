@@ -179,12 +179,19 @@ recovery; it is not deleted as corruption. Wire-update limits remain unchanged.
   back to its last valid base checkpoint, preserving live edits, then requires a replacement checkpoint.
   Newer damaged journal edits may be missing; the UI offers peer recovery or a file copy. A damaged base
   cannot be recovered from dependent deltas alone. Resource-limit failures retain records and report
-  unavailable storage, rather than deleting otherwise authenticated work.
+  unavailable storage, rather than deleting otherwise authenticated work. A full read decrypts its
+  base once, validates it for fallback, and merges its retained bytes with decrypted journal entries.
 - **Bounded pending memory.** Pending plaintext deltas occupy at most 256 KiB and 128 entries. Overflow
   discards redundant deltas and marks a full checkpoint required; it never merges a growing backlog in
   the synchronous update listener. Storage failure also clears that backlog and requires a checkpoint on
   retry. The live CRDT remains the source of truth. At most one bounded encode/encrypt/write job is in
   flight, in addition to the bounded queue; document, checkpoint and ciphertext limits still apply.
+  After a checkpoint captures its revision, later deltas queue within the same bounds and append only
+  once that base is durable. Overflow invalidates that capture; a rejected base must be recaptured too.
+- **Failure retry schedule.** A failed save retries on the session clock after 1, 2, 4, 8, 16, then
+  30 seconds, capped at 30 seconds without jitter. Typing and ordinary flush calls cannot bypass that
+  timer or grow a delta backlog while a fresh checkpoint is required. A successful complete save resets
+  the delay. Leaving makes one explicit final attempt and cancels every retry timer before disposal.
 - **Exact durable revisions.** Edits arriving during an in-flight checkpoint require another save before
   `saved` can become true. A failed save says it is not saved on this device and leaves the editable
   document and file-copy action available. Closing/crashing before acknowledgement can lose unsaved work;

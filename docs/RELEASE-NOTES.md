@@ -1,5 +1,23 @@
 # Release notes
 
+## Collaboration C1a: responsive export rebase (#143, 2026-10-16)
+
+- Rebased onto master including #142. The editor retains room-specific ID allocation alongside
+  document identity and monotonic edit revisions. History-key changes include peer edits and
+  reversions, so a sliced image export aborts with the existing localized retry toast instead of
+  downloading a mixed revision. Selection, measurements and transient live state remain excluded.
+- A production-browser regression holds a clone slice while a peer edits, checks the retry toast
+  and absence of downloads, then verifies local Undo/Redo preserves the peer's change. An opt-in
+  Lab fixture invokes the real export controller; the normal Lab room gains no controls.
+  A unit regression covers remote projections and reversions. Removing the history-key revision
+  increment makes both regressions fail.
+- Preserved both documentation histories and all translation keys. Took master's skill/plugin
+  files, regenerated the helper and refreshed the viewer at plugin 1.1.36 (master + one patch).
+  Parity regeneration preserves all 2,196 goldens already on the rebased branch. Relative to master,
+  only `node/i18n/catalogs.json` changes: the 27 English `collab.*` keys raise all 38 catalog message
+  counts from 1,976 to 2,003, add 27 English fallbacks in the 37 translated catalogs (pseudo-locale
+  stays at zero), and add the collaboration-area fingerprint. All other golden outputs are unchanged.
+
 ## Linux image export regression workload (#142, 2026-10-16)
 
 - CI run 38983826029 and a two-CPU Playwright Linux container reproduce whole-test timeouts
@@ -44,6 +62,26 @@
 - The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
   production chunk, with image export loading only when used. The scoped UX review finds no new
   controls, wording or chrome; export progress and cancellation retain their existing tests.
+
+## Collaboration C1a: review round 3 and rebase (2026-10-16)
+
+- Failed device saves retry after 1, 2, 4, 8, 16 and then at most 30 seconds, without jitter.
+  Typing during backoff stays editable and unsaved without encoding or encrypting full checkpoints.
+  The next successful save clears the storage warning only after the latest revision is durable.
+  Leaving attempts one final save and cancels retry timers; retries use the session's fakeable clock.
+- Full recovery reads decrypt the checkpoint once and retain its validated bytes for corrupt-journal
+  fallback. Edits arriving after a checkpoint is captured queue bounded deltas for appending once that
+  base is durable. Overflow and rejected checkpoint writes still require a fresh complete base.
+- Regression tests cover successful stalled appends followed by overflow recovery, sustained edits
+  during checkpoint writes, and unsaved status between separately held writes. Temporarily removing
+  backoff, base reuse, overlapping-delta retention, overflow checkpointing or honest acknowledgement
+  fails the corresponding behavior assertions; removing overflow checkpointing loses CRDT edits.
+- Rebased onto master including Review follow-ups 3, retained both documentation histories and the
+  union of translation keys, and regenerated the skill helper/viewer at plugin 1.1.35 (master + one patch).
+  Only `node/i18n/catalogs.json` changes relative to master: the branch's 27 English `collab.*` keys
+  raise all 38 catalog message counts from 1,976 to 2,003, add 27 English fallbacks in the 37 translated
+  catalogs (pseudo-locale stays at zero), and add the collaboration-area fingerprint. Every other
+  area and every diagram, simulation, layout, import/export and browser golden stays unchanged.
 
 ## Review follow-ups 3, round 1 (2026-10-16)
 
@@ -106,6 +144,7 @@
   five-port range on IPv4 and IPv6 before keeping their intended occupied member. A forced blocked
   neighbour regression fails with the old setup; the real preflight and its exact-port assertions
   remain intact. All 1,403 E2E tests passed in that run; the complete gate is repeated after this fix.
+
 ## Collaboration C1a: review round 2 (2026-10-16)
 
 - Recovery now checkpoints the entire document when attaching, including earlier offline edits, before

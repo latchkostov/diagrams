@@ -1,5 +1,14 @@
 # Design review
 
+## Collaboration C1a export rebase (#143, 2026-10-16)
+
+Scoped source review: the rebase preserves the existing progress, cancellation and localized retry
+feedback. Peer edits invalidate exports through the history key without changing local Undo/Redo.
+The new export button mounts only when the Lab's browser-test fixture explicitly requests it;
+normal rooms and production UI gain no controls or wording. The browser regression checks the
+retry state, export cleanup and scoped Undo/Redo after a remote change. This is a focused source
+and behavior review, not a whole-app or assistive-technology walkthrough.
+
 ## Image export CI synchronization (#142, 2026-10-16)
 
 The designer agent's scoped source review found no new UX issues. These changes affect tests only:
@@ -8,6 +17,15 @@ Slow-export coverage observes completion and the actual saved file; FileReader c
 cancellation releases input and that a retry includes its icons. The live-path assertion observes the
 rendered transition rather than only its preceding DOM attributes. No controls or focus targets were
 added. This was a source review, not a whole-app or assistive-technology walkthrough.
+
+## Collaboration C1a review round 3 (2026-10-16)
+
+The required designer-agent source review found no UX issue in the restored final implementation.
+Storage failures keep the existing unsaved state, guidance and file-copy action throughout backoff.
+Success clears the warning only after all pending revisions are durable; overlapping writes and
+overflow do not prematurely claim a save. Recovery-link and raw-data export fallbacks remain available.
+No controls, wording or chrome were added. This was a scoped source review, without an independent
+browser, keyboard or screen-reader walkthrough; production browser checks run separately.
 
 ## Review follow-ups 3, round 1 (2026-10-16)
 
@@ -26,6 +44,7 @@ subtree together, without adding controls. Metadata and capacity caching change 
 Production phone regressions cover both explicit AI entry points, preserving unsaved simulation
 fields and dirty state while using the existing single-panel slot. No chrome, wording or focus target
 is added. This was not an independent whole-app designer or assistive-technology walkthrough.
+
 ## Collaboration C1a review round 2 (2026-10-16)
 
 The designer-agent source review flagged history-key stability during privacy-only transitions and

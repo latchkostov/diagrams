@@ -4,7 +4,7 @@ import { COLLAB_LIMITS } from "./limits";
 import { CollabDoc } from "./doc";
 import { deriveRoomKeys } from "./keys";
 import { demoDiagram } from "./lab/demo";
-import { RoomRecovery } from "./recovery";
+import { RECOVERY_RETRY, RoomRecovery } from "./recovery";
 import {
   evictions,
   recoverySummary,
@@ -260,14 +260,15 @@ it.each(["ciphertext", "iv", "schema", "expired"])(
   },
 );
 
-it("keeps quota-exceeded edits in memory, reports unsaved, and retries on the next save", async () => {
+it("keeps quota-exceeded edits in memory, reports unsaved, and retries after backoff", async () => {
   const store = new Store(),
     keys = await deriveRoomKeys(roomFor(103));
   const doc = new CollabDoc();
   doc.hydrate(demoDiagram());
   store.fail = true;
   const changed = vi.fn(),
-    recovery = new RoomRecovery(store, keys, changed);
+    clock = new FakeClock(),
+    recovery = new RoomRecovery(store, keys, changed, Date.now, clock);
   recovery.watch(doc);
   await recovery.flush(doc);
   doc.apply([{ op: "meta", set: { title: "Keep this work" } }]);
@@ -277,6 +278,7 @@ it("keeps quota-exceeded edits in memory, reports unsaved, and retries on the ne
   expect(doc.project().diagram?.title).toBe("Keep this work");
   store.fail = false;
   store.contention = true;
+  clock.advance(RECOVERY_RETRY.initialMs);
   await recovery.flush(doc);
   expect(recovery.saved).toBe(true);
   expect(recovery.problem).toBeUndefined();
@@ -774,7 +776,8 @@ it("bounds pending plaintext while a write stalls or fails, then checkpoints all
     keys = await deriveRoomKeys(roomFor(125)),
     doc = new CollabDoc();
   doc.hydrate(demoDiagram());
-  const recovery = new RoomRecovery(store, keys);
+  const clock = new FakeClock(),
+    recovery = new RoomRecovery(store, keys, undefined, Date.now, clock);
   recovery.watch(doc);
   await recovery.flush(doc);
   let release!: () => void, entered!: () => void;
@@ -808,6 +811,7 @@ it("bounds pending plaintext while a write stalls or fails, then checkpoints all
   }
   store.fail = false;
   const write = vi.spyOn(store, "write");
+  clock.advance(RECOVERY_RETRY.initialMs);
   await recovery.flush(doc);
   expect(write).toHaveBeenCalledTimes(1);
   expect(recovery.saved).toBe(true);
@@ -862,7 +866,8 @@ it.each(["ciphertext", "iv", "schema", "resource", "replacement", "shape", "entr
       a = new CollabDoc(),
       b = new CollabDoc();
     a.hydrate(demoDiagram());
-    const first = new RoomRecovery(store, keys),
+    const clock = new FakeClock(),
+      first = new RoomRecovery(store, keys, undefined, Date.now, clock),
       second = new RoomRecovery(store, keys);
     first.watch(a);
     await first.flush(a);
@@ -939,6 +944,7 @@ it.each(["ciphertext", "iv", "schema", "resource", "replacement", "shape", "entr
       expect(first.saved).toBe(false);
       limits.maxCheckpointStructs = previous;
       if (fault === "entries") record.updates = originalUpdates;
+      clock.advance(RECOVERY_RETRY.initialMs);
       await first.flush(a);
     } else {
       expect(remove).toHaveBeenCalledWith(first.id, record.token);
@@ -982,4 +988,255 @@ it("falls back to the last valid checkpoint on a corrupt journal during restore"
   await reload.close(restored);
   doc.destroy();
   restored.destroy();
+});
+
+it.each(["checkpoint", "append"])("backs off failed %s saves while typing and resets after success", async (mode) => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(129)),
+    clock = new FakeClock(),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const recovery = new RoomRecovery(store, keys, undefined, Date.now, clock);
+  if (mode === "append") {
+    recovery.watch(doc);
+    await recovery.flush(doc);
+  }
+  const encode = vi.spyOn(doc, "encodeDiff"),
+    encrypt = vi.spyOn(crypto.subtle, "encrypt");
+  onTestFinished(() => {
+    encode.mockRestore();
+    encrypt.mockRestore();
+  });
+  store.fail = true;
+  if (mode === "checkpoint") recovery.watch(doc);
+  else doc.apply([{ op: "meta", set: { title: "Fail append" } }]);
+  await recovery.flush(doc);
+  let delay: number = RECOVERY_RETRY.initialMs;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const encodes = encode.mock.calls.length,
+      encrypts = encrypt.mock.calls.length;
+    expect(clock.nextDue()).toBe(clock.now() + delay);
+    for (let edit = 0; edit < 16; edit++) {
+      doc.apply([{ op: "meta", set: { title: `Attempt ${attempt}, edit ${edit}` } }]);
+      await recovery.flush(doc);
+      expect(recovery.saved).toBe(false);
+      expect(recovery.problem).toBe("unavailable");
+      expect(recovery.pendingBytes).toBe(0);
+    }
+    clock.advance(delay - 1);
+    await recovery.flush(doc);
+    expect(encode).toHaveBeenCalledTimes(encodes);
+    expect(encrypt).toHaveBeenCalledTimes(encrypts);
+    clock.advance(1);
+    await recovery.flush(doc);
+    expect(encode).toHaveBeenCalledTimes(encodes + 1);
+    expect(encrypt).toHaveBeenCalledTimes(encrypts + 1);
+    expect(recovery.saved).toBe(false);
+    expect(recovery.problem).toBe("unavailable");
+    delay = Math.min(delay * 2, RECOVERY_RETRY.maxMs);
+  }
+  store.fail = false;
+  clock.advance(delay);
+  await recovery.flush(doc);
+  expect(recovery.saved).toBe(true);
+  expect(recovery.problem).toBeUndefined();
+  expect(clock.pending).toBe(0);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(restored);
+  expect(await restored.syncProof()).toEqual(await doc.syncProof());
+  store.fail = true;
+  doc.apply([{ op: "meta", set: { title: "Failure after recovery" } }]);
+  await recovery.flush(doc);
+  expect(clock.nextDue()).toBe(clock.now() + RECOVERY_RETRY.initialMs);
+  await recovery.close(doc);
+  expect(recovery.saved).toBe(false);
+  expect(clock.pending).toBe(0);
+  doc.destroy();
+  restored.destroy();
+});
+
+it("drives recovery retries with the session clock and cancels them on leave", async () => {
+  const store = new Store(),
+    clock = new FakeClock(),
+    net = new MemoryNetwork();
+  store.fail = true;
+  const session = await CollabSession.open({
+    room: roomFor(130),
+    transport: net.connect(),
+    privacy: {},
+    initial: demoDiagram(),
+    recovery: store,
+    clock,
+  });
+  await session.recovery!.flush(session.doc);
+  expect(session.recovery!.saved).toBe(false);
+  expect(session.recovery!.problem).toBe("unavailable");
+  store.fail = false;
+  clock.advance(RECOVERY_RETRY.initialMs);
+  await session.recovery!.flush(session.doc);
+  expect(session.roomStatus).toBe("saved-device");
+  expect(session.recovery!.problem).toBeUndefined();
+  store.fail = true;
+  session.doc.apply([{ op: "meta", set: { title: "Unsaved on leave" } }]);
+  await session.recovery!.flush(session.doc);
+  await session.leave();
+  expect(session.recovery!.saved).toBe(false);
+  expect(clock.pending).toBe(0);
+  session.doc.destroy();
+});
+
+it("decrypts the checkpoint once during a full recovery read with journal entries", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(131)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await recovery.flush(doc);
+  for (let i = 0; i < 2; i++) {
+    doc.apply([{ op: "meta", set: { title: `Journal ${i}` } }]);
+    await recovery.flush(doc);
+  }
+  const record = store.records.get(recovery.id)!;
+  expect(record.updates).toHaveLength(2);
+  const decrypt = vi.spyOn(crypto.subtle, "decrypt");
+  onTestFinished(() => decrypt.mockRestore());
+  const restored = new CollabDoc(),
+    reload = new RoomRecovery(store, keys);
+  await reload.restore(restored);
+  expect(reload.saved).toBe(true);
+  expect(reload.problem).toBeUndefined();
+  expect(decrypt).toHaveBeenCalledTimes(1 + record.updates!.length);
+  expect(
+    decrypt.mock.calls.filter(([, , bytes]) => Buffer.from(bytes as Uint8Array).equals(Buffer.from(record.ciphertext))),
+  ).toHaveLength(1);
+  expect(await restored.syncProof()).toEqual(await doc.syncProof());
+  await recovery.close(doc);
+  doc.destroy();
+  restored.destroy();
+});
+
+it("appends bounded overlapping edits after a required checkpoint instead of repeatedly encoding it", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(132)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const recovery = new RoomRecovery(store, keys),
+    write = store.write.bind(store);
+  let saves = 0;
+  vi.spyOn(store, "write").mockImplementation(async (record, expected) => {
+    if (++saves <= 10) {
+      doc.apply([{ op: "meta", set: { title: `Overlapping ${saves}` } }]);
+      expect(recovery.saved).toBe(false);
+      expect(recovery.pendingBytes).toBeGreaterThan(0);
+      expect(recovery.pendingBytes).toBeLessThanOrEqual(RECOVERY_LIMITS.journalBytes);
+    }
+    return write(record, expected);
+  });
+  const encode = vi.spyOn(doc, "encodeDiff"),
+    append = vi.spyOn(store, "append");
+  recovery.watch(doc);
+  await recovery.flush(doc);
+  expect(encode).toHaveBeenCalledTimes(1);
+  expect(append).toHaveBeenCalledTimes(10);
+  expect(recovery.saved).toBe(true);
+  expect(recovery.pendingBytes).toBe(0);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(restored);
+  expect(await restored.syncProof()).toEqual(await doc.syncProof());
+  await recovery.close(doc);
+  doc.destroy();
+  restored.destroy();
+});
+
+function barrier() {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { held, release };
+}
+
+it("checkpoints overflowed deltas after a stalled append succeeds", async () => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(133)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await recovery.flush(doc);
+  const entered = barrier(),
+    blocked = barrier(),
+    append = store.append.bind(store);
+  vi.spyOn(store, "append").mockImplementationOnce(async (...args) => {
+    entered.release();
+    await blocked.held;
+    return append(...args);
+  });
+  const encode = vi.spyOn(doc, "encodeDiff");
+  doc.apply([{ op: "meta", set: { title: "Stalled append" } }]);
+  await entered.held;
+  for (let i = 0; i < 40; i++) {
+    doc.apply([{ op: "meta", set: { title: `${i}:` + "x".repeat(8000) } }]);
+    expect(recovery.pendingBytes).toBeLessThanOrEqual(RECOVERY_LIMITS.journalBytes);
+  }
+  blocked.release();
+  await recovery.flush(doc);
+  expect(recovery.saved).toBe(true);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(restored);
+  expect(await restored.syncProof()).toEqual(await doc.syncProof());
+  expect(encode).toHaveBeenCalledTimes(1);
+  expect(store.records.get(recovery.id)!.updates).toBeUndefined();
+  await recovery.close(doc);
+  doc.destroy();
+  restored.destroy();
+});
+
+it.each(["append", "checkpoint"])("keeps saved false until the latest %s is durable", async (mode) => {
+  const store = new Store(),
+    keys = await deriveRoomKeys(roomFor(134)),
+    doc = new CollabDoc();
+  doc.hydrate(demoDiagram());
+  const baseProof = await doc.syncProof(),
+    first = barrier(),
+    second = barrier(),
+    releaseFirst = barrier(),
+    releaseSecond = barrier(),
+    write = store.write.bind(store);
+  let writes = 0;
+  vi.spyOn(store, "write").mockImplementation(async (record, expected) => {
+    writes++;
+    if (writes === 1) {
+      first.release();
+      await releaseFirst.held;
+    }
+    if (writes === 2) {
+      second.release();
+      await releaseSecond.held;
+    }
+    return write(record, expected);
+  });
+  const recovery = new RoomRecovery(store, keys);
+  recovery.watch(doc);
+  await first.held;
+  for (let i = 0; i < (mode === "checkpoint" ? RECOVERY_LIMITS.journalUpdates + 1 : 1); i++)
+    doc.apply([{ op: "meta", set: { title: `After captured base ${i}` } }]);
+  expect(recovery.saved).toBe(false);
+  releaseFirst.release();
+  await second.held;
+  const between = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(between);
+  expect(await between.syncProof()).toEqual(baseProof);
+  expect(await between.syncProof()).not.toEqual(await doc.syncProof());
+  expect(recovery.saved).toBe(false);
+  releaseSecond.release();
+  await recovery.flush(doc);
+  expect(recovery.saved).toBe(true);
+  expect(store.records.get(recovery.id)!.updates?.length ?? 0).toBe(mode === "append" ? 1 : 0);
+  const restored = new CollabDoc();
+  await new RoomRecovery(store, keys).restore(restored);
+  expect(await restored.syncProof()).toEqual(await doc.syncProof());
+  await recovery.close(doc);
+  for (const d of [doc, between, restored]) d.destroy();
 });

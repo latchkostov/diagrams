@@ -166,7 +166,9 @@ export class CollabSession {
     const random = opts.random ?? secureRandom;
     const keys = await deriveRoomKeys(opts.room);
     const doc = opts.doc ?? new CollabDoc({ clientId: opts.clientId });
-    const recovery = opts.recovery ? new RoomRecovery(opts.recovery, keys, () => session.emit()) : undefined;
+    const recovery = opts.recovery
+      ? new RoomRecovery(opts.recovery, keys, () => session.emit(), Date.now, opts.clock ?? realClock)
+      : undefined;
     await recovery?.restore(doc);
     if (opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
     const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };

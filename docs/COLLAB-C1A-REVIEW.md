@@ -121,3 +121,56 @@ then save successfully after repair. Removing that exact tail-count guard fails 
 A subsequent full run exposed the same hang-backstop risk in the existing twelve-seed convergence
 sweep. It is now twelve independent cases, retaining all twelve seeds, all sixteen steps per seed and
 every convergence/history assertion, with cleanup per seed rather than after the whole sweep.
+
+## Review round 3 (20261016-191713)
+
+All five findings are addressed. Failed saves use the session clock for deterministic exponential
+backoff (1, 2, 4, 8, 16, then 30 seconds, capped), keeping `saved=false` and the storage warning until
+the latest revision succeeds. Success resets backoff; leaving explicitly attempts a final save and
+cancels timers. Full reads decrypt each checkpoint once, retain its validated base for corruption
+fallback, and decrypt/validate the journal separately. Captured checkpoint revisions permit bounded
+later deltas to append after acknowledgement; overflow and rejected bases require a new checkpoint.
+
+New operation-count and fake-clock regressions cover both initial-checkpoint and append failures,
+retry capping/reset, session-clock integration/disposal, one checkpoint decryption, ten overlapping
+writes with one full encode and ten appends, overflow after a successful stalled append, and saved
+status while either a second checkpoint or an append is independently held. Production-browser
+coverage keeps failure guidance and file-copy recovery available during edits, releases storage,
+advances the clock and verifies the automatically saved revision survives reload.
+
+Deliberate regressions, all restored before verification:
+
+- Bypass backoff: initial-checkpoint/append cases encode 18/17 times rather than 1/0 during typing.
+- Restore the duplicate full decoder: three encrypted chunks need four decryptions instead of three.
+- Discard overlapping required-checkpoint deltas: zero appends instead of ten.
+- Drop overflowed deltas without requiring a checkpoint: restored CRDT proof differs from live state
+  after the stalled append succeeds.
+- Acknowledge each write before the latest revision: both independently held successor-write cases
+  report saved too early.
+
+Rejected: per-keystroke retries (full-document work while storage remains unavailable), waiting for
+an edit-free checkpoint write (sustained full rewrites), unbounded delta retention, weakening recovery
+validation, and re-recording unrelated goldens. The rebase preserves both documentation histories and
+the union of message keys, regenerates skill artifacts from master's files at plugin 1.1.35, and
+changes only the intentional collaboration catalog fingerprint relative to master. The release note
+explains its 27 added English messages, fallback counts and otherwise unchanged output.
+
+The designer-agent source review found no UX finding or added chrome. Per the task's new process,
+verification uses `QUICK_PARITY=1 bash /c/Users/latch/bin/verify-quick.sh 6380` with both collaboration
+specs; the full local push gate is intentionally not invoked. CI runs the complete suite.
+
+The first quick run's default unit worker pool exhausted resources: eight failures comprised five
+hang-backstop timeouts, two complexity ratios and a skill subprocess's `VirtualAlloc` failure. The
+runner is repeated with `VITEST_MAX_WORKERS=2`, preserving all tests, assertions and timeouts. Its
+first browser run passed 17 checks and caught the new retry test reloading with its clock still
+paused, leaving the lazy Lab at Loading. That fixture now resumes the clock after the durability
+assertions and before reload; the recovered-label assertion remains unchanged. Parity passed all
+2,196 goldens unchanged in that initial check.
+
+Final verification with two unit workers passes all 620 related test files: 8,641 passed, four existing
+skips, no type errors. Production Chromium passes both collaboration specs: 18 passed, zero failed,
+zero flaky, no retries; the corrected retry fixture also passes three isolated repeats. Parity checks
+all 2,196 goldens unchanged (1,274 Node and 76 browser tests); regeneration against master changed only
+the catalog explained above. Production build and entry budget pass at 106.0/123.5 kB gzip. Lint,
+typecheck, formatting, i18n and skill freshness pass; existing lint/translation warnings remain.
+The quick gate ends: `QUICK: 9ac03794 failures=0 behind_master=0 292s`.

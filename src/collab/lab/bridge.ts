@@ -21,6 +21,8 @@ export interface CollabLabFixture {
   room: RoomLink;
   wire: LabWire;
   initial?: DiagramFile;
+  /** Mount the existing image-export controller for production-browser integration tests. */
+  imageExport?: boolean;
 }
 
 /** Same-origin tabs only. This is a local Lab transport, never public matchmaking. */

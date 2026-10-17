@@ -1,6 +1,7 @@
-import { useEffect, useState, useSyncExternalStore, useRef } from "react";
+import { useEffect, useState, useSyncExternalStore, useRef, type RefObject } from "react";
 import { CanvasView } from "../../canvas/CanvasView";
 import { t, useLocale } from "../../i18n";
+import { useInterop } from "../../interop/useInterop";
 import { downloadText } from "../../interop/files";
 import { serializeNative } from "../../interop/native";
 import type { CanvasHandle } from "../../canvas/CanvasView";
@@ -217,6 +218,7 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
         </div>
       )}
       <p>{t("collab.labOnly")}</p>
+      {window.__collabC1?.imageExport && <ImageExportFixture canvas={canvas} slug={`room-${session.keys.roomId}`} />}
       <div className="collab-real-editor">
         {ready && (
           <CanvasView
@@ -230,5 +232,22 @@ function RoomEditor({ room, roomKey }: { room: CollaborativeEditorRoom; roomKey:
         )}
       </div>
     </section>
+  );
+}
+
+/** Lab fixture only: exercise the real export/retry UI without wiring file imports or sharing into a room. */
+function ImageExportFixture({ canvas, slug }: { canvas: RefObject<CanvasHandle | null>; slug: string }) {
+  const interop = useInterop({
+    view: "lab",
+    slug,
+    canvas,
+    openDiagram: () => undefined,
+    openShared: () => {},
+    isPublicExample: () => false,
+  });
+  return (
+    <button className="btn" data-testid="collab-export-png" onClick={() => void interop.exportPng({ scale: 1 })}>
+      {t("file.exportPng")}
+    </button>
   );
 }

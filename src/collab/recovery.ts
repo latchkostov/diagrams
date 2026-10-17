@@ -4,6 +4,8 @@ import { CollabDoc } from "./doc";
 import type { RoomKeys } from "./keys";
 import { secureRandom } from "./random";
 import { inspectCheckpoint } from "./guard";
+import { realClock, type Clock } from "./clock";
+import { RecoveryCodec, RecoveryResourceError } from "./recoveryCodec";
 import {
   RECOVERY_LIMITS,
   recoverySummary,
@@ -14,8 +16,7 @@ import {
 } from "./recoveryStore";
 
 export type RecoveryProblem = "unavailable" | "corrupt";
-class RecoveryResourceError extends Error {}
-const resourceProblems = new Set(["too-large", "too-many-structs", "too-many-clients", "too-many-deletions"]);
+export const RECOVERY_RETRY = { initialMs: 1000, maxMs: 30_000 } as const;
 
 /** Persists CRDT identity, including tombstones; never rebuild a checkpoint from native JSON. */
 export class RoomRecovery {
@@ -31,21 +32,27 @@ export class RoomRecovery {
   private pending: { revision: number; update: Uint8Array }[] = [];
   private queuedBytes = 0;
   private checkpointRequired = true;
+  private checkpointRevision?: number;
+  private retry?: () => void;
+  private retryDelay: number = RECOVERY_RETRY.initialMs;
   /** Diagnostic bound on retained plaintext deltas (the live CRDT is owned by the session). */
   get pendingBytes(): number {
     return this.queuedBytes;
   }
   readonly id: string;
   private readonly aad: Uint8Array;
+  private readonly codec: RecoveryCodec;
 
   constructor(
     private readonly store: RecoveryStore,
     private readonly keys: RoomKeys,
     private readonly changed: () => void = () => {},
     private readonly now = Date.now,
+    private readonly clock: Clock = realClock,
   ) {
     this.id = `${keys.roomId}:${keys.epoch}`;
     this.aad = textToBytes(`livediagrams/collab/storage/v1/${this.id}`);
+    this.codec = new RecoveryCodec(keys, this.aad);
   }
 
   private async decode(record: RecoveryRecord): Promise<Uint8Array> {
@@ -70,37 +77,7 @@ export class RoomRecovery {
     chunks: RecoveryChunk[],
     maxBytes: number = RECOVERY_LIMITS.recordBytes,
   ): Promise<Uint8Array> {
-    if (chunks.length > RECOVERY_LIMITS.journalUpdates + 1) throw new RecoveryResourceError();
-    let bytes = 0;
-    const decoded: Uint8Array[] = [];
-    for (const chunk of chunks) {
-      if (!(chunk.iv instanceof Uint8Array) || chunk.iv.length !== 12 || !(chunk.ciphertext instanceof Uint8Array))
-        throw new Error("corrupt-recovery");
-      bytes += chunk.ciphertext.byteLength;
-      if (bytes > maxBytes) throw new RecoveryResourceError();
-      decoded.push(
-        new Uint8Array(
-          await crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: chunk.iv as BufferSource, additionalData: this.aad as BufferSource },
-            this.keys.storage,
-            chunk.ciphertext as BufferSource,
-          ),
-        ),
-      );
-    }
-    const update = decoded.length === 1 ? decoded[0] : Y.mergeUpdates(decoded);
-    const result = inspectCheckpoint(update);
-    if (!result.ok) {
-      if (resourceProblems.has(result.problem)) throw new RecoveryResourceError();
-      throw new Error("corrupt-recovery");
-    }
-    const scratch = new CollabDoc();
-    try {
-      if (!scratch.applyCheckpoint(update).ok) throw new Error("corrupt-recovery");
-    } finally {
-      scratch.destroy();
-    }
-    return update;
+    return this.codec.validate(await this.codec.decrypt(chunks, maxBytes));
   }
 
   private async read(): Promise<{ record?: RecoverySummary; update?: Uint8Array }> {
@@ -131,7 +108,16 @@ export class RoomRecovery {
     let base: Uint8Array | undefined;
     try {
       base = await this.decode({ ...record, updates: undefined });
-      const update = record.updates?.length ? await this.decode(record) : base;
+      let update = base;
+      if (record.updates?.length) {
+        if (
+          record.updates.length > RECOVERY_LIMITS.journalUpdates ||
+          recoverySummary(record).bytes > RECOVERY_LIMITS.recordBytes
+        )
+          throw new RecoveryResourceError();
+        const deltas = await this.codec.decrypt(record.updates, RECOVERY_LIMITS.journalBytes);
+        update = this.codec.validate([base, ...deltas]);
+      }
       this.knownToken = record.token;
       this.cursor = { checkpoint: record.checkpoint ?? record.token, updates: record.updates?.length ?? 0 };
       return { record: recoverySummary(record), update };
@@ -148,6 +134,7 @@ export class RoomRecovery {
 
   private requireCheckpoint(): void {
     this.checkpointRequired = true;
+    this.checkpointRevision = undefined;
     this.pending = [];
     this.queuedBytes = 0;
   }
@@ -167,7 +154,7 @@ export class RoomRecovery {
   watch(doc: CollabDoc): void {
     const changed = (update: Uint8Array) => {
       this.revision++;
-      if (!this.checkpointRequired) {
+      if (!this.checkpointRequired || this.checkpointRevision !== undefined) {
         if (
           this.queuedBytes + update.byteLength > RECOVERY_LIMITS.journalBytes ||
           this.pending.length >= RECOVERY_LIMITS.journalUpdates
@@ -192,12 +179,17 @@ export class RoomRecovery {
   }
 
   flush(doc: CollabDoc): Promise<void> {
-    if (this.closed || doc.isEmpty()) return Promise.resolve();
+    if (this.closed || this.retry || doc.isEmpty()) return Promise.resolve();
     return (this.job ??= this.save(doc)
       .catch(() => {
         this.requireCheckpoint();
         this.saved = false;
         this.problem = "unavailable";
+        this.retry = this.clock.after(this.retryDelay, () => {
+          this.retry = undefined;
+          void this.flush(doc);
+        });
+        this.retryDelay = Math.min(this.retryDelay * 2, RECOVERY_RETRY.maxMs);
       })
       .finally(() => {
         this.job = undefined;
@@ -223,6 +215,12 @@ export class RoomRecovery {
       // A full encode/validation only at initialization or compaction. Keystrokes validate/encrypt
       // the changed structs, and IDB appends only those bytes in the same CAS transaction as its head.
       const encoded = compact ? doc.encodeDiff() : Y.mergeUpdates(updates);
+      if (compact) {
+        this.checkpointRevision = revision;
+        // The captured base owns these revisions. Retain only edits arriving after its encode.
+        this.pending = [];
+        this.queuedBytes = 0;
+      }
       if (!inspectCheckpoint(encoded).ok) throw new RecoveryResourceError();
       const encrypted = await this.encrypt(encoded);
       const token = bytesToBase64Url(secureRandom(16));
@@ -230,7 +228,11 @@ export class RoomRecovery {
       const saved = compact
         ? await this.store.write({ id: this.id, token, touched, ...encrypted }, record?.token)
         : await this.store.append(this.id, record.token!, token, touched, encrypted);
-      if (!saved) continue;
+      if (!saved) {
+        // A rejected base never covered its captured revisions on disk.
+        if (compact) this.requireCheckpoint();
+        continue;
+      }
       this.knownToken = token;
       this.cursor = {
         checkpoint: compact ? token : record.checkpoint!,
@@ -238,10 +240,12 @@ export class RoomRecovery {
       };
       this.pending = this.pending.filter((p) => p.revision > revision);
       this.queuedBytes = this.pending.reduce((n, p) => n + p.update.byteLength, 0);
-      if (compact && this.revision === revision) this.checkpointRequired = false;
+      if (compact && this.checkpointRevision === revision) this.checkpointRequired = false;
+      this.checkpointRevision = undefined;
       this.written = revision;
     }
     this.saved = true;
+    this.retryDelay = RECOVERY_RETRY.initialMs;
     if (this.problem === "unavailable") this.problem = undefined;
   }
 
@@ -259,7 +263,15 @@ export class RoomRecovery {
 
   async close(doc: CollabDoc): Promise<void> {
     this.stop?.();
+    this.cancelRetry();
+    // Leaving is an explicit final save attempt, even during backoff.
     await this.flush(doc);
     this.closed = true;
+    this.cancelRetry();
+  }
+
+  private cancelRetry(): void {
+    this.retry?.();
+    this.retry = undefined;
   }
 }

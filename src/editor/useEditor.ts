@@ -1851,6 +1851,7 @@ export function createEditor(
     updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps, state = committed) => {
       if (next.slug !== latest.slug || next.documentId !== latest.documentId)
         version = { identity: {}, revision: version.revision + 1 };
+      // History keys include remote room projections and Undo/Redo, but exclude transient live state.
       else if (next.documentKey !== latest.documentKey) documentEdited();
       if (next.slug !== latest.slug) cancelLayout();
       rf = flow;
