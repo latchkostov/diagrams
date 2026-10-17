@@ -21,7 +21,7 @@ Without it, `pnpm parity:node` still checks everything that doesn't need a brows
 Exactly 19 goldens change intentionally: the three new Inspector messages update
 `node/i18n/catalogs.json`; 18 `browser/layout/*.json` files change only the horizontal translation
 in `tidy.viewport`, because selecting everything opens a wider Inspector. The complete filename list
-and explanation are in [the release note](RELEASE-NOTES.md#resizable-inspector-2026-10-16).
+and explanation are in [the release note](RELEASE-NOTES-HISTORY.md#resizable-inspector-2026-10-16).
 Every node/edge coordinate, path, label, zoom, Auto-layout result, simulation, export and image is
 unchanged. `pnpm parity:update` regenerates these files; none are hand-edited.
 

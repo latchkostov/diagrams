@@ -1,10 +1,9 @@
-// Writes the static agent docs (public/schema/diagram.v1.json, ops.v1.json, stencils.json), the
-// generated parts of the agent skill (skills/livediagrams/, see scripts/skill-gen.ts), vercel.json's
+// Writes the generated parts of the agent skill (skills/livediagrams/, see scripts/skill-gen.ts), vercel.json's
 // security headers (scripts/security-headers.ts) and the self-hosting samples in deploy/self-host/
 // (scripts/self-host-headers.ts) from the code, so they never drift from the app. Runs
 // before every build (`prebuild`); run it by hand with `pnpm schemas`. The sources are
-// src/ai/webmcp/publicSchemas.ts, scripts/skill-gen.ts and scripts/security-headers.ts, loaded through
-// Vite so TypeScript and the app's imports work unchanged.
+// scripts/skill-gen.ts and scripts/security-headers.ts, loaded through
+// Vite so TypeScript and the app's imports work unchanged. Public schemas are emitted by schema-assets.ts.
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -30,9 +29,6 @@ function writeAll(dir, files) {
 }
 const report = (what, changed, total, where) =>
   console.log(`${what}: ${changed ? `wrote ${changed} of` : "unchanged,"} ${total} files in ${where}`);
-
-const files = (await load("src/ai/webmcp/publicSchemas.ts")).publicSchemaFiles();
-report("schemas", writeAll(path.join(root, "public", "schema"), files), Object.keys(files).length, "public/schema/");
 
 const skill = await load("scripts/skill-gen.ts");
 const skillFiles = await skill.generateSkillFiles(root);

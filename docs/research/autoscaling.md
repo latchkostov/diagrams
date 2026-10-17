@@ -760,4 +760,4 @@ Acceptance:
   cannot preserve activation at a workload's scale, require scale 1 for that scenario and explain why.
 
 This research introduces no user-visible feature, so it does not add a release-note entry promising one.
-Implementation PRs must add `docs/RELEASE-NOTES.md` entries for the behaviour they actually ship.
+Implementation PRs must add `docs/release-notes/YYYY-MM-DD-short-slug.md` fragments for the behaviour they actually ship.

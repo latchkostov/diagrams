@@ -450,4 +450,4 @@ in step:
 
 Every feature batch ends with a **UX review gate** before new work starts: a designer agent walks the
 whole app against these rules, flags clutter and inconsistency, and simplifies (removes, merges, moves to
-context) before adding. Findings go in `docs/DESIGN-REVIEW.md`.
+context) before adding. Findings go in a new `docs/design-review/YYYY-MM-DD-short-slug.md` fragment.

@@ -540,7 +540,7 @@ vendor names and user-authored routes are not translated. Every interactive cont
 
 Design review against the chrome budget: no additional top-bar control, no endpoint nodes, four router columns,
 three mix columns, no always-open advanced fields and no overlapping canvas legend. Each implementation PR ends
-with the repository's designer UX gate, recording findings in `docs/DESIGN-REVIEW.md`, before the next feature batch.
+with the repository's designer UX gate, recording findings in a new `docs/design-review/YYYY-MM-DD-short-slug.md` fragment, before the next feature batch.
 
 ## 5. Phasing and acceptance
 

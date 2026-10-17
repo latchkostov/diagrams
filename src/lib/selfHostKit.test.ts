@@ -23,7 +23,7 @@ const read = (file: string) => readFileSync(join(root, file), "utf8").replace(/\
 const options = { frameAncestors: ["https://wiki.example.com"], base: "/tools/diagrams/" };
 
 describe("self-host kit", () => {
-  it("keeps every committed target config in sync with the shared policy", () => {
+  it("keeps committed target configs current (run `pnpm regen` if this fails)", () => {
     for (const [file, contents] of Object.entries(hostingTemplates()))
       expect(read(`deploy/self-host/${file}`), file).toBe(contents);
   });
@@ -252,10 +252,16 @@ describe("self-host kit", () => {
       mkdirSync(join(input, "docs"));
       writeFileSync(join(input, "dist", "index.html"), "<html><head></head><body>built site</body></html>");
       writeFileSync(join(input, ".env.local"), "SECRET=must-not-ship");
-      for (const file of ["SELF-HOSTING.md", "EMBEDDING.md", "RELEASE-NOTES.md", "INTEROP.md"])
+      for (const file of ["SELF-HOSTING.md", "EMBEDDING.md", "INTEROP.md"])
         writeFileSync(join(input, "docs", file), "documentation");
+      mkdirSync(join(input, "docs/release-notes"));
+      writeFileSync(join(input, "docs/RELEASE-NOTES-HISTORY.md"), "# Release notes\n\n## Older\n\nHistory.\n");
+      writeFileSync(join(input, "docs/release-notes/2026-10-17-new.md"), "## New\n\nCurrent release.\n");
       writeFileSync(join(input, "LICENSE"), "license");
       const output = stageOffline(input, join(scratch, "output"), "1.2.3-abcd");
+      expect(readFileSync(join(output, "RELEASE-NOTES.md"), "utf8")).toBe(
+        "# Release notes\n\n## New\n\nCurrent release.\n\n## Older\n\nHistory.\n",
+      );
       const sums = readFileSync(join(output, "SHA256SUMS"), "utf8");
       expect(sums).not.toContain(".env");
       expect(sums).toContain("site/index.html");

@@ -802,7 +802,7 @@ covered by the same fixes. Other P2 fixes cover scoped Undo selection/focus/targ
 deletion (including SVG), linear selected-target checks, metadata-only eviction and v1 migration,
 durability-aware navigation tests, status notifications and opening-session disposal. Regression
 proofs remove each fix temporarily. The shared asynchronous device-wipe lifecycle is ticketed in
-[BACKLOG](../BACKLOG.md#collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16), with the
+[BACKLOG](../backlog/2026-10-16-collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16.md), with the
 current Lab limitation disclosed in the threat model. It must land before production rooms are enabled.
 
 UX source/test review found no remaining actionable issue: recovery copying has a labeled selectable

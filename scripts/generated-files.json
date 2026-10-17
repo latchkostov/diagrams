@@ -1,0 +1,29 @@
+{
+  "files": [
+    "vercel.json",
+    "skills/livediagrams/scripts/lib/spec.json",
+    "skills/livediagrams/scripts/lib/app.mjs",
+    "skills/livediagrams/scripts/lib/inject.mjs",
+    "skills/livediagrams/scripts/lib/icons.json",
+    "skills/livediagrams/scripts/lib/viewer-template.html",
+    "skills/livediagrams/reference/stencils.md",
+    "deploy/self-host/nginx.conf",
+    "deploy/self-host/_headers",
+    "deploy/self-host/framed/nginx.conf",
+    "deploy/self-host/framed/_headers",
+    "deploy/self-host/docker/default.conf",
+    "deploy/self-host/nginx/nginx.conf",
+    "deploy/self-host/caddy/Caddyfile",
+    "deploy/self-host/netlify/netlify.toml",
+    "deploy/self-host/vercel/vercel.json",
+    "deploy/self-host/cloudflare/_headers",
+    "deploy/self-host/cloudflare/_redirects",
+    "deploy/self-host/github-pages/meta-csp.html",
+    "deploy/self-host/azure/staticwebapp.config.json",
+    "deploy/self-host/aws/response-headers-policy.json",
+    "deploy/self-host/aws/embed-response-headers-policy.json",
+    "deploy/self-host/aws/assets-response-headers-policy.json",
+    "deploy/self-host/aws/auth-response-headers-policy.json"
+  ],
+  "regions": ["skills/livediagrams/reference/format.md", "skills/livediagrams/reference/simulation.md"]
+}

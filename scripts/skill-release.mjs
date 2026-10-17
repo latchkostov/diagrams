@@ -1,11 +1,4 @@
-// `pnpm skill:release [--minor]`: refreshes the agent skill's committed Interactive HTML viewer
-// (skills/livediagrams/scripts/lib/viewer-template.html and icons.json) from a fresh build, regenerates
-// inject.mjs, and bumps the plugin's version in .claude-plugin/marketplace.json (patch by default), so Claude Code
-// users get the latest viewer. Run it when you want them to; nothing else rewrites those files (see
-// scripts/skill-viewer.ts). Commit what it changes.
-//
-// `pnpm skill:check`: reports whether the committed viewer differs from a fresh build. Informational only: it
-// exits 0 either way (the nightly workflow runs it), and 1 only if the build itself fails.
+// Refresh committed viewer assets; plugin updates track git commits (docs/PARALLEL-WORK.md).
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -16,16 +9,16 @@ import { runnerImport } from "vite";
 const root = path.resolve(import.meta.dirname, "..");
 const args = process.argv.slice(2);
 const check = args.includes("--check");
-const kind = args.includes("--minor") ? "minor" : "patch";
-const force = args.includes("--force");
-const unknown = args.filter((a) => !["--check", "--minor", "--force"].includes(a));
+const unknown = args.filter((a) => !["--check"].includes(a));
 if (unknown.length) {
-  console.error(`Unknown option ${unknown[0]}. Usage: node scripts/skill-release.mjs [--check | --minor | --force]`);
+  console.error(`Unknown option ${unknown[0]}. Usage: node scripts/skill-release.mjs [--check]`);
   process.exit(2);
 }
 
 const load = async (file) =>
   (await runnerImport(path.join(root, file), { root, configFile: false, logLevel: "error" })).module;
+const { checkRepositoryTextEncoding } = await load("scripts/text-encoding.ts");
+checkRepositoryTextEncoding(root);
 const viewer = await load("scripts/skill-viewer.ts");
 const { buildViewerTemplate } = await load("scripts/interactive-viewer.ts");
 const { SKILL_DIR } = await load("scripts/skill-gen.ts");
@@ -45,7 +38,7 @@ const kB = (text) => `${Math.round(Buffer.byteLength(text) / 1000).toLocaleStrin
 if (check) {
   if (!stale.length) console.log("skill viewer: the committed copy matches a fresh build.");
   else {
-    const message = `The agent skill's committed viewer differs from a fresh build (${stale.join(", ")}). Claude Code users get the committed copy; the site's /skill/ download is current. Run pnpm skill:release when you want them to get the latest viewer.`;
+    const message = `The agent skill's committed viewer differs from a fresh build (${stale.join(", ")}). Claude Code users get the committed copy; the site's /skill/ download is current. Run pnpm regen to refresh committed generated files.`;
     console.log(`warning: ${message}`);
     // A warning on the workflow run and a line in its summary, never a failure.
     if (process.env.GITHUB_ACTIONS) console.log(`::warning title=Skill viewer is stale::${message}`);
@@ -55,16 +48,11 @@ if (check) {
   process.exit(0);
 }
 
-if (!stale.length && !force) {
-  console.log("skill:release: the committed viewer is already current; nothing to release (--force bumps anyway).");
+if (!stale.length) {
+  console.log("skill:release: the committed viewer is already current; nothing to refresh.");
   process.exit(0);
 }
-// Staged, then swapped in with the version bump last; a failure rolls back, so a retry releases again.
-const manifest = path.join(root, ".claude-plugin", "marketplace.json");
-const bumped = viewer.applyRelease(
-  Object.fromEntries(stale.map((rel) => [path.join(skill, rel), fresh[rel]])),
-  manifest,
-  kind,
-);
+// Stage every asset first and roll back a failed swap.
+viewer.applyRelease(Object.fromEntries(stale.map((rel) => [path.join(skill, rel), fresh[rel]])));
 for (const rel of stale) console.log(`wrote ${SKILL_DIR}/${rel} (${kB(fresh[rel])})`);
-console.log(`livediagrams plugin ${bumped.from} → ${bumped.to} (.claude-plugin/marketplace.json). Commit these files.`);
+console.log("Skill assets refreshed. Commit these files; Claude Code updates track git commits.");

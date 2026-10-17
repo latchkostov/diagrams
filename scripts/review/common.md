@@ -12,3 +12,8 @@ Rules:
 - Severity: P0 = broken / data loss / security hole; P1 = likely bug or serious maintainability or perf
   problem; P2 = worthwhile improvement; P3 = minor.
 - Your final message must be JSON matching the provided schema.
+
+Durable findings are recorded after triage in individual `docs/backlog/YYYY-MM-DD-short-slug.md` files;
+UX reviews go in `docs/design-review/YYYY-MM-DD-short-slug.md`, release notes in `docs/release-notes/`.
+Do not ask the implementer to prepend to the shared indexes or frozen histories. Review reports themselves
+stay in `.reviews/` (the runner does not publish or append them to docs).

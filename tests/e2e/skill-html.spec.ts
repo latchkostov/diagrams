@@ -6,6 +6,7 @@ import { inflateRawSync } from "node:zlib";
 import { pathToFileURL } from "node:url";
 import { test, expect, gotoCanvas, E2E_TARGET } from "./fixtures";
 import { expectPlaying, filePayload, KAFKA, watchedPage } from "./html-viewer";
+import { publicSchemaFiles } from "../../src/ai/webmcp/publicSchemas";
 
 // The agent skill's offline Interactive HTML export (skills/livediagrams/scripts/export-html.mjs): it carries what
 // the app's file carries, from the viewer and icons released in the skill; the file opens from disk, renders and
@@ -14,6 +15,15 @@ import { expectPlaying, filePayload, KAFKA, watchedPage } from "./html-viewer";
 
 const SCRIPTS = join(process.cwd(), "skills", "livediagrams", "scripts");
 const BANNER = "Confidential: internal use only";
+
+test("the build publishes generated agent schemas", async ({ request }) => {
+  for (const [name, source] of Object.entries(publicSchemaFiles())) {
+    const response = await request.get(`/schema/${name}`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("application/json");
+    expect(await response.json(), name).toEqual(JSON.parse(source));
+  }
+});
 
 function run(script: string, ...args: string[]) {
   const r = spawnSync(process.execPath, [join(SCRIPTS, script), ...args], { encoding: "utf8" });
