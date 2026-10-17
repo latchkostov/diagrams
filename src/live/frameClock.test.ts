@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DIAGRAM_FORMAT, type DiagramFile, type SimRole } from "../model/types";
 import { LiveController } from "./controller";
-import { CATCH_UP_MS, createFrameClock, FRAME_STEP_MS } from "./frameClock";
+import { CATCH_UP_MS, createFrameClock, ENGINE_SHARE, FRAME_STEP_MS } from "./frameClock";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor" };
 const diagram = (): DiagramFile => ({
@@ -73,6 +73,26 @@ describe("live frame clock", () => {
     b.frame(1_000);
     expect(b.time()).toBe(a.time());
     expect(b.c.snapshot().nodes).toEqual(a.c.snapshot().nodes);
+  });
+
+  it("catches up only as far as the engine can afford", () => {
+    const clock = createFrameClock(0);
+    // Drawing makes frames slow and the engine is cheap (0.05 ms per simulated ms): the full catch-up.
+    clock.spent(100, 5);
+    expect(clock.step(3_000).sim).toBe(CATCH_UP_MS);
+    // The engine is what's slow (0.9 ms per simulated ms, a 170 ms frame): it may take half the frame, no more, and
+    // never less than the old 100 ms step.
+    const busy = createFrameClock(0);
+    busy.spent(100, 90);
+    busy.spent(100, 90);
+    expect(busy.step(170).sim).toBe(FRAME_STEP_MS);
+    expect(busy.step(170 + 400).sim).toBeCloseTo((ENGINE_SHARE * 400) / 0.9, 6);
+    // Its cost is smoothed: one cheap frame doesn't open the full catch-up at once.
+    busy.spent(100, 10);
+    expect(busy.step(570 + 600).sim).toBeCloseTo((ENGINE_SHARE * 600) / 0.5, 6);
+    // Readings with nothing simulated (paused) don't count.
+    busy.spent(0, 50);
+    expect(busy.step(1_170 + 600).sim).toBeCloseTo((ENGINE_SHARE * 600) / 0.5, 6);
   });
 
   it("never steps backwards on a clock that went back", () => {

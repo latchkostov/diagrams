@@ -550,7 +550,8 @@ export function LiveSession({
       (window as unknown as { __liveProbe?: LiveRenderer["probe"] }).__liveProbe = (l, r) => renderer.probe(l, r);
     const decorator = new Decorator(root);
     let raf = 0;
-    // Slow frames catch the simulation up (bounded); a hidden page resumes where it was (frameClock.ts).
+    // Slow frames catch the simulation up as far as the engine can afford; a hidden page resumes where it was
+    // (frameClock.ts).
     const clock = createFrameClock(performance.now());
     const onVisibility = () => {
       if (document.visibilityState === "hidden") clock.hidden();
@@ -577,7 +578,9 @@ export function LiveSession({
     const tick = (now: number) => {
       const step = clock.step(now);
       const dt = step.visual;
+      const engine = performance.now();
       controller.advance(step.sim);
+      clock.spent(step.sim, performance.now() - engine);
       const gen = controller.getState().generation;
       if (gen !== generation) {
         generation = gen;
