@@ -155,9 +155,11 @@ for (const [family, sizes] of FAMILIES)
           // Select: three nodes in turn; the first click also unfolds the inspector.
           for (let i = 0; i < 3; i++) {
             const target = await b.nodeNearCentre(ids.filter((_, k) => k % 3 === i));
+            const at = await b.pointOn(target);
             await b.mark();
-            const ms = await selectionVisible(page, label(target), () => b.clickNode(target));
+            const ms = await selectionVisible(page, label(target), () => page.mouse.click(at.x, at.y));
             push(i === 0 ? "select-first" : "select", ms);
+            await b.selectionSettled();
             await b.settle(300);
           }
 

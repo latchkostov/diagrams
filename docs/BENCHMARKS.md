@@ -151,6 +151,17 @@ Names need the function names that minification removes, so the counts run on a 
 Rolldown's `output.keepNames` (`scripts/bench/build.mjs`; no change to `vite.config.ts`). Timings never run on it. The
 hook asserts it counted something, so a React upgrade that changed these internals fails loudly instead of reading zero.
 
+The UI harness measures the visible `canvas-wrap` pane, which excludes the Inspector. A selection click
+waits for the deferred sheet reveal, pane size and camera transform to settle before the next target
+is measured. Hit testing covers the whole pane, including cards outside the centre search circle;
+off-pane targets are recovered with the app's Fit diagram action, never DOM scrolling. Recovery is
+disabled during the six counted selection clicks: all targets must be reachable before counting starts.
+Unconditionally fitting before the typing scenario was rejected because it changes the panned-view
+setup and raises its render counts. Keep the existing pan, selection, typing and drag interactions
+and their budgets; fit only when preparation needs it. Browser regressions hold the reveal clock,
+exercise cards outside the old circle and pan a target out of view. Restoring the old search and
+scrolling and removing the reveal wait fails all three regressions.
+
 ## Method and noise control
 
 | Concern              | What the suite does                                                                                                                                                                                                                                                                                                                                  |

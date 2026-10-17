@@ -200,6 +200,37 @@ export class Bench {
     return { x: Number(m[1]), y: Number(m[2]), k: Number(m[3]) };
   }
 
+  /** Wait for both the flex pane (which excludes the Inspector) and its camera to hold still. */
+  async canvasSettled() {
+    await expect(this.page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-fit-pending", "true");
+    let last = "";
+    await expect
+      .poll(
+        async () => {
+          const box = await this.page.getByTestId("canvas-wrap").boundingBox();
+          const now = box ? JSON.stringify([box, await this.viewport()]) : "";
+          const stable = now !== "" && now === last;
+          last = now;
+          return stable;
+        },
+        { intervals: [100, 150, 150, 250] },
+      )
+      .toBe(true);
+  }
+
+  /** Selection publishes before pointer-up reveals the Inspector and pans the narrower pane. */
+  async selectionSettled() {
+    await expect(this.page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+    await this.canvasSettled();
+  }
+
+  /** Use the editor's fit action: a transformed canvas cannot be brought into view by DOM scrolling. */
+  async fitDiagram() {
+    await this.canvasSettled();
+    await this.page.getByTestId("fit-view-button").click();
+    await this.canvasSettled();
+  }
+
   /**
    * Pans as the editor does: a middle-button drag on the empty canvas (a left drag draws a selection box in edit mode),
    * a frame per step.
@@ -303,6 +334,7 @@ export class Bench {
 
   /** A point on the empty canvas (no node, edge, boundary or annotation under it), near `at` (fractions of the pane). */
   async emptySpot(at = { x: 0.5, y: 0.5 }): Promise<{ x: number; y: number }> {
+    await this.canvasSettled();
     const spot = await this.page.evaluate((target) => {
       const wrapEl = document.querySelector('[data-testid="canvas-wrap"]');
       if (!wrapEl) return null;
@@ -364,67 +396,115 @@ export class Bench {
   }
 
   /**
-   * A diagram node near the canvas centre (spiralling out) with a point of its own to click (`pointOn`), among `ids`.
-   * Returns its test id and that point.
+   * A diagram node near the visible pane's centre with a point of its own to click (`pointOn`), among `ids`.
+   * Returns its test id.
    */
   async nodeNearCentre(ids: readonly string[], fallback?: readonly string[]): Promise<string> {
     return (await this.clickableNear(ids, fallback)).testId;
   }
 
-  /** Among `ids`, else (none of them clickable near the centre) among `fallback`. */
+  /** Among `ids`, else among `fallback`; if neither is reachable, fit through the editor and retry. */
   async clickableNear(
     ids: readonly string[],
     fallback?: readonly string[],
   ): Promise<{ testId: string; x: number; y: number }> {
-    const found = await this.page.evaluate((list) => {
+    await this.canvasSettled();
+    let found = await this.findClickable(ids);
+    if (found) return found;
+    if (fallback) found = await this.findClickable(fallback);
+    if (found) return found;
+    await this.fitDiagram();
+    found = await this.findClickable(ids);
+    if (!found && fallback) found = await this.findClickable(fallback);
+    if (found) return found;
+    throw new Error("no clickable diagram node in the visible canvas pane");
+  }
+
+  private async findClickable(ids: readonly string[]) {
+    return this.page.evaluate((list) => {
       const known = new Set(list);
       const wrapEl = document.querySelector('[data-testid="canvas-wrap"]');
       if (!wrapEl) return null;
       const wrap = wrapEl.getBoundingClientRect();
-      const cx = wrap.left + wrap.width / 2;
-      const cy = wrap.top + wrap.height / 2;
-      const seen = new Set<string>();
-      for (let r = 0; r < Math.min(wrap.width, wrap.height) / 2; r += 4)
+      // canvas-wrap is the flex pane, not canvas-view (which also contains the Inspector and rails).
+      const left = Math.max(0, wrap.left);
+      const top = Math.max(0, wrap.top);
+      const right = Math.min(innerWidth, wrap.right);
+      const bottom = Math.min(innerHeight, wrap.bottom);
+      const cx = (left + right) / 2;
+      const cy = (top + bottom) / 2;
+      const nodes = [...wrapEl.querySelectorAll('[data-testid^="node-"]')]
+        .map((node) => ({ node, testId: node.getAttribute("data-testid") ?? "", box: node.getBoundingClientRect() }))
+        .filter(
+          ({ testId, box }) =>
+            known.has(testId.slice(5)) && box.right > left && box.left < right && box.bottom > top && box.top < bottom,
+        )
+        .sort(
+          (a, b) =>
+            Math.hypot(a.box.left + a.box.width / 2 - cx, a.box.top + a.box.height / 2 - cy) -
+            Math.hypot(b.box.left + b.box.width / 2 - cx, b.box.top + b.box.height / 2 - cy),
+        );
+      const point = ({ node, testId, box }: (typeof nodes)[number]) => {
+        const x0 = Math.max(left, box.left);
+        const y0 = Math.max(top, box.top);
+        const width = Math.min(right, box.right) - x0;
+        const height = Math.min(bottom, box.bottom) - y0;
+        // At fit scale, a neighbour's minimum-size handle can cover the middle of a small card.
+        for (const fx of [0.3, 0.5, 0.7, 0.2, 0.8, 0.4, 0.6, 0.1, 0.9, 0.05, 0.95])
+          for (const fy of [0.5, 0.35, 0.65, 0.25, 0.75, 0.1, 0.9]) {
+            const x = x0 + width * fx;
+            const y = y0 + height * fy;
+            const hit = document.elementFromPoint(x, y);
+            if (hit && node.contains(hit) && !hit.closest('[data-testid^="handle-"]')) return { testId, x, y };
+          }
+        return null;
+      };
+      // A specific target needs only its own box; no screen-wide hit-test scan.
+      if (nodes.length === 1) return point(nodes[0]);
+      // Keep the benchmark's original centre-out target order where its samples hit a card.
+      const byElement = new Map(nodes.map((n) => [n.node, n]));
+      const seen = new Set<Element>();
+      for (let r = 0; r < Math.min(right - left, bottom - top) / 2; r += 4)
         for (let a = 0; a < 16; a++) {
-          const el = document.elementFromPoint(
-            cx + r * Math.cos((a * Math.PI) / 8),
-            cy + r * Math.sin((a * Math.PI) / 8),
-          );
-          const node = el?.closest('[data-testid^="node-"]');
-          const testId = node?.getAttribute("data-testid");
-          if (!node || !testId || seen.has(testId) || !known.has(testId.slice(5))) continue;
-          seen.add(testId);
-          // A point on the card that is the node's own, not a connection handle on it.
-          const box = node.getBoundingClientRect();
-          for (const fx of [0.3, 0.5, 0.7, 0.2, 0.8, 0.4, 0.6])
-            for (const fy of [0.5, 0.35, 0.65, 0.25, 0.75]) {
-              const x = box.left + box.width * fx;
-              const y = box.top + box.height * fy;
-              const hit = document.elementFromPoint(x, y);
-              if (hit && node.contains(hit) && !hit.closest('[data-testid^="handle-"]')) return { testId, x, y };
-            }
+          const x = cx + r * Math.cos((a * Math.PI) / 8);
+          const y = cy + r * Math.sin((a * Math.PI) / 8);
+          if (!nodes.some(({ box }) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)) continue;
+          const hit = document.elementFromPoint(x, y);
+          const node = hit?.closest('[data-testid^="node-"]');
+          if (!node || seen.has(node)) continue;
+          seen.add(node);
+          const candidate = byElement.get(node);
+          const found = candidate && point(candidate);
+          if (found) return found;
         }
+      // Search the rest of the pane too: the circle misses corners and narrow cards between rays.
+      for (const candidate of nodes) {
+        const found = point(candidate);
+        if (found) return found;
+      }
       return null;
     }, ids as string[]);
-    if (found) return found;
-    if (fallback) return this.clickableNear(fallback);
-    throw new Error("no clickable diagram node near the canvas centre");
   }
 
   /** A point on a node's card that is the node's own (not one of its connection handles). */
-  async pointOn(testId: string): Promise<{ x: number; y: number }> {
-    const { x, y } = await this.clickableNear([testId.slice(5)]).catch(async () => {
-      await this.page.getByTestId(testId).scrollIntoViewIfNeeded();
-      return this.clickableNear([testId.slice(5)]);
-    });
+  async pointOn(testId: string, o: { fit?: boolean } = {}): Promise<{ x: number; y: number }> {
+    await this.canvasSettled();
+    let found = await this.findClickable([testId.slice(5)]);
+    if (!found && o.fit !== false) {
+      await this.fitDiagram();
+      found = await this.findClickable([testId.slice(5)]);
+    }
+    if (!found) throw new Error(`no clickable point on ${testId} in the visible canvas pane`);
+    const { x, y } = found;
     return { x, y };
   }
 
   /** Clicks (or double-clicks) a node on a point that is the node's own. */
-  async clickNode(testId: string, o: { double?: boolean } = {}) {
-    const { x, y } = await this.pointOn(testId);
+  async clickNode(testId: string, o: { double?: boolean; fit?: boolean } = {}) {
+    const { x, y } = await this.pointOn(testId, o);
     if (o.double) await this.page.mouse.dblclick(x, y);
     else await this.page.mouse.click(x, y);
+    await this.selectionSettled();
   }
 
   /** Renders since `startRenders()` (names build only). */

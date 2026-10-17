@@ -8,7 +8,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { outDir } from "../results";
-import { Bench, loadWorkload, MODE, NAMES_URL, round, test, uiSuite } from "./harness";
+import { Bench, expect, loadWorkload, MODE, NAMES_URL, round, test, uiSuite } from "./harness";
 
 const s = uiSuite("profile");
 
@@ -115,16 +115,20 @@ test("profile: selecting nodes, pipeline@1500", async ({ page }) => {
   const { b, w } = await open(page, "pipeline", 1_500);
   const ids = w.d.nodes.map((x) => x.id);
   await b.clickNode(await b.nodeNearCentre(ids));
+  await b.fitDiagram();
   await b.settle(500, 60_000);
   // Found before profiling: the search (elementFromPoint over the canvas) is the benchmark's, not the app's.
   const targets: { x: number; y: number }[] = [];
   for (let i = 0; i < 3; i++) targets.push(await b.clickableNear(ids.filter((_, k) => k % 3 === i)));
+  const fitted = await b.viewport();
   await profiled(b, "select-pipeline@1500", async () => {
     for (const t of targets) {
       await page.mouse.click(t.x, t.y);
+      await b.selectionSettled();
       await b.settle(300, 60_000);
     }
   });
+  expect(await b.viewport(), "the fitted selection endpoints stayed in view").toEqual(fitted);
 });
 
 test("profile: live view, pipeline@500", async ({ page }) => {

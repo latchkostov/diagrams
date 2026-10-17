@@ -1,5 +1,22 @@
 # Release notes
 
+## Resizable Inspector benchmark harness (#145, 2026-10-16)
+
+- The UI benchmark harness waits for the Inspector's deferred reveal, pane resize and camera pan
+  before measuring another card. It searches the visible canvas pane, including cards outside the
+  old centre circle, and uses the app's Fit diagram action to recover off-pane targets.
+- Prepare the selection endpoints before render counting and CPU profiling. The render reading
+  still covers six selection clicks, twelve name keys and ten frames each of pan and drag; camera
+  preparation stays outside it. Render budgets are unchanged.
+- The successful pre-fix 500-node observation counted 9 commits and 139.5 renders per selection
+  click; the fixed full sweep counts 10 and 144.5. At 100 nodes it counts 9.17 and 142.67.
+  Waiting for complete selections changes the observed follow-up counts; all remain within the
+  existing limits (10 commits, 250 renders). Typing counts 3.5/3.75 commits per key at 100/500 nodes.
+- Browser regressions cover the held reveal clock, full-pane hit testing and off-pane recovery.
+  The interaction timing suite also prepares its click before starting the selection measurement.
+- No product behavior, UI text or parity golden changes. UX review retains the existing sheet
+  width, reveal behavior and chrome.
+
 ## Resizable Inspector Linux selection sweep (#145, 2026-10-16)
 
 - Reproduced the third CI failure in the pinned Playwright Linux container. Selecting an edge
