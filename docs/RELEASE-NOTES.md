@@ -11,6 +11,11 @@
   Lab fixture invokes the real export controller; the normal Lab room gains no controls.
   A unit regression covers remote projections and reversions. Removing the history-key revision
   increment makes both regressions fail.
+- The quick gate exposed an occupied-port fixture race: it selected a dynamic client-port range,
+  released its siblings, then found an earlier sibling unavailable when the child process started.
+  The fixture now reserves explicit service-port ranges on both address families and keeps retries
+  below the usual client-port pool. The strengthened retry regression fails with the allocator
+  change removed. No gate assertion, timeout or application behavior is relaxed.
 - Preserved both documentation histories and all translation keys. Took master's skill/plugin
   files, regenerated the helper and refreshed the viewer at plugin 1.1.36 (master + one patch).
   Parity regeneration preserves all 2,196 goldens already on the rebased branch. Relative to master,

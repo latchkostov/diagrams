@@ -70,6 +70,12 @@ remedy. Playwright also rejects a server that appears after preflight. Both init
 and final cleanliness checks reject nonignored untracked files; gitignored local files
 remain allowed. A rerun invalidates its earlier stamp before these checks.
 
+Occupied-port fixtures reserve rotating five-port service ranges from 20,000 through 29,999,
+checking both address families before releasing all but the intended occupied port. Selecting
+an OS-assigned ephemeral range can let client sockets claim a released sibling during Bash
+startup (a Windows run found an earlier sibling unavailable with `EACCES`). Retries stay in
+the service-port pool; the regression preserves the exact intended-port rejection assertion.
+
 The gate builds the `VITE_E2E=1` bundle once, after the ordinary production build, then
 sets `E2E_PREBUILT=1` for all six shards. An inherited prebuilt setting is discarded;
 a failed fresh build skips shards and cannot stamp HEAD. The final unchanged-HEAD and

@@ -857,6 +857,8 @@ test("a peer edit between image export slices aborts with a retry toast and pres
     const progress = Number(await page.getByTestId("toast-progress").getAttribute("aria-valuenow"));
     expect(progress).toBeGreaterThan(0);
     expect(progress).toBeLessThan(70);
+    await b.getByTestId("fit-view-button").click();
+    await waitForStableViewport(b);
     await name(b, "db", "Database by peer during export");
     await expect(page.getByTestId("node-db")).toContainText("Database by peer during export");
     await page.evaluate(() => (window as unknown as { __resumeExportSlice: () => void }).__resumeExportSlice());

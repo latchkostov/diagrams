@@ -148,8 +148,15 @@ function gateProbe(mode: string, base = 6360) {
   };
 }
 
-// An ephemeral port says nothing about its neighbours. Reserve the whole range on both
-// address families, then release every listener except the intended occupied port.
+// Reserve service-port ranges below the usual client ephemeral pool: releasing siblings
+// from an OS-assigned ephemeral range lets outbound connections claim them before Bash starts.
+// Check both address families, then release every listener except the intended occupied port.
+let nextProbeBase = 20_000 + (process.pid % 2_000) * 5;
+const servicePortBase = () => {
+  const base = nextProbeBase;
+  nextProbeBase = base + 5 < 30_000 ? base + 5 : 20_000;
+  return base;
+};
 
 const close = async (server: Server) => {
   if (!server.listening) return;
@@ -166,7 +173,7 @@ const listen = (server: Server, port: number, host: string) =>
 const codeOf = (error: unknown) =>
   typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
 
-async function occupiedRange(offset: number, firstBase = 0) {
+async function occupiedRange(offset: number, firstBase = servicePortBase()) {
   for (let attempt = 0; attempt < 32; attempt++) {
     const servers: Server[] = [];
     let kept: Server | undefined;
@@ -177,7 +184,7 @@ async function occupiedRange(offset: number, firstBase = 0) {
       return server;
     };
     try {
-      const first = await open(attempt === 0 ? firstBase : 0, "127.0.0.1");
+      const first = await open(attempt === 0 ? firstBase : servicePortBase(), "127.0.0.1");
       const address = first.address();
       if (!address || typeof address === "string") throw new Error("Missing probe port");
       const base = address.port;
@@ -211,6 +218,8 @@ it("occupied-port fixtures skip a range with an unavailable earlier sibling", { 
   try {
     occupied = await occupiedRange(4, blocked.base);
     expect(occupied.base).not.toBe(blocked.base);
+    // Retrying must stay below client ephemeral ports, rather than falling back to listen(0).
+    expect(occupied.base + 4).toBeLessThan(32_768);
     probe = gateProbe("success", occupied.base);
     const result = await probe.run();
     expect(result.code, result.output).toBe(2);
