@@ -56,7 +56,7 @@ Full runs lint, typecheck, formatting, i18n and skill checks, unit coverage, pro
 entry size, output parity, then every CI Playwright project: chromium, dev, subpath, internal
 and locked. The four independent E2E builds run together with CI's environments. One Playwright
 invocation runs all specs with `--retries=0 --forbid-only`; there are no sequential shards.
-CPU and RAM determine workers (cap 16); `--workers N` overrides the formula.
+CPU and RAM determine workers (measured cap 12); `--workers N` overrides the formula.
 
 `pnpm gate quick [spec...]` runs static checks, Vitest tests related to files changed since
 the merge-base with origin/master, and only the explicit or changed E2E specs on production
@@ -71,7 +71,8 @@ engine-strict inside the image. Native parity retains its existing Linux browser
 `GATE_LINUX_SOURCE=bind` is a diagnostic comparison mode; full archive runs exclude all ignored
 and untracked host content. Measurements: [gate measurements](GATE-MEASUREMENTS.md).
 
-Playwright/Chrome temporary profiles use the run's own directory on the repository drive.
+Native Playwright/Chrome temporary profiles use the run's own directory on the repository drive.
+In Linux they stay beside the source in its volume, while reports use the host mount.
 Short paths under `tests/.output/g/` preserve Windows's file URL path budget. Each step has
 a log; JSON/HTML reports, screenshots and traces persist per repetition. The final timing
 table and `SUMMARY:` line include units, goldens and per-project browser counts.

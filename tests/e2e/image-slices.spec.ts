@@ -5,9 +5,11 @@ import {
   expect,
   expectNoErrors,
   gotoCanvas,
+  gotoLab,
   pageLoadTimeout,
   publicExamples,
   waitForSelectionSettled,
+  waitForStableViewport,
   fitDiagram,
 } from "./fixtures";
 import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
@@ -41,6 +43,8 @@ function imageDownloads(page: Page) {
 
 /** The library's toSvg and toPng against the sliced port, on the canvas as it is, with the same options. */
 async function bothWays(page: Page, sliceMs: number, kind: "all" | "svg" | "png" = "all") {
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
+  await waitForStableViewport(page);
   return page.evaluate(
     async ({ sliceMs, kind }) => {
       const port = (await import(
@@ -80,6 +84,11 @@ function canonicalText(svg: string) {
 }
 
 test.describe("image export in slices", { tag: "@dev" }, () => {
+  test.beforeEach(async ({ page }) => {
+    // Compare the same stationary drawing across sequential clones. Viewport animation
+    // is tested elsewhere; a still-running initial fit changes the cloned matrix.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+  });
   for (const edit of ["rename", "move", "reconnect", "remove", "add", "undo", "replace"] as const)
     test(`a ${edit} between export slices invalidates the captured document version`, async ({ page }) => {
       test.slow();
@@ -386,25 +395,33 @@ for (const phase of ["decode", "encode"] as const)
     page,
     consoleErrors,
   }) => {
-    await gotoCanvas(page, publicExamples[0].slug);
-    const id = publicExamples[0].nodeIds[0];
+    // Exercise the failure/recovery boundary with the Lab's two-node contract fixture;
+    // cold, full-example cloning belongs to the separate export/parity workloads.
+    await gotoLab(page, "export-contract");
+    await page.getByTestId("lab-open-editor").click();
+    const id = "worker";
     const card = page.getByTestId(`node-${id}`);
     const node = page.getByTestId(`rf__node-${id}`);
     await expect(node).toBeVisible({ timeout: pageLoadTimeout() });
     await card.click();
     await expect(node).toHaveClass(/selected/);
     // Fail once, at the browser boundary. The next export uses the original implementation.
+    const reached = Promise.withResolvers<undefined>();
+    await page.exposeFunction("__imageFaultReached", () => reached.resolve(undefined));
     await page.evaluate((phase) => {
+      const reached = () => void (window as unknown as { __imageFaultReached(): Promise<void> }).__imageFaultReached();
       if (phase === "decode") {
         const decode = HTMLImageElement.prototype.decode;
         HTMLImageElement.prototype.decode = function () {
           HTMLImageElement.prototype.decode = decode;
+          reached();
           return Promise.reject(new Error("Image decode failed"));
         };
       } else {
         const encode = HTMLCanvasElement.prototype.toDataURL;
         HTMLCanvasElement.prototype.toDataURL = function () {
           HTMLCanvasElement.prototype.toDataURL = encode;
+          reached();
           throw new Error("Image encode failed");
         };
       }
@@ -412,6 +429,8 @@ for (const phase of ["decode", "encode"] as const)
     const downloads = imageDownloads(page);
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-png").click();
+    // Cold module/font work is not the fault-reporting latency being asserted.
+    await reached.promise;
     await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
     await expect(page.getByTestId("toast")).toContainText(`Image ${phase} failed`);
     await expect(node).toHaveClass(/selected/);
@@ -473,7 +492,7 @@ for (const [stalled, pattern, kind] of [
     // The held request guarantees the cancellation boundary, regardless of diagram size. Keep the retry small:
     // 300 nodes at 4× throttling exhaust the whole-test backstop on Linux even when loading resumes correctly.
     await openLanes(page, 3);
-    await slowExports(page);
+    // The held request is the slow boundary here; CPU throttling adds unrelated UI starvation.
     const downloads = imageDownloads(page);
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-png").click();

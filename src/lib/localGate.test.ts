@@ -18,7 +18,7 @@ import {
   workerCount,
 } from "../../scripts/gate/logic.mjs";
 import { acquireLock, pickPorts, probePorts } from "../../scripts/gate/host.mjs";
-import { runSteps } from "../../scripts/gate/run.mjs";
+import { browserTemp, runSteps } from "../../scripts/gate/run.mjs";
 import { installed } from "../../scripts/gate/doctor.mjs";
 import { pnpmCommand } from "../../scripts/gate/commands.mjs";
 
@@ -29,6 +29,13 @@ it("invokes standalone pnpm and JS shims without shell interpretation", () => {
 });
 
 const config = (args: string[] = []) => options(["full", ...args]);
+
+it("keeps container browser profiles on the source volume and native profiles on the repo drive", () => {
+  const root = resolve("tests/.output/volume-source");
+  const report = join(root, "reports/run");
+  expect(browserTemp(root, report, true)).toBe(join(root, "tests/.output/tmp"));
+  expect(browserTemp(root, report)).toBe(join(report, "tmp"));
+});
 const names = (args: string[] = []) =>
   plan(config(args))
     .flat()
@@ -86,12 +93,12 @@ it("detects non-HTTP listeners without closing them", async () => {
 });
 
 it.each([
-  [32, 64, 16],
+  [32, 64, 12],
   [10, 24, 7],
   [4, 16, 3],
   [32, 12, 4],
   [1, 2, 1],
-  [128, 256, 16],
+  [128, 256, 12],
 ])("bounds workers by CPU and RAM (%s, %s GiB)", (cpus, ram, expected) => {
   expect(workerCount(cpus, ram * GIB)).toBe(expected);
 });

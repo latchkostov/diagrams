@@ -3,6 +3,7 @@ import type { DiagramFile } from "../../src/model/types";
 import type { LabPacket } from "../../src/collab/lab/bridge";
 import { demoDiagram } from "../../src/collab/lab/demo";
 import { RECOVERY_RETRY } from "../../src/collab/recovery";
+import { COLLAB_LIMITS } from "../../src/collab/limits";
 import { test, expect, expectNoErrors, gotoLab, pauseClock, waitForStableViewport, E2E_TARGET } from "./fixtures";
 import { isViteHmrHandshake } from "../../scripts/e2e-network";
 
@@ -20,6 +21,7 @@ type TestWindow = Window & {
   __releaseRecoveryOpen?: () => void;
   __recoveryChannelsClosed?: number;
   __restoreRecoveryWrites?: () => void;
+  __releaseInitialFitFonts?: () => void;
 };
 
 /** Only encrypted transport packets cross isolated browser contexts. No socket or external service. */
@@ -98,6 +100,10 @@ async function relay(contexts: BrowserContext[], seed: number, initial?: Diagram
 async function open(page: Page, join = false) {
   await gotoLab(page, "collab-c1a", join ? { join: 1 } : {});
   await expect(page.getByTestId("node-api")).toBeVisible();
+  // A join can publish its first room contents after the empty camera's startup fit.
+  // Fit the loaded document, then await the real measurement boundary before clicking it.
+  await page.getByTestId("fit-view-button").click();
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
   await waitForStableViewport(page);
 }
 
@@ -112,6 +118,36 @@ async function name(page: Page, id: string, value: string) {
   await field.fill(value);
   await field.press("Enter");
 }
+
+test("opening an editor waits for its measured initial fit, even with a stationary camera", async ({ page }) => {
+  await page.addInitScript(() => {
+    const native = document.fonts.load.bind(document.fonts);
+    const ready = new Promise<void>((resolve) => {
+      (window as TestWindow).__releaseInitialFitFonts = resolve;
+    });
+    document.fonts.load = async (font, text) => {
+      const loaded = await native(font, text);
+      await ready;
+      return loaded;
+    };
+  });
+  let returned = false;
+  const opening = open(page).then(() => {
+    returned = true;
+  });
+  try {
+    await expect(page.getByTestId("node-api")).toBeVisible();
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "true");
+    // The camera can repeatedly hold still while the real font/measurement boundary is pending.
+    await waitForStableViewport(page);
+    await waitForStableViewport(page);
+    expect(returned, "a stationary pre-fit camera cannot make the editor ready").toBe(false);
+  } finally {
+    await page.evaluate(() => (window as TestWindow).__releaseInitialFitFonts?.());
+    await opening;
+  }
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
+});
 
 test("isolated editors preserve a pending inspector edit, scope Undo/Redo, and handle remote deletion", async ({
   browser,
@@ -479,7 +515,17 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
     await name(peer, "db", "Rejoined tab");
     await expect(page.getByTestId("node-db")).toContainText("Rejoined tab");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "synced");
+    // A native close may lose its best-effort goodbye. Exercise that case deliberately;
+    // the presence TTL, rather than a real-time assertion budget, reclaims the peer.
+    await peer.evaluate(() => {
+      const post = BroadcastChannel.prototype.postMessage;
+      BroadcastChannel.prototype.postMessage = function (packet: { kind?: string }) {
+        if (packet?.kind !== "bye") post.call(this, packet);
+      };
+    });
+    await pauseClock(page);
     await peer.close();
+    await page.clock.fastForward(COLLAB_LIMITS.presenceTtlMs + COLLAB_LIMITS.presenceHeartbeatMs);
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
   } finally {
     if (!peer.isClosed()) await peer.close();

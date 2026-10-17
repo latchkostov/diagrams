@@ -28,7 +28,7 @@ application branches and pinch events, but cannot emulate native text editing.
 
 ## Load-dependent failures
 
-- Annotation export/import: the file download precedes its lazy notification. Await
+- Annotation and canvas export/import: the file download precedes its lazy notification. Await
   the export completion before starting the import so a late export toast cannot
   replace the import's. Keep the complete round-trip assertions.
 - Cross-tab promotion: install the context clock before navigation and pause at the
@@ -49,6 +49,27 @@ application branches and pinch events, but cannot emulate native text editing.
 - Collaboration network assertions identify only the dev server's exact same-origin HMR handshake as infrastructure; other sockets and off-origin requests still fail. Tooltip render measurements drain queued idle preloads and their React commits before counting.
 - Vite ignores generated report HTML under tests/.output; output writes no longer
   broadcast reloads or consume source-watcher work during the suite.
+- The 24-worker sweep also caught Lab interactions starting before the loaded
+  room had been fitted: a join can publish its document after the empty camera's
+  startup fit. Request Fit for the loaded room and await its measured completion.
+  A held-font regression proves that a stationary camera alone cannot signal readiness.
+  Benchmark geometry reads run
+  together and its off-pane case leaves initial selection to the separate selection
+  case, keeping the fit/recovery assertions within the unchanged hang backstop.
+- A held module/font request already guarantees the image cancellation boundary.
+  Do not add CPU throttling to that case; the separate large-export workload retains
+  throttling. Combining both consumed action time while simply opening File under load.
+- Decode/encode fault tests use the existing two-node export-contract Lab fixture.
+  Their injected browser error and subsequent successful retry remain mandatory;
+  wait on the actual injected browser call before asserting error reporting. Cold
+  cloning must not consume that assertion's clock before the fault is even reached.
+- Sequential SVG/PNG equivalence comparisons await measured fit completion and
+  use reduced motion. The trace showed the viewport matrix moving from 4.0904 to
+  4.02009 between clones; bytes remain compared exactly, with no new normalization.
+- A native tab close need not deliver its best-effort goodbye. Deliberately drop
+  that packet and advance the fake clock by the protocol's presence TTL plus its
+  heartbeat period. The test checks the real expiry fallback rather than expecting
+  a guaranteed disconnect within a real-time assertion window.
 
 Deliberate regressions caught the removed modifier rule, missing Mac label pinning,
 lagging-clock sampling, a disabled HEAD guard, quadratic Terraform scanning, and the

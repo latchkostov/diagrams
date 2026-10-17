@@ -4,6 +4,8 @@
   and full production verification across chromium, dev, subpath, internal and locked.
   Full runs queue across worktrees and stamp only an unchanged clean commit; browser
   temporary profiles live on the repo drive. `--linux` uses the pinned Playwright image.
+  A measured 12-worker cap was faster than 8, 16 or 24 on the Windows SATA checkout;
+  the CPU/RAM rule gives the 10-core Mac seven workers.
 - Native tests use the platform's primary modifier for text editing, Undo and paste;
   Ctrl+wheel still models a real trackpad pinch on every OS. Nightly adds native
   Windows and macOS unit/E2E jobs with zero retries.

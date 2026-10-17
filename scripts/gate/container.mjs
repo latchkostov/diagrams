@@ -10,7 +10,7 @@ const { config, changed, directory } = JSON.parse(process.argv[2]);
 await required("corepack", ["enable"], { cwd: "/work" });
 await required("corepack", ["pnpm", "install", "--frozen-lockfile", "--prefer-offline"], { cwd: "/work" });
 try {
-  const summary = await runSteps("/work", config, changed, directory, { PARITY_CONTAINER: "1" });
+  const summary = await runSteps("/work", config, changed, directory, { PARITY_CONTAINER: "1", GATE_CONTAINER: "1" });
   process.exitCode = summary.failures ? 1 : 0;
 } finally {
   if (process.env.GATE_OWNER) {

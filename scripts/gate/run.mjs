@@ -6,12 +6,17 @@ import { performance } from "node:perf_hooks";
 import { pnpm } from "./commands.mjs";
 import { plan, playwrightCounts, workerCount } from "./logic.mjs";
 
+// In Linux the run reports are a host bind mount, while /work can be a fast source volume.
+// Keep Chrome's high-churn profiles beside that source; only reports cross the VM boundary.
+export const browserTemp = (root, directory, container = false) =>
+  resolve(container ? join(root, "tests/.output/tmp") : join(directory, "tmp"));
+
 export async function runSteps(root, config, changed, directory, extraEnv = {}, execute = pnpm) {
   const started = performance.now();
   const rows = [];
   const reports = [];
   const workers = config.workers ?? workerCount(os.availableParallelism(), os.totalmem());
-  const temp = resolve(directory, "tmp");
+  const temp = browserTemp(root, directory, extraEnv.GATE_CONTAINER === "1");
   rmSync(temp, { recursive: true, force: true });
   mkdirSync(temp, { recursive: true });
   const env = {

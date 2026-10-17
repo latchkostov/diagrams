@@ -1,4 +1,5 @@
 import type { Config, BrowserCounts } from "./logic.mjs";
+export function browserTemp(root: string, directory: string, container?: boolean): string;
 export interface CommandOptions {
   cwd: string;
   env: Record<string, string>;

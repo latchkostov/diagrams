@@ -41,9 +41,11 @@ export function validatePorts(base) {
 
 // Leave capacity for Vite, the OS and exports. RAM bounds each browser worker to 2 GiB
 // after a 4 GiB reserve. The cap prevents logical SMT threads from starving real cores.
-// Measurements and the chosen cap are recorded in docs/GATE-MEASUREMENTS.md.
+// Ryzen 7950X / 64 GiB, SATA checkout: 8/12/16/24 workers took 504/429/491/483s
+// for all five projects; 24 had four failures. Twelve was fastest and green.
+// See docs/GATE-MEASUREMENTS.md. A 10-core / 24 GiB Mac gets seven workers.
 export function workerCount(cpus, memory) {
-  return Math.max(1, Math.min(16, Math.floor(cpus * 0.75), Math.floor((memory / GIB - 4) / 2)));
+  return Math.max(1, Math.min(12, Math.floor(cpus * 0.75), Math.floor((memory / GIB - 4) / 2)));
 }
 
 export function lockPort(common, platform) {
