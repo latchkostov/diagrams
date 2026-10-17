@@ -18,6 +18,35 @@ env:
   CI: "true"
 
 jobs:
+  native:
+    name: Native portability (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - uses: ./.github/actions/chromium-cache
+      - name: Native unit and every production E2E project, no retries
+        run: pnpm gate full --no-docker --only unit,e2e
+      - name: Upload native reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-native-${{ matrix.os }}
+          path: tests/.output/g
+          retention-days: 14
+      - name: Upload native counts for the failure issue
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-native-${{ matrix.os }}
+          path: tests/.output/g/*/e1/results.json
+          retention-days: 14
+
   resource-invariants:
     name: A1 resource invariants (5000 seeds)
     runs-on: ubuntu-26.04
@@ -101,8 +130,8 @@ jobs:
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:
     name: Report failure
-    needs: e2e
-    if: failure() && needs.e2e.result == 'failure'
+    needs: [e2e, native]
+    if: failure() && (needs.e2e.result == 'failure' || needs.native.result == 'failure')
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
@@ -131,6 +160,9 @@ jobs:
           done
           for f in results/nightly-results-repeat-*/results.json; do
             [ -f "$f" ] && args+=("Production build: each test three times=$f")
+          done
+          for f in results/nightly-results-native-*/*/e1/results.json; do
+            [ -f "$f" ] && args+=("Native Windows/macOS: all projects, once=$f")
           done
           failures="$(node scripts/e2e-failures.mjs "${args[@]}")"
           {

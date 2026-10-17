@@ -291,6 +291,10 @@ blocking a merge, but the job summary lists every test that needed one: treat th
 `.github/workflows/nightly.yml` runs every night (04:23 UTC) and on demand (Actions › Nightly › Run
 workflow). It covers what pull requests skip for speed, with no retries:
 
+- **Native portability:** Windows and macOS run `pnpm gate full --no-docker --only unit,e2e`,
+  including all five browser projects. Reports feed the same failure issue.
+  [Portability and historical Nightly audit](GATE-PORTABILITY.md).
+
 - **Dev server 1/4 … 4/4:** the whole suite with `E2E_TARGET=dev`: the `chromium` and `dev` projects on
   the Vite dev server, and `subpath` on the production build. Checks of the e2e build itself skip
   (`E2E_TARGET` in `tests/e2e/fixtures.ts`).
