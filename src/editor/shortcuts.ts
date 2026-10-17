@@ -164,8 +164,8 @@ export function shortcutFor(e: KeyLike): ShortcutId | null {
   return null;
 }
 
-export const isMac = () =>
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+export const isMac = (platform = typeof navigator === "undefined" ? "" : navigator.platform || navigator.userAgent) =>
+  /Mac|iPhone|iPad/.test(platform);
 
 const KEY_NAMES: Record<string, [mac: string | (() => string), other: string | (() => string)]> = {
   Mod: ["⌘", msg("keys.ctrl")],

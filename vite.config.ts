@@ -133,8 +133,11 @@ const viewer = interactiveViewer(() => [noPrivateExamples()]);
 export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. latchkostov.com/tools/diagrams/).
   base: "./",
+  // Reports contain HTML snapshots. Watching them adds work and broadcasts reloads
+  // during the same test run, even though none is application source.
+  server: { watch: { ignored: ["**/tests/.output/**"] } },
   plugins: [
-    ...(process.env.VITEST ? [publicExamplesOnly()] : []),
+    ...(process.env.VITEST || process.env.E2E_GATE === "1" ? [publicExamplesOnly()] : []),
     // Messages inlined where they're used, each language a lazy catalog (src/i18n, docs/I18N.md).
     i18n(),
     staticPages(),

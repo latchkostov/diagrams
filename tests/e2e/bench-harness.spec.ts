@@ -77,7 +77,7 @@ test("benchmark finds cards outside the old centre circle without moving the cam
 test("benchmark fits an off-pane card through the app before clicking it", async ({ page }) => {
   const b = new Bench(page, await page.context().newCDPSession(page));
   const target = await b.nodeNearCentre(eventPipeline(100).nodes.map((n) => n.id));
-  await b.clickNode(target);
+  // Inspector selection/reveal has its own case above. This setup needs only an off-pane card.
   const pane = await page.getByTestId("canvas-wrap").boundingBox();
   const card = await page.getByTestId(target).boundingBox();
   if (!pane || !card) throw new Error("Expected the canvas and selected card");

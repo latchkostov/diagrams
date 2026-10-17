@@ -252,6 +252,7 @@ test.describe("presenting full screen", () => {
     const box = await page.getByTestId("canvas-wrap").boundingBox();
     if (!box) throw new Error("No canvas");
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
     await page.keyboard.down("Control");
     await page.mouse.wheel(0, -400);
     await page.keyboard.up("Control");

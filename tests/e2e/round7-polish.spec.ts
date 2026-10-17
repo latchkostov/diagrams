@@ -45,7 +45,7 @@ test("Esc clears the selection of a node that was just clicked", async ({ page, 
   await expect(page.getByTestId("inspector-title")).toHaveCount(0);
   // And again with several selected.
   await node.click();
-  await page.getByTestId("node-inventory").click({ modifiers: ["Control"] });
+  await page.getByTestId("node-inventory").click({ modifiers: ["ControlOrMeta"] });
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("inspector-title")).toHaveCount(0);
   expectNoErrors(consoleErrors);

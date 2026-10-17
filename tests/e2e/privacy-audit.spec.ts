@@ -1,4 +1,4 @@
-import { currentDiagram } from "./fixtures";
+import { currentDiagram, pauseClock } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
@@ -227,6 +227,7 @@ for (const byDefault of [false, true]) {
     page,
     consoleErrors,
   }) => {
+    await page.clock.install();
     const requests = watchRequests(page);
     let release!: () => void;
     let intercepted = false;
@@ -237,6 +238,7 @@ for (const byDefault of [false, true]) {
       await route.continue();
     });
     await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
     await expect(page.getByTestId("example-badge")).toBeVisible();
     if (byDefault) {
       await page.getByTestId("file-button").click();
@@ -257,6 +259,7 @@ for (const byDefault of [false, true]) {
       await page.getByTestId("privacy-diagram").click();
     }
     await expect(page.getByTestId("private-badge")).toBeVisible();
+    await pauseClock(page); // Keep the refusal observable; its expiry is not under test.
     release();
     await expect(page.getByTestId("toast")).toContainText("became private");
     const stored = await page.evaluate(

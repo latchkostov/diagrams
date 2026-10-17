@@ -25,6 +25,7 @@ afterEach(() => {
   state.l = "en";
   state.c = undefined;
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 it.each(Object.keys(catalogs).filter((code) => code !== "en-XA"))(
@@ -59,11 +60,12 @@ describe("original English canvas chrome", () => {
     expect(command.label).toBe("Rename annotation");
   });
 
-  it("preserves the footer's complete English sentence and keyboard markup", () => {
+  it.each(["Win32", "MacIntel"])("preserves the footer sentence and keyboard markup on %s", (platform) => {
+    vi.stubGlobal("navigator", { platform });
     const html = renderToStaticMarkup(<Palette collapsed={false} onToggle={() => {}} onAdd={() => {}} />);
     const footer = html.match(/<div class="palette-foot">(.*?)<\/div>/)?.[1];
     expect(footer).toBe(
-      "Drag onto the canvas or click to add. <kbd>Ctrl+K</kbd> finds anything; <kbd>?</kbd> lists shortcuts.",
+      `Drag onto the canvas or click to add. <kbd>${platform === "MacIntel" ? "⌘K" : "Ctrl+K"}</kbd> finds anything; <kbd>?</kbd> lists shortcuts.`,
     );
   });
 
@@ -117,16 +119,20 @@ describe("original English canvas chrome", () => {
   });
 });
 
-it("pseudo-locale treats the rail's keyboard teaching sentence as one message", async () => {
-  state.l = "en-XA";
-  state.c = (await catalogs["en-XA"]()).default as Catalog;
-  const html = renderToStaticMarkup(<Palette collapsed={false} onToggle={() => {}} onAdd={() => {}} />);
-  const footer = html.match(/<div class="palette-foot">(.*?)<\/div>/)?.[1];
-  // The complete sentence and the localized Ctrl key each have one pair of brackets.
-  expect(footer?.match(/\[/g)).toHaveLength(2);
-  expect(footer?.match(/\]/g)).toHaveLength(2);
-  expect(footer).toMatch(/^\[.*<kbd>.*<\/kbd>.*<kbd>\?<\/kbd>.*\]$/);
-});
+it.each(["Win32", "MacIntel"])(
+  "pseudo-locale keeps the complete keyboard teaching sentence on %s",
+  async (platform) => {
+    vi.stubGlobal("navigator", { platform });
+    state.l = "en-XA";
+    state.c = (await catalogs["en-XA"]()).default as Catalog;
+    const html = renderToStaticMarkup(<Palette collapsed={false} onToggle={() => {}} onAdd={() => {}} />);
+    const footer = html.match(/<div class="palette-foot">(.*?)<\/div>/)?.[1];
+    // The complete sentence and the localized Ctrl key each have one pair of brackets.
+    expect(footer?.match(/\[/g)).toHaveLength(platform === "MacIntel" ? 1 : 2);
+    expect(footer?.match(/\]/g)).toHaveLength(platform === "MacIntel" ? 1 : 2);
+    expect(footer).toMatch(/^\[.*<kbd>.*<\/kbd>.*<kbd>\?<\/kbd>.*\]$/);
+  },
+);
 
 it("localizes the gallery's missing-icon count inside its complete message", async () => {
   vi.spyOn(stencilRegistry, "iconUrl").mockReturnValue(undefined);

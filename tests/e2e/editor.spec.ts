@@ -15,7 +15,7 @@ import {
 // Selectors are data-testid only. Uses the Kafka example (ids from src/examples/kafka-order-pipeline.json).
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 
 /** A point on the empty pane: top-centre of the canvas (fit view keeps ~150px clear there). */
 async function emptySpot(page: Page, dx = 0) {

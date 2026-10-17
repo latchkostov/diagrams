@@ -18,6 +18,89 @@ env:
   CI: "true"
 
 jobs:
+  native-unit:
+    name: Native unit (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - uses: ./.github/actions/chromium-cache
+      - name: Native unit tests
+        timeout-minutes: 15
+        run: pnpm gate full --no-docker --only unit
+      - name: Collect native counts or interruption marker
+        if: always()
+        run: node scripts/e2e-failures.mjs --collect-native tests/.output/g tests/.output/native-results.json
+      - name: Upload native reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-native-unit-${{ matrix.os }}
+          path: tests/.output/g
+          retention-days: 14
+      - name: Upload native counts for the failure issue
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-native-unit-${{ matrix.os }}
+          path: tests/.output/native-results.json
+          retention-days: 14
+
+  native-e2e:
+    name: Native E2E (${{ matrix.os }}) ${{ matrix.shard }}/${{ matrix.total }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The interrupted runs project to ~59 minutes on Windows (3 auto workers)
+          # and ~75 on macOS (1). Six/eight balanced shards target ~10 minutes of
+          # tests each; a 25-minute step and 35-minute job leave setup/upload margin.
+          - { os: windows-latest, shard: 1, total: 6 }
+          - { os: windows-latest, shard: 2, total: 6 }
+          - { os: windows-latest, shard: 3, total: 6 }
+          - { os: windows-latest, shard: 4, total: 6 }
+          - { os: windows-latest, shard: 5, total: 6 }
+          - { os: windows-latest, shard: 6, total: 6 }
+          - { os: macos-latest, shard: 1, total: 8 }
+          - { os: macos-latest, shard: 2, total: 8 }
+          - { os: macos-latest, shard: 3, total: 8 }
+          - { os: macos-latest, shard: 4, total: 8 }
+          - { os: macos-latest, shard: 5, total: 8 }
+          - { os: macos-latest, shard: 6, total: 8 }
+          - { os: macos-latest, shard: 7, total: 8 }
+          - { os: macos-latest, shard: 8, total: 8 }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - uses: ./.github/actions/chromium-cache
+      - name: Native production E2E shard, auto workers, no retries
+        timeout-minutes: 25
+        run: pnpm gate full --no-docker --only e2e --shard ${{ matrix.shard }}/${{ matrix.total }}
+      - name: Collect native counts or interruption marker
+        if: always()
+        run: node scripts/e2e-failures.mjs --collect-native tests/.output/g tests/.output/native-results.json
+      - name: Upload native reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-native-e2e-${{ matrix.os }}-${{ matrix.shard }}
+          path: tests/.output/g
+          retention-days: 14
+      - name: Upload native counts for the failure issue
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-native-e2e-${{ matrix.os }}-${{ matrix.shard }}
+          path: tests/.output/native-results.json
+          retention-days: 14
+
   resource-invariants:
     name: A1 resource invariants (5000 seeds)
     runs-on: ubuntu-26.04
@@ -101,8 +184,11 @@ jobs:
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:
     name: Report failure
-    needs: e2e
-    if: failure() && needs.e2e.result == 'failure'
+    needs: [e2e, native-unit, native-e2e]
+    if: >-
+      always() && (needs.e2e.result == 'failure' || needs.native-unit.result == 'failure' ||
+      needs.native-e2e.result == 'failure' || needs.native-unit.result == 'cancelled' ||
+      needs.native-e2e.result == 'cancelled')
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
@@ -132,6 +218,10 @@ jobs:
           for f in results/nightly-results-repeat-*/results.json; do
             [ -f "$f" ] && args+=("Production build: each test three times=$f")
           done
+          for f in results/nightly-results-native-*/native-results.json; do
+            label="$(basename "$(dirname "$f")")"
+            [ -f "$f" ] && args+=("${label#nightly-results-}=$f")
+          done
           failures="$(node scripts/e2e-failures.mjs "${args[@]}")"
           {
             echo "The nightly e2e run failed on ${GITHUB_SHA:0:7}: $RUN_URL"
@@ -143,6 +233,7 @@ jobs:
             fi
             echo
             echo "Each test ran once on the dev server and three times on the production build, with no retries."
+            echo "Native Windows/macOS run unit tests separately and every production E2E project once across 6/8 shards, with auto workers and no retries. Interrupted counts are partial."
             echo "Fix the cause; this issue stays open until someone closes it."
           } > body.md
           # An issue body holds at most 65,536 characters.

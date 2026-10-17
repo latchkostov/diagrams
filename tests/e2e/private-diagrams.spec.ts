@@ -706,7 +706,7 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(d.title);
   await expect(page.getByTestId("private-badge")).toBeVisible();
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   await page.getByTestId("planning-preview").click();

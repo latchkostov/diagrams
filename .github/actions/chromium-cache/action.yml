@@ -11,7 +11,10 @@ runs:
       id: cache
       uses: actions/cache@v6
       with:
-        path: ~/.cache/ms-playwright
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+          ~/AppData/Local/ms-playwright
         key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}
     - name: Install Chromium
       if: steps.cache.outputs.cache-hit != 'true'

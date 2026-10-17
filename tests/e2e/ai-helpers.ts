@@ -4,7 +4,7 @@ import { expect, waitForStableBox, pageLoadTimeout } from "./fixtures";
 // Shared by the ai-*.spec.ts files: fakes for browser APIs Playwright's Chromium doesn't have
 // (WebMCP's document.modelContext, the Web Speech API), installed with page.addInitScript.
 
-export const MOD = process.platform === "darwin" ? "Meta" : "Control";
+export const MOD = "ControlOrMeta";
 export const SLUG = "kafka-order-pipeline";
 
 /** The value, or a test failure saying what was missing. */

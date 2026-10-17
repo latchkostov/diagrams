@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import {
@@ -16,7 +17,7 @@ import {
 // Selectors are data-testid only.
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 
 /**
  * A small diagram with known geometry (cards 220 × 72 at these short labels): a and b in a row 180 apart,
@@ -390,7 +391,7 @@ test.describe("one set of text-editing rules (D7)", () => {
 
     // A text holds several lines: Enter adds one, Ctrl/Cmd+Enter saves; Tab saves too.
     await page.getByTestId("annotation-t1").dblclick();
-    await page.keyboard.press("End");
+    await page.keyboard.press(TEXT_END);
     await page.keyboard.press("Enter");
     await page.keyboard.type("second line");
     await expect(page.getByTestId("annotation-editor")).toHaveValue("Caption\nsecond line");

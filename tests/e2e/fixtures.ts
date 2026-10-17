@@ -2,6 +2,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
+import { pauseClocks } from "../../scripts/e2e-clock";
+import { textBoundaryKey } from "../../scripts/e2e-keys";
+
+export const TEXT_START = textBoundaryKey("start");
+export const TEXT_END = textBoundaryKey("end");
 
 /**
  * Shared helpers for every e2e spec. Selectors are data-testid only (owner's rule):
@@ -286,14 +291,17 @@ export const viewportTransform = (page: Page) =>
  * pause there.
  */
 export async function pauseClock(page: Page) {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      await page.clock.pauseAt(await page.evaluate(() => Date.now()));
-      return;
-    } catch (e) {
-      if (attempt >= 3 || !String(e).includes("Cannot fast-forward to the past")) throw e;
-    }
-  }
+  await pauseClocks(
+    () =>
+      Promise.all(
+        page
+          .context()
+          .pages()
+          .flatMap((p) => p.frames())
+          .map((frame) => frame.evaluate(() => Date.now())),
+      ),
+    (time) => page.clock.pauseAt(time),
+  );
 }
 
 export function expectNoErrors(errors: string[]) {

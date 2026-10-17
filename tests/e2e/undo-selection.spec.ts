@@ -9,7 +9,7 @@ import { callTool, installFakeModelContext, must, nodeCount, openAdvanced, toolN
 
 const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 
 /** Payments holds Orders API, Payment worker and Ledger; Shipping holds Carrier API; Cache and Billing below. */
 const SEED = {

@@ -128,6 +128,8 @@ function browserInContainer() {
       "livediagrams-parity-pnpm-store:/pnpm-store",
       "-e",
       "pnpm_config_store_dir=/pnpm-store",
+      "-e",
+      "npm_config_engine_strict=false",
       "-w",
       "/work",
       "-e",

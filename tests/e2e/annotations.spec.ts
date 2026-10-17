@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
@@ -16,7 +17,7 @@ import {
 // Selectors are data-testid only.
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 const annotation = (page: Page, id: string) => page.getByTestId(`annotation-${id}`);
 
@@ -435,7 +436,7 @@ test.describe("annotations", () => {
     const before = b.height;
     await text.dblclick();
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
-    await page.keyboard.press("End");
+    await page.keyboard.press(TEXT_END);
     await page.keyboard.press("Enter");
     await page.keyboard.type("second line");
     await page.getByTestId("canvas-wrap").click({ position: await emptySpot(page, 200) });
@@ -511,6 +512,9 @@ test.describe("annotations", () => {
     const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-json").click()]);
     const file = info.outputPath("annotated.diagram.json");
     await download.saveAs(file);
+    // The download precedes its lazy notification. Finish this operation before
+    // importing, or a late export toast can replace the import notification.
+    await expect(page.getByTestId("toast")).toContainText("Exported");
     const saved = JSON.parse(readFileSync(file, "utf8"));
     expect(saved.annotations.map((a: { id: string }) => a.id).sort()).toEqual(
       annotatedKafka.annotations.map((a: { id: string }) => a.id).sort(),

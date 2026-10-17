@@ -61,7 +61,7 @@ test("P3: a preset and four main controls; editing a local cap is undoable", asy
   await page.getByTestId("admission-concurrency").fill("2");
   await page.getByTestId("admission-concurrency").press("Tab");
   await expect(page.getByTestId("admission-concurrency")).toHaveValue("2");
-  await page.keyboard.press("Control+z");
+  await page.keyboard.press("ControlOrMeta+z");
   await expect(page.getByTestId("admission-concurrency")).toHaveValue("50");
   await page.getByTestId("admission-advanced-toggle").click();
   await expect(page.getByTestId("admission-source")).toHaveAttribute("href", "https://docs.stripe.com/rate-limits");
@@ -140,7 +140,7 @@ for (const stencil of ["aws.lambda", "openai"])
     await emits.fill("");
     await emits.press("Tab");
     await expect(emits).toHaveValue("");
-    await page.keyboard.press("Control+z");
+    await page.keyboard.press("ControlOrMeta+z");
     await expect(emits).toHaveValue("* → Processed");
     expectNoErrors(consoleErrors);
   });
@@ -167,7 +167,7 @@ test("P3: an unfinished numeric exponent cannot remove a committed local cap", a
   await rate.fill("1");
   await rate.press("Tab");
   await rate.focus();
-  await rate.press("Control+a");
+  await rate.press("ControlOrMeta+a");
   await rate.pressSequentially("1e");
   await rate.press("Tab");
   await expect(rate).toHaveValue("1");

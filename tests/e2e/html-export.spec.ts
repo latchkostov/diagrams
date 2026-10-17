@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Download, FrameLocator, Page } from "@playwright/test";
 import {
@@ -289,11 +288,10 @@ test.describe("Interactive HTML export", () => {
       "diagrams.showDependencies.v1": "0",
       "diagrams.settings.v1": JSON.stringify({ theme: "dark" }),
     };
-    const seedFile = join(dirname(path), "seed.html");
-    writeFileSync(seedFile, "<!doctype html><title>Seed</title>");
     const viewer = await watchedPage(context);
-    await viewer.page.goto(pathToFileURL(seedFile).href);
-    await viewer.page.evaluate((entries) => {
+    // file:// storage can be scoped per file. Seed the actual reader's origin
+    // before its code runs, rather than relying on a sibling file sharing it.
+    await viewer.page.addInitScript((entries) => {
       for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v);
       sessionStorage.setItem("session-sentinel", "kept");
     }, seeded);
@@ -373,7 +371,7 @@ test.describe("Interactive HTML export", () => {
   test("Ctrl+K finds it", async ({ page }) => {
     await gotoCanvas(page, KAFKA);
     await page.getByTestId("canvas-view").click({ position: { x: 600, y: 40 } });
-    await page.keyboard.press("Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("interactive html");
     await page.getByTestId("command-item-action:export:html").click();
     await expect(page.getByTestId("html-export-dialog")).toBeVisible();

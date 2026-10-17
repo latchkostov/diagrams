@@ -77,7 +77,7 @@ test.describe("Content-Security-Policy", () => {
     await page.getByTestId("node-shopper").click({ button: "right" });
     await expect(page.getByTestId("context-menu")).toBeVisible();
     await page.keyboard.press("Escape");
-    await page.keyboard.press("Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.keyboard.press("Escape");
 
     // The AI panel and dictation (a fake SpeechRecognition; the policy must still allow the microphone).

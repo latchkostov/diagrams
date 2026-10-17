@@ -6,12 +6,12 @@ import { expectHostEmbed, expectShareWithoutLinks, serveHostPage } from "./self-
 
 /**
  * A self-hosted copy with every switch off (docs/SELF-HOSTING.md): project "locked" in playwright.config.ts
- * (LOCKED_ENV). Links people send don't open (in the app or an embed), and with AI tools and the on-device model
+ * (E2E_PROFILES.locked). Links people send don't open (in the app or an embed), and with AI tools and the on-device model
  * both off there's no AI panel at all. Selectors are data-testid only.
  */
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const OFF = "Opening shared links is turned off here. Ask for the diagram file instead.";
 const other = must(
   publicExamples.find((e) => e.slug !== SLUG),

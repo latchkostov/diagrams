@@ -218,8 +218,14 @@ describe("AI extraction preserves the original English", () => {
           .join(mac ? "" : "+");
         expect(formatCombo(combo, mac)).toBe(expected);
       }
-    expect(legacyKeyHint("Mod+Enter")).toBe("Ctrl+Enter");
-    expect(aiPanelTitle()).toBe("AI panel (\u2066Ctrl+I\u2069)");
+    for (const [platform, mod] of [
+      ["Win32", "Ctrl"],
+      ["MacIntel", "⌘"],
+    ]) {
+      vi.stubGlobal("navigator", { platform });
+      expect(legacyKeyHint("Mod+Enter")).toBe(`${mod}+Enter`);
+      expect(aiPanelTitle()).toBe(`AI panel (\u2066${mod === "⌘" ? "⌘I" : "Ctrl+I"}\u2069)`);
+    }
   });
   it("keeps the literal English modifier names in mouse gestures and the AI's Mac prose hints", () => {
     vi.stubGlobal("navigator", { platform: "MacIntel" });

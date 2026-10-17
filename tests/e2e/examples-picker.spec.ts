@@ -406,13 +406,13 @@ test("persisted edits follow example promotion", async ({ page }) => {
 });
 
 test("promotion preserves another tab after its storage refresh", async ({ page, context }) => {
+  await page.clock.install();
   await page.goto(`./?example=${SLUG}`);
   await expect(page.getByTestId("node-shopper")).toBeVisible();
   const other = await context.newPage();
   await other.goto(`./?example=${SLUG}`);
   await other.getByTestId("node-shopper").click();
   await expect(other.getByTestId("inspector-field-label")).toBeVisible();
-  await other.clock.install();
   await pauseClock(other);
   await other.getByTestId("inspector-field-label").fill("Pending in other tab");
   await other.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "retained"));
@@ -790,7 +790,7 @@ test("gallery Run it supersedes a palette run while LiveSession loads", async ({
   try {
     await page.goto(`./?example=${SLUG}`);
     await expect(page.getByTestId("node-shopper")).toBeVisible();
-    await page.keyboard.press("Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("black friday");
     await page.getByTestId("command-item-sim:black-friday").click();
     await expect.poll(() => requested).toBe(true);
@@ -819,7 +819,7 @@ for (const exit of ["toggle", "keyboard"] as const) {
     });
     try {
       await gotoCanvas(page, SLUG);
-      await page.keyboard.press("Control+k");
+      await page.keyboard.press("ControlOrMeta+k");
       await page.getByTestId("command-input").fill("black friday");
       await page.getByTestId("command-item-sim:black-friday").click();
       await expect.poll(() => requested).toBe(true);

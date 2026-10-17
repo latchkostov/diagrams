@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox, fitDiagram } from "./fixtures";
 
@@ -120,7 +121,11 @@ async function openDiagram(page: Page, live = false) {
   await waitForStableBox(page.getByTestId("node-gateway"));
   // Code loaded in idle time (the dialogs, the AI panel) re-renders the canvas once when it arrives: let it land
   // before measuring, or a busy machine (where idle comes late) counts that commit as the hover's.
+  await page.evaluate(() => new Promise<void>((resolve) => requestIdleCallback(() => resolve())));
   await page.waitForLoadState("networkidle");
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
 }
 
 /** Right-clicks the empty canvas above the diagram. */
@@ -191,7 +196,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
 
   test("hovering the command palette re-renders only the rows that change", async ({ page, consoleErrors }) => {
     await openDiagram(page);
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await expect(page.getByTestId("command-palette")).toBeVisible();
     const ids = (await plainItems(page, "command-list", "command-item-")).slice(0, 10);
 
@@ -221,7 +226,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
       for (let i = 1; i <= 10; i++)
         await page.mouse.move(box.x + box.width * 0.3 + i * 8, box.y + box.height / 2 + i * 4);
       await page.mouse.up();
-      await page.keyboard.press(process.platform === "darwin" ? "Meta+z" : "Control+z");
+      await page.keyboard.press("ControlOrMeta+z");
     });
     // The canvas itself re-renders on each of these; the 155-stencil rail beside it must not.
     expect(counts.CanvasInner ?? 0, JSON.stringify(counts)).toBeGreaterThan(0);
@@ -281,7 +286,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     await page.getByTestId("node-inventory").dblclick();
     const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
-    await label.press("End");
+    await label.press(TEXT_END);
     const { counts: typing } = await measure(page, async () => {
       for (const key of "-v2") {
         await page.keyboard.type(key);

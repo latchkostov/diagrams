@@ -164,6 +164,7 @@ test.describe("an agent's changes in the AI panel", () => {
     const payments = page.getByTestId("node-payments");
     const b = must(await payments.boundingBox(), "payments");
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
     await page.keyboard.down("Control");
     for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -200);
     await page.keyboard.up("Control");

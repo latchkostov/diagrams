@@ -1,3 +1,4 @@
+import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, performanceTest, expect, gotoCanvas, expectNoErrors, pageLoadTimeout } from "./fixtures";
@@ -9,7 +10,7 @@ import { typingWork, median } from "./typing-work";
 
 const card = (page: Page) => page.getByTestId("checks-card");
 const status = (page: Page) => page.getByTestId("checks-simulations-status");
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const RESPONSIVENESS = "typing is as responsive while simulations play as with none playing";
 
 /** An example as a file, changed by `edit`, imported over the canvas. */
@@ -488,6 +489,9 @@ test.describe("a long run", () => {
     const work = await typingWork(page);
 
     async function phase(playing: boolean, text: string) {
+      // Idle and playing phases must measure the same input, including its length.
+      await box.fill("");
+      await expect(box).toHaveValue("");
       if (playing) {
         const before = progressed;
         await page.getByTestId("checks-run-simulations").click();
@@ -498,7 +502,7 @@ test.describe("a long run", () => {
           .toBeGreaterThan(before);
       }
       await box.click();
-      await box.press("End");
+      await box.press(TEXT_END);
       const samples: number[] = [];
       for (const ch of text) samples.push(await work.key(ch));
       // Still playing when the typing ended: the whole phase was typed over a run.
@@ -513,11 +517,9 @@ test.describe("a long run", () => {
     const playing: number[] = [];
     // Alternating, so both see the same page in the same state. Keep every sample, with enough keys
     // per phase that the card's startup renders cannot dominate the steady-state typing median.
-    for (const [i, kind] of ["i", "p", "i", "p", "i", "p"].entries())
-      (kind === "p" ? playing : idle).push(...(await phase(kind === "p", ` ${kind}${i}abcdefghijkl`)));
-    await expect(box).toHaveValue(
-      " i0abcdefghijkl p1abcdefghijkl i2abcdefghijkl p3abcdefghijkl i4abcdefghijkl p5abcdefghijkl",
-    );
+    for (const kind of ["i", "p", "i", "p", "i", "p"])
+      (kind === "p" ? playing : idle).push(...(await phase(kind === "p", " i0abcdefghijkl")));
+    await expect(box).toHaveValue(" i0abcdefghijkl");
     info.annotations.push({ type: "typing-cpu", description: JSON.stringify({ idle, playing }) });
     expect(await runStats(page)).toMatchObject({ started: 3, stopped: 3 });
     await work.close();

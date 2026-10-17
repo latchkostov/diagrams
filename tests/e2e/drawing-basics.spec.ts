@@ -14,7 +14,7 @@ import {
 // zoom to selection (D10). Kafka example; selectors are data-testid only.
 
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 /** Nodes, not their tooltip or inline editor. */
 const NODES = /^node-(?!tooltip$|editor)/;
 
@@ -126,9 +126,10 @@ test.describe("drawing basics", () => {
     await expect.poll(async () => (await view(page)).x).toBeCloseTo(v0.x - 80, 0);
     expect((await view(page)).zoom).toBe(v0.zoom);
 
-    await page.keyboard.down(MOD);
+    // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
+    await page.keyboard.down("Control");
     await page.mouse.wheel(0, -200);
-    await page.keyboard.up(MOD);
+    await page.keyboard.up("Control");
     await expect.poll(async () => (await view(page)).zoom).toBeGreaterThan(v0.zoom);
     expectNoErrors(consoleErrors);
   });
@@ -553,6 +554,7 @@ test.describe("drawing basics", () => {
   test("Shift+2 zooms to the selection; the palette and the shortcuts sheet know it", async ({ page }) => {
     const v0 = await view(page);
     await page.getByTestId("node-stock-db").click();
+    await waitForStableViewport(page);
     await page.keyboard.press("Shift+Digit2");
     await expect.poll(async () => (await view(page)).zoom).toBeGreaterThan(v0.zoom * 1.5);
     await waitForStableViewport(page);

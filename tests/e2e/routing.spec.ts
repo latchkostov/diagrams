@@ -103,9 +103,9 @@ test("adds a route table that keeps today's connections, edits a rule, reorders 
 
   // Undo puts the Default back, Redo takes it away again.
   await page.getByTestId("canvas-view").click({ position: { x: 5, y: 400 } });
-  await page.keyboard.press("Control+z");
+  await page.keyboard.press("ControlOrMeta+z");
   await expect.poll(async () => (await table(page))?.default?.targets.length).toBe(3);
-  await page.keyboard.press("Control+Shift+z");
+  await page.keyboard.press("ControlOrMeta+Shift+z");
   await expect.poll(async () => (await table(page))?.default).toBeUndefined();
 
   // Deleting the first rule moves keyboard focus to the rule after it, and the toast offers Undo.

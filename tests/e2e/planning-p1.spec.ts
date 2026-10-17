@@ -134,7 +134,7 @@ test("P1: two policies share one pool; removing and reconnecting edges refresh t
   });
   // Reconnect through the existing keyboard action, then reselect the worker.
   await page.getByTestId("edge-consume").click();
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("reconnect to payments");
   await expect(page.getByTestId("command-item-action:reconnect-target:payments")).toBeVisible();
   await page.keyboard.press("Enter");
@@ -211,7 +211,7 @@ test("P1: model upgrade previews unchanged capacity, is undoable and exposes a l
   consoleErrors,
 }, testInfo) => {
   await seed(page);
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   await page.getByTestId("planning-preview").click();
@@ -230,7 +230,7 @@ test("P1: model upgrade previews unchanged capacity, is undoable and exposes a l
   await page.getByTestId("planning-legacy-download").click();
   expect((await pending).suggestedFilename()).toBe("legacy.diagram.json");
   await page.getByTestId("undo-button").click();
-  await page.keyboard.press("Control+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-model")).toContainText("Legacy playback");
@@ -387,6 +387,7 @@ test("P1: a keyboard-focused hover card follows pan, zoom and pane resizing", as
   await page.setViewportSize({ width: 1000, height: 460 });
   await check();
   await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+  // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
   await page.keyboard.down("Control");
   await page.mouse.wheel(0, 240);
   await page.keyboard.up("Control");

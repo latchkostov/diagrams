@@ -31,6 +31,8 @@ async function exportJson(page: Page) {
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-more-formats").click();
   await page.getByTestId("export-json").click();
+  // The lazy completion message follows the download; finish it before importing.
+  await expect(page.getByTestId("toast")).toContainText("Exported");
 }
 
 test.describe("canvas", () => {

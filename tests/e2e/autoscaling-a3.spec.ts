@@ -67,7 +67,7 @@ test("Cloud Run preset: four main fields, pinned concurrency, keyboard edit and 
   await max.fill("12");
   await max.press("Tab");
   await expect.poll(async () => (await policyOf(page))?.controller).toMatchObject({ maxReplicas: 12 });
-  await page.getByTestId("canvas-view").press("Control+z");
+  await page.getByTestId("canvas-view").press("ControlOrMeta+z");
   await expect(max).toHaveValue("100");
   await page.getByTestId("autoscaling-advanced-toggle").click();
   await expect(page.getByTestId("autoscaling-concurrencyTarget")).toHaveValue("60");

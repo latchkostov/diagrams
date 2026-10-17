@@ -85,12 +85,12 @@ for (const mixed of [false, true])
     await seed(page, nestedFixture);
     await page.getByTestId("group-label-grp-core").click();
     if (mixed) await page.getByTestId("node-member").click({ modifiers: ["Shift"] });
-    await page.keyboard.press("Control+g");
+    await page.keyboard.press("ControlOrMeta+g");
     await expect(page.getByTestId("group-label-boundary-1")).toBeVisible();
     await page.keyboard.press("Escape");
     await page.getByTestId("group-label-grp-core").click();
     await expect(page.getByTestId("inspector-field-group")).toHaveValue("boundary-1");
-    await page.keyboard.press("Control+z");
+    await page.keyboard.press("ControlOrMeta+z");
     await expect(page.getByTestId("group-label-boundary-1")).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
@@ -335,7 +335,7 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   await page.keyboard.press("Escape");
   await page.getByTestId("group-label-child").click();
   await expect(page.getByTestId("inspector-field-group")).toHaveValue("grp-core");
-  await page.keyboard.press("Control+z");
+  await page.keyboard.press("ControlOrMeta+z");
   await expect(async () => {
     const now = await flowBoxes(page, ids);
     for (let i = 0; i < ids.length; i++) {
@@ -346,7 +346,7 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   await page.keyboard.press("Escape");
   await page.getByTestId("group-label-child").click();
   await expect(page.getByTestId("inspector-field-group")).toHaveValue("grp-core");
-  await page.keyboard.press("Control+Shift+z");
+  await page.keyboard.press("ControlOrMeta+Shift+z");
   await expect(async () => assertMoved()).toPass();
   await page.keyboard.press("Escape");
   await page.getByTestId("group-label-child").click();

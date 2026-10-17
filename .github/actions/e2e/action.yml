@@ -48,24 +48,20 @@ runs:
         echo "Self-hosting builds for this shard: ${self_host:-none}"
         e2e=""
         if [ "$TARGET" = "build" ]; then
-          VITE_E2E=1 pnpm exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
+          node scripts/e2e-build.mjs e2e > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
           e2e=$!
         fi
-        VITE_E2E='' pnpm exec vite build --outDir tests/.output/preview-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/prod-build.log" 2>&1 &
+        node scripts/e2e-build.mjs preview > "$RUNNER_TEMP/prod-build.log" 2>&1 &
         prod=$!
-        # The self-hosting builds this shard needs (playwright.config.ts's INTERNAL_ENV and LOCKED_ENV).
+        # The self-hosting builds this shard needs (scripts/e2e-profiles.mjs).
         internal=""
         locked=""
         case ",$self_host," in *,internal,*)
-          VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_AI_TOOLS=1 VITE_PRIVATE_BY_DEFAULT=1 \
-            VITE_BRAND_NAME='Acme Diagrams (internal)' VITE_LOCALES=en,de \
-            pnpm exec vite build --outDir tests/.output/internal-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/internal-build.log" 2>&1 &
+          node scripts/e2e-build.mjs internal > "$RUNNER_TEMP/internal-build.log" 2>&1 &
           internal=$! ;;
         esac
         case ",$self_host," in *,locked,*)
-          VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_LINK_OPEN=1 VITE_DISABLE_AI_TOOLS=1 VITE_DISABLE_ONDEVICE=1 \
-            VITE_PRIVATE_BY_DEFAULT=1 VITE_LOCALES=en \
-            pnpm exec vite build --outDir tests/.output/locked-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/locked-build.log" 2>&1 &
+          node scripts/e2e-build.mjs locked > "$RUNNER_TEMP/locked-build.log" 2>&1 &
           locked=$! ;;
         esac
         pnpm exec playwright install-deps chromium

@@ -19,7 +19,7 @@ import {
 
 const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 /** Nodes, not their tooltip or inline editor. */
 const NODES = /^node-(?!tooltip$|editor)/;
 
@@ -819,7 +819,7 @@ test("gate: the right half of the Kafka example, keyboard only, in under 60 keys
   };
 
   // Inventory database first, then upstream to the topic, so the topic ends selected for the fan-out.
-  await key("Control+k");
+  await key("ControlOrMeta+k");
   await expect(page.getByTestId("command-input")).toBeFocused();
   await find("pg");
   await key("Enter");
@@ -851,7 +851,7 @@ test("gate: the right half of the Kafka example, keyboard only, in under 60 keys
   await names("Payment ledger", "Record authorization");
 
   // Back to the topic: Ctrl+K finds nodes by name.
-  await key("Control+k");
+  await key("ControlOrMeta+k");
   await find("ord");
   await key("Enter");
   await expect(page.getByTestId("rf__node-topic-1")).toBeFocused();

@@ -53,9 +53,10 @@ test.describe("side panels and the camera", () => {
     const pane = await boxOf(page, "canvas-wrap");
     await page.mouse.move(pane.x + pane.width / 3, pane.y + pane.height / 2);
     // Ctrl+wheel zooms (the wheel alone pans).
-    await page.keyboard.down(process.platform === "darwin" ? "Meta" : "Control");
+    // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
+    await page.keyboard.down("Control");
     await page.mouse.wheel(0, -300);
-    await page.keyboard.up(process.platform === "darwin" ? "Meta" : "Control");
+    await page.keyboard.up("Control");
     await settle(page);
     const before = await boxes(page);
     await toggleInspector(page);

@@ -7,14 +7,14 @@ import { expectHostEmbed, expectShareWithoutLinks, serveHostPage } from "./self-
 
 /**
  * A self-hosted copy (docs/SELF-HOSTING.md), built as `pnpm build:internal` builds it, with a brand name: project
- * "internal" in playwright.config.ts (INTERNAL_ENV). No share links, password links or embed codes are offered
+ * "internal" in playwright.config.ts (E2E_PROFILES.internal). No share links, password links or embed codes are offered
  * anywhere, agents get no tools, new diagrams start Private, the brand names the app; links people send still
  * open, and the file exports still work. Selectors are data-testid only.
  */
 
 const BRAND = "Acme Diagrams (internal)";
 const SLUG = "kafka-order-pipeline";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const kafka = must(
   publicExamples.find((e) => e.slug === SLUG),
   "the Kafka example",

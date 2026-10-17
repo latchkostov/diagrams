@@ -202,13 +202,16 @@ export class Bench {
 
   /** Wait for both the flex pane (which excludes the Inspector) and its camera to hold still. */
   async canvasSettled() {
-    await expect(this.page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-fit-pending", "true");
+    await expect(this.page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "false");
     let last = "";
     await expect
       .poll(
         async () => {
-          const box = await this.page.getByTestId("canvas-wrap").boundingBox();
-          const now = box ? JSON.stringify([box, await this.viewport()]) : "";
+          const [box, viewport] = await Promise.all([
+            this.page.getByTestId("canvas-wrap").boundingBox(),
+            this.viewport(),
+          ]);
+          const now = box ? JSON.stringify([box, viewport]) : "";
           const stable = now !== "" && now === last;
           last = now;
           return stable;

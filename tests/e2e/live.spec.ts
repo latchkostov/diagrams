@@ -455,7 +455,7 @@ test.describe("live view", () => {
     await page.getByTestId("sim-panel-traffic-0-count").fill("37");
     await page.getByTestId("sim-panel-traffic-0-spread").fill("2.5");
     // No timer runs from here until after the round trip: the save must not depend on one.
-    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await pauseClock(page);
     await page.getByTestId("sim-panel-save").click();
     // Wait for each diagram to be on screen. The canvas stays mounted until the requested example has
     // loaded, so switching back before the other one arrived (a slow import on the dev server) kept

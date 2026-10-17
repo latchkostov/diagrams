@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -79,7 +79,7 @@ test.describe("slow motion", () => {
     await page.keyboard.press("Escape");
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
     await page.getByTestId("node-payments").click();
-    await page.keyboard.press("Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await page.getByTestId("command-input").fill("Kill");
     const kill = page.getByTestId("command-item-action:sim.kill");
     await expect(kill).toHaveAttribute("aria-disabled", "true");
@@ -133,7 +133,9 @@ test.describe("slow motion", () => {
     page,
     consoleErrors,
   }) => {
+    await page.clock.install();
     await watchFromStorefront(page);
+    await pauseClock(page);
     await expect(page.getByTestId("slowmo-chip")).toContainText("live paused");
     await expect(page.getByTestId("live-clock")).toHaveAttribute("data-mode", "slowmo");
     const time = await data(page, "sim-time");
@@ -141,7 +143,7 @@ test.describe("slow motion", () => {
     const moving: number[] = [];
     const captions = new Set<string>();
     for (let i = 0; i < 40; i++) {
-      await page.waitForTimeout(150);
+      await page.clock.runFor(150);
       moving.push(Number(await data(page, "slowmo-dots")));
       captions.add((await page.getByTestId("slowmo-caption").textContent()) ?? "");
       // Live is frozen: the clock and every background dot stay exactly where they were.
@@ -267,7 +269,7 @@ test.describe("slow motion", () => {
     await expect(play(page)).toHaveAttribute("data-state", "playing");
 
     // The palette loads on first use.
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+    await page.keyboard.press("ControlOrMeta+k");
     await expect(page.getByTestId("command-input")).toBeVisible({ timeout: 20_000 });
     await page.getByTestId("command-input").fill("slow motion");
     await page.getByTestId("command-item-action:sim.trace-message:slowmo").click();

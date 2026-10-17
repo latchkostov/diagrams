@@ -265,7 +265,7 @@ min, max, mean, cov }, workload?: { family, n, nodes, edges, fingerprint }, gate
 ## Baseline
 
 `tests/bench/baseline/master.json` (and its summary, `master.md`): `pnpm bench` on master `bf806a6` plus this suite,
-2026-10-15. AMD Ryzen 9 7950X (16 cores, 32 threads), 68 GB, Windows 11, Node 24.22.0, Chromium 156 (Playwright
+2026-10-15. 16 cores, 32 logical CPUs, 68 GB, Windows 11, Node 24.22.0, Chromium 156 (Playwright
 1.64.1), Vite 8.3.4, React 19.3.1, CPU throttle 2×. Calibration: Node 9.7 to 14.9 ms per suite (10.6 median), browser
 26 ms. 2,997 metrics; all 72 gates pass. It ran in parts (`--keep`), each under the two-hour limit of the tool that ran
 it: the Node suites 25 minutes, cold load 45, interactions and features 30, the rest 35 (the profiles once more, after a

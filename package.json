@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "gate": "node scripts/gate.mjs",
     "dev": "vite",
     "build": "node scripts/gen-schemas.mjs && tsc --noEmit && vite build",
     "schemas": "node scripts/gen-schemas.mjs",

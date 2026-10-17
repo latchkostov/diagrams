@@ -6,7 +6,7 @@ import { test, expect, gotoCanvas, gotoLab, waitForStableViewport, STORAGE_KEYS,
 
 const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 
 async function seed(page: Page, theme = "light") {
   await page.addInitScript(

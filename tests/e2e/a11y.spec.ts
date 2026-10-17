@@ -10,7 +10,7 @@ import { installFakeModelContext } from "./ai-helpers";
  */
 const KAFKA = "kafka-order-pipeline";
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const MOD = "ControlOrMeta";
 const tid = (id: string) => `[data-testid="${id}"]`;
 
 async function expectNoViolations(page: Page, scope?: string) {

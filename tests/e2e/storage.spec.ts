@@ -94,7 +94,7 @@ test.describe("storage providers", () => {
     await expect(page.getByTestId("file-save")).toContainText(`To Test storage: ${filename}`);
     await page.keyboard.press("Escape");
     await setTitle(page, "Cloud round trip, edited");
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect(page.getByTestId("toast")).toContainText("Saved to Test storage");
     await expect.poll(async () => JSON.parse((await files(page))[0].text).title).toBe("Cloud round trip, edited");
     stored = await files(page);
@@ -110,7 +110,7 @@ test.describe("storage providers", () => {
     await expect(page.getByTestId("diagram-title")).toHaveText("Cloud round trip, edited");
     await expect(page.getByTestId("save-status")).toHaveText("Opened from Test storage");
     await setTitle(page, "Opened and saved back");
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect(page.getByTestId("save-status")).toHaveText("Saved to Test storage · just now");
     stored = await files(page);
     expect(stored).toHaveLength(1);
@@ -132,12 +132,12 @@ test.describe("storage providers", () => {
     await submenuItem(page, "file-save-to", "save-to-test");
     await expect(page.getByTestId("save-status")).toContainText("Saved to Test storage");
     await page.evaluate((key) => localStorage.setItem(key, "save"), FAIL);
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
     await expect(page.getByTestId("toast")).toContainText(
       "Couldn't save to Test storage. Test storage refused to save the file",
     );
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success");
     expect(await files(page)).toHaveLength(1);
   });
@@ -226,7 +226,7 @@ test("pending Save follows the first promoted copy (test cloud)", async ({ page 
     await expect(page.getByTestId("save-status")).toContainText("Test storage");
     await expect.poll(async () => (await files(page)).length).toBe(1);
     const id = (await files(page))[0].id;
-    await page.keyboard.press("Control+s");
+    await page.keyboard.press("ControlOrMeta+s");
     await expect
       .poll(
         async () => JSON.parse((await files(page))[0].text).nodes.find((n: { id: string }) => n.id === "shopper").label,
