@@ -82,6 +82,15 @@
 - The production bundle regression passes: collaboration, Yjs and tracker code are absent from every
   production chunk, with image export loading only when used. The scoped UX review finds no new
   controls, wording or chrome; export progress and cancellation retain their existing tests.
+## Resizable Inspector CI follow-up (#145, 2026-10-16)
+
+- Fixed the development-project interaction benchmark's viewport assumption: open the Inspector and
+  fit the diagram before measuring node clicks, typing and dragging. The sheet already reserves canvas
+  space and keeps the selected node visible; the next, unrelated target could be outside that pane.
+  Performance assertions remain unchanged. Audited canvas interactions across all five E2E projects
+  (details in `QUALITY.md`); the drawing-basics multi-selection check passes unchanged.
+- No product output or parity goldens change.
+
 ## Resizable Inspector rebase onto Review follow-ups 3 (#144, 2026-10-16)
 
 - Rebased onto #144, preserving both documentation histories and all translation keys. Kept

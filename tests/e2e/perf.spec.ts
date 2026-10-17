@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox, fitDiagram } from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
 // playwright.config.ts runs in the "dev" project).
@@ -131,6 +131,13 @@ async function openCanvasMenu(page: Page) {
   await expect(page.getByTestId("context-menu")).toBeVisible();
 }
 
+/** Keep every interaction target reachable without measuring the inspector's deferred opening pan. */
+async function prepareNodeInteractions(page: Page) {
+  await page.getByTestId("inspector-toggle").click();
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await fitDiagram(page);
+}
+
 test.describe("perf: interactions", { tag: "@dev" }, () => {
   test("hovering the canvas menu re-renders only the rows that change", async ({ page, consoleErrors }) => {
     await openDiagram(page);
@@ -204,6 +211,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     consoleErrors,
   }) => {
     await openDiagram(page);
+    await prepareNodeInteractions(page);
     const { counts } = await measure(page, async () => {
       await page.getByTestId("node-gateway").click();
       const box = await page.getByTestId("node-inventory").boundingBox();
@@ -259,7 +267,8 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     consoleErrors,
   }) => {
     await openDiagram(page);
-    const every = await page.locator(".react-flow__node").count();
+    await prepareNodeInteractions(page);
+    const every = await page.getByTestId(/^rf__node-/).count();
     expect(every).toBeGreaterThanOrEqual(15);
     const { counts: click } = await measure(page, async () => {
       await page.getByTestId("node-orders").click();

@@ -152,6 +152,17 @@ React's development-only fiber timings or component names (`perf.spec.ts`), or i
 the page (`import("/src/...")`, as `library-regressions.spec.ts` does). Prefer `data-testid` and app
 behaviour over either.
 
+Canvas interaction measurements open the Inspector and fit the diagram before counting renders.
+Selecting a node normally opens the Inspector and pans to keep that selection and its connections visible;
+an unrelated node may then lie outside the narrower pane. A test switching to that node must first fit
+or pan it into view, rather than force a click through the sheet. Keep panel/camera setup outside
+performance measurements.
+The #145 audit covered canvas clicks and drags across the specs and all five configured projects:
+the other `@dev` cases use no node selection, a single target, or synthetic fixtures; `library-regressions`,
+`subpath` and `locked` have no canvas-node clicks, and `internal` selects only its initial target.
+Existing multi-target tests that already fit between selections retain those waits. The drawing-basics
+multi-selection sequence remains reachable after its first selection's pan and passes unchanged.
+
 Run them locally:
 
 - Like CI: `E2E_TARGET=build E2E_PORT=5301 E2E_PREVIEW_PORT=5303 pnpm test:e2e` (builds both bundles first).
