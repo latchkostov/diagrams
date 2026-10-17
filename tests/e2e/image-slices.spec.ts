@@ -291,6 +291,46 @@ async function holdExportSlice(page: Page) {
   };
 }
 
+test("large export paints between progressing clone slices", async ({ page, consoleErrors }) => {
+  test.slow();
+  await openLanes(page);
+  await countFrames(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __frames: number;
+      __cloneProgress: { progress: number; frame: number }[];
+    };
+    w.__cloneProgress = [];
+    const observer = new MutationObserver(() => {
+      const progress = Number(document.querySelector('[data-testid="toast-progress"]')?.getAttribute("aria-valuenow"));
+      if (progress > 0 && progress < 70 && progress !== w.__cloneProgress.at(-1)?.progress)
+        w.__cloneProgress.push({ progress, frame: w.__frames });
+    });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["aria-valuenow"],
+    });
+  });
+  // Use the production slice budget, channel and clock: no held continuation or injected frame.
+  const downloads = imageDownloads(page);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-png").click();
+  await downloads.finished();
+  const samples = await page.evaluate(
+    () => (window as unknown as { __cloneProgress: { progress: number; frame: number }[] }).__cloneProgress,
+  );
+  expect(samples.length).toBeGreaterThanOrEqual(3);
+  let paintedIntervals = 0;
+  for (let i = 1; i < samples.length; i++) {
+    expect(samples[i].progress).toBeGreaterThan(samples[i - 1].progress);
+    if (samples[i].frame > samples[i - 1].frame) paintedIntervals++;
+  }
+  expect(paintedIntervals).toBeGreaterThanOrEqual(2);
+  expectNoErrors(consoleErrors);
+});
+
 test("a long image export keeps the page painting, shows its progress and can be cancelled", async ({
   page,
   consoleErrors,

@@ -35,7 +35,7 @@ it.each([
   const servers = Array.isArray(config.webServer) ? config.webServer : [];
   expect(servers.map((server) => Number(new URL(server.url!).port))).toEqual(mode.servers);
   if (mode.target === "build" && mode.only) {
-    expect(servers[0].command).toContain("vite build");
+    expect(servers[0].command).toContain("node scripts/e2e-build.mjs e2e");
     expect(servers[0].command).toContain("vite preview");
     expect(servers[0].env?.VITE_E2E).toBe("1");
     vi.stubEnv("E2E_CHROMIUM_ONLY", "");
@@ -70,6 +70,6 @@ it.each(["build", "dev"])("gate mode owns every webServer and forbids focused te
   if (target === "build") {
     const app = servers.find((server) => server.url === "http://localhost:6360");
     expect(app?.command).toContain("vite preview");
-    expect(app?.command).not.toContain("vite build");
+    expect(app?.command).not.toContain("scripts/e2e-build.mjs");
   }
 });

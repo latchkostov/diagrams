@@ -1,6 +1,6 @@
-# Gate portability and flake audit
+## Gate portability and flake audit (2026-10-17)
 
-Native macOS cannot be run from this Windows checkout. Native macOS and Windows
+Native platform behavior requires a run on that OS. Windows and macOS
 Nightly jobs run units and every production E2E project with zero retries. The
 platform spec also supplies Mac/Windows browser inputs on every host; this checks
 application branches and pinch events, but cannot emulate native text editing.
@@ -191,3 +191,69 @@ cancelled: its list contains the failures recorded before cancellation.
 
 - `smoke.spec.ts:17:3 › smoke › canvas ────────────────────────────────────`
 - `live.spec.ts:390:3 › live view › saved simulation survives immediate diagram navigation`
+
+## Full-suite findings
+
+The full-suite gate also caught the flow-building selection helper returning before
+the inspector's deferred reveal finished. Following it immediately with Alt+arrow
+could overlap viewport commands and measure a node outside the pane. The helper now
+waits for the inspector and stable viewport before the next gesture. A regression
+holds the reveal's clock until selection publishes, then verifies the selected node
+is in the pane when the helper returns. Removing the waits fails that boundary
+assertion. Placement, connection, direction and Undo assertions stay unchanged.
+
+The two compiler probes and the full 5,000-node Draw everything case have explicit 40-second
+hang backstops on every machine, matching CI's intent. The compiler probes are separated by
+compiler; the cap case is separated from the small import. They assert compatibility,
+no emission and the real import cap, rather than performance. Complexity tests retain their
+ratios and operation counts; the ordinary local unit timeout remains five seconds.
+The import column guard counts internal array element reads, including copies, with the
+same eighth-input comparison and 24x limit. It needs only two layouts rather than timing
+150 layouts and their fresh maps; garbage collection cannot change the measured work.
+The consumer-limit guard likewise counts runtime route and member reads across a scale change;
+per-consumer route scans fail independently of CPU load. The Compose ID regression calls the
+loaded pipeline, keeping cold module transformation outside its behavior assertions.
+The startup-readiness regression fast-forwards the fake clock while Live is paused;
+an animation-frame counter prevents accidentally replaying thousands of irrelevant paused frames.
+Playback still delivers every simulation tick and retains all readiness assertions.
+
+Windows Chromium test browsers also disable `TcpPortRandomizationWin`. A standalone tiny
+loopback page reproduced `ERR_NO_BUFFER_SPACE`, with the netlog recording Windows error
+10055 at TCP connect before HTTP. Across both probe orders, default Chromium 156.0.8078.4
+had one connect failure in 4,800 navigations; disabling the feature had none in 4,800.
+The host had ample free memory and available ephemeral ports, and used CUBIC. No Windows
+network/antivirus settings, app code, error assertions or retries are changed.
+`scripts/e2e-chromium.ts` reads the pinned Playwright runtime's native default feature list
+without launching a browser. Chrome honors only the last `--disable-features` switch, so
+appending a bare workaround would silently re-enable Playwright's other disabled features.
+The config regressions catch removal of the workaround and clobbered defaults; Linux/macOS
+launch arguments stay unchanged. Review/remove this deliberately narrow internal API
+integration when upgrading Playwright/Chromium; it must never enter an app bundle.
+
+## Round 2 regression proofs and UX review
+
+The shared profile contract changes a profile environment and output directory in memory,
+then checks the gate, Playwright and CI build entry use those values. Restoring the
+independent gate definitions fails that contract. CI keeps the same projects, shard
+selection, four parallel builds and overlap with browser dependency installation. The
+entry invokes the installed Vite CLI with Node, avoiding host shell and Corepack assumptions.
+
+The geometry unit tests cover physical left/right placement, zoom, pane origins and a
+narrower pane. Removing reserved menu space fails both resize cases. The existing English
+and Arabic rapid-add browser checks still pass. No controls, menu items or words change;
+placement remains physical, clear of the source card and landing outline.
+
+The new production-budget export test records rendered clone-progress mutations and frame
+counts without intercepting the channel, clock or slice budget. Disabling time slicing
+produces zero intermediate samples and fails the required three progressing samples; the
+held-slice cancellation test remains independent. Restoring the pre-fix selection zoom
+fails the final settled zoom check (about 0.47 instead of 1.25), after Inspector reveal
+and measured-fit completion. The test also requires the selected card wholly inside the pane.
+Both browser regressions failed together with those deliberate reversions; the restored
+focused suite passed 33 tests, zero failed or flaky.
+
+Stamp integration executes the complete real step plan with injected commands and an
+isolated stamp directory. It covers command failure, thrown execution, flaky reports,
+late tree/HEAD changes, subsets, no-Docker and complete success. Independently removing
+stale-stamp invalidation, the tree check or the HEAD check fails the integration test.
+No verification stamp is accepted from a partial run.

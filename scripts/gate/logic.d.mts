@@ -35,5 +35,3 @@ export function checkTree(status: string, before: string, after?: string): void;
 export function playwrightCounts(report: unknown): BrowserCounts;
 export function plan(config: Config, changed?: string[]): Step[][];
 export function canStamp(config: Config): boolean;
-export const INTERNAL_ENV: Record<string, string>;
-export const LOCKED_ENV: Record<string, string>;

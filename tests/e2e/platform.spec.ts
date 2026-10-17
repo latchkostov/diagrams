@@ -1,4 +1,12 @@
-import { test, expect, gotoCanvas, waitForStableViewport, viewportTransform, pauseClock } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  waitForStableViewport,
+  viewportTransform,
+  pauseClock,
+  waitForSelectionSettled,
+} from "./fixtures";
 
 // These inputs exercise application platform branches on every host. They cannot
 // emulate macOS's native text editing; the native Nightly jobs cover that behavior.
@@ -66,5 +74,17 @@ test("zoom to selection wins over a deferred Inspector reveal", async ({ page })
   await page.getByTestId("node-stock-db").click();
   await page.keyboard.press("Shift+Digit2");
   await page.clock.resume();
-  await expect.poll(zoom).toBeGreaterThan(before * 1.5);
+  await waitForSelectionSettled(page);
+  const canvas = page.getByTestId("canvas-wrap");
+  await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+  await waitForStableViewport(page);
+  expect(await zoom()).toBeGreaterThan(before * 1.5);
+  expect(await zoom()).toBeCloseTo(1.25, 2);
+  const pane = await canvas.boundingBox();
+  const node = await page.getByTestId("node-stock-db").boundingBox();
+  if (!pane || !node) throw new Error("Missing selection geometry");
+  expect(node.x).toBeGreaterThanOrEqual(pane.x);
+  expect(node.y).toBeGreaterThanOrEqual(pane.y);
+  expect(node.x + node.width).toBeLessThanOrEqual(pane.x + pane.width);
+  expect(node.y + node.height).toBeLessThanOrEqual(pane.y + pane.height);
 });

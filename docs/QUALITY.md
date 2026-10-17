@@ -42,7 +42,7 @@ warns. Measurements and migration decisions: [toolchain modernization](TOOLCHAIN
 ### Portable local gate
 
 Run `pnpm gate setup` once per checkout, then `pnpm gate doctor`. Both work in PowerShell,
-cmd, Git Bash and macOS zsh without shell utilities. Setup installs frozen repo dependencies,
+cmd, Git Bash and POSIX shells without shell utilities. Setup installs frozen repo dependencies,
 pinned Chromium and the pinned Playwright Docker image; it never installs system software.
 Doctor explains how to fix Node/pnpm pins, missing installs, Docker access and low disk space.
 Both the OS temp drive and repository drive need at least 8 GiB free.
@@ -69,7 +69,7 @@ a pnpm store is shared. Reports return to the checkout. Both parity tiers run in
 container (no nested Docker). The image's Node runtime is intentional; installation disables
 engine-strict inside the image. Native parity retains its existing Linux browser tier.
 `GATE_LINUX_SOURCE=bind` is a diagnostic comparison mode; full archive runs exclude all ignored
-and untracked host content. Measurements: [gate measurements](GATE-MEASUREMENTS.md).
+and untracked host content. Archive transport avoids host bind-mount overhead.
 
 Native Playwright/Chrome temporary profiles use the run's own directory on the repository drive.
 In Linux profiles and reports use native volumes. Reports are copied back after the run,
@@ -83,47 +83,12 @@ stamp, and checks that HEAD and the tree stayed unchanged. Only complete success
 write `$(git rev-parse --git-common-dir)/verified/<sha>`. Quick, subsets and `--no-docker`
 never stamp. `--no-docker` loudly skips Docker checks and browser parity for native CI runners.
 
-| Choosing a machine/mode       | What it predicts                                       | When to use it                                 |
-| ----------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
-| Windows native                | Windows Chromium, native file paths and shortcuts      | Daily Windows work and portability checks      |
-| macOS native                  | macOS Chromium, Command shortcuts and native fonts     | Daily Mac work and portability checks          |
-| Either machine with `--linux` | CI's pinned Linux browser image and Linux dependencies | Before pushing and to reproduce Linux failures |
-
-The full-suite gate also caught the flow-building selection helper returning before
-the inspector's deferred reveal finished. Following it immediately with Alt+arrow
-could overlap viewport commands and measure a node outside the pane. The helper now
-waits for the inspector and stable viewport before the next gesture. A regression
-holds the reveal's clock until selection publishes, then verifies the selected node
-is in the pane when the helper returns. Removing the waits fails that boundary
-assertion. Placement, connection, direction and Undo assertions stay unchanged.
-
-The two compiler probes and the full 5,000-node Draw everything case have explicit 40-second
-hang backstops on every machine, matching CI's intent. The compiler probes are separated by
-compiler; the cap case is separated from the small import. They assert compatibility,
-no emission and the real import cap, rather than performance. Complexity tests retain their
-ratios and operation counts; the ordinary local unit timeout remains five seconds.
-The import column guard counts internal array element reads, including copies, with the
-same eighth-input comparison and 24x limit. It needs only two layouts rather than timing
-150 layouts and their fresh maps; garbage collection cannot change the measured work.
-The consumer-limit guard likewise counts runtime route and member reads across a scale change;
-per-consumer route scans fail independently of CPU load. The Compose ID regression calls the
-loaded pipeline, keeping cold module transformation outside its behavior assertions.
-The startup-readiness regression fast-forwards the fake clock while Live is paused;
-an animation-frame counter prevents accidentally replaying thousands of irrelevant paused frames.
-Playback still delivers every simulation tick and retains all readiness assertions.
-
-Windows Chromium test browsers also disable `TcpPortRandomizationWin`. A standalone tiny
-loopback page reproduced `ERR_NO_BUFFER_SPACE`, with the netlog recording Windows error
-10055 at TCP connect before HTTP. Across both probe orders, default Chromium 156.0.8078.4
-had one connect failure in 4,800 navigations; disabling the feature had none in 4,800.
-The host had ample free memory and available ephemeral ports, and used CUBIC. No Windows
-network/antivirus settings, app code, error assertions or retries are changed.
-`scripts/e2e-chromium.ts` reads the pinned Playwright runtime's native default feature list
-without launching a browser. Chrome honors only the last `--disable-features` switch, so
-appending a bare workaround would silently re-enable Playwright's other disabled features.
-The config regressions catch removal of the workaround and clobbered defaults; Linux/macOS
-launch arguments stay unchanged. Review/remove this deliberately narrow internal API
-integration when upgrading Playwright/Chromium; it must never enter an app bundle.
+| Platform/mode           | What it predicts                                       | When to use it                                 |
+| ----------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| Windows native          | Windows Chromium, native file paths and shortcuts      | Daily Windows work and portability checks      |
+| macOS native            | macOS Chromium, Command shortcuts and native fonts     | Daily macOS work and portability checks        |
+| Linux native            | Installed Linux Chromium and local dependencies        | Daily Linux work and portability checks        |
+| Any host with `--linux` | CI's pinned Linux browser image and Linux dependencies | Before pushing and to reproduce Linux failures |
 
 `pnpm test:e2e` starts its own servers and runs five Playwright projects:
 
@@ -297,7 +262,7 @@ workflow). It covers what pull requests skip for speed, with no retries:
 
 - **Native portability:** Windows and macOS run `pnpm gate full --no-docker --only unit,e2e`,
   including all five browser projects. Reports feed the same failure issue.
-  [Portability and historical Nightly audit](GATE-PORTABILITY.md).
+  [Dated portability audit](design-review/2026-10-17-portable-gate.md).
 
 - **Dev server 1/4 … 4/4:** the whole suite with `E2E_TARGET=dev`: the `chromium` and `dev` projects on
   the Vite dev server, and `subpath` on the production build. Checks of the e2e build itself skip

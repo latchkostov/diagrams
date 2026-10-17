@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_PROFILES, type E2EProfileName } from "./scripts/e2e-profiles.mjs";
 import { chromiumLaunchArgs } from "./scripts/e2e-chromium";
 
 /**
@@ -22,7 +23,7 @@ import { chromiumLaunchArgs } from "./scripts/e2e-chromium";
  * server is reused only when its port was chosen explicitly, or locally (not on CI) on the default port, so
  * a CI run never silently tests a server it didn't start.
  * E2E_PREBUILT=1 serves tests/.output/{e2e,preview,internal,locked}-dist as they are (CI builds them in an earlier
- * step, .github/actions/e2e, with the envs below); otherwise each run builds what it serves.
+ * step, .github/actions/e2e, from scripts/e2e-profiles.mjs); otherwise each run builds what it serves.
  * Skip the production-build servers (subpath, internal, locked) locally with E2E_SKIP_PREVIEW=1 (saves the builds);
  * E2E_SELF_HOST picks the self-hosting ones ("internal", "locked", both by default, "" for none). Those two are
  * served with a self-hosted copy's headers (PREVIEW_HEADERS=self-host), not the public site's.
@@ -57,24 +58,6 @@ const preview = port("E2E_PREVIEW_PORT", 5193);
 export const PREVIEW_BASE = "/tools/diagrams/";
 const internal = port("E2E_INTERNAL_PORT", preview.port + 1, preview.explicit);
 const locked = port("E2E_LOCKED_PORT", preview.port + 2, preview.explicit);
-/** The self-hosting builds' switches (scripts/deployment-env.ts); .github/actions/e2e builds them the same way. */
-export const INTERNAL_ENV = {
-  VITE_DISABLE_SHARE_LINKS: "1",
-  VITE_DISABLE_AI_TOOLS: "1",
-  VITE_PRIVATE_BY_DEFAULT: "1",
-  VITE_BRAND_NAME: "Acme Diagrams (internal)",
-  // Two languages, English and German (the Language dialog offers just those); the locked copy has one.
-  VITE_LOCALES: "en,de",
-};
-export const LOCKED_ENV = {
-  VITE_DISABLE_SHARE_LINKS: "1",
-  VITE_DISABLE_LINK_OPEN: "1",
-  VITE_DISABLE_AI_TOOLS: "1",
-  VITE_DISABLE_ONDEVICE: "1",
-  VITE_PRIVATE_BY_DEFAULT: "1",
-  // One language: English for everyone, whatever the browser asks for, with no Language choice.
-  VITE_LOCALES: "en",
-};
 const skipPreview = chromiumOnly || process.env.E2E_SKIP_PREVIEW === "1";
 const prebuilt = process.env.E2E_PREBUILT === "1";
 
@@ -97,22 +80,17 @@ const DEV_ONLY = /@dev|library-regressions\.spec\.ts|ai-privacy\.spec\.ts/;
  * `localhost` as their origin, so the self-hosting host pages on 127.0.0.1 stay another origin.
  */
 const LOOPBACK = "127.0.0.1";
-const viteBuild = (outDir: string) => `pnpm exec vite build --outDir ${outDir} --emptyOutDir --logLevel error`;
-const serve = (outDir: string, extra: string) =>
-  `${prebuilt ? "" : `${viteBuild(outDir)} && `}pnpm exec vite preview --outDir ${outDir} --host ${LOOPBACK} ${extra}`;
+const serve = (name: E2EProfileName, extra: string) =>
+  `${prebuilt ? "" : `node scripts/e2e-build.mjs ${name} && `}pnpm exec vite preview --outDir ${E2E_PROFILES[name].outDir} --host ${LOOPBACK} ${extra}`;
 
-const E2E_DIST = "tests/.output/e2e-dist";
-const PREVIEW_DIST = "tests/.output/preview-dist";
-const INTERNAL_DIST = "tests/.output/internal-dist";
-const LOCKED_DIST = "tests/.output/locked-dist";
 /**
  * The self-hosting builds this run serves: E2E_SELF_HOST lists them ("internal,locked", the default; "" for none).
  * CI serves (and builds) only those its shard's spec files need.
  */
 const SELF_HOST_WANTED = (process.env.E2E_SELF_HOST ?? "internal,locked").split(",").map((v) => v.trim());
 const selfHost = [
-  { name: "internal", spec: /self-host\.spec\.ts/, at: internal, dist: INTERNAL_DIST, env: INTERNAL_ENV },
-  { name: "locked", spec: /self-host-locked\.spec\.ts/, at: locked, dist: LOCKED_DIST, env: LOCKED_ENV },
+  { name: "internal", spec: /self-host\.spec\.ts/, at: internal, ...E2E_PROFILES.internal },
+  { name: "locked", spec: /self-host-locked\.spec\.ts/, at: locked, ...E2E_PROFILES.locked },
 ].filter((v) => SELF_HOST_WANTED.includes(v.name));
 /** Specs with a build of their own (their projects below); the app's projects skip them. */
 const OWN_BUILD = /(subpath|self-host|self-host-locked)\.spec\.ts/;
@@ -214,9 +192,9 @@ export default defineConfig({
       ? [
           {
             // The e2e build: production React and bundling, plus the test hooks (VITE_E2E=1).
-            command: serve(E2E_DIST, `--port ${app.port} --strictPort`),
+            command: serve("e2e", `--port ${app.port} --strictPort`),
             url: `http://localhost:${app.port}`,
-            env: { VITE_E2E: "1" },
+            env: E2E_PROFILES.e2e.env,
             reuseExistingServer: reuseServer(app.explicit),
             timeout: 180_000,
             stdout: "ignore" as const,
@@ -229,9 +207,9 @@ export default defineConfig({
       : [
           {
             // The production build, exactly as it ships (no VITE_E2E).
-            command: serve(PREVIEW_DIST, `--port ${preview.port} --strictPort --base ${PREVIEW_BASE}`),
+            command: serve("preview", `--port ${preview.port} --strictPort --base ${PREVIEW_BASE}`),
             url: `http://localhost:${preview.port}${PREVIEW_BASE}`,
-            env: { VITE_E2E: "" },
+            env: E2E_PROFILES.preview.env,
             reuseExistingServer: reuseServer(preview.explicit),
             timeout: 180_000,
             stdout: "ignore" as const,
@@ -239,8 +217,8 @@ export default defineConfig({
           },
           // The self-hosting builds: production as it ships (no VITE_E2E), with the switches set.
           // Served with a self-hosted copy's headers (scripts/self-host-headers.ts), not the public site's.
-          ...selfHost.map(({ dist, at, env }) => ({
-            command: serve(dist, `--port ${at.port} --strictPort`),
+          ...selfHost.map(({ name, at, env }) => ({
+            command: serve(name as E2EProfileName, `--port ${at.port} --strictPort`),
             url: `http://localhost:${at.port}/`,
             // Embeds framed by the host pages tests/e2e/self-host-helpers.ts serves on 127.0.0.1.
             env: { VITE_E2E: "", PREVIEW_HEADERS: "self-host", PREVIEW_FRAME_ANCESTORS: "http://127.0.0.1:*", ...env },

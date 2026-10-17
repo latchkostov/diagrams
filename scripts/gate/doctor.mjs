@@ -117,7 +117,7 @@ export async function doctor(root, config) {
     }
   }
   console.log(
-    `Machine: ${os.cpus()[0]?.model ?? os.arch()}, ${os.availableParallelism()} CPUs, ${(os.totalmem() / GIB).toFixed(1)} GiB RAM; workers=${config.workers ?? workerCount(os.availableParallelism(), os.totalmem())}`,
+    `Host resources: ${os.availableParallelism()} CPUs, ${(os.totalmem() / GIB).toFixed(1)} GiB RAM; workers=${config.workers ?? workerCount(os.availableParallelism(), os.totalmem())}`,
   );
   return failures === 0;
 }

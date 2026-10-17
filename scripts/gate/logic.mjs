@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { E2E_PROFILES, e2eBuild } from "../e2e-profiles.mjs";
 
 export const CATEGORIES = ["lint", "typecheck", "format", "i18n", "skill", "unit", "build", "size", "parity", "e2e"];
 export const GIB = 1024 ** 3;
@@ -41,12 +42,10 @@ export function validatePorts(base) {
   return base;
 }
 
-// Leave capacity for Vite, the OS, exports and trace buffers: 2.5 GiB per worker
-// after a 4 GiB reserve. The cap prevents logical SMT threads from starving real cores.
-// Ryzen 7950X / 64 GiB, SATA checkout: 8/12/16/24 workers took 504/429/491/483s
-// for all five projects; 24 had four failures. Twelve was fastest and green.
-// A 31.2 GiB Docker VM gets ten workers; twelve hit an ENOMEM trace write.
-// See docs/GATE-MEASUREMENTS.md. A 10-core / 24 GiB Mac gets seven workers.
+// Reserve 4 GiB for the OS, Vite, exports and trace buffers, then allow 2.5 GiB
+// per worker and three quarters of logical CPUs, capped at 12. More workers
+// measured slower and exposed races on a 32-thread host. A container's memory
+// limit lowers the count further, keeping parallel trace writes within capacity.
 export function workerCount(cpus, memory) {
   return Math.max(1, Math.min(12, Math.floor(cpus * 0.75), Math.floor((memory / GIB - 4) / 2.5)));
 }
@@ -89,22 +88,6 @@ export function playwrightCounts(report) {
   return { passed, failed, flaky, skipped, errors: report.errors?.length ?? 0, projects };
 }
 
-export const INTERNAL_ENV = {
-  VITE_DISABLE_SHARE_LINKS: "1",
-  VITE_DISABLE_AI_TOOLS: "1",
-  VITE_PRIVATE_BY_DEFAULT: "1",
-  VITE_BRAND_NAME: "Acme Diagrams (internal)",
-  VITE_LOCALES: "en,de",
-};
-export const LOCKED_ENV = {
-  VITE_DISABLE_SHARE_LINKS: "1",
-  VITE_DISABLE_LINK_OPEN: "1",
-  VITE_DISABLE_AI_TOOLS: "1",
-  VITE_DISABLE_ONDEVICE: "1",
-  VITE_PRIVATE_BY_DEFAULT: "1",
-  VITE_LOCALES: "en",
-};
-
 /** Groups execute sequentially; independent members of a group execute together. */
 export function plan(config, changed = []) {
   const wanted = new Set(
@@ -136,18 +119,7 @@ export function plan(config, changed = []) {
   if (wanted.has("parity")) groups.push([step("parity", ["parity", ...(!config.docker ? ["--tier", "node"] : [])])]);
   const specs = config.specs.length ? config.specs : changed.filter((f) => /^tests\/e2e\/.*\.spec\.ts$/.test(f));
   if (wanted.has("e2e") && (config.command !== "quick" || specs.length)) {
-    const build = (name, env = {}) =>
-      step(
-        `${name}-build`,
-        ["exec", "vite", "build", "--outDir", `tests/.output/${name}-dist`, "--emptyOutDir", "--logLevel", "error"],
-        { VITE_E2E: "", ...env },
-      );
-    groups.push([
-      build("e2e", { VITE_E2E: "1" }),
-      build("preview"),
-      build("internal", INTERNAL_ENV),
-      build("locked", LOCKED_ENV),
-    ]);
+    groups.push(Object.keys(E2E_PROFILES).map((name) => ({ name: `${name}-build`, ...e2eBuild(name) })));
     for (let i = 1; i <= config.repeat; i++)
       groups.push([step(`e2e-${i}`, ["exec", "playwright", "test", ...specs, "--retries=0", "--forbid-only"])]);
   }

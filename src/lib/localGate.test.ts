@@ -1,6 +1,7 @@
+import console from "node:console";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, resolve, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer } from "node:net";
@@ -23,6 +24,7 @@ import { browserTemp, prepareBrowserTemp, runSteps } from "../../scripts/gate/ru
 import { linuxRun } from "../../scripts/gate/linux.mjs";
 import { installed } from "../../scripts/gate/doctor.mjs";
 import { command, git, pnpmCommand } from "../../scripts/gate/commands.mjs";
+import { runGate } from "../../scripts/gate.mjs";
 
 it("invokes standalone pnpm and JS shims without shell interpretation", () => {
   const args = ["exec", "tool", "a path with spaces", "$(literal)"];
@@ -287,6 +289,99 @@ it("rejects dirty trees including untracked files, and a changed HEAD", () => {
   expect(() => checkTree("", "abc", "abc")).not.toThrow();
   for (const status of [" M file.ts", "?? file.ts"]) expect(() => checkTree(status, "abc")).toThrow("Commit or stash");
   expect(() => checkTree("", "abc", "def")).toThrow("HEAD changed");
+});
+
+it("full gate stamps only a complete unchanged-HEAD success", async () => {
+  mkdirSync("tests/.output", { recursive: true });
+  const root = mkdtempSync(resolve("tests/.output/gate-stamps-"));
+  const stampDir = join(root, "stamps");
+  mkdirSync(stampDir);
+  const stamp = join(stampDir, "original-head");
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    for (const scenario of [
+      "command failure",
+      "throw",
+      "tree change",
+      "HEAD change",
+      "flaky",
+      "subset",
+      "no docker",
+      "success",
+    ]) {
+      writeFileSync(stamp, "stale stamp");
+      let finished = false;
+      const commands: string[][] = [];
+      const run = () =>
+        runGate(
+          config([
+            "--ports",
+            "6480",
+            ...(scenario === "subset" ? ["--only", "unit"] : scenario === "no docker" ? ["--no-docker"] : []),
+          ]),
+          {
+            root,
+            stampDir,
+            git: async (args) =>
+              args.includes("--git-common-dir")
+                ? root
+                : args[0] === "status"
+                  ? finished && scenario === "tree change"
+                    ? "?? late-file"
+                    : ""
+                  : finished && scenario === "HEAD change"
+                    ? "new-head"
+                    : "original-head",
+            acquireLock: async () => async () => {},
+            doctor: async () => true,
+            probePorts: async (port) => port,
+            runSteps: async (cwd, config, changed, directory) => {
+              const result = await runSteps(cwd, config, changed, directory, {}, async (args, { env }) => {
+                commands.push(args);
+                if (scenario === "throw") throw new Error("injected command error");
+                if (args.includes("playwright"))
+                  writeFileSync(
+                    env.PLAYWRIGHT_JSON_OUTPUT_NAME,
+                    JSON.stringify({
+                      stats: { expected: 1, unexpected: 0, flaky: scenario === "flaky" ? 1 : 0, skipped: 0 },
+                    }),
+                  );
+                if (args.includes("test:coverage"))
+                  writeFileSync(
+                    join(directory, "unit/results.json"),
+                    JSON.stringify({
+                      success: true,
+                      numPassedTests: 1,
+                      numFailedTests: 0,
+                      numPendingTests: 0,
+                    }),
+                  );
+                return {
+                  code: scenario === "command failure" && args[0] === "lint" ? 1 : 0,
+                  text: args[0] === "parity" ? "Parity: 1 goldens, 0 changed, 0 added, 0 missing, 0 stale" : "",
+                };
+              });
+              finished = true;
+              return result;
+            },
+          },
+        );
+      if (scenario === "throw") await expect(run()).rejects.toThrow("injected command error");
+      else expect(await run(), scenario).toBe(["success", "subset", "no docker"].includes(scenario) ? 0 : 1);
+      expect(existsSync(stamp), scenario).toBe(scenario === "success");
+      if (scenario === "success") {
+        expect(commands).toHaveLength(plan(config()).flat().length);
+        expect(readFileSync(stamp, "utf8")).toContain("gate_failures=0");
+      }
+    }
+  } finally {
+    log.mockRestore();
+    error.mockRestore();
+    warn.mockRestore();
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 it("plans all CI builds together without shards or retries", () => {
