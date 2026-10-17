@@ -37,7 +37,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-178.621px, 363.425px) scale(0.488506)",
+    "viewport": "translate(24.955px, 275.055px) scale(0.376124)",
     "nodes": {
       "group:us": { "kind": "group", "box": "translate(760px, 160px) 1100×152", "text": "AWS · us-east-1" },
       "group:eu": { "kind": "group", "box": "translate(760px, 480px) 1100×152", "text": "AWS · eu-west-1" },

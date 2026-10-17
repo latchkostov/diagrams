@@ -25,7 +25,8 @@ owned replay cameras keep their view. Deferred pane changes are observable to br
 Route-table Order and Match headings need separate space, including expanded translations. Last wraps at
 word boundaries. A target list shows its full text when it fits and its first target plus a count when it
 does not; the title and accessible row name retain every target. The width change in #145 had removed the
-Round 44 `targetsText` summary in commit `391857e7`.
+Round 44 `targetsText` summary in commit `391857e7`. Final screenshots in en, ar and en-XA also caught the
+pseudo-locale compact summary clipping; a minimum target-column measure and a text-fit assertion cover it.
 
 The manual sheet maximum becomes 960 px while retaining the 60vw and minimum-canvas constraints. Saved
 preferences are clamped when applied. Fields have a 640 px measure; tables keep the sheet's available space.

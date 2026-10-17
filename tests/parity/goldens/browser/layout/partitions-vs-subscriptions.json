@@ -25,7 +25,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-170.384px, 156.236px) scale(1.13459)",
+    "viewport": "translate(9.29922px, 242.865px) scale(0.767519)",
     "nodes": {
       "publisher": { "kind": "node", "box": "translate(360px, 40px) 241×72", "text": "Northwind events 6 events/s to both brokers" },
       "log": { "kind": "node", "box": "translate(200px, 200px) 220×72", "text": "Order log 3 partitions" },

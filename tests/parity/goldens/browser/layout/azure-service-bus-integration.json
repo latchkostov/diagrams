@@ -52,7 +52,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-36.8293px, 352.585px) scale(0.292683)",
+    "viewport": "translate(29.3023px, 339.488px) scale(0.267442)",
     "nodes": {
       "group:azure": { "kind": "group", "box": "translate(380px, 0px) 3140×632", "text": "Azure · enterprise integration" },
       "partner": { "kind": "node", "box": "translate(40px, 220px) 253×72", "text": "Contoso ERP Invoice integration · OAuth2" },

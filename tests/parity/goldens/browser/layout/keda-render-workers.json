@@ -10,7 +10,7 @@
     "labels": {}
   },
   "tidy": {
-    "viewport": "translate(-3.40426px, 341.532px) scale(1.08511)",
+    "viewport": "translate(-20px, 262px) scale(0.75)",
     "nodes": {
       "source": { "kind": "node", "box": "translate(80px, 180px) 220×72", "text": "Poster studio Web Browser" },
       "uploads": { "kind": "node", "box": "translate(430px, 180px) 220×72", "text": "Render requests 3 partitions" },

@@ -70,7 +70,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(29.9359px, 344.493px) scale(0.251603)",
+    "viewport": "translate(26.9873px, 301.68px) scale(0.325318)",
     "nodes": {
       "group:kafka": { "kind": "group", "box": "translate(760px, 40px) 340×592", "text": "Kafka · Confluent Cloud" },
       "group:snowflake": { "kind": "group", "box": "translate(1520px, 160px) 340×392", "text": "Snowflake · ANALYTICS" },

@@ -3722,7 +3722,7 @@ button.insp-input.dropdown-trigger {
   overflow-wrap: anywhere;
 }
 .route-rules-table {
-  grid-template-columns: max-content minmax(0, 1.4fr) minmax(0, 1fr) 4.5em;
+  grid-template-columns: max-content minmax(0, 1.4fr) minmax(5.5em, 1fr) 4.5em;
   column-gap: 6px;
 }
 .route-rules-table > div,

@@ -211,6 +211,14 @@ for (const locale of ["en", "ar", "en-XA"]) {
     const target = page.getByTestId("routes-rule-quotes-targets");
     await expect(target).toHaveAttribute("title", "Pricing, Pricing canary");
     if (locale === "en") await expect.soft(target).toHaveText("Pricing +1");
+    const compact = await target.evaluate((el) => {
+      const summary = el.firstElementChild;
+      if (!summary) throw new Error("Expected a compact target summary");
+      const range = document.createRange();
+      range.selectNodeContents(summary);
+      return { text: Math.ceil(range.getBoundingClientRect().width), available: summary.clientWidth };
+    });
+    expect.soft(compact.text).toBeLessThanOrEqual(compact.available);
     await waitForStableViewport(page);
     expect(
       await inPane(page, ["app", "carriers", "gateway", "tracking", "pricing", "pricing-canary", "labels", "events"]),

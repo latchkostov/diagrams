@@ -31,7 +31,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-3.26617px, 32.1972px) scale(1.08165)",
+    "viewport": "translate(10.6383px, 177.362px) scale(0.734043)",
     "nodes": {
       "app": { "kind": "node", "box": "translate(40px, 180px) 220×72", "text": "Parcelpoint app 40 req/s · 4 routes" },
       "carriers": { "kind": "node", "box": "translate(40px, 300px) 220×72", "text": "Carrier webhooks 30 events/s" },
