@@ -20,6 +20,7 @@ import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 import { Icon } from "../../components/Icon";
+import { MarkdownEditor } from "../../components/markdown";
 import { StencilIcon } from "../../components/StencilIcon";
 import { stencilLabel, vendorLabel } from "../../i18n/stencils";
 
@@ -222,6 +223,22 @@ export function NodeIdentity({
           {...nameKeys}
           name="sublabel"
           data-testid="inspector-field-sublabel"
+        />
+      </Field>
+      <Field label={t("inspector.description")} group>
+        <MarkdownEditor
+          value={node.data.description ?? ""}
+          placeholder={t("inspector.writeSomething")}
+          onChange={(val) =>
+            editor.updateNode(
+              node.id,
+              { description: val || undefined },
+              { merge: `inspector:node:${node.id}:description` },
+            )
+          }
+          name="node-description"
+          ariaLabel={t("inspector.description")}
+          testId="inspector-field-node-description"
         />
       </Field>
       {connection && (

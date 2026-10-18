@@ -59,6 +59,7 @@ export function CommandPalette(props: CommandPaletteProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.isComposing || e.repeat || !matches(e, PALETTE_COMBO)) return;
+      if (!isOpen && e.target instanceof Element && e.target.closest("[data-markdown-input]")) return;
       // Another modal dialog owns the keyboard until it closes.
       if (!isOpen && document.querySelector('[aria-modal="true"]')) return;
       e.preventDefault();

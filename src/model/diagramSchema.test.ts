@@ -47,6 +47,7 @@ const node: Required<DiagramNode> = {
   stencil: "service.dotnet",
   label: "API",
   sublabel: "orders",
+  description: "Handles orders and payments.",
   x: 100,
   y: 80,
   group: "cloud",

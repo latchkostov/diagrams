@@ -13,6 +13,7 @@ import {
   waitForSelectionSettled,
   savedDiagram,
   emptyCanvasPoint,
+  waitForCameraIdle,
 } from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
@@ -617,5 +618,137 @@ test.describe("annotations", () => {
         timeout: 10_000,
       })
       .toBeGreaterThan(0);
+  });
+
+  test("renders markdown and supports formatting shortcuts in diagram description, text, and note annotations", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Markdown Architecture",
+      description: "Handles **orders** via `gRPC` — see [Runbook](https://example.com/runbook).",
+      nodes: [{ id: "api", stencil: "service.go", label: "Orders API", x: 80, y: 220 }],
+      edges: [],
+      annotations: [
+        {
+          id: "caption-1",
+          kind: "text",
+          text: "### Tier 1\nSupports *async* `events`",
+          x: 80,
+          y: 120,
+          width: 220,
+          height: 60,
+        },
+        {
+          id: "note-1",
+          kind: "note",
+          text: "## SLOs\n- [x] 99.95% uptime\n- [ ] Multi-region\n\n| Metric | Target |\n| :--- | ---: |\n| p99 | 45ms |",
+          x: 360,
+          y: 160,
+          width: 260,
+          height: 180,
+        },
+      ],
+    });
+    await gotoCanvas(page, SLUG);
+
+    // 1. Diagram description renders rich markdown on the diagram card
+    const desc = page.getByTestId("diagram-description");
+    await expect(desc).toBeVisible();
+    await expect(desc.locator("strong")).toHaveText("orders");
+    await expect(desc.locator("code.md-inline-code")).toHaveText("gRPC");
+    await expect(desc.locator("a.md-link")).toHaveAttribute("href", "https://example.com/runbook");
+
+    // 2. Text annotation renders markdown on the canvas
+    const textContent = page.getByTestId("annotation-text-caption-1");
+    await expect(textContent.locator("h3.md-h3")).toHaveText("Tier 1");
+    await expect(textContent.locator("em")).toHaveText("async");
+    await expect(textContent.locator("code.md-inline-code")).toHaveText("events");
+
+    // 3. Note annotation renders headings, task lists, and tables on the canvas
+    const noteContent = page.getByTestId("annotation-text-note-1");
+    await expect(noteContent.locator("h2.md-h2")).toHaveText("SLOs");
+    await expect(noteContent.locator("input.md-task-checkbox")).toHaveCount(2);
+    await expect(noteContent.locator("table.md-table th")).toHaveText(["Metric", "Target"]);
+    await expect(noteContent.locator("table.md-table td")).toHaveText(["p99", "45ms"]);
+
+    // 4. Inline annotation editor supports Markdown shortcuts (Ctrl/Cmd+B and smart list Enter)
+    await annotation(page, "caption-1").dblclick();
+    const inlineEditor = page.getByTestId("annotation-editor");
+    await expect(inlineEditor).toBeFocused();
+    await inlineEditor.fill("critical");
+    await inlineEditor.selectText();
+    await page.keyboard.press(`${MOD}+b`);
+    await expect(inlineEditor).toHaveValue("**critical**");
+    await page.keyboard.press("Escape");
+    await expect(textContent.locator("strong")).toHaveText("critical");
+
+    // 5. Inspector MarkdownEditor shows Preview first when populated, switches to Edit on click, and supports Ctrl/Cmd+K
+    await page.getByTestId("canvas-wrap").click({ position: await emptySpot(page) });
+    await page.getByTestId("inspector-toggle").click();
+    await expect(page.getByTestId("inspector-field-description-rendered")).toBeVisible();
+    const descField = page.getByTestId("inspector-field-description");
+    await descField.click();
+    await expect(page.getByTestId("inspector-field-description-rendered")).toHaveCount(0);
+    await descField.fill("https://example.com/docs");
+    await descField.selectText();
+    await page.keyboard.press(`${MOD}+k`);
+    await expect(page.getByTestId("command-palette")).toHaveCount(0);
+    await expect(descField).toHaveValue("[title](https://example.com/docs)");
+    await expect(desc.locator("a.md-link")).toHaveAttribute("href", "https://example.com/docs");
+    await page.getByTestId("inspector-field-description-tab-preview").click();
+    await expect(page.getByTestId("inspector-field-description-rendered").locator("a.md-link")).toHaveAttribute(
+      "href",
+      "https://example.com/docs",
+    );
+
+    // 6. Node documentation starts in Edit mode when empty, renders Preview & top-right badge when populated, and previews in tooltip
+    await expect(page.getByTestId("doc-badge-api")).toHaveCount(0);
+    await page.getByTestId("node-api").click();
+    const nodeDoc = page.getByTestId("inspector-field-node-description");
+    await expect(nodeDoc).toBeVisible();
+    await expect(page.getByTestId("inspector-field-node-description-rendered")).toHaveCount(0);
+    await nodeDoc.click();
+    await nodeDoc.fill("### Endpoints\n- `POST /orders`\n- **Idempotent**");
+    await expect(page.getByTestId("doc-badge-api")).toBeVisible();
+    await page.getByTestId("inspector-field-node-description-tab-preview").click();
+    const nodeDocPreview = page.getByTestId("inspector-field-node-description-rendered");
+    await expect(nodeDocPreview).toBeVisible();
+    await expect(nodeDocPreview.locator("h3.md-h3")).toHaveText("Endpoints");
+    await expect(nodeDocPreview.locator("code.md-inline-code")).toHaveText("POST /orders");
+    await expect(nodeDocPreview.locator("strong")).toHaveText("Idempotent");
+
+    // Hovering the documented node shows its rendered Markdown in the tooltip
+    await page.getByTestId("node-api").hover();
+    const tooltipDoc = page.getByTestId("node-tooltip-doc");
+    await expect(tooltipDoc).toBeVisible();
+    await expect(tooltipDoc.locator("h3.md-h3")).toHaveText("Endpoints");
+    await expect(tooltipDoc.locator("code.md-inline-code")).toHaveText("POST /orders");
+
+    // Clicking the documentation badge when the inspector is folded reopens the inspector on the node
+    await page.getByTestId("inspector-toggle").click();
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+    await page.getByTestId("doc-badge-api").click();
+    await expect(page.getByTestId("inspector-field-node-description-rendered")).toBeVisible();
+
+    // In Live mode, documentation badges are hidden to keep simulation telemetry clean
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("canvas-view")).toHaveClass(/is-live/);
+    await expect(page.getByTestId("doc-badge-api")).toBeHidden();
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("doc-badge-api")).toBeVisible();
+
+    // In Present mode, documentation badges remain visible and hovering renders the markdown tooltip
+    await page.getByTestId("present-toggle").click();
+    await expect(page.getByTestId("canvas-view")).toHaveClass(/is-presenting/);
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("doc-badge-api")).toBeVisible();
+    await page.getByTestId("node-api").hover();
+    await expect(page.getByTestId("node-tooltip-doc")).toBeVisible();
+    await page.getByTestId("present-exit").click();
+    await expect(page.getByTestId("canvas-view")).not.toHaveClass(/is-presenting/);
+
+    expectNoErrors(consoleErrors);
   });
 });

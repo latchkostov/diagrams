@@ -9,6 +9,7 @@
 @import "./canvas/routing.css";
 @import "./canvas/dialog.css";
 @import "./canvas/annotations.css";
+@import "./canvas/markdown.css";
 @import "./canvas/quick-add.css";
 @import "./canvas/onboarding.css";
 @import "./canvas/palette.css";

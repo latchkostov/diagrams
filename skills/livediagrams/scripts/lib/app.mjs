@@ -4493,6 +4493,7 @@ function validateDiagram(data) {
 		ids.add(id);
 		if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
 		if (out.sublabel !== void 0 && typeof out.sublabel !== "string") delete out.sublabel;
+		if (out.description !== void 0 && typeof out.description !== "string") delete out.description;
 		if (out.group !== void 0 && !groupIds.has(out.group)) {
 			warnings.push(`Node "${n.id}" referred to a missing group and was taken out of it.`);
 			delete out.group;

@@ -241,6 +241,8 @@ export interface DiagramNode extends DiagramElement {
   label: string;
   /** Secondary line, e.g. topic name "orders.created" or "consumer group: billing". */
   sublabel?: string;
+  /** Optional Markdown documentation and technical details for the node. */
+  description?: string;
   /** Free-form properties for the simulation / future features (partitions, rate, etc.). */
   props?: Record<string, unknown>;
 }

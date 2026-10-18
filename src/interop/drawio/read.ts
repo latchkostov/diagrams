@@ -392,6 +392,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
           : (inferred ?? match?.stencil ?? (dg || FALLBACK_STENCIL_ID));
     const label = lines[0] ?? stencilLabel.get(stencil) ?? "";
     const sublabel = lines.slice(1).join(" · ") || undefined;
+    const description = c.data.dg_description || undefined;
     const o = absOrigin(c.id);
     const id = uniqueId(c.data.dg_id ?? c.id);
     nodeIdByCell.set(c.id, id);
@@ -405,7 +406,16 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     }
     placed.push({
       cell: c,
-      node: { id, stencil, label, ...(sublabel ? { sublabel } : {}), x: 0, y: 0, ...(props ? { props } : {}) },
+      node: {
+        id,
+        stencil,
+        label,
+        ...(sublabel ? { sublabel } : {}),
+        ...(description ? { description } : {}),
+        x: 0,
+        y: 0,
+        ...(props ? { props } : {}),
+      },
       cx: o.x + c.geo!.width / 2,
       cy: o.y + c.geo!.height / 2,
     });

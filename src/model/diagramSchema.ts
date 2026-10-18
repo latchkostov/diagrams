@@ -135,6 +135,7 @@ function diagramSchema(a1 = false) {
           },
           label: str(200),
           sublabel: str(200, "Second line, e.g. a topic name."),
+          description: str(50_000, "Markdown documentation and technical details."),
           x: num,
           y: num,
           group: { type: "string", description: "Id of the boundary it sits in." },

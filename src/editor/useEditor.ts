@@ -1022,6 +1022,7 @@ export function createEditor(
         const data = patch.stencil ? changeNodeStencil(n.data, patch.stencil) : { ...n.data };
         if ("label" in patch) data.label = patch.label ?? "";
         if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
+        if ("description" in patch) data.description = patch.description || undefined;
         if ("group" in patch) data.group = patch.group || undefined;
         if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
         const x = patch.x ?? n.position.x;

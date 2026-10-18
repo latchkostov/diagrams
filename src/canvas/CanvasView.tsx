@@ -301,14 +301,20 @@ function CanvasInner({
     },
     [dismissHint],
   );
-  const tipsEnabled = !live && !readOnly && !presenting && !editing;
+  const tipsEnabled = !live && !readOnly && !editing;
   const { tips: nodeTips, show: showTip, hide: hideTip } = useNodeTooltip(tipsEnabled);
   useNodeTipKeyboard(
     wrapper,
     (id) => {
       const n = nodes.find((x) => x.id === id);
       return n?.type === "diagram"
-        ? { nodeId: n.id, label: n.data.label || n.id, sublabel: n.data.sublabel, stencil: n.data.stencil }
+        ? {
+            nodeId: n.id,
+            label: n.data.label || n.id,
+            sublabel: n.data.sublabel,
+            stencil: n.data.stencil,
+            description: n.data.description,
+          }
         : null;
     },
     showTip,
@@ -760,6 +766,7 @@ function CanvasInner({
           label: node.data.label || node.id,
           sublabel: node.data.sublabel,
           stencil: node.data.stencil,
+          description: node.data.description,
         });
     },
     [showTip],
@@ -795,6 +802,13 @@ function CanvasInner({
       editing,
       setEditing: editGestures ? setEditing : () => {},
       rename: canOpenInspector ? renameIn : undefined,
+      openDoc: canOpenInspector
+        ? (nodeId: string) => {
+            setEditing(null);
+            editor.select({ nodeIds: [nodeId] });
+            openInspector(undefined, undefined, nodeId);
+          }
+        : undefined,
       openEdgeMenu,
       settleText: editGestures ? settleText : undefined,
       grow: editGestures ? growFromChip : undefined,
@@ -814,6 +828,7 @@ function CanvasInner({
       growFromChip,
       editor,
       renameIn,
+      openInspector,
       boundaryResized,
     ],
   );
@@ -966,6 +981,7 @@ function CanvasInner({
                       label: node.data.label || node.id,
                       sublabel: node.data.sublabel,
                       stencil: node.data.stencil,
+                      description: node.data.description,
                     });
                 }
                 // Ctrl/Cmd during a box selection: only what's wholly inside.
