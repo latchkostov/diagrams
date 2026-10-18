@@ -202,5 +202,5 @@ export function DeviceFields({
   );
 }
 
-export const formatGbps = (gbps: number) =>
+const formatGbps = (gbps: number) =>
   gbps >= 1000 ? `${Math.round(gbps / 100) / 10} Tbps` : gbps >= 1 ? `${gbps} Gbps` : `${Math.round(gbps * 1000)} Mbps`;

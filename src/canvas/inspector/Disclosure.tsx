@@ -2,9 +2,9 @@ import { useState, type ReactNode } from "react";
 import { Icon } from "../../components/Icon";
 import { safeStorage } from "../../lib/storage";
 
-export const OPEN_KEY = "diagrams.inspector.open.v1";
+const OPEN_KEY = "diagrams.inspector.open.v1";
 
-export function readOpen(): Record<string, boolean> {
+function readOpen(): Record<string, boolean> {
   try {
     const v = JSON.parse(safeStorage.getItem(OPEN_KEY) ?? "{}") as unknown;
     return v && typeof v === "object" ? (v as Record<string, boolean>) : {};
