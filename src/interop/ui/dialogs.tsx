@@ -787,23 +787,36 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
       title={t("clear.title")}
       subtitle={t("clear.subtitle")}
       icon={<Glyph name="alert" />}
+      // Once clearing starts, this page's storage writes have stopped: it can't go back to editing.
       onClose={onClose}
+      closable={!clearing && !failed}
       testId="clear-device-dialog"
       width={480}
       footer={
         <>
           <span className="ix-grow" />
+          {failed && (
+            <button
+              className="btn"
+              onClick={() => window.location.replace(window.location.pathname)}
+              data-testid="clear-device-reload"
+            >
+              {t("clear.reload")}
+            </button>
+          )}
           <button
             className="btn btn-danger"
             disabled={clearing}
             onClick={clear}
             data-testid={failed ? "clear-device-retry" : "clear-device-confirm"}
           >
-            {failed ? t("common.retry") : t("clear.confirm")}
+            {failed ? t("common.tryAgain") : t("clear.confirm")}
           </button>
-          <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
-            {t("common.cancel")}
-          </button>
+          {!clearing && !failed && (
+            <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
+              {t("common.cancel")}
+            </button>
+          )}
         </>
       }
     >

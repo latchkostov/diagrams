@@ -20,6 +20,12 @@ the chip in the save-status slot, the join dialog and the joiner's wait.
 - A room left running for another diagram no longer looks like the displayed diagram's: the chip reads
   "In a room: <title>" with Show and Leave room, and no Copy link.
 
+**Recovery dialogs (PR #174, simplified)**
+
+- A copy that can't be saved, and a device wipe that failed, each end in one modal that can't be dismissed (no
+  close button, Escape or backdrop): its choices are the only way out, so the page never goes back to a state it
+  can't keep. Focus starts on Try again.
+
 **Interim, for E4**
 
 - The chip's Copy link and Leave room are inline buttons. On a phone the chip takes its own row and its text

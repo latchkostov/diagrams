@@ -8,7 +8,6 @@ import { Glyph } from "../../interop/ui/glyphs";
 import { notify } from "../../interop/ui/toast";
 import { downloadText } from "../../interop/files";
 import { serializeNative } from "../../interop/native";
-import type { DiagramFile } from "../../model/types";
 import { createLibraryDiagram, getCurrent, getPrivacyFlags, isLibrarySlug, resolveSlug } from "../../lib/diagramIO";
 import { canCollaborate } from "../../lib/localOnly";
 import { COLLAB_LIMITS } from "../limits";
@@ -52,8 +51,6 @@ const NOTICES: Record<RoomNotice, () => string> = {
   private: () => t("collab.leftPrivateNotice"),
   failed: () => t("collab.openFailed"),
   "storage-full": () => t("collab.storageFull"),
-  "private-unsaved": () => t("collab.privateUnsaved"),
-  unsaved: () => t("collab.unsaved"),
 };
 
 /**
@@ -81,6 +78,7 @@ export function RoomLayer({
     notify(NOTICES[notice.kind](), { kind: notice.kind === "left" ? "info" : "error" });
   }, [snap.notice]);
   const prompt = snap.prompt;
+  if (snap.open?.unsaved) return <UnsavedDialog room={room} />;
   if (typeof started === "number" && snap.open?.mount === started)
     return <StartedDialog open={snap.open} onClose={() => setStarted(undefined)} />;
   if (prompt?.kind === "start" || started === "pending")
@@ -123,6 +121,57 @@ export function RoomLayer({
       </Dialog>
     );
   return null;
+}
+
+/**
+ * The room disconnected but its copy couldn't be saved. Not dismissible (no Escape, backdrop or close button): the
+ * canvas behind it can't change and nothing navigates, so its one document is what Save a file copy exports.
+ */
+function UnsavedDialog({ room }: { room: RoomLifecycle }) {
+  const [failedAgain, setFailedAgain] = useState(false);
+  return (
+    <Dialog
+      title={t("collab.unsavedTitle")}
+      icon={<Glyph name="alert" />}
+      onClose={() => {}}
+      closable={false}
+      testId="room-unsaved-dialog"
+      width={480}
+      footer={
+        <>
+          <button className="btn" onClick={() => room.discardUnsaved()} data-testid="room-unsaved-discard">
+            {t("collab.discardChanges")}
+          </button>
+          <span className="ix-grow" />
+          <button
+            className="btn"
+            onClick={() => {
+              const diagram = room.unsavedDiagram();
+              if (diagram) downloadText(serializeNative(diagram), "room-copy.diagram.json", "application/json");
+            }}
+            data-testid="room-unsaved-file"
+          >
+            {t("collab.saveCopy")}
+          </button>
+          <button
+            className="btn btn-primary"
+            data-autofocus
+            onClick={() => setFailedAgain(!room.retrySave())}
+            data-testid="room-unsaved-retry"
+          >
+            {t("common.tryAgain")}
+          </button>
+        </>
+      }
+    >
+      <p>{t("collab.unsavedBody")}</p>
+      {failedAgain && (
+        <p className="ix-error" role="alert" data-testid="room-unsaved-again">
+          {t("collab.unsavedAgain")}
+        </p>
+      )}
+    </Dialog>
+  );
 }
 
 function NameField({ value, onChange, testId }: { value: string; onChange: (v: string) => void; testId: string }) {
@@ -317,57 +366,11 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
 }
 
 /** In the top bar's save-status slot while a room is open: who's here, the link, and Leave. */
-export function RoomChip({
-  room,
-  here,
-  onShow,
-  capture,
-}: {
-  room: RoomLifecycle;
-  here: boolean;
-  onShow: () => void;
-  /** The canvas's diagram (a detached canvas's file copy is what it shows, Private flag included). */
-  capture: () => DiagramFile | undefined;
-}) {
+export function RoomChip({ room, here, onShow }: { room: RoomLifecycle; here: boolean; onShow: () => void }) {
   useLocale();
   const snap = useRoom(room);
-  if (!snap.open) return null;
-  if (snap.open.detached) return <DetachedChip room={room} open={snap.open} capture={capture} />;
+  if (!snap.open || snap.open.unsaved) return null;
   return <OpenChip room={room} open={snap.open} here={here} onShow={onShow} />;
-}
-
-/** Disconnected, with its copy not saved: keep the canvas until it saves, is saved as a file, or is discarded. */
-function DetachedChip({
-  room,
-  open,
-  capture,
-}: {
-  room: RoomLifecycle;
-  open: OpenRoom;
-  capture: () => DiagramFile | undefined;
-}) {
-  return (
-    <div className="ix-shared room-chip" role="status" data-testid="room-chip" data-state="detached">
-      <span className="room-dot" aria-hidden="true" />
-      <span data-testid="room-chip-text">{open.private ? t("collab.privateDraft") : t("collab.unsavedChip")}</span>
-      <button
-        className="ix-shared-keep"
-        onClick={() => {
-          const diagram = capture() ?? open.session.doc.project().diagram;
-          if (diagram) downloadText(serializeNative(diagram), "room-copy.diagram.json", "application/json");
-        }}
-        data-testid="room-save-file"
-      >
-        {t("collab.saveFile")}
-      </button>
-      <button className="ix-shared-keep" onClick={() => room.retrySave()} data-testid="room-save-retry">
-        {t("collab.tryAgain")}
-      </button>
-      <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-discard">
-        {t("collab.discard")}
-      </button>
-    </div>
-  );
 }
 
 function OpenChip({

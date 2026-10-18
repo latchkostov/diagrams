@@ -561,7 +561,6 @@ function MainApp() {
               <rooms.RoomChip
                 room={rooms.room}
                 here={!!roomHere}
-                capture={() => canvasRef.current?.getDiagram()}
                 onShow={() => openRoom.slug && setUrl({ view: "canvas", example: openRoom.slug, present: false })}
               />
             ) : undefined

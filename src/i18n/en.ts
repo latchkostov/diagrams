@@ -805,6 +805,7 @@ const en = {
   "common.close": "Close",
   "common.cancel": "Cancel",
   "common.retry": "Retry",
+  "common.tryAgain": "Try again",
   "common.loading": "Loading…",
   "common.done": "Done",
   "format.rate": "{rate} msg/s",
@@ -946,6 +947,7 @@ const en = {
   "clear.confirm": "Clear everything",
   "clear.failed":
     "Room copies kept on this device couldn't be cleared (the browser refused). Try again, or clear this site's data in the browser's settings.",
+  "clear.reload": "Reload page",
   "clear.diagrams": "Every diagram in Your diagrams, private ones included, and your edits to examples",
   "clear.links": "A diagram opened from a link, AI conversations, and where files were saved",
   "clear.settings": "Your settings, the language included",
@@ -2497,14 +2499,11 @@ const en = {
   "collab.leftNotice": "You left the room. Your copy is in Your diagrams.",
   "collab.leftPrivateNotice": "You left the room because this diagram is now private. Your copy stays on this device.",
   "collab.openFailed": "Could not open the room. Try the link again.",
-  "collab.unsaved":
-    "You left the room, but this browser couldn't keep your copy (its storage is full or blocked). It stays open here: save a file copy or try again.",
-  "collab.unsavedChip": "Not saved · keep this page open",
-  "collab.saveFile": "Save a file copy",
-  "collab.tryAgain": "Try again",
-  "collab.discard": "Discard",
-  "collab.privateUnsaved":
-    "You left the room because this diagram is now private, but this browser couldn't record that (its storage is full or blocked). Save a file copy: nothing of it is kept here.",
+  "collab.unsavedTitle": "Your copy couldn't be saved",
+  "collab.unsavedBody":
+    "You left the room, but this browser couldn't keep your copy of the diagram (its storage is full or blocked). Save a file copy, try again, or discard the changes.",
+  "collab.unsavedAgain": "Still couldn't save it. Save a file copy to keep it.",
+  "collab.discardChanges": "Discard changes",
   "collab.storageFull":
     "This browser's storage is full, so the room's diagram can't be kept here. Free some space and try again.",
   "collab.presetTitle": "Collaboration: editor and recovery",

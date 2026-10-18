@@ -285,6 +285,11 @@ test("an aborted recovery wipe does not report success, and Retry clears it", as
   await page.getByTestId("privacy-clear-device").click();
   await page.getByTestId("clear-device-confirm").click();
   await expect(page.getByTestId("clear-device-error")).toBeVisible();
+  // Storage writes have stopped: no way back to editing (no Cancel, no close button, no Escape, no backdrop).
+  await expect(page.getByTestId("clear-device-cancel")).toHaveCount(0);
+  await expect(page.getByTestId("clear-device-dialog-close")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.mouse.click(4, 4);
   await expect(page.getByTestId("clear-device-dialog")).toBeVisible();
   expect((await recoveryRecords(page)).rooms).toBe(1);
   await page.getByTestId("clear-device-retry").click();
@@ -292,6 +297,75 @@ test("an aborted recovery wipe does not report success, and Retry clears it", as
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
   expect(await recoveryRecords(page)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
   expectNoErrors(consoleErrors.filter((e) => !/AbortError/.test(e)));
+});
+
+test("a failed recovery wipe's Reload page restarts the app at its plain address", async ({ page }) => {
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.evaluate(() => {
+    const open = IDBFactory.prototype.open;
+    // The recovery database exists but refuses to open: the wipe can't complete.
+    IDBFactory.prototype.databases = async () => [{ name: "livediagrams-collab-recovery-v1", version: 4 }];
+    IDBFactory.prototype.open = function (name: string, version?: number) {
+      if (name !== "livediagrams-collab-recovery-v1") return open.call(this, name, version);
+      return open.call(this, name, 0);
+    };
+  });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await page.getByTestId("privacy-clear-device").click();
+  await page.getByTestId("clear-device-confirm").click();
+  await expect(page.getByTestId("clear-device-error")).toBeVisible();
+  await page.getByTestId("clear-device-reload").click();
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("clear-device-dialog")).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).search).not.toContain("example=kafka-order-pipeline");
+});
+
+test("a copy that can't be saved holds the room's canvas behind a dialog: file copy, Try again", async ({
+  context,
+  page,
+  consoleErrors,
+}) => {
+  await emulateTracker([context]);
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await startRoom(page);
+  await rename(page, "gateway", "Unsaved room edit");
+  await page.evaluate(() => {
+    const setItem = Storage.prototype.setItem;
+    const w = window as unknown as { __restoreStorage: () => void };
+    w.__restoreStorage = () => {
+      Storage.prototype.setItem = setItem;
+    };
+    Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
+      if (key.startsWith("diagrams.autosave.")) throw new DOMException("full", "QuotaExceededError");
+      setItem.call(this, key, value);
+    };
+  });
+  await page.getByTestId("room-leave").click();
+  const dialog = page.getByTestId("room-unsaved-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId("room-unsaved-retry")).toBeFocused();
+  await expect(page.getByTestId("room-unsaved-dialog-close")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.mouse.click(4, 4);
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId("node-gateway")).toContainText("Unsaved room edit");
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("room-unsaved-file").click();
+  const chunks: Buffer[] = [];
+  for await (const chunk of await (await downloading).createReadStream()) chunks.push(Buffer.from(chunk));
+  expect(Buffer.concat(chunks).toString()).toContain("Unsaved room edit");
+  await page.getByTestId("room-unsaved-retry").click();
+  await expect(page.getByTestId("room-unsaved-again")).toBeVisible();
+  await page.evaluate(() => (window as unknown as { __restoreStorage: () => void }).__restoreStorage());
+  await page.getByTestId("room-unsaved-retry").click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("room-chip")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("node-gateway")).toContainText("Unsaved room edit", { timeout: pageLoadTimeout() });
+  expectNoErrors(consoleErrors);
 });
 
 test("Clear everything stops the room's writers, an encryption started before it can't repopulate recovery, and an old link restores nothing", async ({

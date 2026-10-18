@@ -14,6 +14,7 @@ export function Dialog({
   footer,
   testId,
   width = 560,
+  closable = true,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -23,11 +24,13 @@ export function Dialog({
   footer?: ReactNode;
   testId: string;
   width?: number;
+  /** False: no close button, and Escape and the backdrop do nothing (the footer's choices are the only way out). */
+  closable?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useDialogInteraction(panel, backdrop, onClose);
+  useDialogInteraction(panel, backdrop, closable ? onClose : () => {});
 
   return createPortal(
     <div ref={backdrop} className="ix-backdrop" data-editor-overlay>
@@ -49,14 +52,16 @@ export function Dialog({
             </h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <button
-            className="icon-btn ix-dialog-close"
-            onClick={onClose}
-            aria-label={t("common.close")}
-            data-testid={`${testId}-close`}
-          >
-            <Glyph name="close" size={14} />
-          </button>
+          {closable && (
+            <button
+              className="icon-btn ix-dialog-close"
+              onClick={onClose}
+              aria-label={t("common.close")}
+              data-testid={`${testId}-close`}
+            >
+              <Glyph name="close" size={14} />
+            </button>
+          )}
         </header>
         <div className="ix-dialog-body">{children}</div>
         {footer && <footer className="ix-dialog-foot">{footer}</footer>}

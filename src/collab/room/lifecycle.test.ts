@@ -595,47 +595,7 @@ describe("leaving and reloading", () => {
     await check([again, b]);
   });
 
-  it("a failed Private write still disconnects and cleans up, keeping the draft in memory only", async () => {
-    const net = new MemoryNetwork(),
-      clock = new FakeClock();
-    const a = browser(net, clock, 52),
-      b = browser(net, clock, 53);
-    const slug = await start(a);
-    await join(b, linkOf(a));
-    await settle(net, a, b);
-    a.library.markPrivate = () => {
-      throw new DOMException("full", "QuotaExceededError");
-    };
-    const open = a.room.getSnapshot().open!;
-    a.room.configure({ capture: () => ({ ...canaryDiagram(), title: "Private paste", private: true }) });
-    open.editor.refusal = "private";
-    await open.session.leave();
-    expect(a.room.getSnapshot().open).toMatchObject({ detached: true, slug });
-    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "private-unsaved", slug });
-    expect(a.tab.read()).toBeUndefined();
-    // Nothing of the Private draft reached the (non-private) entry.
-    expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
-    await settle(net, b);
-    expect(session(b).transport.peers()).toHaveLength(0);
-    // The same through the watcher: another tab set Private, and recording it here fails too.
-    const c = browser(net, clock, 54);
-    const cSlug = await start(c);
-    c.library.markPrivate = () => {
-      throw new DOMException("blocked", "SecurityError");
-    };
-    const cSession = c.room.getSnapshot().open!.session;
-    c.library.flags.set(cSlug, { private: true });
-    c.library.changed();
-    await cSession.idle();
-    expect(cSession.status).toBe("left");
-    // Leave keeps working, and a new room starts.
-    await a.room.leave();
-    expect(a.room.getSnapshot().open).toBeUndefined();
-    await start(a);
-    expect(a.room.getSnapshot().open?.detached).toBeUndefined();
-  });
-
-  it("Leave with the copy refused keeps the latest document, says so, and saves it on Try again", async () => {
+  it("a refused save disconnects but holds the room's canvas until Try again saves it or Discard drops it", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();
     const a = browser(net, clock, 55),
@@ -648,42 +608,66 @@ describe("leaving and reloading", () => {
     edit(a, (d) => ({ ...d, title: "Not saved yet" }));
     const open = a.room.getSnapshot().open!;
     await a.room.leave();
-    // Disconnected all the same...
     expect(open.session.status).toBe("left");
     await settle(net, b);
     expect(session(b).transport.peers()).toHaveLength(0);
-    // ...with the canvas kept as it is, and the reason shown.
-    expect(a.room.getSnapshot().open).toMatchObject({ detached: true, slug });
-    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "unsaved", slug });
-    expect(open.session.doc.project().diagram?.title).toBe("Not saved yet");
-    expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
+    // The same canvas mount stays (behind the dialog); its document is what Save a file copy exports.
+    expect(a.room.getSnapshot().open).toMatchObject({ unsaved: true, slug, mount: open.mount });
+    expect(a.room.unsavedDiagram()?.title).toBe("Not saved yet");
+    expect(a.tab.read()).toBeUndefined();
     expect(a.room.retrySave()).toBe(false);
     a.library.save = save;
     expect(a.room.retrySave()).toBe(true);
     expect(a.room.getSnapshot().open).toBeUndefined();
     expect(a.library.read(slug)?.title).toBe("Not saved yet");
+    // Discard changes: the stored copy stays as it was.
+    await a.room.start({ slug, diagram: a.library.read(slug)! });
+    a.library.save = () => false;
+    edit(a, (d) => ({ ...d, title: "Discarded" }));
+    await a.room.leave();
+    expect(a.room.getSnapshot().open?.unsaved).toBe(true);
+    a.room.discardUnsaved();
+    expect(a.room.getSnapshot().open).toBeUndefined();
+    expect(a.library.read(slug)?.title).toBe("Not saved yet");
   });
 
-  it("a Private paste whose copy can't be saved is kept, Private, until it saves", async () => {
+  it("a Private paste whose Private mark fails writes nothing public, and Try again saves it Private", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();
-    const a = browser(net, clock, 57);
+    const a = browser(net, clock, 52);
     const slug = await start(a);
-    const save = a.library.save.bind(a.library);
-    a.library.save = () => false;
-    const pasted = { ...canaryDiagram(), title: "Too large to save", private: true };
+    const markPrivate = a.library.markPrivate.bind(a.library);
+    a.library.markPrivate = () => {
+      throw new DOMException("full", "QuotaExceededError");
+    };
+    const pasted = { ...canaryDiagram(), title: "Private paste", private: true };
     a.room.configure({ capture: (s) => (s === slug ? pasted : undefined) });
     const open = a.room.getSnapshot().open!;
     open.editor.refusal = "private";
     await open.session.leave();
-    expect(a.room.getSnapshot().open).toMatchObject({ detached: true, private: true, slug });
-    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "private-unsaved", slug });
-    expect(a.library.privacy(slug).private).toBe(true);
+    expect(a.room.getSnapshot().open).toMatchObject({ unsaved: true, slug });
     expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
-    a.library.save = save;
+    expect(a.library.privacy(slug).private).toBeUndefined();
+    expect(a.room.unsavedDiagram()?.private).toBe(true);
+    // Still failing: still nothing written.
+    expect(a.room.retrySave()).toBe(false);
+    expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
+    a.library.markPrivate = markPrivate;
     expect(a.room.retrySave()).toBe(true);
-    expect(a.library.read(slug)?.title).toBe("Too large to save");
     expect(a.library.privacy(slug).private).toBe(true);
+    expect(a.library.read(slug)?.title).toBe("Private paste");
+    // The watcher's way: another tab set Private and recording it here fails; the room disconnects all the same.
+    const c = browser(net, clock, 54);
+    const cSlug = await start(c);
+    c.library.markPrivate = () => {
+      throw new DOMException("blocked", "SecurityError");
+    };
+    const cSession = c.room.getSnapshot().open!.session;
+    c.library.flags.set(cSlug, { private: true });
+    c.library.changed();
+    await cSession.idle();
+    expect(cSession.status).toBe("left");
+    expect(c.room.getSnapshot().open?.unsaved).toBe(true);
   });
 
   it("a diagram marked Private while its room opens sends nothing", async () => {
