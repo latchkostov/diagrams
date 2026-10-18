@@ -140,6 +140,7 @@ export function createCameraController(
   let seq = 0;
   /** A placement is under way: the next pane change or selection is its cause. */
   let placing = false;
+  /** Unmounted: no frames are scheduled (StrictMode unmounts and mounts again, with events in between). */
   let disposed = false;
   const listeners = new Set<() => void>();
 
@@ -192,7 +193,7 @@ export function createCameraController(
   function fit(request: FitRequest, animate: boolean, whole: boolean, reason: FitReason | "zoomToSelection") {
     const gen = ++generation;
     const claim = ownership.claim(whole ? "fit" : "manual");
-    const valid = () => gen === generation && ownership.isCurrent(claim) && !disposed;
+    const valid = () => gen === generation && ownership.isCurrent(claim);
     const issue = (duration: number) => {
       const target = port.fitTarget(request);
       if (!target) return undefined;
@@ -293,7 +294,6 @@ export function createCameraController(
   }
 
   function dispatch(event: CameraEvent) {
-    if (disposed) return;
     // Live claims the view for its narration directly: decide with the owner as it is now.
     policy = { ...policy, owner: ownership.owner };
     const decision = decide(policy, event);

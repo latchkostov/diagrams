@@ -283,6 +283,20 @@ describe("camera controller", () => {
     expect(h.ownership.owner).toBe("manual");
   });
 
+  it("still decides while unmounted between StrictMode's two mounts, and resumes pane work on mount", () => {
+    const h = harness();
+    const unmount = h.camera.connect();
+    unmount();
+    h.camera.mode({ live: false, presenting: false });
+    expect(h.journal.map((e) => `${e.command}:${e.cause}`)).toEqual(["fit:mode"]);
+    h.camera.dispatch({ type: "pane.changed", cause: "panel" });
+    h.tick(3);
+    expect(h.journal.filter((e) => e.cause === "pane")).toHaveLength(0);
+    h.camera.connect();
+    h.tick(2);
+    expect(h.journal.filter((e) => e.cause === "pane")).toHaveLength(1);
+  });
+
   it("the command palette's go-to takes the view", () => {
     const h = harness();
     h.camera.goTo("a");
