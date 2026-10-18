@@ -300,7 +300,17 @@ function expectLaidOut(drawn: Drawn) {
     const actual = (drawn.nodes[id] as { box: string }).box;
     expect(actual.slice(0, actual.indexOf(")") + 1)).toBe(position);
   }
-  expect((drawn.nodes["group:aws"] as { box: string }).box).toBe("translate(0px, -24px) 2726×536");
+  // The boundary is refitted around its laid-out members (their measured widths follow the platform's fonts).
+  const box = (id: string) => {
+    const text = (drawn.nodes[id] as { box: string }).box;
+    const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\) ([\d.]+)×([\d.]+)/.exec(text);
+    if (!m) throw new Error(`Unreadable box for ${id}: ${text}`);
+    return { x: Number(m[1]), y: Number(m[2]), width: Number(m[3]), height: Number(m[4]) };
+  };
+  const fitted = boundaryAround(example.nodes.filter((n) => n.group === "aws").map((n) => box(n.id)));
+  expect(box("group:aws")).toEqual(fitted);
+  const golden = layout.autoLayout.nodes["group:aws"].box;
+  expect(`translate(${fitted.x}px, ${fitted.y}px)`).toBe(golden.slice(0, golden.indexOf(")") + 1));
 }
 
 test("a failed font download settles using measured fallback fonts", async ({ page }) => {
