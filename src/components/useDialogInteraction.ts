@@ -5,7 +5,13 @@ export function useDialogInteraction(
   panel: RefObject<HTMLDivElement | null>,
   backdrop: RefObject<HTMLDivElement | null>,
   onClose: () => void,
+  /** Hands focus back through an interaction controller instead (it gets what had focus as the dialog opened). */
+  restoreFocus?: (opener: HTMLElement | null) => void,
 ) {
+  const restoreRef = useRef(restoreFocus);
+  useLayoutEffect(() => {
+    restoreRef.current = restoreFocus;
+  });
   const closeRef = useRef(onClose);
   useLayoutEffect(() => {
     closeRef.current = onClose;
@@ -66,6 +72,7 @@ export function useDialogInteraction(
       backdropEl.removeEventListener("mousedown", onMouseDown);
       backdropEl.removeEventListener("contextmenu", onContextMenu);
       background.forEach((el, i) => (el.inert = wasInert[i]));
+      if (restoreRef.current) return restoreRef.current(prev && prev !== document.body ? prev : null);
       // What opened it may be gone (a toast's button: the toast closes as it acts, or fades): the canvas, not the
       // page, gets the keyboard back.
       if (prev && prev !== document.body && prev.isConnected && !prev.closest("[data-toast]")) prev.focus();

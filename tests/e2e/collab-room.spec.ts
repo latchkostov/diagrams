@@ -1,5 +1,17 @@
 import type { BrowserContext, Page, WebSocketRoute } from "@playwright/test";
-import { test, expect, expectNoErrors, pageLoadTimeout, pauseClock, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  pageLoadTimeout,
+  pauseClock,
+  waitForStableViewport,
+  cameraJournal,
+  cameraJournalMark,
+  interactionLog,
+  interactionJournalMark,
+  viewportTransform,
+} from "./fixtures";
 import { COLLAB_LIMITS } from "../../src/collab/limits";
 
 // Edit together in the app (collaboration plan E2): a room's life between two browsers, with real WebRTC between
@@ -489,4 +501,96 @@ test("Clear everything stops the room's writers, an encryption started before it
   } finally {
     await other.close();
   }
+});
+
+// ---------------------------------------------------------------- E3: a peer's changes never move your view or focus
+
+/** Two browsers in one room: the creator's page and a guest's, both showing the room's diagram. */
+async function twoInARoom(page: Page, context: BrowserContext, other: BrowserContext) {
+  await emulateTracker([context, other]);
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  const link = await startRoom(page);
+  const guest = await other.newPage();
+  await guest.goto(link);
+  await guest.getByTestId("room-join-accept").click();
+  await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(chip(page)).toHaveAttribute("data-peers", "1");
+  return guest;
+}
+
+test("a peer deleting the right-clicked node closes the menu (remote), the canvas takes the keyboard, the view stays", async ({
+  browser,
+  context,
+  page,
+  consoleErrors,
+}) => {
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await waitForStableViewport(guest);
+    const camera = await cameraJournalMark(guest);
+    const view = await viewportTransform(guest);
+    await guest.getByTestId("node-orders").click({ button: "right" });
+    await expect(guest.getByTestId("context-menu")).toBeVisible();
+    const focus = await interactionJournalMark(guest);
+    await page.bringToFront();
+    await page.getByTestId("node-orders").click();
+    await page.keyboard.press("Delete");
+    await expect(page.getByTestId("node-orders")).toHaveCount(0);
+    await expect(guest.getByTestId("node-orders")).toHaveCount(0);
+    await expect(guest.getByTestId("context-menu")).toHaveCount(0);
+    expect(await interactionLog(guest, focus)).toContain("menu.closed:remote -> focus:canvas@commit");
+    await expect(guest.getByTestId("canvas-wrap")).toBeFocused();
+    // A peer's rename and deletion moved nothing on the guest's side.
+    await rename(page, "gateway", "Renamed by the creator");
+    await expect(guest.getByTestId("node-gateway")).toContainText("Renamed by the creator");
+    expect((await cameraJournal(guest, camera)).filter((e) => e.moved)).toEqual([]);
+    expect(await viewportTransform(guest)).toBe(view);
+    expectNoErrors(consoleErrors);
+  } finally {
+    await other.close();
+  }
+});
+
+test("joining hands the keyboard to the wait, then to the room's canvas, through the interaction controller", async ({
+  browser,
+  context,
+  page,
+}) => {
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await expect(guest.getByTestId("canvas-wrap")).toBeFocused();
+    const log = await interactionLog(guest);
+    expect(log.some((line) => line.startsWith("dialog.closed:room ->"))).toBe(true);
+    expect(log.some((line) => line.startsWith("room.waiting -> focus:element@now"))).toBe(true);
+    expect(log.some((line) => line.startsWith("room.ready -> focus:canvas@frame"))).toBe(true);
+  } finally {
+    await other.close();
+  }
+});
+
+test("a room dialog gives focus back to what opened it; Retry hands it to the room's status", async ({
+  page,
+  consoleErrors,
+}) => {
+  // No tracker at all (the e2e build contacts none without one): the room can't connect.
+  await page.clock.install();
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("file-button").focus();
+  await page.evaluate(() => window.dispatchEvent(new Event("diagrams:edit-together")));
+  await expect(page.getByTestId("room-start-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("room-start-cancel").click();
+  await expect(page.getByTestId("file-button")).toBeFocused();
+  expect(await interactionLog(page)).toContain("dialog.closed:room -> focus:element@now");
+  await startRoom(page);
+  await pauseClock(page);
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+  await expect(chip(page)).toHaveAttribute("data-state", "failed");
+  await page.getByTestId("room-retry").click();
+  await expect(chip(page)).not.toHaveAttribute("data-state", "failed");
+  await expect(chip(page)).toBeFocused();
+  expectNoErrors(consoleErrors);
 });

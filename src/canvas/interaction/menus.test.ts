@@ -94,6 +94,7 @@ describe("menus: event sequences", () => {
     "gesture",
     "command",
     "unmount",
+    "remote",
   );
   const event = fc.oneof(
     kinds.map(open),

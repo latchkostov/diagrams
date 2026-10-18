@@ -23,7 +23,8 @@ export type MenuFocusKind = CanvasSurfaceKind | "live";
  * `scroll`: the wheel, or a pan by hand. `replaced`: another menu opened in its place. `blur`: the window lost
  * focus. `resize`: the window resized. `gesture`: a drag or a connection started. `command`: a canvas command that
  * acts without it (Alt+Shift+arrow). `toggle`: the control that opened it, pressed again (Live's bar). `unmount`:
- * the canvas went away or stopped being editable (or Live's bar went away).
+ * the canvas went away or stopped being editable (or Live's bar went away). `remote`: a peer in a room deleted what
+ * it was for (a context menu on a node or a connection that has gone).
  */
 export type MenuCloseReason =
   | "pick"
@@ -36,7 +37,8 @@ export type MenuCloseReason =
   | "gesture"
   | "command"
   | "toggle"
-  | "unmount";
+  | "unmount"
+  | "remote";
 
 /** How a menu was asked for: a pointer (a right-click, macOS Control-click, a double-click) or a key. */
 export type MenuVia = "pointer" | "keyboard";
@@ -198,10 +200,11 @@ export type FocusEvent =
    * A dialog or panel closed, and focus goes back to what opened it. `checks`: the Checks card (Esc, its close
    * button). `livePanel`: one of Live's side panels (Esc), back to its opener, else the Live bar's panel opener.
    * `inject`: Live's inject dialog (any way it closed), back to its opener, else the node it injects at (`node`).
+   * `room`: a room's dialog (start, join, a link that can't be opened, the copy that couldn't be saved).
    */
   | {
       type: "dialog.closed";
-      dialog: "checks" | "livePanel" | "inject";
+      dialog: "checks" | "livePanel" | "inject" | "room";
       opener: ElementHandle | null;
       /** inject: the node it was opened on. */
       node?: string;
@@ -227,6 +230,12 @@ export type FocusEvent =
   | { type: "start.blank" }
   /** Hidden dependencies: a focused dependency edge has gone. */
   | { type: "dependencies.hidden"; focusOnDependency: boolean }
+  /** A joiner's wait for the room's diagram took the canvas's place: it takes focus that was lost with the canvas. */
+  | { type: "room.waiting"; region: ElementHandle }
+  /** The room's diagram arrived and its canvas replaced the wait. */
+  | { type: "room.ready" }
+  /** A room's connection state changed; `retry`: the person pressed Retry (the control goes, its status stays). */
+  | { type: "room.status"; state: string; retry: boolean; status: ElementHandle }
   /** A peer's change replaced the document while `active` (in this canvas) had focus. */
   | { type: "document.replaced"; active: ElementHandle | null }
   /** Focus arrived on a canvas node (a click, Tab into the canvas, a screen reader): it is the Tab stop now. */

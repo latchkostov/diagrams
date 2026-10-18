@@ -340,6 +340,35 @@ describe("focusPolicy: the rules, row by row", () => {
     expect(all.again).toBe(true);
   });
 
+  it("M7 a peer deleting a context menu's target hands the keyboard to the canvas, only if it was lost", () => {
+    for (const kind of ["context", "quickAdd", "connected"] as const)
+      expect(say(focusPolicy(state(), closed("remote", { kind })).command)).toBe("focus:canvas@commit");
+    expect((focusPolicy(state(), closed("remote")).command as FocusMove).onlyIfLost).toBe(true);
+    expect(focusPolicy(state(), closed("remote", { kind: "live" })).command).toEqual({ type: "keep" });
+  });
+
+  it("D6 a room's dialog gives focus back to its opener, else the canvas", () => {
+    const d = focusPolicy(state(), { type: "dialog.closed", dialog: "room", opener });
+    expect(d.command).toMatchObject({ target: { kind: "element", handle: opener }, when: "now" });
+    expect((d.command as FocusMove).fallback).toEqual({ kind: "canvas" });
+  });
+
+  it("W1 W2 the joiner's wait and then the room's canvas take only focus that was lost", () => {
+    const wait = focusPolicy(state(), { type: "room.waiting", region: node }).command as FocusMove;
+    expect(wait).toMatchObject({ target: { kind: "element", handle: node }, when: "now", onlyIfLost: true });
+    const ready = focusPolicy(state(), { type: "room.ready" }).command as FocusMove;
+    expect(ready).toMatchObject({ target: { kind: "canvas" }, when: "frame", onlyIfLost: true });
+  });
+
+  it("W3 W4 Retry hands focus to the room's status; any other change is only announced", () => {
+    const retry = focusPolicy(state(), { type: "room.status", state: "waiting", retry: true, status: node });
+    expect(retry.command).toMatchObject({ target: { kind: "element", handle: node }, when: "now" });
+    for (const s of ["connected", "waiting", "failed"])
+      expect(focusPolicy(state(), { type: "room.status", state: s, retry: false, status: node }).command).toEqual({
+        type: "keep",
+      });
+  });
+
   it("F2 the second attempt neither selects the text again nor counts as pending", () => {
     const r = run(state(), [{ type: "inspector.field", seq: 1, name: "label", caret: "end" }, { type: "focus.ran" }]);
     const retry = r.commands[1] as FocusMove;
@@ -363,6 +392,7 @@ const REASONS: MenuCloseReason[] = [
   "command",
   "toggle",
   "unmount",
+  "remote",
 ];
 const KINDS: MenuFocusKind[] = ["context", "quickAdd", "connected", "dialog", "live"];
 const LIVE_KEYS: LiveKey[] = ["space", "enter", "escape"];
@@ -407,6 +437,12 @@ function allEvents(platform: Platform): FocusEvent[] {
     { type: "inspector.toggled", cause: "selection" },
     { type: "dialog.closed", dialog: "checks", opener },
     { type: "dialog.closed", dialog: "checks", opener: null },
+    { type: "dialog.closed", dialog: "room", opener },
+    { type: "dialog.closed", dialog: "room", opener: null },
+    { type: "room.waiting", region: node },
+    { type: "room.ready" },
+    { type: "room.status", state: "waiting", retry: true, status: node },
+    { type: "room.status", state: "connected", retry: false, status: node },
     ...(["livePanel", "inject"] as const).flatMap((dialog) =>
       [opener, null].flatMap((o) =>
         REASONS.map((reason): FocusEvent => ({ type: "dialog.closed", dialog, opener: o, node: "n", reason })),
@@ -488,6 +524,13 @@ describe("focusPolicy: invariants over every state × event", () => {
       // Live's keys never move focus, at any level; a Live popover gives focus back only on Esc.
       if (e.type === "live.key") expect(d.command.type).toBe("keep");
       if (e.type === "menu.closed" && e.kind === "live" && e.reason !== "escape") expect(d.command.type).toBe("keep");
+      // A peer's deletion of a menu's target never takes focus from what someone else focused.
+      if (e.type === "menu.closed" && e.reason === "remote" && d.command.type === "focus") {
+        expect(d.command.target).toEqual({ kind: "canvas" });
+        expect(d.command.onlyIfLost).toBe(true);
+      }
+      // A room's state changing moves focus only for Retry, onto its status.
+      if (e.type === "room.status" && !e.retry) expect(d.command.type).toBe("keep");
       // A dialog or panel closing always says where focus goes if its opener has gone.
       if (e.type === "dialog.closed") expect((d.command as FocusMove).fallback).toBeDefined();
       // Inspector requests run once each.

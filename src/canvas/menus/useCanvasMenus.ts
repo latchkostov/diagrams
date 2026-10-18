@@ -21,6 +21,8 @@ export type MenuState = {
   label: string;
   searchable?: string;
   testId?: string;
+  /** The items a node, connection or selection menu acts on (flow ids): a peer deleting one closes it (`remote`). */
+  targets?: readonly string[];
 };
 /** What opens over the canvas: a menu (its anchor and items), or a dialog (no payload). */
 export type CanvasSurface = MenuState | null;
@@ -70,6 +72,10 @@ export function useCanvasContextMenus(
           x: e.clientX,
           y: e.clientY,
           items: () => actionRegistry.build(full),
+          targets:
+            ctx.target === "selection"
+              ? [...ctx.selection.nodeIds, ...ctx.selection.edgeIds]
+              : [ctx.nodeId, ctx.edgeId].filter((id): id is string => !!id),
           get label() {
             return tr("menu.valueNodeValueEdgeValueGroupValueSelectionValueAnnotation", { target: ctx.target });
           },
