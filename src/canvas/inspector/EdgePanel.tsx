@@ -1,0 +1,260 @@
+import { Dropdown } from "../../components/Dropdown";
+import { Icon } from "../../components/Icon";
+import { RELATION_CHOICES, applyChoice, choiceOf } from "../../editor/relationActions";
+import { t } from "../../i18n";
+import { SIM_LIMITS } from "../../interop/native";
+import { brokerSpec } from "../../model/brokers";
+import { relationNote, relationOf } from "../../model/relations";
+import { EdgeRouteFields } from "../../planning/lazy";
+import { DEFAULT_TRAVEL_MS } from "../../sim/topology";
+import { groupLabel } from "../../stencils/brokerVocabulary";
+import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
+import { getStencil } from "../../stencils/registry";
+import { edgeSimFields } from "../simFieldRules";
+import type { DiagramFlowEdge } from "../types";
+import { Field, InertNote, Section, Segmented, SideSelect } from "./controls";
+import { Disclosure } from "./Disclosure";
+import { isFanOut, relationDropdownItems } from "./helpers";
+import { PropsEditor } from "./PropsEditor";
+import { RelationHint } from "./RelationHint";
+import { SettingsEditor } from "./SettingsEditor";
+import { EDGE_KEYS, RULE_KEYS } from "./simFields";
+import { SimInput } from "./SimInput";
+import { type InspectorProps } from "./types";
+import { useNameFields } from "./useNameFields";
+
+export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
+  const naming = useNameFields(editor, "edge", edge.id, edge.id);
+  const data = edge.data ?? { kind: "async" as const };
+  const props = data.props ?? {};
+  const merge = (f: string) => ({ merge: `inspector:edge:${edge.id}:${f}` });
+  const relation = relationOf(data);
+  const flow = relation === "flow";
+  const fanOut = flow && isFanOut(editor, edge.source, data.kind);
+  const choice = choiceOf(data);
+  // A connection leaving a firewall is one of its rules: allow (the default) or deny.
+  const rule = flow && isFirewallStencil(editor.getNode(edge.source)?.stencil);
+  // Consumer groups exist only on edges out of a topic or stream; a dead-letter route only out of a broker.
+  const sourceStencil = editor.getNode(edge.source)?.stencil;
+  const sourceRole = sourceStencil ? getStencil(sourceStencil).simRole : undefined;
+  const fields = edgeSimFields(sourceRole);
+  const grouped = flow && fields.group && props.dlq !== true;
+  const deadLetters = flow && fields.dlq;
+  return (
+    <>
+      <Section>
+        <div className="insp-route">
+          <span>{nodeLabel(edge.source)}</span>
+          <Icon name="chevron-right" size={12} />
+          <span>{nodeLabel(edge.target)}</span>
+          <button
+            className="icon-btn insp-mini"
+            onClick={() => editor.reverseEdge(edge.id)}
+            title={t("inspector.reverseDirection")}
+            aria-label={t("inspector.reverseDirection")}
+            data-testid="inspector-reverse"
+          >
+            <Icon name="swap" size={14} />
+          </button>
+        </div>
+        <Field label={t("inspector.label")}>
+          <input
+            className="insp-input"
+            value={data.label ?? ""}
+            placeholder={flow ? t("inspector.eGOrderplaced") : t("inspector.optionalEGKeyVaultSecretsUser")}
+            onChange={(e) => editor.updateEdge(edge.id, { label: e.target.value }, naming.merge())}
+            {...naming.keys}
+            name="edge-label"
+            data-testid="inspector-field-label"
+          />
+        </Field>
+        <Field
+          label={t("inspector.relationship")}
+          hint={t("inspector.flowsCarryMessagesInLiveDependenciesAreDrawnDotted")}
+        >
+          <Dropdown
+            value={choice}
+            onChange={(nextId) => {
+              const next = RELATION_CHOICES.find((c) => c.id === nextId);
+              if (next) applyChoice(editor, [edge.id], next);
+            }}
+            items={relationDropdownItems()}
+            name="relationship"
+            aria-label={t("inspector.relationship")}
+            testId="inspector-field-relation"
+          />
+        </Field>
+        <RelationHint edge={edge} editor={editor} />
+        {flow && (
+          <EdgeRouteFields
+            editor={editor}
+            edgeId={edge.id}
+            planning={meta.planning}
+            caller={
+              data.kind === "sync" && (sourceRole === "source" || sourceRole === "processor" || sourceRole === "none")
+            }
+          />
+        )}
+        {rule && (
+          <Field
+            label={t("inspector.firewallRule")}
+            hint={t("inspector.denyBlocksWhatTheFirewallWouldSendHereBlocked")}
+            group
+          >
+            <Segmented
+              value={isDenyRule(props) ? "deny" : "allow"}
+              options={[
+                { value: "allow", label: t("inspector.allow"), hint: t("inspector.trafficPasses") },
+                { value: "deny", label: t("inspector.deny"), hint: t("inspector.trafficIsBlockedAtTheFirewall") },
+              ]}
+              onChange={(v) => editor.setEdgeProps(edge.id, { deny: v === "deny" || undefined })}
+              testId="inspector-field-rule"
+              label={t("inspector.firewallRule")}
+            />
+          </Field>
+        )}
+        {grouped && (
+          <Field
+            label={groupLabel(brokerSpec(sourceStencil, sourceRole ?? "none", meta.planning))}
+            hint={t("broker.groupHint")}
+          >
+            <input
+              className="insp-input mono"
+              value={typeof props.group === "string" ? props.group : ""}
+              placeholder={edge.id}
+              onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
+              name="consumer-group"
+              data-testid="inspector-field-group"
+            />
+          </Field>
+        )}
+        {flow && !fields.group && typeof props.group === "string" && (
+          <InertNote
+            name="group"
+            text={t("inspector.inertGroup", { group: String(props.group) })}
+            onRemove={() => editor.setEdgeProps(edge.id, { group: undefined })}
+          />
+        )}
+        {deadLetters && (
+          <label className="insp-check">
+            <input
+              type="checkbox"
+              checked={props.dlq === true}
+              onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
+              name="dlq"
+              data-testid="inspector-field-dlq"
+            />
+            <span>
+              {t("inspector.deadLetterPath")}
+              <small>{t("inspector.failedMessagesFromTheSourceBrokerGoHere")}</small>
+            </span>
+          </label>
+        )}
+        {flow && !deadLetters && props.dlq === true && (
+          <InertNote
+            name="dlq"
+            text={
+              sourceRole === "processor"
+                ? t("inspector.deadLetterPathIsOnButOnlyABroker")
+                : t("inspector.deadLetterPathIsOnButOnlyABroker2")
+            }
+            onRemove={() => editor.setEdgeProps(edge.id, { dlq: undefined })}
+          />
+        )}
+        {!flow && (
+          <p className="insp-note" data-testid="inspector-relation-note">
+            {relationNote(relation)}
+          </p>
+        )}
+      </Section>
+      {relation === "config" && <SettingsEditor key={edge.id} edge={edge} editor={editor} />}
+      {fanOut && (
+        <Disclosure id="edge-simulation" title={t("inspector.simulation")}>
+          <SimInput
+            name="share"
+            field={{
+              label: t("inspector.shareOfMessages"),
+              unit: "%",
+              kind: "number",
+              min: 0,
+              max: 100,
+              step: 5,
+              placeholder: "100",
+              hint: t("inspector.howManyOfTheMessagesLeavingThisNodeAlso"),
+            }}
+            value={typeof props.share === "number" ? Math.round(props.share * 1000) / 10 : undefined}
+            onChange={(v) =>
+              editor.setEdgeProps(edge.id, { share: typeof v === "number" ? v / 100 : undefined }, merge("share"))
+            }
+          />
+        </Disclosure>
+      )}
+      <Disclosure id="edge-advanced" title={t("inspector.advanced")}>
+        <div className="insp-row2">
+          <Field label={t("inspector.fromSide")}>
+            <SideSelect
+              testId="inspector-field-sourceSide"
+              value={data.sourceSide}
+              onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })}
+            />
+          </Field>
+          <Field label={t("inspector.toSide")}>
+            <SideSelect
+              testId="inspector-field-targetSide"
+              value={data.targetSide}
+              onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })}
+            />
+          </Field>
+        </div>
+        {flow && (
+          <>
+            <SimInput
+              name="travelMs"
+              field={{
+                label: t("inspector.travelTime"),
+                unit: "ms",
+                kind: "number",
+                min: 0,
+                max: SIM_LIMITS.timeMs,
+                step: 50,
+                placeholder: String(DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"]),
+                hint: t("inspector.timeAMessageSpendsOnThisEdgeAt1x"),
+              }}
+              value={props.travelMs}
+              onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
+            />
+            <SimInput
+              name="filter"
+              field={{
+                label: t("inspector.filter"),
+                kind: "list",
+                placeholder: t("inspector.allMessageTypes"),
+                hint: t("inspector.onlyTheseMessageTypesTravelThisEdgeTrailingWildcard"),
+              }}
+              value={props.filter}
+              onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
+            />
+            <SimInput
+              name="emits"
+              field={{
+                label: t("inspector.renameTo"),
+                kind: "text",
+                placeholder: t("inspector.unchanged"),
+                hint: t("inspector.renameMessagesAsTheyLeaveAlongThisEdge"),
+              }}
+              value={props.emits}
+              onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
+            />
+          </>
+        )}
+        <span className="insp-label">{t("inspector.customProperties")}</span>
+        <PropsEditor
+          props={props}
+          hidden={rule ? RULE_KEYS : EDGE_KEYS}
+          onSet={(patch) => editor.setEdgeProps(edge.id, patch)}
+          onSetMerged={(patch, key) => editor.setEdgeProps(edge.id, patch, merge(`prop:${key}`))}
+        />
+      </Disclosure>
+    </>
+  );
+}
