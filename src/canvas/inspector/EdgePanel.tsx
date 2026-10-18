@@ -16,7 +16,7 @@ import { EdgeAdvanced } from "./EdgeAdvanced";
 import { isFanOut, relationDropdownItems } from "./helpers";
 import { RelationHint } from "./RelationHint";
 import { SettingsEditor } from "./SettingsEditor";
-import { SimInput } from "./SimInput";
+import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 

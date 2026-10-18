@@ -15,7 +15,7 @@ import { BulkRow, Section } from "./controls";
 import { Disclosure } from "./Disclosure";
 import { MIXED, MIXED_VALUE, bulkStep, countLabel, shared } from "./helpers";
 import { SIM_FIELDS, showSim } from "./simFields";
-import { SimInput } from "./SimInput";
+import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 
 /** The fields several nodes share (D11): Stencil, Boundary, and the simulation settings their roles have in common. */

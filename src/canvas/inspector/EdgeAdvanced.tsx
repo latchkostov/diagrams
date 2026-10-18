@@ -6,7 +6,7 @@ import { Field, SideSelect } from "./controls";
 import { Disclosure } from "./Disclosure";
 import { PropsEditor } from "./PropsEditor";
 import { EDGE_KEYS, RULE_KEYS } from "./simFields";
-import { SimInput } from "./SimInput";
+import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 
 type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {

@@ -14,7 +14,7 @@ import { type DiagramFlowNode } from "../types";
 import { Section, CopyId, Field } from "./controls";
 import { Disclosure } from "./Disclosure";
 import { customCount } from "./helpers";
-import { NodeSimulation } from "./NodeSimulation";
+import { NodeSimulation } from "./SimulationFields";
 import { PropsEditor } from "./PropsEditor";
 import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
