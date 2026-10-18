@@ -1,7 +1,7 @@
 export const removalOptions: { recursive: true; force: true; maxRetries: number; retryDelay: number };
 export function createTempRun(
   kind: "vitest" | "parity" | "gate",
-  options?: { root?: string; systemTemp?: string; now?: number },
+  options?: { root?: string; systemTemp?: string; now?: number; namespace?: string | null },
 ): {
   directory: string;
   env: Record<"TMP" | "TEMP" | "TMPDIR" | "LIVEDIAGRAMS_SYSTEM_TEMP", string>;

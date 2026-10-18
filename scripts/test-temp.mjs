@@ -1,5 +1,14 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { hostname, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import process from "node:process";
 
@@ -7,6 +16,20 @@ export const removalOptions = { recursive: true, force: true, maxRetries: 10, re
 const day = 24 * 60 * 60 * 1000;
 const runName = /^(vitest|parity|gate)-(\d+)-\d+-[\w-]+$/;
 const testName = /^(livediagrams-|parity-|deployment-build-)/;
+
+function pidNamespace() {
+  // A shared checkout can be mounted in containers. A PID is meaningful only in
+  // its owning namespace, and namespace inode numbers can repeat across boots.
+  if (process.platform === "linux") {
+    try {
+      return `linux:${readFileSync("/proc/sys/kernel/random/boot_id", "utf8").trim()}:${readlinkSync("/proc/self/ns/pid")}`;
+    } catch {
+      return null; // No reliable identity: leave cleanup to the owning environment.
+    }
+  }
+  if (process.platform === "win32" || process.platform === "darwin") return `${process.platform}:${hostname()}`;
+  return null;
+}
 
 function testDirectories(directory) {
   return (
@@ -29,10 +52,15 @@ function running(pid) {
   }
 }
 
-/** Each owner deletes only its own scratch tree. Killed runs are reaped after a day. */
+/** Each owner checks only its own scratch tree. Reap dead, same-namespace runs after a day. */
 export function createTempRun(
   kind,
-  { root = process.cwd(), systemTemp = process.env.LIVEDIAGRAMS_SYSTEM_TEMP || tmpdir(), now = Date.now() } = {},
+  {
+    root = process.cwd(),
+    systemTemp = process.env.LIVEDIAGRAMS_SYSTEM_TEMP || tmpdir(),
+    now = Date.now(),
+    namespace = pidNamespace(),
+  } = {},
 ) {
   const parent = resolve(root, "tests/.output/tmp");
   mkdirSync(parent, { recursive: true });
@@ -41,22 +69,30 @@ export function createTempRun(
     if (!entry.isDirectory() || !match) continue;
     const directory = join(parent, entry.name);
     try {
-      if (now - statSync(directory).mtimeMs > day && !running(Number(match[2]))) rmSync(directory, removalOptions);
+      if (!namespace || now - statSync(directory).mtimeMs <= day) continue;
+      let owner;
+      try {
+        owner = JSON.parse(readFileSync(join(directory, "owner.json"), "utf8"));
+      } catch (error) {
+        // Legacy, incomplete or corrupt ownership is not evidence of a dead owner.
+        if (error.code === "ENOENT" || error instanceof SyntaxError) continue;
+        throw error;
+      }
+      if (owner?.namespace === namespace && owner.pid === Number(match[2]) && !running(owner.pid))
+        rmSync(directory, removalOptions);
     } catch (error) {
       // Another runner may have finished or reaped the same stale tree after our listing.
       if (error.code !== "ENOENT") throw error;
     }
   }
-  const before = new Set(testDirectories(systemTemp));
   const directory = mkdtempSync(join(parent, `${kind}-${process.pid}-${now}-`));
+  writeFileSync(join(directory, "owner.json"), JSON.stringify({ namespace, pid: process.pid }));
   const env = { TMP: directory, TEMP: directory, TMPDIR: directory, LIVEDIAGRAMS_SYSTEM_TEMP: systemTemp };
   return {
     directory,
     env,
     dispose({ checkOwned = false } = {}) {
       try {
-        const leaked = testDirectories(systemTemp).filter((name) => !before.has(name));
-        if (leaked.length) throw new Error(`New test directories in system temp: ${leaked.join(", ")}`);
         if (checkOwned) {
           const remaining = testDirectories(directory);
           if (remaining.length) throw new Error(`Test directories missing cleanup: ${remaining.join(", ")}`);

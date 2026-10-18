@@ -33,6 +33,10 @@ it("gives concurrent runs distinct repo-drive roots and removes them on teardown
   const options = fixture();
   const first = createTempRun("vitest", options);
   const second = createTempRun("vitest", options);
+  expect(JSON.parse(readFileSync(join(first.directory, "owner.json"), "utf8"))).toEqual({
+    namespace: expect.any(String),
+    pid: process.pid,
+  });
   expect(first.directory).not.toBe(second.directory);
   expect(dirname(first.directory)).toBe(join(options.root, "tests/.output/tmp"));
   for (const key of ["TMP", "TEMP", "TMPDIR"] as const) expect(first.env[key]).toBe(first.directory);
@@ -42,35 +46,63 @@ it("gives concurrent runs distinct repo-drive roots and removes them on teardown
   second.dispose();
 });
 
-it("reaps day-old run directories while retaining recent runs and unrelated files", () => {
-  const options = fixture();
+it("reaps abandoned same-namespace runs while retaining live, recent and unverifiable owners", () => {
+  const options = { ...fixture(), namespace: "current-namespace" };
   const parent = join(options.root, "tests/.output/tmp");
   mkdirSync(parent, { recursive: true });
   const old = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
   const stale = ["vitest-2147483647-1-old", "parity-2147483647-1-old", "gate-2147483647-1-old"];
   const live = `vitest-${process.pid}-1-live`;
-  for (const name of [...stale, live, "vitest-1-2-recent", "unrelated"]) {
+  const retained = [
+    live,
+    "vitest-1-2-recent",
+    "vitest-2147483647-1-legacy",
+    "parity-2147483647-1-corrupt",
+    "unrelated",
+  ];
+  for (const name of [...stale, ...retained]) {
     mkdirSync(join(parent, name));
+    if (stale.includes(name) || name === live || name === "vitest-1-2-recent")
+      writeFileSync(
+        join(parent, name, "owner.json"),
+        JSON.stringify({ namespace: options.namespace, pid: Number(name.split("-")[1]) }),
+      );
+    if (name.endsWith("-corrupt")) writeFileSync(join(parent, name, "owner.json"), "{");
     if (name !== "vitest-1-2-recent") utimesSync(join(parent, name), old, old);
   }
   const run = createTempRun("vitest", options);
   for (const name of stale) expect(existsSync(join(parent, name))).toBe(false);
-  expect(existsSync(join(parent, "vitest-1-2-recent"))).toBe(true);
-  expect(existsSync(join(parent, live))).toBe(true);
-  expect(existsSync(join(parent, "unrelated"))).toBe(true);
+  for (const name of retained) expect(existsSync(join(parent, name))).toBe(true);
   run.dispose();
 });
 
-it.each(["livediagrams-probe", "parity-probe"])("detects new system-temp %s folders and still tears down", (name) => {
+it.each(["container-namespace", null])("retains a foreign live run when the local PID namespace is %s", (namespace) => {
   const options = fixture();
-  mkdirSync(join(options.systemTemp, "livediagrams-existing"));
-  const run = createTempRun("vitest", options);
-  mkdirSync(join(options.systemTemp, name));
-  expect(() => run.dispose()).toThrow(`New test directories in system temp: ${name}`);
-  expect(existsSync(run.directory)).toBe(false);
-  // A guard diagnoses system-temp leaks without deleting somebody else's directory.
-  expect(existsSync(join(options.systemTemp, name))).toBe(true);
+  const parent = join(options.root, "tests/.output/tmp");
+  const foreign = join(parent, "vitest-2147483647-1-foreign");
+  mkdirSync(foreign, { recursive: true });
+  writeFileSync(join(foreign, "owner.json"), JSON.stringify({ namespace: "host-namespace", pid: 2147483647 }));
+  const old = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  utimesSync(foreign, old, old);
+  const run = createTempRun("parity", { ...options, namespace });
+  expect(existsSync(foreign)).toBe(true);
+  run.dispose();
+  expect(existsSync(foreign)).toBe(true);
 });
+
+it.each(["livediagrams-probe", "parity-probe", "deployment-build-probe"])(
+  "ignores foreign system-temp %s folders created during a run",
+  (name) => {
+    const options = fixture();
+    mkdirSync(join(options.systemTemp, "livediagrams-existing"));
+    const run = createTempRun("vitest", options);
+    mkdirSync(join(options.systemTemp, name));
+    expect(() => run.dispose({ checkOwned: true })).not.toThrow();
+    expect(existsSync(run.directory)).toBe(false);
+    // Concurrent worktrees retain ownership of their own scratch.
+    expect(existsSync(join(options.systemTemp, name))).toBe(true);
+  },
+);
 
 it("exposes missing fixture cleanup before the enclosing run deletes it", () => {
   const run = createTempRun("vitest", fixture());
