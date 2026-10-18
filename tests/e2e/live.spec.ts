@@ -24,6 +24,34 @@ import {
 
 const KAFKA = "kafka-order-pipeline";
 
+test("presented pausing notes focus Continue without stealing focus in normal live view", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.clock.install();
+  for (const presenting of [true, false]) {
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8&paused=1`);
+    if (presenting) {
+      await page.getByTestId("present-toggle").click();
+      await expect(page.getByTestId("present-exit")).toBeVisible();
+    }
+    await waitForCameraIdle(page);
+    await pauseClock(page);
+    const node = page.getByTestId("node-payments");
+    // React Flow's focusable wrapper owns the node's keyboard focus.
+    await node.evaluate((el) => el.parentElement?.focus());
+    await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
+    // Start playback without moving focus from the node; advance the simulation to its 4 s pausing note.
+    await page.getByTestId("live-play").evaluate((el: HTMLButtonElement) => el.click());
+    await page.clock.runFor(1500);
+    await expect(page.getByTestId("live-note-continue")).toBeVisible();
+    if (presenting) await expect(page.getByTestId("live-note-continue")).toBeFocused();
+    else await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
+    await page.clock.resume();
+  }
+  expectNoErrors(consoleErrors);
+});
+
 test("Escape still leaves live when an earlier handler commits a host render", async ({ page }) => {
   await gotoLab(page, "live-keyboard");
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });

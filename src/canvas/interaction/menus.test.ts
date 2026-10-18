@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
-import type { MenuCloseReason, MenusEvent, MenusState, SurfaceKind } from "./types";
+import type { MenuCloseReason, MenusEvent, MenusState, CanvasSurfaceKind } from "./types";
 
-const open = (kind: SurfaceKind = "context", invoker: object | null = null): MenusEvent<string> => ({
+const open = (kind: CanvasSurfaceKind = "context", invoker: object | null = null): MenusEvent<string> => ({
   type: "menu.open",
   kind,
   payload: kind,
@@ -26,7 +26,7 @@ function run(events: MenusEvent<string>[], start: MenusState<string> = initialMe
 }
 
 describe("menus: the lifecycle, row by row", () => {
-  it.each<[string, MenusEvent<string>[], string[], SurfaceKind | null]>([
+  it.each<[string, MenusEvent<string>[], string[], CanvasSurfaceKind | null]>([
     ["O1 a right-click opens the context menu", [open()], ["opened:context#1"], "context"],
     [
       "C1 a pick closes it, with its reason",
@@ -83,7 +83,7 @@ describe("menus: the lifecycle, row by row", () => {
 });
 
 describe("menus: event sequences", () => {
-  const kinds = fc.constantFrom<SurfaceKind>("context", "quickAdd", "connected", "dialog");
+  const kinds = fc.constantFrom<CanvasSurfaceKind>("context", "quickAdd", "connected", "dialog");
   const reasons = fc.constantFrom<MenuCloseReason>(
     "pick",
     "escape",

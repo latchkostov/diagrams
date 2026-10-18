@@ -11,7 +11,7 @@ import type {
   MenuCloseReason,
   Platform,
   SelectionCause,
-  SurfaceKind,
+  MenuFocusKind,
 } from "./types";
 
 const invoker = { name: "invoker" };
@@ -20,7 +20,7 @@ const node = { name: "node" };
 const state = (patch: Partial<FocusState> = {}): FocusState => ({ ...initialFocus(), ...patch });
 const closed = (
   reason: MenuCloseReason,
-  o: { kind?: SurfaceKind; invoker?: object | null; platform?: Platform } = {},
+  o: { kind?: MenuFocusKind; invoker?: object | null; platform?: Platform } = {},
 ): FocusEvent => ({
   type: "menu.closed",
   kind: o.kind ?? "context",
@@ -356,7 +356,7 @@ const REASONS: MenuCloseReason[] = [
   "toggle",
   "unmount",
 ];
-const KINDS: SurfaceKind[] = ["context", "quickAdd", "connected", "dialog", "live"];
+const KINDS: MenuFocusKind[] = ["context", "quickAdd", "connected", "dialog", "live"];
 const LIVE_KEYS: LiveKey[] = ["space", "enter", "escape"];
 const LIVE_ACTIONS: LiveKeyAction[] = [
   "slowmo",

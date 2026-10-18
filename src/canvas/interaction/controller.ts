@@ -18,7 +18,7 @@ import type {
   MenusState,
   OpenSurface,
   Platform,
-  SurfaceKind,
+  CanvasSurfaceKind,
 } from "./types";
 
 /** The camera, as the interaction controller feeds it (menu.opened / menu.closed, selection.changed). */
@@ -359,7 +359,7 @@ export function createInteractionController<P = unknown>(
     },
     /** Opens a menu (or a dialog) over the canvas, replacing any that's open; returns its seq. */
     openMenu(
-      kind: SurfaceKind,
+      kind: CanvasSurfaceKind,
       payload: P,
       how: { via?: MenuVia; platform?: Platform; invoker?: ElementHandle | null } = {},
     ) {

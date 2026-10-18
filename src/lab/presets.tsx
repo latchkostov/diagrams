@@ -1,6 +1,7 @@
 import { kedaFixture } from "./kedaFixture";
 import { ImportRetryLab } from "./ImportRetryLab";
 import { LiveKeyboardLab } from "./LiveKeyboardLab";
+import { SlowTraceLocaleLab } from "./SlowTraceLocaleLab";
 import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
@@ -962,6 +963,15 @@ const traceFlowControl = (key: string, label: string, value: string): ControlDef
 const flowOf = (key: unknown, fallback: string) => (traceFlows[String(key)] ?? traceFlows[fallback]).flow();
 
 const tracePresets: Preset[] = [
+  {
+    kind: "render",
+    id: "slow-trace-locale",
+    title: "Slow motion: paused language switch",
+    group: "Simulation",
+    description: "A paused replay keeps the same state while its card's two notes change language.",
+    controls: [],
+    render: () => <SlowTraceLocaleLab flow={flowOf(traceDefault, traceDefault)} />,
+  },
   {
     kind: "render",
     id: "trace-card-interaction",

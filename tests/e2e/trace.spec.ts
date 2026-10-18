@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
+import { pseudoText } from "../../src/i18n/pseudo";
 import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
 import {
   interactionJournalMark,
@@ -22,6 +23,28 @@ const AZURE = "azure-service-bus-integration";
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 const card = (page: Page) => page.getByTestId("trace-card");
 const hops = (page: Page) => page.getByTestId(/^trace-hop-/);
+
+test("paused slow-motion notes update after a language switch", async ({ page, consoleErrors }) => {
+  await gotoLab(page, "slow-trace-locale");
+  const note = page.getByTestId("trace-slowmo-note");
+  const english =
+    "Recorded for 30 s of simulated time: still moving. This slow motion runs 1 min: → skips to the next hop.";
+  await expect(note).toHaveText(english);
+  const mounted = await note.elementHandle();
+  if (!mounted) throw new Error("Expected a mounted slow-motion note");
+  await page.getByTestId("slow-trace-locale-pseudo").click();
+  await expect(note).toContainText(pseudoText("Recorded for "));
+  await expect(note).toContainText(pseudoText("30 s"));
+  await expect(note).toContainText(`${pseudoText("of simulated time: ")}still moving.`);
+  await expect(note).toContainText(
+    `${pseudoText("This slow motion runs ")}1 min${pseudoText(": → skips to the next hop.")}`,
+  );
+  expect(await mounted.evaluate((el) => el.isConnected)).toBe(true);
+  await page.getByTestId("slow-trace-locale-en").click();
+  await expect(note).toHaveText(english);
+  expect(await mounted.evaluate((el) => el.isConnected)).toBe(true);
+  expectNoErrors(consoleErrors);
+});
 
 async function openNodeMenu(page: Page, nodeId: string, actionId: string) {
   await waitForStableViewport(page);
