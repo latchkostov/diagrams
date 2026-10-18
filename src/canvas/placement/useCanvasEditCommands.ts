@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react";
+import type { Placing } from "../interaction";
 import { flushSync } from "react-dom";
 import type { EditorApi, NewNode, XYBox } from "../../editor/types";
 import type { useHistory } from "../../editor/useHistory";
@@ -8,7 +9,7 @@ import { t as tr } from "../../i18n";
 import type { InlineEdit, RenameTarget } from "../DiagramContext";
 import { GROUP_PREFIX } from "../types";
 import { captureTypeAhead } from "../typeAhead";
-import type { CameraController, useRevealSelection } from "../camera";
+import type { useRevealSelection } from "../camera";
 
 export function useCanvasNaming(
   canOpenInspector: boolean,
@@ -18,7 +19,7 @@ export function useCanvasNaming(
   setNaming: Dispatch<SetStateAction<{ node: string; edge: string } | null>>,
   renameRef: RefObject<(t: RenameTarget) => void>,
   history: ReturnType<typeof useHistory>,
-  controller: CameraController,
+  controller: Placing,
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
 ) {
   /**
@@ -152,7 +153,7 @@ export function usePlacementSettling(editor: EditorApi) {
   return [settleText, boundaryResized] as const;
 }
 
-export function useAddFromPalette(editor: EditorApi, live: boolean, controller: CameraController) {
+export function useAddFromPalette(editor: EditorApi, live: boolean, controller: Placing) {
   // With exactly one node selected, a rail click adds after it, connected, as Ctrl+K does (decision 4).
   // Live view adds a node by itself, as before: nothing gets wired mid-run.
   const addFromPalette = useCallback(
@@ -165,7 +166,7 @@ export function useAddFromPalette(editor: EditorApi, live: boolean, controller: 
   return addFromPalette;
 }
 
-export function useAnnotateFromPalette(editor: EditorApi, controller: CameraController) {
+export function useAnnotateFromPalette(editor: EditorApi, controller: Placing) {
   const annotateFromPalette = useCallback(
     (kind: AnnotationKind, shape?: AnnotationShape) => {
       controller.placing();

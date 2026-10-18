@@ -35,6 +35,9 @@ interface Anchor {
   minWidth?: number;
 }
 
+/** Why a menu closed: an item ran, Esc, a press outside it, the wheel, the window's focus or size changing. */
+export type ContextMenuCloseReason = "pick" | "escape" | "outside" | "scroll" | "blur" | "resize";
+
 const MARGIN = 8;
 const HOVER_DELAY = 110;
 const MAX_RESULTS = 60;
@@ -47,7 +50,7 @@ export interface ContextMenuProps {
   flipX?: number;
   minWidth?: number;
   items: MenuNode[];
-  onClose: () => void;
+  onClose: (reason: ContextMenuCloseReason) => void;
   /** Root-level search box placeholder (quick-add, stencil picker). */
   searchable?: string;
   /** Accessible name. */
@@ -57,6 +60,11 @@ export interface ContextMenuProps {
   menuId?: string;
   /** The trigger toggles its own menu instead of dismissing it on pointer-down. */
   triggerRef?: RefObject<HTMLElement | null>;
+  /**
+   * Gives focus back to what had it when the menu opened, if the menu's closing left it on the page (default). The
+   * canvas's menus say false: its focus controller gives it back (src/canvas/interaction, rows M1 and M2).
+   */
+  returnFocus?: boolean;
 }
 
 export function ContextMenu({
@@ -72,10 +80,11 @@ export function ContextMenu({
   testId = "context-menu",
   menuId,
   triggerRef,
+  returnFocus = true,
 }: ContextMenuProps) {
   useLocale();
   const layer = useRef<HTMLDivElement>(null);
-  const invoker = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  const invoker = useRef(returnFocus && document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const closeRef = useRef(onClose);
   useLayoutEffect(() => {
     closeRef.current = onClose;
@@ -101,23 +110,25 @@ export function ContextMenu({
     const previousFocus = invoker.current;
     const outside = (e: Event) => {
       if (e.type === "pointerdown" && triggerRef?.current?.contains(e.target as Node)) return;
-      if (!layer.current?.contains(e.target as Node)) closeRef.current();
+      if (!layer.current?.contains(e.target as Node)) closeRef.current(e.type === "wheel" ? "scroll" : "outside");
     };
-    const close = () => closeRef.current();
+    const resized = () => closeRef.current("resize");
+    const blurred = () => closeRef.current("blur");
     window.addEventListener("pointerdown", outside, true);
     window.addEventListener("wheel", outside, { capture: true, passive: true });
-    window.addEventListener("resize", close);
-    window.addEventListener("blur", close);
+    window.addEventListener("resize", resized);
+    window.addEventListener("blur", blurred);
     return () => {
       window.removeEventListener("pointerdown", outside, true);
       window.removeEventListener("wheel", outside, true);
-      window.removeEventListener("resize", close);
-      window.removeEventListener("blur", close);
+      window.removeEventListener("resize", resized);
+      window.removeEventListener("blur", blurred);
       // Actions and outside clicks may deliberately focus another control. Let them win.
-      queueMicrotask(() => {
-        if (document.activeElement === document.body && previousFocus?.isConnected)
-          previousFocus.focus({ preventScroll: true });
-      });
+      if (previousFocus)
+        queueMicrotask(() => {
+          if (document.activeElement === document.body && previousFocus.isConnected)
+            previousFocus.focus({ preventScroll: true });
+        });
     };
   }, [triggerRef]);
 
@@ -131,8 +142,8 @@ export function ContextMenu({
         takeTypeAhead={takeTypeAhead}
         focusOnMount
         activateFirst={false}
-        onCloseAll={() => closeRef.current()}
-        onBack={() => closeRef.current()}
+        onCloseAll={(reason) => closeRef.current(reason)}
+        onBack={() => closeRef.current("escape")}
         label={label}
         testId={testId}
         menuId={menuId}
@@ -151,7 +162,7 @@ interface ListProps {
   takeTypeAhead?: () => TypeAhead | undefined;
   focusOnMount: boolean;
   activateFirst: boolean;
-  onCloseAll: () => void;
+  onCloseAll: (reason: "pick" | "escape") => void;
   onBack: () => void;
   label: string;
   testId: string;
@@ -211,6 +222,8 @@ function MenuList(p: ListProps) {
    * Leaving the menu forgets it, so coming back hovers again.
    */
   const pointerOn = useRef<string | null>(null);
+  /** The row whose hover delay is running (its item's id): a language change starts it again (below). */
+  const hovering = useRef<string | null>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Place once, against the full list, flipping / clamping at the viewport edges.
@@ -258,11 +271,11 @@ function MenuList(p: ListProps) {
     input.current.focus({ preventScroll: true });
     const t = take();
     if (!t) return;
-    if (t.done === "escape") return p.onCloseAll();
+    if (t.done === "escape") return p.onCloseAll("escape");
     if (t.done === "enter") {
       const best = (t.text ? search(p.items, t.text) : p.items).find(selectable);
       if (best && !best.children) {
-        p.onCloseAll();
+        p.onCloseAll("pick");
         best.run?.();
         return;
       }
@@ -272,10 +285,6 @@ function MenuList(p: ListProps) {
     if (text) queueMicrotask(() => setQ(text));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the menu is placed
   }, [placed, take]);
-
-  // A pending hover captures the old direction. After a locale change it would
-  // read the moved row and overwrite the correctly refreshed submenu anchor.
-  useLayoutEffect(() => () => window.clearTimeout(hoverTimer.current), [locale]);
 
   // Search changes derive a fresh highlight before the next paint.
   const [previousShown, setPreviousShown] = useState(shown);
@@ -321,7 +330,7 @@ function MenuList(p: ListProps) {
       openSub(index, viaKeyboard);
       return;
     }
-    p.onCloseAll();
+    p.onCloseAll("pick");
     item.run?.();
   };
 
@@ -384,7 +393,7 @@ function MenuList(p: ListProps) {
         e.preventDefault();
         if (inInput && q) setQ("");
         else if (p.depth > 0) p.onBack();
-        else p.onCloseAll();
+        else p.onCloseAll("escape");
         break;
       case "Tab":
         e.preventDefault();
@@ -396,9 +405,12 @@ function MenuList(p: ListProps) {
   const hover = (index: number) => {
     setActive(index);
     window.clearTimeout(hoverTimer.current);
+    hovering.current = null;
     if (open?.index === index) return;
     const item = shown[index];
+    hovering.current = selectable(item) ? item.id : null;
     hoverTimer.current = window.setTimeout(() => {
+      hovering.current = null;
       if (selectable(item) && item.children) openSub(index, false);
       else if (open) closeSub();
     }, HOVER_DELAY);
@@ -418,6 +430,20 @@ function MenuList(p: ListProps) {
   useLayoutEffect(() => {
     handlers.current = { pointerMove, activate, onKeyDown };
   });
+
+  // A pending hover captures the old direction and rows: after a locale change it would read the moved row and
+  // overwrite the refreshed submenu anchor. So it's cancelled, and started again with this render's rows: the pointer
+  // at rest on its row never moves onto it again, so nothing else would (the row would stay closed until it left).
+  useLayoutEffect(() => {
+    const id = hovering.current;
+    if (id) {
+      const i = shown.findIndex((n) => n.type === "item" && n.id === id);
+      if (i >= 0) hover(i);
+      else hovering.current = pointerOn.current = null;
+    }
+    return () => window.clearTimeout(hoverTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per language, with that render's rows and handlers
+  }, [locale]);
   const rowEnter = useCallback((i: number) => handlers.current.pointerMove(i), []);
   const rowClick = useCallback((i: number) => handlers.current.activate(i, false), []);
   const rowKeyDown = useCallback((e: ReactKeyboardEvent) => handlers.current.onKeyDown(e), []);
@@ -459,6 +485,7 @@ function MenuList(p: ListProps) {
         onKeyDown={onKeyDown}
         onMouseLeave={() => {
           window.clearTimeout(hoverTimer.current);
+          hovering.current = null;
           pointerOn.current = null;
           // A search keeps its highlight: it is what Enter picks, and the pointer wandering off mustn't undo the
           // typing (it did, and Enter in quick-add's search did nothing).

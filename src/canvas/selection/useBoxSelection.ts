@@ -20,7 +20,10 @@ export function useBoxSelection({
   store,
   setNodes,
   setEdges,
+  selecting,
 }: {
+  /** Declares the box as the cause of the selection it sets. */
+  selecting: (cause: "box") => void;
   editGestures: boolean;
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
   setNodes: Dispatch<SetStateAction<FlowNode[]>>;
@@ -42,11 +45,13 @@ export function useBoxSelection({
    * Flow re-reads them from the app's state and both agree.
    */
   const applyBoxPick = useCallback(
-    (set: ReadonlySet<string>, stale: ReadonlySet<string>) =>
+    (set: ReadonlySet<string>, stale: ReadonlySet<string>) => {
+      selecting("box");
       setNodes((ns) =>
         ns.map((n) => (!!n.selected === set.has(n.id) && !stale.has(n.id) ? n : { ...n, selected: set.has(n.id) })),
-      ),
-    [setNodes],
+      );
+    },
+    [setNodes, selecting],
   );
   useEffect(() => {
     if (!editGestures) return;

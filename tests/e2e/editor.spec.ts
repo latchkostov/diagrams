@@ -10,6 +10,9 @@ import {
   waitForSelectionSettled,
   fitDiagram,
   emptyCanvasPoint,
+  interactionJournalMark,
+  interactionLog,
+  waitForInteractionIdle,
 } from "./fixtures";
 
 // Editor UX: context menus, keyboard, undo / redo, clipboard, inspector, arrange.
@@ -76,7 +79,17 @@ test.describe("editor", () => {
     await expect(menuItem(page, "node.rename")).toBeVisible();
     await expect(menuItem(page, "item.delete")).toBeVisible();
     await expect(menuItem(page, "canvas.add-node")).toHaveCount(0);
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
+    // Row M1: the menu closes with its reason and focus goes back to the node it was opened on.
+    await waitForInteractionIdle(page);
+    await expect(page.getByTestId("rf__node-payments")).toBeFocused();
+    expect(await interactionLog(page, mark)).toEqual([
+      "menu.closed:escape -> focus:element@commit",
+      "focus.entered -> keep",
+      "focused: focus:element@commit",
+      "focus.ran -> keep",
+    ]);
 
     // Edge labels open the edge menu too (a straight edge's <g> has no height to click).
     await fitDiagram(page);

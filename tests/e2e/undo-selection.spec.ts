@@ -1,6 +1,17 @@
 import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, fitDiagram, STORAGE_KEYS } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  waitForStableViewport,
+  fitDiagram,
+  STORAGE_KEYS,
+  interactionJournalMark,
+  interactionLog,
+  waitForInteractionIdle,
+} from "./fixtures";
 import { callTool, installFakeModelContext, must, nodeCount, openAdvanced, toolNames } from "./ai-helpers";
 
 // Undo and the selection (docs/UX-PRINCIPLES.md): Undo selects what the undone step changed, as it was
@@ -345,10 +356,18 @@ test.describe("undo and the selection", () => {
     await expect.poll(() => focusedNode(page)).toBe("worker");
 
     // Ctrl+Z puts Orders API back and selects it: focus, the Tab stop and the announcement follow.
+    let mark = await interactionJournalMark(page);
     await page.keyboard.press(`${MOD}+z`);
     await savedWhen(page, (s) => node(s, "api").x === xs[2]);
     await expectSelected(page, ["node-api"]);
     await expect.poll(() => focusedNode(page)).toBe("api");
+    // Row H1: from the canvas, one move to what it selected, once drawn; it put focus there.
+    await waitForInteractionIdle(page);
+    let log = await interactionLog(page, mark);
+    expect(log.filter((l) => l.includes("selection.changed:undo"))).toEqual([
+      "selection.changed:undo -> focus:selection@measured",
+    ]);
+    expect(log).toContain("focused: focus:selection@measured");
     await expect(page.getByTestId("canvas-announce")).toHaveText("Undone. Orders API selected.");
     expect(await tabStops(page)).toEqual(["api"]);
     // Enter edits Orders API, not Payment worker.
@@ -357,10 +376,16 @@ test.describe("undo and the selection", () => {
     await page.keyboard.press("Escape");
 
     // Undo from the toolbar: the selection follows, focus stays on the button.
+    mark = await interactionJournalMark(page);
     await page.getByTestId("undo-button").click();
     await savedWhen(page, (s) => node(s, "api").x === xs[1]);
     await expectSelected(page, ["node-api"]);
     await expect(page.getByTestId("undo-button")).toBeFocused();
+    // Row H2: only the Tab stop moves; no focus move ran.
+    await waitForInteractionIdle(page);
+    log = await interactionLog(page, mark);
+    expect(log).toContain("selection.changed:undo -> roving:selection@frame");
+    expect(log.filter((l) => /^(focused|fallback):/.test(l))).toEqual([]);
     expectNoErrors(consoleErrors);
   });
 

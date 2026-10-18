@@ -1602,6 +1602,50 @@ test("RTL quick-add preserves physical placement and expanded chevrons point dow
   await expect.poll(style).toEqual({ rotate: "0deg", transform: "matrix(-1, 0, 0, 1, 0, 0)" });
 });
 
+test("a language arriving during a pending hover still opens that submenu, beside its parent", async ({ page }) => {
+  await page.clock.install();
+  await gotoCanvas(page, SLUG);
+  await waitForStableViewport(page);
+  await pauseClock(page);
+  let release = () => {};
+  let asked = false;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(catalogRequest("ar"), async (route) => {
+    asked = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await openLanguage(page);
+    await page.getByTestId("language-option-ar").click();
+    await expect.poll(() => asked).toBe(true);
+    await page.keyboard.press("Escape");
+    const canvas = page.getByTestId("canvas-wrap");
+    await canvas.click({ button: "right", position: { x: 650, y: 90 } });
+    // Hover the row (no click) and change language before its delay ends; the pointer then rests (no mouseleave).
+    await page.mouse.move(10, 10);
+    await page
+      .getByTestId("context-menu-item-canvas.annotate")
+      .evaluate((el) => el.dispatchEvent(new MouseEvent("mousemove", { bubbles: true })));
+    const sub = page.getByTestId("context-menu-sub");
+    await expect(sub).toHaveCount(0);
+    release();
+    await expect(page.getByTestId("context-menu-item-canvas.annotate")).toContainText(catalog("ar")["menu.annotate"]);
+    // The hover runs on, with the new language's rows: its submenu opens, in RTL beside its parent.
+    await page.clock.runFor(200);
+    await expect(sub).toBeVisible();
+    await expect
+      .poll(async () => {
+        const parent = await page.getByTestId("context-menu").boundingBox();
+        const child = await sub.boundingBox();
+        return parent && child ? Math.abs(child.x + child.width - parent.x) : Infinity;
+      })
+      .toBeLessThan(16);
+  } finally {
+    release();
+  }
+});
+
 test("pending RTL locale refresh retains an open submenu beside its parent", async ({ page }) => {
   await page.clock.install();
   await gotoCanvas(page, SLUG);

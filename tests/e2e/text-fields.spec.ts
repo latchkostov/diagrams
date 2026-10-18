@@ -1,4 +1,4 @@
-import { TEXT_END } from "./fixtures";
+import { TEXT_END, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 import {
@@ -305,8 +305,12 @@ test.describe("renaming in the inspector", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-sublabel")).toBeFocused();
     await page.keyboard.type("jobs.v1");
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect.poll(() => canvasFocused(page)).toBe(true);
+    await waitForInteractionIdle(page);
+    expect(await interactionLog(page, mark)).toContain("naming.done -> focus:item:c@now");
+    expect(await interactionLog(page, mark)).toContain("focused: focus:item:c@now");
     await expect(page.getByTestId("node-c")).toContainText("Queue worker");
     await expect(page.getByTestId("node-c")).toContainText("jobs.v1");
     // Focus is on the node again: Enter renames it once more.

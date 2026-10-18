@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
@@ -10,59 +10,38 @@ import { MultiPanel } from "./inspector/MultiPanel";
 import { NodePanel } from "./inspector/NodePanel";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
+import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
 
 export function Inspector(p: InspectorProps) {
-  useLocale();
-  const body = useRef<HTMLDivElement>(null);
+  // The canvas's focus controller moves focus into the fields; outside a canvas (the Lab), one of its own.
+  const { controller, local } = useInteractionOrLocal();
+  const sheet = <InspectorSheet {...p} interaction={controller} />;
+  return local ? <InteractionContext.Provider value={controller}>{sheet}</InteractionContext.Provider> : sheet;
+}
 
-  // At once, so the next key typed reaches the field (F2 then a name; a double-click then a name), and again a
-  // frame later only if something took focus back meanwhile (the menu that asked for it, closing). Not when the
-  // person moved it (Enter straight after, a third click): a key or a press in between leaves focus where it went.
-  // Each request once: one made while folded waits for the inspector to open, and folding and opening again later
-  // (a selection changing under it) never repeats it.
-  const done = useRef(0);
+function InspectorSheet({ interaction, ...p }: InspectorProps & { interaction: InteractionController }) {
+  useLocale();
+
+  // A field asked for (F2 then a name; a double-click then a name) takes focus at once, so the next key typed
+  // reaches it, and again a frame later only if something took focus back meanwhile (the menu that asked for it,
+  // closing); not when the person moved it (Enter straight after, a third click). Each request once: one made
+  // while folded waits for the inspector to open, one made before React Flow's selection arrives waits for the
+  // field of the item it names, and folding and opening again later never repeats it (focus policy, row I1).
   const takeFocus = p.takeFocus;
-  const selectionKey = JSON.stringify([
-    p.selectedNodes.map((n) => n.id),
-    p.selectedGroups.map((n) => n.id),
-    p.selectedEdges.map((e) => e.id),
-    (p.selectedAnnotations ?? []).map((n) => n.id),
-  ]);
   useLayoutEffect(() => {
-    if (!p.focus || p.collapsed || done.current === p.focus.seq) return;
-    const { name, caret, target } = p.focus;
-    const field = body.current?.querySelector<HTMLElement>(`[data-testid="inspector-field-${name}"]`);
-    // React Flow's selection can arrive after the panel opens. Keep the request pending until the
-    // requested field is mounted for that selection, rather than consuming it on the diagram/old panel.
-    if (!field || (target && field.getAttribute("data-name-field") !== target)) return;
-    if (takeFocus && !takeFocus(p.focus.seq)) return;
-    done.current = p.focus.seq;
-    const place = (retry = false) => {
-      const el = body.current?.querySelector<HTMLElement>(`[data-testid="inspector-field-${name}"]`);
-      if (!el || (retry && document.activeElement === el)) return;
-      el.focus();
-      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-      if (caret === "end") el.setSelectionRange(el.value.length, el.value.length);
-      else el.select();
-    };
-    place();
-    let moved = false;
-    const onInput = () => (moved = true);
-    const stop = () => {
-      window.removeEventListener("keydown", onInput, true);
-      window.removeEventListener("pointerdown", onInput, true);
-    };
-    window.addEventListener("keydown", onInput, true);
-    window.addEventListener("pointerdown", onInput, true);
-    const id = requestAnimationFrame(() => {
-      stop();
-      if (!moved) place(true);
+    const f = p.focus;
+    if (!f) return;
+    interaction.dispatch({
+      type: "inspector.field",
+      seq: f.seq,
+      name: f.name,
+      owner: f.target,
+      caret: f.caret,
+      claim: takeFocus ? () => takeFocus(f.seq) : undefined,
     });
-    return () => {
-      cancelAnimationFrame(id);
-      stop();
-    };
-  }, [p.focus, p.collapsed, takeFocus, selectionKey]);
+  }, [p.focus, takeFocus, interaction]);
+  // Every commit of the sheet: a field waiting for its panel (or for the inspector to open) may be there now.
+  useLayoutEffect(() => interaction.rendered());
 
   if (p.collapsed) {
     return (
@@ -139,7 +118,7 @@ export function Inspector(p: InspectorProps) {
         </button>
       </div>
       {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
-      <div className="insp-body" ref={body} data-testid="inspector-body" data-check-fallback-scope>
+      <div className="insp-body" data-testid="inspector-body" data-check-fallback-scope>
         {n === 1 && !p.selectedNodes[0] && p.findings}
         {content}
       </div>

@@ -1,4 +1,4 @@
-import { savedDiagram } from "./fixtures";
+import { savedDiagram, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -506,6 +506,7 @@ test.describe("keyboard selection between nodes (D14)", () => {
     await seed(page);
     await page.getByTestId("node-api").click();
     await expect.poll(() => focusedNode(page)).toBe("api");
+    const mark = await interactionJournalMark(page);
     // Both presses arrive before the frame that moves focus (as when the page was busy for a moment).
     await page.evaluate(() => {
       const target = document.activeElement ?? document.body;
@@ -515,6 +516,41 @@ test.describe("keyboard selection between nodes (D14)", () => {
         );
     });
     await expect.poll(() => focusedNode(page)).toBe("group:ship");
+    await waitForInteractionIdle(page);
+    expect((await interactionLog(page, mark)).filter((l) => !l.startsWith("selection.committed"))).toEqual([
+      "selection.changed:keyboard -> focus:node:worker@frame",
+      "selection.changed:keyboard -> focus:node:group:ship@frame",
+      "superseded: focus:node:worker@frame",
+      "focus.entered -> keep",
+      "focused: focus:node:group:ship@frame",
+      "focus.ran -> keep",
+    ]);
+  });
+
+  test("two Ctrl+Alt+] before the next frame step to the second edge, from where the first one went", async ({
+    page,
+  }) => {
+    await seed(page);
+    await page.getByTestId("node-api").click();
+    await expect.poll(() => focusedNode(page)).toBe("api");
+    // Both presses arrive before the frame that focuses the first edge (docs/backlog keyboard edge cycling).
+    await page.evaluate(() => {
+      const target = document.activeElement ?? document.body;
+      for (let i = 0; i < 2; i++)
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "]",
+            code: "BracketRight",
+            ctrlKey: true,
+            altKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+    });
+    await expect.poll(() => selectedIds(page)).toEqual(["edge-a-c"]);
+    await expect(announced(page)).toContainText("Outgoing 2 of 2");
+    await expect(page.getByTestId("relationship-wrapper-a-c")).toBeFocused();
   });
 
   test("Tab steps through nodes in reading order, focus and selection together, and it's announced", async ({
