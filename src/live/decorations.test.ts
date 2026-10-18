@@ -66,9 +66,13 @@ function scene(nodeCount: number, edgeCount: number) {
 }
 
 describe("live decorations", () => {
-  it.each([false, true])(
-    "clears held highlights on a forward seek (playing=%s), deriving the destination activity",
-    (playing) => {
+  it.each([
+    { playing: true, still: false },
+    { playing: false, still: false },
+    { playing: false, still: true },
+  ])(
+    "clears held highlights when the first destination decoration is still=$still (playing=$playing)",
+    ({ playing, still }) => {
       const { decorator, state } = scene(3, 2);
       const controller = new LiveController(
         {
@@ -103,7 +107,9 @@ describe("live decorations", () => {
         controller.seek(1500);
         expect(controller.snapshot().edges.e0.active).toBe(0);
         expect(controller.snapshot().edges.e1.active).toBeGreaterThan(0);
-        apply();
+        apply(still);
+        expect(state(0)).toBe("idle");
+        expect(state(1)).toBe("active");
         for (let i = 0; i < EDGE_HOLD * 3; i++) apply(true);
         expect(state(0)).toBe("idle");
         expect(state(1)).toBe("active");

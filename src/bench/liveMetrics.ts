@@ -38,16 +38,15 @@ function median(values: readonly number[]): number {
   return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN;
 }
 
-/** The last `windowMs` of frames: their median gap, and whether none of them was slow (the transient is over). */
+/** The last `windowMs`, expanded to at least eight gaps: their median and whether none was slow. */
 export function steadyTail(frames: readonly number[], windowMs = LIVE_STEADY_WINDOW_MS) {
   const end = frames[frames.length - 1];
   const all = frameGaps(frames);
   // A gap belongs to the window when any part of it does, including a stall that started before it.
   const first = all.findIndex((_gap, i) => frames[i + 1] > end - windowMs);
-  const windowGaps = first < 0 ? [] : all.slice(first);
-  const gap = median(windowGaps);
   // Slow but regular playback still settles: eight frames may span longer than the steady window.
   const gaps = all.slice(Math.min(first < 0 ? all.length : first, Math.max(0, all.length - LIVE_SETTLE_FRAMES)));
+  const gap = median(gaps);
   const stable =
     gaps.length >= LIVE_SETTLE_FRAMES &&
     end - frames[0] >= 2 * windowMs &&

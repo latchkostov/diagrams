@@ -25,9 +25,10 @@ export function armLiveCapture({ panel, capMs }: { panel: boolean; capMs: number
     );
   };
   const tick = (now: number) => {
-    frames.push(now);
+    if (frames[frames.length - 1] - frames[0] < capMs) frames.push(now);
     sample();
-    if (now - frames[0] < capMs) raf = requestAnimationFrame(tick);
+    // Panel closure can outlast the frame recording; keep observing fades until stop().
+    raf = requestAnimationFrame(tick);
   };
   window.__liveCapture = {
     frames,
