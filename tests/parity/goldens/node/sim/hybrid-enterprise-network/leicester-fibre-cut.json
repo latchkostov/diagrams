@@ -308,9 +308,9 @@
     ]
   },
   "notes": [
-    { "atMs": 0, "text": "The Leicester router sends the branch's tunnels over fibre and a 4G backup, and health-checks both.", "focus": ["leicester-router", "lte", "hub"] },
-    { "atMs": 4000, "text": "Region connectivity drill: the fibre is cut. Requests already on it are lost; the router sends every new one over LTE.", "focus": ["leicester-router", "lte", "hub"] },
-    { "atMs": 14000, "text": "The fibre is back and shares the load again. Staff never noticed.", "focus": ["leicester-router", "hub", "dc-fw"] }
+    { "atMs": 0, "text": "The Leicester router sends the branch's tunnels over fibre and a 4G backup, and health-checks both.", "focus": ["leicester-router", "lte"] },
+    { "atMs": 4000, "text": "Region connectivity drill: the fibre is cut. Requests already on it are lost; the router sends every new one over LTE.", "focus": ["leicester-router", "lte"] },
+    { "atMs": 14000, "text": "The fibre is back and shares the load again. Staff never noticed.", "focus": ["leicester-router", "lte"] }
   ],
   "latency": {
     "journeys": { "done": 400, "retried": 0, "deadLettered": 0, "dropped": 2, "blocked": 0, "partial": 0, "truncated": 0 },

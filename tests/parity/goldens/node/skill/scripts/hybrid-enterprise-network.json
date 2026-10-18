@@ -50,7 +50,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "2f83a922b0d5ab8c8bd3f351cf4d96d3b4473696c89248942714fa86e5a975f2", "bytes": 18037 },
+    "decoded": { "sha256": "5ca7232d50b024caad33207f16aab2d1a501b4561824d5ab56ecdd9300fa3eb2", "bytes": 18017 },
     "sameAsFile": true,
     "warned": false
   },
@@ -577,7 +577,7 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "The Leicester router sends the branch's tunnels over fibre and a 4G backup, and health-checks both.", "focus": ["leicester-router", "lte", "hub"] }
+                "action": { "do": "note", "text": "The Leicester router sends the branch's tunnels over fibre and a 4G backup, and health-checks both.", "focus": ["leicester-router", "lte"] }
               },
               {
                 "atMs": 4000,
@@ -589,7 +589,7 @@
               },
               {
                 "atMs": 4000,
-                "action": { "do": "note", "text": "Region connectivity drill: the fibre is cut. Requests already on it are lost; the router sends every new one over LTE.", "focus": ["leicester-router", "lte", "hub"] }
+                "action": { "do": "note", "text": "Region connectivity drill: the fibre is cut. Requests already on it are lost; the router sends every new one over LTE.", "focus": ["leicester-router", "lte"] }
               },
               {
                 "atMs": 14000,
@@ -601,7 +601,7 @@
               },
               {
                 "atMs": 14000,
-                "action": { "do": "note", "text": "The fibre is back and shares the load again. Staff never noticed.", "focus": ["leicester-router", "hub", "dc-fw"] }
+                "action": { "do": "note", "text": "The fibre is back and shares the load again. Staff never noticed.", "focus": ["leicester-router", "lte"] }
               }
             ],
             "expectations": [
