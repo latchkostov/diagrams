@@ -1,3 +1,9 @@
+import {
+  useCanvasNaming,
+  usePlacementSettling,
+  useAddFromPalette,
+  useAnnotateFromPalette,
+} from "./placement/useCanvasEditCommands";
 import { isAnnotationNode, isDiagramNode, isGroupNode } from "./types";
 import { useBoxSelection } from "./selection/useBoxSelection";
 import { useCanvasNavigation, useSelectionSummary, usePanKeys } from "./selection/useCanvasNavigation";
@@ -55,7 +61,7 @@ import { getNodeVariant } from "../harness/nodeVariants";
 import { DRAFT_SLUG, getDiagramIdentity, isLibrarySlug, setDiagramPrivate, setOnDeviceAllowed } from "../lib/diagramIO";
 import { privacyOf } from "../lib/localOnly";
 import { usePrivacyFlags } from "../lib/usePrivacy";
-import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
+import type { DiagramFile } from "../model/types";
 import { memberBoxes } from "./memberBoxes";
 import { expandGroupIds } from "../model/groupHierarchy";
 import { fromFlow, toFlow, type DiagramMeta } from "./convert";
@@ -76,9 +82,9 @@ import type { FlowSelection } from "../editor/historySelection";
 import { useEditor } from "../editor/useEditor";
 import { useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
 import { isEditableTarget } from "../editor/shortcuts";
-import type { NewNode, Selection, XYBox } from "../editor/types";
+import type { Selection } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode } from "./types";
-import { flushSync } from "react-dom";
+
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
 import { CanvasFitContext } from "./canvasFit";
 import { safeStorage } from "../lib/storage";
@@ -92,7 +98,7 @@ import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
 import { getRecentStencils, pushRecentStencil } from "../lib/recentStencils";
 import { connectHitAt, connectOver, connectTarget } from "./gestures";
 import { ConnectionLine } from "./ConnectionLine";
-import { captureTypeAhead } from "./typeAhead";
+
 import { useSmartGuides } from "./useSmartGuides";
 import { GROUP_PREFIX } from "./types";
 import { towardOf, type Toward } from "./placement";
@@ -623,77 +629,16 @@ function CanvasInner({
 
   const { revealSelection } = useRevealSelection(controller);
 
-  /**
-   * Names a node, connection or boundary in the inspector (the owner's decision, 2026-10-13: no renaming in
-   * place): it's selected alone, the inspector opens, and its Label takes focus with all of it selected, so
-   * typing replaces it. A name typed before the field could take it is written and the caret goes after it.
-   */
-  const renameIn = useCallback(
-    (t: RenameTarget) => {
-      if (!canOpenInspector) return;
-      setEditing(null);
-      editor.select(
-        t.kind === "node" ? { nodeIds: [t.id] } : t.kind === "edge" ? { edgeIds: [t.id] } : { groupIds: [t.id] },
-      );
-      setNaming(t.kind === "node" && t.edge ? { node: t.id, edge: t.edge } : null);
-      const typed = t.kind === "node" && t.text !== undefined;
-      if (typed) editor.updateNode(t.id, { label: t.text }, { merge: editor.creating(t.id) });
-      openInspector(
-        t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label",
-        typed ? "end" : undefined,
-        t.kind === "group" ? GROUP_PREFIX + t.id : t.id,
-      );
-    },
-    [canOpenInspector, editor, openInspector],
-  );
-  useLayoutEffect(() => {
-    rename.current = renameIn;
-  });
-
-  /**
-   * A node made by quick-add (a dropped connection, Alt+arrow, the "+", a double-click on the canvas) or
-   * Alt+Shift+arrow: in view, then its name in the inspector, selected (decision 3), so typing names it. Keys
-   * typed meanwhile are kept for it (React Flow measures the card before showing it).
-   */
-  const endCreation = history.end;
-  const pickNamed = useCallback(
-    (make: () => NewNode | null, fallback: string) => {
-      // Hold what's typed from now until the label editor can take it.
-      const typing = captureTypeAhead();
-      controller.placing();
-      const made = make();
-      if (!made) return void typing.stop();
-      revealSelection(
-        () => {
-          const typed = typing.stop();
-          if (typed.done === "escape") return endCreation(made.merge);
-          if (typed.done === "enter") {
-            if (typed.text !== null)
-              editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
-            return endCreation(made.merge);
-          }
-          // In this same task: a key arriving before the field has focus would reach the canvas instead.
-          flushSync(() =>
-            editor.startEditing({
-              kind: "node",
-              id: made.id,
-              text: typed.text ?? undefined,
-              edge: made.edge ?? undefined,
-            }),
-          );
-        },
-        90,
-        "placement",
-        () => void typing.stop(),
-      );
-    },
-    [editor, revealSelection, endCreation, controller],
-  );
-
-  /** For the editor's `nameNew` (menus and Ctrl+K: Insert node on an edge). */
-  const nameNew = useRef(pickNamed);
-  useLayoutEffect(() => {
-    nameNew.current = pickNamed;
+  const { renameIn, pickNamed, nameNew } = useCanvasNaming({
+    canOpenInspector,
+    editor,
+    openInspector,
+    setEditing,
+    setNaming,
+    rename,
+    history,
+    controller,
+    revealSelection,
   });
 
   // ---------------------------------------------------------------- the next node (D3)
@@ -1355,57 +1300,7 @@ function CanvasInner({
   // ---------------------------------------------------------------- derived
 
   const direction = meta.direction ?? "LR";
-  /** Text isn't a routing obstacle: one that grew over a node or edge moves clear (undoable, said so). */
-  const settleText = useCallback(
-    (id: string, before: XYBox) => {
-      // Once the edit (and any growth it caused) has rendered.
-      setTimeout(() => {
-        const hit = editor.keepTextClear(id, before);
-        if (hit)
-          notify(hit === "node" ? tr("chrome.movedTheTextOffANode") : tr("chrome.movedTheTextOffAnEdge"), {
-            action: {
-              get label() {
-                return tr("ai.undo");
-              },
-              run: editor.undo,
-              testId: "text-moved-undo",
-              undoes: true,
-            },
-          });
-      }, 60);
-    },
-    [editor],
-  );
-  /** A boundary resized by hand adopts the nodes now inside it and releases those outside (D12), and says so. */
-  const boundaryResized = useCallback(
-    (groupId: string) =>
-      // Once the resize's last size has landed.
-      requestAnimationFrame(() => {
-        const { adopted, released } = editor.adoptAfterResize(groupId);
-        if (!adopted.length && !released.length) return;
-        const name = editor.getGroup(groupId)?.label || tr("chrome.theBoundary");
-        const text = !released.length
-          ? tr("chrome.addedValueOtherValueNodesToValue", { count: adopted.length, name })
-          : !adopted.length
-            ? tr("chrome.tookValueOtherValueNodesOutOfValue", { count: released.length, name })
-            : tr("chrome.addedValueOtherValueNodesToValueAndTookValue", {
-                count: adopted.length,
-                name,
-                released: released.length,
-              });
-        notify(text, {
-          action: {
-            get label() {
-              return tr("ai.undo");
-            },
-            run: editor.undo,
-            testId: "membership-undo",
-            undoes: true,
-          },
-        });
-      }),
-    [editor],
-  );
+  const { settleText, boundaryResized } = usePlacementSettling(editor);
   const ui = useMemo<DiagramUi>(
     () => ({
       theme,
@@ -1483,15 +1378,7 @@ function CanvasInner({
     setPaletteCollapsed(!paletteHidden);
     setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
   }, [paletteHidden]);
-  // With exactly one node selected, a rail click adds after it, connected, as Ctrl+K does (decision 4).
-  // Live view adds a node by itself, as before: nothing gets wired mid-run.
-  const addFromPalette = useCallback(
-    (id: string) => {
-      controller.placing();
-      void (live ? editor.addNode(id) : editor.addStencil(id));
-    },
-    [editor, live, controller],
-  );
+  const addFromPalette = useAddFromPalette(editor, live, controller);
   const anchorLabel = useMemo(() => {
     if (selectedNodes.length + selectedAnnotations.length + selectedGroups.length + selectedEdges.length !== 1)
       return undefined;
@@ -1502,13 +1389,7 @@ function CanvasInner({
   }, [selectedNodes, selectedAnnotations, selectedGroups, selectedEdges]);
   useEffect(() => railAnchor.set(live || hideChrome ? undefined : anchorLabel), [live, hideChrome, anchorLabel]);
   useEffect(() => () => railAnchor.set(undefined), []);
-  const annotateFromPalette = useCallback(
-    (kind: AnnotationKind, shape?: AnnotationShape) => {
-      controller.placing();
-      void editor.addAnnotation(kind, { shape });
-    },
-    [editor, controller],
-  );
+  const annotateFromPalette = useAnnotateFromPalette(editor, controller);
   const labels = useMemo(
     () =>
       new Map([
