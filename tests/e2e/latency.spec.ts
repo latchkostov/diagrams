@@ -32,6 +32,46 @@ for (const locale of ["en-XA", "ar"]) {
   });
 }
 
+test("latency hover leaves the node and badges clear in a short viewport, with full details in Properties", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 460 });
+  await gotoLive(page, "./?view=canvas&example=where-the-time-goes&sim=billing-spike&paused=1");
+  await waitForCameraIdle(page);
+  const input = page.getByTestId("live-timeline-input");
+  await input.evaluate((el) => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(el, "1000");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await input.dispatchEvent("pointerup");
+  await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "9400");
+  await page.getByTestId("node-billing").hover();
+  const tooltip = page.getByTestId("node-detail-billing");
+  await expect(tooltip).toBeVisible();
+  await expect
+    .poll(async () => {
+      const pane = await page.getByTestId("rf__wrapper").boundingBox();
+      const box = await tooltip.boundingBox();
+      const node = await page.getByTestId("node-billing").boundingBox();
+      if (!pane || !box || !node) return false;
+      return (
+        box.y >= pane.y &&
+        box.y + box.height <= pane.y + pane.height &&
+        (box.y >= node.y + node.height + 34 || box.y + box.height <= node.y - 12)
+      );
+    })
+    .toBe(true);
+  await expect(page.getByTestId("node-latency-percentiles-billing")).toBeVisible();
+  await expect(tooltip.getByTestId("node-detail-more")).toBeVisible();
+  await expect(page.getByTestId("node-latency-breakdown-billing")).not.toBeVisible();
+  await page.getByTestId("node-billing").dblclick();
+  await page.getByTestId("planning-live-details-toggle").click();
+  await expect(page.getByTestId("node-latency-breakdown-billing-properties")).toBeVisible();
+  await expect(page.getByTestId("node-latency-detail-billing-properties")).toContainText(
+    "Approximate percentiles exclude travel",
+  );
+});
+
 test("async percentiles disclose sampling, exclude travel, and replay after seeking", async ({
   page,
   consoleErrors,

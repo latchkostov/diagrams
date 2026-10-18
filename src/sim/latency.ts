@@ -4,6 +4,11 @@ import type { LatencyMetrics, LatencySummary } from "./types";
  * The final bucket covers longer runs and reports the observed maximum. No samples are retained. */
 export const LATENCY_BUCKETS = 128;
 export const LATENCY_TYPES = 64;
+/** At most 1 MiB of live per-type bucket payload per run, plus one aggregate per measured node.
+ * With 24 checkpoints, even distributions changed after every capture retain at most 25 versions. */
+export const LATENCY_TYPE_HISTOGRAMS = 1024;
+export const createLatencyBudget = () => ({ remaining: LATENCY_TYPE_HISTOGRAMS });
+type LatencyBudget = ReturnType<typeof createLatencyBudget>;
 const RATIO = 1.12;
 const LOG_RATIO = Math.log(RATIO);
 const BOUNDS = Array.from({ length: LATENCY_BUCKETS }, (_, i) => (i === 0 ? 0 : RATIO ** (i - 1)));
@@ -17,7 +22,7 @@ interface Histogram {
   travelMs: number;
 }
 
-/** Plain data so the engine's structured checkpoint owns every bucket and total. */
+/** Mutable recorder; checkpoint copies share histograms until their first subsequent write. */
 export interface LatencyRecorder {
   total: Histogram;
   types: Map<string, Histogram>;
@@ -35,7 +40,25 @@ const histogram = (): Histogram => ({
 
 export const createLatencyRecorder = (): LatencyRecorder => ({ total: histogram(), types: new Map() });
 
-export function recordLatency(recorder: LatencyRecorder, type: string, wait: number, work: number, travel: number) {
+const shared = new WeakSet<Histogram>();
+export function shareLatencyRecorder(recorder: LatencyRecorder): LatencyRecorder {
+  shared.add(recorder.total);
+  for (const h of recorder.types.values()) shared.add(h);
+  return { ...recorder, types: new Map(recorder.types) };
+}
+
+function writable(h: Histogram): Histogram {
+  return shared.has(h) ? { ...h, buckets: h.buckets.slice() } : h;
+}
+
+export function recordLatency(
+  recorder: LatencyRecorder,
+  type: string,
+  wait: number,
+  work: number,
+  travel: number,
+  budget?: LatencyBudget,
+) {
   const latency = wait + work;
   const bucket =
     latency <= 0 ? 0 : Math.min(LATENCY_BUCKETS - 1, Math.max(1, Math.ceil(Math.log(latency) / LOG_RATIO) + 1));
@@ -47,11 +70,17 @@ export function recordLatency(recorder: LatencyRecorder, type: string, wait: num
     h.workMs += work;
     h.travelMs += travel;
   };
-  add(recorder.total);
+  add((recorder.total = writable(recorder.total)));
   let typed = recorder.types.get(type);
-  if (!typed && recorder.types.size < LATENCY_TYPES) recorder.types.set(type, (typed = histogram()));
-  if (typed) add(typed);
-  else recorder.typesLimited = true;
+  if (!typed && recorder.types.size < LATENCY_TYPES && (!budget || budget.remaining > 0)) {
+    typed = histogram();
+    if (budget) budget.remaining--;
+  }
+  if (typed) {
+    typed = writable(typed);
+    recorder.types.set(type, typed);
+    add(typed);
+  } else recorder.typesLimited = true;
 }
 
 const summaries = new WeakMap<Histogram, LatencySummary>();

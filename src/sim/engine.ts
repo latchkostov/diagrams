@@ -39,7 +39,14 @@ import { activeUnits } from "../stencils/netDevices";
 import { pushDue, popDue } from "./dueHeap";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
-import { createLatencyRecorder, recordLatency, latencyMetrics, type LatencyRecorder } from "./latency";
+import {
+  createLatencyBudget,
+  createLatencyRecorder,
+  shareLatencyRecorder,
+  recordLatency,
+  latencyMetrics,
+  type LatencyRecorder,
+} from "./latency";
 import { mulberry32 } from "./rng";
 import {
   acceptsType,
@@ -287,6 +294,7 @@ export function seedEngine(engine: SimEngine, seed: number): void {
 /** Fixed-step, DOM-free engine. Drawing limits never affect message delivery. */
 export function createEngine(opts: EngineOptions = {}): SimEngine {
   let partBudget = createCpuPartBudget();
+  let latencyBudget = createLatencyBudget();
   let seed = opts.seed ?? Math.floor(Math.random() * 4294967296);
   const roleOf = opts.roleOf ?? stencilRole;
   const maxParticles = Number.isFinite(opts.maxParticles) ? Math.max(0, Math.floor(opts.maxParticles!)) : 1500;
@@ -418,6 +426,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         Math.max(0, elapsed - message.travelMs - work),
         work,
         message.travelMs,
+        latencyBudget,
       );
     }
   }
@@ -1928,6 +1937,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     randomCalls = 0;
     randomState = mulberry32(seed);
     lineage.reset();
+    latencyBudget = createLatencyBudget();
     routeCounts = new Map();
     for (const node of nodes.values()) {
       node.latency = undefined;
@@ -1983,22 +1993,30 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // Clone family identity with messages, but share recordings. Lineage copies a record on its
       // first write after capture, so finished history is never deep-cloned during playback.
       lineage.shareRecords();
-      const cloneGraph = <T extends { lineage: typeof lineage.state }>(source: T): T => {
+      const cloneGraph = <T extends { lineage: typeof lineage.state; nodes: typeof nodes }>(source: T): T => {
         const records = new Map([...source.lineage.store].map(([id, f]) => [id, f.trace]));
+        const latencies = new Map([...source.nodes].map(([id, node]) => [id, node.latency]));
         let copy: T;
         try {
           // Synchronous, internal-only graph: omit records just for structuredClone's traversal.
           for (const family of source.lineage.store.values()) family.trace = undefined;
+          for (const node of source.nodes.values()) node.latency = undefined;
           copy = structuredClone(source);
         } finally {
           for (const [id, family] of source.lineage.store) family.trace = records.get(id);
+          for (const [id, node] of source.nodes) node.latency = latencies.get(id);
         }
         for (const [id, family] of copy.lineage.store) family.trace = records.get(id);
+        for (const [id, node] of copy.nodes) {
+          const recorder = latencies.get(id);
+          node.latency = recorder ? shareLatencyRecorder(recorder) : undefined;
+        }
         return copy;
       };
       const graph = cloneGraph({
         nodes,
         partBudget,
+        latencyBudget,
         edges,
         trips,
         drawnTrips,
@@ -2032,6 +2050,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (topology !== clock.topology) throw new Error("Checkpoint belongs to a previous diagram");
         const copy = cloneGraph(graph);
         partBudget = copy.partBudget;
+        latencyBudget = copy.latencyBudget;
         nodes.clear();
         for (const [id, node] of copy.nodes) {
           Object.setPrototypeOf(node.pending, Deque.prototype);

@@ -1,7 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile, SimRole } from "../model/types";
 import { createEngine } from "./engine";
-import { createLatencyRecorder, recordLatency, latencyMetrics, LATENCY_BUCKETS, LATENCY_TYPES } from "./latency";
+import {
+  createLatencyRecorder,
+  shareLatencyRecorder,
+  recordLatency,
+  latencyMetrics,
+  LATENCY_BUCKETS,
+  LATENCY_TYPES,
+  LATENCY_TYPE_HISTOGRAMS,
+  type LatencyRecorder,
+} from "./latency";
+import { latencyBudgetFixture } from "../lab/latencyBudgetFixture";
+import { validateDiagram } from "../interop/native";
+import { LiveController } from "../live/controller";
 import { realFrame } from "./units";
 import { createSimulationRun } from "./simulation";
 import example from "../examples/where-the-time-goes.json";
@@ -38,6 +50,96 @@ const engine = (d = diagram()) => {
 };
 
 describe("bounded async latency", () => {
+  it("shares unchanged buckets and copies only distributions written after capture in either direction", () => {
+    const r = createLatencyRecorder();
+    recordLatency(r, "A", 0, 100, 10);
+    recordLatency(r, "B", 0, 200, 10);
+    const captured = shareLatencyRecorder(r);
+    expect(captured.total.buckets).toBe(r.total.buckets);
+    expect(captured.types.get("A")!.buckets).toBe(r.types.get("A")!.buckets);
+    const before = latencyMetrics(captured);
+    recordLatency(r, "A", 0, 300, 10);
+    expect(captured.total.buckets).not.toBe(r.total.buckets);
+    expect(captured.types.get("A")!.buckets).not.toBe(r.types.get("A")!.buckets);
+    expect(captured.types.get("B")!.buckets).toBe(r.types.get("B")!.buckets);
+    expect(latencyMetrics(captured)).toEqual(before);
+    const live = latencyMetrics(r);
+    recordLatency(captured, "B", 0, 400, 10);
+    expect(latencyMetrics(r)).toEqual(live);
+    expect(latencyMetrics(captured).byType.B.samples).toBe(2);
+  });
+
+  it("bounds retained bucket storage across 24 checkpoints for 200 sinks × 64 types", () => {
+    const d = latencyBudgetFixture();
+    expect(validateDiagram(d).ok).toBe(true);
+    const run = createSimulationRun(d, d.simulations![0], { roleOf: (id) => id as SimRole });
+    run.step(1000);
+    // Observe the actual checkpoint graphs after their latency recorders have been attached.
+    // Count distinct allocated bucket arrays, not heap estimates or checkpoint timing.
+    const clone = vi.spyOn(globalThis, "structuredClone");
+    const checkpoints = [];
+    try {
+      for (let i = 0; i < 24; i++) {
+        checkpoints.push(run.checkpoint());
+        run.step(5000);
+      }
+      const buckets = new Set<number[]>();
+      let typed = 0;
+      for (const result of clone.mock.results) {
+        const graph = result.value as { nodes?: Map<string, { latency?: LatencyRecorder }> };
+        if (!graph.nodes) continue;
+        let perCheckpoint = 0;
+        for (const node of graph.nodes.values()) {
+          if (!node.latency) continue;
+          buckets.add(node.latency.total.buckets);
+          for (const h of node.latency.types.values()) buckets.add(h.buckets);
+          perCheckpoint += node.latency.types.size;
+        }
+        typed = Math.max(typed, perCheckpoint);
+      }
+      const slots = [...buckets].reduce((sum, b) => sum + b.length, 0);
+      // 1,253,376 bytes (1.20 MiB) of numeric bucket payload, including live state
+      // shared with these unchanged checkpoints; previously 319,488,000 bytes (304.69 MiB).
+      expect({ typed, slots }).toEqual({
+        typed: LATENCY_TYPE_HISTOGRAMS,
+        slots: (200 + LATENCY_TYPE_HISTOGRAMS) * LATENCY_BUCKETS,
+      });
+      expect(checkpoints).toHaveLength(24);
+    } finally {
+      clone.mockRestore();
+    }
+    const totals = Object.values(run.engine.frame().nodes).flatMap((n) => (n.latency ? [n.latency] : []));
+    expect(totals).toHaveLength(200);
+    expect(totals.every((n) => n.samples === 64)).toBe(true);
+    expect(totals.some((n) => n.typesLimited)).toBe(true);
+  });
+
+  it("restores the run-wide budget and identical readouts on seek and replay after fallback", () => {
+    const d = latencyBudgetFixture();
+    // A second population crosses checkpoints while the budget is already exhausted.
+    d.simulations![0].timeline = [
+      { atMs: 7000, action: { do: "inject", node: "source", count: 1, messageType: "Later" } },
+    ];
+    const c = new LiveController(d, { roleOf: (id) => id as SimRole });
+    try {
+      c.selectSimulation(d.simulations![0]);
+      c.seek(9000);
+      const end = c.snapshot();
+      expect(end.nodes["sink-199"].latency).toMatchObject({ samples: 65, typesLimited: true });
+      expect(Object.keys(end.nodes["sink-199"].latency!.byType).length).toBeLessThan(LATENCY_TYPES);
+      c.seek(5500); // Restore a budget-exhausted checkpoint.
+      c.seek(9000);
+      expect(c.snapshot()).toEqual(end);
+      c.seek(0); // Replay budget allocation itself from the origin.
+      c.seek(9000);
+      expect(c.snapshot()).toEqual(end);
+      c.restart();
+      c.seek(9000);
+      expect(c.snapshot()).toEqual(end);
+    } finally {
+      c.dispose();
+    }
+  });
   it("reuses immutable readouts between samples and preserves earlier frames after another arrival", () => {
     const recorder = createLatencyRecorder();
     recordLatency(recorder, "Order", 10, 100, 30);
@@ -176,7 +278,37 @@ describe("bounded async latency", () => {
     expect(paused.waitMs).toBe(baseline.waitMs + 500);
   });
 
-  it("excludes animation on both fast and slow edges without summing node percentiles", () => {
+  it("measures multi-worker paths without composing per-hop percentiles", () => {
+    const d = diagram();
+    d.nodes[1] = {
+      ...d.nodes[1],
+      stencil: "processor",
+      props: { latencyMs: 100, concurrency: 1, jitter: 0 },
+    };
+    const e = engine(d);
+    for (let i = 0; i < 20; i++) {
+      e.setNodeProps("queue", { latencyMs: i % 2 ? 900 : 100 });
+      e.setNodeProps("worker", { latencyMs: i % 2 ? 100 : 900 });
+      e.inject("source", 1, { type: "Order" });
+      e.step(2000);
+    }
+    const frame = e.frame();
+    expect(frame.nodes.queue.latency!.workMs).toBe(10000);
+    expect(frame.nodes.queue.latency!.p95).toBe(900);
+    for (const id of ["worker", "sink"]) {
+      expect(frame.nodes[id].latency).toMatchObject({
+        samples: 20,
+        workMs: 20000,
+        waitMs: 0,
+        p50: 1000,
+        p95: 1000,
+        p99: 1000,
+      });
+      expect(frame.nodes[id].latency!.byType.Order.p95).toBe(1000);
+    }
+  });
+
+  it("excludes animation on both fast and slow edges", () => {
     const read = (travelMs: number) => {
       const d = diagram();
       for (const edge of d.edges) edge.props = { travelMs };

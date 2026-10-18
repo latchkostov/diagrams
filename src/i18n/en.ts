@@ -15,6 +15,7 @@ const en = {
   "latency.p95": "p95 {duration}",
   "latency.p99": "p99 {duration}",
   "latency.sampling": "from {count, plural, one {# sampled message} other {# sampled messages}} · since restart",
+  "latency.typesLimited": "Recording limit reached: additional message types are included in the aggregate only.",
   "latency.breakdown": "Waiting {wait} · work {work} · travel {travel}",
   "latency.scope":
     "Successful async arrivals at this node. Approximate percentiles exclude travel; travel is animation. Shares use the same sampled paths.",

@@ -224,15 +224,24 @@ const NodeBadge = memo(function NodeBadge({
       const zoom = card.offsetWidth ? box.width / card.offsetWidth : 1;
       const detailScale = tooltip.offsetWidth ? tooltip.getBoundingClientRect().width / tooltip.offsetWidth : zoom;
       tooltip.style.maxWidth = `${Math.max(0, pane.width - 24) / detailScale}px`;
-      tooltip.classList.remove("is-compact");
+      tooltip.classList.remove("is-compact", "is-summary");
+      tooltip.style.maxHeight = "none";
       const room = hasLatency ? Math.min(pane.height - 24, hoverRoom(pane, box)) : pane.height - 24;
       if (tooltip.getBoundingClientRect().height > room) tooltip.classList.add("is-compact");
+      // Compact planning rows can still leave a latency card taller than either gap.
+      // Keep the percentiles and Properties hint; the full readout stays in Live details.
+      if (hasLatency && tooltip.getBoundingClientRect().height > room) {
+        tooltip.classList.add("is-summary");
+        tooltip.style.maxHeight = `${room / detailScale}px`;
+      }
       tooltip.style.left = "0px";
       tooltip.style.bottom = "auto";
       tooltip.style.top = "0px";
       const detail = tooltip.getBoundingClientRect();
       const top = hoverTop(pane, box, detail.height);
-      tooltip.style.top = `${(top - detail.top) / zoom}px`;
+      // Round away from the card so fractional viewport scales preserve the badge clearance.
+      const offset = (top - detail.top) / zoom;
+      tooltip.style.top = `${top >= box.bottom ? Math.ceil(offset) : Math.floor(offset)}px`;
       const left = Math.max(pane.left + 12, Math.min(detail.left, pane.right - 12 - detail.width));
       tooltip.style.left = `${(left - detail.left) / zoom}px`;
     };

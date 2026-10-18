@@ -1,10 +1,10 @@
 import { t } from "../i18n";
 import { formatDuration, formatPercent } from "../i18n/format";
-import type { LatencySummary } from "../sim/types";
+import type { LatencyMetrics } from "../sim/types";
 import { latencyLabel, latencySampling } from "./latencyFormat";
 
 /** The same sampled paths supply all percentiles and the breakdown. */
-export function LatencyReadout({ id, latency }: { id: string; latency: LatencySummary }) {
+export function LatencyReadout({ id, latency }: { id: string; latency: LatencyMetrics }) {
   const total = latency.waitMs + latency.workMs + latency.travelMs;
   const share = (ms: number) => formatPercent(total > 0 ? ms / total : 0);
   return (
@@ -16,6 +16,7 @@ export function LatencyReadout({ id, latency }: { id: string; latency: LatencySu
         <span>{t("latency.p99", { duration: formatDuration(latency.p99) })}</span>
       </div>
       <small>{latencySampling(latency)}</small>
+      {latency.typesLimited && <small data-testid={`node-latency-limited-${id}`}>{t("latency.typesLimited")}</small>}
       <div data-testid={`node-latency-breakdown-${id}`}>
         {t("latency.breakdown", {
           wait: share(latency.waitMs),

@@ -1,7 +1,7 @@
 {
   "ar": {
-    "messages": 2211,
-    "fallback": 200,
+    "messages": 2212,
+    "fallback": 201,
     "areas": {
       "admission": "1585747777b2",
       "ai": "271de21ad5b1",
@@ -34,7 +34,7 @@
       "inspector": "a1459e3746e2",
       "keys": "ff6e7f133e97",
       "language": "362b2582a8f0",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "83dbfbe40b57",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -61,8 +61,8 @@
     }
   },
   "bg": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "339cd5287f25",
       "ai": "be21a15fe0c2",
@@ -95,7 +95,7 @@
       "inspector": "add159909feb",
       "keys": "38a3cea839ac",
       "language": "2c2b795a53fa",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "4d192360f90a",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -122,8 +122,8 @@
     }
   },
   "cs": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "c8683cb1d947",
       "ai": "cdac78f5eabc",
@@ -156,7 +156,7 @@
       "inspector": "05e818700a02",
       "keys": "871387d1747e",
       "language": "5f5e97c9ffee",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "ef52fe194717",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -183,8 +183,8 @@
     }
   },
   "da": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "2309322c7e25",
       "ai": "30c366fbcaa3",
@@ -217,7 +217,7 @@
       "inspector": "f2e6da345542",
       "keys": "7d24ef932439",
       "language": "fee416cd2a5e",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "bb69950075b4",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -244,8 +244,8 @@
     }
   },
   "de": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "866ad98895eb",
       "ai": "857638035ad7",
@@ -278,7 +278,7 @@
       "inspector": "7d25eadaab4c",
       "keys": "a38acef08ab8",
       "language": "0005fc23b80d",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "4ad44be9833b",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -305,8 +305,8 @@
     }
   },
   "el": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "c85e9b1328ba",
       "ai": "c7556c1b9ccf",
@@ -339,7 +339,7 @@
       "inspector": "252f21fce36b",
       "keys": "e83765c40c72",
       "language": "fc569ff1b260",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "55e7f0a634c2",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -366,7 +366,7 @@
     }
   },
   "en-XA": {
-    "messages": 2211,
+    "messages": 2212,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
@@ -400,7 +400,7 @@
       "inspector": "fa9647518fd7",
       "keys": "89f0ecfc86ff",
       "language": "ef372da04b34",
-      "latency": "d3d9e9219d1b",
+      "latency": "da7019a09b1c",
       "library": "c8d2a2410442",
       "live": "def34a3bd5c5",
       "liveSession": "24e15148543a",
@@ -427,8 +427,8 @@
     }
   },
   "es": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "8275061ad675",
       "ai": "5f18f254b452",
@@ -461,7 +461,7 @@
       "inspector": "b6feb624acc5",
       "keys": "0ee5bd37fe8a",
       "language": "552f2c696ee3",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "6fda3bb2b403",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -488,8 +488,8 @@
     }
   },
   "et": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "bcda9d352f6d",
       "ai": "d66d3769adc9",
@@ -522,7 +522,7 @@
       "inspector": "2ee2c1a3bd00",
       "keys": "208f1af3a986",
       "language": "fa29f5cc492e",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "48fb926522eb",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -549,8 +549,8 @@
     }
   },
   "fi": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "639abadda530",
       "ai": "e9b23cd51b4e",
@@ -583,7 +583,7 @@
       "inspector": "618c9edc4934",
       "keys": "926e4388a131",
       "language": "db0d5db48332",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "ca22e516d952",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -610,8 +610,8 @@
     }
   },
   "fr": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "c0da5634d917",
       "ai": "8372266af473",
@@ -644,7 +644,7 @@
       "inspector": "8f04cd94fb5d",
       "keys": "db597daf86e0",
       "language": "106cd400c2b9",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "d678088cfad1",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -671,8 +671,8 @@
     }
   },
   "he": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "60a5b99830c3",
       "ai": "1c4de3ee24a5",
@@ -705,7 +705,7 @@
       "inspector": "5fde2dc16a05",
       "keys": "525ffd141600",
       "language": "74f4de0fe69a",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "79bc8e2bb936",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -732,8 +732,8 @@
     }
   },
   "hi": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "81b5998e2d74",
       "ai": "c2134710abdb",
@@ -766,7 +766,7 @@
       "inspector": "f4f17288f779",
       "keys": "81ca74db2460",
       "language": "b049fecd436d",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "5394d4363f68",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -793,8 +793,8 @@
     }
   },
   "hr": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "250278672ecf",
       "ai": "41b8c5bd02f8",
@@ -827,7 +827,7 @@
       "inspector": "b8e99b30ba61",
       "keys": "b9e214889691",
       "language": "b24482152b77",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "ffde00a33a6e",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -854,8 +854,8 @@
     }
   },
   "hu": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "a173caaa787a",
       "ai": "999015b453fc",
@@ -888,7 +888,7 @@
       "inspector": "f8ec824a2c96",
       "keys": "20058d3f50b8",
       "language": "fe3cb3031080",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "2c5fbd3f130c",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -915,8 +915,8 @@
     }
   },
   "id": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "93080e86188c",
       "ai": "7508253d3643",
@@ -949,7 +949,7 @@
       "inspector": "e8a873642dc6",
       "keys": "84264b0700b3",
       "language": "b289e5312980",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "6c0c6f7feb79",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -976,8 +976,8 @@
     }
   },
   "it": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "9016b7c98d05",
       "ai": "b1bdb1b943f2",
@@ -1010,7 +1010,7 @@
       "inspector": "1805d72c4f38",
       "keys": "c5f61ac4422e",
       "language": "563ebaf18327",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "a490b500a1f2",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1037,8 +1037,8 @@
     }
   },
   "ja": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "03ac6ff46fda",
       "ai": "16916e4a6466",
@@ -1071,7 +1071,7 @@
       "inspector": "5fe531822a03",
       "keys": "07de05207c93",
       "language": "3eb9b936faaf",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "36e35fb154e6",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1098,8 +1098,8 @@
     }
   },
   "ko": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "9668a36595b4",
       "ai": "b9713b0ebc36",
@@ -1132,7 +1132,7 @@
       "inspector": "748d1ee9cda2",
       "keys": "7d676b779fed",
       "language": "144763da7443",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "809d2e360085",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1159,8 +1159,8 @@
     }
   },
   "lt": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "d340551a2a22",
       "ai": "a60d18c72aca",
@@ -1193,7 +1193,7 @@
       "inspector": "b72ceb6ef9b7",
       "keys": "25f01070644a",
       "language": "47b5005d8d0d",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "4cb340bcaac5",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1220,8 +1220,8 @@
     }
   },
   "lv": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "78e387261dc3",
       "ai": "7abcc8e0fca5",
@@ -1254,7 +1254,7 @@
       "inspector": "d07eb463c7b0",
       "keys": "6eb761a6f5ab",
       "language": "afec9e38d8a0",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "3ca2a9dd957a",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1281,8 +1281,8 @@
     }
   },
   "nb": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "4c2373a03104",
       "ai": "1f5a7dd90494",
@@ -1315,7 +1315,7 @@
       "inspector": "ebc63d316050",
       "keys": "df6f6e06924f",
       "language": "8bc8d54f69d4",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "783894421b6b",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1342,8 +1342,8 @@
     }
   },
   "nl": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "9dca014cc22e",
       "ai": "9c887bebfb5c",
@@ -1376,7 +1376,7 @@
       "inspector": "574f74f8ecac",
       "keys": "ef1cd2ebadfb",
       "language": "7302fe174fd7",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "0a73c794507e",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1403,8 +1403,8 @@
     }
   },
   "pl": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "570713cc3f9c",
       "ai": "0076fec882b3",
@@ -1437,7 +1437,7 @@
       "inspector": "a43b0445c6d7",
       "keys": "c1a475df02c9",
       "language": "f552f6c4ceed",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "47aaf115560a",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1464,8 +1464,8 @@
     }
   },
   "pt-BR": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "b1b3aa0fdcce",
       "ai": "a599e0c7104c",
@@ -1498,7 +1498,7 @@
       "inspector": "4d6d96cbba57",
       "keys": "7218e0177d2f",
       "language": "e45cb13a2553",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "21b1d9baa7d2",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1525,8 +1525,8 @@
     }
   },
   "pt-PT": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "269f381da119",
       "ai": "da44ea732c3a",
@@ -1559,7 +1559,7 @@
       "inspector": "b702083f4647",
       "keys": "f9352e69191b",
       "language": "d4459dad0bcc",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "86aa5f281697",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1586,8 +1586,8 @@
     }
   },
   "ro": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "2fc367bfb234",
       "ai": "690dd0af944f",
@@ -1620,7 +1620,7 @@
       "inspector": "cf81f5075fb7",
       "keys": "cdcfb5ceb551",
       "language": "fa1df566128d",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "9101f5639c67",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1647,8 +1647,8 @@
     }
   },
   "ru": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "dd2155d35792",
       "ai": "419829673723",
@@ -1681,7 +1681,7 @@
       "inspector": "0fdbdff9daf9",
       "keys": "32b679a1b446",
       "language": "6ef2c227aaa4",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "96ebbaea0251",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1708,8 +1708,8 @@
     }
   },
   "sk": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "de282cafe657",
       "ai": "b584a1750e62",
@@ -1742,7 +1742,7 @@
       "inspector": "7a88a9bc60d4",
       "keys": "39cd5b77337f",
       "language": "74843c58443c",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "245c2efac154",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1769,8 +1769,8 @@
     }
   },
   "sl": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "46736cefd0aa",
       "ai": "844c5fe53eda",
@@ -1803,7 +1803,7 @@
       "inspector": "3e4b9a33df37",
       "keys": "54e6e5227543",
       "language": "3b642ac3fe6e",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "89fe5b8bcbc0",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1830,8 +1830,8 @@
     }
   },
   "sr-Latn": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "b1f254245925",
       "ai": "571bcb1e2693",
@@ -1864,7 +1864,7 @@
       "inspector": "b98bbc98503e",
       "keys": "350d526df207",
       "language": "fb1fe0d64661",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "8905dc2a1fdf",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1891,8 +1891,8 @@
     }
   },
   "sv": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "a1faad44500b",
       "ai": "488379e2ee77",
@@ -1925,7 +1925,7 @@
       "inspector": "ceb53d3db4ba",
       "keys": "1d6bf10b0eb2",
       "language": "f8738a650ac3",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "50ce4cd0bf19",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -1952,8 +1952,8 @@
     }
   },
   "th": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "4c7152546e6f",
       "ai": "25e5a5758e0a",
@@ -1986,7 +1986,7 @@
       "inspector": "0981e0f818f0",
       "keys": "e4342a9f2b32",
       "language": "f38c0cf806f9",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "bdb9002f9f39",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -2013,8 +2013,8 @@
     }
   },
   "tr": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "c9ba84e9fc81",
       "ai": "2c45c177a3eb",
@@ -2047,7 +2047,7 @@
       "inspector": "495e9aa470ce",
       "keys": "692667f46543",
       "language": "afe4ccec85ab",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "a9d0f1842afa",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -2074,8 +2074,8 @@
     }
   },
   "uk": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "01c3b2a9ea61",
       "ai": "00c91ebd48c1",
@@ -2108,7 +2108,7 @@
       "inspector": "232e2452a376",
       "keys": "ec1a1d263431",
       "language": "52bdb9be0348",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "ae53ea1abd75",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -2135,8 +2135,8 @@
     }
   },
   "vi": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "e4040b83feb7",
       "ai": "88456409d7c5",
@@ -2169,7 +2169,7 @@
       "inspector": "eb72cbd3bca8",
       "keys": "d3458b454538",
       "language": "68f661659799",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "cab2c5f1f6b0",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -2196,8 +2196,8 @@
     }
   },
   "zh-CN": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "320934d4f256",
       "ai": "3ef50488a156",
@@ -2230,7 +2230,7 @@
       "inspector": "7995c57d7973",
       "keys": "2f4746415f0c",
       "language": "ffd2ad28868c",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "7188ee065959",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",
@@ -2257,8 +2257,8 @@
     }
   },
   "zh-TW": {
-    "messages": 2211,
-    "fallback": 271,
+    "messages": 2212,
+    "fallback": 272,
     "areas": {
       "admission": "b8f5dc48650d",
       "ai": "aa167b14e4aa",
@@ -2291,7 +2291,7 @@
       "inspector": "d9ba4a14ef30",
       "keys": "c7ac3748040d",
       "language": "b956cdbfac11",
-      "latency": "d0fe849679da",
+      "latency": "0ba428623ef1",
       "library": "139a8f80166e",
       "live": "d03b7134eba6",
       "liveSession": "a3438dd9eeb4",

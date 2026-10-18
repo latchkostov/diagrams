@@ -11,6 +11,7 @@ import type { RealNodeMetrics } from "../sim/types";
 import type { DiagramFile } from "../model/types";
 import { t, useLocale } from "../i18n";
 import { formatList, formatNumber, formatRate } from "../i18n/format";
+import { LatencyReadout } from "../live/LatencyReadout";
 
 // Coalesce jittered readiness at controller syncs and at startup completion. Completion
 // remains observable for fixed fleets and manual overrides, whose controller is suspended.
@@ -108,6 +109,7 @@ export function LiveDetails({
       {s.resources && s.fleet && <ScalingAnnouncement label={node?.label ?? s.id} fleet={s.fleet} />}
       <details className="insp-section" data-testid="planning-live-details">
         <summary data-testid="planning-live-details-toggle">{t("planning.liveDetails")}</summary>
+        {s.latency && <LatencyReadout id={`${s.id}-properties`} latency={s.latency} />}
         <p data-testid="planning-live-counters">
           {t("planning.liveCounters", {
             throughput: formatRate(s.throughput),

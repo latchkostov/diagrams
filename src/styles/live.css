@@ -369,7 +369,14 @@
   transform: scale(var(--inv, 1));
   transform-origin: 0 100%;
   z-index: 3;
-  animation: lv-note-in 0.15s ease-out;
+  /* Placement measures screen geometry; animate opacity without changing its scale or offset. */
+  animation: lv-detail-in 0.15s ease-out;
+}
+
+@keyframes lv-detail-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .lv-latency {
@@ -2563,4 +2570,16 @@ details[open] > summary .lv-disclosure-chevron {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+}
+.lv-detail.is-summary > :not(.lv-latency):not(.lv-detail-more),
+.lv-detail.is-summary .lv-latency > :not(.lv-latency-strip) {
+  display: none;
+}
+.lv-detail.is-summary {
+  overflow: hidden;
+}
+.lv-detail.is-summary .lv-latency {
+  margin-block: 0;
+  padding-block: 0;
+  border: 0;
 }

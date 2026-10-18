@@ -96,7 +96,7 @@ export interface LatencySummary {
 /** Immutable value view, shared between frames until the next successful sample. */
 export interface LatencyMetrics extends LatencySummary {
   readonly byType: Readonly<Record<string, LatencySummary>>;
-  /** Additional types contribute to the total, beyond the first 64 distinct types. */
+  /** Additional types contribute only to the total after the node or run recording limit. */
   readonly typesLimited?: true;
 }
 
