@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { propertyRuns } from "../../test/fastCheck";
 import { createCameraOwnership } from "../cameraOwnership";
 import type { Viewport } from "../geometry/fit";
 import {
@@ -714,6 +715,8 @@ const narration = (focus: boolean) =>
 const slowmo = (on: boolean) =>
   command(`slowmo(${on})`, (m, r) => {
     r.camera.dispatch({ type: "slowmo", on, restore: on ? undefined : { x: 1, y: 2, zoom: 1 } });
+    // Starting slow motion absorbs any older pane/Live work into its take for the settled room.
+    if (on && !m.slowmo && m.pending) work(m, "take");
     if (!on && m.slowmo && m.cause === "take") {
       m.pending = false;
       m.cause = null;
@@ -734,6 +737,24 @@ const follow = command("slowmo.follow", (_m, r) => {
 });
 
 describe("camera controller: interleavings", () => {
+  it("folds a panel refit into slow motion's take, including when a menu deferred it", async () => {
+    const h = harness();
+    h.camera.slowmo({ plan: () => ({ x: 30, y: 30, zoom: 0.7 }), pane: () => "hold" });
+    h.camera.dispatch({ type: "menu.opened", kind: "context" });
+    h.camera.dispatch({ type: "pane.changed", cause: "panel" });
+    expect(h.camera.phase).toBe("deferred");
+    h.camera.dispatch({ type: "slowmo", on: true, restore: null });
+    expect(h.camera.phase).toBe("pending");
+    expect(h.env.panePending).toBe(false);
+    h.tick(2);
+    expect(h.journal.map((entry) => entry.command)).toEqual(["slowmoPlan"]);
+    await h.finish();
+    h.camera.dispatch({ type: "menu.closed" });
+    h.tick(3);
+    expect(h.journal.map((entry) => entry.command)).toEqual(["slowmoPlan"]);
+    expect(h.camera.phase).toBe("idle");
+  });
+
   it("keeps its invariants under any order of events, frames, landings, Live's work and other writers", async () => {
     await fc.assert(
       fc.asyncProperty(
@@ -806,7 +827,7 @@ describe("camera controller: interleavings", () => {
           expect(ran).toBeLessThanOrEqual(model.created);
         },
       ),
-      { numRuns: 500 },
+      { numRuns: propertyRuns(500) },
     );
   });
 });

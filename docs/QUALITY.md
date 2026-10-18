@@ -343,6 +343,30 @@ elsewhere). Close the issue once the cause is fixed. Each job uploads its JSON r
 
 ## Timing in tests
 
+### Property tests and reproduction
+
+The shared Vitest setup configures every fast-check assertion with seed `20261018` in CI.
+Local runs keep random seeds. `FC_SEED=<signed 32-bit integer>` overrides either; `FC_SEED=random`
+explicitly explores a new seed even in CI. Keep fast-check's default failure report: it prints the
+seed, shrink path and reduced counterexample. To replay one failure, select that test and pass both:
+
+```sh
+FC_SEED=-673370871 FC_PATH='840:7:7:6:5:5:6' pnpm exec vitest run src/canvas/camera/panePolicy.test.ts -t 'never decides'
+```
+
+In PowerShell, set `$env:FC_SEED='-673370871'` and `$env:FC_PATH='840:7:7:6:5:5:6'` before the command;
+remove both environment variables afterwards. Paths belong to one property and its generator version,
+so always filter to the failing test. Every failing seed becomes a fixed, minimal regression test.
+
+Nightly's **Random property tests** job discovers the fast-check test files and runs them with
+`FC_SEED=random FC_RUN_MULTIPLIER=20`: twenty times each property's usual run count (currently
+20,000 policy sequences and 10,000 controller interleavings). Use `propertyRuns()` from
+`src/test/fastCheck.ts` when setting a property's explicit `numRuns`, so Nightly scales it too.
+When replaying a Nightly failure, also set `FC_RUN_MULTIPLIER=20` to keep its run parameters.
+Seed and path remain in the job's failure log; no retry or custom reporter hides them.
+
+### Timing assertions
+
 No test asserts a budget in milliseconds: a busy machine or CI with coverage fails it, and a retry hides it. What
 a timing test guards decides its form:
 

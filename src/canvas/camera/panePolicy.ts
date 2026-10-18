@@ -48,6 +48,7 @@ import type {
  * | L8  | pane.settled                  | live.panel, live.card, owner manual        | nothing                                 |
  * | L9  | pane.settled                  | live.added                                 | liveFit clear of the panel, any owner   |
  * | W1  | slowmo(on)                    |                                            | owner slowmo; resume := owner           |
+ * | W1a | slowmo(on)                    | starting with pending work                 | pending := slowmo.take (fold the work) |
  * | W2  | slowmo(off)                   |                                            | owner := resume (if still slowmo);      |
  * |     |                               |                                            | restore the view from before            |
  * | W3  | slowmo.take, fullscreen,      | slow motion on                             | owner slowmo (take); pending := take    |
@@ -137,7 +138,14 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (event.on)
         return state.slowmo
           ? next({})
-          : next({ slowmo: true, resume: state.owner, owner: "slowmo", zoomPriority: false });
+          : next({
+              slowmo: true,
+              resume: state.owner,
+              owner: "slowmo",
+              zoomPriority: false,
+              // The take plans for the settled pane; an earlier refit or reveal must not take the view back.
+              pending: state.pending ? { cause: "slowmo.take" } : null,
+            });
       if (!state.slowmo) return next({});
       const owner = state.owner === "slowmo" ? state.resume : state.owner;
       const pending = state.pending?.cause === "slowmo.take" ? null : state.pending;

@@ -18,6 +18,23 @@ env:
   CI: "true"
 
 jobs:
+  properties:
+    name: Random property tests (20x runs)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - name: Explore new seeds; failures print seed and shrink path
+        shell: bash
+        env:
+          FC_SEED: random
+          FC_RUN_MULTIPLIER: "20"
+        run: |
+          mapfile -t files < <(git grep -l 'from "fast-check"' -- 'src/**/*.test.ts' 'src/**/*.test.tsx')
+          test "${#files[@]}" -gt 0
+          pnpm exec vitest run "${files[@]}"
+
   native-unit:
     name: Native unit (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
