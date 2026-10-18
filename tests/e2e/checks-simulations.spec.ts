@@ -76,7 +76,9 @@ async function canvasMenu(page: Page) {
 /** Ctrl+K, searching for `text`. */
 async function palette(page: Page, text: string) {
   await page.keyboard.press(`${MOD}+k`);
-  await expect(page.getByTestId("command-palette")).toBeVisible();
+  // Its first lazy load and the stress diagram's command list are setup work.
+  await expect(page.getByTestId("command-palette")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("command-input")).toBeFocused();
   await page.keyboard.type(text);
 }
 

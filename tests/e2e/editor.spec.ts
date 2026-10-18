@@ -7,6 +7,7 @@ import {
   pauseClock,
   waitForStableBox,
   waitForStableViewport,
+  waitForSelectionSettled,
   fitDiagram,
   emptyCanvasPoint,
 } from "./fixtures";
@@ -324,19 +325,6 @@ test.describe("editor", () => {
     await expect(page.getByTestId("shortcuts-dialog")).toHaveCount(0);
   });
 
-  test("arrow keys nudge the selection", async ({ page }) => {
-    const node = page.getByTestId("node-payments");
-    await node.click();
-    // Selecting opens the inspector, which may pan to keep the node in view: measure once it rests.
-    const before = await settledBox(node);
-    await page.keyboard.press("Shift+ArrowRight");
-    await page.keyboard.press("Shift+ArrowRight");
-    // 20 flow px; on screen that is 20 × zoom.
-    await expect.poll(async () => (await requiredBox(node)).x - before.x).toBeGreaterThan(3);
-    await page.keyboard.press(`${MOD}+z`);
-    await expect.poll(async () => Math.abs((await requiredBox(node)).x - before.x)).toBeLessThan(1);
-  });
-
   test("selection shortcuts leave focused inspector and toolbar controls alone", async ({ page }) => {
     const node = page.getByTestId("node-orders");
     await node.click();
@@ -414,4 +402,42 @@ test.describe("editor", () => {
     await expect(dialog).toHaveCount(0);
     await expect(button).toBeFocused();
   });
+});
+
+// This edit sequence owns a clock installed before navigation, independent of the
+// suite's wall time and the history merge window.
+test("arrow keys nudge the selection independently of camera movement", async ({ page }) => {
+  await page.clock.install();
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("node-payments").click();
+  await waitForSelectionSettled(page);
+  await pauseClock(page);
+  const position = () =>
+    page.getByTestId("rf__node-payments").evaluate((el: HTMLElement) => {
+      const matrix = new DOMMatrixReadOnly(el.style.transform);
+      return { x: matrix.m41, y: matrix.m42 };
+    });
+  const before = await position();
+  // Move the camera without editing the diagram. Screen coordinates cannot
+  // describe either the following nudge or its Undo across this boundary.
+  const canvas = page.getByTestId("canvas-wrap");
+  const spot = await emptySpot(page);
+  const bounds = await requiredBox(canvas);
+  await canvas.focus();
+  await page.mouse.move(bounds.x + spot.x, bounds.y + spot.y);
+  await page.keyboard.down("Space");
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + spot.x + 100, bounds.y + spot.y, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up("Space");
+  await page.clock.runFor(500);
+  await waitForStableViewport(page);
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.clock.runFor(100);
+  // Default snapping: Shift+Arrow is 50 diagram pixels; both edits form one step.
+  await expect.poll(position).toEqual({ x: before.x + 100, y: before.y });
+  await page.keyboard.press(`${MOD}+z`);
+  await page.clock.runFor(100);
+  await expect.poll(position).toEqual(before);
 });

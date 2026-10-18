@@ -22,7 +22,16 @@ export function options(argv) {
     const arg = args.shift();
     if (arg === "--linux") result.linux = true;
     else if (arg === "--no-docker") result.docker = false;
-    else if (["--ports", "--workers", "--repeat"].includes(arg)) result[arg.slice(2)] = positive(args.shift(), arg);
+    else if (arg === "--cpus") {
+      const value = args.shift() ?? "";
+      if (!/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) <= 0)
+        throw new Error("--cpus must be a positive CPU count");
+      result.cpus = Number(value);
+    } else if (arg === "--memory") {
+      const value = args.shift() ?? "";
+      if (!/^[1-9]\d*(?:[bkmg])?$/i.test(value)) throw new Error("--memory requires a Docker size, e.g. 7g");
+      result.memory = value.toLowerCase();
+    } else if (["--ports", "--workers", "--repeat"].includes(arg)) result[arg.slice(2)] = positive(args.shift(), arg);
     else if (arg === "--shard") {
       const value = args.shift() ?? "";
       if (!/^[1-9]\d*\/[1-9]\d*$/.test(value)) throw new Error("--shard requires i/n (one-based)");
@@ -39,6 +48,8 @@ export function options(argv) {
   }
   if (result.ports) validatePorts(result.ports);
   if (result.linux && !result.docker) throw new Error("--linux requires Docker");
+  if ((result.cpus !== undefined || result.memory !== undefined) && !result.linux)
+    throw new Error("--cpus and --memory require --linux");
   if (result.shard && (result.command !== "full" || (result.only.length && !result.only.includes("e2e"))))
     throw new Error("--shard requires full with the e2e category");
   return result;
@@ -55,7 +66,12 @@ export function validatePorts(base) {
 // per worker and three quarters of logical CPUs, capped at 12. More workers
 // measured slower and exposed races on a 32-thread host. A container's memory
 // limit lowers the count further, keeping parallel trace writes within capacity.
-export function workerCount(cpus, memory) {
+export function workerCount(cpus, memory, caps = {}) {
+  // CPU quotas need not alter the cpuset, and totalmem can describe the VM rather
+  // than its cgroup. Bound both host readings by the explicitly requested limits.
+  cpus = Math.min(cpus, caps.cpus ?? Infinity);
+  const size = caps.memory?.match(/^(\d+)([bkmg])?$/);
+  if (size) memory = Math.min(memory, Number(size[1]) * ({ b: 1, k: 1024, m: 1024 ** 2, g: GIB }[size[2] ?? "b"] ?? 1));
   return Math.max(1, Math.min(12, Math.floor(cpus * 0.75), Math.floor((memory / GIB - 4) / 2.5)));
 }
 

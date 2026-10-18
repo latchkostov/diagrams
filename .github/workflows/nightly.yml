@@ -102,15 +102,20 @@ jobs:
           retention-days: 14
 
   resource-invariants:
-    name: A1 resource invariants (5000 seeds)
+    name: A1 + A3 resource invariants (5000 seeds each) ${{ matrix.shard }}/4
     runs-on: ubuntu-26.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
       - run: pnpm exec vitest run src/sim/autoscaling.invariants.test.ts
         env:
           A1_FUZZ_NIGHTLY: "1"
+          RESOURCE_FUZZ_SHARD: ${{ matrix.shard }}/4
 
   e2e:
     name: ${{ matrix.label }} ${{ matrix.shard }}/${{ matrix.total }}

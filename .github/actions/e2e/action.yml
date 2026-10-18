@@ -14,7 +14,7 @@ inputs:
     description: The number of shards.
     required: true
   retries:
-    description: Playwright --retries. Empty keeps the config's (2 on CI).
+    description: Playwright --retries. Empty keeps the config's zero-retry default.
     default: ""
   repeat-each:
     description: Playwright --repeat-each.

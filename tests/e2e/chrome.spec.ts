@@ -17,6 +17,7 @@ test.describe("said once", () => {
     await expect(page.getByTestId("diagram-card")).toBeHidden();
     await page.getByTestId("start-blank").click();
     await expect(page.getByTestId("diagram-card")).toBeHidden();
+    await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("diagram-card")).toBeVisible();

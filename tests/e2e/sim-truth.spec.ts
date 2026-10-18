@@ -182,10 +182,9 @@ test.describe("the simulation tells the truth", () => {
       if (!region) throw new Error("The empty live region must already be mounted");
       (window as unknown as { troubleRegion: Element }).troubleRegion = region;
     });
-    await expect(async () => {
-      await page.getByTestId("node-payments").click({ button: "right" });
-      await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
-    }).toPass({ timeout: 10_000 });
+    await waitForStableViewport(page);
+    await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.kill").click();
     await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
     const callout = page.getByTestId("trouble-callout");
     await expect(callout).toHaveAttribute("data-kind", "down");
@@ -294,10 +293,9 @@ test.describe("the trouble callout stays out of views nobody edits, heat map or 
 
   test("paused, Revive in the callout clears it at once; Dismiss returns focus to the canvas", async ({ page }) => {
     await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&speed=4`);
-    await expect(async () => {
-      await page.getByTestId("node-payments").click({ button: "right" });
-      await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
-    }).toPass({ timeout: 10_000 });
+    await waitForStableViewport(page);
+    await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.kill").click();
     await expect(page.getByTestId("trouble-callout")).toBeVisible();
     await page.getByTestId("live-play").click();
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
@@ -307,10 +305,9 @@ test.describe("the trouble callout stays out of views nobody edits, heat map or 
     await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
     // Killed again while paused: a new run of the same cause isn't shown twice, so restart the run first.
     await page.getByTestId("live-restart").click();
-    await expect(async () => {
-      await page.getByTestId("node-payments").click({ button: "right" });
-      await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
-    }).toPass({ timeout: 10_000 });
+    await waitForStableViewport(page);
+    await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.kill").click();
     await expect(page.getByTestId("trouble-callout")).toBeVisible();
     await page.getByTestId("trouble-dismiss").focus();
     await page.keyboard.press("Enter");
@@ -324,10 +321,9 @@ test("on a narrow canvas (1024, AI panel open) the callout keeps its words and b
   await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&speed=4`);
   await page.getByTestId("ai-rail-open").click();
   await expect(page.getByTestId("ai-panel")).toBeVisible();
-  await expect(async () => {
-    await page.getByTestId("node-payments").click({ button: "right" });
-    await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
-  }).toPass({ timeout: 10_000 });
+  await waitForStableViewport(page);
+  await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.kill").click();
   const callout = page.getByTestId("trouble-callout");
   await expect(callout).toBeVisible();
   // Too little room beside the title card: it sits below it, the canvas's width.
@@ -423,11 +419,10 @@ test("an outage hidden behind Inputs does not consume the callout's turn", async
 });
 
 async function injectTen(page: Page, node: string) {
-  await expect(async () => {
-    await page.getByTestId(`node-${node}`).click({ button: "right" });
-    await page.getByTestId("context-menu-item-sim.inject").click({ timeout: 1000 });
-    await page.getByTestId("context-menu-item-sim.inject:10").click({ timeout: 1000 });
-  }).toPass();
+  await waitForStableViewport(page);
+  await page.getByTestId(`node-${node}`).click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.inject").click();
+  await page.getByTestId("context-menu-item-sim.inject:10").click();
 }
 
 test("loss callout adds a broker DLQ in one undo step and exhausted messages reach it", async ({
@@ -465,10 +460,9 @@ test("Show events from a loss callout stays available while slow motion freezes 
   await seed(page, simReviewFixture(true));
   await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&speed=4`);
   await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "events");
-  await expect(async () => {
-    await page.getByTestId("node-web").click({ button: "right" });
-    await page.getByTestId("context-menu-item-sim.slowmo-from").click({ timeout: 1000 });
-  }).toPass();
+  await waitForStableViewport(page);
+  await page.getByTestId("node-web").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.slowmo-from").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
   await expect(page.getByTestId("trouble-action")).toBeEnabled();
   await page.getByTestId("trouble-action").click();
@@ -497,8 +491,8 @@ test("the continuous source volume budget announces its stop and Restart clears 
   page,
   consoleErrors,
 }) => {
-  // Explicit CPU stress stretches wall time, while the simulation still uses the page clock.
-  test.slow(!!process.env.SIM_TRUTH_CPU);
+  // Processing the full 200,000-sample budget is deliberate work, on a controlled simulation clock.
+  test.slow();
   await page.clock.install();
   await seed(page, simReviewTrafficFixture(10_000));
   await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=budget&paused=1&speed=8`);

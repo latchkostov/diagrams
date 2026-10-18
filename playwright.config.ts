@@ -124,7 +124,7 @@ export default defineConfig({
   outputDir: "./tests/.output/results",
   fullyParallel: true,
   forbidOnly: GATE || CI,
-  retries: CI ? 2 : 0,
+  retries: 0,
   // GitHub's Linux runners have 4 vCPUs: three browsers plus the preview server.
   workers: CI ? 3 : undefined,
   timeout: 30_000,

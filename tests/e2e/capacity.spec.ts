@@ -11,9 +11,13 @@ const TRAFFIC_3X = "14";
 
 const level = (page: Page, nodeId: string) => page.getByTestId(`capacity-label-${nodeId}`);
 
-async function openBlackFridayInputs(page: Page) {
-  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-  await page.getByTestId("live-sim-picker").selectOption("black-friday");
+async function openBlackFridayInputs(page: Page, playing = false) {
+  // Input validation does not need a running engine. In particular, an intentionally
+  // invalid 1× scale/rate draft must not create hundreds of thousands of live dots.
+  await gotoLive(
+    page,
+    `./?view=canvas&example=${KAFKA}&live=1&traffic=0&sim=black-friday${playing ? "" : "&paused=1"}`,
+  );
   await page.getByTestId("live-capacity").click();
   await expect(page.getByTestId("capacity-panel")).toBeVisible();
 }
@@ -23,7 +27,7 @@ test.describe("inputs & capacity", () => {
     page,
     consoleErrors,
   }) => {
-    await openBlackFridayInputs(page);
+    await openBlackFridayInputs(page, true);
     const panel = page.getByTestId("capacity-panel");
     // Meaningful with zero input: real rates, a healthy-but-busy fleet, databases left neutral.
     await expect(page.getByTestId("capacity-rate-shopper")).toHaveValue("2k");
@@ -73,6 +77,7 @@ test.describe("inputs & capacity", () => {
   });
 
   test("Save to simulation persists the inputs across a reload", async ({ page }) => {
+    test.slow();
     await openBlackFridayInputs(page);
     await page.getByTestId("capacity-traffic-mult").fill(TRAFFIC_3X);
     await page.getByTestId("capacity-replicas-payments-inc").click();
@@ -384,6 +389,7 @@ test.describe("outages in the run (UX gate 3)", () => {
 
 test.describe("fourth review capacity regressions", () => {
   test("unsupported rate drafts show inline errors and never save", async ({ page }) => {
+    test.slow();
     await openBlackFridayInputs(page);
     await page.getByTestId("capacity-capacity-mult").fill("9");
     // The file format takes up to 10 million msg/s.
@@ -554,7 +560,7 @@ test.describe("fourth review capacity regressions", () => {
         },
       });
     });
-    await openBlackFridayInputs(page);
+    await openBlackFridayInputs(page, true);
     const count = () =>
       page.evaluate(() => (window as unknown as { capacityRenderCount(): number }).capacityRenderCount());
     // Let opening the panel settle (under load its first renders can land late), then measure.

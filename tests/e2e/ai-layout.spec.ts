@@ -1,3 +1,4 @@
+import { waitForStableViewport } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas } from "./fixtures";
 import { SLUG, callTool, installFakeModelContext, must, openAdvanced, settle, toolNames } from "./ai-helpers";
@@ -33,11 +34,10 @@ const hintFits = (page: Page) =>
 /** A toast from Copy for AI on a node (a right-click, so not while the first-run hint should stay). */
 async function showToast(page: Page) {
   // Entering live view fits the diagram with an animation: a right-click during it can miss the moving
-  // node, or the fit can close the menu before the item is chosen. Retry the pair until the menu holds.
-  await expect(async () => {
-    await page.getByTestId("node-payments").click({ button: "right" });
-    await page.getByTestId("context-menu-item-item.copy-for-ai").click({ timeout: 1000 });
-  }).toPass({ timeout: 5000 });
+  // node, or the fit can close the menu before the item is chosen. Wait for the fit before opening the menu.
+  await waitForStableViewport(page);
+  await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toBeVisible();
 }
 

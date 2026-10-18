@@ -1,3 +1,4 @@
+import { waitForStableViewport } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page, Response } from "@playwright/test";
@@ -138,10 +139,9 @@ test.describe("Content-Security-Policy", () => {
       .toBeGreaterThan(20);
 
     // Slow motion from the storefront, then back to live.
-    await expect(async () => {
-      await page.getByTestId("node-shopper").click({ button: "right" });
-      await page.getByTestId("context-menu-item-sim.slowmo-from").click({ timeout: 1000 });
-    }).toPass({ timeout: 8000 });
+    await waitForStableViewport(page);
+    await page.getByTestId("node-shopper").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.slowmo-from").click();
     await expect(canvas).toHaveAttribute("data-slowmo", "playing");
     await page.keyboard.press("Escape");
     await expect(canvas).not.toHaveAttribute("data-slowmo", "playing");

@@ -620,17 +620,26 @@ test("a failed example copy debounces retries, warns once and recovers the lates
 });
 
 test("a title-first edit can be undone and stays undone after the owned copy reloads", async ({ page }) => {
+  await page.clock.install();
   await page.goto(`./?example=${SLUG}`);
   await page.getByTestId("inspector-toggle").click();
+  // This is one rapid rename. Transport delays on a busy dev server must not
+  // split it across the history coalescing window.
+  await pauseClock(page);
   await page.getByTestId("inspector-field-title").fill("");
+  // Preserve the initial empty-title promotion before typing, inside the merge window.
+  await page.clock.runFor(300);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
   await expect(page.getByTestId("inspector-field-title")).toHaveValue("");
   await page.getByTestId("inspector-field-title").pressSequentially("My renamed example");
+  await page.clock.runFor(300);
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
   await expect(page.getByTestId("diagram-title")).toHaveText("My renamed example");
   await expect(page.getByTestId("toast")).toHaveCount(0);
   await page.getByTestId("undo-button").click();
   await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+  await page.clock.resume();
   await page.reload();
   await expect(page.getByTestId("diagram-title")).toHaveText("Kafka order pipeline");
   await expect(page.getByTestId("example-badge")).toHaveCount(0);
@@ -698,6 +707,13 @@ for (const theme of ["light", "dark"] as const)
       expect(rect.x + rect.width).toBeLessThanOrEqual(viewport?.width ?? 0);
       expect(rect.y + rect.height).toBeLessThanOrEqual(viewport?.height ?? 0);
       expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      // Axe must sample the final ink, after both dialog and backdrop entrance animations.
+      await dialog.evaluate(async (el) => {
+        const animations: Animation[] = [];
+        for (let ancestor: Element | null = el; ancestor; ancestor = ancestor.parentElement)
+          animations.push(...ancestor.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity));
+        await Promise.all(animations.map((a) => a.finished));
+      });
       const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
       expect(axe.violations).toEqual([]);
       await page.getByTestId("examples-search").fill(SLUG);

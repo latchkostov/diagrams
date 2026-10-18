@@ -273,7 +273,9 @@ function MenuList(p: ListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the menu is placed
   }, [placed, take]);
 
-  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
+  // A pending hover captures the old direction. After a locale change it would
+  // read the moved row and overwrite the correctly refreshed submenu anchor.
+  useLayoutEffect(() => () => window.clearTimeout(hoverTimer.current), [locale]);
 
   // Search changes derive a fresh highlight before the next paint.
   const [previousShown, setPreviousShown] = useState(shown);

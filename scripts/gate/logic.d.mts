@@ -7,6 +7,8 @@ export interface Config {
   only: string[];
   ports?: number;
   workers?: number;
+  cpus?: number;
+  memory?: string;
   shard?: { current: number; total: number };
 }
 export interface Step {
@@ -30,7 +32,7 @@ export function gitFiles(output: string): string[];
 export function options(argv: string[]): Config;
 export function positive(value: unknown, name: string): number;
 export function validatePorts(base: number): number;
-export function workerCount(cpus: number, memory: number): number;
+export function workerCount(cpus: number, memory: number, caps?: Pick<Config, "cpus" | "memory">): number;
 export function lockPort(common: string, platform: string): number;
 export function checkTree(status: string, before: string, after?: string): void;
 export function playwrightCounts(report: unknown): BrowserCounts;

@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
+import { waitForStableViewport } from "./fixtures";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -13,21 +14,18 @@ const clockMs = async (page: Page) => Number(await page.getByTestId("live-clock"
 const data = async (page: Page, name: string) => canvas(page).getAttribute(`data-${name}`);
 
 async function openNodeMenu(page: Page, nodeId: string, actionId: string) {
-  // A refit can dismiss a menu between opening it and choosing an action.
-  await expect(async () => {
-    await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
-    await menuItem(page, actionId).click({ timeout: 1000 });
-  }).toPass({ timeout: 8000 });
+  await waitForStableViewport(page);
+  await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
+  await menuItem(page, actionId).click();
 }
 
 async function openCanvasSubmenu(page: Page, parent: string, child: string) {
-  await expect(async () => {
-    const box = await page.getByTestId("canvas-wrap").boundingBox();
-    if (!box) throw new Error("No canvas");
-    await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: box.width / 2, y: 90 } });
-    await menuItem(page, parent).click({ timeout: 1000 });
-    await menuItem(page, child).click({ timeout: 1000 });
-  }).toPass({ timeout: 8000 });
+  await waitForStableViewport(page);
+  const box = await page.getByTestId("canvas-wrap").boundingBox();
+  if (!box) throw new Error("No canvas");
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: box.width / 2, y: 90 } });
+  await menuItem(page, parent).click();
+  await menuItem(page, child).click();
 }
 
 /** Kafka in free play with traffic flowing, then slow motion from the Storefront. */
@@ -434,21 +432,24 @@ test("Record this slow motion plays it from the start and stops at its end", asy
 
 test.describe("calmer slow speeds", () => {
   test("0.25× draws a calm sample of whole journeys; counts stay exact", async ({ page, consoleErrors }) => {
+    test.slow();
+    await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
+    await pauseClock(page);
     const sample = async () => {
       const out: number[] = [];
       for (let i = 0; i < 12; i++) {
-        await page.waitForTimeout(250);
+        await page.clock.runFor(250);
         out.push(Number(await data(page, "particles")));
       }
       return out.reduce((a, b) => a + b, 0) / out.length;
     };
-    await expect.poll(async () => Number(await data(page, "particles")), { timeout: 10_000 }).toBeGreaterThan(60);
-    await page.waitForTimeout(1500);
+    await page.clock.runFor(1500);
+    await expect.poll(async () => Number(await data(page, "particles"))).toBeGreaterThan(60);
     const full = await sample();
     expect(full).toBeGreaterThan(70);
     await page.getByTestId("live-speed").selectOption("0.25");
-    await page.waitForTimeout(2500);
+    await page.clock.runFor(2500);
     const calm = await sample();
     expect(calm).toBeLessThan(50);
     expect(calm).toBeGreaterThan(8);

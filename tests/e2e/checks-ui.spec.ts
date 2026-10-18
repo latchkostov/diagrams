@@ -404,7 +404,12 @@ performanceTest("typing a label is as responsive while checks run as with them h
   async function phase(held: boolean, text: string) {
     await holdChecks(page, held);
     // A run left over from the last phase finishes first.
-    await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
+    await expect
+      .poll(async () => {
+        const stats = await runStats(page);
+        return stats.started - stats.finished;
+      })
+      .toBe(0);
     // Match the baseline's exact input. Appending through all phases made every
     // running phase later/longer and mixed different text-layout/GC costs.
     if ((await label.inputValue()) !== LONG) {
@@ -412,7 +417,12 @@ performanceTest("typing a label is as responsive while checks run as with them h
       await label.fill(LONG);
       await label.press(TEXT_END);
       await due;
-      await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
+      await expect
+        .poll(async () => {
+          const stats = await runStats(page);
+          return stats.started - stats.finished;
+        })
+        .toBe(0);
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     }
     expect(await label.inputValue(), "each phase starts with identical text").toBe(LONG);
@@ -421,7 +431,12 @@ performanceTest("typing a label is as responsive while checks run as with them h
     for (const ch of text) {
       const due = nextDue();
       samples.push(await work.key(ch, () => due));
-      await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
+      await expect
+        .poll(async () => {
+          const stats = await runStats(page);
+          return stats.started - stats.finished;
+        })
+        .toBe(0);
       // ...and its findings have drawn.
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     }

@@ -66,11 +66,14 @@ for (const theme of ["light", "dark"] as const)
       test.use({ colorScheme: theme, viewport });
       for (const showcase of showcases)
         test(`${showcase.slug} shows its feature in Live`, async ({ page, consoleErrors }, info) => {
+          test.slow();
           const simulation = "sim" in showcase ? `&sim=${showcase.sim}` : "";
           await page.clock.install();
           await gotoLive(page, `./?view=canvas&example=${showcase.slug}&live=1${simulation}`);
-          await waitForStableViewport(page);
           await pauseClock(page);
+          // Finish the initial fit on the controlled clock before measuring geometry.
+          await page.clock.runFor(1000);
+          await waitForStableViewport(page);
           if (viewport.width === 390) {
             const title = await page.getByTestId("diagram-card").boundingBox();
             const toggle = await page.getByTestId("live-toggle").boundingBox();

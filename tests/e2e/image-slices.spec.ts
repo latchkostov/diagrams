@@ -286,7 +286,10 @@ async function holdExportSlice(page: Page) {
     };
   });
   return {
-    held: () => page.waitForFunction(() => (window as unknown as { __sliceHeld: boolean }).__sliceHeld),
+    held: () =>
+      page.waitForFunction(() => (window as unknown as { __sliceHeld: boolean }).__sliceHeld, undefined, {
+        timeout: test.info().timeout,
+      }),
     release: () => page.evaluate(() => (window as unknown as { __releaseSlice: () => void }).__releaseSlice()),
   };
 }
@@ -537,7 +540,7 @@ for (const [stalled, pattern, kind] of [
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-png").click();
     await expect(page.getByTestId("image-export-cancel")).toBeFocused();
-    await expect.poll(() => stalls).toBeGreaterThan(0);
+    await expect.poll(() => stalls, { timeout: test.info().timeout }).toBeGreaterThan(0);
     await expect(page.getByTestId("toast-dismiss")).toHaveCount(0);
     if (stalled === "the initial export module") await page.keyboard.press("Escape");
     else await page.getByTestId("image-export-cancel").click();
@@ -569,6 +572,7 @@ test("cancelling FileReader conversion releases the page and retries the uncache
   page,
   consoleErrors,
 }) => {
+  test.slow();
   await gotoCanvas(page, publicExamples[0].slug);
   const id = publicExamples[0].nodeIds[0];
   await expect(page.getByTestId(`node-${id}`)).toBeVisible({ timeout: pageLoadTimeout() });

@@ -56,7 +56,7 @@ Full runs lint, typecheck, formatting, i18n and skill checks, unit coverage, pro
 entry size, output parity, then every CI Playwright project: chromium, dev, subpath, internal
 and locked. Independent E2E builds run together with CI's environments. One Playwright
 invocation runs the selected specs with `--retries=0 --forbid-only`; there are no sequential shards.
-CPU and RAM determine workers (measured cap 12); `--workers N` overrides the formula.
+CPU and RAM determine Vitest and Playwright workers (measured cap 12); `--workers N` overrides the formula.
 
 `pnpm gate full --only e2e --shard 2/6` selects one duration-balanced shard of whole spec files
 using `scripts/e2e-shard.mjs`, the same planner and timings as PR CI. `--shard i/n` requires
@@ -75,6 +75,13 @@ Playwright version's noble image. Dependencies use a platform/architecture/lock-
 a pnpm store is shared. Reports return to the checkout. Both parity tiers run in that same
 container (no nested Docker). The image's Node runtime is intentional; installation disables
 engine-strict inside the image. Native parity retains its existing Linux browser tier.
+Use `pnpm gate full --linux --cpus 3 --memory 7g --ports 6600` to approximate the small
+native Nightly machines on any host. The caps map directly to Docker's `--cpus` and
+`--memory`; auto workers also respect them when Node reports the VM's larger CPU set or
+memory. This configuration selects one worker. For focused repetition, use
+`pnpm gate quick tests/e2e/trace.spec.ts --linux --cpus 3 --memory 7g --only e2e --repeat 3 --ports 6600`.
+Caps require `--linux`; an explicit `--workers` still overrides auto workers. Check for
+other worktrees' browser, Vitest and benchmark processes before resource-sensitive runs.
 `GATE_LINUX_SOURCE=bind` is a diagnostic comparison mode; full archive runs exclude all ignored
 and untracked host content. Archive transport avoids host bind-mount overhead.
 
@@ -262,9 +269,9 @@ node scripts/e2e-shard.mjs --plan 6   # each shard's files and projected seconds
 Keep single tests short: a shard can't finish before its longest test. Split a long sweep into parts
 (`lab.spec.ts` and `layout.spec.ts` take every Nth preset or fixture per test) rather than raising its timeout.
 
-A newer push to the same branch cancels the running workflow. `CI=true` keeps its meaning: Playwright
-retries (2), three workers and `E2E_TARGET=build`, and longer Vitest timeouts. Retries keep a flaky test from
-blocking a merge, but the job summary lists every test that needed one: treat those as bugs.
+A newer push to the same branch cancels the running workflow. `CI=true` selects three Playwright
+workers, `E2E_TARGET=build` and longer Vitest hang backstops. Playwright defaults to zero retries
+locally and in PR CI, as in the full gate and Nightly. Fix a failure instead of relying on a retry.
 
 ### Nightly
 
@@ -409,6 +416,14 @@ removes event chunks, then individual events, then unneeded nodes. Events are 1-
 invariant, not guaranteed globally shortest. Replay one seed with `A1_FUZZ_SEED=3 pnpm exec vitest run
 src/sim/autoscaling.invariants.test.ts`. `A1_FUZZ_NIGHTLY=1` expands to 5,000 seeds in the nightly workflow.
 Keep new bookkeeping transitions in this generator as well as adding focused regressions.
+
+The Nightly job runs **5,000 A1 plus 5,000 A3 seeds**, not 5,000 total. A3 was added after the
+225.84-second A1-only run on 2026-10-16. Four independent jobs partition both generators by
+`RESOURCE_FUZZ_SHARD=i/4`, retaining the ten-minute backstop and every seed, internal step,
+refusal/replay check and minimized reproduction. Ordinary unit runs remain unsharded. Explicit
+`A1_FUZZ_SEED` / `A3_FUZZ_SEED` replay overrides sharding. `fuzzSeeds.test.ts` checks complete,
+disjoint coverage, including the pinned historical seeds. This divides the added test work;
+it does not change engine execution or reduce the invariant sample count.
 
 A3 adds a second generator in the same file: 140 seeds (5,000 with `A1_FUZZ_NIGHTLY=1`) cycle through the seven
 cloud presets (ECS CPU, ALB and step; Container Apps HTTP and event; App Service; Cloud Run) with shortened

@@ -68,19 +68,17 @@ const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item
 /**
  * Opens a node's menu and chooses `actionId` (or, with `click` false, waits for it to show). A Simulation action
  * waits for the live session first: its code loads on first use (seconds on a busy dev server), and a menu opened
- * before it arrives has no Simulation items and doesn't grow them. Then retried whole: a fit or the inspector
- * resizing can dismiss the menu.
+ * before it arrives has no Simulation items and doesn't grow them. Then wait for the fit: a moving viewport dismisses menus.
  */
 async function openNodeMenu(page: Page, nodeId: string, actionId?: string, click = true) {
   if (actionId?.startsWith("sim."))
     await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
-  await expect(async () => {
-    await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
-    await expect(page.getByTestId("context-menu")).toBeVisible({ timeout: 1000 });
-    if (!actionId) return;
-    if (click) await menuItem(page, actionId).click({ timeout: 1000 });
-    else await expect(menuItem(page, actionId)).toBeVisible({ timeout: 1000 });
-  }).toPass({ timeout: 10_000 });
+  await waitForStableViewport(page);
+  await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
+  await expect(page.getByTestId("context-menu")).toBeVisible();
+  if (!actionId) return;
+  if (click) await menuItem(page, actionId).click();
+  else await expect(menuItem(page, actionId)).toBeVisible();
 }
 
 const processed = async (page: Page, nodeId: string) =>
@@ -156,12 +154,16 @@ test.describe("live view", () => {
   });
 
   test("a saved simulation runs to done with every expectation passing", async ({ page, consoleErrors }) => {
-    test.setTimeout(60_000);
+    test.slow();
+    await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=black-friday&speed=8`);
+    await pauseClock(page);
+    await page.getByTestId("live-restart").click();
     await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
     await expect(page.getByTestId("live-timeline")).toBeVisible();
     await expect(page.getByTestId("expectation-stock")).toHaveAttribute("data-status", "pending");
-    await expect(page.getByTestId("live-done")).toBeVisible({ timeout: 45_000 });
+    await page.clock.runFor(8000);
+    await expect(page.getByTestId("live-done")).toBeVisible();
     await expect(page.getByTestId("live-done")).toHaveAttribute("data-status", "pass");
     for (const id of ["stock", "payments", "notifications", "orders", "no-dlq", "no-drop"]) {
       await expect(page.getByTestId(`expectation-${id}`)).toHaveAttribute("data-status", "pass");

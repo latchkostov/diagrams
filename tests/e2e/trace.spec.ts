@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
 import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
+import { waitForStableViewport } from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -17,21 +18,18 @@ const card = (page: Page) => page.getByTestId("trace-card");
 const hops = (page: Page) => page.getByTestId(/^trace-hop-/);
 
 async function openNodeMenu(page: Page, nodeId: string, actionId: string) {
-  // A refit can dismiss a menu between opening it and choosing an action.
-  await expect(async () => {
-    await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
-    await menuItem(page, actionId).click({ timeout: 1000 });
-  }).toPass({ timeout: 8000 });
+  await waitForStableViewport(page);
+  await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
+  await menuItem(page, actionId).click();
 }
 
 async function openCanvasSubmenu(page: Page, parent: string, child: string) {
-  await expect(async () => {
-    const box = await page.getByTestId("canvas-wrap").boundingBox();
-    if (!box) throw new Error("No canvas");
-    await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: box.width / 2, y: 90 } });
-    await menuItem(page, parent).click({ timeout: 1000 });
-    await menuItem(page, child).click({ timeout: 1000 });
-  }).toPass({ timeout: 8000 });
+  await waitForStableViewport(page);
+  const box = await page.getByTestId("canvas-wrap").boundingBox();
+  if (!box) throw new Error("No canvas");
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: box.width / 2, y: 90 } });
+  await menuItem(page, parent).click();
+  await menuItem(page, child).click();
 }
 
 /** A visible element's box (fails the test when it isn't on screen). */

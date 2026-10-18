@@ -324,14 +324,24 @@ test.describe("relationships", () => {
     await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
     // Flows light up as messages travel them...
     await expect.poll(() => liveState(page, "fd-to-api"), { timeout: 10_000 }).toBe("active");
-    // ...while dependencies stay idle the whole time and recede.
-    for (let i = 0; i < 12; i++) {
-      for (const id of ["api-to-appcfg", "appcfg-to-kv", "api-to-mi", "mi-to-entra", "api-to-ai"])
-        expect(await liveState(page, id), id).not.toBe("active");
-      await page.waitForTimeout(150);
-    }
-    const opacity = await page.getByTestId("edge-api-to-appcfg").evaluate((el) => Number(getComputedStyle(el).opacity));
-    expect(opacity).toBeLessThan(0.5);
+    // Observe every dependency together over rendered frames, rather than serial
+    // cross-process reads and a wall-time sleep per sample.
+    const active = await page.evaluate(async () => {
+      const active: string[] = [];
+      for (let frame = 0; frame < 20; frame++) {
+        await new Promise(requestAnimationFrame);
+        for (const id of ["api-to-appcfg", "appcfg-to-kv", "api-to-mi", "mi-to-entra", "api-to-ai"]) {
+          const edge = document.querySelector(`[data-testid="edge-${id}"]`);
+          if (!edge) throw new Error(`Missing dependency ${id}`);
+          if (edge.parentElement?.getAttribute("data-live-edge") === "active") active.push(id);
+        }
+      }
+      return active;
+    });
+    expect(active).toEqual([]);
+    await expect
+      .poll(() => page.getByTestId("edge-api-to-appcfg").evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .toBeLessThan(0.5);
     expectNoErrors(consoleErrors);
   });
 
@@ -382,6 +392,7 @@ for (const theme of ["light", "dark"] as const)
     page,
     consoleErrors,
   }) => {
+    test.slow(); // Hover/focus lifecycle plus a full accessibility audit.
     await page.clock.install();
     await gotoCanvas(page, SLUG);
     if (theme === "dark") await page.getByTestId("theme-toggle").click();

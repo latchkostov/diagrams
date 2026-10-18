@@ -11,6 +11,7 @@ import {
   waitForStableViewport,
   waitForSelectionSettled,
   fitDiagram,
+  pauseClock,
 } from "./fixtures";
 import en from "../../src/i18n/en";
 import { parse, compile } from "../../src/i18n/icu";
@@ -842,6 +843,12 @@ for (const code of ["de", "ar", "en-XA"]) {
           "name: i18n-fixture\nservices:\n  api:\n    image: example/unknown\n  redis:\n    image: redis:7\nvolumes:\n  data: {}\n",
         );
       await page.getByTestId("paste-submit").click();
+      await expect(page.getByTestId("diagram-title")).toHaveText("i18n-fixture");
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
+      await waitForStableViewport(page);
+      await waitForStableBox(page.getByTestId("toast-import-details"));
       await page.getByTestId("toast-import-details").click();
       await check(page, "import-report", "importReport.importReport");
       await expect(page.getByTestId("import-report-summary")).toHaveText(
@@ -1596,7 +1603,10 @@ test("RTL quick-add preserves physical placement and expanded chevrons point dow
 });
 
 test("pending RTL locale refresh retains an open submenu beside its parent", async ({ page }) => {
+  await page.clock.install();
   await gotoCanvas(page, SLUG);
+  await waitForStableViewport(page);
+  await pauseClock(page);
   let release = () => {};
   let asked = false;
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -1612,12 +1622,20 @@ test("pending RTL locale refresh retains an open submenu beside its parent", asy
     await page.keyboard.press("Escape");
     const canvas = page.getByTestId("canvas-wrap");
     await canvas.click({ button: "right", position: { x: 650, y: 90 } });
-    await page.getByTestId("context-menu-item-canvas.annotate").click();
+    // Queue hover and click in one turn, then change language before the hover
+    // deadline. Keep the physical pointer away so a mouseleave cannot cancel it.
+    await page.mouse.move(10, 10);
+    await page.getByTestId("context-menu-item-canvas.annotate").evaluate((el) => {
+      el.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+      el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
     const sub = page.getByTestId("context-menu-sub");
     await expect(sub).toBeVisible();
     release();
     await expect(page.getByTestId("context-menu-item-canvas.annotate")).toContainText(catalog("ar")["menu.annotate"]);
     await expect(sub).toBeVisible();
+    // A hover queued in LTR must not overwrite the new RTL anchor later.
+    await page.clock.runFor(200);
     await expect
       .poll(async () => {
         const parent = await page.getByTestId("context-menu").boundingBox();

@@ -370,6 +370,7 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
       await page.keyboard.press("Alt+ArrowRight");
       await page.keyboard.type("redis cache");
       await page.keyboard.press("Enter");
+      await expect(page.getByTestId("inspector-field-label")).toBeFocused();
       await page.getByTestId("inspector-field-label").fill("Named cache");
       await page.clock.install();
       await pauseClock(page);

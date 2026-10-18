@@ -426,12 +426,15 @@ test("a cloud save still pending when the diagram becomes private never lands", 
   await deleteIntake(page);
   const before = await testFile(page);
   // A slow sign-in or upload: the save waits, and meanwhile the diagram becomes private.
-  await page.evaluate(() => localStorage.setItem("diagrams.test-storage.delay", "1500"));
+  await page.evaluate(() => localStorage.setItem("diagrams.test-storage.hold", "1"));
   await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
   await page.keyboard.press(`${MOD}+s`);
+  await expect
+    .poll(() => page.evaluate(() => typeof (window as { __testStorageRelease?: () => void }).__testStorageRelease))
+    .toBe("function");
   await makePrivate(page);
+  await page.evaluate(() => (window as { __testStorageRelease?: () => void }).__testStorageRelease?.());
   await expect(page.getByTestId("toast").filter({ hasText: "became private" })).toBeVisible({ timeout: 5000 });
-  await page.waitForTimeout(500);
   expect(await testFile(page)).toEqual(before);
   expectNoErrors(consoleErrors);
 });

@@ -1,3 +1,4 @@
+import { waitForStableViewport } from "./fixtures";
 import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
@@ -50,13 +51,10 @@ const contains = (outer: Box, inner: Box) =>
   outer.x + outer.width >= inner.x + inner.width &&
   outer.y + outer.height >= inner.y + inner.height;
 
-/** Right-clicks the empty top-centre strip of the pane (fit view keeps it clear) until the menu opens. */
+/** Right-clicks a settled, uncovered point in the canvas. */
 async function openCanvasMenu(page: Page) {
-  // Retried: a fit animation still running when the page opens closes a menu as it appears.
-  await expect(async () => {
-    await page.getByTestId("canvas-wrap").click({ button: "right", position: await emptyCanvasPoint(page) });
-    await expect(page.getByTestId("context-menu")).toBeVisible({ timeout: 1000 });
-  }).toPass();
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: await emptyCanvasPoint(page) });
+  await expect(page.getByTestId("context-menu")).toBeVisible();
 }
 
 /** Exports from the image dialog (title on or off) and returns the downloaded file's bytes. */
@@ -297,18 +295,16 @@ test.describe("round 4 polish", () => {
     await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
     // The opening fit closes context menus. Wait for the camera before opening one.
     await waitForStableBox(page.getByTestId("node-a"));
+    await waitForStableViewport(page);
     const wrap = await box(page.getByTestId("canvas-wrap"));
     const note = page.getByTestId("annotation-note-1");
-    // Right-click 60px from the pane's right edge: a 200px note centred there pokes past it. Retried until
-    // the note is added: a late camera move closes the menu at any step, the submenu included.
-    await expect(async () => {
-      await page
-        .getByTestId("canvas-wrap")
-        .click({ button: "right", position: { x: wrap.width - 140, y: wrap.height / 2 - 160 } });
-      await page.getByTestId("context-menu-item-canvas.annotate").click({ timeout: 1000 });
-      await page.getByTestId("context-menu-item-annotate:note").click({ timeout: 1000 });
-      await expect(note).toBeAttached({ timeout: 1000 });
-    }).toPass();
+    // A 200px note centred near the pane's right edge pokes past it.
+    await page
+      .getByTestId("canvas-wrap")
+      .click({ button: "right", position: { x: wrap.width - 140, y: wrap.height / 2 - 160 } });
+    await page.getByTestId("context-menu-item-canvas.annotate").click();
+    await page.getByTestId("context-menu-item-annotate:note").click();
+    await expect(note).toBeAttached();
     await expect(note).toBeVisible();
     await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
     await expect

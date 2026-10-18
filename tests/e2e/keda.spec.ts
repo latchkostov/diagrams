@@ -10,6 +10,7 @@ import {
   gotoLive,
   pauseClock,
   waitForStableViewport,
+  waitForStableBox,
   savedDiagram,
   STORAGE_KEYS,
   expectNoErrors,
@@ -158,6 +159,12 @@ test("KEDA: imports a complete ScaledObject and owned HPA locally", async ({ pag
     mimeType: "application/yaml",
     buffer: readFileSync("tests/fixtures/imports/autoscaling-a2.yaml"),
   });
+  await expect(page.getByTestId("diagram-title")).toHaveText("studio");
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  await waitForStableViewport(page);
+  await waitForStableBox(page.getByTestId("toast-import-details"));
   await page.getByTestId("toast-import-details").click();
   await expect(page.getByTestId("import-report")).toBeVisible();
   await expect(page.getByTestId("import-report")).toContainText("Executable KEDA 2.18");

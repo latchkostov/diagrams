@@ -1,10 +1,69 @@
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, pauseClock } from "./fixtures";
 import { MOD, SLUG, installFakeSpeech, openAdvanced, speech, speechState } from "./ai-helpers";
 
 // Dictation in the AI panel's Advanced section, against a fake SpeechRecognition installed before the app loads.
 // Selectors are data-testid only.
 
 const mic = (page: import("@playwright/test").Page) => page.getByTestId("ai-mic");
+
+test("a restored AI dock offers dictation only after its canvas is ready", async ({ page, consoleErrors }) => {
+  await installFakeSpeech(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("diagrams.ai-dock.v1", JSON.stringify({ open: true, width: 360 }));
+    localStorage.setItem("diagrams.ai-advanced.v1", "1");
+  });
+  let releaseCanvas: () => void = () => {
+    throw new Error("Canvas gate not initialized");
+  };
+  const canvas = new Promise<void>((resolve) => {
+    releaseCanvas = resolve;
+  });
+  await page.route(
+    /\/(?:assets\/CanvasView-[A-Za-z0-9_-]+\.js|src\/canvas\/CanvasView\.tsx)(?:\?.*)?$/,
+    async (route) => {
+      await canvas;
+      await route.continue();
+    },
+  );
+  try {
+    await page.goto(`./?view=canvas&example=${SLUG}`);
+    await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "false");
+    await expect(page.getByTestId("ai-panel-waiting-canvas")).toBeAttached();
+    await expect(mic(page)).toHaveCount(0);
+    releaseCanvas();
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect(page.getByTestId("ai-interim")).toContainText("Listening");
+    await expect(page.getByTestId("ai-request")).toHaveValue("");
+    expectNoErrors(consoleErrors);
+  } finally {
+    releaseCanvas();
+  }
+});
+
+test("@dev a temporary canvas host detach preserves the active dictation session", async ({ page }) => {
+  await installFakeSpeech(page);
+  await gotoCanvas(page, SLUG);
+  await openAdvanced(page);
+  await mic(page).click();
+  await expect(page.getByTestId("ai-interim")).toContainText("Listening");
+  await speech(page, "result", [["keep these words", true]]);
+  await page.evaluate(async () => {
+    const url = "/src/palette/host.ts";
+    const { paletteHost, publish } = (await import(url)) as typeof import("../../src/palette/host");
+    const canvas = paletteHost.get().canvas;
+    if (!canvas) throw new Error("Expected the mounted canvas host");
+    window.addEventListener("restore-dictation-host", () => publish("canvas", canvas), { once: true });
+    paletteHost.reset();
+  });
+  await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "false");
+  await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
+  await page.evaluate(() => window.dispatchEvent(new Event("restore-dictation-host")));
+  await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "true");
+  await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("ai-request")).toHaveValue("Keep these words");
+  expect((await speechState(page)).starts).toBe(1);
+});
 
 test.describe("Dictate", () => {
   test("start, interim words, final words at the caret, stop", async ({ page, consoleErrors }) => {
@@ -134,6 +193,9 @@ test.describe("Dictate", () => {
 });
 
 test.describe("the microphone goes off with the request box", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.clock.install();
+  });
   test("folding Advanced stops listening for good: no restart after silence, nothing written", async ({
     page,
     consoleErrors,
@@ -150,7 +212,8 @@ test.describe("the microphone goes off with the request box", () => {
     await expect.poll(async () => (await speechState(page)).active).toBe(0);
     await speech(page, "result", [["late words", true]]);
     await speech(page, "silence");
-    await page.waitForTimeout(200);
+    await pauseClock(page);
+    await page.clock.runFor(200);
     expect((await speechState(page)).starts).toBe(1);
 
     await page.getByTestId("ai-advanced-toggle").click();
@@ -158,6 +221,7 @@ test.describe("the microphone goes off with the request box", () => {
     await expect(page.getByTestId("ai-request")).toHaveValue("");
     // And it starts again as usual.
     await mic(page).click();
+    await page.clock.runFor(20);
     await expect.poll(async () => (await speechState(page)).active).toBe(1);
     expectNoErrors(consoleErrors);
   });
@@ -170,7 +234,8 @@ test.describe("the microphone goes off with the request box", () => {
     await expect(page.getByTestId("ai-interim")).toContainText("Allow the microphone");
     await page.getByTestId("ai-advanced-toggle").click();
     await speech(page, "resolveAvailability");
-    await page.waitForTimeout(200);
+    await pauseClock(page);
+    await page.clock.runFor(200);
     expect(await speechState(page)).toMatchObject({ starts: 0, active: 0 });
   });
 
@@ -191,7 +256,8 @@ test.describe("the microphone goes off with the request box", () => {
     await expect(page.getByTestId("start-card")).toBeVisible();
     await expect.poll(async () => (await speechState(page)).active).toBe(0);
     await speech(page, "silence");
-    await page.waitForTimeout(200);
+    await pauseClock(page);
+    await page.clock.runFor(200);
     expect((await speechState(page)).starts).toBe(2);
   });
 });

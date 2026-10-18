@@ -123,6 +123,9 @@ async function openDiagram(page: Page, live = false) {
   // before measuring, or a busy machine (where idle comes late) counts that commit as the hover's.
   await page.evaluate(() => new Promise<void>((resolve) => requestIdleCallback(() => resolve())));
   await page.waitForLoadState("networkidle");
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
   await page.evaluate(
     () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
   );

@@ -194,6 +194,10 @@ export class RoomRecovery {
       .finally(() => {
         this.job = undefined;
         this.changed();
+        // An update can arrive between save's last loop check and this promise
+        // reaction. Its flush saw the old job; keep that caller waiting for the
+        // queued revision rather than leaving it unsaved until another edit.
+        if (this.written !== this.revision || this.checkpointRequired) return this.flush(doc);
       }));
   }
 
