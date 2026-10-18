@@ -198,6 +198,7 @@ export function useLiveFixes({
 export function sayConsumerAdded(editor: EditorApi, brokerId: string): void {
   const name = editor.getNode(brokerId)?.label || brokerId;
   notify(`Added a consumer of ${name}.`, {
+    // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
     action: { label: "Undo", run: () => editor.undo(), testId: "add-consumer-undo", undoes: true },
   });
 }

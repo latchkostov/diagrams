@@ -2,7 +2,7 @@ import { ViewportPortal, useStore, useStoreApi } from "@xyflow/react";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useCameraController } from "../canvas/camera";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
-import { actionRegistry, builtinSections } from "../editor/actions";
+import { actionRegistry } from "../editor/actions";
 import { useSettings } from "../harness/settings";
 import { useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
@@ -20,7 +20,7 @@ import { TraceCard } from "./TraceCard";
 import { LiveContext, type LiveUi, type TraceChoice } from "./context";
 import { downstreamOfEdge, edgesWithin } from "./graph";
 import { LiveIcon } from "./icons";
-import { liveActions, liveMutationGuard } from "./liveActions";
+import { liveMutationGuard } from "./liveActions";
 import { Recorder } from "./record/Recorder";
 import { useCapacityEntry, useCapacityError, useCapacityInputs } from "./session/useCapacityInputs";
 import { useFrameLoop } from "./session/useFrameLoop";
@@ -32,6 +32,7 @@ import {
   useLiveSessionBridge,
   useLiveSetup,
 } from "./session/useLiveCommands";
+import { useLiveContextMenu } from "./session/useLiveContextMenu";
 import { useLiveDiagramChanges, useLiveFixes } from "./session/useLiveFixes";
 import { useLiveKeyboard } from "./session/useLiveKeyboard";
 import { SlowCaption } from "./slowmo/SlowBar";
@@ -309,110 +310,27 @@ export function LiveSession({
 
   const addEntry = useCapacityEntry({ editor, store, flash, camera });
 
-  // While live, the Simulation section leads every context menu.
-  useEffect(() => {
-    if (!editor) return;
-    const builtin = builtinSections.find((x) => x.id === "simulation");
-    const off = actionRegistry.registerSection({ id: "simulation", order: 5, title: "Live" });
-    return () => {
-      off();
-      if (builtin) actionRegistry.registerSection(builtin);
-    };
-  }, [editor]);
-
-  // This is temporary visibility, not a persisted editor preference.
-  useEffect(() => {
-    onPanelChange?.(panel.open);
-    return () => onPanelChange?.(false);
-  }, [panel.open, onPanelChange]);
-
-  // Context-menu actions (canvas only).
-  useEffect(() => {
-    if (!editor) return;
-    return actionRegistry.register([
-      ...liveActions({
-        controller,
-        slowMotionActive: () => !!slowRef.current?.session.active,
-        openInject: (nodeId, at) => {
-          const t = store.getState().transform;
-          const rect = store.getState().domNode?.getBoundingClientRect();
-          const x = at && rect ? at.x * t[2] + t[0] + rect.left : window.innerWidth / 2;
-          const y = at && rect ? at.y * t[2] + t[1] + rect.top : window.innerHeight / 2;
-          setInject({ nodeId, x, y });
-        },
-        startStorm,
-        showEvents: (id) => showEvents(id),
-        trace: setTrace,
-        tracing: () => traceRef.current,
-        traceNext: (nodeId) => {
-          slowRef.current?.end();
-          controller.traceNext(nodeId);
-        },
-        slowMotion: (nodeId) => slowRef.current?.start({ kind: "next", node: nodeId }),
-        slowMotionTrace,
-        canReplayTrace: () => !!controller.getState().trace?.current && !slowRef.current?.session.on,
-        traceSlowest: () => startTrace("slowest"),
-        traceDeadLettered: () => startTrace("deadletter"),
-        endTrace: () => {
-          slowRef.current?.end();
-          controller.endTrace();
-        },
-        tracingMessage: () => controller.getState().trace !== null,
-        saveTweaks: (nodeId) => {
-          const tweak = controller.getState().tweaks.get(nodeId);
-          if (!tweak) return;
-          const patch: Record<string, unknown> = { ...tweak.props };
-          if (tweak.status) patch.status = tweak.status === "up" ? undefined : tweak.status;
-          editor.setNodeProps(nodeId, patch);
-          controller.clearTweaks(nodeId);
-          flash("Saved the live changes to the diagram (undo with Ctrl+Z).");
-        },
-        messageType: (nodeId) => suggestedMessageType(getDiagram(), nodeId),
-        openRecord,
-      }),
-      {
-        id: "sim.inputs",
-        section: "simulation",
-        targets: ["canvas"],
-        modes: ["live"],
-        paletteOnly: true,
-        label: "Edit Inputs & capacity",
-        icon: "sliders",
-        ...liveMutationGuard(() => !!slowRef.current?.session.active),
-        run: () => openCapacity(),
-      },
-      {
-        id: "sim.capacity-fix",
-        section: "simulation",
-        targets: ["canvas"],
-        modes: ["live"],
-        paletteOnly: true,
-        label: "Apply capacity fix",
-        icon: "check",
-        when: () => !!capacity?.fix,
-        ...liveMutationGuard(() => !!slowRef.current?.session.active),
-        run: () => {
-          if (capacity?.fix) applyFix(capacity.fix);
-        },
-      },
-    ]);
-    // Session-owned refs and setters are stable; preserve the original dependencies.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
+  useLiveContextMenu({
     editor,
     controller,
     store,
+    slowRef,
+    traceRef,
+    setTrace,
+    setInject,
     startStorm,
     showEvents,
+    slowMotionTrace,
+    startTrace,
     getDiagram,
     flash,
     openRecord,
-    startTrace,
-    slowMotionTrace,
     capacity,
     applyFix,
     openCapacity,
-  ]);
+    panel,
+    onPanelChange,
+  });
 
   useLiveKeyboard({ controller, presenting, alwaysOn, onExit, editor, slowRef, traceRef, setTrace });
 

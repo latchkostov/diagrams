@@ -44,6 +44,7 @@ export function EditCapacity({
       const merge = "capacity:fix:" + Date.now();
       for (const c of fix.changes) editor.setNodeProps(c.nodeId, { [c.key]: c.to }, { merge });
       notify("Applied the fix: " + fix.label + ".", {
+        // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
         action: { label: "Undo", run: () => editor.undo(), testId: "capacity-fix-undo", undoes: true },
       });
     },

@@ -35,6 +35,7 @@ const TRANSLATED = [
   "src/canvas/selection/**/*.{ts,tsx}",
   "src/canvas/document/**/*.{ts,tsx}",
   "src/canvas/camera/**/*.{ts,tsx}",
+  "src/live/session/**/*.{ts,tsx}",
   "src/canvas/inspector/*.{ts,tsx}",
   "src/canvas/SheetResizeHandle.tsx",
   "src/canvas/Palette.tsx",

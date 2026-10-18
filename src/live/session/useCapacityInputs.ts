@@ -183,6 +183,7 @@ export function useCapacityEntry({
       // Same tick: the history debounce records the node, its label and its edge as one undo step.
       const stencil = ENTRY_STENCILS.find((x) => stencilRole(x) === "source") ?? ENTRY_STENCILS[0];
       const id = editor.addNode(stencil, at);
+      // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
       editor.updateNode(id, { label: "Incoming traffic", sublabel: undefined });
       editor.connect(id, targetId);
       flash(`Added an entry point into ${target.label || target.id}. Set its rate in msg/s.`);
