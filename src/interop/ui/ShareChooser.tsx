@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { SHARE_LINKS } from "../../lib/deployment";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
-import type { Privacy } from "../../lib/localOnly";
+import { COLLABORATION_LAB, type Privacy } from "../../lib/localOnly";
 import { Dialog } from "./Dialog";
 import { Glyph, type GlyphName } from "./glyphs";
 import { t, useLocale } from "../../i18n";
@@ -13,7 +13,9 @@ import "./shareChooser.css";
 // dialog that already does it (Interactive HTML, Embed code, Link with password, Share link) or saves the file.
 // The public ones (anyone with the link can open what they make) sit last, folded behind one more step, and never
 // take the keyboard first. A private diagram lists only what it allows; a copy built without share links
-// (src/lib/deployment.ts) has no link rows and no public section at all.
+// (src/lib/deployment.ts) has no link rows and no public section at all. Where rooms are on (COLLABORATION_LAB, for
+// now), "Edit together…" follows Link with password behind its own rule: anyone with its link can edit, so it is
+// never the first row and never what Enter does first.
 
 export type EmbedScope = "private" | "public";
 
@@ -25,6 +27,8 @@ export interface ShareChooserProps {
   onEmbed: (scope: EmbedScope) => void;
   onPasswordLink: () => void;
   onShareLink: () => void;
+  /** Edit together…: the room's start dialog (its consent first). */
+  onEditTogether?: () => void;
   /** Opens the Private diagram dialog (its one confirmation for Make not private). */
   onMakeNotPrivate: () => void;
   onClose: () => void;
@@ -101,6 +105,7 @@ export function ShareChooser({
   onEmbed,
   onPasswordLink,
   onShareLink,
+  onEditTogether,
   onMakeNotPrivate,
   onClose,
 }: ShareChooserProps) {
@@ -117,6 +122,7 @@ export function ShareChooser({
   const list = useRef<HTMLDivElement>(null);
   const privacy = privacyNow();
   const links = SHARE_LINKS && !privacy;
+  const rooms = COLLABORATION_LAB && !!onEditTogether;
   // A row that went away with the keyboard on it (the diagram turned private): the first row takes it, not the page.
   useLayoutEffect(() => {
     const active = document.activeElement;
@@ -169,12 +175,23 @@ export function ShareChooser({
             />
           )}
         </div>
+        {links && rooms && (
+          <div className="ix-share-group ix-share-room" data-testid="share-room">
+            <Option
+              testId="share-option-edit-together"
+              icon="users"
+              title={t("share.editTogether")}
+              desc={t("share.editTogetherDesc")}
+              onPick={onEditTogether!}
+            />
+          </div>
+        )}
         {SHARE_LINKS && privacy && (
           <p className="ix-share-note" data-testid="share-private-note">
             <Glyph name="lock" size={13} />
             {privacy === "private" ? (
               <span>
-                {t("share.privateOff")}{" "}
+                {rooms ? t("share.privateOffRooms") : t("share.privateOff")}{" "}
                 <button
                   type="button"
                   className="link-btn"

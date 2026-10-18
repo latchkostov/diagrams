@@ -279,7 +279,8 @@ test("a private diagram's Share… says why its links are gone, and how to chang
   await page.keyboard.press("ArrowDown");
   await expect(page.getByTestId("share-make-not-private")).toBeFocused();
   await expect(page.getByTestId("share-private-note")).toContainText(
-    "Links and public embeds are off for a private diagram.",
+    // The e2e build has rooms (COLLABORATION_LAB), so the line names them too.
+    "Links, rooms and public embeds are off for a private diagram.",
   );
   // It asks first, in the one confirmation, whose default keeps it private.
   await page.keyboard.press("Enter");

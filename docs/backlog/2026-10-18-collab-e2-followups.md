@@ -8,11 +8,16 @@
 - **A room for another diagram still takes the save-status slot.** E2's chip names the background room and offers
   Show, but the displayed diagram's save status (or shared chip) is hidden meanwhile. E4's chip and popover should
   show both.
-- **Remaining PR #174 P2s (E4).** The focus handoffs landed in E3. Still open: a selectable room link when copying
-  fails from the chip; keep the detached editor (and its local Undo of a Private paste) mounted through a successful
-  privacy exit instead of remounting from the copy; an app-level e2e for a Private paste whose privacy write fails
-  (exported file Private, peer and copy without it); presence (`remote.changed` kind `presence`) is dispatched once
-  E5 renders peers.
+- **Keep Undo through a Private exit (from PR #174).** A paste from a Private diagram ends the room and the canvas
+  remounts from the kept copy, so that paste can't be undone there. Keeping the room's canvas mounted instead needs
+  its local history handed to an ordinary canvas (a room canvas doesn't autosave, so leaving it mounted would lose
+  later edits): an editor-level history handoff, not a room change. Deferred from E4 for that risk.
+- **The room chip's menu is the top bar's menu (E4).** It opens and closes like File and View (focus back to the
+  chip), not through the canvas's interaction controller, so the camera doesn't hold pending work while it is open.
+  If a fit landing under the open menu turns out to matter, route top-bar menus through it together.
+- **Not yet in E4:** "Left room · your copy" on the copy in Your diagrams (§2.5); an e2e for "Your network or theirs
+  blocks direct connections" (the ICE failure needs a tracker that forwards an unusable answer under the room's
+  signalling key); alias edit and presence come with E5.
 - **Translations for the new `collab.*` keys.** E2 adds the consent, chip and notice wording in English only;
   missing messages show in English. Translate once E4 settles the final wording.
 - **Rejoining after Leave makes a second entry.** A joiner who leaves and later opens the same link gets a new entry

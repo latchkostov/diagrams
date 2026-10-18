@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import type { CanvasHandle } from "../../canvas/CanvasView";
 import { t, useLocale } from "../../i18n";
 import { appBaseUrl } from "../../interop/share";
 import { copyText } from "../../interop/ui/copyText";
 import { Dialog } from "../../interop/ui/Dialog";
 import { Glyph } from "../../interop/ui/glyphs";
+import { Menu, type MenuEntry } from "../../interop/ui/Menu";
+import { PRESENCE_COLOURS } from "../presence";
+import type { DiagramFile } from "../../model/types";
 import { notify, toast } from "../../interop/ui/toast";
 import { downloadText } from "../../interop/files";
 import { serializeNative } from "../../interop/native";
@@ -17,12 +20,13 @@ import type { OpenRoom, RoomLifecycle, RoomNotice } from "./lifecycle";
 import { createInteractionController } from "../../canvas/interaction/controller";
 import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
 import { interactionJournal } from "../../canvas/interaction/journal";
+import { RECONNECT_MS } from "./timing";
 import "./room.css";
 
-// The room's controls while the collaboration plan's UI slice (E4) is still to come: the consent dialogs (start and
-// join), what a joiner sees while the room's diagram is on its way, and a status chip in the top bar's save-status
-// slot. Every word is the plan's (§2.2, §2.3, §2.6). E4 adds the Share row, Ctrl+K, the participant popover and the
-// failure states' own wording.
+// The room's controls (collaboration plan §2.2–2.6): the consent dialogs (start and join), what a joiner sees while
+// the room's diagram is on its way, the room chip in the top bar's save-status slot ("3 here ▾": who is here, Copy
+// room link, Leave room), and the failure states, each with Retry and a file copy. Share's "Edit together…" row and
+// Ctrl+K open the start dialog (src/lib/roomEntry.ts, EDIT_TOGETHER).
 
 /**
  * The room's controls live outside the canvas (the dialogs, the chip, the joiner's wait), so they have an
@@ -54,6 +58,66 @@ function useSessionState(session: CollabSession) {
 }
 
 const roomLink = (open: OpenRoom) => formatRoomLink(appBaseUrl(), open.link);
+
+/** True once `active` has held for `ms` (false again as soon as it stops). */
+function useHeld(active: boolean, ms: number): boolean {
+  const [seen, setSeen] = useState({ active, held: false });
+  if (seen.active !== active) setSeen({ active, held: false });
+  useEffect(() => {
+    if (!active) return;
+    const id = setTimeout(() => setSeen({ active: true, held: true }), ms);
+    return () => clearTimeout(id);
+  }, [active, ms]);
+  return active && seen.held;
+}
+
+/** The room link to select and copy by hand, when the browser refused to copy it. */
+let linkToShow: string | null = null;
+const linkListeners = new Set<() => void>();
+const showLink = (link: string | null) => {
+  linkToShow = link;
+  for (const fn of linkListeners) fn();
+};
+const useLinkToShow = () =>
+  useSyncExternalStore(
+    (fn) => (linkListeners.add(fn), () => void linkListeners.delete(fn)),
+    () => linkToShow,
+  );
+
+/** Copy room link: copied (said in a toast), or, refused, the link in a dialog to select and copy. */
+const copyRoomLink = (link: string) =>
+  void copyText(link).then((ok) => (ok ? notify(t("collab.roomLinkCopied"), { kind: "success" }) : showLink(link)));
+
+/** Where the room stands, as its chip and alerts say it (§2.6). */
+type RoomState = "connecting" | "waiting" | "here" | "reconnecting" | "alone" | "failed";
+
+function useRoomState(session: CollabSession): { state: RoomState; peers: number } {
+  useSessionState(session);
+  const peers = session.transport.peers().length;
+  const left = !peers && session.hasDocument && session.connectivity === "peer-left";
+  const alone = useHeld(left, RECONNECT_MS);
+  const state: RoomState = session.connectionFailed
+    ? "failed"
+    : peers
+      ? "here"
+      : !session.hasDocument
+        ? "connecting"
+        : left
+          ? alone
+            ? "alone"
+            : "reconnecting"
+          : "waiting";
+  return { state, peers };
+}
+
+const CHIP_TEXT: Record<RoomState, (peers: number) => string> = {
+  connecting: () => t("collab.chipConnecting"),
+  waiting: () => t("collab.chipWaiting"),
+  here: (peers) => t("collab.chipHere", { count: peers + 1 }),
+  reconnecting: () => t("collab.chipReconnecting"),
+  alone: () => t("collab.chipAlone"),
+  failed: () => t("collab.chipFailed"),
+};
 
 const LINK_PROBLEMS: Record<RoomLinkProblem, () => string> = {
   missing: () => t("collab.linkDamaged"),
@@ -96,7 +160,9 @@ export function RoomLayer({
     notify(NOTICES[notice.kind](), { kind: notice.kind === "left" ? "info" : "error" });
   }, [snap.notice]);
   const prompt = snap.prompt;
+  const link = useLinkToShow();
   if (snap.open?.unsaved) return <UnsavedDialog room={room} />;
+  if (link) return <LinkDialog link={link} onClose={() => showLink(null)} />;
   if (typeof started === "number" && snap.open?.mount === started)
     return <StartedDialog open={snap.open} onClose={() => setStarted(undefined)} />;
   if (prompt?.kind === "start" || started === "pending")
@@ -113,6 +179,8 @@ export function RoomLayer({
       />
     );
   if (prompt?.kind === "join") return <JoinDialog room={room} alias={prompt.alias} />;
+  if (!prompt && snap.open?.slug && snap.open.slug === slug)
+    return <RoomAlert room={room} open={snap.open} canvas={canvas} />;
   if (prompt?.kind === "invalid")
     return (
       <Dialog
@@ -392,7 +460,11 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
   );
 }
 
-/** In the top bar's save-status slot while a room is open: who's here, the link, and Leave. */
+/**
+ * In the top bar's save-status slot while a room is open: its state ("3 here", "Room open · waiting for others",
+ * "Reconnecting…"), and a menu with who is here, Copy room link and Leave room. While a joiner connects, status only
+ * (the wait in the canvas's place has Leave room, and there's no room to link yet).
+ */
 export function RoomChip({ room, here, onShow }: { room: RoomLifecycle; here: boolean; onShow: () => void }) {
   useLocale();
   const snap = useRoom(room);
@@ -411,78 +483,176 @@ function OpenChip({
   here: boolean;
   onShow: () => void;
 }) {
-  useSessionState(open.session);
-  const [copied, setCopied] = useState(false);
-  const chip = useRef<HTMLDivElement>(null);
   const session = open.session;
-  if (!here && open.slug)
-    // The room goes on for another diagram: name it, and offer the way back rather than its link.
+  const { state, peers } = useRoomState(session);
+  const elsewhere = !here && !!open.slug;
+  const text = elsewhere
+    ? t("collab.chipElsewhere", { title: session.doc.project().diagram?.title ?? "" })
+    : CHIP_TEXT[state](peers);
+  const data = {
+    "data-testid": "room-chip",
+    "data-state": elsewhere ? "elsewhere" : state,
+    "data-peers": peers,
+    "data-present": session.peers().length,
+    "data-role": open.role,
+  };
+  if (state === "connecting" && !elsewhere)
     return (
-      <div className="ix-shared room-chip" role="status" data-testid="room-chip" data-state="elsewhere">
+      <span className="ix-shared room-chip" role="status" {...data}>
         <span className="room-dot" aria-hidden="true" />
-        <span data-testid="room-chip-text">
-          {t("collab.chipElsewhere", { title: session.doc.project().diagram?.title ?? "" })}
+        <span className="room-chip-text" data-testid="room-chip-text">
+          {text}
         </span>
-        <button className="ix-shared-keep" onClick={onShow} data-testid="room-show">
-          {t("collab.show")}
-        </button>
-        <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
-          {t("collab.leave")}
-        </button>
-      </div>
-    );
-  const peers = session.transport.peers().length;
-  const state = session.connectionFailed ? "failed" : peers ? "here" : !session.hasDocument ? "connecting" : "waiting";
-  return (
-    <div
-      ref={chip}
-      tabIndex={-1}
-      className="ix-shared room-chip"
-      role="status"
-      data-testid="room-chip"
-      data-state={state}
-      data-peers={peers}
-      data-present={session.peers().length}
-      data-role={open.role}
-    >
-      <span className="room-dot" aria-hidden="true" />
-      <span data-testid="room-chip-text">
-        {state === "failed"
-          ? t("collab.chipFailed")
-          : state === "here"
-            ? t("collab.chipHere", { count: peers + 1 })
-            : state === "connecting"
-              ? t("collab.chipConnecting")
-              : t("collab.chipWaiting")}
       </span>
-      {/* While connecting, status only: the wait in the canvas's place has Leave room, and there's no room to link yet. */}
-      {state === "failed" && (
+    );
+  const entries = (): MenuEntry[] => [
+    { type: "section", label: t("collab.inRoom") },
+    { type: "note", text: <People session={session} /> },
+    { type: "separator" },
+    ...(state === "failed"
+      ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: () => room.retry() }]
+      : []),
+    ...(elsewhere ? [{ type: "item" as const, testId: "room-show", title: t("collab.show"), onSelect: onShow }] : []),
+    {
+      type: "item",
+      testId: "room-copy-link",
+      icon: <Glyph name="link" size={14} />,
+      title: t("collab.copyRoomLink"),
+      desc: t("collab.sendLink"),
+      onSelect: () => copyRoomLink(roomLink(open)),
+    },
+    { type: "item", testId: "room-leave", title: t("collab.leave"), onSelect: () => void room.leave() },
+  ];
+  return (
+    <Menu
+      label={t("collab.roomMenu")}
+      testId="room-menu"
+      width={300}
+      entries={entries}
+      trigger={(props) => (
         <button
-          className="ix-shared-keep"
+          type="button"
+          className="ix-shared room-chip"
+          aria-label={t("collab.chipLabel", { status: text })}
+          {...props}
+          {...data}
+        >
+          <span className="room-dot" aria-hidden="true" />
+          {state === "here" && <span className="room-dot room-dot-peer" aria-hidden="true" />}
+          <span className="room-chip-text" data-testid="room-chip-text">
+            {text}
+          </span>
+          <Glyph name="chevron-down" size={12} />
+        </button>
+      )}
+    />
+  );
+}
+
+/** Who is here: you, then each peer by the name they gave (unverified), in their colour. */
+function People({ session }: { session: CollabSession }): ReactNode {
+  const me = session.me;
+  return (
+    // Inside a menu, so not a list (a menu holds menu items): rows of text with no role of their own.
+    <div className="room-people" role="presentation" data-testid="room-people">
+      <div role="presentation" data-testid="room-person-you">
+        <span className="room-dot" style={{ color: PRESENCE_COLOURS[me.colour] }} aria-hidden="true" />
+        {t("collab.you", { alias: me.alias })}
+      </div>
+      {session.peers().map((p) => (
+        <div key={p.sender} role="presentation" data-testid="room-person">
+          <span className="room-dot" style={{ color: PRESENCE_COLOURS[p.colour] }} aria-hidden="true" />
+          {t("collab.peer", { alias: p.alias, status: p.status })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The browser refused to copy: the link, selected, to copy by hand. */
+function LinkDialog({ link, onClose }: { link: string; onClose: () => void }) {
+  return (
+    <Dialog
+      // Opened from the chip's menu (which has closed by now): back to the chip.
+      restoreFocus={(opener) =>
+        dialogClosed(opener ?? document.querySelector<HTMLElement>('[data-testid="room-chip"]'))
+      }
+      title={t("collab.roomLink")}
+      onClose={onClose}
+      testId="room-link-dialog"
+      width={500}
+      footer={
+        <>
+          <span className="ix-grow" />
+          <button className="btn" onClick={onClose} data-testid="room-link-dialog-done">
+            {t("common.done")}
+          </button>
+        </>
+      }
+    >
+      <p className="ix-error" role="alert">
+        {t("collab.copyBlocked")}
+      </p>
+      <input
+        className="ix-input ix-mono"
+        readOnly
+        value={link}
+        data-autofocus
+        data-autoselect
+        onFocus={(e) => e.currentTarget.select()}
+        aria-label={t("collab.roomLink")}
+        data-testid="room-link-selectable"
+      />
+      <p className="ix-muted">{t("collab.sendLink")}</p>
+    </Dialog>
+  );
+}
+
+/**
+ * The room couldn't connect (§2.6): why, Retry, and the way out that always works, a file. Announced, never a focus
+ * move; Retry hands the keyboard to the room chip as the alert goes (W3).
+ */
+function RoomAlert({
+  room,
+  open,
+  canvas,
+}: {
+  room: RoomLifecycle;
+  open: OpenRoom;
+  canvas: RefObject<CanvasHandle | null>;
+}) {
+  const { state } = useRoomState(open.session);
+  if (state !== "failed") return null;
+  return (
+    <div className="room-alert" role="alert" data-testid="room-alert">
+      <p>
+        <strong>{t("collab.connectionFailed")}</strong>
+        {open.session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
+      </p>
+      <p className="ix-muted">{t("collab.fileFallback")}</p>
+      <div className="room-alert-actions">
+        <button
+          className="btn"
           onClick={() => {
-            // Retry goes as the state changes: its status keeps the keyboard (W3).
-            if (chip.current) roomFocus.dispatch({ type: "room.status", state, retry: true, status: chip.current });
+            const diagram: DiagramFile | undefined = canvas.current?.getDiagram();
+            if (diagram) downloadText(serializeNative(diagram), "room-copy.diagram.json", "application/json");
+          }}
+          data-testid="room-alert-file"
+        >
+          {t("collab.saveCopy")}
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            const chip = document.querySelector<HTMLElement>('[data-testid="room-chip"]');
+            if (chip) roomFocus.dispatch({ type: "room.status", state, retry: true, status: chip });
             room.retry();
           }}
-          data-testid="room-retry"
+          data-testid="room-alert-retry"
         >
           {t("common.retry")}
         </button>
-      )}
-      {state !== "connecting" && (
-        <>
-          <button
-            className="ix-shared-keep"
-            onClick={() => void copyText(roomLink(open)).then(setCopied)}
-            data-testid="room-copy-link"
-          >
-            {copied ? t("collab.copied") : t("collab.copyRoomLink")}
-          </button>
-          <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
-            {t("collab.leave")}
-          </button>
-        </>
-      )}
+      </div>
     </div>
   );
 }
@@ -519,10 +689,19 @@ function ConnectingFailure({
   region: RefObject<HTMLDivElement | null>;
 }) {
   useSessionState(session);
-  if (!session.connectionFailed) return null;
+  // Matchmaking works but no one answers: they may have left, or a network blocks it (§2.6).
+  const unanswered = useHeld(!session.connectionFailed && !session.hasDocument, RECONNECT_MS);
+  if (!session.connectionFailed && !unanswered) return null;
   return (
-    <div role="alert" data-testid="room-connecting-failed">
-      <p>{t("collab.connectionFailed")}</p>
+    <div
+      role="alert"
+      data-testid="room-connecting-failed"
+      data-reason={unanswered ? "no-answer" : session.connectivity}
+    >
+      <p>
+        {unanswered ? t("collab.noAnswer") : t("collab.connectionFailed")}
+        {!unanswered && session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
+      </p>
       <button
         className="btn"
         onClick={() => {

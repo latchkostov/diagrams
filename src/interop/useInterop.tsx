@@ -34,6 +34,7 @@ import {
 import {
   canSaveToCloud,
   canShareAsLink,
+  COLLABORATION_LAB,
   isLocalOnly,
   privacyOf,
   type CanvasPrivacyState,
@@ -42,6 +43,7 @@ import {
 import { newDiagramsPrivate } from "../lib/privacyPrefs";
 import { LINK_OPEN, SHARE_LINKS } from "../lib/deployment";
 import { PRIVACY_REQUEST } from "../lib/usePrivacy";
+import { EDIT_TOGETHER } from "../lib/roomEntry";
 import { loadedCanvasActions } from "../canvas/loadCanvasView";
 import { LIMITS, preserveUnknown, serializeNative } from "./native";
 import {
@@ -1114,6 +1116,14 @@ export function useInterop({
           onEmbed={(scope) => void openEmbed(scope)}
           onPasswordLink={() => void copyPasswordLink()}
           onShareLink={() => void openShare()}
+          onEditTogether={
+            COLLABORATION_LAB
+              ? () => {
+                  setDialog(null);
+                  window.dispatchEvent(new Event(EDIT_TOGETHER));
+                }
+              : undefined
+          }
           onMakeNotPrivate={() => setDialog({ kind: "privacy", source: dialog.source })}
           onClose={() => setDialog(null)}
         />

@@ -1,17 +1,33 @@
-/* Edit together: the room chip (top bar), the name field, and the joiner's wait. Logical properties only. */
+/* Edit together: the room chip (top bar), its menu, the name field, the joiner's wait and the failure alert.
+   Logical properties only. */
 
-/* The chip gives way first: its status truncates before the brand or the picker wrap (1280 px and narrower). */
+/* The chip is one control (its actions are in its menu): only its status truncates, so it gives way before the
+   brand or the picker wrap, and nothing of it is clipped. */
 .room-chip {
-  flex: 0 100 auto;
+  flex: 0 1 auto;
   max-inline-size: 22rem;
-  min-inline-size: 0;
-  overflow: hidden;
+  min-inline-size: 4.5rem;
+  padding-inline: 10px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.room-chip > span:not(.room-dot) {
+span.room-chip {
+  cursor: default;
+}
+
+.room-chip-text {
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.room-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .room-dot {
@@ -22,14 +38,34 @@
   background: currentColor;
 }
 
+/* "●●": you and the others. */
+.room-dot-peer {
+  margin-inline-start: -9px;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
 .room-chip[data-state="connecting"] .room-dot,
-.room-chip[data-state="waiting"] .room-dot {
+.room-chip[data-state="waiting"] .room-dot,
+.room-chip[data-state="reconnecting"] .room-dot,
+.room-chip[data-state="alone"] .room-dot {
   opacity: 0.45;
 }
 
 /* Darker than --danger alone: 4.5:1 or better on the chip's tint in both themes. */
 .room-chip[data-state="failed"] {
   color: color-mix(in oklab, var(--danger) 72%, var(--text));
+}
+
+.room-people {
+  display: grid;
+  gap: 6px;
+}
+
+.room-people > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
 }
 
 .room-name {
@@ -52,6 +88,32 @@
 .room-connecting p {
   margin: 0;
   max-inline-size: 42ch;
+}
+
+/* Couldn't connect: under the top bar, over the canvas, never covering the chip. */
+.room-alert {
+  position: fixed;
+  inset-block-start: 60px;
+  inset-inline: 0;
+  z-index: 30;
+  inline-size: min(520px, calc(100vw - 32px));
+  margin-inline: auto;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--line));
+  border-radius: var(--radius-l, 12px);
+  background: var(--surface);
+  box-shadow: var(--node-shadow);
+}
+
+.room-alert p {
+  margin: 0 0 6px;
+}
+
+.room-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* While a room's chip is in the top bar, the brand never wraps: the chip and the picker truncate instead. */

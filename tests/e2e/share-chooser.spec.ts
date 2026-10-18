@@ -80,6 +80,8 @@ test("one File menu row, and Share… lists the safe ways first, with the keyboa
     "share-option-file",
     "share-option-embed",
     "share-option-password",
+    // The e2e build has rooms (COLLABORATION_LAB): Edit together follows Link with password, behind its own rule.
+    "share-option-edit-together",
     "share-public-toggle",
   ]);
   await expect(page.getByTestId("share-option-html")).toBeFocused();
@@ -139,6 +141,8 @@ test("the public ways out take a deliberate step, every time", async ({ page, co
     "share-option-file",
     "share-option-embed",
     "share-option-password",
+    // The e2e build has rooms (COLLABORATION_LAB): Edit together follows Link with password, behind its own rule.
+    "share-option-edit-together",
     "share-public-toggle",
     "share-option-link",
     "share-option-embed-public",
@@ -208,7 +212,8 @@ test("a Private diagram's Share… lists only what it allows, says why, and how 
   ]);
   await expect(page.getByTestId("share-option-html")).toBeFocused();
   await expect(page.getByTestId("share-private-note")).toHaveText(
-    "Links and public embeds are off for a private diagram. Make it not private…",
+    // The e2e build has rooms (COLLABORATION_LAB), so the line names them too.
+    "Links, rooms and public embeds are off for a private diagram. Make it not private…",
   );
 
   // How to change it: the Private diagram dialog, its one confirmation. Made not private, Share… lists them all.
