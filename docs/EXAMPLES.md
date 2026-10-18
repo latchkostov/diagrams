@@ -33,7 +33,7 @@ Large showcases (40–150 nodes: `black-friday-commerce`, `cell-based-bookings`,
 `delivery-dispatch`, `ev-charging-network`) make up the **Full systems** theme, first in the gallery. They are
 invented systems whose saved stories start a narrated note within ten seconds of Live; each note's focus takes the
 camera, so a large diagram stays readable while a story plays. Keep every note's focus a close-up (at least 60% zoom
-on a desktop, and at least twice the overview's zoom on a phone), the diagrams under live view's adaptive threshold
+on a desktop; on a phone the canvas's 15% minimum zoom binds, and the note pans to its cards), the diagrams under live view's adaptive threshold
 (about 1,000 nodes plus connections), free of unexplained checks findings, and covered by
 `src/examples/largeShowcases.test.ts`.
 

@@ -21,7 +21,7 @@ start card.
   `rag-assistant` dead-letters failed ingest jobs to a triage worker. All three pass the checks with no findings.
 - **#167 review fixes.**
   - Narration close-ups: every note's focus in the large examples now renders at 60% zoom or more on a desktop,
-    and at least twice the overview's zoom on a phone. The cells' region notes split per region.
+    and on a phone the note pans its cards into view. The cells' region notes split per region.
   - EV charging: driver sessions keep their `StartSession` type on the database branch, so they reach billing,
     Stripe and the roaming hub. Firmware commands carry `UpdateFirmware`, so a dead-lettered one is retried by
     the campaign.
