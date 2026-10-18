@@ -489,12 +489,34 @@ for (const phase of ["decode", "encode"] as const)
     expectNoErrors(consoleErrors);
   });
 
+/** Hold the PNG's real decode boundary, including small, already-cached exports. */
+async function holdPngDecode(page: Page) {
+  await page.evaluate(() => {
+    const decode = HTMLImageElement.prototype.decode;
+    const w = window as unknown as { __pngHeld: boolean; __releasePng: () => Promise<void> };
+    w.__pngHeld = false;
+    HTMLImageElement.prototype.decode = function () {
+      HTMLImageElement.prototype.decode = decode;
+      w.__pngHeld = true;
+      return new Promise<void>((resolve, reject) => {
+        w.__releasePng = () => decode.call(this).then(resolve, reject);
+      });
+    };
+  });
+  return {
+    held: () => page.waitForFunction(() => (window as unknown as { __pngHeld: boolean }).__pngHeld),
+    release: () => page.evaluate(() => (window as unknown as { __releasePng?: () => Promise<void> }).__releasePng?.()),
+  };
+}
+
 test("an export started from the Image dialog hands the keyboard to its Cancel", async ({ page }) => {
   test.slow();
-  await openLanes(page);
+  await openLanes(page, 3);
+  const decode = await holdPngDecode(page);
   let downloads = 0;
   page.on("download", () => downloads++);
   await exportThroughDialog(page);
+  await decode.held();
   await expect(page.getByTestId("toast-progress")).toBeVisible();
   // The dialog gives its opener the focus back as it closes; Cancel takes it after that, and Enter presses it.
   await expect(page.getByTestId("image-export-cancel")).toBeFocused();
@@ -502,6 +524,8 @@ test("an export started from the Image dialog hands the keyboard to its Cancel",
   await expect(page.getByTestId("command-palette")).toHaveCount(0);
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast")).toHaveCount(0);
+  await decode.release();
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(downloads).toBe(0);
 });
 
@@ -560,9 +584,12 @@ for (const [stalled, pattern, kind] of [
     expect(downloads.count()).toBe(0);
     await expect(page.getByTestId("toast")).toHaveCount(0);
     // Module evaluation / the cached font promise can now finish. A subsequent export waits on that same work.
+    const decode = await holdPngDecode(page);
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-png").click();
+    await decode.held();
     await expect(page.getByTestId("toast-progress")).toBeVisible();
+    await decode.release();
     await downloads.finished();
     expect(downloads.count()).toBe(1);
     expectNoErrors(consoleErrors);

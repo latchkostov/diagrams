@@ -194,18 +194,28 @@ test("A1: coalesces partial jittered readiness until completion", async ({ page 
   const announcement = await status.textContent();
   if (!announcement) throw new Error("Missing scaling announcement");
   await expect(badge).toHaveAttribute("data-ready", "1");
-  // Advance by logical ticks, inspecting every publication until some, but not all, replicas are ready.
-  let partial = false;
-  for (let i = 0; i < 80; i++) {
-    await page.clock.runFor(100);
-    const ready = Number(await badge.getAttribute("data-ready"));
-    if (ready > 1 && ready < 8) {
-      partial = true;
-      break;
-    }
+  // Observe every published readiness change in the page. Do not spend eighty browser round trips
+  // and trace snapshots discovering the first partial fleet on the small native runners.
+  const publications = await badge.evaluateHandle((el) => {
+    const samples: { ready: number; announcement: string | null }[] = [];
+    const observer = new MutationObserver(() => {
+      samples.push({
+        ready: Number(el.getAttribute("data-ready")),
+        announcement: document.querySelector('[data-testid="autoscaling-announcement"]')?.textContent ?? null,
+      });
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["data-ready"] });
+    return { samples, stop: () => observer.disconnect() };
+  });
+  try {
+    await page.clock.runFor(8000);
+    const partial = (await publications.evaluate(({ samples }) => samples)).filter((s) => s.ready > 1 && s.ready < 8);
+    expect(partial.length).toBeGreaterThan(0);
+    for (const sample of partial) expect(sample.announcement).toBe(announcement);
+  } finally {
+    await publications.evaluate(({ stop }) => stop());
+    await publications.dispose();
   }
-  expect(partial).toBe(true);
-  await expect(status).toHaveText(announcement);
   await page.clock.runFor(10_000);
   await expect(badge).toHaveAttribute("data-ready", "8");
   await expect(status).toContainText("Ready: 8 → Desired: 8");

@@ -16,6 +16,8 @@ import { createRunQueue, type RunRequest } from "../live/runQueue";
 
 export interface CanvasHost {
   editor: EditorApi;
+  /** The mounted editor, preserved when its first edit saves an example as an owned copy. */
+  instanceId?: string;
   /** Privacy provenance, for the one decision in src/lib/localOnly.ts (never read these directly). */
   localOnly?: boolean;
   private?: boolean;

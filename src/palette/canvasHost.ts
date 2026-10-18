@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useRef } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { EditorApi } from "../editor/types";
 import { paletteHost, publish } from "./host";
@@ -31,6 +31,7 @@ export function useCanvasHost(
     focus?: (id: string, placed: boolean) => void;
   },
 ) {
+  const instanceId = useId();
   const rf = useReactFlow();
   const rfRef = useRef(rf);
   useLayoutEffect(() => {
@@ -62,6 +63,7 @@ export function useCanvasHost(
     };
     const off = publish("canvas", {
       editor,
+      instanceId,
       live,
       localOnly,
       private: isPrivate,
@@ -85,5 +87,18 @@ export function useCanvasHost(
     });
     paletteHost.activateRun();
     return off;
-  }, [editor, live, enabled, localOnly, isPrivate, onDevice, allowOnDevice, documentId, revision, goTo, focus]);
+  }, [
+    editor,
+    instanceId,
+    live,
+    enabled,
+    localOnly,
+    isPrivate,
+    onDevice,
+    allowOnDevice,
+    documentId,
+    revision,
+    goTo,
+    focus,
+  ]);
 }

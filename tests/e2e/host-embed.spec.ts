@@ -3,7 +3,17 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Frame, Page, Request } from "@playwright/test";
-import { test as base, expect, E2E_TARGET, expectNoErrors, pageLoadTimeout, shareVia } from "./fixtures";
+import {
+  test as base,
+  expect,
+  E2E_TARGET,
+  expectNoErrors,
+  pageLoadTimeout,
+  shareVia,
+  pauseClock,
+  waitForCameraIdle,
+  waitForInteractionIdle,
+} from "./fixtures";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 
 // Host-supplied embeds (docs/EMBEDDING.md): a page on another origin loads the <live-diagram> web component from
@@ -200,6 +210,7 @@ test.describe("host-supplied embeds", () => {
     consoleErrors,
   }) => {
     test.slow();
+    await page.clock.install();
     const appBase = new URL("./", baseURL).href;
     const appOrigin = new URL(appBase).origin;
     const violations = await watchCsp(page);
@@ -252,16 +263,19 @@ test.describe("host-supplied embeds", () => {
     const ms = async () => Number(await clock.getAttribute("data-ms"));
     const t0 = await ms();
     await expect.poll(ms).toBeGreaterThan(t0);
+    await waitForCameraIdle(view);
+    await pauseClock(page);
 
     // pause, then play.
     await call(page, "pause");
     await expect(view.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
     await expect.poll(() => lastEvent(page, "playstate")).toEqual({ playing: false, speed: 1 });
     const paused = await ms();
-    await page.waitForTimeout(500);
+    await page.clock.runFor(500);
     expect(await ms()).toBe(paused);
     await call(page, "play");
     await expect.poll(() => lastEvent(page, "playstate")).toEqual({ playing: true, speed: 1 });
+    await page.clock.runFor(250);
     await expect.poll(ms).toBeGreaterThan(paused);
 
     // setSpeed and selectSimulation.
@@ -280,9 +294,11 @@ test.describe("host-supplied embeds", () => {
     // nodeClick: a click on a node reports its id and label (paused, so the camera holds still).
     await call(page, "pause");
     await expect(view.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
-    await page.waitForTimeout(1000);
+    await page.clock.runFor(1000);
+    await waitForCameraIdle(view);
     await view.getByTestId("node-orders").click();
     await expect.poll(() => lastEvent(page, "nodeclick")).toEqual({ nodeId: "orders", label: "Order service" });
+    await page.clock.resume();
 
     // setTheme.
     await call(page, "setTheme", "dark");
@@ -726,16 +742,12 @@ test.describe("host-supplied embeds: timing and requests", () => {
   test("Enter or Space on a focused node reports it, like a click", async ({ page, baseURL, servers }) => {
     await emptyHost(page, servers, baseURL ?? "");
     expect(await loadVia(page, [titled("Keys")])).toEqual(["loaded:Keys"]);
-    // The node itself is the Tab stop (React Flow's wrapper round the test id).
-    await view(page)
-      .getByTestId("node-orders")
-      .evaluate((n) => n.closest<HTMLElement>("[data-id]")?.focus());
-    await page.keyboard.press("Enter");
+    await waitForCameraIdle(view(page));
+    await waitForInteractionIdle(view(page));
+    // Target the iframe's actual Tab stop; the host page can still own the browser's keyboard.
+    await view(page).getByTestId("rf__node-orders").press("Enter");
     await expect.poll(() => lastEvent(page, "nodeclick")).toEqual({ nodeId: "orders", label: "Order service" });
-    await view(page)
-      .getByTestId("node-payments")
-      .evaluate((n) => n.closest<HTMLElement>("[data-id]")?.focus());
-    await page.keyboard.press("Space");
+    await view(page).getByTestId("rf__node-payments").press("Space");
     await expect.poll(() => lastEvent(page, "nodeclick")).toMatchObject({ nodeId: "payments" });
   });
 });

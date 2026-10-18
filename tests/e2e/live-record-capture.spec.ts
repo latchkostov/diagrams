@@ -1,4 +1,4 @@
-import { waitForStableViewport } from "./fixtures";
+import { waitForCameraIdle } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
 
@@ -49,19 +49,7 @@ async function record(page: Page) {
   if (await fromStart.isVisible()) await fromStart.uncheck();
   await page.getByTestId("record-start").click();
   await expect(page.getByTestId("record-indicator")).toBeVisible({ timeout: 10_000 });
-  // Recording presents the diagram and refits it: wait until the view stops moving.
-  let last = "";
-  await expect
-    .poll(
-      async () => {
-        const now = (await canvas(page).getAttribute("style")) ?? "";
-        const still = now === last;
-        last = now;
-        return still;
-      },
-      { intervals: [400], timeout: 15_000 },
-    )
-    .toBe(true);
+  await waitForCameraIdle(page);
 }
 
 type Layer = "base" | "over" | "march" | "glow";
@@ -295,7 +283,7 @@ for (const renderer of ["worker", "main"] as const) {
     test("slow motion's captions are in the video", async ({ page, consoleErrors }) => {
       test.setTimeout(90_000);
       await goLive(page, renderer);
-      await waitForStableViewport(page);
+      await waitForCameraIdle(page);
       await page.getByTestId("node-shopper").click({ button: "right" });
       await page.getByTestId("context-menu-item-sim.slowmo-from").click();
       await expect(canvas(page)).toHaveAttribute("data-slowmo", "playing");

@@ -1,5 +1,5 @@
 import { currentDiagram, openExample } from "./fixtures";
-import { test, expect, gotoCanvas, gotoLive, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLive, expectNoErrors, pauseClock } from "./fixtures";
 import { MOD, SLUG, must, nodeCount, openAdvanced, savedDiagram } from "./ai-helpers";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -273,6 +273,7 @@ test.describe("AI panel dock", () => {
   test("the thread is kept per diagram in this browser, never in the file, and can be cleared", async ({ page }) => {
     await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
+    await savedDiagram(page);
     await page.reload();
     await expect(page.getByTestId("ai-turn-0")).toContainText("Add a billing worker");
     // A reload starts a new undo history: the turn no longer claims it can undo itself.
@@ -293,6 +294,24 @@ test.describe("AI panel dock", () => {
     await expect(page.getByTestId("ai-empty")).toBeVisible();
     await page.getByTestId("ai-clear-undo").click();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+  });
+
+  test("saving the first example edit keeps the next AI draft and its focus", async ({ page }) => {
+    await openAdvanced(page);
+    await page.clock.install();
+    await pauseClock(page);
+    await applyTurn(page, "Add a billing worker", ADD_WORKER);
+    await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+    await page.getByTestId("ai-request").fill("Add its dead-letter queue");
+    await page.getByTestId("ai-reply").fill(ADD_DLQ);
+    // Flush while the next reply is ready to apply, before any autosave timer has run.
+    await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    await expect(page.getByTestId("ai-request")).toHaveValue("Add its dead-letter queue");
+    await expect(page.getByTestId("ai-reply")).toHaveValue(ADD_DLQ);
+    await expect(page.getByTestId("ai-reply")).toBeFocused();
+    await page.getByTestId("ai-apply").click();
+    await expect(page.getByTestId("ai-turn-1")).toBeVisible();
   });
 });
 

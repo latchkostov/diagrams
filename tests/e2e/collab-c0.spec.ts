@@ -62,22 +62,27 @@ test("an unreachable matchmaking transport offers Retry and a file without losin
   await page.addInitScript(() => {
     const w = window as unknown as { WebSocket: unknown; __spikeSocketAttempts: number };
     w.__spikeSocketAttempts = 0;
-    w.WebSocket = class {
-      readyState = 0;
-      onopen = null;
-      onclose = null;
-      onmessage = null;
-      onerror = null;
-      constructor() {
+    // Leave Vite's own HMR socket intact: only the matchmaking endpoint is stalled.
+    const NativeSocket = window.WebSocket;
+    w.WebSocket = new Proxy(NativeSocket, {
+      construct(target, args: ConstructorParameters<typeof WebSocket>) {
+        if (new URL(args[0]).hostname !== "tracker.invalid") return Reflect.construct(target, args);
         w.__spikeSocketAttempts++;
-      }
-      close() {
-        this.readyState = 3;
-      }
-      send() {
-        throw new Error("A stalled socket cannot send");
-      }
-    };
+        return {
+          readyState: 0,
+          onopen: null,
+          onclose: null,
+          onmessage: null,
+          onerror: null,
+          close() {
+            this.readyState = 3;
+          },
+          send() {
+            throw new Error("A stalled socket cannot send");
+          },
+        };
+      },
+    });
   });
   await gotoLab(page, "collab-c0");
   await page.getByTestId("collab-spike-new").click();

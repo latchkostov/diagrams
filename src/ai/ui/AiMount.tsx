@@ -82,7 +82,9 @@ export function AiMount({
   if (view !== "canvas" && editorSeen) setEditorSeen(false);
   // A restored dock can load before the canvas. Do not offer inputs on a panel
   // that will immediately remount, or remount it during a host's detach/attach.
-  const identity = canvas ? (canvas.documentId ?? "none") : null;
+  // Saving an example as an owned copy changes its storage identity while the editor stays mounted.
+  // Keep the composer and dictation with that editor; a different editor still starts a fresh panel.
+  const identity = canvas ? (canvas.instanceId ?? canvas.documentId ?? "none") : null;
   const [panelIdentity, setPanelIdentity] = useState(identity);
   if (identity !== null && identity !== panelIdentity) setPanelIdentity(identity);
   if (view !== "canvas" && panelIdentity !== null) setPanelIdentity(null);
