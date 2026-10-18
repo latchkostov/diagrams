@@ -35,7 +35,7 @@ export function positive(value: unknown, name: string): number;
 export function validatePorts(base: number): number;
 export function workerCount(cpus: number, memory: number, caps?: Pick<Config, "cpus" | "memory">): number;
 export function resourceRequest(config: Config, capacity: number): { workers: number; cpus: number; slots: number };
-export function admit<T extends { state: string; slots: number; sequence: number }>(
+export function admit<T extends { state: string; slots: number; sequence: number; worktree?: string; ports?: number }>(
   entries: T[],
   capacity: number,
 ): T[];

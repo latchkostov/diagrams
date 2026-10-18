@@ -10,8 +10,6 @@ export function runGate(
     git?: (args: string[], cwd: string) => Promise<string>;
     acquireBudget?: typeof acquireBudget;
     doctor?: (root: string, config: Config) => Promise<boolean>;
-    probePorts?: (base: number) => Promise<number>;
-    pickPorts?: () => Promise<number>;
     runSteps?: typeof runSteps;
     linuxRun?: typeof linuxRun;
   },

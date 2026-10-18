@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import process from "node:process";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { acquireBudget, BUSY_EXIT, BUSY_MESSAGE, type Entry } from "../../scripts/gate/budget.mjs";
 import { admit, options, resourceRequest } from "../../scripts/gate/logic.mjs";
 import { runSteps } from "../../scripts/gate/run.mjs";
@@ -22,10 +22,10 @@ function fixture() {
   directories.push(directory);
   return directory;
 }
-const request = (slots: number, capacity = 4) => ({
+const request = (slots: number, capacity = 4, worktree = fixture()) => ({
   capacity,
   slots,
-  worktree: resolve("."),
+  worktree,
   branch: "test/budget",
   command: `gate --workers ${slots}`,
 });
@@ -137,6 +137,176 @@ it("admits the FIFO prefix without exceeding capacity or letting small requests 
   expect(admit([running, quick, { ...quick, sequence: 4 }], 4)).toHaveLength(2);
 });
 
+it("keeps overlapping explicit ranges queued, including unaligned bases, and allows adjacent ranges", () => {
+  const running = { state: "running", slots: 1, sequence: 1, worktree: "a", ports: 6662 };
+  const waiting = { state: "waiting", slots: 1, sequence: 2, worktree: "b", ports: 6660 };
+  expect(admit([running, waiting], 4)).toEqual([]);
+  expect(admit([running, { ...waiting, ports: 6666 }], 4)).toEqual([]);
+  expect(admit([running, { ...waiting, ports: 6667 }], 4)).toHaveLength(1);
+});
+
+it("preserves the established host capacity when a constrained waiter joins behind a full run", async () => {
+  const directory = fixture();
+  const first = await acquireBudget(directory, request(2, 8));
+  cleanups.push(first);
+  const fullWaiting = deferred();
+  const full = acquireBudget(directory, request(8, 8), { waiting: () => fullWaiting.resolve() });
+  await fullWaiting.promise;
+  const smallWaiting = deferred();
+  const small = acquireBudget(directory, request(1, 2), { waiting: () => smallWaiting.resolve() });
+  await smallWaiting.promise;
+  expect(entries(directory).map((e) => e.capacity)).toEqual([8, 8, 8]);
+  await first();
+  cleanups.pop();
+  const releaseFull = await full;
+  expect(entries(directory).find((e) => e.slots === 1)?.state).toBe("waiting");
+  await releaseFull();
+  await (
+    await small
+  )();
+  expect(entries(directory)).toEqual([]);
+});
+
+it("rejects a request larger than the established capacity before it can stall the FIFO", async () => {
+  const directory = fixture();
+  const first = await acquireBudget(directory, request(1, 2));
+  cleanups.push(first);
+  await expect(acquireBudget(directory, request(8, 8))).rejects.toThrow("active host budget 2");
+  const second = await acquireBudget(directory, request(1, 8));
+  await second();
+  expect(entries(directory)).toHaveLength(1);
+});
+
+function childGate(directory: string, input: ReturnType<typeof request> & { ports?: number }) {
+  const module = pathToFileURL(resolve("scripts/gate/budget.mjs")).href;
+  const child = spawn(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `
+      import { acquireBudget } from ${JSON.stringify(module)};
+      const release = await acquireBudget(${JSON.stringify(directory)}, ${JSON.stringify(input)}, {
+        maxWait: 1,
+        waiting: () => process.send({ state: "waiting" })
+      });
+      process.send({ state: "running", ports: release.ports });
+      process.once("message", async () => { await release(); process.disconnect(); });
+    `,
+    ],
+    { stdio: ["ignore", "ignore", "pipe", "ipc"], windowsHide: true },
+  );
+  cleanups.push(async () => {
+    if (child.exitCode === null && child.signalCode === null) {
+      const exited = once(child, "exit");
+      child.kill();
+      await exited;
+    }
+  });
+  return child;
+}
+
+it("reserves different automatic port ranges for two processes in different worktrees before servers start", async () => {
+  const directory = fixture();
+  const first = childGate(directory, request(1));
+  const [a] = await once(first, "message");
+  expect(a.state).toBe("running");
+  const second = childGate(directory, request(1));
+  const [b] = await once(second, "message");
+  expect(b.state).toBe("running");
+  expect(Math.abs(a.ports - b.ports)).toBeGreaterThanOrEqual(5);
+  expect(
+    entries(directory)
+      .map((e) => e.ports)
+      .sort(),
+  ).toEqual([a.ports, b.ports].sort());
+  const exited = once(first, "exit");
+  first.kill();
+  await exited;
+  // Death frees the reservation even though its sidecar remains until the next scan.
+  const third = await acquireBudget(directory, { ...request(1), ports: a.ports });
+  expect(third.ports).toBe(a.ports);
+  await third();
+});
+
+it("makes a second process in the same canonical checkout wait despite spare workers and different ports", async () => {
+  const directory = fixture();
+  const worktree = fixture();
+  const alias = join(fixture(), "alias");
+  symlinkSync(worktree, alias, process.platform === "win32" ? "junction" : "dir");
+  const first = childGate(directory, request(1, 4, worktree));
+  const [a] = await once(first, "message");
+  expect(a.state).toBe("running");
+  const second = childGate(directory, { ...request(1, 4, alias), ports: a.ports + 10 });
+  const [b] = await once(second, "message");
+  expect(b.state).toBe("waiting");
+  expect(entries(directory).filter((e) => e.state === "running")).toHaveLength(1);
+  const resumed = once(second, "message");
+  first.send("release");
+  expect((await resumed)[0].state).toBe("running");
+});
+
+it.each(["automatic", "explicit"])("excludes overlaps with %s port reservations", async (mode) => {
+  const directory = fixture();
+  const first = await acquireBudget(directory, { ...request(1), ports: mode === "explicit" ? 6662 : undefined });
+  cleanups.push(first);
+  const waiting = deferred();
+  const overlap = acquireBudget(
+    directory,
+    { ...request(1), ports: first.ports + 2 },
+    {
+      waiting: () => waiting.resolve(),
+      probe: async (base) => base,
+    },
+  );
+  await waiting.promise;
+  const [holder] = entries(directory).filter((e) => e.state === "running");
+  expect(holder.ports).toBe(first.ports);
+  await first();
+  cleanups.pop();
+  const second = await overlap;
+  expect(second.ports).toBe(first.ports + 2);
+  await second();
+});
+
+it.each([
+  ["checkout", "deadline"],
+  ["checkout", "cancellation"],
+  ["ports", "deadline"],
+  ["ports", "cancellation"],
+])("cleans up a %s waiter on %s", async (lease, reason) => {
+  const directory = fixture();
+  const worktree = fixture();
+  const first = await acquireBudget(
+    directory,
+    { ...request(1, 4, worktree), ports: 6660 },
+    {
+      probe: async (port) => port,
+    },
+  );
+  cleanups.push(first);
+  const abort = new AbortController();
+  let now = 0;
+  const queued = acquireBudget(
+    directory,
+    { ...request(1, 4, lease === "checkout" ? worktree : fixture()), ports: lease === "checkout" ? 6670 : 6662 },
+    {
+      maxWait: 1,
+      signal: abort.signal,
+      now: () => now,
+      sleep: async () => {
+        if (reason === "deadline") now = 60_000;
+        else abort.abort(new Error("cancelled checkout waiter"));
+      },
+    },
+  );
+  await expect(queued).rejects.toMatchObject(
+    reason === "deadline" ? { exitCode: 75 } : { message: "cancelled checkout waiter" },
+  );
+  expect(entries(directory)).toHaveLength(1);
+  expect(entries(directory)[0].ports).toBe(first.ports);
+});
+
 it("runs two two-worker quick gates together and gives a queued full run priority over later quick gates", async () => {
   const directory = fixture();
   const first = await hold(directory, 2);
@@ -180,7 +350,7 @@ it("refreshes holder details and expires a max-wait minute with a distinct busy 
   expect(BUSY_EXIT).toBe(75);
   expect(messages).toHaveLength(4);
   for (const message of messages) {
-    expect(message).toContain(resolve("."));
+    expect(message).toContain(entries(directory)[0].worktree);
     expect(message).toContain("test/budget");
     expect(message).toContain("gate --workers 4");
     expect(message).toContain("started ");
@@ -202,22 +372,47 @@ it("cancels a queued run without releasing anyone else's reservation", async () 
   expect(entries(directory)).toHaveLength(1);
 });
 
-it("expires a queued run even if another process holds the admission mutex", async () => {
+it("expires while blocked acquiring the admission mutex, before that mutex is released", async () => {
   const directory = fixture();
   await hold(directory, 4);
-  let now = Date.now();
-  await expect(
-    acquireBudget(directory, request(4), {
+  const blocked = deferred();
+  let unlock!: () => Promise<void>;
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const queued = acquireBudget(directory, request(4), {
       maxWait: 1,
-      now: () => now,
+      lock: (key, platform, waiting, port, signal) =>
+        acquireLock(key, platform, port === undefined ? () => blocked.resolve() : waiting, port, signal),
       sleep: async () => {
-        const unlock = await acquireLock(directory, process.platform);
+        unlock = await acquireLock(directory, process.platform);
         cleanups.push(unlock);
-        now += 60_000;
       },
-    }),
-  ).rejects.toMatchObject({ message: BUSY_MESSAGE, exitCode: BUSY_EXIT });
-  expect(entries(directory)).toHaveLength(1);
+    });
+    const expired = expect(queued).rejects.toMatchObject({ message: BUSY_MESSAGE, exitCode: BUSY_EXIT });
+    await blocked.promise;
+    expect(entries(directory)).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(60_000);
+    await expired;
+    expect(entries(directory)).toHaveLength(1);
+    // The queued owner's socket/sidecar must be gone while the mutex is still held.
+    expect(unlock).toBeDefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+function budgetSubprocess(source: string, timeout = 10_000) {
+  return spawnSync(process.execPath, ["--input-type=module", "-e", source], {
+    encoding: "utf8",
+    windowsHide: true,
+    timeout,
+  });
+}
+
+it("bounds a stalled synchronous subprocess with a hang backstop", () => {
+  const result = budgetSubprocess("Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0)", 1_000);
+  expect(result.error).toMatchObject({ code: "ETIMEDOUT" });
+  expect(result.status).not.toBe(0);
 });
 
 it("tolerates an owner unlinking its sidecar during the admission scan", () => {
@@ -225,12 +420,7 @@ it("tolerates an owner unlinking its sidecar during the admission scan", () => {
   const file = join(directory, "released.json");
   writeFileSync(file, "{}");
   const module = pathToFileURL(resolve("scripts/gate/budget.mjs")).href;
-  const result = spawnSync(
-    process.execPath,
-    [
-      "--input-type=module",
-      "-e",
-      `
+  const result = budgetSubprocess(`
     import fs from "node:fs";
     import { syncBuiltinESMExports } from "node:module";
     import { acquireBudget } from ${JSON.stringify(module)};
@@ -247,10 +437,8 @@ it("tolerates an owner unlinking its sidecar during the admission scan", () => {
     const release = await acquireBudget(${JSON.stringify(directory)}, ${JSON.stringify(request(4))});
     await release();
     if (!raced) throw Error("Did not exercise the unlink race");
-  `,
-    ],
-    { encoding: "utf8", windowsHide: true },
-  );
+  `);
+  expect(result.error, String(result.error)).toBeUndefined();
   expect(result.status, result.stderr).toBe(0);
   expect(entries(directory)).toEqual([]);
 });

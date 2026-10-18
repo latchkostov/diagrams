@@ -94,12 +94,22 @@ export function resourceRequest(config, capacity) {
 
 /** Strict FIFO: reserve the available prefix, so later small runs cannot starve a full run. */
 export function admit(entries, capacity) {
-  let free = capacity - entries.filter((e) => e.state === "running").reduce((n, e) => n + e.slots, 0);
+  const reserved = entries.filter((e) => e.state === "running");
+  let free = capacity - reserved.reduce((n, e) => n + e.slots, 0);
   const granted = [];
   for (const entry of entries.filter((e) => e.state === "waiting").sort((a, b) => a.sequence - b.sequence)) {
-    if (entry.slots > free) break;
+    if (
+      entry.slots > free ||
+      reserved.some(
+        (other) =>
+          (entry.worktree && entry.worktree === other.worktree) ||
+          (entry.ports !== undefined && other.ports !== undefined && Math.abs(entry.ports - other.ports) < 5),
+      )
+    )
+      break;
     free -= entry.slots;
     granted.push(entry);
+    reserved.push(entry);
   }
   return granted;
 }

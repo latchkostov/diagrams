@@ -1,11 +1,10 @@
 import { createServer } from "node:net";
-import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import process from "node:process";
 import { setTimeout as pause } from "node:timers/promises";
-import { setTimeout, clearTimeout } from "node:timers";
-import { acquireLock } from "./host.mjs";
+import { acquireLock, pickPorts, probePorts } from "./host.mjs";
 import { admit } from "./logic.mjs";
 
 export const BUSY_EXIT = 75;
@@ -71,7 +70,7 @@ export function waitingMessage(entries, capacity, now = Date.now()) {
       .sort((a, b) => a.sequence - b.sequence)
       .map(
         (e) =>
-          `  ${e.state}: ${e.worktree} | ${e.branch} | ${e.command} | PID ${e.pid} | ${e.slots} workers/CPUs | started ${e.started} | elapsed ${Math.max(0, Math.floor((now - Date.parse(e.started)) / 1000))}s`,
+          `  ${e.state}: ${e.worktree} | ${e.branch} | ${e.command} | PID ${e.pid} | ${e.slots} workers/CPUs${e.ports === undefined ? "" : ` | ports ${e.ports}–${e.ports + 4}`} | started ${e.started} | elapsed ${Math.max(0, Math.floor((now - Date.parse(e.started)) / 1000))}s`,
       ),
   ].join("\n");
 }
@@ -80,14 +79,17 @@ export function waitingMessage(entries, capacity, now = Date.now()) {
 export async function acquireBudget(
   directory,
   request,
-  { signal, waiting = () => {}, maxWait, now = Date.now, sleep = pause } = {},
+  { signal, waiting = () => {}, maxWait, now = Date.now, sleep = pause, lock = acquireLock, probe = probePorts } = {},
 ) {
   if (!Number.isSafeInteger(request.slots) || request.slots < 1 || request.slots > request.capacity)
     throw new Error("Invalid gate budget request");
+  const canonical = realpathSync(request.worktree).replaceAll("\\", "/");
+  request = { ...request, worktree: process.platform === "win32" ? canonical.toLowerCase() : canonical };
   mkdirSync(directory, { recursive: true });
   const abort = new globalThis.AbortController();
   const combined = globalThis.AbortSignal.any([abort.signal, ...(signal ? [signal] : [])]);
-  const timer = maxWait === undefined ? undefined : setTimeout(() => abort.abort(new BusyError()), maxWait * 60_000);
+  const timer =
+    maxWait === undefined ? undefined : globalThis.setTimeout(() => abort.abort(new BusyError()), maxWait * 60_000);
   const started = now();
   const id = randomUUID();
   let owner;
@@ -95,24 +97,32 @@ export async function acquireBudget(
   let lastNotice = -Infinity;
   const cleanup = async () => {
     // Never wait for admission during release/timeout: that would defeat --max-wait if the
-    // mutex holder is stalled. A concurrent grant can recreate this sidecar, but without its
-    // OS socket it is stale and ignored, exactly as after process death.
+    // mutex holder is stalled. A concurrent scanner may still see the sidecar, but without
+    // its OS socket it is stale and ignored, exactly as after process death.
     await owner?.();
     if (registered) rmSync(join(directory, `${id}.json`), { force: true });
   };
   try {
-    owner = await acquireLock(directory, process.platform, undefined, 0, combined);
+    owner = await lock(directory, process.platform, undefined, 0, combined);
     for (;;) {
       combined.throwIfAborted();
       if (maxWait !== undefined && now() - started >= maxWait * 60_000) throw new BusyError();
-      const unlock = await acquireLock(directory, process.platform, undefined, undefined, combined);
+      const unlock = await lock(directory, process.platform, undefined, undefined, combined);
       let entries;
       let mine;
       try {
         entries = await liveEntries(directory);
+        // The first participant establishes host capacity until the live queue drains. A
+        // later process's affinity limits its own request, never an earlier FIFO head.
+        const capacity = entries[0]?.capacity ?? request.capacity;
         if (!registered) {
+          if (request.slots > capacity)
+            throw new Error(
+              `Requested ${request.slots} workers/CPUs exceeds the active host budget ${capacity}; reduce --workers/--cpus`,
+            );
           const entry = {
             ...request,
+            capacity,
             id,
             pid: process.pid,
             port: owner.port,
@@ -124,26 +134,34 @@ export async function acquireBudget(
           registered = true;
           entries.push(entry);
         }
-        // A more constrained participant's budget wins if environments report different limits.
-        const capacity = Math.min(request.capacity, ...entries.map((e) => e.capacity));
-        for (const entry of admit(entries, capacity)) {
-          entry.state = "running";
-          save(directory, entry);
-        }
         mine = entries.find((e) => e.id === id);
+        // Only an owner grants itself. Checkout, workers and ports are acquired in the
+        // same transaction; a failed probe cannot strand another process's reservation.
+        if (admit(entries, capacity).includes(mine)) {
+          const probeAvailable = async (base) => {
+            combined.throwIfAborted();
+            if (entries.some((e) => e.state === "running" && e.ports !== undefined && Math.abs(e.ports - base) < 5))
+              throw new Error(`Port range ${base}–${base + 4} is reserved`);
+            return probe(base);
+          };
+          mine.ports = mine.ports === undefined ? await pickPorts(probeAvailable) : await probeAvailable(mine.ports);
+          combined.throwIfAborted();
+          mine.state = "running";
+          save(directory, mine);
+        }
       } finally {
         await unlock();
       }
       if (mine.state === "running") {
         combined.throwIfAborted();
-        clearTimeout(timer);
-        return cleanup;
+        globalThis.clearTimeout(timer);
+        return Object.assign(cleanup, { ports: mine.ports });
       }
       if (now() - lastNotice >= 15_000) {
         waiting(
           waitingMessage(
             entries.filter((e) => e.state === "running" || e.sequence < mine.sequence),
-            request.capacity,
+            mine.capacity,
             now(),
           ),
         );
@@ -155,6 +173,6 @@ export async function acquireBudget(
     await cleanup();
     throw combined.aborted ? combined.reason : error;
   } finally {
-    clearTimeout(timer);
+    globalThis.clearTimeout(timer);
   }
 }

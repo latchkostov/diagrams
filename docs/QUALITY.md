@@ -59,7 +59,8 @@ Use `pnpm gate full --max-wait 1 --ports 6660` after committing when hunting fla
 CI or choosing extra local verification. Add `--linux` for CI's browser environment.
 Omit `--ports` to find a free five-port
 range in 6400–6999. The gate checks IPv4 and IPv6 loopback, never reuses an existing server,
-and rejects any range containing 5190 or 6000. Choose different ranges for concurrent runs.
+and rejects any range containing 5190 or 6000. Automatic and explicit ranges are reserved atomically
+at admission until the gate finishes; overlapping explicit ranges wait for their holder.
 
 All gate runs in the same OS temporary directory share a worker budget, including separate clones.
 Capacity is `workerCount(os.availableParallelism(), os.totalmem())`: three quarters of logical CPUs,
@@ -70,18 +71,26 @@ count; `--cpus N` can set a different positive CPU quota, and `--memory M` caps 
 Automatic workers respect both container caps before admission; explicit `--workers N` overrides
 automatic sizing. Admission charges the greater of workers and rounded-up container CPUs.
 Without `--cpus`, it charges the worker count. Requests above capacity fail with guidance to reduce them.
+The first live participant establishes the shared host capacity until the live queue drains. A later
+process's smaller affinity limit constrains its own request without reducing that shared capacity.
+Requests larger than the established capacity are rejected before enqueueing, so every accepted FIFO
+request can fit once its predecessors finish.
 
 A short OS socket mutex coordinates FIFO admission. Each run owns an OS-released socket with a JSON
 sidecar in the OS temp directory's `livediagrams-gate-budget-v1/`, describing worktree, branch,
-command, PID, start time, slots and queue position. Sidecars whose PID or socket is gone are ignored
+command, PID, start time, slots, reserved five-port range and queue position. A lease keyed by the
+checkout's canonical path serializes gates sharing build and parity outputs, including path aliases.
+Separate worktrees can overlap within the worker budget using nonoverlapping port reservations.
+Sidecars whose PID or socket is gone are ignored
 and removed. They never own capacity on their own; no manual stale-lock cleanup is needed on
 Windows, macOS or Linux. Later small runs cannot bypass a waiting full run. Two two-worker quick
-runs can proceed together on a budget of four or more.
+runs in different worktrees can proceed together on a budget of four or more.
 
 Waiters print running holders and earlier queued requests immediately and every 15 seconds, with
 elapsed time. `--max-wait <minutes>` bounds admission (fractional minutes are accepted); expiry exits
-**75**, with `busy: push and let CI run the full gate, or retry later`. Interruption removes only that
-run's reservation. Agents should use `--max-wait 1`; omission allows an unbounded, visible wait.
+**75**, with `busy: push and let CI run the full gate, or retry later`. The same deadline and cancellation
+cover worker capacity, checkout exclusion, port reservations and the admission mutex. Interruption
+removes only that run's reservation. Agents should use `--max-wait 1`; omission allows an unbounded, visible wait.
 
 Full runs lint, typecheck, formatting, i18n and skill checks, unit coverage, production build,
 entry size, output parity, then every CI Playwright project: chromium, dev, subpath, internal

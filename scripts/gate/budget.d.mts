@@ -4,6 +4,7 @@ export interface Request {
   worktree: string;
   branch: string;
   command: string;
+  ports?: number;
 }
 export interface Entry extends Request {
   id: string;
@@ -28,5 +29,7 @@ export function acquireBudget(
     maxWait?: number;
     now?: () => number;
     sleep?: (ms: number, value: undefined, options: { signal: AbortSignal }) => Promise<unknown>;
+    lock?: typeof import("./host.mjs").acquireLock;
+    probe?: typeof import("./host.mjs").probePorts;
   },
-): Promise<() => Promise<void>>;
+): Promise<(() => Promise<void>) & { ports: number }>;

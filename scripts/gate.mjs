@@ -7,7 +7,6 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 import { options, canStamp, checkTree, gitFiles, workerCount, resourceRequest } from "./gate/logic.mjs";
-import { pickPorts, probePorts } from "./gate/host.mjs";
 import { acquireBudget } from "./gate/budget.mjs";
 import { git, cancelCommands } from "./gate/commands.mjs";
 import { doctor, setup } from "./gate/doctor.mjs";
@@ -22,8 +21,6 @@ export async function runGate(config, dependencies = {}, signal) {
     git: readGit = git,
     acquireBudget: reserve = acquireBudget,
     doctor: diagnose = doctor,
-    probePorts: probe = probePorts,
-    pickPorts: pick = pickPorts,
     runSteps: run = runSteps,
     linuxRun: linux = linuxRun,
     stampDir,
@@ -40,12 +37,14 @@ export async function runGate(config, dependencies = {}, signal) {
       {
         capacity,
         slots: resources.slots,
+        ports: config.ports,
         worktree: root,
         branch: (await readGit(["branch", "--show-current"], root)) || "(detached HEAD)",
         command: `pnpm gate ${process.argv.slice(2).join(" ")}`,
       },
       { waiting: (message) => console.log(message), maxWait: config.maxWait, signal },
     );
+    config.ports = release.ports;
     console.log(`Gate budget: ${resources.slots}/${capacity} workers/CPUs; ${config.workers} test workers`);
     const started = performance.now();
     const sha = await readGit(["rev-parse", "HEAD"], root);
@@ -58,7 +57,6 @@ export async function runGate(config, dependencies = {}, signal) {
       console.warn("WARNING: --no-docker skips Docker checks and browser parity. NO VERIFIED STAMP will be written.");
     if (!(await diagnose(root, config)))
       throw new Error("Doctor failed. Run pnpm gate setup or follow the fixes above.");
-    config.ports = config.ports ? await probe(config.ports) : await pick();
     console.log(`Ports: ${config.ports}–${config.ports + 4}`);
     let changed = [];
     if (config.command === "quick") {

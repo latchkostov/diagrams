@@ -1,7 +1,7 @@
 import console from "node:console";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, resolve, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer } from "node:net";
@@ -25,6 +25,7 @@ import { linuxRun } from "../../scripts/gate/linux.mjs";
 import { installed } from "../../scripts/gate/doctor.mjs";
 import { command, git, pnpmCommand } from "../../scripts/gate/commands.mjs";
 import { runGate } from "../../scripts/gate.mjs";
+import { acquireBudget } from "../../scripts/gate/budget.mjs";
 
 it("invokes standalone pnpm and JS shims without shell interpretation", () => {
   const args = ["exec", "tool", "a path with spaces", "$(literal)"];
@@ -325,6 +326,39 @@ it("rejects dirty trees including untracked files, and a changed HEAD", () => {
   expect(() => checkTree("", "abc", "def")).toThrow("HEAD changed");
 });
 
+it.each([undefined, 6660])("holds checkout and port leases throughout orchestration (%s)", async (ports) => {
+  mkdirSync("tests/.output", { recursive: true });
+  const root = mkdtempSync(resolve("tests/.output/gate-leases-"));
+  const budget = join(root, "budget");
+  const readEntries = () =>
+    readdirSync(budget)
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => JSON.parse(readFileSync(join(budget, name), "utf8")));
+  const expected = ports ?? 6400;
+  try {
+    await expect(
+      runGate(options(["quick", ...(ports ? ["--ports", String(ports)] : [])]), {
+        root,
+        git: async () => root,
+        acquireBudget: (_, request, options) =>
+          acquireBudget(budget, request, { ...options, probe: async (port) => port }),
+        doctor: async () => {
+          expect(readEntries()).toMatchObject([{ state: "running", ports: expected }]);
+          return true;
+        },
+        runSteps: async (_, config) => {
+          expect(config.ports).toBe(expected);
+          expect(readEntries()).toMatchObject([{ state: "running", ports: expected }]);
+          throw new Error("injected runner failure");
+        },
+      }),
+    ).rejects.toThrow("injected runner failure");
+    expect(readEntries()).toEqual([]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 it("full gate stamps only a complete unchanged-HEAD success", async () => {
   mkdirSync("tests/.output", { recursive: true });
   const root = mkdtempSync(resolve("tests/.output/gate-stamps-"));
@@ -368,9 +402,8 @@ it("full gate stamps only a complete unchanged-HEAD success", async () => {
                   : finished && scenario === "HEAD change"
                     ? "new-head"
                     : "original-head",
-            acquireBudget: async () => async () => {},
+            acquireBudget: async (_, request) => Object.assign(async () => {}, { ports: request.ports! }),
             doctor: async () => true,
-            probePorts: async (port) => port,
             runSteps: async (cwd, config, changed, directory) => {
               const result = await runSteps(cwd, config, changed, directory, {}, async (args, { env }) => {
                 commands.push(args);
