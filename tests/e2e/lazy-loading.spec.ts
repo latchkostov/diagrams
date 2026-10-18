@@ -262,8 +262,13 @@ test("a simulation chosen while the live session downloads runs once it arrives"
   await expect(page.getByTestId("live-hud")).toHaveCount(0);
 
   await page.keyboard.press(`${MOD}+k`);
-  await page.getByTestId("command-input").fill("black friday");
+  // "Black Friday" alone also names the Black Friday commerce example; this query names only the Kafka simulation.
+  await page.getByTestId("command-input").fill("black friday 2,000 orders");
   await expect(page.getByTestId("command-item-sim:black-friday")).toBeVisible();
+  await expect(page.locator('[data-testid^="command-item-"]').first()).toHaveAttribute(
+    "data-testid",
+    "command-item-sim:black-friday",
+  );
   await page.keyboard.press("Enter");
   // Live view stays on while its code downloads.
   await expect(toggle).toHaveAttribute("aria-pressed", "true");

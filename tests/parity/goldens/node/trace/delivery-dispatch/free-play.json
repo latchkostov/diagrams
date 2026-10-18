@@ -1,0 +1,183 @@
+{
+  "trace": { "rootId": 1, "type": "Diner app", "origin": "diners", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 16, "endedAt": 650 },
+  "steps": [
+    { "t": 0, "kind": "emit", "id": 1, "type": "Diner app", "node": "diners", "route": "browse-menu" },
+    { "t": 0, "kind": "done", "id": 1, "type": "Diner app", "node": "diners", "route": "browse-menu" },
+    { "t": 0, "kind": "send", "id": 1, "type": "Diner app", "node": "diners", "edge": "diners--glb", "via": "message", "until": 200, "route": "browse-menu" },
+    { "t": 200, "kind": "arrive", "id": 1, "type": "Diner app", "node": "glb", "edge": "diners--glb", "route": "browse-menu" },
+    { "t": 210, "kind": "send", "id": 1, "type": "Diner app", "node": "glb", "edge": "diners--glb", "via": "reply", "until": 410, "route": "browse-menu" },
+    { "t": 210, "kind": "done", "id": 1, "type": "Diner app", "node": "glb", "route": "browse-menu" },
+    { "t": 210, "kind": "send", "id": 1, "type": "Diner app", "node": "glb", "edge": "glb--menu-api", "via": "message", "until": 410, "rule": "menus", "weight": 1, "route": "browse-menu" },
+    { "t": 410, "kind": "arrive", "id": 1, "type": "Diner app", "node": "menu-api", "edge": "glb--menu-api", "route": "browse-menu" },
+    { "t": 420, "kind": "start", "id": 1, "type": "Diner app", "node": "menu-api", "route": "browse-menu" },
+    { "t": 440, "kind": "send", "id": 1, "type": "Diner app", "node": "menu-api", "edge": "glb--menu-api", "via": "reply", "until": 640, "route": "browse-menu" },
+    { "t": 440, "kind": "done", "id": 1, "type": "Diner app", "node": "menu-api", "route": "browse-menu" },
+    { "t": 440, "kind": "send", "id": 1, "type": "Diner app", "node": "menu-api", "edge": "menu-api--menu-cache", "via": "message", "until": 640, "route": "browse-menu" },
+    { "t": 640, "kind": "arrive", "id": 1, "type": "Diner app", "node": "menu-cache", "edge": "menu-api--menu-cache", "route": "browse-menu" },
+    { "t": 650, "kind": "send", "id": 1, "type": "Diner app", "node": "menu-cache", "edge": "menu-api--menu-cache", "via": "reply", "until": 850, "route": "browse-menu" },
+    { "t": 650, "kind": "done", "id": 1, "type": "Diner app", "node": "menu-cache", "route": "browse-menu" },
+    { "t": 650, "kind": "end", "id": 1, "type": "Diner app", "node": "menu-cache", "reason": "stored", "route": "browse-menu" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "Diner app",
+    "origin": "diners",
+    "startedAt": 0,
+    "totalMs": 650,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "Diner app", "node": "diners", "copy": false, "route": "browse-menu" },
+      { "key": "3", "kind": "hop", "t": 200, "id": 1, "type": "Diner app", "node": "glb", "from": "diners", "edge": "diners--glb", "sync": true, "latencyMs": 200, "waitMs": 0, "travelMs": 200, "renamed": false, "copy": false, "route": "browse-menu" },
+      { "key": "7", "kind": "hop", "t": 410, "id": 1, "type": "Diner app", "node": "menu-api", "from": "glb", "edge": "glb--menu-api", "sync": true, "latencyMs": 210, "waitMs": 10, "travelMs": 200, "renamed": false, "copy": false, "route": "browse-menu", "rule": "menus", "weight": 1 },
+      { "key": "12", "kind": "hop", "t": 640, "id": 1, "type": "Diner app", "node": "menu-cache", "from": "menu-api", "edge": "menu-api--menu-cache", "sync": true, "latencyMs": 230, "waitMs": 10, "processMs": 20, "travelMs": 200, "renamed": false, "copy": false, "route": "browse-menu" }
+    ],
+    "visits": [
+      { "id": 1, "node": "diners", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "glb", "at": 200, "done": 210, "left": 210 },
+      { "id": 1, "node": "menu-api", "at": 410, "start": 420, "done": 440, "left": 440 },
+      { "id": 1, "node": "menu-cache", "at": 640, "done": 650 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["diners", "glb", "menu-api", "menu-cache"],
+    "edges": ["diners--glb", "glb--menu-api", "menu-api--menu-cache"],
+    "rowOf": { "0": "0", "3": "3", "7": "7", "12": "12" }
+  },
+  "sequence": {
+    "title": "Diner app #1",
+    "summary": "650 ms end to end",
+    "participants": [
+      { "id": "diners", "label": "Diner app" },
+      { "id": "glb", "label": "Global load balancer" },
+      { "id": "menu-api", "label": "Menu API" },
+      { "id": "menu-cache", "label": "Menu cache" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 200, "from": "diners", "to": "glb", "style": "sync", "label": "Diner app", "detail": "HTTPS", "id": 1, "type": "Diner app" },
+      { "kind": "arrow", "t": 210, "until": 410, "from": "glb", "to": "diners", "style": "reply", "label": "reply", "id": 1, "type": "Diner app" },
+      { "kind": "arrow", "t": 210, "until": 410, "from": "glb", "to": "menu-api", "style": "sync", "label": "Diner app", "detail": "Menus", "id": 1, "type": "Diner app" },
+      { "kind": "arrow", "t": 440, "until": 640, "from": "menu-api", "to": "glb", "style": "reply", "label": "reply", "id": 1, "type": "Diner app" },
+      { "kind": "arrow", "t": 440, "until": 640, "from": "menu-api", "to": "menu-cache", "style": "sync", "label": "Diner app", "id": 1, "type": "Diner app" },
+      { "kind": "arrow", "t": 650, "until": 850, "from": "menu-cache", "to": "menu-api", "style": "reply", "label": "reply", "id": 1, "type": "Diner app" }
+    ],
+    "totalMs": 650,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"Diner app #1 · 650 ms end to end\"\n---\nsequenceDiagram\n  participant diners as Diner app\n  participant glb as Global load balancer\n  participant menu_api as Menu API\n  participant menu_cache as Menu cache\n  diners->>glb: Diner app (+0.00 s)<br/>HTTPS\n  glb-->>diners: reply (+0.21 s)\n  glb->>menu_api: Diner app (+0.21 s)<br/>Menus\n  menu_api-->>glb: reply (+0.44 s)\n  menu_api->>menu_cache: Diner app (+0.44 s)\n  menu_cache-->>menu_api: reply (+0.65 s)\n",
+  "svg": {
+    "light": { "sha256": "ddb5fea6a48a541103b654cfdc17f5a148cd4a9adab331d0b187ddbb9e220dd7", "bytes": 8553, "width": 644, "height": 470, "headerHeight": 142 },
+    "dark": { "sha256": "3098cc34914612d7be9c3ff66197588b6d9ea43180beba2d9b37ee3b42de6de0", "bytes": 8552, "width": 644, "height": 470, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "Diner app",
+    "origin": "diners",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "Diner app",
+        "node": "diners",
+        "anchor": { "edge": "diners--glb", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Diner app sends Diner app",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#56B4E9",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "Diner app", "edge": "diners--glb", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 200, "caption": "Diner app", "tone": "plain", "i": 1, "color": "#56B4E9", "rowKey": "3" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Diner app",
+        "node": "glb",
+        "anchor": { "edge": "diners--glb", "end": 1 },
+        "start": 1800,
+        "duration": 600,
+        "realFrom": 210,
+        "realTo": 210,
+        "caption": "Global load balancer · route Menus",
+        "i": 2,
+        "color": "#56B4E9",
+        "tone": "plain",
+        "short": "route Menus"
+      },
+      { "kind": "reply", "msg": 1, "type": "Diner app", "edge": "diners--glb", "reverse": true, "start": 2400, "duration": 600, "realFrom": 210, "realTo": 410, "i": 3, "color": "#56B4E9", "tone": "plain" },
+      { "kind": "travel", "msg": 1, "type": "Diner app", "edge": "glb--menu-api", "reverse": false, "start": 2400, "duration": 1000, "realFrom": 210, "realTo": 410, "caption": "GET /v2/restaurants/311/menu → rule 2 (Menus) → Menu API", "tone": "plain", "i": 4, "color": "#56B4E9", "rowKey": "7" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Diner app",
+        "node": "menu-api",
+        "anchor": { "edge": "glb--menu-api", "end": 1 },
+        "start": 3400,
+        "duration": 736.559319442089,
+        "realFrom": 420,
+        "realTo": 440,
+        "caption": "Menu API · Menus · 20 ms",
+        "i": 5,
+        "color": "#56B4E9",
+        "tone": "plain",
+        "short": "Menus · 20 ms"
+      },
+      { "kind": "reply", "msg": 1, "type": "Diner app", "edge": "glb--menu-api", "reverse": true, "start": 4136.559319442089, "duration": 600, "realFrom": 440, "realTo": 640, "i": 6, "color": "#56B4E9", "tone": "plain" },
+      { "kind": "travel", "msg": 1, "type": "Diner app", "edge": "menu-api--menu-cache", "reverse": false, "start": 4136.559319442089, "duration": 1000, "realFrom": 440, "realTo": 640, "caption": "Diner app", "tone": "plain", "i": 7, "color": "#56B4E9", "rowKey": "12" },
+      {
+        "kind": "write",
+        "msg": 1,
+        "type": "Diner app",
+        "node": "menu-cache",
+        "anchor": { "edge": "menu-api--menu-cache", "end": 1 },
+        "start": 5136.559319442089,
+        "duration": 900,
+        "realFrom": 650,
+        "realTo": 650,
+        "caption": "Menu cache · write Diner app",
+        "sink": 300,
+        "i": 8,
+        "color": "#56B4E9",
+        "tone": "plain",
+        "short": "write Diner app"
+      },
+      { "kind": "reply", "msg": 1, "type": "Diner app", "edge": "menu-api--menu-cache", "reverse": true, "start": 6036.559319442089, "duration": 600, "realFrom": 650, "realTo": 850, "i": 9, "color": "#56B4E9", "tone": "plain" },
+      { "kind": "end", "msg": 1, "type": "Diner app", "node": "menu-cache", "start": 6436.559319442089, "duration": 1200, "realFrom": 650, "realTo": 650, "caption": "Done · 650 ms · 1 write", "tone": "done", "i": 10, "color": "#56B4E9" }
+    ],
+    "duration": 7636.559319442089,
+    "realTotal": 650,
+    "stops": [0, 800, 2400, 4137, 6437],
+    "nodes": ["diners", "glb", "menu-api", "menu-cache"],
+    "edges": ["diners--glb", "glb--menu-api", "menu-api--menu-cache"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 650 ms · 1 write",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "7": 2400, "12": 4136.559319442089 }
+  },
+  "slowMotionReduced": {
+    "duration": 12000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["process", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["process", 6000, 1500],
+      ["travel", 7500, 1500],
+      ["write", 9000, 1500],
+      ["end", 10500, 1500]
+    ]
+  }
+}

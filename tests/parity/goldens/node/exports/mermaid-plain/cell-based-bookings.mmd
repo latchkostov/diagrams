@@ -1,0 +1,159 @@
+---
+title: Cell-based bookings in three regions
+---
+flowchart LR
+  subgraph g_control ["Control plane · global"]
+    registry["Cell registry<br/>customer → cell map"]
+    pipeline["Release pipeline<br/>one cell at a time"]
+    metrics["CloudWatch<br/>alarms per cell"]
+  end
+  subgraph g_saas ["Email provider"]
+    email(["SendGrid<br/>confirmations"])
+  end
+  subgraph g_east ["AWS us-east-1"]
+    east_alb["Regional ALB<br/>us-east-1"]
+    east_router["Cell router<br/>hash(customer) → cell"]
+    east_bus["Booking events<br/>EventBridge"]
+    east_queue["Confirmations<br/>SQS"]
+    east_dlq["Confirmations DLQ<br/>SQS"]
+    east_mailer["Confirmation mailer<br/>Lambda"]
+    east_redrive["DLQ redrive<br/>after the fix"]
+  end
+  subgraph g_east_c1 ["Cell 1 · us-east-1"]
+    east_c1_api["Booking API<br/>cell 1 · Fargate"]
+    east_c1_avail["Availability<br/>rooms and seats"]
+    east_c1_cache[("Availability cache<br/>ElastiCache")]
+    east_c1_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_east_c2 ["Cell 2 · us-east-1"]
+    east_c2_api["Booking API<br/>cell 2 · Fargate"]
+    east_c2_avail["Availability<br/>rooms and seats"]
+    east_c2_cache[("Availability cache<br/>ElastiCache")]
+    east_c2_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_west ["AWS us-west-2"]
+    west_alb["Regional ALB<br/>us-west-2"]
+    west_router["Cell router<br/>hash(customer) → cell"]
+    west_bus["Booking events<br/>EventBridge"]
+    west_queue["Confirmations<br/>SQS"]
+    west_dlq["Confirmations DLQ<br/>SQS"]
+    west_mailer["Confirmation mailer<br/>Lambda"]
+    west_redrive["DLQ redrive<br/>after the fix"]
+  end
+  subgraph g_west_c1 ["Cell 1 · us-west-2"]
+    west_c1_api["Booking API<br/>cell 1 · Fargate"]
+    west_c1_avail["Availability<br/>rooms and seats"]
+    west_c1_cache[("Availability cache<br/>ElastiCache")]
+    west_c1_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_west_c2 ["Cell 2 · us-west-2"]
+    west_c2_api["Booking API<br/>cell 2 · Fargate"]
+    west_c2_avail["Availability<br/>rooms and seats"]
+    west_c2_cache[("Availability cache<br/>ElastiCache")]
+    west_c2_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_eu ["AWS eu-west-1"]
+    eu_alb["Regional ALB<br/>eu-west-1"]
+    eu_router["Cell router<br/>hash(customer) → cell"]
+    eu_bus["Booking events<br/>EventBridge"]
+    eu_queue["Confirmations<br/>SQS"]
+    eu_dlq["Confirmations DLQ<br/>SQS"]
+    eu_mailer["Confirmation mailer<br/>Lambda"]
+    eu_redrive["DLQ redrive<br/>after the fix"]
+  end
+  subgraph g_eu_c1 ["Cell 1 · eu-west-1"]
+    eu_c1_api["Booking API<br/>cell 1 · Fargate"]
+    eu_c1_avail["Availability<br/>rooms and seats"]
+    eu_c1_cache[("Availability cache<br/>ElastiCache")]
+    eu_c1_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_eu_c2 ["Cell 2 · eu-west-1"]
+    eu_c2_api["Booking API<br/>cell 2 · Fargate"]
+    eu_c2_avail["Availability<br/>rooms and seats"]
+    eu_c2_cache[("Availability cache<br/>ElastiCache")]
+    eu_c2_db[("Bookings<br/>global table replica")]
+  end
+  travellers(["Travellers<br/>web bookings"])
+  mobile(["Tidewater app<br/>iOS and Android"])
+  agents(["Travel agents<br/>partner API"])
+  dns["Global DNS<br/>latency routing, health checks"]
+  travellers -->|"HTTPS"| dns
+  mobile -->|"HTTPS"| dns
+  agents -->|"HTTPS"| dns
+  dns -->|"us-east-1"| east_alb
+  east_alb --> east_router
+  east_router -->|"Cell 1"| east_c1_api
+  east_c1_api -->|"Hold"| east_c1_avail
+  east_c1_avail --> east_c1_cache
+  east_c1_api -->|"Book"| east_c1_db
+  east_c1_db -.->|"Stream"| east_bus
+  east_router -->|"Cell 2"| east_c2_api
+  east_c2_api -->|"Hold"| east_c2_avail
+  east_c2_avail --> east_c2_cache
+  east_c2_api -->|"Book"| east_c2_db
+  east_c2_db -.->|"Stream"| east_bus
+  east_bus -.->|"Rule"| east_queue
+  east_queue -.-> east_mailer
+  east_queue -.->|"After 3 tries"| east_dlq
+  east_dlq -.-> east_redrive
+  east_redrive -->|"Redrive"| east_mailer
+  east_mailer -->|"Send"| email
+  east_router -.->|"reads config: Cell map"| registry
+  east_alb -.->|"sends telemetry to"| metrics
+  dns -->|"us-west-2"| west_alb
+  west_alb --> west_router
+  west_router -->|"Cell 1"| west_c1_api
+  west_c1_api -->|"Hold"| west_c1_avail
+  west_c1_avail --> west_c1_cache
+  west_c1_api -->|"Book"| west_c1_db
+  west_c1_db -.->|"Stream"| west_bus
+  west_router -->|"Cell 2"| west_c2_api
+  west_c2_api -->|"Hold"| west_c2_avail
+  west_c2_avail --> west_c2_cache
+  west_c2_api -->|"Book"| west_c2_db
+  west_c2_db -.->|"Stream"| west_bus
+  west_bus -.->|"Rule"| west_queue
+  west_queue -.-> west_mailer
+  west_queue -.->|"After 3 tries"| west_dlq
+  west_dlq -.-> west_redrive
+  west_redrive -->|"Redrive"| west_mailer
+  west_mailer -->|"Send"| email
+  west_router -.->|"reads config: Cell map"| registry
+  west_alb -.->|"sends telemetry to"| metrics
+  dns -->|"eu-west-1"| eu_alb
+  eu_alb --> eu_router
+  eu_router -->|"Cell 1"| eu_c1_api
+  eu_c1_api -->|"Hold"| eu_c1_avail
+  eu_c1_avail --> eu_c1_cache
+  eu_c1_api -->|"Book"| eu_c1_db
+  eu_c1_db -.->|"Stream"| eu_bus
+  eu_router -->|"Cell 2"| eu_c2_api
+  eu_c2_api -->|"Hold"| eu_c2_avail
+  eu_c2_avail --> eu_c2_cache
+  eu_c2_api -->|"Book"| eu_c2_db
+  eu_c2_db -.->|"Stream"| eu_bus
+  eu_bus -.->|"Rule"| eu_queue
+  eu_queue -.-> eu_mailer
+  eu_queue -.->|"After 3 tries"| eu_dlq
+  eu_dlq -.-> eu_redrive
+  eu_redrive -->|"Redrive"| eu_mailer
+  eu_mailer -->|"Send"| email
+  eu_router -.->|"reads config: Cell map"| registry
+  eu_alb -.->|"sends telemetry to"| metrics
+  east_c1_db -.->|"Replication"| west_c1_db
+  east_c1_db -.-> eu_c1_db
+  west_c1_db -.-> east_c1_db
+  west_c1_db -.-> eu_c1_db
+  eu_c1_db -.-> east_c1_db
+  eu_c1_db -.-> west_c1_db
+  east_c2_db -.->|"Replication"| west_c2_db
+  east_c2_db -.-> eu_c2_db
+  west_c2_db -.-> east_c2_db
+  west_c2_db -.-> eu_c2_db
+  eu_c2_db -.-> east_c2_db
+  eu_c2_db -.-> west_c2_db
+  pipeline -.->|"deploys to: Canary cell"| east_c1_api
+  linkStyle 9,14,15,16,17,18,29,34,35,36,37,38,49,54,55,56,57,58,63,64,65,66,67,68,69,70,71,72,73,74 stroke-dasharray: 6 4
+  linkStyle 21,41,61 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 22,42,62 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 75 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4

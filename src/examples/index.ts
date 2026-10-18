@@ -46,6 +46,16 @@ const privateExamples: LocalExample[] = import.meta.env.DEV
 const publicExamples: PublicExample[] = (
   [
     {
+      slug: "delivery-dispatch",
+      theme: "streaming",
+      summary: "Courier pings, H3 partitions, KEDA, maps quota",
+    },
+    {
+      slug: "ev-charging-network",
+      theme: "streaming",
+      summary: "Depot firewalls, Event Hubs, twins, firmware waves",
+    },
+    {
       slug: "kafka-order-pipeline",
       theme: "streaming",
       summary: "Consumer groups, local stores, payment events",
@@ -99,6 +109,11 @@ const publicExamples: PublicExample[] = (
       featured: true,
     },
     {
+      slug: "black-friday-commerce",
+      theme: "cloud",
+      summary: "60 services: route table, HPA, KEDA, outbox, DLQ",
+    },
+    {
       slug: "aws-serverless-orders",
       theme: "cloud",
       summary: "Lambda, DynamoDB Streams, EventBridge rules",
@@ -113,6 +128,11 @@ const publicExamples: PublicExample[] = (
       slug: "aks-app-config-key-vault",
       theme: "cloud",
       summary: "Settings, Key Vault references and identity",
+    },
+    {
+      slug: "payments-ledger",
+      theme: "integration",
+      summary: "PSP router, PCI zone, outbox, ledger, webhooks",
     },
     {
       slug: "webhook-ingestion",
@@ -133,6 +153,11 @@ const publicExamples: PublicExample[] = (
       slug: "azure-service-bus-integration",
       theme: "integration",
       summary: "Filtered subscriptions, commands, dead lettering",
+    },
+    {
+      slug: "cell-based-bookings",
+      theme: "reliability",
+      summary: "Three regions, six cells, global tables, failover",
     },
     {
       slug: "outbox-saga-checkout",

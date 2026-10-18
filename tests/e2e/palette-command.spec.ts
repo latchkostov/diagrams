@@ -187,7 +187,9 @@ test.describe("command palette", () => {
 
   test("a simulation from edit mode goes live and runs it", async ({ page, consoleErrors }) => {
     await openPalette(page);
-    await input(page).fill("black friday");
+    // "Black Friday" alone also names another example; this query names only the Kafka example's simulation.
+    await input(page).fill("black friday 2,000 orders");
+    expect(await firstItemId(page)).toBe("sim:black-friday");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");

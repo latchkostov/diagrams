@@ -56,3 +56,14 @@ describe("lab preset registry", () => {
     }
   });
 });
+
+describe("example-backed presets open named examples", () => {
+  it("whatever order the gallery lists examples in", () => {
+    // The trace presets need a long fan-out journey and a dead-lettered message; the capacity panel opens on Kafka.
+    expect(defaultsOf(getPreset("trace-card-states")?.controls ?? [])).toMatchObject({
+      flow: "kafka-order-pipeline",
+      failing: "aws-serverless-orders:three-pl-outage",
+    });
+    expect(defaultsOf(getPreset("capacity-panel")?.controls ?? [])).toMatchObject({ diagram: "kafka-order-pipeline" });
+  });
+});

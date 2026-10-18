@@ -1,0 +1,28 @@
+---
+title: "LocationPing #1 · 1.47 s end to end · 3 copies"
+---
+sequenceDiagram
+  participant couriers as Courier app
+  participant mqtt as Courier MQTT
+  participant loc_ingest as Location ingest
+  participant locations_topic as Courier locations
+  participant surge as Surge pricing
+  participant geo_indexer as Geo indexer
+  participant eta_features as ETA features
+  participant tracking as Live tracking
+  participant features as Feature store
+  participant surge_cache as Delivery fees
+  participant geo_index as Geo index
+  couriers-)mqtt: LocationPing (+0.00 s)
+  mqtt-)loc_ingest: LocationPing (+0.30 s)
+  loc_ingest-)locations_topic: LocationPing (+0.62 s)<br/>Snapped ping
+  locations_topic-)surge: LocationPing (+0.92 s)
+  locations_topic-)geo_indexer: LocationPing (+0.92 s)
+  locations_topic-)eta_features: LocationPing (+0.92 s)
+  locations_topic-)tracking: LocationPing (+0.92 s)
+  eta_features->>features: LocationPing (+1.24 s)<br/>Update
+  surge->>surge_cache: LocationPing (+1.24 s)<br/>Update
+  geo_indexer->>geo_index: LocationPing (+1.26 s)<br/>GEOADD
+  surge_cache-->>surge: reply (+1.45 s)
+  features-->>eta_features: reply (+1.45 s)
+  geo_index-->>geo_indexer: reply (+1.47 s)

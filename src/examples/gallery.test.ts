@@ -25,17 +25,25 @@ describe("example gallery", () => {
         .map((e) => e.slug),
     ).toEqual(["rag-assistant"]);
     expect(filterExamples(publicItems, "not present anywhere")).toEqual([]);
-    expect(filterExamples(publicItems, "Network devices")[0].items.map((e) => e.slug)).toEqual([
-      "branch-to-datacentre",
-      "contoso-dmz",
-    ]);
+    expect(
+      filterExamples(publicItems, "Network devices")
+        .flatMap((s) => s.items)
+        .map((e) => e.slug),
+    ).toEqual(["ev-charging-network", "branch-to-datacentre", "contoso-dmz"]);
   });
   it("combines search and feature filters, without empty theme sections", () => {
     expect(
       filterExamples(publicItems, "", "rateLimits")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["shared-api-quotas", "notification-fanout"]);
+    ).toEqual([
+      "delivery-dispatch",
+      "ev-charging-network",
+      "shared-api-quotas",
+      "black-friday-commerce",
+      "payments-ledger",
+      "notification-fanout",
+    ]);
     expect(filterExamples(publicItems, "Kafka", "networkDevices")).toEqual([]);
   });
   it("uses only features actually configured in the public examples", () => {
@@ -50,12 +58,18 @@ describe("example gallery", () => {
       filterExamples(publicItems, "", "autoscaling")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["keda-render-workers", "autoscaling-image-workers", "cloud-run-timetable-api"]);
+    ).toEqual([
+      "delivery-dispatch",
+      "keda-render-workers",
+      "autoscaling-image-workers",
+      "black-friday-commerce",
+      "cloud-run-timetable-api",
+    ]);
     expect(
       filterExamples(publicItems, "", "routing")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["api-route-table"]);
+    ).toEqual(["delivery-dispatch", "black-friday-commerce", "payments-ledger", "api-route-table"]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
@@ -66,6 +80,12 @@ describe("example gallery", () => {
       "measured-order-capacity": [],
       "contoso-dmz": ["networkDevices"],
       "api-route-table": ["routing"],
+      // The large showcases: each tag is backed by a configured node.
+      "black-friday-commerce": ["partitions", "rateLimits", "autoscaling", "routing"],
+      "delivery-dispatch": ["partitions", "rateLimits", "autoscaling", "routing"],
+      "payments-ledger": ["partitions", "rateLimits", "routing"],
+      "ev-charging-network": ["partitions", "rateLimits", "networkDevices"],
+      "cell-based-bookings": [],
     };
     for (const [slug, tags] of Object.entries(expected)) {
       expect(publicItems.find((e) => e.slug === slug)?.shows, slug).toEqual(tags);

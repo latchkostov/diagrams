@@ -1,0 +1,17 @@
+---
+title: "Shoppers on the web #1 · 880 ms end to end"
+---
+sequenceDiagram
+  participant web as Shoppers on the web
+  participant cdn as Edge CDN
+  participant gateway as API gateway
+  participant catalog_bff as Catalog BFF
+  participant product_cache as Product cache
+  web->>cdn: Shoppers on the web (+0.00 s)<br/>HTTPS
+  cdn-->>web: reply (+0.21 s)
+  cdn->>gateway: Shoppers on the web (+0.21 s)<br/>API calls
+  gateway-->>cdn: reply (+0.41 s)
+  gateway->>catalog_bff: Shoppers on the web (+0.41 s)<br/>Products
+  catalog_bff-->>gateway: reply (+0.67 s)
+  catalog_bff->>product_cache: Shoppers on the web (+0.67 s)
+  product_cache-->>catalog_bff: reply (+0.88 s)

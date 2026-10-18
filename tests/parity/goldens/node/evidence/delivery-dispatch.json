@@ -1,0 +1,16 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "dinner-rush", "title": "Friday dinner rush", "playedMs": 30000, "capped": false },
+      { "id": "partition-ceiling", "title": "Eight partitions, a stadium's worth of couriers", "playedMs": 30000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+}

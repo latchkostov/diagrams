@@ -1,0 +1,48 @@
+---
+title: "ChargeSucceeded #1 · 3.13 s end to end · 4 copies"
+---
+sequenceDiagram
+  participant psp_hooks as PSP notifications
+  participant hook_ingest as Webhook ingest
+  participant psp_q as PSP events
+  participant psp_events as Charge updates
+  participant saga as Payment workflow
+  participant payments_db as Payments DB
+  participant outbox_relay as Outbox relay
+  participant payment_events as Payment events
+  participant poster as Ledger poster
+  participant balances as Balance projector
+  participant status_proj as Status projector
+  participant hooks_out as Merchant webhooks
+  participant lake_sink as Lake sink
+  participant balances_db as Balances
+  participant read_model as Payment status
+  participant lake as Payments lake
+  participant ledger_db as Ledger
+  participant hooks_q as Webhook retries
+  participant merchant_endpoints as Merchant endpoints
+  psp_hooks->>hook_ingest: ChargeSucceeded (+0.00 s)<br/>Webhook
+  hook_ingest-->>psp_hooks: reply (+0.22 s)
+  hook_ingest-)psp_q: ChargeSucceeded (+0.22 s)<br/>Verified
+  psp_q-)psp_events: ChargeSucceeded (+0.52 s)
+  psp_events->>saga: CaptureConfirmed (+0.86 s)<br/>Signal
+  saga-->>psp_events: reply (+1.09 s)
+  saga->>payments_db: CaptureConfirmed (+1.09 s)<br/>Record + outbox
+  payments_db-->>saga: reply (+1.29 s)
+  payments_db-)outbox_relay: CaptureConfirmed (+1.29 s)<br/>CDC
+  outbox_relay-)payment_events: CaptureConfirmed (+1.60 s)<br/>PaymentEvent
+  payment_events-)poster: CaptureConfirmed (+1.90 s)
+  payment_events-)balances: CaptureConfirmed (+1.90 s)
+  payment_events-)status_proj: CaptureConfirmed (+1.90 s)
+  payment_events-)hooks_out: CaptureConfirmed (+1.90 s)
+  payment_events-)lake_sink: CaptureConfirmed (+1.90 s)
+  balances->>balances_db: CaptureConfirmed (+2.22 s)
+  status_proj->>read_model: CaptureConfirmed (+2.22 s)<br/>Upsert
+  lake_sink->>lake: CaptureConfirmed (+2.22 s)<br/>Parquet
+  poster->>ledger_db: CaptureConfirmed (+2.25 s)<br/>Journal entry
+  hooks_out-)hooks_q: CaptureConfirmed (+2.27 s)<br/>Deliver
+  read_model-->>status_proj: reply (+2.42 s)
+  balances_db-->>balances: reply (+2.42 s)
+  lake-->>lake_sink: reply (+2.42 s)
+  ledger_db-->>poster: reply (+2.45 s)
+  hooks_q-)merchant_endpoints: CaptureConfirmed (+2.57 s)<br/>POST callback

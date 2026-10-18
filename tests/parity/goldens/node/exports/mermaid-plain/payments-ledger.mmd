@@ -1,0 +1,132 @@
+---
+title: Payments platform with a ledger
+---
+flowchart LR
+  subgraph g_edge ["Edge · API"]
+    edge_cdn["API edge<br/>TLS, WAF, bot rules"]
+    gateway["API gateway<br/>keys, route table"]
+  end
+  subgraph g_core ["EKS · payments core"]
+    payments_api["Payments API<br/>idempotency keys"]
+    refunds_api["Refunds API"]
+    idem[("Idempotency store<br/>24 h keys")]
+    risk["Risk model<br/>fraud score"]
+    features[("Risk features<br/>online store")]
+    saga["Payment workflow<br/>Temporal · authorize, capture"]
+    psp_router["PSP router<br/>weighted, per-PSP limits"]
+    payments_db[("Payments DB<br/>payments and outbox")]
+  end
+  subgraph g_pci ["PCI DSS zone · card data"]
+    tokenizer["Tokenizer<br/>PAN to token"]
+    card_vault[("Card vault<br/>encrypted PANs")]
+  end
+  subgraph g_events ["Kafka · payment events"]
+    outbox_relay["Outbox relay<br/>Debezium connector"]
+    payment_events["Payment events<br/>payments.v1 · 32 partitions"]
+    events_dlq["Payment events DLQ<br/>payments.dlq"]
+  end
+  subgraph g_query ["Query side"]
+    query_api["Payments query<br/>read model"]
+    read_model[("Payment status<br/>read model")]
+    status_proj["Status projector<br/>payment status"]
+  end
+  subgraph g_ledger ["EKS · ledger and payouts"]
+    poster["Ledger poster<br/>double entry, idempotent"]
+    ledger_db[("Ledger<br/>append-only journal")]
+    balances["Balance projector<br/>merchant balances"]
+    balances_db[("Balances<br/>read model")]
+    hooks_out["Merchant webhooks<br/>signed, retried"]
+    hooks_q["Webhook retries<br/>SQS · backoff"]
+    hooks_dlq["Webhook DLQ<br/>SQS"]
+    dlq_triage["DLQ triage<br/>replay after fix"]
+    lake_sink["Lake sink<br/>S3 sink"]
+  end
+  subgraph g_inbound ["PSP webhooks"]
+    hook_ingest["Webhook ingest<br/>verify signature"]
+    psp_q["PSP events<br/>SQS"]
+    psp_dlq["PSP events DLQ<br/>SQS"]
+    psp_events["Charge updates<br/>capture, settle"]
+    disputes["Disputes<br/>chargebacks"]
+    psp_redrive["DLQ redrive<br/>manual"]
+  end
+  subgraph g_finance ["Reconciliation and reporting"]
+    lake[("Payments lake<br/>Parquet")]
+    settlements[("Settlement files<br/>daily PSP reports")]
+    scheduler["Nightly DAGs<br/>02:00 UTC"]
+    recon["Reconciliation<br/>ledger vs settlements"]
+    warehouse[("Finance marts<br/>Snowflake")]
+  end
+  subgraph g_platform ["Platform"]
+    vault["Vault<br/>PSP keys, signing keys"]
+    kms["KMS<br/>card-data keys"]
+    idp["Workload identity<br/>SPIFFE IDs"]
+    otel["Datadog<br/>traces, SLOs"]
+    argocd["Argo CD<br/>GitOps"]
+  end
+  subgraph g_psps ["Payment service providers"]
+    adyen(["Adyen<br/>70% of cards"])
+    stripe(["Stripe<br/>30% of cards"])
+  end
+  merchants(["Merchant servers<br/>server-side SDKs"])
+  wallets(["Wallet app<br/>tap to pay"])
+  psp_hooks(["PSP notifications<br/>Adyen and Stripe"])
+  merchant_endpoints(["Merchant endpoints<br/>HTTPS callbacks"])
+  merchants -->|"HTTPS"| edge_cdn
+  wallets -->|"HTTPS"| edge_cdn
+  edge_cdn --> gateway
+  gateway -->|"Create"| payments_api
+  gateway -->|"Read"| query_api
+  gateway -->|"Refund"| refunds_api
+  payments_api -->|"Key check"| idem
+  payments_api -->|"Tokenize"| tokenizer
+  payments_api -->|"Score"| risk
+  payments_api -->|"Start"| saga
+  refunds_api -->|"Start"| saga
+  tokenizer --> card_vault
+  risk --> features
+  query_api --> read_model
+  saga -->|"Authorize"| psp_router
+  saga -->|"Record + outbox"| payments_db
+  psp_router --> adyen
+  psp_router --> stripe
+  payments_db -.->|"CDC"| outbox_relay
+  outbox_relay -.->|"PaymentEvent"| payment_events
+  payment_events -.-> poster
+  payment_events -.-> balances
+  payment_events -.-> status_proj
+  payment_events -.-> hooks_out
+  payment_events -.-> lake_sink
+  payment_events -.->|"After 3 tries"| events_dlq
+  events_dlq -.-> dlq_triage
+  poster -->|"Journal entry"| ledger_db
+  balances --> balances_db
+  status_proj -->|"Upsert"| read_model
+  hooks_out -.->|"Deliver"| hooks_q
+  hooks_q -.->|"POST callback"| merchant_endpoints
+  hooks_q -.->|"After 5 tries"| hooks_dlq
+  hooks_dlq -.-> dlq_triage
+  psp_hooks -->|"Webhook"| hook_ingest
+  hook_ingest -.->|"Verified"| psp_q
+  psp_q -.-> psp_events
+  psp_q -.-> disputes
+  psp_q -.->|"After 3 tries"| psp_dlq
+  psp_dlq -.-> psp_redrive
+  psp_redrive -->|"Replay"| disputes
+  psp_events -->|"Signal"| saga
+  lake_sink -->|"Parquet"| lake
+  scheduler -.->|"Run"| recon
+  recon -->|"Read files"| settlements
+  recon -->|"Breaks report"| warehouse
+  psp_router -.->|"reads secrets: PSP keys"| vault
+  hooks_out -.->|"reads secrets: Signing key"| vault
+  tokenizer -.->|"reads secrets: Data keys"| kms
+  payments_api -.->|"gets tokens from"| idp
+  saga -.->|"sends telemetry to"| otel
+  argocd -.->|"deploys to"| payments_api
+  recon -.->|"depends on: Reads ledger"| lake
+  linkStyle 18,19,20,21,22,23,24,25,26,30,31,32,33,35,36,37,38,39,43 stroke-dasharray: 6 4
+  linkStyle 46,47,48 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 49 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 50 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 51 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 52 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4

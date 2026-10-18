@@ -1,0 +1,2548 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Black Friday commerce platform\" · direction LR · 60 nodes, 73 connections, 11 boundaries, 3 simulations\ndescription: \"An invented retailer, Larkspur Outfitters. A route table splits storefront traffic by path and rate-limits checkout; Checkout scales on CPU; an outbox feeds Kafka; KEDA wakes fulfilment on order lag; a bad deploy parks events in a DLQ while other consumer groups carry on.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Shoppers on the web\" / \"Storefront SPA\" props={\"ratePerSec\":300,\"trafficMix\":{\"mode\":\"shares\",\"entries\":[{\"routeId\":\"browse\",\"share\":0.4},{\"routeId\":\"search\",\"share\":0.2},{\"routeId\":\"cart\",\"share\":0.1},{\"routeId\":\"checkout\",\"share\":0.08},{\"routeId\":\"order-status\",\"share\":0.04},{\"routeId\":\"beacon\",\"share\":0.18}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"web--cdn\",\"peer\":\"cdn\"}] explanation=undefined\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Larkspur app\" / \"iOS and Android\" props={\"ratePerSec\":200,\"trafficMix\":{\"mode\":\"shares\",\"entries\":[{\"routeId\":\"browse\",\"share\":0.36},{\"routeId\":\"search\",\"share\":0.2},{\"routeId\":\"cart\",\"share\":0.1},{\"routeId\":\"checkout\",\"share\":0.08},{\"routeId\":\"order-status\",\"share\":0.08},{\"routeId\":\"beacon\",\"share\":0.18}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"app--cdn\",\"peer\":\"cdn\"}] explanation=undefined\n  \"carriers\" \"generic.webhook\" (\"Webhook\") \"Carrier scans\" / \"tracking webhooks\" props={\"ratePerSec\":20,\"trafficMix\":{\"mode\":\"rates\",\"entries\":[{\"routeId\":\"carrier-scan\",\"ratePerSec\":20}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"carriers--cdn\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"cloudflare\" (\"Cloudflare\") \"Edge CDN\" / \"WAF, bot rules, TLS\" props={\"latencyMs\":0,\"jitter\":0,\"replicas\":20,\"concurrency\":64,\"routeTable\":{\"rules\":[{\"id\":\"beacons\",\"label\":\"Analytics beacons\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"exact\",\"value\":\"/collect\"}},\"targets\":[{\"edgeId\":\"cdn--collector\",\"weight\":1}]}],\"default\":{\"targets\":[{\"edgeId\":\"cdn--gateway\",\"weight\":1}]}}} in \"edge\" capabilities=[{\"kind\":\"calls\",\"edge\":\"cdn--gateway\",\"peer\":\"gateway\"},{\"kind\":\"calls\",\"edge\":\"cdn--collector\",\"peer\":\"collector\"}] explanation=undefined\n  \"gateway\" \"kong\" (\"Kong Gateway\") \"API gateway\" / \"Kong · route table\" props={\"latencyMs\":0,\"jitter\":0,\"replicas\":6,\"concurrency\":64,\"routeTable\":{\"rules\":[{\"id\":\"products\",\"label\":\"Product pages\",\"match\":{\"methods\":[\"GET\"],\"path\":{\"kind\":\"template\",\"value\":\"/products/{id}\"}},\"targets\":[{\"edgeId\":\"gateway--catalog-bff\",\"weight\":1}]},{\"id\":\"search\",\"label\":\"Search\",\"match\":{\"methods\":[\"GET\"],\"path\":{\"kind\":\"prefix\",\"value\":\"/search/\"}},\"targets\":[{\"edgeId\":\"gateway--search-api\",\"weight\":1}]},{\"id\":\"cart\",\"label\":\"Cart\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"prefix\",\"value\":\"/cart\"}},\"targets\":[{\"edgeId\":\"gateway--cart-api\",\"weight\":1}]},{\"id\":\"checkout\",\"label\":\"Checkout, rate limited\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"exact\",\"value\":\"/checkout\"}},\"targets\":[{\"edgeId\":\"gateway--checkout-api\",\"weight\":1}],\"quotas\":[{\"id\":\"checkout-rps\",\"unit\":\"requests\",\"amount\":150,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"burst\":150}]},{\"id\":\"status\",\"label\":\"Order status\",\"match\":{\"methods\":[\"GET\"],\"path\":{\"kind\":\"template\",\"value\":\"/orders/{id}\"}},\"targets\":[{\"edgeId\":\"gateway--order-status\",\"weight\":1}]},{\"id\":\"carrier-hooks\",\"label\":\"Carrier webhooks\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"prefix\",\"value\":\"/hooks/carriers\"}},\"targets\":[{\"edgeId\":\"gateway--tracking\",\"weight\":1}]}]}} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"gateway--catalog-bff\",\"peer\":\"catalog-bff\"},{\"kind\":\"calls\",\"edge\":\"gateway--search-api\",\"peer\":\"search-api\"},{\"kind\":\"calls\",\"edge\":\"gateway--cart-api\",\"peer\":\"cart-api\"},{\"kind\":\"calls\",\"edge\":\"gateway--checkout-api\",\"peer\":\"checkout-api\"},{\"kind\":\"calls\",\"edge\":\"gateway--order-status\",\"peer\":\"order-status\"},{\"kind\":\"calls\",\"edge\":\"gateway--tracking\",\"peer\":\"tracking\"}] explanation={\"managed\":\"api\",\"id\":\"gateway\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1612.5,\"offered\":430,\"replicas\":6,\"baseReplicas\":6,\"omittedContributors\":0,\"activeReplicas\":6,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0.26666666666666666,\"growth\":0,\"contributors\":[{\"edge\":\"cdn--gateway\",\"node\":\"cdn\",\"label\":\"Shoppers on the web, Larkspur app, Carrier scans\",\"rate\":430,\"via\":\"Edge CDN\"}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"browse\",\"address\":\"GET /products/8812\",\"offered\":192,\"rejected\":0,\"throttled\":0},{\"route\":\"search\",\"address\":\"GET /search/parka\",\"offered\":100,\"rejected\":0,\"throttled\":0},{\"route\":\"cart\",\"address\":\"POST /cart/items\",\"offered\":50,\"rejected\":0,\"throttled\":0},{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0},{\"route\":\"order-status\",\"address\":\"GET /orders/5531\",\"offered\":28,\"rejected\":0,\"throttled\":0},{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\n  \"catalog-bff\" \"service.node\" (\"Node.js Service\") \"Catalog BFF\" / \"product pages\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":32,\"latencyMs\":40,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"catalog-bff--product-cache\",\"peer\":\"product-cache\"},{\"kind\":\"calls\",\"edge\":\"catalog-bff--catalog-db\",\"peer\":\"catalog-db\",\"share\":0.1},{\"kind\":\"calls\",\"edge\":\"catalog-bff--reco\",\"peer\":\"reco\",\"share\":0.5}] explanation={\"id\":\"catalog-bff\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":192,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[],\"slots\":32,\"seconds\":0.04,\"utilization\":0.06,\"growth\":0,\"contributors\":[{\"edge\":\"gateway--catalog-bff\",\"node\":\"gateway\",\"label\":\"Edge CDN\",\"rate\":192,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"browse\",\"address\":\"GET /products/8812\",\"offered\":192,\"rejected\":0,\"throttled\":0}]}\n  \"search-api\" \"service.go\" (\"Go Service\") \"Search API\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":32,\"latencyMs\":30,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"search-api--search-index\",\"peer\":\"search-index\"}] explanation={\"id\":\"search-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":100,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":32,\"seconds\":0.03,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"gateway--search-api\",\"node\":\"gateway\",\"label\":\"Edge CDN\",\"rate\":100,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"search\",\"address\":\"GET /search/parka\",\"offered\":100,\"rejected\":0,\"throttled\":0}]}\n  \"cart-api\" \"service.java\" (\"Java Service\") \"Cart API\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":16,\"latencyMs\":40,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"cart-api--carts\",\"peer\":\"carts\"},{\"kind\":\"calls\",\"edge\":\"cart-api--pricing\",\"peer\":\"pricing\"}] explanation={\"id\":\"cart-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1200,\"offered\":50,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":16,\"seconds\":0.04,\"utilization\":0.041666666666666664,\"growth\":0,\"contributors\":[{\"edge\":\"gateway--cart-api\",\"node\":\"gateway\",\"label\":\"Edge CDN\",\"rate\":50,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"cart\",\"address\":\"POST /cart/items\",\"offered\":50,\"rejected\":0,\"throttled\":0}]}\n  \"checkout-api\" \"service.java\" (\"Java Service\") \"Checkout API\" / \"HPA on CPU\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":8,\"latencyMs\":100,\"jitter\":0.1,\"failureRate\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":10,\"baselineMemoryMiB\":192,\"memoryMiBPerMessage\":1,\"cpuRequestMilli\":500,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":512,\"memoryLimitMiB\":1024,\"startup\":{\"delayMs\":2000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"minReplicas\":2,\"maxReplicas\":10,\"initialReplicas\":2,\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":0,\"cpuInitializationPeriodMs\":0,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":1000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":30000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"checkout-api--pricing\",\"peer\":\"pricing\"},{\"kind\":\"calls\",\"edge\":\"checkout-api--tax\",\"peer\":\"tax\"},{\"kind\":\"calls\",\"edge\":\"checkout-api--inventory\",\"peer\":\"inventory\"},{\"kind\":\"calls\",\"edge\":\"checkout-api--risk\",\"peer\":\"risk\"},{\"kind\":\"calls\",\"edge\":\"checkout-api--payments\",\"peer\":\"payments\"},{\"kind\":\"calls\",\"edge\":\"checkout-api--orders-db\",\"peer\":\"orders-db\"}] explanation={\"resources\":{\"perReplica\":80,\"initial\":2,\"min\":2,\"max\":10,\"initialCapacity\":160,\"maxCapacity\":800,\"targetReplicas\":2,\"cpuRequestPct\":40,\"memoryPeakMiB\":200,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":2000,\"cpuUnbounded\":false},\"id\":\"checkout-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":160,\"offered\":40,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":8,\"seconds\":0.1,\"utilization\":0.25,\"growth\":0,\"contributors\":[{\"edge\":\"gateway--checkout-api\",\"node\":\"gateway\",\"label\":\"Edge CDN\",\"rate\":40,\"via\":\"API gateway\"}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"order-status\" \"service.go\" (\"Go Service\") \"Order status API\" / \"read model\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":32,\"latencyMs\":15,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"order-status--status-cache\",\"peer\":\"status-cache\"}] explanation={\"id\":\"order-status\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":4266.666666666667,\"offered\":28,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":32,\"seconds\":0.015,\"utilization\":0.0065625,\"growth\":0,\"contributors\":[{\"edge\":\"gateway--order-status\",\"node\":\"gateway\",\"label\":\"Edge CDN\",\"rate\":28,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"order-status\",\"address\":\"GET /orders/5531\",\"offered\":28,\"rejected\":0,\"throttled\":0}]}\n  \"tracking\" \"service.go\" (\"Go Service\") \"Shipment tracking\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":16,\"latencyMs\":30,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"tracking--shipments\",\"peer\":\"shipments\",\"emits\":\"ParcelScanned\"}] explanation={\"id\":\"tracking\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1066.6666666666667,\"offered\":20,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":16,\"seconds\":0.03,\"utilization\":0.01875,\"growth\":0,\"contributors\":[{\"edge\":\"gateway--tracking\",\"node\":\"gateway\",\"label\":\"Edge CDN\",\"rate\":20,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\n  \"reco\" \"service.python\" (\"Python Service\") \"Recommendations\" / \"similar items\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":16,\"latencyMs\":60,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"reco--features\",\"peer\":\"features\"}] explanation={\"id\":\"reco\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":800,\"offered\":96,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":16,\"seconds\":0.06,\"utilization\":0.12,\"growth\":0,\"contributors\":[{\"edge\":\"catalog-bff--reco\",\"node\":\"catalog-bff\",\"label\":\"Catalog BFF\",\"rate\":96}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"browse\",\"address\":\"GET /products/8812\",\"offered\":96,\"rejected\":0,\"throttled\":0}]}\n  \"pricing\" \"service.go\" (\"Go Service\") \"Pricing\" / \"prices and promotions\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":32,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"pricing--promotions\",\"peer\":\"promotions\"}] explanation={\"id\":\"pricing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":4800,\"offered\":90,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":32,\"seconds\":0.02,\"utilization\":0.01875,\"growth\":0,\"contributors\":[{\"edge\":\"cart-api--pricing\",\"node\":\"cart-api\",\"label\":\"Cart API\",\"rate\":50},{\"edge\":\"checkout-api--pricing\",\"node\":\"checkout-api\",\"label\":\"Checkout API\",\"rate\":40}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"cart\",\"address\":\"POST /cart/items\",\"offered\":50,\"rejected\":0,\"throttled\":0},{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"inventory\" \"service.java\" (\"Java Service\") \"Inventory\" / \"stock reservations\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":16,\"latencyMs\":40,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"inventory--inventory-db\",\"peer\":\"inventory-db\"}] explanation={\"id\":\"inventory\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1200,\"offered\":40,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":16,\"seconds\":0.04,\"utilization\":0.03333333333333333,\"growth\":0,\"contributors\":[{\"edge\":\"checkout-api--inventory\",\"node\":\"checkout-api\",\"label\":\"Checkout API\",\"rate\":40}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"risk\" \"generic.ml-model\" (\"ML Model\") \"Fraud model\" / \"risk score\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":32,\"latencyMs\":25,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"risk--features\",\"peer\":\"features\"}] explanation={\"managed\":\"api\",\"id\":\"risk\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":40,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":32,\"seconds\":0.025,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"checkout-api--risk\",\"node\":\"checkout-api\",\"label\":\"Checkout API\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"payments\" \"service.dotnet\" (\".NET Service\") \"Payments\" / \"authorize, idempotent\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":16,\"latencyMs\":60,\"jitter\":0.1,\"failureRate\":0} in \"storefront\" capabilities=[{\"kind\":\"calls\",\"edge\":\"payments--stripe\",\"peer\":\"stripe\"}] explanation={\"id\":\"payments\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":800,\"offered\":40,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":16,\"seconds\":0.06,\"utilization\":0.05,\"growth\":0,\"contributors\":[{\"edge\":\"checkout-api--payments\",\"node\":\"checkout-api\",\"label\":\"Checkout API\",\"rate\":40}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"features\" \"redis.cache\" (\"Redis Cache\") \"Feature store\" / \"online features\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"product-cache\" \"redis.cache\" (\"Redis Cache\") \"Product cache\" / \"ElastiCache\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"catalog-db\" \"aws.aurora\" (\"Amazon Aurora\") \"Catalog DB\" / \"Aurora Postgres\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"search-index\" \"elasticsearch\" (\"Elasticsearch\") \"Product index\" / \"OpenSearch\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"carts\" \"aws.dynamodb\" (\"Amazon DynamoDB\") \"Carts\" / \"DynamoDB\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"promotions\" \"aws.dynamodb\" (\"Amazon DynamoDB\") \"Promotions\" / \"DynamoDB\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"inventory-db\" \"aws.aurora\" (\"Amazon Aurora\") \"Inventory DB\" / \"Aurora Postgres\" props={\"latencyMs\":0} in \"stores\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"inventory-db--inventory-events\",\"peer\":\"inventory-events\",\"emits\":\"StockChanged\"}] explanation=undefined\n  \"orders-db\" \"aws.aurora\" (\"Amazon Aurora\") \"Orders DB\" / \"orders and outbox\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"status-cache\" \"redis.cache\" (\"Redis Cache\") \"Order status cache\" / \"projection\" props={\"latencyMs\":0} in \"stores\" capabilities=[] explanation=undefined\n  \"outbox-relay\" \"kafka.connect\" (\"Kafka Connect\") \"Outbox relay\" / \"Debezium, orders.outbox\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":32,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"backbone\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"outbox-relay--orders\",\"peer\":\"orders\",\"emits\":\"OrderPlaced\"}] explanation={\"id\":\"outbox-relay\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3200,\"offered\":40,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":32,\"seconds\":0.02,\"utilization\":0.0125,\"growth\":0,\"contributors\":[{\"edge\":\"orders-db--outbox-relay\",\"node\":\"orders-db\",\"label\":\"Orders DB\",\"rate\":40}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"inventory-events\" \"kafka.topic\" (\"Kafka Topic\") \"Stock changes\" / \"inventory.v1 · 12 partitions\" props={\"partitions\":12} in \"backbone\" capabilities=[] explanation=undefined\n  \"orders\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" / \"orders.v1 · 24 partitions\" props={\"partitions\":24,\"maxDeliveryCount\":3} in \"backbone\" capabilities=[] explanation=undefined\n  \"orders-dlq\" \"kafka.topic\" (\"Kafka Topic\") \"Orders DLQ\" / \"orders.dlq · 3 partitions\" props={\"partitions\":3} in \"backbone\" capabilities=[] explanation=undefined\n  \"shipments\" \"kafka.topic\" (\"Kafka Topic\") \"Shipment events\" / \"shipments.v1 · 12 partitions\" props={\"partitions\":12} in \"backbone\" capabilities=[] explanation=undefined\n  \"search-indexer\" \"service.python\" (\"Python Service\") \"Search indexer\" / \"stock to index\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":16,\"latencyMs\":30,\"jitter\":0.1,\"failureRate\":0} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"inventory-events--search-indexer\",\"peer\":\"inventory-events\",\"group\":\"search\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"search-indexer--search-index\",\"peer\":\"search-index\"}] explanation={\"id\":\"search-indexer\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1066.6666666666667,\"offered\":40,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[{\"broker\":\"inventory-events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":16,\"seconds\":0.03,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"inventory-events--search-indexer\",\"node\":\"inventory-events\",\"label\":\"Stock changes\",\"rate\":40}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"fulfilment\" \"service.go\" (\"Go Service\") \"Fulfilment workers\" / \"KEDA on order lag\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":4,\"latencyMs\":100,\"jitter\":0.1,\"failureRate\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":20,\"baselineMemoryMiB\":192,\"memoryMiBPerMessage\":1,\"cpuRequestMilli\":250,\"cpuLimitMilli\":500,\"memoryRequestMiB\":256,\"memoryLimitMiB\":512,\"startup\":{\"delayMs\":1000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a2\",\"preset\":\"keda-kafka\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"keda\",\"minReplicas\":2,\"maxReplicas\":12,\"initialReplicas\":2,\"pollingMs\":1000,\"cooldownMs\":5000,\"initialCooldownMs\":0,\"triggers\":[{\"type\":\"kafka\",\"source\":{\"node\":\"orders\",\"group\":\"fulfilment\"},\"target\":20,\"activation\":0,\"useCachedMetrics\":false,\"allowIdleConsumers\":false}],\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":0,\"cpuInitializationPeriodMs\":0,\"metrics\":[],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders--fulfilment\",\"peer\":\"orders\",\"group\":\"fulfilment\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"fulfilment--wms\",\"peer\":\"wms\"},{\"kind\":\"publishes\",\"edge\":\"fulfilment--shipments\",\"peer\":\"shipments\",\"emits\":\"ShipmentCreated\"}] explanation={\"resources\":{\"keda\":{\"pollingMs\":1000,\"cooldownMs\":5000,\"lagBeforePoll\":0,\"offered\":40},\"perReplica\":25,\"initial\":2,\"min\":2,\"max\":12,\"initialCapacity\":50,\"maxCapacity\":300,\"cpuRequestPct\":160,\"memoryPeakMiB\":196,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":1000,\"cpuUnbounded\":false},\"id\":\"fulfilment\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":50,\"offered\":40,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":24}],\"slots\":4,\"seconds\":0.1,\"utilization\":0.8,\"growth\":0,\"contributors\":[{\"edge\":\"orders--fulfilment\",\"node\":\"orders\",\"label\":\"Order events\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"loyalty\" \"service.dotnet\" (\".NET Service\") \"Loyalty points\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":16,\"latencyMs\":40,\"jitter\":0.1,\"failureRate\":0} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders--loyalty\",\"peer\":\"orders\",\"group\":\"loyalty\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"loyalty--loyalty-db\",\"peer\":\"loyalty-db\"}] explanation={\"id\":\"loyalty\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":800,\"offered\":40,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":24}],\"slots\":16,\"seconds\":0.04,\"utilization\":0.05,\"growth\":0,\"contributors\":[{\"edge\":\"orders--loyalty\",\"node\":\"orders\",\"label\":\"Order events\",\"rate\":40}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"status-projector\" \"generic.projection\" (\"Projection\") \"Status projector\" / \"orders, shipments\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":32,\"latencyMs\":10,\"jitter\":0.1,\"failureRate\":0} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders--status-projector\",\"peer\":\"orders\",\"group\":\"status\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"status-projector--status-cache\",\"peer\":\"status-cache\"},{\"kind\":\"consumes\",\"edge\":\"shipments--status-projector\",\"peer\":\"shipments\",\"group\":\"status\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"status-projector\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":6400,\"offered\":100,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":24},{\"broker\":\"shipments\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.01,\"utilization\":0.015625,\"growth\":0,\"contributors\":[{\"edge\":\"orders--status-projector\",\"node\":\"orders\",\"label\":\"Order events\",\"rate\":40},{\"edge\":\"shipments--status-projector\",\"node\":\"shipments\",\"label\":\"Shipment events\",\"rate\":60}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":80,\"rejected\":0,\"throttled\":0},{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\n  \"notifier\" \"service.node\" (\"Node.js Service\") \"Notification router\" / \"by preference\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":32,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders--notifier\",\"peer\":\"orders\",\"group\":\"notifications\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"shipments--notifier\",\"peer\":\"shipments\",\"group\":\"notifications\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"notifier--notify-q\",\"peer\":\"notify-q\"}] explanation={\"id\":\"notifier\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3200,\"offered\":100,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":24},{\"broker\":\"shipments\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.02,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"orders--notifier\",\"node\":\"orders\",\"label\":\"Order events\",\"rate\":40},{\"edge\":\"shipments--notifier\",\"node\":\"shipments\",\"label\":\"Shipment events\",\"rate\":60}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":80,\"rejected\":0,\"throttled\":0},{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\n  \"dlq-triage\" \"service.python\" (\"Python Service\") \"DLQ triage\" / \"inspect and replay\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":4,\"latencyMs\":100,\"jitter\":0.1,\"failureRate\":0} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders-dlq--dlq-triage\",\"peer\":\"orders-dlq\",\"group\":\"triage\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"notify-dlq--dlq-triage\",\"peer\":\"notify-dlq\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"dlq-triage--loyalty\",\"peer\":\"loyalty\"}] explanation={\"id\":\"dlq-triage\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":40,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"orders-dlq\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.1,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"loyalty-db\" \"aws.dynamodb\" (\"Amazon DynamoDB\") \"Loyalty ledger\" / \"DynamoDB\" props={\"latencyMs\":0} in \"fulfil\" capabilities=[] explanation=undefined\n  \"notify-q\" \"aws.sqs\" (\"Amazon SQS\") \"Notifications\" / \"SQS\" props={\"maxDeliveryCount\":5} in \"fulfil\" capabilities=[] explanation=undefined\n  \"notify-dlq\" \"aws.sqs\" (\"Amazon SQS\") \"Notifications DLQ\" / \"SQS\" in \"fulfil\" capabilities=[] explanation=undefined\n  \"email\" \"aws.lambda\" (\"AWS Lambda\") \"Email sender\" / \"Lambda\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":80,\"jitter\":0.1,\"failureRate\":0,\"scaling\":\"auto\",\"maxConcurrency\":100} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"notify-q--email\",\"peer\":\"notify-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"email--sendgrid\",\"peer\":\"sendgrid\"}] explanation={\"managed\":\"serverless\",\"id\":\"email\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1250.0000000000002,\"offered\":33.33333333333333,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.08,\"utilization\":0.026666666666666658,\"growth\":0,\"contributors\":[{\"edge\":\"notify-q--email\",\"node\":\"notify-q\",\"label\":\"Notifications\",\"rate\":33.33333333333333}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":26.666666666666664,\"rejected\":0,\"throttled\":0},{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":6.666666666666666,\"rejected\":0,\"throttled\":0}]}\n  \"push\" \"aws.lambda\" (\"AWS Lambda\") \"Push sender\" / \"Lambda\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":40,\"jitter\":0.1,\"failureRate\":0,\"scaling\":\"auto\",\"maxConcurrency\":100} in \"fulfil\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"notify-q--push\",\"peer\":\"notify-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"push--apns\",\"peer\":\"apns\"}] explanation={\"managed\":\"serverless\",\"id\":\"push\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":2500.0000000000005,\"offered\":66.66666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.04,\"utilization\":0.026666666666666658,\"growth\":0,\"contributors\":[{\"edge\":\"notify-q--push\",\"node\":\"notify-q\",\"label\":\"Notifications\",\"rate\":66.66666666666666}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":53.33333333333333,\"rejected\":0,\"throttled\":0},{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":13.333333333333332,\"rejected\":0,\"throttled\":0}]}\n  \"collector\" \"service.go\" (\"Go Service\") \"Event collector\" / \"page and app beacons\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":64,\"latencyMs\":10,\"jitter\":0.1,\"failureRate\":0} in \"analytics\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"collector--clickstream\",\"peer\":\"clickstream\",\"emits\":\"PageViewed\"}] explanation={\"id\":\"collector\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":19200,\"offered\":90,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":64,\"seconds\":0.01,\"utilization\":0.0046875,\"growth\":0,\"contributors\":[{\"edge\":\"cdn--collector\",\"node\":\"cdn\",\"label\":\"Shoppers on the web, Larkspur app, Carrier scans\",\"rate\":90,\"via\":\"Edge CDN\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"beacon\",\"address\":\"POST /collect\",\"offered\":90,\"rejected\":0,\"throttled\":0}]}\n  \"clickstream\" \"aws.kinesis\" (\"Kinesis Data Streams\") \"Clickstream\" / \"Kinesis · 8 shards\" props={\"partitions\":8} in \"analytics\" capabilities=[] explanation=undefined\n  \"sessionizer\" \"flink\" (\"Apache Flink\") \"Sessionizer\" / \"Managed Flink\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":64,\"latencyMs\":15,\"jitter\":0.1,\"failureRate\":0} in \"analytics\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"clickstream--sessionizer\",\"peer\":\"clickstream\",\"group\":\"sessions\",\"broker\":{\"partitioned\":true,\"assignment\":\"shards\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"sessionizer--features\",\"peer\":\"features\"},{\"kind\":\"calls\",\"edge\":\"sessionizer--lake\",\"peer\":\"lake\"}] explanation={\"id\":\"sessionizer\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":17066.666666666668,\"offered\":90,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"clickstream\",\"spec\":{\"partitioned\":true,\"assignment\":\"shards\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":64,\"seconds\":0.015,\"utilization\":0.0052734374999999995,\"growth\":0,\"contributors\":[{\"edge\":\"clickstream--sessionizer\",\"node\":\"clickstream\",\"label\":\"Clickstream\",\"rate\":90}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"beacon\",\"address\":\"POST /collect\",\"offered\":90,\"rejected\":0,\"throttled\":0}]}\n  \"lake-sink\" \"kafka.connect\" (\"Kafka Connect\") \"Lake sink\" / \"S3 sink connector\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":64,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"analytics\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders--lake-sink\",\"peer\":\"orders\",\"group\":\"lake\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"lake-sink--lake\",\"peer\":\"lake\"}] explanation={\"id\":\"lake-sink\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":6400,\"offered\":40,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":24}],\"slots\":64,\"seconds\":0.02,\"utilization\":0.00625,\"growth\":0,\"contributors\":[{\"edge\":\"orders--lake-sink\",\"node\":\"orders\",\"label\":\"Order events\",\"rate\":40}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"lake\" \"aws.s3\" (\"Amazon S3\") \"Event lake\" / \"S3 · Parquet\" props={\"latencyMs\":0} in \"analytics\" capabilities=[] explanation=undefined\n  \"airflow\" \"airflow\" (\"Apache Airflow\") \"Nightly DAGs\" / \"MWAA\" props={\"ratePerSec\":0.1,\"messageType\":\"DagRun\"} in \"analytics\" capabilities=[] explanation=undefined\n  \"dbt\" \"dbt\" (\"dbt\") \"dbt models\" / \"orders and margin\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":2,\"latencyMs\":2000,\"jitter\":0.1,\"failureRate\":0} in \"analytics\" capabilities=[{\"kind\":\"calls\",\"edge\":\"dbt--snowflake\",\"peer\":\"snowflake\"}] explanation={\"id\":\"dbt\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1,\"offered\":0.1,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":2,\"seconds\":2,\"utilization\":0.1,\"growth\":0,\"contributors\":[{\"edge\":\"airflow--dbt\",\"node\":\"airflow\",\"label\":\"Nightly DAGs\",\"rate\":0.1}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"\",\"address\":\"\",\"offered\":0.1,\"rejected\":0,\"throttled\":0}]}\n  \"argocd\" \"argocd\" (\"Argo CD\") \"Argo CD\" / \"GitOps\" in \"platform\" capabilities=[] explanation=undefined\n  \"flags\" \"aws.parameter-store\" (\"Parameter Store\") \"Feature flags\" / \"Parameter Store\" in \"platform\" capabilities=[] explanation=undefined\n  \"secrets\" \"aws.secrets-manager\" (\"Secrets Manager\") \"Secrets Manager\" in \"platform\" capabilities=[] explanation=undefined\n  \"roles\" \"aws.iam-role\" (\"IAM Role\") \"Workload roles\" / \"IRSA\" in \"platform\" capabilities=[] explanation=undefined\n  \"datadog\" \"datadog\" (\"Datadog\") \"Datadog\" / \"APM, logs\" in \"platform\" capabilities=[] explanation=undefined\n  \"tax\" \"generic.external-api\" (\"External API\") \"Tax API\" / \"sales tax quotes\" props={\"latencyMs\":60} in \"payment-partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"tax\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.06,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"checkout-api--tax\",\"node\":\"checkout-api\",\"label\":\"Checkout API\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"stripe\" \"stripe\" (\"Stripe\") \"Stripe\" / \"card payments\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":180,\"jitter\":0.1,\"failureRate\":0,\"api\":{\"maxInFlight\":200,\"quotas\":[{\"id\":\"stripe-contract\",\"unit\":\"requests\",\"amount\":400,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} in \"payment-partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"stripe\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":400,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.18,\"utilization\":0.1,\"growth\":0,\"contributors\":[{\"edge\":\"payments--stripe\",\"node\":\"payments\",\"label\":\"Payments\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"wms\" \"generic.external-api\" (\"External API\") \"3PL warehouse API\" / \"pick and pack\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":120,\"jitter\":0.1,\"failureRate\":0,\"api\":{\"maxInFlight\":100,\"quotas\":[{\"id\":\"wms-rate\",\"unit\":\"requests\",\"amount\":200,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} in \"delivery-partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"wms\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":200,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.12,\"utilization\":0.2,\"growth\":0,\"contributors\":[{\"edge\":\"fulfilment--wms\",\"node\":\"fulfilment\",\"label\":\"Fulfilment workers\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":40,\"rejected\":0,\"throttled\":0}]}\n  \"sendgrid\" \"sendgrid\" (\"SendGrid\") \"SendGrid\" / \"order emails\" in \"delivery-partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"sendgrid\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":33.33333333333333,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"email--sendgrid\",\"node\":\"email\",\"label\":\"Email sender\",\"rate\":33.33333333333333}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":26.666666666666664,\"rejected\":0,\"throttled\":0},{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":6.666666666666666,\"rejected\":0,\"throttled\":0}]}\n  \"apns\" \"generic.push\" (\"Mobile Push\") \"APNs and FCM\" / \"push delivery\" in \"delivery-partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"apns\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":66.66666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"push--apns\",\"node\":\"push\",\"label\":\"Push sender\",\"rate\":66.66666666666666}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":53.33333333333333,\"rejected\":0,\"throttled\":0},{\"route\":\"carrier-scan\",\"address\":\"POST /hooks/carriers/scan\",\"offered\":13.333333333333332,\"rejected\":0,\"throttled\":0}]}\n  \"snowflake\" \"snowflake\" (\"Snowflake\") \"Snowflake\" / \"merch marts\" props={\"latencyMs\":400} in \"saas-data\" capabilities=[{\"kind\":\"calls\",\"edge\":\"snowflake--tableau\",\"peer\":\"tableau\"}] explanation=undefined\n  \"tableau\" \"tableau\" (\"Tableau\") \"Merch dashboards\" / \"Tableau\" in \"saas-data\" capabilities=[] explanation=undefined\nconnections:\n  \"web--cdn\" \"web\" -> \"cdn\" sync \"HTTPS\"\n  \"app--cdn\" \"app\" -> \"cdn\" sync \"HTTPS\"\n  \"carriers--cdn\" \"carriers\" -> \"cdn\" sync \"Webhook\"\n  \"cdn--gateway\" \"cdn\" -> \"gateway\" sync \"API calls\"\n  \"cdn--collector\" \"cdn\" -> \"collector\" sync \"Beacons\"\n  \"gateway--catalog-bff\" \"gateway\" -> \"catalog-bff\" sync \"Products\"\n  \"gateway--search-api\" \"gateway\" -> \"search-api\" sync \"Search\"\n  \"gateway--cart-api\" \"gateway\" -> \"cart-api\" sync \"Cart\"\n  \"gateway--checkout-api\" \"gateway\" -> \"checkout-api\" sync \"Checkout\"\n  \"gateway--order-status\" \"gateway\" -> \"order-status\" sync \"Status\"\n  \"gateway--tracking\" \"gateway\" -> \"tracking\" sync \"Scans\"\n  \"catalog-bff--product-cache\" \"catalog-bff\" -> \"product-cache\" sync\n  \"catalog-bff--catalog-db\" \"catalog-bff\" -> \"catalog-db\" sync \"Cache miss\"\n  \"catalog-bff--reco\" \"catalog-bff\" -> \"reco\" sync \"Similar\"\n  \"reco--features\" \"reco\" -> \"features\" sync\n  \"search-api--search-index\" \"search-api\" -> \"search-index\" sync\n  \"cart-api--carts\" \"cart-api\" -> \"carts\" sync\n  \"cart-api--pricing\" \"cart-api\" -> \"pricing\" sync \"Price\"\n  \"pricing--promotions\" \"pricing\" -> \"promotions\" sync\n  \"checkout-api--pricing\" \"checkout-api\" -> \"pricing\" sync \"Reprice\"\n  \"checkout-api--tax\" \"checkout-api\" -> \"tax\" sync \"Tax quote\"\n  \"checkout-api--inventory\" \"checkout-api\" -> \"inventory\" sync \"Reserve\"\n  \"checkout-api--risk\" \"checkout-api\" -> \"risk\" sync \"Score\"\n  \"checkout-api--payments\" \"checkout-api\" -> \"payments\" sync \"Authorize\"\n  \"checkout-api--orders-db\" \"checkout-api\" -> \"orders-db\" sync \"Order + outbox\"\n  \"risk--features\" \"risk\" -> \"features\" sync\n  \"inventory--inventory-db\" \"inventory\" -> \"inventory-db\" sync\n  \"payments--stripe\" \"payments\" -> \"stripe\" sync \"PaymentIntent\"\n  \"order-status--status-cache\" \"order-status\" -> \"status-cache\" sync\n  \"orders-db--outbox-relay\" \"orders-db\" -> \"outbox-relay\" async \"CDC\"\n  \"outbox-relay--orders\" \"outbox-relay\" -> \"orders\" async \"OrderPlaced\"\n  \"inventory-db--inventory-events\" \"inventory-db\" -> \"inventory-events\" async \"CDC\"\n  \"orders--fulfilment\" \"orders\" -> \"fulfilment\" async\n  \"orders--loyalty\" \"orders\" -> \"loyalty\" async\n  \"orders--status-projector\" \"orders\" -> \"status-projector\" async\n  \"orders--notifier\" \"orders\" -> \"notifier\" async\n  \"orders--lake-sink\" \"orders\" -> \"lake-sink\" async\n  \"orders--orders-dlq\" \"orders\" -> \"orders-dlq\" async \"After 3 tries\"\n  \"orders-dlq--dlq-triage\" \"orders-dlq\" -> \"dlq-triage\" async\n  \"notify-dlq--dlq-triage\" \"notify-dlq\" -> \"dlq-triage\" async\n  \"dlq-triage--loyalty\" \"dlq-triage\" -> \"loyalty\" sync \"Replay\"\n  \"fulfilment--wms\" \"fulfilment\" -> \"wms\" sync \"Pick request\"\n  \"fulfilment--shipments\" \"fulfilment\" -> \"shipments\" async \"ShipmentCreated\"\n  \"loyalty--loyalty-db\" \"loyalty\" -> \"loyalty-db\" sync \"Points\"\n  \"status-projector--status-cache\" \"status-projector\" -> \"status-cache\" sync \"Upsert\"\n  \"inventory-events--search-indexer\" \"inventory-events\" -> \"search-indexer\" async\n  \"search-indexer--search-index\" \"search-indexer\" -> \"search-index\" sync \"Reindex\"\n  \"tracking--shipments\" \"tracking\" -> \"shipments\" async \"ParcelScanned\"\n  \"shipments--notifier\" \"shipments\" -> \"notifier\" async\n  \"shipments--status-projector\" \"shipments\" -> \"status-projector\" async\n  \"notifier--notify-q\" \"notifier\" -> \"notify-q\" async \"Notify\"\n  \"notify-q--email\" \"notify-q\" -> \"email\" async\n  \"notify-q--push\" \"notify-q\" -> \"push\" async\n  \"notify-q--notify-dlq\" \"notify-q\" -> \"notify-dlq\" async \"After 5 tries\"\n  \"email--sendgrid\" \"email\" -> \"sendgrid\" sync \"Mail send\"\n  \"push--apns\" \"push\" -> \"apns\" sync \"Send\"\n  \"collector--clickstream\" \"collector\" -> \"clickstream\" async \"PageViewed\"\n  \"clickstream--sessionizer\" \"clickstream\" -> \"sessionizer\" async\n  \"sessionizer--features\" \"sessionizer\" -> \"features\" sync \"Update features\"\n  \"sessionizer--lake\" \"sessionizer\" -> \"lake\" sync \"Sessions\"\n  \"lake-sink--lake\" \"lake-sink\" -> \"lake\" sync \"Parquet\"\n  \"airflow--dbt\" \"airflow\" -> \"dbt\" async \"Nightly run\"\n  \"dbt--snowflake\" \"dbt\" -> \"snowflake\" sync \"Build marts\"\n  \"snowflake--tableau\" \"snowflake\" -> \"tableau\" sync\n  \"payments--secrets\" \"payments\" -> \"secrets\" secret dependency \"Stripe key\"\n  \"payments--roles\" \"payments\" -> \"roles\" identity dependency\n  \"checkout-api--flags\" \"checkout-api\" -> \"flags\" config dependency \"Flags\"\n  \"fulfilment--roles\" \"fulfilment\" -> \"roles\" identity dependency\n  \"checkout-api--datadog\" \"checkout-api\" -> \"datadog\" telemetry dependency\n  \"fulfilment--datadog\" \"fulfilment\" -> \"datadog\" telemetry dependency\n  \"argocd--checkout-api\" \"argocd\" -> \"checkout-api\" deploy dependency\n  \"argocd--loyalty\" \"argocd\" -> \"loyalty\" deploy dependency\n  \"dbt--lake\" \"dbt\" -> \"lake\" depends dependency \"Reads\"\nrequest routes (7):\n  \"browse\" GET \"/products/8812\" \"Product page\"\n  \"search\" GET \"/search/parka\" \"Search\"\n  \"cart\" POST \"/cart/items\" \"Add to cart\"\n  \"checkout\" POST \"/checkout\" \"Checkout\"\n  \"order-status\" GET \"/orders/5531\" \"Order status\"\n  \"beacon\" POST \"/collect\" \"Analytics beacon\"\n  \"carrier-scan\" POST \"/hooks/carriers/scan\" \"Carrier scan\"\nroute demand \"cdn\" \"browse\": offered 192 req/s, refused 404 0 req/s, rate-limited 429 0 req/s\nroute demand \"cdn\" \"search\": offered 100 req/s, refused 404 0 req/s, rate-limited 429 0 req/s\nroute demand \"cdn\" \"cart\": offered 50 req/s, refused 404 0 req/s, rate-limited 429 0 req/s\nroute demand \"cdn\" \"checkout\": offered 40 req/s, refused 404 0 req/s, rate-limited 429 0 req/s\n… 25 lines omitted"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Black Friday commerce platform",
+      "description": "An invented retailer, Larkspur Outfitters. A route table splits storefront traffic by path and rate-limits checkout; Checkout scales on CPU; an outbox feeds Kafka; KEDA wakes fulfilment on order lag; a bad deploy parks events in a DLQ while other consumer groups carry on.",
+      "direction": "LR",
+      "planning": {
+        "revision": "p3-a1",
+        "requestRoutes": [
+          {
+            "id": "browse",
+            "label": "Product page",
+            "address": { "method": "GET", "path": "/products/8812" },
+            "appearance": { "paletteSlot": 0, "marker": "circle" }
+          },
+          {
+            "id": "search",
+            "label": "Search",
+            "address": { "method": "GET", "path": "/search/parka" },
+            "appearance": { "paletteSlot": 1, "marker": "square" }
+          },
+          {
+            "id": "cart",
+            "label": "Add to cart",
+            "address": { "method": "POST", "path": "/cart/items" },
+            "appearance": { "paletteSlot": 2, "marker": "diamond" }
+          },
+          {
+            "id": "checkout",
+            "label": "Checkout",
+            "address": { "method": "POST", "path": "/checkout" },
+            "appearance": { "paletteSlot": 3, "marker": "triangle" }
+          },
+          {
+            "id": "order-status",
+            "label": "Order status",
+            "address": { "method": "GET", "path": "/orders/5531" },
+            "appearance": { "paletteSlot": 4, "marker": "circle" }
+          },
+          {
+            "id": "beacon",
+            "label": "Analytics beacon",
+            "address": { "method": "POST", "path": "/collect" },
+            "appearance": { "paletteSlot": 5, "marker": "diamond" }
+          },
+          {
+            "id": "carrier-scan",
+            "label": "Carrier scan",
+            "address": { "method": "POST", "path": "/hooks/carriers/scan" },
+            "appearance": { "paletteSlot": 6, "marker": "square" }
+          }
+        ]
+      },
+      "nodes": [
+        {
+          "id": "web",
+          "stencil": "client.browser",
+          "label": "Shoppers on the web",
+          "sublabel": "Storefront SPA",
+          "props": {
+            "ratePerSec": 300,
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [
+                { "routeId": "browse", "share": 0.4 },
+                { "routeId": "search", "share": 0.2 },
+                { "routeId": "cart", "share": 0.1 },
+                { "routeId": "checkout", "share": 0.08 },
+                { "routeId": "order-status", "share": 0.04 },
+                { "routeId": "beacon", "share": 0.18 }
+              ]
+            }
+          },
+          "x": 0,
+          "y": 700,
+          "capabilities": [{ "kind": "calls", "edge": "web--cdn", "peer": "cdn" }]
+        },
+        {
+          "id": "app",
+          "stencil": "client.mobile",
+          "label": "Larkspur app",
+          "sublabel": "iOS and Android",
+          "props": {
+            "ratePerSec": 200,
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [
+                { "routeId": "browse", "share": 0.36 },
+                { "routeId": "search", "share": 0.2 },
+                { "routeId": "cart", "share": 0.1 },
+                { "routeId": "checkout", "share": 0.08 },
+                { "routeId": "order-status", "share": 0.08 },
+                { "routeId": "beacon", "share": 0.18 }
+              ]
+            }
+          },
+          "x": 0,
+          "y": 900,
+          "capabilities": [{ "kind": "calls", "edge": "app--cdn", "peer": "cdn" }]
+        },
+        {
+          "id": "carriers",
+          "stencil": "generic.webhook",
+          "label": "Carrier scans",
+          "sublabel": "tracking webhooks",
+          "props": {
+            "ratePerSec": 20,
+            "trafficMix": { "mode": "rates", "entries": [{ "routeId": "carrier-scan", "ratePerSec": 20 }] }
+          },
+          "x": 0,
+          "y": 1100,
+          "capabilities": [{ "kind": "calls", "edge": "carriers--cdn", "peer": "cdn" }]
+        },
+        {
+          "id": "cdn",
+          "stencil": "cloudflare",
+          "label": "Edge CDN",
+          "sublabel": "WAF, bot rules, TLS",
+          "group": "edge",
+          "props": {
+            "latencyMs": 0,
+            "jitter": 0,
+            "replicas": 20,
+            "concurrency": 64,
+            "routeTable": {
+              "rules": [
+                {
+                  "id": "beacons",
+                  "label": "Analytics beacons",
+                  "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/collect" } },
+                  "targets": [{ "edgeId": "cdn--collector", "weight": 1 }]
+                }
+              ],
+              "default": { "targets": [{ "edgeId": "cdn--gateway", "weight": 1 }] }
+            }
+          },
+          "x": 460,
+          "y": 900,
+          "capabilities": [
+            { "kind": "calls", "edge": "cdn--gateway", "peer": "gateway" },
+            { "kind": "calls", "edge": "cdn--collector", "peer": "collector" }
+          ]
+        },
+        {
+          "id": "gateway",
+          "stencil": "kong",
+          "label": "API gateway",
+          "sublabel": "Kong · route table",
+          "group": "storefront",
+          "props": {
+            "latencyMs": 0,
+            "jitter": 0,
+            "replicas": 6,
+            "concurrency": 64,
+            "routeTable": {
+              "rules": [
+                {
+                  "id": "products",
+                  "label": "Product pages",
+                  "match": { "methods": ["GET"], "path": { "kind": "template", "value": "/products/{id}" } },
+                  "targets": [{ "edgeId": "gateway--catalog-bff", "weight": 1 }]
+                },
+                {
+                  "id": "search",
+                  "label": "Search",
+                  "match": { "methods": ["GET"], "path": { "kind": "prefix", "value": "/search/" } },
+                  "targets": [{ "edgeId": "gateway--search-api", "weight": 1 }]
+                },
+                {
+                  "id": "cart",
+                  "label": "Cart",
+                  "match": { "methods": ["POST"], "path": { "kind": "prefix", "value": "/cart" } },
+                  "targets": [{ "edgeId": "gateway--cart-api", "weight": 1 }]
+                },
+                {
+                  "id": "checkout",
+                  "label": "Checkout, rate limited",
+                  "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/checkout" } },
+                  "targets": [{ "edgeId": "gateway--checkout-api", "weight": 1 }],
+                  "quotas": [
+                    { "id": "checkout-rps", "unit": "requests", "amount": 150, "windowMs": 1000, "algorithm": "token-bucket", "burst": 150 }
+                  ]
+                },
+                {
+                  "id": "status",
+                  "label": "Order status",
+                  "match": { "methods": ["GET"], "path": { "kind": "template", "value": "/orders/{id}" } },
+                  "targets": [{ "edgeId": "gateway--order-status", "weight": 1 }]
+                },
+                {
+                  "id": "carrier-hooks",
+                  "label": "Carrier webhooks",
+                  "match": { "methods": ["POST"], "path": { "kind": "prefix", "value": "/hooks/carriers" } },
+                  "targets": [{ "edgeId": "gateway--tracking", "weight": 1 }]
+                }
+              ]
+            }
+          },
+          "x": 900,
+          "y": 890,
+          "capabilities": [
+            { "kind": "calls", "edge": "gateway--catalog-bff", "peer": "catalog-bff" },
+            { "kind": "calls", "edge": "gateway--search-api", "peer": "search-api" },
+            { "kind": "calls", "edge": "gateway--cart-api", "peer": "cart-api" },
+            { "kind": "calls", "edge": "gateway--checkout-api", "peer": "checkout-api" },
+            { "kind": "calls", "edge": "gateway--order-status", "peer": "order-status" },
+            { "kind": "calls", "edge": "gateway--tracking", "peer": "tracking" }
+          ],
+          "explanation": {
+            "managed": "api",
+            "id": "gateway",
+            "role": "gateway",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 1612.5,
+            "offered": 430,
+            "replicas": 6,
+            "baseReplicas": 6,
+            "omittedContributors": 0,
+            "activeReplicas": 6,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0,
+            "utilization": 0.26666666666666666,
+            "growth": 0,
+            "contributors": [
+              { "edge": "cdn--gateway", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 430, "via": "Edge CDN" }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "browse", "address": "GET /products/8812", "offered": 192, "rejected": 0, "throttled": 0 },
+              { "route": "search", "address": "GET /search/parka", "offered": 100, "rejected": 0, "throttled": 0 },
+              { "route": "cart", "address": "POST /cart/items", "offered": 50, "rejected": 0, "throttled": 0 },
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 },
+              { "route": "order-status", "address": "GET /orders/5531", "offered": 28, "rejected": 0, "throttled": 0 },
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 20, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "catalog-bff",
+          "stencil": "service.node",
+          "label": "Catalog BFF",
+          "sublabel": "product pages",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 440,
+          "capabilities": [
+            { "kind": "calls", "edge": "catalog-bff--product-cache", "peer": "product-cache" },
+            { "kind": "calls", "edge": "catalog-bff--catalog-db", "peer": "catalog-db", "share": 0.1 },
+            { "kind": "calls", "edge": "catalog-bff--reco", "peer": "reco", "share": 0.5 }
+          ],
+          "explanation": {
+            "id": "catalog-bff",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 3200,
+            "offered": 192,
+            "replicas": 4,
+            "baseReplicas": 4,
+            "omittedContributors": 0,
+            "activeReplicas": 4,
+            "assignments": [],
+            "slots": 32,
+            "seconds": 0.04,
+            "utilization": 0.06,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gateway--catalog-bff", "node": "gateway", "label": "Edge CDN", "rate": 192, "via": "API gateway" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 4,
+            "targetReplicas": 4,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "browse", "address": "GET /products/8812", "offered": 192, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "search-api",
+          "stencil": "service.go",
+          "label": "Search API",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 620,
+          "capabilities": [{ "kind": "calls", "edge": "search-api--search-index", "peer": "search-index" }],
+          "explanation": {
+            "id": "search-api",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 3200,
+            "offered": 100,
+            "replicas": 3,
+            "baseReplicas": 3,
+            "omittedContributors": 0,
+            "activeReplicas": 3,
+            "assignments": [],
+            "slots": 32,
+            "seconds": 0.03,
+            "utilization": 0.03125,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gateway--search-api", "node": "gateway", "label": "Edge CDN", "rate": 100, "via": "API gateway" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 3,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "search", "address": "GET /search/parka", "offered": 100, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "cart-api",
+          "stencil": "service.java",
+          "label": "Cart API",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 16, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 800,
+          "capabilities": [
+            { "kind": "calls", "edge": "cart-api--carts", "peer": "carts" },
+            { "kind": "calls", "edge": "cart-api--pricing", "peer": "pricing" }
+          ],
+          "explanation": {
+            "id": "cart-api",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 1200,
+            "offered": 50,
+            "replicas": 3,
+            "baseReplicas": 3,
+            "omittedContributors": 0,
+            "activeReplicas": 3,
+            "assignments": [],
+            "slots": 16,
+            "seconds": 0.04,
+            "utilization": 0.041666666666666664,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gateway--cart-api", "node": "gateway", "label": "Edge CDN", "rate": 50, "via": "API gateway" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 3,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "cart", "address": "POST /cart/items", "offered": 50, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "checkout-api",
+          "stencil": "service.java",
+          "label": "Checkout API",
+          "sublabel": "HPA on CPU",
+          "group": "storefront",
+          "props": {
+            "preset": "processor-lesson",
+            "presetRevision": "1",
+            "replicas": 2,
+            "concurrency": 8,
+            "latencyMs": 100,
+            "jitter": 0.1,
+            "failureRate": 0,
+            "resources": {
+              "preset": "io-service",
+              "presetRevision": "1",
+              "cpuMsPerMessage": 10,
+              "baselineMemoryMiB": 192,
+              "memoryMiBPerMessage": 1,
+              "cpuRequestMilli": 500,
+              "cpuLimitMilli": 1000,
+              "memoryRequestMiB": 512,
+              "memoryLimitMiB": 1024,
+              "startup": { "delayMs": 2000, "jitterFraction": 0 },
+              "terminationGraceMs": 30000
+            },
+            "autoscaling": {
+              "mode": "on",
+              "modelRevision": "a1",
+              "preset": "hpa-service",
+              "presetRevision": "1",
+              "controller": {
+                "kind": "hpa",
+                "minReplicas": 2,
+                "maxReplicas": 10,
+                "initialReplicas": 2,
+                "settings": {
+                  "syncMs": 1000,
+                  "tolerance": 0.1,
+                  "initialReadinessDelayMs": 0,
+                  "cpuInitializationPeriodMs": 0,
+                  "metrics": [
+                    {
+                      "source": { "kind": "resource", "resource": "cpu" },
+                      "target": { "kind": "utilization", "percentOfRequest": 70 },
+                      "windowMs": 1000,
+                      "metricDelayMs": 0
+                    }
+                  ],
+                  "up": {
+                    "stabilizationMs": 0,
+                    "selectPolicy": "Max",
+                    "policies": [
+                      { "type": "Pods", "value": 4, "periodMs": 15000 },
+                      { "type": "Percent", "value": 100, "periodMs": 15000 }
+                    ]
+                  },
+                  "down": {
+                    "stabilizationMs": 30000,
+                    "selectPolicy": "Max",
+                    "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                  }
+                }
+              }
+            }
+          },
+          "x": 1360,
+          "y": 980,
+          "capabilities": [
+            { "kind": "calls", "edge": "checkout-api--pricing", "peer": "pricing" },
+            { "kind": "calls", "edge": "checkout-api--tax", "peer": "tax" },
+            { "kind": "calls", "edge": "checkout-api--inventory", "peer": "inventory" },
+            { "kind": "calls", "edge": "checkout-api--risk", "peer": "risk" },
+            { "kind": "calls", "edge": "checkout-api--payments", "peer": "payments" },
+            { "kind": "calls", "edge": "checkout-api--orders-db", "peer": "orders-db" }
+          ],
+          "explanation": {
+            "resources": { "perReplica": 80, "initial": 2, "min": 2, "max": 10, "initialCapacity": 160, "maxCapacity": 800, "targetReplicas": 2, "cpuRequestPct": 40, "memoryPeakMiB": 200, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 2000, "cpuUnbounded": false },
+            "id": "checkout-api",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 160,
+            "offered": 40,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": 8,
+            "seconds": 0.1,
+            "utilization": 0.25,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gateway--checkout-api", "node": "gateway", "label": "Edge CDN", "rate": 40, "via": "API gateway" }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "order-status",
+          "stencil": "service.go",
+          "label": "Order status API",
+          "sublabel": "read model",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 15, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 1160,
+          "capabilities": [{ "kind": "calls", "edge": "order-status--status-cache", "peer": "status-cache" }],
+          "explanation": {
+            "id": "order-status",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 4266.666666666667,
+            "offered": 28,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": 32,
+            "seconds": 0.015,
+            "utilization": 0.0065625,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gateway--order-status", "node": "gateway", "label": "Edge CDN", "rate": 28, "via": "API gateway" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "order-status", "address": "GET /orders/5531", "offered": 28, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "tracking",
+          "stencil": "service.go",
+          "label": "Shipment tracking",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 1340,
+          "capabilities": [
+            { "kind": "publishes", "edge": "tracking--shipments", "peer": "shipments", "emits": "ParcelScanned" }
+          ],
+          "explanation": {
+            "id": "tracking",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 1066.6666666666667,
+            "offered": 20,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": 16,
+            "seconds": 0.03,
+            "utilization": 0.01875,
+            "growth": 0,
+            "contributors": [
+              { "edge": "gateway--tracking", "node": "gateway", "label": "Edge CDN", "rate": 20, "via": "API gateway" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 20, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "reco",
+          "stencil": "service.python",
+          "label": "Recommendations",
+          "sublabel": "similar items",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 16, "latencyMs": 60, "jitter": 0.1, "failureRate": 0 },
+          "x": 1820,
+          "y": 440,
+          "capabilities": [{ "kind": "calls", "edge": "reco--features", "peer": "features" }],
+          "explanation": {
+            "id": "reco",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 800,
+            "offered": 96,
+            "replicas": 3,
+            "baseReplicas": 3,
+            "omittedContributors": 0,
+            "activeReplicas": 3,
+            "assignments": [],
+            "slots": 16,
+            "seconds": 0.06,
+            "utilization": 0.12,
+            "growth": 0,
+            "contributors": [
+              { "edge": "catalog-bff--reco", "node": "catalog-bff", "label": "Catalog BFF", "rate": 96 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 3,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "browse", "address": "GET /products/8812", "offered": 96, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "pricing",
+          "stencil": "service.go",
+          "label": "Pricing",
+          "sublabel": "prices and promotions",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+          "x": 1820,
+          "y": 800,
+          "capabilities": [{ "kind": "calls", "edge": "pricing--promotions", "peer": "promotions" }],
+          "explanation": {
+            "id": "pricing",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 4800,
+            "offered": 90,
+            "replicas": 3,
+            "baseReplicas": 3,
+            "omittedContributors": 0,
+            "activeReplicas": 3,
+            "assignments": [],
+            "slots": 32,
+            "seconds": 0.02,
+            "utilization": 0.01875,
+            "growth": 0,
+            "contributors": [
+              { "edge": "cart-api--pricing", "node": "cart-api", "label": "Cart API", "rate": 50 },
+              { "edge": "checkout-api--pricing", "node": "checkout-api", "label": "Checkout API", "rate": 40 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 3,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "cart", "address": "POST /cart/items", "offered": 50, "rejected": 0, "throttled": 0 },
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "inventory",
+          "stencil": "service.java",
+          "label": "Inventory",
+          "sublabel": "stock reservations",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 16, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 1820,
+          "y": 980,
+          "capabilities": [{ "kind": "calls", "edge": "inventory--inventory-db", "peer": "inventory-db" }],
+          "explanation": {
+            "id": "inventory",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 1200,
+            "offered": 40,
+            "replicas": 3,
+            "baseReplicas": 3,
+            "omittedContributors": 0,
+            "activeReplicas": 3,
+            "assignments": [],
+            "slots": 16,
+            "seconds": 0.04,
+            "utilization": 0.03333333333333333,
+            "growth": 0,
+            "contributors": [
+              { "edge": "checkout-api--inventory", "node": "checkout-api", "label": "Checkout API", "rate": 40 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 3,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "risk",
+          "stencil": "generic.ml-model",
+          "label": "Fraud model",
+          "sublabel": "risk score",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 25, "jitter": 0.1, "failureRate": 0 },
+          "x": 1820,
+          "y": 1160,
+          "capabilities": [{ "kind": "calls", "edge": "risk--features", "peer": "features" }],
+          "explanation": {
+            "managed": "api",
+            "id": "risk",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": null,
+            "offered": 40,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": 32,
+            "seconds": 0.025,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [
+              { "edge": "checkout-api--risk", "node": "checkout-api", "label": "Checkout API", "rate": 40 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "payments",
+          "stencil": "service.dotnet",
+          "label": "Payments",
+          "sublabel": "authorize, idempotent",
+          "group": "storefront",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 16, "latencyMs": 60, "jitter": 0.1, "failureRate": 0 },
+          "x": 1820,
+          "y": 1340,
+          "capabilities": [{ "kind": "calls", "edge": "payments--stripe", "peer": "stripe" }],
+          "explanation": {
+            "id": "payments",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 800,
+            "offered": 40,
+            "replicas": 3,
+            "baseReplicas": 3,
+            "omittedContributors": 0,
+            "activeReplicas": 3,
+            "assignments": [],
+            "slots": 16,
+            "seconds": 0.06,
+            "utilization": 0.05,
+            "growth": 0,
+            "contributors": [
+              { "edge": "checkout-api--payments", "node": "checkout-api", "label": "Checkout API", "rate": 40 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 3,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "features",
+          "stencil": "redis.cache",
+          "label": "Feature store",
+          "sublabel": "online features",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 380,
+          "capabilities": []
+        },
+        {
+          "id": "product-cache",
+          "stencil": "redis.cache",
+          "label": "Product cache",
+          "sublabel": "ElastiCache",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 500,
+          "capabilities": []
+        },
+        {
+          "id": "catalog-db",
+          "stencil": "aws.aurora",
+          "label": "Catalog DB",
+          "sublabel": "Aurora Postgres",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 620,
+          "capabilities": []
+        },
+        {
+          "id": "search-index",
+          "stencil": "elasticsearch",
+          "label": "Product index",
+          "sublabel": "OpenSearch",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 740,
+          "capabilities": []
+        },
+        {
+          "id": "carts",
+          "stencil": "aws.dynamodb",
+          "label": "Carts",
+          "sublabel": "DynamoDB",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 860,
+          "capabilities": []
+        },
+        {
+          "id": "promotions",
+          "stencil": "aws.dynamodb",
+          "label": "Promotions",
+          "sublabel": "DynamoDB",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 980,
+          "capabilities": []
+        },
+        {
+          "id": "inventory-db",
+          "stencil": "aws.aurora",
+          "label": "Inventory DB",
+          "sublabel": "Aurora Postgres",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 1100,
+          "capabilities": [
+            { "kind": "publishes", "edge": "inventory-db--inventory-events", "peer": "inventory-events", "emits": "StockChanged" }
+          ]
+        },
+        {
+          "id": "orders-db",
+          "stencil": "aws.aurora",
+          "label": "Orders DB",
+          "sublabel": "orders and outbox",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 1220,
+          "capabilities": []
+        },
+        {
+          "id": "status-cache",
+          "stencil": "redis.cache",
+          "label": "Order status cache",
+          "sublabel": "projection",
+          "group": "stores",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 1340,
+          "capabilities": []
+        },
+        {
+          "id": "outbox-relay",
+          "stencil": "kafka.connect",
+          "label": "Outbox relay",
+          "sublabel": "Debezium, orders.outbox",
+          "group": "backbone",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+          "x": 2860,
+          "y": 1220,
+          "capabilities": [
+            { "kind": "publishes", "edge": "outbox-relay--orders", "peer": "orders", "emits": "OrderPlaced" }
+          ],
+          "explanation": {
+            "id": "outbox-relay",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 3200,
+            "offered": 40,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [],
+            "slots": 32,
+            "seconds": 0.02,
+            "utilization": 0.0125,
+            "growth": 0,
+            "contributors": [
+              { "edge": "orders-db--outbox-relay", "node": "orders-db", "label": "Orders DB", "rate": 40 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "inventory-events",
+          "stencil": "kafka.topic",
+          "label": "Stock changes",
+          "sublabel": "inventory.v1 · 12 partitions",
+          "group": "backbone",
+          "props": { "partitions": 12 },
+          "x": 3280,
+          "y": 1100,
+          "capabilities": []
+        },
+        {
+          "id": "orders",
+          "stencil": "kafka.topic",
+          "label": "Order events",
+          "sublabel": "orders.v1 · 24 partitions",
+          "group": "backbone",
+          "props": { "partitions": 24, "maxDeliveryCount": 3 },
+          "x": 3280,
+          "y": 1220,
+          "capabilities": []
+        },
+        {
+          "id": "orders-dlq",
+          "stencil": "kafka.topic",
+          "label": "Orders DLQ",
+          "sublabel": "orders.dlq · 3 partitions",
+          "group": "backbone",
+          "props": { "partitions": 3 },
+          "x": 3280,
+          "y": 1340,
+          "capabilities": []
+        },
+        {
+          "id": "shipments",
+          "stencil": "kafka.topic",
+          "label": "Shipment events",
+          "sublabel": "shipments.v1 · 12 partitions",
+          "group": "backbone",
+          "props": { "partitions": 12 },
+          "x": 3280,
+          "y": 1460,
+          "capabilities": []
+        },
+        {
+          "id": "search-indexer",
+          "stencil": "service.python",
+          "label": "Search indexer",
+          "sublabel": "stock to index",
+          "group": "fulfil",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+          "x": 3760,
+          "y": 980,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "inventory-events--search-indexer",
+              "peer": "inventory-events",
+              "group": "search",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "calls", "edge": "search-indexer--search-index", "peer": "search-index" }
+          ],
+          "explanation": {
+            "id": "search-indexer",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 1066.6666666666667,
+            "offered": 40,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [
+              {
+                "broker": "inventory-events",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 12
+              }
+            ],
+            "slots": 16,
+            "seconds": 0.03,
+            "utilization": 0.0375,
+            "growth": 0,
+            "contributors": [
+              { "edge": "inventory-events--search-indexer", "node": "inventory-events", "label": "Stock changes", "rate": 40 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "fulfilment",
+          "stencil": "service.go",
+          "label": "Fulfilment workers",
+          "sublabel": "KEDA on order lag",
+          "group": "fulfil",
+          "props": {
+            "preset": "processor-lesson",
+            "presetRevision": "1",
+            "replicas": 2,
+            "concurrency": 4,
+            "latencyMs": 100,
+            "jitter": 0.1,
+            "failureRate": 0,
+            "resources": {
+              "preset": "io-service",
+              "presetRevision": "1",
+              "cpuMsPerMessage": 20,
+              "baselineMemoryMiB": 192,
+              "memoryMiBPerMessage": 1,
+              "cpuRequestMilli": 250,
+              "cpuLimitMilli": 500,
+              "memoryRequestMiB": 256,
+              "memoryLimitMiB": 512,
+              "startup": { "delayMs": 1000, "jitterFraction": 0 },
+              "terminationGraceMs": 30000
+            },
+            "autoscaling": {
+              "mode": "on",
+              "modelRevision": "a2",
+              "preset": "keda-kafka",
+              "presetRevision": "1",
+              "controller": {
+                "kind": "keda",
+                "minReplicas": 2,
+                "maxReplicas": 12,
+                "initialReplicas": 2,
+                "pollingMs": 1000,
+                "cooldownMs": 5000,
+                "initialCooldownMs": 0,
+                "triggers": [
+                  {
+                    "type": "kafka",
+                    "source": { "node": "orders", "group": "fulfilment" },
+                    "target": 20,
+                    "activation": 0,
+                    "useCachedMetrics": false,
+                    "allowIdleConsumers": false
+                  }
+                ],
+                "settings": {
+                  "syncMs": 1000,
+                  "tolerance": 0.1,
+                  "initialReadinessDelayMs": 0,
+                  "cpuInitializationPeriodMs": 0,
+                  "metrics": [],
+                  "up": {
+                    "stabilizationMs": 0,
+                    "selectPolicy": "Max",
+                    "policies": [
+                      { "type": "Pods", "value": 4, "periodMs": 15000 },
+                      { "type": "Percent", "value": 100, "periodMs": 15000 }
+                    ]
+                  },
+                  "down": {
+                    "stabilizationMs": 300000,
+                    "selectPolicy": "Max",
+                    "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                  }
+                }
+              }
+            }
+          },
+          "x": 3760,
+          "y": 1100,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "orders--fulfilment",
+              "peer": "orders",
+              "group": "fulfilment",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "calls", "edge": "fulfilment--wms", "peer": "wms" },
+            { "kind": "publishes", "edge": "fulfilment--shipments", "peer": "shipments", "emits": "ShipmentCreated" }
+          ],
+          "explanation": {
+            "resources": {
+              "keda": { "pollingMs": 1000, "cooldownMs": 5000, "lagBeforePoll": 0, "offered": 40 },
+              "perReplica": 25,
+              "initial": 2,
+              "min": 2,
+              "max": 12,
+              "initialCapacity": 50,
+              "maxCapacity": 300,
+              "cpuRequestPct": 160,
+              "memoryPeakMiB": 196,
+              "memoryRisk": false,
+              "baselineAboveTarget": false,
+              "partitionLimited": false,
+              "startupMs": 1000,
+              "cpuUnbounded": false
+            },
+            "id": "fulfilment",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 50,
+            "offered": 40,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [
+              {
+                "broker": "orders",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 24
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.1,
+            "utilization": 0.8,
+            "growth": 0,
+            "contributors": [{ "edge": "orders--fulfilment", "node": "orders", "label": "Order events", "rate": 40 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "loyalty",
+          "stencil": "service.dotnet",
+          "label": "Loyalty points",
+          "group": "fulfil",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 3760,
+          "y": 1220,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "orders--loyalty",
+              "peer": "orders",
+              "group": "loyalty",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "calls", "edge": "loyalty--loyalty-db", "peer": "loyalty-db" }
+          ],
+          "explanation": {
+            "id": "loyalty",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 800,
+            "offered": 40,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [
+              {
+                "broker": "orders",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 24
+              }
+            ],
+            "slots": 16,
+            "seconds": 0.04,
+            "utilization": 0.05,
+            "growth": 0,
+            "contributors": [{ "edge": "orders--loyalty", "node": "orders", "label": "Order events", "rate": 40 }],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "status-projector",
+          "stencil": "generic.projection",
+          "label": "Status projector",
+          "sublabel": "orders, shipments",
+          "group": "fulfil",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 3760,
+          "y": 1340,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "orders--status-projector",
+              "peer": "orders",
+              "group": "status",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "calls", "edge": "status-projector--status-cache", "peer": "status-cache" },
+            {
+              "kind": "consumes",
+              "edge": "shipments--status-projector",
+              "peer": "shipments",
+              "group": "status",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            }
+          ],
+          "explanation": {
+            "id": "status-projector",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 6400,
+            "offered": 100,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [
+              {
+                "broker": "orders",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 24
+              },
+              {
+                "broker": "shipments",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 12
+              }
+            ],
+            "slots": 32,
+            "seconds": 0.01,
+            "utilization": 0.015625,
+            "growth": 0,
+            "contributors": [
+              { "edge": "orders--status-projector", "node": "orders", "label": "Order events", "rate": 40 },
+              { "edge": "shipments--status-projector", "node": "shipments", "label": "Shipment events", "rate": 60 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 80, "rejected": 0, "throttled": 0 },
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 20, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "notifier",
+          "stencil": "service.node",
+          "label": "Notification router",
+          "sublabel": "by preference",
+          "group": "fulfil",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+          "x": 3760,
+          "y": 1460,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "orders--notifier",
+              "peer": "orders",
+              "group": "notifications",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            {
+              "kind": "consumes",
+              "edge": "shipments--notifier",
+              "peer": "shipments",
+              "group": "notifications",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "publishes", "edge": "notifier--notify-q", "peer": "notify-q" }
+          ],
+          "explanation": {
+            "id": "notifier",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 3200,
+            "offered": 100,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [
+              {
+                "broker": "orders",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 24
+              },
+              {
+                "broker": "shipments",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 12
+              }
+            ],
+            "slots": 32,
+            "seconds": 0.02,
+            "utilization": 0.03125,
+            "growth": 0,
+            "contributors": [
+              { "edge": "orders--notifier", "node": "orders", "label": "Order events", "rate": 40 },
+              { "edge": "shipments--notifier", "node": "shipments", "label": "Shipment events", "rate": 60 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 80, "rejected": 0, "throttled": 0 },
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 20, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "dlq-triage",
+          "stencil": "service.python",
+          "label": "DLQ triage",
+          "sublabel": "inspect and replay",
+          "group": "fulfil",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 4, "latencyMs": 100, "jitter": 0.1, "failureRate": 0 },
+          "x": 3760,
+          "y": 1580,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "orders-dlq--dlq-triage",
+              "peer": "orders-dlq",
+              "group": "triage",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "consumes", "edge": "notify-dlq--dlq-triage", "peer": "notify-dlq", "retry": "requeue", "retryBackoffMs": 0 },
+            { "kind": "calls", "edge": "dlq-triage--loyalty", "peer": "loyalty" }
+          ],
+          "explanation": {
+            "id": "dlq-triage",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 40,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [
+              {
+                "broker": "orders-dlq",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 3
+              }
+            ],
+            "slots": 4,
+            "seconds": 0.1,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "loyalty-db",
+          "stencil": "aws.dynamodb",
+          "label": "Loyalty ledger",
+          "sublabel": "DynamoDB",
+          "group": "fulfil",
+          "props": { "latencyMs": 0 },
+          "x": 4200,
+          "y": 1220,
+          "capabilities": []
+        },
+        {
+          "id": "notify-q",
+          "stencil": "aws.sqs",
+          "label": "Notifications",
+          "sublabel": "SQS",
+          "group": "fulfil",
+          "props": { "maxDeliveryCount": 5 },
+          "x": 4200,
+          "y": 1460,
+          "capabilities": []
+        },
+        { "id": "notify-dlq", "stencil": "aws.sqs", "label": "Notifications DLQ", "sublabel": "SQS", "group": "fulfil", "x": 4200, "y": 1580, "capabilities": [] },
+        {
+          "id": "email",
+          "stencil": "aws.lambda",
+          "label": "Email sender",
+          "sublabel": "Lambda",
+          "group": "fulfil",
+          "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 80, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 100 },
+          "x": 4640,
+          "y": 1460,
+          "capabilities": [
+            { "kind": "consumes", "edge": "notify-q--email", "peer": "notify-q", "retry": "requeue", "retryBackoffMs": 0 },
+            { "kind": "calls", "edge": "email--sendgrid", "peer": "sendgrid" }
+          ],
+          "explanation": {
+            "managed": "serverless",
+            "id": "email",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 1250.0000000000002,
+            "offered": 33.33333333333333,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.08,
+            "utilization": 0.026666666666666658,
+            "growth": 0,
+            "contributors": [
+              { "edge": "notify-q--email", "node": "notify-q", "label": "Notifications", "rate": 33.33333333333333 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 26.666666666666664, "rejected": 0, "throttled": 0 },
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 6.666666666666666, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "push",
+          "stencil": "aws.lambda",
+          "label": "Push sender",
+          "sublabel": "Lambda",
+          "group": "fulfil",
+          "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 100 },
+          "x": 4640,
+          "y": 1580,
+          "capabilities": [
+            { "kind": "consumes", "edge": "notify-q--push", "peer": "notify-q", "retry": "requeue", "retryBackoffMs": 0 },
+            { "kind": "calls", "edge": "push--apns", "peer": "apns" }
+          ],
+          "explanation": {
+            "managed": "serverless",
+            "id": "push",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 2500.0000000000005,
+            "offered": 66.66666666666666,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.04,
+            "utilization": 0.026666666666666658,
+            "growth": 0,
+            "contributors": [
+              { "edge": "notify-q--push", "node": "notify-q", "label": "Notifications", "rate": 66.66666666666666 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 53.33333333333333, "rejected": 0, "throttled": 0 },
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 13.333333333333332, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "collector",
+          "stencil": "service.go",
+          "label": "Event collector",
+          "sublabel": "page and app beacons",
+          "group": "analytics",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 900,
+          "y": 1900,
+          "capabilities": [
+            { "kind": "publishes", "edge": "collector--clickstream", "peer": "clickstream", "emits": "PageViewed" }
+          ],
+          "explanation": {
+            "id": "collector",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 19200,
+            "offered": 90,
+            "replicas": 3,
+            "baseReplicas": 3,
+            "omittedContributors": 0,
+            "activeReplicas": 3,
+            "assignments": [],
+            "slots": 64,
+            "seconds": 0.01,
+            "utilization": 0.0046875,
+            "growth": 0,
+            "contributors": [
+              { "edge": "cdn--collector", "node": "cdn", "label": "Shoppers on the web, Larkspur app, Carrier scans", "rate": 90, "via": "Edge CDN" }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 3,
+            "targetReplicas": 3,
+            "changes": null,
+            "converged": true,
+            "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 90, "rejected": 0, "throttled": 0 }]
+          }
+        },
+        {
+          "id": "clickstream",
+          "stencil": "aws.kinesis",
+          "label": "Clickstream",
+          "sublabel": "Kinesis · 8 shards",
+          "group": "analytics",
+          "props": { "partitions": 8 },
+          "x": 1320,
+          "y": 1900,
+          "capabilities": []
+        },
+        {
+          "id": "sessionizer",
+          "stencil": "flink",
+          "label": "Sessionizer",
+          "sublabel": "Managed Flink",
+          "group": "analytics",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 15, "jitter": 0.1, "failureRate": 0 },
+          "x": 1740,
+          "y": 1900,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "clickstream--sessionizer",
+              "peer": "clickstream",
+              "group": "sessions",
+              "broker": { "partitioned": true, "assignment": "shards", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "calls", "edge": "sessionizer--features", "peer": "features" },
+            { "kind": "calls", "edge": "sessionizer--lake", "peer": "lake" }
+          ],
+          "explanation": {
+            "id": "sessionizer",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 17066.666666666668,
+            "offered": 90,
+            "replicas": 4,
+            "baseReplicas": 4,
+            "omittedContributors": 0,
+            "activeReplicas": 4,
+            "assignments": [
+              {
+                "broker": "clickstream",
+                "spec": { "partitioned": true, "assignment": "shards", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 8
+              }
+            ],
+            "slots": 64,
+            "seconds": 0.015,
+            "utilization": 0.0052734374999999995,
+            "growth": 0,
+            "contributors": [
+              { "edge": "clickstream--sessionizer", "node": "clickstream", "label": "Clickstream", "rate": 90 }
+            ],
+            "target": 0.5,
+            "minimumReplicas": 4,
+            "targetReplicas": 4,
+            "changes": null,
+            "converged": true,
+            "routes": [{ "route": "beacon", "address": "POST /collect", "offered": 90, "rejected": 0, "throttled": 0 }]
+          }
+        },
+        {
+          "id": "lake-sink",
+          "stencil": "kafka.connect",
+          "label": "Lake sink",
+          "sublabel": "S3 sink connector",
+          "group": "analytics",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+          "x": 2340,
+          "y": 1900,
+          "capabilities": [
+            {
+              "kind": "consumes",
+              "edge": "orders--lake-sink",
+              "peer": "orders",
+              "group": "lake",
+              "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "retry": "requeue",
+              "retryBackoffMs": 0
+            },
+            { "kind": "calls", "edge": "lake-sink--lake", "peer": "lake" }
+          ],
+          "explanation": {
+            "id": "lake-sink",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 6400,
+            "offered": 40,
+            "replicas": 2,
+            "baseReplicas": 2,
+            "omittedContributors": 0,
+            "activeReplicas": 2,
+            "assignments": [
+              {
+                "broker": "orders",
+                "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+                "count": 24
+              }
+            ],
+            "slots": 64,
+            "seconds": 0.02,
+            "utilization": 0.00625,
+            "growth": 0,
+            "contributors": [{ "edge": "orders--lake-sink", "node": "orders", "label": "Order events", "rate": 40 }],
+            "target": 0.5,
+            "minimumReplicas": 2,
+            "targetReplicas": 2,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "lake",
+          "stencil": "aws.s3",
+          "label": "Event lake",
+          "sublabel": "S3 · Parquet",
+          "group": "analytics",
+          "props": { "latencyMs": 0 },
+          "x": 2760,
+          "y": 1900,
+          "capabilities": []
+        },
+        {
+          "id": "airflow",
+          "stencil": "airflow",
+          "label": "Nightly DAGs",
+          "sublabel": "MWAA",
+          "group": "analytics",
+          "props": { "ratePerSec": 0.1, "messageType": "DagRun" },
+          "x": 2340,
+          "y": 2020,
+          "capabilities": []
+        },
+        {
+          "id": "dbt",
+          "stencil": "dbt",
+          "label": "dbt models",
+          "sublabel": "orders and margin",
+          "group": "analytics",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 2, "latencyMs": 2000, "jitter": 0.1, "failureRate": 0 },
+          "x": 2760,
+          "y": 2020,
+          "capabilities": [{ "kind": "calls", "edge": "dbt--snowflake", "peer": "snowflake" }],
+          "explanation": {
+            "id": "dbt",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 1,
+            "offered": 0.1,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 2,
+            "seconds": 2,
+            "utilization": 0.1,
+            "growth": 0,
+            "contributors": [{ "edge": "airflow--dbt", "node": "airflow", "label": "Nightly DAGs", "rate": 0.1 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true,
+            "routes": [{ "route": "", "address": "", "offered": 0.1, "rejected": 0, "throttled": 0 }]
+          }
+        },
+        { "id": "argocd", "stencil": "argocd", "label": "Argo CD", "sublabel": "GitOps", "group": "platform", "x": 4200, "y": 2020, "capabilities": [] },
+        { "id": "flags", "stencil": "aws.parameter-store", "label": "Feature flags", "sublabel": "Parameter Store", "group": "platform", "x": 3760, "y": 2020, "capabilities": [] },
+        { "id": "secrets", "stencil": "aws.secrets-manager", "label": "Secrets Manager", "group": "platform", "x": 3760, "y": 1900, "capabilities": [] },
+        { "id": "roles", "stencil": "aws.iam-role", "label": "Workload roles", "sublabel": "IRSA", "group": "platform", "x": 4200, "y": 1900, "capabilities": [] },
+        { "id": "datadog", "stencil": "datadog", "label": "Datadog", "sublabel": "APM, logs", "group": "platform", "x": 4640, "y": 1960, "capabilities": [] },
+        {
+          "id": "tax",
+          "stencil": "generic.external-api",
+          "label": "Tax API",
+          "sublabel": "sales tax quotes",
+          "group": "payment-partners",
+          "props": { "latencyMs": 60 },
+          "x": 1820,
+          "y": 60,
+          "capabilities": [],
+          "explanation": {
+            "managed": "api",
+            "id": "tax",
+            "role": "sink",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": null,
+            "offered": 40,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.06,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [
+              { "edge": "checkout-api--tax", "node": "checkout-api", "label": "Checkout API", "rate": 40 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "stripe",
+          "stencil": "stripe",
+          "label": "Stripe",
+          "sublabel": "card payments",
+          "group": "payment-partners",
+          "props": {
+            "preset": "managed-measured",
+            "presetRevision": "2026-10-14",
+            "latencyMs": 180,
+            "jitter": 0.1,
+            "failureRate": 0,
+            "api": {
+              "maxInFlight": 200,
+              "quotas": [
+                { "id": "stripe-contract", "unit": "requests", "amount": 400, "windowMs": 1000, "algorithm": "token-bucket" }
+              ]
+            }
+          },
+          "x": 2240,
+          "y": 60,
+          "capabilities": [],
+          "explanation": {
+            "managed": "api",
+            "id": "stripe",
+            "role": "sink",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 400,
+            "offered": 40,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.18,
+            "utilization": 0.1,
+            "growth": 0,
+            "contributors": [{ "edge": "payments--stripe", "node": "payments", "label": "Payments", "rate": 40 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "wms",
+          "stencil": "generic.external-api",
+          "label": "3PL warehouse API",
+          "sublabel": "pick and pack",
+          "group": "delivery-partners",
+          "props": {
+            "preset": "managed-measured",
+            "presetRevision": "2026-10-14",
+            "latencyMs": 120,
+            "jitter": 0.1,
+            "failureRate": 0,
+            "api": {
+              "maxInFlight": 100,
+              "quotas": [
+                { "id": "wms-rate", "unit": "requests", "amount": 200, "windowMs": 1000, "algorithm": "token-bucket" }
+              ]
+            }
+          },
+          "x": 5180,
+          "y": 1100,
+          "capabilities": [],
+          "explanation": {
+            "managed": "api",
+            "id": "wms",
+            "role": "sink",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 200,
+            "offered": 40,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.12,
+            "utilization": 0.2,
+            "growth": 0,
+            "contributors": [
+              { "edge": "fulfilment--wms", "node": "fulfilment", "label": "Fulfilment workers", "rate": 40 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 40, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "sendgrid",
+          "stencil": "sendgrid",
+          "label": "SendGrid",
+          "sublabel": "order emails",
+          "group": "delivery-partners",
+          "x": 5180,
+          "y": 1460,
+          "capabilities": [],
+          "explanation": {
+            "managed": "api",
+            "id": "sendgrid",
+            "role": "sink",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": null,
+            "offered": 33.33333333333333,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [
+              { "edge": "email--sendgrid", "node": "email", "label": "Email sender", "rate": 33.33333333333333 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 26.666666666666664, "rejected": 0, "throttled": 0 },
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 6.666666666666666, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "apns",
+          "stencil": "generic.push",
+          "label": "APNs and FCM",
+          "sublabel": "push delivery",
+          "group": "delivery-partners",
+          "x": 5180,
+          "y": 1580,
+          "capabilities": [],
+          "explanation": {
+            "managed": "api",
+            "id": "apns",
+            "role": "sink",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": null,
+            "offered": 66.66666666666666,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [
+              { "edge": "push--apns", "node": "push", "label": "Push sender", "rate": 66.66666666666666 }
+            ],
+            "target": 0.5,
+            "changes": null,
+            "converged": true,
+            "routes": [
+              { "route": "checkout", "address": "POST /checkout", "offered": 53.33333333333333, "rejected": 0, "throttled": 0 },
+              { "route": "carrier-scan", "address": "POST /hooks/carriers/scan", "offered": 13.333333333333332, "rejected": 0, "throttled": 0 }
+            ]
+          }
+        },
+        {
+          "id": "snowflake",
+          "stencil": "snowflake",
+          "label": "Snowflake",
+          "sublabel": "merch marts",
+          "group": "saas-data",
+          "props": { "latencyMs": 400 },
+          "x": 3280,
+          "y": 2280,
+          "capabilities": [{ "kind": "calls", "edge": "snowflake--tableau", "peer": "tableau" }]
+        },
+        { "id": "tableau", "stencil": "tableau", "label": "Merch dashboards", "sublabel": "Tableau", "group": "saas-data", "x": 3700, "y": 2280, "capabilities": [] }
+      ],
+      "edges": [
+        { "id": "web--cdn", "from": "web", "to": "cdn", "kind": "sync", "label": "HTTPS" },
+        { "id": "app--cdn", "from": "app", "to": "cdn", "kind": "sync", "label": "HTTPS" },
+        { "id": "carriers--cdn", "from": "carriers", "to": "cdn", "kind": "sync", "label": "Webhook" },
+        { "id": "cdn--gateway", "from": "cdn", "to": "gateway", "kind": "sync", "label": "API calls" },
+        { "id": "cdn--collector", "from": "cdn", "to": "collector", "kind": "sync", "label": "Beacons" },
+        { "id": "gateway--catalog-bff", "from": "gateway", "to": "catalog-bff", "kind": "sync", "label": "Products" },
+        { "id": "gateway--search-api", "from": "gateway", "to": "search-api", "kind": "sync", "label": "Search" },
+        { "id": "gateway--cart-api", "from": "gateway", "to": "cart-api", "kind": "sync", "label": "Cart" },
+        { "id": "gateway--checkout-api", "from": "gateway", "to": "checkout-api", "kind": "sync", "label": "Checkout" },
+        { "id": "gateway--order-status", "from": "gateway", "to": "order-status", "kind": "sync", "label": "Status" },
+        { "id": "gateway--tracking", "from": "gateway", "to": "tracking", "kind": "sync", "label": "Scans" },
+        { "id": "catalog-bff--product-cache", "from": "catalog-bff", "to": "product-cache", "kind": "sync" },
+        {
+          "id": "catalog-bff--catalog-db",
+          "from": "catalog-bff",
+          "to": "catalog-db",
+          "kind": "sync",
+          "label": "Cache miss",
+          "props": { "share": 0.1 }
+        },
+        {
+          "id": "catalog-bff--reco",
+          "from": "catalog-bff",
+          "to": "reco",
+          "kind": "sync",
+          "label": "Similar",
+          "props": { "share": 0.5 }
+        },
+        { "id": "reco--features", "from": "reco", "to": "features", "kind": "sync" },
+        { "id": "search-api--search-index", "from": "search-api", "to": "search-index", "kind": "sync" },
+        { "id": "cart-api--carts", "from": "cart-api", "to": "carts", "kind": "sync" },
+        { "id": "cart-api--pricing", "from": "cart-api", "to": "pricing", "kind": "sync", "label": "Price" },
+        { "id": "pricing--promotions", "from": "pricing", "to": "promotions", "kind": "sync" },
+        { "id": "checkout-api--pricing", "from": "checkout-api", "to": "pricing", "kind": "sync", "label": "Reprice" },
+        { "id": "checkout-api--tax", "from": "checkout-api", "to": "tax", "kind": "sync", "label": "Tax quote" },
+        { "id": "checkout-api--inventory", "from": "checkout-api", "to": "inventory", "kind": "sync", "label": "Reserve" },
+        { "id": "checkout-api--risk", "from": "checkout-api", "to": "risk", "kind": "sync", "label": "Score" },
+        { "id": "checkout-api--payments", "from": "checkout-api", "to": "payments", "kind": "sync", "label": "Authorize" },
+        { "id": "checkout-api--orders-db", "from": "checkout-api", "to": "orders-db", "kind": "sync", "label": "Order + outbox" },
+        { "id": "risk--features", "from": "risk", "to": "features", "kind": "sync" },
+        { "id": "inventory--inventory-db", "from": "inventory", "to": "inventory-db", "kind": "sync" },
+        { "id": "payments--stripe", "from": "payments", "to": "stripe", "kind": "sync", "label": "PaymentIntent" },
+        { "id": "order-status--status-cache", "from": "order-status", "to": "status-cache", "kind": "sync" },
+        { "id": "orders-db--outbox-relay", "from": "orders-db", "to": "outbox-relay", "kind": "async", "label": "CDC" },
+        {
+          "id": "outbox-relay--orders",
+          "from": "outbox-relay",
+          "to": "orders",
+          "kind": "async",
+          "label": "OrderPlaced",
+          "props": { "emits": "OrderPlaced" }
+        },
+        {
+          "id": "inventory-db--inventory-events",
+          "from": "inventory-db",
+          "to": "inventory-events",
+          "kind": "async",
+          "label": "CDC",
+          "props": { "emits": "StockChanged" }
+        },
+        {
+          "id": "orders--fulfilment",
+          "from": "orders",
+          "to": "fulfilment",
+          "kind": "async",
+          "props": { "group": "fulfilment" }
+        },
+        {
+          "id": "orders--loyalty",
+          "from": "orders",
+          "to": "loyalty",
+          "kind": "async",
+          "props": { "group": "loyalty" }
+        },
+        {
+          "id": "orders--status-projector",
+          "from": "orders",
+          "to": "status-projector",
+          "kind": "async",
+          "props": { "group": "status" }
+        },
+        {
+          "id": "orders--notifier",
+          "from": "orders",
+          "to": "notifier",
+          "kind": "async",
+          "props": { "group": "notifications" }
+        },
+        {
+          "id": "orders--lake-sink",
+          "from": "orders",
+          "to": "lake-sink",
+          "kind": "async",
+          "props": { "group": "lake" }
+        },
+        {
+          "id": "orders--orders-dlq",
+          "from": "orders",
+          "to": "orders-dlq",
+          "kind": "async",
+          "label": "After 3 tries",
+          "props": { "dlq": true }
+        },
+        {
+          "id": "orders-dlq--dlq-triage",
+          "from": "orders-dlq",
+          "to": "dlq-triage",
+          "kind": "async",
+          "props": { "group": "triage" }
+        },
+        { "id": "notify-dlq--dlq-triage", "from": "notify-dlq", "to": "dlq-triage", "kind": "async" },
+        { "id": "dlq-triage--loyalty", "from": "dlq-triage", "to": "loyalty", "kind": "sync", "label": "Replay" },
+        { "id": "fulfilment--wms", "from": "fulfilment", "to": "wms", "kind": "sync", "label": "Pick request" },
+        {
+          "id": "fulfilment--shipments",
+          "from": "fulfilment",
+          "to": "shipments",
+          "kind": "async",
+          "label": "ShipmentCreated",
+          "props": { "emits": "ShipmentCreated" }
+        },
+        { "id": "loyalty--loyalty-db", "from": "loyalty", "to": "loyalty-db", "kind": "sync", "label": "Points" },
+        { "id": "status-projector--status-cache", "from": "status-projector", "to": "status-cache", "kind": "sync", "label": "Upsert" },
+        {
+          "id": "inventory-events--search-indexer",
+          "from": "inventory-events",
+          "to": "search-indexer",
+          "kind": "async",
+          "props": { "group": "search" }
+        },
+        { "id": "search-indexer--search-index", "from": "search-indexer", "to": "search-index", "kind": "sync", "label": "Reindex" },
+        {
+          "id": "tracking--shipments",
+          "from": "tracking",
+          "to": "shipments",
+          "kind": "async",
+          "label": "ParcelScanned",
+          "props": { "emits": "ParcelScanned" }
+        },
+        {
+          "id": "shipments--notifier",
+          "from": "shipments",
+          "to": "notifier",
+          "kind": "async",
+          "props": { "group": "notifications" }
+        },
+        {
+          "id": "shipments--status-projector",
+          "from": "shipments",
+          "to": "status-projector",
+          "kind": "async",
+          "props": { "group": "status" }
+        },
+        { "id": "notifier--notify-q", "from": "notifier", "to": "notify-q", "kind": "async", "label": "Notify" },
+        { "id": "notify-q--email", "from": "notify-q", "to": "email", "kind": "async" },
+        { "id": "notify-q--push", "from": "notify-q", "to": "push", "kind": "async" },
+        {
+          "id": "notify-q--notify-dlq",
+          "from": "notify-q",
+          "to": "notify-dlq",
+          "kind": "async",
+          "label": "After 5 tries",
+          "props": { "dlq": true }
+        },
+        { "id": "email--sendgrid", "from": "email", "to": "sendgrid", "kind": "sync", "label": "Mail send" },
+        { "id": "push--apns", "from": "push", "to": "apns", "kind": "sync", "label": "Send" },
+        {
+          "id": "collector--clickstream",
+          "from": "collector",
+          "to": "clickstream",
+          "kind": "async",
+          "label": "PageViewed",
+          "props": { "emits": "PageViewed" }
+        },
+        {
+          "id": "clickstream--sessionizer",
+          "from": "clickstream",
+          "to": "sessionizer",
+          "kind": "async",
+          "props": { "group": "sessions" }
+        },
+        { "id": "sessionizer--features", "from": "sessionizer", "to": "features", "kind": "sync", "label": "Update features" },
+        { "id": "sessionizer--lake", "from": "sessionizer", "to": "lake", "kind": "sync", "label": "Sessions" },
+        { "id": "lake-sink--lake", "from": "lake-sink", "to": "lake", "kind": "sync", "label": "Parquet" },
+        { "id": "airflow--dbt", "from": "airflow", "to": "dbt", "kind": "async", "label": "Nightly run" },
+        { "id": "dbt--snowflake", "from": "dbt", "to": "snowflake", "kind": "sync", "label": "Build marts" },
+        { "id": "snowflake--tableau", "from": "snowflake", "to": "tableau", "kind": "sync" },
+        { "id": "payments--secrets", "from": "payments", "to": "secrets", "kind": "async", "label": "Stripe key", "relation": "secret" },
+        { "id": "payments--roles", "from": "payments", "to": "roles", "kind": "async", "relation": "identity" },
+        { "id": "checkout-api--flags", "from": "checkout-api", "to": "flags", "kind": "async", "label": "Flags", "relation": "config" },
+        { "id": "fulfilment--roles", "from": "fulfilment", "to": "roles", "kind": "async", "relation": "identity" },
+        { "id": "checkout-api--datadog", "from": "checkout-api", "to": "datadog", "kind": "async", "relation": "telemetry" },
+        { "id": "fulfilment--datadog", "from": "fulfilment", "to": "datadog", "kind": "async", "relation": "telemetry" },
+        { "id": "argocd--checkout-api", "from": "argocd", "to": "checkout-api", "kind": "async", "relation": "deploy" },
+        { "id": "argocd--loyalty", "from": "argocd", "to": "loyalty", "kind": "async", "relation": "deploy" },
+        { "id": "dbt--lake", "from": "dbt", "to": "lake", "kind": "async", "label": "Reads", "relation": "depends" }
+      ],
+      "groups": [
+        { "id": "edge", "label": "Cloudflare edge", "tone": "neutral", "x": 420, "y": 836, "width": 300, "height": 176 },
+        { "id": "aws", "label": "AWS us-east-1 · production", "tone": "aws", "x": 820, "y": 252, "width": 4120, "height": 1920 },
+        { "id": "storefront", "label": "EKS · storefront", "tone": "k8s", "group": "aws", "x": 860, "y": 376, "width": 1220, "height": 1076 },
+        { "id": "stores", "label": "Operational data", "tone": "neutral", "group": "aws", "x": 2300, "y": 316, "width": 300, "height": 1136 },
+        { "id": "backbone", "label": "MSK · event backbone", "tone": "aws", "group": "aws", "x": 2820, "y": 1036, "width": 759, "height": 536 },
+        { "id": "fulfil", "label": "EKS · fulfilment and messaging", "tone": "k8s", "group": "aws", "x": 3720, "y": 916, "width": 1180, "height": 776 },
+        { "id": "analytics", "label": "Clickstream and analytics", "tone": "neutral", "group": "aws", "x": 860, "y": 1836, "width": 2160, "height": 296 },
+        { "id": "platform", "label": "Platform", "tone": "neutral", "group": "aws", "x": 3720, "y": 1836, "width": 1180, "height": 296 },
+        { "id": "payment-partners", "label": "Payment and tax partners", "tone": "neutral", "x": 1780, "y": -4, "width": 720, "height": 176 },
+        { "id": "delivery-partners", "label": "Delivery partners", "tone": "neutral", "x": 5140, "y": 1036, "width": 300, "height": 656 },
+        { "id": "saas-data", "label": "Data SaaS", "tone": "neutral", "x": 3240, "y": 2216, "width": 720, "height": 176 }
+      ],
+      "annotations": [
+        { "id": "note-routes", "kind": "note", "text": "In Live, each request route has its own colour and shape. The gateway caps checkout at 150 a second.", "x": 0, "y": 360, "width": 260, "height": 150 },
+        { "id": "note-outbox", "kind": "note", "text": "Outbox: the order and its event commit in one transaction. The relay publishes it; every consumer is idempotent.", "x": 2860, "y": 60, "width": 300, "height": 150 }
+      ],
+      "simulations": [
+        {
+          "id": "doors-open",
+          "title": "Black Friday: doors open",
+          "description": "Storefront traffic jumps five times in three seconds. The gateway caps checkout at 150 requests a second (429 for the rest), Checkout's HPA adds pods on CPU, and KEDA scales fulfilment on order lag.",
+          "seed": 11,
+          "scale": 50,
+          "traffic": [
+            {
+              "id": "web-traffic",
+              "node": "web",
+              "label": "Web shoppers",
+              "shape": { "kind": "spike", "baseRate": 300, "peakRate": 1500, "atMs": 3000, "peakMs": 12000, "durationMs": 30000 }
+            },
+            {
+              "id": "app-traffic",
+              "node": "app",
+              "label": "App shoppers",
+              "shape": { "kind": "spike", "baseRate": 200, "peakRate": 1000, "atMs": 3000, "peakMs": 12000, "durationMs": 30000 }
+            },
+            {
+              "id": "scans",
+              "node": "carriers",
+              "label": "Carrier scans",
+              "shape": { "kind": "constant", "ratePerSec": 20, "durationMs": 30000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "A normal morning: 500 requests a second. The gateway's route table sends each path to its own service.", "focus": ["cdn", "gateway", "catalog-bff", "search-api", "cart-api", "checkout-api"] }
+            },
+            {
+              "atMs": 4000,
+              "action": { "do": "note", "text": "Doors open: 2,500 requests a second. The checkout route is capped at 150 a second; the rest get 429 and retry.", "focus": ["gateway", "checkout-api"] }
+            },
+            {
+              "atMs": 8000,
+              "action": { "do": "note", "text": "Checkout's CPU passes 70%, so its HPA starts more pods. Open its Live details for the replica history.", "focus": ["checkout-api", "payments", "orders-db"] }
+            },
+            {
+              "atMs": 13000,
+              "action": { "do": "note", "text": "Orders reach Kafka through the outbox. Fulfilment lag rises and KEDA adds workers, up to the 24 partitions.", "focus": ["outbox-relay", "orders", "fulfilment"] }
+            },
+            {
+              "atMs": 22000,
+              "action": { "do": "note", "text": "Traffic falls back. Lag drains, and every consumer group catches up without a dead letter." }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "shed",
+              "label": "The gateway sheds excess checkouts",
+              "metric": { "node": "gateway", "field": "rejected" },
+              "op": ">",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "no-dlq",
+              "label": "No order event is dead-lettered",
+              "metric": { "node": "orders", "field": "deadLettered" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            },
+            {
+              "id": "drained",
+              "label": "Fulfilment catches up",
+              "metric": { "node": "orders", "field": "lag", "group": "fulfilment" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ]
+        },
+        {
+          "id": "poison-deploy",
+          "title": "A bad Loyalty deploy",
+          "description": "Argo CD rolls out a Loyalty build that can't read a new order field. Its events fail three times and park in orders.dlq; the other consumer groups never notice. After the rollback, triage replays the parked events.",
+          "seed": 12,
+          "scale": 10,
+          "setup": { "status": { "dlq-triage": "paused" } },
+          "traffic": [
+            {
+              "id": "web-traffic",
+              "node": "web",
+              "label": "Web shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 20000 }
+            },
+            {
+              "id": "app-traffic",
+              "node": "app",
+              "label": "App shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 20000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "Five consumer groups read order events, each at its own pace and offset.", "focus": ["orders", "fulfilment", "loyalty", "status-projector", "notifier", "lake-sink"] }
+            },
+            { "atMs": 3000, "action": { "do": "props", "node": "loyalty", "props": { "failureRate": 1 } } },
+            {
+              "atMs": 3000,
+              "action": { "do": "note", "text": "Argo CD rolls out Loyalty 4.2. It can't read the new gift-card field, so every order event fails.", "focus": ["argocd", "loyalty"] }
+            },
+            {
+              "atMs": 7000,
+              "action": { "do": "note", "text": "After three tries each event parks in orders.dlq. Fulfilment, status and notifications carry on: their offsets are their own.", "focus": ["orders", "orders-dlq", "fulfilment"] }
+            },
+            { "atMs": 12000, "action": { "do": "props", "node": "loyalty", "props": { "failureRate": 0 } } },
+            { "atMs": 12000, "action": { "do": "status", "node": "dlq-triage", "status": "up" } },
+            {
+              "atMs": 12000,
+              "action": { "do": "note", "text": "Rolled back. New events succeed again, and DLQ triage replays the parked ones into Loyalty.", "focus": ["argocd", "loyalty", "dlq-triage", "loyalty-db"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "parked",
+              "label": "Failed events park in the DLQ",
+              "metric": { "node": "orders", "field": "deadLettered" },
+              "op": ">",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "fulfilment-ok",
+              "label": "Fulfilment never fails",
+              "metric": { "node": "fulfilment", "field": "failed" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            },
+            {
+              "id": "replayed",
+              "label": "Triage replays every parked event",
+              "metric": { "node": "orders-dlq", "field": "lag", "group": "triage" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ]
+        },
+        {
+          "id": "partner-quota",
+          "title": "The warehouse partner throttles",
+          "description": "A sustained peak at the 3PL warehouse API, which allows 60 pick requests a second. KEDA keeps fulfilment lag low by adding workers, but every worker calls the same partner: the quota rejects the excess. Scaling consumers moved the bottleneck.",
+          "seed": 13,
+          "scale": 50,
+          "setup": {
+            "props": {
+              "wms": {
+                "api": {
+                  "maxInFlight": 100,
+                  "quotas": [
+                    { "id": "wms-rate", "unit": "requests", "amount": 60, "windowMs": 1000, "algorithm": "token-bucket" }
+                  ]
+                }
+              }
+            }
+          },
+          "traffic": [
+            {
+              "id": "web-traffic",
+              "node": "web",
+              "label": "Web shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 1000, "durationMs": 15000 }
+            },
+            {
+              "id": "app-traffic",
+              "node": "app",
+              "label": "App shoppers",
+              "shape": { "kind": "constant", "ratePerSec": 700, "durationMs": 15000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["checkout-api", "orders-db", "outbox-relay", "orders"] }
+            },
+            {
+              "atMs": 4000,
+              "action": { "do": "note", "text": "KEDA adds fulfilment workers to keep lag near its target of 20 per worker.", "focus": ["orders", "fulfilment"] }
+            },
+            {
+              "atMs": 8000,
+              "action": { "do": "note", "text": "Every worker calls the 3PL API, which allows 60 picks a second, so the rest are rejected. More workers can't raise a partner's quota: batch picks, or agree a higher limit.", "focus": ["fulfilment", "wms"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "throttled",
+              "label": "The 3PL rejects picks over its quota",
+              "metric": { "node": "wms", "field": "rejected" },
+              "op": ">",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "kept-up",
+              "label": "Fulfilment still keeps up with Kafka",
+              "metric": { "node": "orders", "field": "lag", "group": "fulfilment" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ]
+        }
+      ],
+      "routeDemand": {
+        "web": {
+          "browse": { "offered": 120, "rejected": 0, "throttled": 0 },
+          "search": { "offered": 60, "rejected": 0, "throttled": 0 },
+          "cart": { "offered": 30, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 24, "rejected": 0, "throttled": 0 },
+          "order-status": { "offered": 12, "rejected": 0, "throttled": 0 },
+          "beacon": { "offered": 54, "rejected": 0, "throttled": 0 }
+        },
+        "app": {
+          "browse": { "offered": 72, "rejected": 0, "throttled": 0 },
+          "search": { "offered": 40, "rejected": 0, "throttled": 0 },
+          "cart": { "offered": 20, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 16, "rejected": 0, "throttled": 0 },
+          "order-status": { "offered": 16, "rejected": 0, "throttled": 0 },
+          "beacon": { "offered": 36, "rejected": 0, "throttled": 0 }
+        },
+        "carriers": { "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 } },
+        "airflow": { "": { "offered": 0.1, "rejected": 0, "throttled": 0 } },
+        "argocd": { "": { "offered": 2, "rejected": 0, "throttled": 0 } },
+        "cdn": {
+          "browse": { "offered": 192, "rejected": 0, "throttled": 0 },
+          "search": { "offered": 100, "rejected": 0, "throttled": 0 },
+          "cart": { "offered": 50, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 },
+          "order-status": { "offered": 28, "rejected": 0, "throttled": 0 },
+          "beacon": { "offered": 90, "rejected": 0, "throttled": 0 },
+          "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 }
+        },
+        "dbt": { "": { "offered": 0.1, "rejected": 0, "throttled": 0 } },
+        "gateway": {
+          "browse": { "offered": 192, "rejected": 0, "throttled": 0 },
+          "search": { "offered": 100, "rejected": 0, "throttled": 0 },
+          "cart": { "offered": 50, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 },
+          "order-status": { "offered": 28, "rejected": 0, "throttled": 0 },
+          "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 }
+        },
+        "collector": { "beacon": { "offered": 90, "rejected": 0, "throttled": 0 } },
+        "snowflake": { "": { "offered": 0.1, "rejected": 0, "throttled": 0 } },
+        "catalog-bff": { "browse": { "offered": 192, "rejected": 0, "throttled": 0 } },
+        "search-api": { "search": { "offered": 100, "rejected": 0, "throttled": 0 } },
+        "cart-api": { "cart": { "offered": 50, "rejected": 0, "throttled": 0 } },
+        "checkout-api": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "order-status": { "order-status": { "offered": 28, "rejected": 0, "throttled": 0 } },
+        "tracking": { "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 } },
+        "clickstream": { "beacon": { "offered": 90, "rejected": 0, "throttled": 0 } },
+        "product-cache": { "browse": { "offered": 192, "rejected": 0, "throttled": 0 } },
+        "catalog-db": { "browse": { "offered": 19.2, "rejected": 0, "throttled": 0 } },
+        "reco": { "browse": { "offered": 96, "rejected": 0, "throttled": 0 } },
+        "search-index": {
+          "search": { "offered": 100, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 }
+        },
+        "carts": { "cart": { "offered": 50, "rejected": 0, "throttled": 0 } },
+        "pricing": {
+          "cart": { "offered": 50, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 }
+        },
+        "tax": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "inventory": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "risk": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "payments": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "orders-db": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "status-cache": {
+          "order-status": { "offered": 28, "rejected": 0, "throttled": 0 },
+          "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 80, "rejected": 0, "throttled": 0 }
+        },
+        "shipments": {
+          "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 }
+        },
+        "sessionizer": { "beacon": { "offered": 90, "rejected": 0, "throttled": 0 } },
+        "features": {
+          "browse": { "offered": 96, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 },
+          "beacon": { "offered": 90, "rejected": 0, "throttled": 0 }
+        },
+        "promotions": {
+          "cart": { "offered": 50, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 }
+        },
+        "inventory-db": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "stripe": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "outbox-relay": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "notifier": {
+          "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 80, "rejected": 0, "throttled": 0 }
+        },
+        "status-projector": {
+          "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 80, "rejected": 0, "throttled": 0 }
+        },
+        "lake": {
+          "beacon": { "offered": 90, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 40, "rejected": 0, "throttled": 0 }
+        },
+        "inventory-events": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "orders": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "notify-q": {
+          "carrier-scan": { "offered": 20, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 80, "rejected": 0, "throttled": 0 }
+        },
+        "search-indexer": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "fulfilment": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "loyalty": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "lake-sink": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "email": {
+          "carrier-scan": { "offered": 6.666666666666666, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 26.666666666666664, "rejected": 0, "throttled": 0 }
+        },
+        "push": {
+          "carrier-scan": { "offered": 13.333333333333332, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 53.33333333333333, "rejected": 0, "throttled": 0 }
+        },
+        "wms": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "loyalty-db": { "checkout": { "offered": 40, "rejected": 0, "throttled": 0 } },
+        "sendgrid": {
+          "carrier-scan": { "offered": 6.666666666666666, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 26.666666666666664, "rejected": 0, "throttled": 0 }
+        },
+        "apns": {
+          "carrier-scan": { "offered": 13.333333333333332, "rejected": 0, "throttled": 0 },
+          "checkout": { "offered": 53.33333333333333, "rejected": 0, "throttled": 0 }
+        }
+      },
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Black Friday commerce platform\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 3 simulations\ndescription: \"An invented retailer, Larkspur Outfitters. A route table splits storefront traffic by path and rate-limits checkout; Checkout scales on CPU; an outbox feeds Kafka; KEDA wakes fulfilment on order lag; a bad deploy parks events in a DLQ while other consumer groups carry on.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Shoppers on the web\" / \"Storefront SPA\" props={\"ratePerSec\":300,\"trafficMix\":{\"mode\":\"shares\",\"entries\":[{\"routeId\":\"browse\",\"share\":0.4},{\"routeId\":\"search\",\"share\":0.2},{\"routeId\":\"cart\",\"share\":0.1},{\"routeId\":\"checkout\",\"share\":0.08},{\"routeId\":\"order-status\",\"share\":0.04},{\"routeId\":\"beacon\",\"share\":0.18}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"web--cdn\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"cloudflare\" (\"Cloudflare\") \"Edge CDN\" / \"WAF, bot rules, TLS\" props={\"latencyMs\":0,\"jitter\":0,\"replicas\":20,\"concurrency\":64,\"routeTable\":{\"rules\":[{\"id\":\"beacons\",\"label\":\"Analytics beacons\",\"match\":{\"methods\":[\"POST\"],\"path\":{\"kind\":\"exact\",\"value\":\"/collect\"}},\"targets\":[{\"edgeId\":\"cdn--collector\",\"weight\":1}]}],\"default\":{\"targets\":[{\"edgeId\":\"cdn--gateway\",\"weight\":1}]}}} in \"edge\" capabilities=[{\"kind\":\"calls\",\"edge\":\"cdn--gateway\",\"peer\":\"gateway\"},{\"kind\":\"calls\",\"edge\":\"cdn--collector\",\"peer\":\"collector\"}] explanation=undefined\nconnections:\n  \"web--cdn\" \"web\" -> \"cdn\" sync \"HTTPS\"\nrequest routes (7):\n  \"browse\" GET \"/products/8812\" \"Product page\"\n… 17 lines omitted"
+  }
+}

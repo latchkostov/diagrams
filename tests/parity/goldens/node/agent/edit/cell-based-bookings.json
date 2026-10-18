@@ -1,0 +1,1125 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "travellers", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "travellers",
+            "to": "dns"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "mobile" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "agents",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "travellers", "label": "Travellers", "stencil": "client.browser" },
+          { "id": "mobile", "label": "Renamed by parity", "stencil": "client.mobile" },
+          { "id": "agents", "label": "Travel agents", "stencil": "aws.lambda" },
+          { "id": "dns", "label": "Global DNS", "stencil": "aws.route53" },
+          { "id": "registry", "label": "Cell registry", "stencil": "generic.config-store" },
+          { "id": "pipeline", "label": "Release pipeline", "stencil": "github-actions" },
+          { "id": "metrics", "label": "CloudWatch", "stencil": "aws.cloudwatch" },
+          { "id": "email", "label": "SendGrid", "stencil": "sendgrid" },
+          { "id": "east-alb", "label": "Regional ALB", "stencil": "aws.elb" },
+          { "id": "east-router", "label": "Cell router", "stencil": "envoy" },
+          { "id": "east-c1-api", "label": "Booking API", "stencil": "aws.ecs" },
+          { "id": "east-c1-avail", "label": "Availability", "stencil": "service.go" },
+          { "id": "east-c1-cache", "label": "Availability cache", "stencil": "redis.cache" },
+          { "id": "east-c1-db", "label": "Bookings", "stencil": "aws.dynamodb" },
+          { "id": "east-c2-api", "label": "Booking API", "stencil": "aws.ecs" },
+          { "id": "east-c2-avail", "label": "Availability", "stencil": "service.go" },
+          { "id": "east-c2-cache", "label": "Availability cache", "stencil": "redis.cache" },
+          { "id": "east-c2-db", "label": "Bookings", "stencil": "aws.dynamodb" },
+          { "id": "east-bus", "label": "Booking events", "stencil": "aws.eventbridge" },
+          { "id": "east-queue", "label": "Confirmations", "stencil": "aws.sqs" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 600,
+            "y": 1060,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["mobile"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["agents"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "travellers", "mobile"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["travellers"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3-a1" },
+    "title": "Parity edit",
+    "description": "An invented travel company, Tidewater Travel. DNS spreads travellers across three active regions; each region hashes customers to two cells that share nothing on the request path. DynamoDB global tables replicate every booking, so a region can go dark and a bad deploy stays in one cell.",
+    "direction": "TB",
+    "groups": [
+      { "id": "control", "label": "Control plane · global", "tone": "neutral", "x": 4140, "y": 96, "width": 300, "height": 456 },
+      { "id": "saas", "label": "Email provider", "tone": "neutral", "x": 4140, "y": 1236, "width": 300, "height": 176 },
+      { "id": "east", "label": "AWS us-east-1", "tone": "aws", "x": 920, "y": 92, "width": 3026, "height": 730 },
+      { "id": "east-c1", "label": "Cell 1 · us-east-1", "tone": "neutral", "group": "east", "x": 1820, "y": 156, "width": 720, "height": 296 },
+      { "id": "east-c2", "label": "Cell 2 · us-east-1", "tone": "neutral", "group": "east", "x": 1820, "y": 486, "width": 720, "height": 296 },
+      { "id": "west", "label": "AWS us-west-2", "tone": "aws", "x": 920, "y": 992, "width": 3026, "height": 730 },
+      { "id": "west-c1", "label": "Cell 1 · us-west-2", "tone": "neutral", "group": "west", "x": 1820, "y": 1056, "width": 720, "height": 296 },
+      { "id": "west-c2", "label": "Cell 2 · us-west-2", "tone": "neutral", "group": "west", "x": 1820, "y": 1386, "width": 720, "height": 296 },
+      { "id": "eu", "label": "AWS eu-west-1", "tone": "aws", "x": 920, "y": 1892, "width": 3026, "height": 730 },
+      { "id": "eu-c1", "label": "Cell 1 · eu-west-1", "tone": "neutral", "group": "eu", "x": 1820, "y": 1956, "width": 720, "height": 296 },
+      { "id": "eu-c2", "label": "Cell 2 · eu-west-1", "tone": "neutral", "group": "eu", "x": 1820, "y": 2286, "width": 720, "height": 296 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": -40, "y": 996, "width": 300, "height": 336 }
+    ],
+    "nodes": [
+      {
+        "id": "travellers",
+        "stencil": "client.browser",
+        "label": "Travellers",
+        "sublabel": "web bookings",
+        "props": { "ratePerSec": 120, "messageType": "BookingRequest" },
+        "x": 0,
+        "y": 1060,
+        "group": "boundary-1"
+      },
+      {
+        "id": "mobile",
+        "stencil": "client.mobile",
+        "label": "Renamed by parity",
+        "sublabel": "iOS and Android",
+        "props": { "ratePerSec": 90, "messageType": "BookingRequest", "latencyMs": 120 },
+        "x": 0,
+        "y": 1220,
+        "group": "boundary-1"
+      },
+      {
+        "id": "agents",
+        "stencil": "aws.lambda",
+        "label": "Travel agents",
+        "sublabel": "partner API",
+        "props": { "ratePerSec": 30, "messageType": "BookingRequest" },
+        "x": 0,
+        "y": 1380
+      },
+      {
+        "id": "dns",
+        "stencil": "aws.route53",
+        "label": "Global DNS",
+        "sublabel": "latency routing, health checks",
+        "props": { "latencyMs": 0, "jitter": 0, "healthChecks": true },
+        "x": 440,
+        "y": 1180
+      },
+      { "id": "registry", "stencil": "generic.config-store", "label": "Cell registry", "sublabel": "customer → cell map", "group": "control", "x": 4180, "y": 160 },
+      { "id": "pipeline", "stencil": "github-actions", "label": "Release pipeline", "sublabel": "one cell at a time", "group": "control", "x": 4180, "y": 300 },
+      { "id": "metrics", "stencil": "aws.cloudwatch", "label": "CloudWatch", "sublabel": "alarms per cell", "group": "control", "x": 4180, "y": 440 },
+      { "id": "email", "stencil": "sendgrid", "label": "SendGrid", "sublabel": "confirmations", "group": "saas", "x": 4180, "y": 1300 },
+      {
+        "id": "east-alb",
+        "stencil": "aws.elb",
+        "label": "Regional ALB",
+        "sublabel": "us-east-1",
+        "group": "east",
+        "props": { "latencyMs": 0, "jitter": 0, "healthChecks": true },
+        "x": 960,
+        "y": 400
+      },
+      {
+        "id": "east-router",
+        "stencil": "envoy",
+        "label": "Cell router",
+        "sublabel": "hash(customer) → cell",
+        "group": "east",
+        "props": { "latencyMs": 0, "jitter": 0 },
+        "x": 1380,
+        "y": 400
+      },
+      {
+        "id": "east-c1-api",
+        "stencil": "aws.ecs",
+        "label": "Booking API",
+        "sublabel": "cell 1 · Fargate",
+        "group": "east-c1",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 80, "jitter": 0.1, "failureRate": 0, "emits": "BookingConfirmed" },
+        "x": 1860,
+        "y": 220
+      },
+      {
+        "id": "east-c1-avail",
+        "stencil": "service.go",
+        "label": "Availability",
+        "sublabel": "rooms and seats",
+        "group": "east-c1",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+        "x": 1860,
+        "y": 340
+      },
+      {
+        "id": "east-c1-cache",
+        "stencil": "redis.cache",
+        "label": "Availability cache",
+        "sublabel": "ElastiCache",
+        "group": "east-c1",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 340
+      },
+      {
+        "id": "east-c1-db",
+        "stencil": "aws.dynamodb",
+        "label": "Bookings",
+        "sublabel": "global table replica",
+        "group": "east-c1",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 220
+      },
+      {
+        "id": "east-c2-api",
+        "stencil": "aws.ecs",
+        "label": "Booking API",
+        "sublabel": "cell 2 · Fargate",
+        "group": "east-c2",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 80, "jitter": 0.1, "failureRate": 0, "emits": "BookingConfirmed" },
+        "x": 1860,
+        "y": 550
+      },
+      {
+        "id": "east-c2-avail",
+        "stencil": "service.go",
+        "label": "Availability",
+        "sublabel": "rooms and seats",
+        "group": "east-c2",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+        "x": 1860,
+        "y": 670
+      },
+      {
+        "id": "east-c2-cache",
+        "stencil": "redis.cache",
+        "label": "Availability cache",
+        "sublabel": "ElastiCache",
+        "group": "east-c2",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 670
+      },
+      {
+        "id": "east-c2-db",
+        "stencil": "aws.dynamodb",
+        "label": "Bookings",
+        "sublabel": "global table replica",
+        "group": "east-c2",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 550
+      },
+      { "id": "east-bus", "stencil": "aws.eventbridge", "label": "Booking events", "sublabel": "EventBridge", "group": "east", "x": 2840, "y": 400 },
+      {
+        "id": "east-queue",
+        "stencil": "aws.sqs",
+        "label": "Confirmations",
+        "sublabel": "SQS",
+        "group": "east",
+        "props": { "maxDeliveryCount": 3 },
+        "x": 3260,
+        "y": 400
+      },
+      { "id": "east-dlq", "stencil": "aws.sqs", "label": "Confirmations DLQ", "sublabel": "SQS", "group": "east", "x": 3260, "y": 520 },
+      {
+        "id": "east-mailer",
+        "stencil": "aws.lambda",
+        "label": "Confirmation mailer",
+        "sublabel": "Lambda",
+        "group": "east",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 120, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 50, "concurrency": 16 },
+        "x": 3680,
+        "y": 400
+      },
+      {
+        "id": "east-redrive",
+        "stencil": "aws.lambda",
+        "label": "DLQ redrive",
+        "sublabel": "after the fix",
+        "group": "east",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 50, "jitter": 0, "failureRate": 0, "scaling": "auto", "maxConcurrency": 5 },
+        "x": 3680,
+        "y": 520
+      },
+      {
+        "id": "west-alb",
+        "stencil": "aws.elb",
+        "label": "Regional ALB",
+        "sublabel": "us-west-2",
+        "group": "west",
+        "props": { "latencyMs": 0, "jitter": 0, "healthChecks": true },
+        "x": 960,
+        "y": 1300
+      },
+      {
+        "id": "west-router",
+        "stencil": "envoy",
+        "label": "Cell router",
+        "sublabel": "hash(customer) → cell",
+        "group": "west",
+        "props": { "latencyMs": 0, "jitter": 0 },
+        "x": 1380,
+        "y": 1300
+      },
+      {
+        "id": "west-c1-api",
+        "stencil": "aws.ecs",
+        "label": "Booking API",
+        "sublabel": "cell 1 · Fargate",
+        "group": "west-c1",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 80, "jitter": 0.1, "failureRate": 0, "emits": "BookingConfirmed" },
+        "x": 1860,
+        "y": 1120
+      },
+      {
+        "id": "west-c1-avail",
+        "stencil": "service.go",
+        "label": "Availability",
+        "sublabel": "rooms and seats",
+        "group": "west-c1",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+        "x": 1860,
+        "y": 1240
+      },
+      {
+        "id": "west-c1-cache",
+        "stencil": "redis.cache",
+        "label": "Availability cache",
+        "sublabel": "ElastiCache",
+        "group": "west-c1",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 1240
+      },
+      {
+        "id": "west-c1-db",
+        "stencil": "aws.dynamodb",
+        "label": "Bookings",
+        "sublabel": "global table replica",
+        "group": "west-c1",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 1120
+      },
+      {
+        "id": "west-c2-api",
+        "stencil": "aws.ecs",
+        "label": "Booking API",
+        "sublabel": "cell 2 · Fargate",
+        "group": "west-c2",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 80, "jitter": 0.1, "failureRate": 0, "emits": "BookingConfirmed" },
+        "x": 1860,
+        "y": 1450
+      },
+      {
+        "id": "west-c2-avail",
+        "stencil": "service.go",
+        "label": "Availability",
+        "sublabel": "rooms and seats",
+        "group": "west-c2",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+        "x": 1860,
+        "y": 1570
+      },
+      {
+        "id": "west-c2-cache",
+        "stencil": "redis.cache",
+        "label": "Availability cache",
+        "sublabel": "ElastiCache",
+        "group": "west-c2",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 1570
+      },
+      {
+        "id": "west-c2-db",
+        "stencil": "aws.dynamodb",
+        "label": "Bookings",
+        "sublabel": "global table replica",
+        "group": "west-c2",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 1450
+      },
+      { "id": "west-bus", "stencil": "aws.eventbridge", "label": "Booking events", "sublabel": "EventBridge", "group": "west", "x": 2840, "y": 1300 },
+      {
+        "id": "west-queue",
+        "stencil": "aws.sqs",
+        "label": "Confirmations",
+        "sublabel": "SQS",
+        "group": "west",
+        "props": { "maxDeliveryCount": 3 },
+        "x": 3260,
+        "y": 1300
+      },
+      { "id": "west-dlq", "stencil": "aws.sqs", "label": "Confirmations DLQ", "sublabel": "SQS", "group": "west", "x": 3260, "y": 1420 },
+      {
+        "id": "west-mailer",
+        "stencil": "aws.lambda",
+        "label": "Confirmation mailer",
+        "sublabel": "Lambda",
+        "group": "west",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 120, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 50, "concurrency": 16 },
+        "x": 3680,
+        "y": 1300
+      },
+      {
+        "id": "west-redrive",
+        "stencil": "aws.lambda",
+        "label": "DLQ redrive",
+        "sublabel": "after the fix",
+        "group": "west",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 50, "jitter": 0, "failureRate": 0, "scaling": "auto", "maxConcurrency": 5 },
+        "x": 3680,
+        "y": 1420
+      },
+      {
+        "id": "eu-alb",
+        "stencil": "aws.elb",
+        "label": "Regional ALB",
+        "sublabel": "eu-west-1",
+        "group": "eu",
+        "props": { "latencyMs": 0, "jitter": 0, "healthChecks": true },
+        "x": 960,
+        "y": 2200
+      },
+      {
+        "id": "eu-router",
+        "stencil": "envoy",
+        "label": "Cell router",
+        "sublabel": "hash(customer) → cell",
+        "group": "eu",
+        "props": { "latencyMs": 0, "jitter": 0 },
+        "x": 1380,
+        "y": 2200
+      },
+      {
+        "id": "eu-c1-api",
+        "stencil": "aws.ecs",
+        "label": "Booking API",
+        "sublabel": "cell 1 · Fargate",
+        "group": "eu-c1",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 80, "jitter": 0.1, "failureRate": 0, "emits": "BookingConfirmed" },
+        "x": 1860,
+        "y": 2020
+      },
+      {
+        "id": "eu-c1-avail",
+        "stencil": "service.go",
+        "label": "Availability",
+        "sublabel": "rooms and seats",
+        "group": "eu-c1",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+        "x": 1860,
+        "y": 2140
+      },
+      {
+        "id": "eu-c1-cache",
+        "stencil": "redis.cache",
+        "label": "Availability cache",
+        "sublabel": "ElastiCache",
+        "group": "eu-c1",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 2140
+      },
+      {
+        "id": "eu-c1-db",
+        "stencil": "aws.dynamodb",
+        "label": "Bookings",
+        "sublabel": "global table replica",
+        "group": "eu-c1",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 2020
+      },
+      {
+        "id": "eu-c2-api",
+        "stencil": "aws.ecs",
+        "label": "Booking API",
+        "sublabel": "cell 2 · Fargate",
+        "group": "eu-c2",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 80, "jitter": 0.1, "failureRate": 0, "emits": "BookingConfirmed" },
+        "x": 1860,
+        "y": 2350
+      },
+      {
+        "id": "eu-c2-avail",
+        "stencil": "service.go",
+        "label": "Availability",
+        "sublabel": "rooms and seats",
+        "group": "eu-c2",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+        "x": 1860,
+        "y": 2470
+      },
+      {
+        "id": "eu-c2-cache",
+        "stencil": "redis.cache",
+        "label": "Availability cache",
+        "sublabel": "ElastiCache",
+        "group": "eu-c2",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 2470
+      },
+      {
+        "id": "eu-c2-db",
+        "stencil": "aws.dynamodb",
+        "label": "Bookings",
+        "sublabel": "global table replica",
+        "group": "eu-c2",
+        "props": { "latencyMs": 0 },
+        "x": 2280,
+        "y": 2350
+      },
+      { "id": "eu-bus", "stencil": "aws.eventbridge", "label": "Booking events", "sublabel": "EventBridge", "group": "eu", "x": 2840, "y": 2200 },
+      {
+        "id": "eu-queue",
+        "stencil": "aws.sqs",
+        "label": "Confirmations",
+        "sublabel": "SQS",
+        "group": "eu",
+        "props": { "maxDeliveryCount": 3 },
+        "x": 3260,
+        "y": 2200
+      },
+      { "id": "eu-dlq", "stencil": "aws.sqs", "label": "Confirmations DLQ", "sublabel": "SQS", "group": "eu", "x": 3260, "y": 2320 },
+      {
+        "id": "eu-mailer",
+        "stencil": "aws.lambda",
+        "label": "Confirmation mailer",
+        "sublabel": "Lambda",
+        "group": "eu",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 120, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 50, "concurrency": 16 },
+        "x": 3680,
+        "y": 2200
+      },
+      {
+        "id": "eu-redrive",
+        "stencil": "aws.lambda",
+        "label": "DLQ redrive",
+        "sublabel": "after the fix",
+        "group": "eu",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 50, "jitter": 0, "failureRate": 0, "scaling": "auto", "maxConcurrency": 5 },
+        "x": 3680,
+        "y": 2320
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 300, "y": 1060 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 24 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 300, "y": 1284 }
+    ],
+    "edges": [
+      { "id": "mobile--dns", "from": "mobile", "to": "dns", "kind": "sync", "label": "HTTPS" },
+      { "id": "agents--dns", "from": "agents", "to": "dns", "kind": "sync", "label": "HTTPS" },
+      { "id": "dns--east-alb", "from": "dns", "to": "east-alb", "kind": "sync", "label": "us-east-1" },
+      { "id": "east-alb--east-router", "from": "east-alb", "to": "east-router", "kind": "sync" },
+      { "id": "east-router--east-c1-api", "from": "east-router", "to": "east-c1-api", "kind": "sync", "label": "Cell 1" },
+      { "id": "east-c1-api--east-c1-avail", "from": "east-c1-api", "to": "east-c1-avail", "kind": "sync", "label": "Hold" },
+      { "id": "east-c1-avail--east-c1-cache", "from": "east-c1-avail", "to": "east-c1-cache", "kind": "sync" },
+      { "id": "east-c1-api--east-c1-db", "from": "east-c1-api", "to": "east-c1-db", "kind": "sync", "label": "Book" },
+      {
+        "id": "east-c1-db--east-bus",
+        "from": "east-c1-db",
+        "to": "east-bus",
+        "kind": "async",
+        "label": "Stream",
+        "props": { "filter": ["BookingConfirmed"] }
+      },
+      { "id": "east-router--east-c2-api", "from": "east-router", "to": "east-c2-api", "kind": "sync", "label": "Cell 2" },
+      { "id": "east-c2-api--east-c2-avail", "from": "east-c2-api", "to": "east-c2-avail", "kind": "sync", "label": "Hold" },
+      { "id": "east-c2-avail--east-c2-cache", "from": "east-c2-avail", "to": "east-c2-cache", "kind": "sync" },
+      { "id": "east-c2-api--east-c2-db", "from": "east-c2-api", "to": "east-c2-db", "kind": "sync", "label": "Book" },
+      {
+        "id": "east-c2-db--east-bus",
+        "from": "east-c2-db",
+        "to": "east-bus",
+        "kind": "async",
+        "label": "Stream",
+        "props": { "filter": ["BookingConfirmed"] }
+      },
+      { "id": "east-bus--east-queue", "from": "east-bus", "to": "east-queue", "kind": "async", "label": "Rule" },
+      { "id": "east-queue--east-mailer", "from": "east-queue", "to": "east-mailer", "kind": "async" },
+      {
+        "id": "east-queue--east-dlq",
+        "from": "east-queue",
+        "to": "east-dlq",
+        "kind": "async",
+        "label": "After 3 tries",
+        "props": { "dlq": true }
+      },
+      { "id": "east-dlq--east-redrive", "from": "east-dlq", "to": "east-redrive", "kind": "async" },
+      { "id": "east-redrive--east-mailer", "from": "east-redrive", "to": "east-mailer", "kind": "sync", "label": "Redrive" },
+      { "id": "east-mailer--email", "from": "east-mailer", "to": "email", "kind": "sync", "label": "Send" },
+      { "id": "east-router--registry", "from": "east-router", "to": "registry", "kind": "async", "label": "Cell map", "relation": "config" },
+      { "id": "east-alb--metrics", "from": "east-alb", "to": "metrics", "kind": "async", "relation": "telemetry" },
+      { "id": "dns--west-alb", "from": "dns", "to": "west-alb", "kind": "sync", "label": "us-west-2" },
+      { "id": "west-alb--west-router", "from": "west-alb", "to": "west-router", "kind": "sync" },
+      { "id": "west-router--west-c1-api", "from": "west-router", "to": "west-c1-api", "kind": "sync", "label": "Cell 1" },
+      { "id": "west-c1-api--west-c1-avail", "from": "west-c1-api", "to": "west-c1-avail", "kind": "sync", "label": "Hold" },
+      { "id": "west-c1-avail--west-c1-cache", "from": "west-c1-avail", "to": "west-c1-cache", "kind": "sync" },
+      { "id": "west-c1-api--west-c1-db", "from": "west-c1-api", "to": "west-c1-db", "kind": "sync", "label": "Book" },
+      {
+        "id": "west-c1-db--west-bus",
+        "from": "west-c1-db",
+        "to": "west-bus",
+        "kind": "async",
+        "label": "Stream",
+        "props": { "filter": ["BookingConfirmed"] }
+      },
+      { "id": "west-router--west-c2-api", "from": "west-router", "to": "west-c2-api", "kind": "sync", "label": "Cell 2" },
+      { "id": "west-c2-api--west-c2-avail", "from": "west-c2-api", "to": "west-c2-avail", "kind": "sync", "label": "Hold" },
+      { "id": "west-c2-avail--west-c2-cache", "from": "west-c2-avail", "to": "west-c2-cache", "kind": "sync" },
+      { "id": "west-c2-api--west-c2-db", "from": "west-c2-api", "to": "west-c2-db", "kind": "sync", "label": "Book" },
+      {
+        "id": "west-c2-db--west-bus",
+        "from": "west-c2-db",
+        "to": "west-bus",
+        "kind": "async",
+        "label": "Stream",
+        "props": { "filter": ["BookingConfirmed"] }
+      },
+      { "id": "west-bus--west-queue", "from": "west-bus", "to": "west-queue", "kind": "async", "label": "Rule" },
+      { "id": "west-queue--west-mailer", "from": "west-queue", "to": "west-mailer", "kind": "async" },
+      {
+        "id": "west-queue--west-dlq",
+        "from": "west-queue",
+        "to": "west-dlq",
+        "kind": "async",
+        "label": "After 3 tries",
+        "props": { "dlq": true }
+      },
+      { "id": "west-dlq--west-redrive", "from": "west-dlq", "to": "west-redrive", "kind": "async" },
+      { "id": "west-redrive--west-mailer", "from": "west-redrive", "to": "west-mailer", "kind": "sync", "label": "Redrive" },
+      { "id": "west-mailer--email", "from": "west-mailer", "to": "email", "kind": "sync", "label": "Send" },
+      { "id": "west-router--registry", "from": "west-router", "to": "registry", "kind": "async", "label": "Cell map", "relation": "config" },
+      { "id": "west-alb--metrics", "from": "west-alb", "to": "metrics", "kind": "async", "relation": "telemetry" },
+      { "id": "dns--eu-alb", "from": "dns", "to": "eu-alb", "kind": "sync", "label": "eu-west-1" },
+      { "id": "eu-alb--eu-router", "from": "eu-alb", "to": "eu-router", "kind": "sync" },
+      { "id": "eu-router--eu-c1-api", "from": "eu-router", "to": "eu-c1-api", "kind": "sync", "label": "Cell 1" },
+      { "id": "eu-c1-api--eu-c1-avail", "from": "eu-c1-api", "to": "eu-c1-avail", "kind": "sync", "label": "Hold" },
+      { "id": "eu-c1-avail--eu-c1-cache", "from": "eu-c1-avail", "to": "eu-c1-cache", "kind": "sync" },
+      { "id": "eu-c1-api--eu-c1-db", "from": "eu-c1-api", "to": "eu-c1-db", "kind": "sync", "label": "Book" },
+      {
+        "id": "eu-c1-db--eu-bus",
+        "from": "eu-c1-db",
+        "to": "eu-bus",
+        "kind": "async",
+        "label": "Stream",
+        "props": { "filter": ["BookingConfirmed"] }
+      },
+      { "id": "eu-router--eu-c2-api", "from": "eu-router", "to": "eu-c2-api", "kind": "sync", "label": "Cell 2" },
+      { "id": "eu-c2-api--eu-c2-avail", "from": "eu-c2-api", "to": "eu-c2-avail", "kind": "sync", "label": "Hold" },
+      { "id": "eu-c2-avail--eu-c2-cache", "from": "eu-c2-avail", "to": "eu-c2-cache", "kind": "sync" },
+      { "id": "eu-c2-api--eu-c2-db", "from": "eu-c2-api", "to": "eu-c2-db", "kind": "sync", "label": "Book" },
+      {
+        "id": "eu-c2-db--eu-bus",
+        "from": "eu-c2-db",
+        "to": "eu-bus",
+        "kind": "async",
+        "label": "Stream",
+        "props": { "filter": ["BookingConfirmed"] }
+      },
+      { "id": "eu-bus--eu-queue", "from": "eu-bus", "to": "eu-queue", "kind": "async", "label": "Rule" },
+      { "id": "eu-queue--eu-mailer", "from": "eu-queue", "to": "eu-mailer", "kind": "async" },
+      {
+        "id": "eu-queue--eu-dlq",
+        "from": "eu-queue",
+        "to": "eu-dlq",
+        "kind": "async",
+        "label": "After 3 tries",
+        "props": { "dlq": true }
+      },
+      { "id": "eu-dlq--eu-redrive", "from": "eu-dlq", "to": "eu-redrive", "kind": "async" },
+      { "id": "eu-redrive--eu-mailer", "from": "eu-redrive", "to": "eu-mailer", "kind": "sync", "label": "Redrive" },
+      { "id": "eu-mailer--email", "from": "eu-mailer", "to": "email", "kind": "sync", "label": "Send" },
+      { "id": "eu-router--registry", "from": "eu-router", "to": "registry", "kind": "async", "label": "Cell map", "relation": "config" },
+      { "id": "eu-alb--metrics", "from": "eu-alb", "to": "metrics", "kind": "async", "relation": "telemetry" },
+      {
+        "id": "east-c1-db--west-c1-db",
+        "from": "east-c1-db",
+        "to": "west-c1-db",
+        "kind": "async",
+        "label": "Replication",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "east-c1-db--eu-c1-db",
+        "from": "east-c1-db",
+        "to": "eu-c1-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "west-c1-db--east-c1-db",
+        "from": "west-c1-db",
+        "to": "east-c1-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "west-c1-db--eu-c1-db",
+        "from": "west-c1-db",
+        "to": "eu-c1-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "eu-c1-db--east-c1-db",
+        "from": "eu-c1-db",
+        "to": "east-c1-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "eu-c1-db--west-c1-db",
+        "from": "eu-c1-db",
+        "to": "west-c1-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "east-c2-db--west-c2-db",
+        "from": "east-c2-db",
+        "to": "west-c2-db",
+        "kind": "async",
+        "label": "Replication",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "east-c2-db--eu-c2-db",
+        "from": "east-c2-db",
+        "to": "eu-c2-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "west-c2-db--east-c2-db",
+        "from": "west-c2-db",
+        "to": "east-c2-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "west-c2-db--eu-c2-db",
+        "from": "west-c2-db",
+        "to": "eu-c2-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "eu-c2-db--east-c2-db",
+        "from": "eu-c2-db",
+        "to": "east-c2-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      {
+        "id": "eu-c2-db--west-c2-db",
+        "from": "eu-c2-db",
+        "to": "west-c2-db",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "right",
+        "props": { "filter": ["BookingConfirmed"], "emits": "BookingReplicated", "travelMs": 900 }
+      },
+      { "id": "pipeline--east-c1-api", "from": "pipeline", "to": "east-c1-api", "kind": "async", "label": "Canary cell", "relation": "deploy" },
+      { "id": "e-1", "from": "travellers", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "travellers", "to": "queue-1", "kind": "sync", "label": "HTTPS" },
+      { "id": "e-5", "from": "queue-1", "to": "dns", "kind": "sync" }
+    ],
+    "annotations": [
+      { "id": "note-cells", "kind": "note", "text": "A cell is a complete, fixed-size copy of the booking stack. Requests never cross cells or regions; only data replicates.", "x": 0, "y": 160, "width": 300, "height": 150 },
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 4480, "y": 1180, "width": 240, "height": 160 }
+    ],
+    "simulations": [
+      {
+        "id": "region-evacuation",
+        "title": "us-east-1 goes dark",
+        "description": "Five seconds in, us-east-1's load balancer stops answering. DNS health checks send its travellers to the other two regions, whose cells were sized to absorb one region's share. Bookings keep flowing; the region returns at 18 s.",
+        "seed": 21,
+        "scale": 5,
+        "durationMs": 30000,
+        "traffic": [
+          {
+            "id": "web",
+            "node": "travellers",
+            "label": "Web bookings",
+            "shape": { "kind": "constant", "ratePerSec": 120, "durationMs": 26000 }
+          },
+          {
+            "id": "app",
+            "node": "mobile",
+            "label": "App bookings",
+            "shape": { "kind": "constant", "ratePerSec": 90, "durationMs": 26000 }
+          },
+          {
+            "id": "partners",
+            "node": "agents",
+            "label": "Agent bookings",
+            "shape": { "kind": "constant", "ratePerSec": 30, "durationMs": 26000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Three regions take bookings. Each region splits customers across two cells; no request ever leaves its cell.", "focus": ["dns", "east-alb", "west-alb", "eu-alb"] }
+          },
+          { "atMs": 5000, "action": { "do": "status", "node": "east-alb", "status": "down" } },
+          {
+            "atMs": 5000,
+            "action": { "do": "note", "text": "us-east-1 goes dark. DNS health checks stop sending travellers there within one check.", "focus": ["dns", "east-alb", "east-router"] }
+          },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "us-west-2 and eu-west-1 take the extra half each. Their cells run hotter but stay under capacity: that headroom is the design.", "focus": ["west-c1-api", "west-c2-api", "eu-c1-api", "eu-c2-api"] }
+          },
+          { "atMs": 18000, "action": { "do": "status", "node": "east-alb", "status": "up" } },
+          {
+            "atMs": 18000,
+            "action": { "do": "note", "text": "us-east-1 is back and DNS sends its share home. Global tables replicated every booking while it was away.", "focus": ["dns", "east-alb", "east-c1-db", "west-c1-db"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "west-serves",
+            "label": "us-west-2 keeps booking",
+            "metric": { "node": "west-c1-api", "field": "failed" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "eu-serves",
+            "label": "eu-west-1 keeps booking",
+            "metric": { "node": "eu-c2-api", "field": "failed" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "emails",
+            "label": "Confirmations still go out",
+            "metric": { "node": "email", "field": "processed" },
+            "op": ">",
+            "value": 4000,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "bad-cell-deploy",
+        "title": "A bad deploy stays in one cell",
+        "description": "The release pipeline deploys to one canary cell first. The new build fails most bookings, but only in Cell 1 of us-east-1: about a sixth of traffic. The cell's alarm stops the rollout and rolls it back at 12 s.",
+        "seed": 22,
+        "scale": 5,
+        "durationMs": 25000,
+        "traffic": [
+          {
+            "id": "web",
+            "node": "travellers",
+            "label": "Web bookings",
+            "shape": { "kind": "constant", "ratePerSec": 120, "durationMs": 20000 }
+          },
+          {
+            "id": "app",
+            "node": "mobile",
+            "label": "App bookings",
+            "shape": { "kind": "constant", "ratePerSec": 90, "durationMs": 20000 }
+          },
+          {
+            "id": "partners",
+            "node": "agents",
+            "label": "Agent bookings",
+            "shape": { "kind": "constant", "ratePerSec": 30, "durationMs": 20000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Six cells, each a complete copy of the booking stack. The pipeline deploys to one cell at a time.", "focus": ["pipeline", "east-c1-api"] }
+          },
+          { "atMs": 4000, "action": { "do": "props", "node": "east-c1-api", "props": { "failureRate": 0.8 } } },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "Build 7.3 reaches the canary cell and fails most of its bookings.", "focus": ["pipeline", "east-c1-api", "east-c1-db"] }
+          },
+          {
+            "atMs": 8000,
+            "action": { "do": "note", "text": "Only that cell's customers notice. The other five cells, and every other region, carry on untouched.", "focus": ["east-c1-api", "east-c2-api", "west-c1-api", "eu-c1-api"] }
+          },
+          { "atMs": 12000, "action": { "do": "props", "node": "east-c1-api", "props": { "failureRate": 0 } } },
+          {
+            "atMs": 12000,
+            "action": { "do": "note", "text": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again.", "focus": ["metrics", "pipeline", "east-c1-api"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "contained",
+            "label": "The bad build fails bookings in its cell",
+            "metric": { "node": "east-c1-api", "field": "failed" },
+            "op": ">",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "neighbour-ok",
+            "label": "The neighbouring cell never fails",
+            "metric": { "node": "east-c2-api", "field": "failed" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "west-ok",
+            "label": "Other regions never fail",
+            "metric": { "node": "west-c1-api", "field": "failed" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "travellers",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "travellers",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "travellers",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "travellers",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "agents", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["agents"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "agents", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ]
+  }
+}

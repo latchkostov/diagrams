@@ -1,0 +1,199 @@
+import { describe, expect, it } from "vitest";
+import type { DiagramFile, Simulation } from "../model/types";
+import { validateDiagram } from "../interop/native";
+import { createSimulationRun } from "../sim/simulation";
+import type { SimSnapshot } from "../sim/types";
+import { loadExample } from "./index";
+
+// The large public showcases (docs/EXAMPLES.md): each tells its saved stories on a realistic, invented system.
+// Public fixtures only: this shallow glob never descends into local-only examples.
+const files = import.meta.glob<DiagramFile>("./*.json", { eager: true, import: "default" });
+const LARGE = [
+  "black-friday-commerce",
+  "cell-based-bookings",
+  "payments-ledger",
+  "delivery-dispatch",
+  "ev-charging-network",
+] as const;
+const diagram = (slug: string) => files[`./${slug}.json`];
+const simulation = (slug: string, id: string): Simulation => {
+  const s = diagram(slug).simulations?.find((x) => x.id === id);
+  if (!s) throw new Error(`${slug} has no simulation ${id}`);
+  return s;
+};
+
+/** Plays a saved simulation to its end, sampling the engine every `everyMs` of simulated time. */
+function play(slug: string, id: string, everyMs = 500) {
+  const run = createSimulationRun(diagram(slug), simulation(slug, id));
+  const samples: { time: number; snap: SimSnapshot }[] = [];
+  let next = 0;
+  for (let step = 0; step < 7000 && !run.state().done; step++) {
+    if (run.state().waiting) run.resume();
+    run.step(10);
+    if (run.state().time >= next) {
+      samples.push({ time: run.state().time, snap: run.engine.snapshot() });
+      next += everyMs;
+    }
+  }
+  expect(run.state().done, id).toBe(true);
+  expect(
+    run.state().expectations.map((e) => e.status),
+    id,
+  ).toEqual(simulation(slug, id).expectations?.map(() => "pass"));
+  return { end: run.engine.snapshot(), samples };
+}
+const between = (samples: { time: number; snap: SimSnapshot }[], from: number, to: number) =>
+  samples.filter((s) => s.time >= from && s.time < to).map((s) => s.snap);
+const most = (snaps: SimSnapshot[], node: string, field: "replicas" | "activeReplicas") =>
+  Math.max(...snaps.map((s) => s.nodes[node]?.[field] ?? 0));
+
+describe("large showcases", () => {
+  it.each(LARGE)("%s is large, valid, laid out and replays deterministically", async (slug) => {
+    const d = await loadExample(slug);
+    expect(validateDiagram(d)).toMatchObject({ ok: true });
+    // Large on purpose (40-150 nodes), but well under live view's adaptive threshold of about 1,000 nodes plus edges.
+    expect(d.nodes.length).toBeGreaterThanOrEqual(40);
+    expect(d.nodes.length + d.edges.length).toBeLessThan(400);
+    // Every node sits inside the boundaries it belongs to, nested ones inside their parents.
+    const groups = new Map((d.groups ?? []).map((g) => [g.id, g]));
+    for (const n of d.nodes) {
+      for (let g = n.group ? groups.get(n.group) : undefined; g; g = g.group ? groups.get(g.group) : undefined) {
+        expect(
+          n.x >= g.x && n.y >= g.y && n.x + 220 <= g.x + g.width && n.y + 72 <= g.y + g.height,
+          `${n.id} in ${g.id}`,
+        ).toBe(true);
+      }
+    }
+    // Boundaries that are not nested in one another never overlap.
+    const ancestors = (id: string) => {
+      const out: string[] = [];
+      for (let g = groups.get(id); g; g = g.group ? groups.get(g.group) : undefined) out.push(g.id);
+      return out;
+    };
+    const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    for (const a of d.groups ?? [])
+      for (const b of d.groups ?? [])
+        if (a.id < b.id && !ancestors(a.id).includes(b.id) && !ancestors(b.id).includes(a.id))
+          expect(overlap(a, b), `${a.id} / ${b.id}`).toBe(false);
+    // A narrated story starts within the first ten seconds of every saved simulation.
+    for (const s of d.simulations ?? []) {
+      const notes = (s.timeline ?? []).filter((t) => t.action.do === "note");
+      expect(notes.filter((t) => t.atMs <= 10_000).length, s.id).toBeGreaterThanOrEqual(2);
+      expect(
+        notes.every((t) => t.action.do !== "note" || !t.action.pause),
+        s.id,
+      ).toBe(true);
+    }
+    for (const s of d.simulations ?? []) {
+      const replay = () => {
+        const run = createSimulationRun(d, s);
+        for (let step = 0; step < 7000 && !run.state().done; step++) run.step(10);
+        return run.engine.snapshot();
+      };
+      expect(replay()).toEqual(replay());
+    }
+  });
+
+  it("Black Friday: the gateway sheds checkout, HPA adds pods and KEDA adds workers", () => {
+    const { end, samples } = play("black-friday-commerce", "doors-open");
+    expect(end.nodes.gateway.rejected).toBeGreaterThan(0);
+    expect(Object.keys(end.nodes.gateway.routeRejections ?? {})).toEqual(["checkout"]);
+    // Checkout starts with two pods and HPA has more running before the 8 s narration.
+    expect(most(between(samples, 0, 2000), "checkout-api", "replicas")).toBe(2);
+    expect(most(between(samples, 2000, 8500), "checkout-api", "replicas")).toBeGreaterThan(2);
+    expect(
+      most(
+        samples.map((s) => s.snap),
+        "fulfilment",
+        "replicas",
+      ),
+    ).toBeGreaterThan(2);
+    expect(end.nodes.orders.deadLettered).toBe(0);
+  });
+
+  it("Black Friday: a bad Loyalty deploy parks events without touching other consumer groups", () => {
+    const { end } = play("black-friday-commerce", "poison-deploy");
+    expect(end.nodes.orders.deadLettered).toBeGreaterThan(0);
+    expect(end.nodes["orders-dlq"].processed).toBe(end.nodes.orders.deadLettered);
+    for (const id of ["fulfilment", "status-projector", "notifier", "lake-sink"])
+      expect(end.nodes[id].failed, id).toBe(0);
+    expect(end.nodes.loyalty.failed).toBeGreaterThan(0);
+    // Triage waits for the rollback, so nothing it replays is lost.
+    expect(end.nodes.loyalty.dropped).toBe(0);
+  });
+
+  it("Black Friday: more fulfilment workers meet the warehouse partner's quota", () => {
+    const { end } = play("black-friday-commerce", "partner-quota");
+    expect(end.nodes.wms.rejected).toBeGreaterThan(0);
+    expect(end.nodes.wms.failed).toBe(0);
+  });
+
+  it("Cells: a dark region's travellers move to the other two, and every booking replicates", () => {
+    const { end, samples } = play("cell-based-bookings", "region-evacuation");
+    const during = between(samples, 6000, 18000);
+    const sent = (snaps: SimSnapshot[], node: string) =>
+      snaps[snaps.length - 1].nodes[node].processed - snaps[0].nodes[node].processed;
+    expect(sent(during, "east-router")).toBe(0);
+    expect(sent(during, "west-router")).toBeGreaterThan(0);
+    expect(sent(during, "eu-router")).toBeGreaterThan(0);
+    // Each region's replica of a cell's table holds every booking for that cell, wherever it was made.
+    for (const c of [1, 2])
+      expect(new Set(["east", "west", "eu"].map((r) => end.nodes[`${r}-c${c}-db`].processed)).size, `cell ${c}`).toBe(
+        1,
+      );
+    // Only origin writes send a confirmation: one email per booking.
+    const bookings = ["east", "west", "eu"].reduce((sum, r) => sum + end.nodes[`${r}-router`].processed, 0);
+    expect(end.nodes.email.processed).toBe(bookings);
+  });
+
+  it("Cells: a bad canary build fails bookings in its own cell only", () => {
+    const { end } = play("cell-based-bookings", "bad-cell-deploy");
+    expect(end.nodes["east-c1-api"].failed).toBeGreaterThan(0);
+    for (const r of ["east", "west", "eu"])
+      for (const c of [1, 2])
+        if (`${r}-c${c}` !== "east-c1") expect(end.nodes[`${r}-c${c}-api`].failed, `${r}-c${c}`).toBe(0);
+  });
+
+  it("Payments: weights don't move by themselves; shifting them stops the failures", () => {
+    const { end, samples } = play("payments-ledger", "psp-brownout");
+    const at = (t: number) => samples.find((s) => s.time >= t)!.snap;
+    const adyen = (s: SimSnapshot) => s.nodes.adyen.processed + s.nodes.adyen.failed;
+    expect(at(8500).nodes.adyen.failed).toBeGreaterThan(0);
+    // After the 9 s shift, Adyen gets nothing new (calls already in flight finish).
+    expect(adyen(end)).toBe(adyen(at(10_000)));
+    expect(end.nodes.stripe.failed).toBe(0);
+    expect(end.nodes["payment-events"].deadLettered).toBe(0);
+  });
+
+  it("Payments: new-format disputes dead-letter while charges keep flowing, then replay", () => {
+    const { end } = play("payments-ledger", "poison-dispute");
+    expect(end.nodes["psp-q"].deadLettered).toBe(12);
+    expect(end.nodes["psp-events"].failed).toBe(0);
+    expect(end.nodes["psp-redrive"].processed).toBe(12);
+    expect(end.nodes["psp-redrive"].rejected ?? 0).toBe(0);
+  });
+
+  it("Dispatch: KEDA stops at the partition count until the topic grows", () => {
+    const { samples } = play("delivery-dispatch", "partition-ceiling");
+    expect(most(between(samples, 0, 12_000), "geo-indexer", "activeReplicas")).toBe(8);
+    expect(most(between(samples, 12_500, 30_000), "geo-indexer", "activeReplicas")).toBeGreaterThan(8);
+  });
+
+  it("Dispatch: the maps provider's quota rejects the rush's excess", () => {
+    const { end } = play("delivery-dispatch", "dinner-rush");
+    expect(end.nodes.maps.rejected).toBeGreaterThan(0);
+    expect(end.nodes.maps.failed).toBe(0);
+  });
+
+  it("EV charging: the depot firewall blocks the vendor shell and fails over without loss", () => {
+    const shell = play("ev-charging-network", "vendor-shell").end;
+    expect(shell.nodes["depot-fw"].blocked).toBeGreaterThan(0);
+    expect(shell.nodes["depot-switch"].processed).toBe(shell.nodes["depot-chargers"].processed);
+    const failover = play("ev-charging-network", "firewall-failover").end;
+    expect(failover.nodes["depot-fw"].dropped).toBe(0);
+    expect(failover.nodes.ingress.processed).toBe(failover.nodes["depot-chargers"].processed);
+    const storm = play("ev-charging-network", "reboot-storm").end;
+    expect(storm.nodes.ocpp.dropped).toBe(0);
+  });
+});

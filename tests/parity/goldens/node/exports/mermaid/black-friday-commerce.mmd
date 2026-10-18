@@ -1,0 +1,167 @@
+---
+title: Black Friday commerce platform
+---
+flowchart LR
+  subgraph g_edge ["Cloudflare edge"]
+    cdn["Edge CDN<br/>WAF, bot rules, TLS"]
+  end
+  subgraph g_aws ["AWS us-east-1 · production"]
+  end
+  subgraph g_storefront ["EKS · storefront"]
+    gateway["API gateway<br/>Kong · route table"]
+    catalog_bff["Catalog BFF<br/>product pages"]
+    search_api["Search API"]
+    cart_api["Cart API"]
+    checkout_api["Checkout API<br/>HPA on CPU"]
+    order_status["Order status API<br/>read model"]
+    tracking["Shipment tracking"]
+    reco["Recommendations<br/>similar items"]
+    pricing["Pricing<br/>prices and promotions"]
+    inventory["Inventory<br/>stock reservations"]
+    risk["Fraud model<br/>risk score"]
+    payments["Payments<br/>authorize, idempotent"]
+  end
+  subgraph g_stores ["Operational data"]
+    features[("Feature store<br/>online features")]
+    product_cache[("Product cache<br/>ElastiCache")]
+    catalog_db[("Catalog DB<br/>Aurora Postgres")]
+    search_index[("Product index<br/>OpenSearch")]
+    carts[("Carts<br/>DynamoDB")]
+    promotions[("Promotions<br/>DynamoDB")]
+    inventory_db[("Inventory DB<br/>Aurora Postgres")]
+    orders_db[("Orders DB<br/>orders and outbox")]
+    status_cache[("Order status cache<br/>projection")]
+  end
+  subgraph g_backbone ["MSK · event backbone"]
+    outbox_relay["Outbox relay<br/>Debezium, orders.outbox"]
+    inventory_events["Stock changes<br/>inventory.v1 · 12 partitions"]
+    orders["Order events<br/>orders.v1 · 24 partitions"]
+    orders_dlq["Orders DLQ<br/>orders.dlq · 3 partitions"]
+    shipments["Shipment events<br/>shipments.v1 · 12 partitions"]
+  end
+  subgraph g_fulfil ["EKS · fulfilment and messaging"]
+    search_indexer["Search indexer<br/>stock to index"]
+    fulfilment["Fulfilment workers<br/>KEDA on order lag"]
+    loyalty["Loyalty points"]
+    status_projector["Status projector<br/>orders, shipments"]
+    notifier["Notification router<br/>by preference"]
+    dlq_triage["DLQ triage<br/>inspect and replay"]
+    loyalty_db[("Loyalty ledger<br/>DynamoDB")]
+    notify_q["Notifications<br/>SQS"]
+    notify_dlq["Notifications DLQ<br/>SQS"]
+    email["Email sender<br/>Lambda"]
+    push["Push sender<br/>Lambda"]
+  end
+  subgraph g_analytics ["Clickstream and analytics"]
+    collector["Event collector<br/>page and app beacons"]
+    clickstream["Clickstream<br/>Kinesis · 8 shards"]
+    sessionizer["Sessionizer<br/>Managed Flink"]
+    lake_sink["Lake sink<br/>S3 sink connector"]
+    lake[("Event lake<br/>S3 · Parquet")]
+    airflow["Nightly DAGs<br/>MWAA"]
+    dbt["dbt models<br/>orders and margin"]
+  end
+  subgraph g_platform ["Platform"]
+    argocd["Argo CD<br/>GitOps"]
+    flags["Feature flags<br/>Parameter Store"]
+    secrets["Secrets Manager"]
+    roles["Workload roles<br/>IRSA"]
+    datadog["Datadog<br/>APM, logs"]
+  end
+  subgraph g_payment_partners ["Payment and tax partners"]
+    tax(["Tax API<br/>sales tax quotes"])
+    stripe(["Stripe<br/>card payments"])
+  end
+  subgraph g_delivery_partners ["Delivery partners"]
+    wms(["3PL warehouse API<br/>pick and pack"])
+    sendgrid(["SendGrid<br/>order emails"])
+    apns(["APNs and FCM<br/>push delivery"])
+  end
+  subgraph g_saas_data ["Data SaaS"]
+    snowflake[("Snowflake<br/>merch marts")]
+    tableau["Merch dashboards<br/>Tableau"]
+  end
+  web(["Shoppers on the web<br/>Storefront SPA"])
+  app(["Larkspur app<br/>iOS and Android"])
+  carriers(["Carrier scans<br/>tracking webhooks"])
+  web -->|"HTTPS"| cdn
+  app -->|"HTTPS"| cdn
+  carriers -->|"Webhook"| cdn
+  cdn -->|"API calls"| gateway
+  cdn -->|"Beacons"| collector
+  gateway -->|"Products"| catalog_bff
+  gateway -->|"Search"| search_api
+  gateway -->|"Cart"| cart_api
+  gateway -->|"Checkout"| checkout_api
+  gateway -->|"Status"| order_status
+  gateway -->|"Scans"| tracking
+  catalog_bff --> product_cache
+  catalog_bff -->|"Cache miss"| catalog_db
+  catalog_bff -->|"Similar"| reco
+  reco --> features
+  search_api --> search_index
+  cart_api --> carts
+  cart_api -->|"Price"| pricing
+  pricing --> promotions
+  checkout_api -->|"Reprice"| pricing
+  checkout_api -->|"Tax quote"| tax
+  checkout_api -->|"Reserve"| inventory
+  checkout_api -->|"Score"| risk
+  checkout_api -->|"Authorize"| payments
+  checkout_api -->|"Order + outbox"| orders_db
+  risk --> features
+  inventory --> inventory_db
+  payments -->|"PaymentIntent"| stripe
+  order_status --> status_cache
+  orders_db -.->|"CDC"| outbox_relay
+  outbox_relay -.->|"OrderPlaced"| orders
+  inventory_db -.->|"CDC"| inventory_events
+  orders -.-> fulfilment
+  orders -.-> loyalty
+  orders -.-> status_projector
+  orders -.-> notifier
+  orders -.-> lake_sink
+  orders -.->|"After 3 tries"| orders_dlq
+  orders_dlq -.-> dlq_triage
+  notify_dlq -.-> dlq_triage
+  dlq_triage -->|"Replay"| loyalty
+  fulfilment -->|"Pick request"| wms
+  fulfilment -.->|"ShipmentCreated"| shipments
+  loyalty -->|"Points"| loyalty_db
+  status_projector -->|"Upsert"| status_cache
+  inventory_events -.-> search_indexer
+  search_indexer -->|"Reindex"| search_index
+  tracking -.->|"ParcelScanned"| shipments
+  shipments -.-> notifier
+  shipments -.-> status_projector
+  notifier -.->|"Notify"| notify_q
+  notify_q -.-> email
+  notify_q -.-> push
+  notify_q -.->|"After 5 tries"| notify_dlq
+  email -->|"Mail send"| sendgrid
+  push -->|"Send"| apns
+  collector -.->|"PageViewed"| clickstream
+  clickstream -.-> sessionizer
+  sessionizer -->|"Update features"| features
+  sessionizer -->|"Sessions"| lake
+  lake_sink -->|"Parquet"| lake
+  airflow -.->|"Nightly run"| dbt
+  dbt -->|"Build marts"| snowflake
+  snowflake --> tableau
+  payments -.->|"reads secrets: Stripe key"| secrets
+  payments -.->|"gets tokens from"| roles
+  checkout_api -.->|"reads config: Flags"| flags
+  fulfilment -.->|"gets tokens from"| roles
+  checkout_api -.->|"sends telemetry to"| datadog
+  fulfilment -.->|"sends telemetry to"| datadog
+  argocd -.->|"deploys to"| checkout_api
+  argocd -.->|"deploys to"| loyalty
+  dbt -.->|"depends on: Reads"| lake
+  linkStyle 29,30,31,32,33,34,35,36,37,38,39,42,45,47,48,49,50,51,52,53,56,57,61 stroke-dasharray: 6 4
+  linkStyle 64 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 65,67 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 66 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 68,69 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 70,71 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 72 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"An invented retailer, Larkspur Outfitters. A route table splits storefront traffic by path and rate-limits checkout; Checkout scales on CPU; an outbox feeds Kafka; KEDA wakes fulfilment on order lag; a bad deploy parks events in a DLQ while other consumer groups carry on.","nodes":{"web":["web","client.browser"],"app":["app","client.mobile"],"carriers":["carriers","generic.webhook"],"cdn":["cdn","cloudflare"],"gateway":["gateway","kong"],"catalog_bff":["catalog-bff","service.node"],"search_api":["search-api","service.go"],"cart_api":["cart-api","service.java"],"checkout_api":["checkout-api","service.java"],"order_status":["order-status","service.go"],"tracking":["tracking","service.go"],"reco":["reco","service.python"],"pricing":["pricing","service.go"],"inventory":["inventory","service.java"],"risk":["risk","generic.ml-model"],"payments":["payments","service.dotnet"],"features":["features","redis.cache"],"product_cache":["product-cache","redis.cache"],"catalog_db":["catalog-db","aws.aurora"],"search_index":["search-index","elasticsearch"],"carts":["carts","aws.dynamodb"],"promotions":["promotions","aws.dynamodb"],"inventory_db":["inventory-db","aws.aurora"],"orders_db":["orders-db","aws.aurora"],"status_cache":["status-cache","redis.cache"],"outbox_relay":["outbox-relay","kafka.connect"],"inventory_events":["inventory-events","kafka.topic"],"orders":["orders","kafka.topic"],"orders_dlq":["orders-dlq","kafka.topic"],"shipments":["shipments","kafka.topic"],"search_indexer":["search-indexer","service.python"],"fulfilment":["fulfilment","service.go"],"loyalty":["loyalty","service.dotnet"],"status_projector":["status-projector","generic.projection"],"notifier":["notifier","service.node"],"dlq_triage":["dlq-triage","service.python"],"loyalty_db":["loyalty-db","aws.dynamodb"],"notify_q":["notify-q","aws.sqs"],"notify_dlq":["notify-dlq","aws.sqs"],"email":["email","aws.lambda"],"push":["push","aws.lambda"],"collector":["collector","service.go"],"clickstream":["clickstream","aws.kinesis"],"sessionizer":["sessionizer","flink"],"lake_sink":["lake-sink","kafka.connect"],"lake":["lake","aws.s3"],"airflow":["airflow","airflow"],"dbt":["dbt","dbt"],"argocd":["argocd","argocd"],"flags":["flags","aws.parameter-store"],"secrets":["secrets","aws.secrets-manager"],"roles":["roles","aws.iam-role"],"datadog":["datadog","datadog"],"tax":["tax","generic.external-api"],"stripe":["stripe","stripe"],"wms":["wms","generic.external-api"],"sendgrid":["sendgrid","sendgrid"],"apns":["apns","generic.push"],"snowflake":["snowflake","snowflake"],"tableau":["tableau","tableau"]},"groups":{"g_edge":["edge","neutral"],"g_aws":["aws","aws"],"g_storefront":["storefront","k8s"],"g_stores":["stores","neutral"],"g_backbone":["backbone","aws"],"g_fulfil":["fulfil","k8s"],"g_analytics":["analytics","neutral"],"g_platform":["platform","neutral"],"g_payment_partners":["payment-partners","neutral"],"g_delivery_partners":["delivery-partners","neutral"],"g_saas_data":["saas-data","neutral"]},"edges":["web--cdn","app--cdn","carriers--cdn","cdn--gateway","cdn--collector","gateway--catalog-bff","gateway--search-api","gateway--cart-api","gateway--checkout-api","gateway--order-status","gateway--tracking","catalog-bff--product-cache","catalog-bff--catalog-db","catalog-bff--reco","reco--features","search-api--search-index","cart-api--carts","cart-api--pricing","pricing--promotions","checkout-api--pricing","checkout-api--tax","checkout-api--inventory","checkout-api--risk","checkout-api--payments","checkout-api--orders-db","risk--features","inventory--inventory-db","payments--stripe","order-status--status-cache","orders-db--outbox-relay","outbox-relay--orders","inventory-db--inventory-events","orders--fulfilment","orders--loyalty","orders--status-projector","orders--notifier","orders--lake-sink","orders--orders-dlq","orders-dlq--dlq-triage","notify-dlq--dlq-triage","dlq-triage--loyalty","fulfilment--wms","fulfilment--shipments","loyalty--loyalty-db","status-projector--status-cache","inventory-events--search-indexer","search-indexer--search-index","tracking--shipments","shipments--notifier","shipments--status-projector","notifier--notify-q","notify-q--email","notify-q--push","notify-q--notify-dlq","email--sendgrid","push--apns","collector--clickstream","clickstream--sessionizer","sessionizer--features","sessionizer--lake","lake-sink--lake","airflow--dbt","dbt--snowflake","snowflake--tableau","payments--secrets","payments--roles","checkout-api--flags","fulfilment--roles","checkout-api--datadog","fulfilment--datadog","argocd--checkout-api","argocd--loyalty","dbt--lake"],"relations":{"64":"secret","65":"identity","66":"config","67":"identity","68":"telemetry","69":"telemetry","70":"deploy","71":"deploy","72":"depends"}}

@@ -1,0 +1,39 @@
+---
+title: "BookingRequest #1 · 2.57 s end to end · 3 copies"
+---
+sequenceDiagram
+  participant travellers as Travellers
+  participant dns as Global DNS
+  participant east_alb as Regional ALB
+  participant east_router as Cell router
+  participant east_c1_api as Booking API
+  participant east_c1_avail as Availability
+  participant east_c1_db as Bookings
+  participant east_bus as Booking events
+  participant west_c1_db as Bookings
+  participant eu_c1_db as Bookings
+  participant east_c1_cache as Availability cache
+  participant east_queue as Confirmations
+  participant east_mailer as Confirmation mailer
+  participant email as SendGrid
+  travellers->>dns: BookingRequest (+0.00 s)<br/>HTTPS
+  dns-->>travellers: reply (+0.20 s)
+  dns->>east_alb: BookingRequest (+0.20 s)<br/>us-east-1
+  east_alb-->>dns: reply (+0.40 s)
+  east_alb->>east_router: BookingRequest (+0.40 s)
+  east_router-->>east_alb: reply (+0.60 s)
+  east_router->>east_c1_api: BookingRequest (+0.60 s)<br/>Cell 1
+  east_c1_api-->>east_router: reply (+0.88 s)
+  east_c1_api->>east_c1_avail: BookingConfirmed (+0.88 s)<br/>Hold
+  east_c1_api->>east_c1_db: BookingConfirmed (+0.88 s)<br/>Book
+  east_c1_db-->>east_c1_api: reply (+1.08 s)
+  east_c1_db-)east_bus: BookingConfirmed (+1.08 s)<br/>Stream
+  east_c1_db-)west_c1_db: BookingReplicated (+1.08 s)<br/>Replication
+  east_c1_db-)eu_c1_db: BookingReplicated (+1.08 s)
+  east_c1_avail-->>east_c1_api: reply (+1.11 s)
+  east_c1_avail->>east_c1_cache: BookingConfirmed (+1.11 s)
+  east_c1_cache-->>east_c1_avail: reply (+1.31 s)
+  east_bus-)east_queue: BookingConfirmed (+1.38 s)<br/>Rule
+  east_queue-)east_mailer: BookingConfirmed (+1.68 s)
+  east_mailer->>email: BookingConfirmed (+2.10 s)<br/>Send
+  email-->>east_mailer: reply (+2.57 s)

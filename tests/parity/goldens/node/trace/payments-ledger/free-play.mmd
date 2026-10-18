@@ -1,0 +1,71 @@
+---
+title: "Merchant servers #1 · 2.85 s end to end · 8 copies"
+---
+sequenceDiagram
+  participant merchants as Merchant servers
+  participant edge_cdn as API edge
+  participant gateway as API gateway
+  participant payments_api as Payments API
+  participant idem as Idempotency store
+  participant tokenizer as Tokenizer
+  participant risk as Risk model
+  participant saga as Payment workflow
+  participant features as Risk features
+  participant card_vault as Card vault
+  participant psp_router as PSP router
+  participant payments_db as Payments DB
+  participant adyen as Adyen
+  participant outbox_relay as Outbox relay
+  participant payment_events as Payment events
+  participant poster as Ledger poster
+  participant balances as Balance projector
+  participant status_proj as Status projector
+  participant hooks_out as Merchant webhooks
+  participant lake_sink as Lake sink
+  participant balances_db as Balances
+  participant read_model as Payment status
+  participant lake as Payments lake
+  participant ledger_db as Ledger
+  participant hooks_q as Webhook retries
+  participant merchant_endpoints as Merchant endpoints
+  merchants->>edge_cdn: Merchant servers (+0.00 s)<br/>HTTPS
+  edge_cdn-->>merchants: reply (+0.20 s)
+  edge_cdn->>gateway: Merchant servers (+0.20 s)
+  gateway-->>edge_cdn: reply (+0.40 s)
+  gateway->>payments_api: Merchant servers (+0.40 s)<br/>Create
+  payments_api-->>gateway: reply (+0.64 s)
+  payments_api->>idem: Merchant servers (+0.64 s)<br/>Key check
+  payments_api->>tokenizer: Merchant servers (+0.64 s)<br/>Tokenize
+  payments_api->>risk: Merchant servers (+0.64 s)<br/>Score
+  payments_api->>saga: PaymentRequested (+0.64 s)<br/>Start
+  idem-->>payments_api: reply (+0.84 s)
+  risk-->>payments_api: reply (+0.86 s)
+  risk->>features: Merchant servers (+0.86 s)
+  tokenizer-->>payments_api: reply (+0.86 s)
+  tokenizer->>card_vault: Merchant servers (+0.86 s)
+  saga-->>payments_api: reply (+0.87 s)
+  saga->>psp_router: PaymentRequested (+0.87 s)<br/>Authorize
+  saga->>payments_db: PaymentRequested (+0.87 s)<br/>Record + outbox
+  features-->>risk: reply (+1.06 s)
+  card_vault-->>tokenizer: reply (+1.06 s)
+  psp_router-->>saga: reply (+1.07 s)
+  psp_router->>adyen: PaymentRequested (+1.07 s)
+  payments_db-->>saga: reply (+1.07 s)
+  payments_db-)outbox_relay: PaymentRequested (+1.07 s)<br/>CDC
+  outbox_relay-)payment_events: PaymentRequested (+1.38 s)<br/>PaymentEvent
+  adyen-->>psp_router: reply (+1.50 s)
+  payment_events-)poster: PaymentRequested (+1.68 s)
+  payment_events-)balances: PaymentRequested (+1.68 s)
+  payment_events-)status_proj: PaymentRequested (+1.68 s)
+  payment_events-)hooks_out: PaymentRequested (+1.68 s)
+  payment_events-)lake_sink: PaymentRequested (+1.68 s)
+  balances->>balances_db: PaymentRequested (+1.99 s)
+  status_proj->>read_model: PaymentRequested (+1.99 s)<br/>Upsert
+  lake_sink->>lake: PaymentRequested (+2.00 s)<br/>Parquet
+  poster->>ledger_db: PaymentRequested (+2.04 s)<br/>Journal entry
+  hooks_out-)hooks_q: PaymentRequested (+2.04 s)<br/>Deliver
+  read_model-->>status_proj: reply (+2.19 s)
+  balances_db-->>balances: reply (+2.19 s)
+  lake-->>lake_sink: reply (+2.20 s)
+  ledger_db-->>poster: reply (+2.24 s)
+  hooks_q-)merchant_endpoints: PaymentRequested (+2.34 s)<br/>POST callback

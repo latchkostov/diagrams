@@ -727,6 +727,8 @@ const livePresets: Preset[] = [
 // ---------- inputs & capacity (heat map, bottleneck callout, the panel) ----------
 
 const publicExamples = examples.filter((e) => !localOnly.has(e.slug));
+// The capacity preset opens on the Kafka example by name, whatever order the gallery lists examples in.
+const capacityExample = publicExamples.find((e) => e.slug === "kafka-order-pipeline") ?? publicExamples[0];
 const exampleBySlug = (slug: string) => publicExamples.find((e) => e.slug === slug);
 
 /** Heat map states on real examples: which simulation, what what-if, and a word for each. */
@@ -790,7 +792,7 @@ const capacityPresets: Preset[] = [
         type: "select",
         key: "diagram",
         label: "Example",
-        default: publicExamples[0]?.slug ?? "",
+        default: capacityExample?.slug ?? "",
         options: publicExamples.map((e) => ({ value: e.slug, label: e.title })),
       },
       {
@@ -807,7 +809,7 @@ const capacityPresets: Preset[] = [
       livePresent,
     ],
     render: (v) => {
-      const example = exampleBySlug(String(v.diagram)) ?? publicExamples[0];
+      const example = exampleBySlug(String(v.diagram)) ?? capacityExample;
       if (!example) return null;
       const sim = v.run === "free" ? null : (labMetadata[example.slug]?.[Number(v.run)]?.id ?? null);
       return (
@@ -951,8 +953,14 @@ const traceFlows: Record<string, { label: string; flow: () => TraceFlow }> = Obj
         ]),
     ),
 ]);
-const traceDefault = Object.keys(traceFlows)[0];
-const deadLetterDefault = Object.keys(traceFlows).find((k) => k.includes(":")) ?? traceDefault;
+// Named, not "the first in the gallery": the trace presets (and their e2e checks) need a long fan-out journey and a
+// dead-lettered message, whatever order the gallery lists examples in.
+const pick = (key: string, fallback: string) => (key in traceFlows ? key : fallback);
+const traceDefault = pick("kafka-order-pipeline", Object.keys(traceFlows)[0]);
+const deadLetterDefault = pick(
+  "aws-serverless-orders:three-pl-outage",
+  Object.keys(traceFlows).find((k) => k.includes(":")) ?? traceDefault,
+);
 const traceFlowControl = (key: string, label: string, value: string): ControlDef => ({
   type: "select",
   key,

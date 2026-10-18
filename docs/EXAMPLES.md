@@ -27,3 +27,9 @@ save creates an owned entry (a uniquely named `(copy)` for structural edits, or 
 identity and undo history. A cleared name is stored as Untitled while the editable field stays empty. The original gets a fresh identity for its next open. Storage failure preserves the
 current canvas and offers a save/export recovery notice; it does not replace the original session.
 Existing example autosaves are read for compatibility and carried into the copy on the next edit.
+
+Large showcases (40–150 nodes: `black-friday-commerce`, `cell-based-bookings`, `payments-ledger`,
+`delivery-dispatch`, `ev-charging-network`) open first in their theme. They are invented systems whose saved stories
+start a narrated note within ten seconds of Live; each note's focus takes the camera, so a large diagram stays
+readable while a story plays. Keep them under live view's adaptive threshold (about 1,000 nodes plus connections),
+free of unexplained checks findings, and covered by `src/examples/largeShowcases.test.ts`.

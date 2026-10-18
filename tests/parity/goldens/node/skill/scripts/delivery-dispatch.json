@@ -1,0 +1,929 @@
+{
+  "layout": {
+    "status": 0,
+    "stdout": "<tmp>/laid.json: placed 40 nodes, fitted 14 boundaries.\n",
+    "nodes": {
+      "diners": [-320, 520],
+      "restaurants": [-320, 640],
+      "couriers": [-320, 400],
+      "glb": [760, 60],
+      "mqtt": [400, 260],
+      "order-api": [1376, 920],
+      "restaurant-api": [1096, 920],
+      "order-wf": [1736, 100],
+      "menu-api": [1376, 80],
+      "menu-cache": [1736, -20],
+      "orders-db": [2139, -140],
+      "orders-topic": [3219, -140],
+      "ready-topic": [2496, 1100],
+      "locations-topic": [1376, 1100],
+      "loc-ingest": [736, 1080],
+      "geo-indexer": [4580, 1260],
+      "eta-features": [4580, -340],
+      "tracking": [4300, 1260],
+      "surge": [4860, 1300],
+      "surge-cache": [2760, 1640],
+      "earnings": [11144, 160],
+      "earnings-db": [11506, 820],
+      "geo-index": [2840, 1360],
+      "features": [3122, 1340],
+      "matcher": [5261, 1260],
+      "eta-model": [6562, -40],
+      "offers": [6562, -160],
+      "notifications": [6942, -20],
+      "push-sender": [7302, 740],
+      "bq-sink": [3920, -200],
+      "bigquery": [10724, 1260],
+      "retrain": [7682, 760],
+      "training": [8282, 1260],
+      "registry": [10764, 980],
+      "secrets": [2760, 1880],
+      "sa": [3040, 1880],
+      "grafana": [2480, 1920],
+      "stripe": [13348, 580],
+      "maps": [11926, -600],
+      "fcm": [13728, 740]
+    },
+    "groups": {
+      "gcp": [320, -468, 11486, 2540],
+      "orders": [1056, -204, 1343, 1236],
+      "kafka": [2456, -264, 1724, 1476],
+      "kafka-loc": [1336, 1036, 340, 176],
+      "ingest": [360, 196, 636, 996],
+      "locations": [4260, -404, 881, 1816],
+      "dispatch": [5221, -224, 1601, 1596],
+      "redis": [2720, 1276, 662, 476],
+      "notify": [6902, -84, 660, 936],
+      "analytics": [7642, 696, 3382, 676],
+      "platform": [2440, 1816, 860, 216],
+      "partners": [11886, -664, 1722, 1356],
+      "push-providers": [13688, 676, 300, 176],
+      "pay": [11104, 96, 662, 836]
+    }
+  },
+  "shareLink": {
+    "status": 0,
+    "prefix": "https://www.livediagrams.dev/#d=",
+    "decoded": { "sha256": "247600e3ed8dfdf945d04698d612c256fc2a9709b3a6c5ef2ceda97436103791", "bytes": 21900 },
+    "sameAsFile": true,
+    "warned": false
+  },
+  "exportHtml": {
+    "status": 0,
+    "stdout": "<tmp>/export.html (<size>, plays \"Friday dinner rush\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stderr": "",
+    "payload": {
+      "version": 1,
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": {
+          "revision": "p3-a1",
+          "requestRoutes": [
+            {
+              "id": "browse-menu",
+              "label": "Browse menu",
+              "address": { "method": "GET", "path": "/v2/restaurants/311/menu" },
+              "appearance": { "paletteSlot": 1, "marker": "square" }
+            },
+            {
+              "id": "place-order",
+              "label": "Place order",
+              "address": { "method": "POST", "path": "/v2/orders" },
+              "appearance": { "paletteSlot": 0, "marker": "circle" }
+            },
+            {
+              "id": "order-ready",
+              "label": "Order ready",
+              "address": { "method": "POST", "path": "/v2/restaurant/orders/9071/ready" },
+              "appearance": { "paletteSlot": 2, "marker": "diamond" }
+            }
+          ]
+        },
+        "title": "Food delivery dispatch",
+        "description": "An invented delivery company, Quayside Eats. Courier pings stream through MQTT and Kafka into a geo index by H3 cell; ready orders are matched to nearby couriers every two seconds, scored by an ETA model, and offered by push. KEDA scales the indexer up to the topic's partitions.",
+        "direction": "LR",
+        "groups": [
+          { "id": "gcp", "label": "Google Cloud · europe-west1", "tone": "gcp", "x": 360, "y": 212, "width": 4080, "height": 1620 },
+          { "id": "orders", "label": "GKE · orders", "tone": "k8s", "group": "gcp", "x": 860, "y": 276, "width": 779, "height": 596 },
+          { "id": "kafka", "label": "Kafka · orders cluster", "tone": "neutral", "group": "gcp", "x": 1760, "y": 276, "width": 340, "height": 456 },
+          { "id": "kafka-loc", "label": "Kafka · telemetry cluster", "tone": "neutral", "group": "gcp", "x": 1760, "y": 1116, "width": 340, "height": 176 },
+          { "id": "ingest", "label": "Courier gateway", "tone": "k8s", "group": "gcp", "x": 400, "y": 1096, "width": 760, "height": 176 },
+          { "id": "locations", "label": "GKE · courier locations", "tone": "k8s", "group": "gcp", "x": 2220, "y": 936, "width": 321, "height": 596 },
+          { "id": "dispatch", "label": "GKE · dispatch", "tone": "k8s", "group": "gcp", "x": 2660, "y": 416, "width": 740, "height": 456 },
+          { "id": "redis", "label": "Memorystore · Redis", "tone": "neutral", "group": "gcp", "x": 2720, "y": 936, "width": 302, "height": 456 },
+          { "id": "notify", "label": "Notifications", "tone": "gcp", "group": "gcp", "x": 3660, "y": 696, "width": 740, "height": 176 },
+          { "id": "analytics", "label": "Analytics and ML", "tone": "neutral", "group": "gcp", "x": 860, "y": 1496, "width": 1180, "height": 296 },
+          { "id": "platform", "label": "Platform", "tone": "neutral", "group": "gcp", "x": 3100, "y": 1496, "width": 1180, "height": 176 },
+          { "id": "partners", "label": "Partners", "tone": "neutral", "x": 2220, "y": -64, "width": 1180, "height": 176 },
+          { "id": "push-providers", "label": "Push providers", "tone": "neutral", "x": 4660, "y": 696, "width": 300, "height": 176 },
+          { "id": "pay", "label": "GKE · courier pay", "tone": "k8s", "group": "gcp", "x": 2220, "y": 276, "width": 300, "height": 316 }
+        ],
+        "nodes": [
+          {
+            "id": "diners",
+            "stencil": "client.mobile",
+            "label": "Diner app",
+            "sublabel": "browse and order",
+            "props": {
+              "ratePerSec": 150,
+              "trafficMix": {
+                "mode": "shares",
+                "entries": [{ "routeId": "browse-menu", "share": 0.8 }, { "routeId": "place-order", "share": 0.2 }]
+              }
+            },
+            "x": 0,
+            "y": 360
+          },
+          {
+            "id": "restaurants",
+            "stencil": "generic.webhook",
+            "label": "Restaurant tablets",
+            "sublabel": "order ready",
+            "props": {
+              "ratePerSec": 30,
+              "trafficMix": { "mode": "shares", "entries": [{ "routeId": "order-ready", "share": 1 }] }
+            },
+            "x": 0,
+            "y": 560
+          },
+          {
+            "id": "couriers",
+            "stencil": "client.mobile",
+            "label": "Courier app",
+            "sublabel": "GPS every 4 s",
+            "props": { "ratePerSec": 1000, "messageType": "LocationPing" },
+            "x": 0,
+            "y": 1160
+          },
+          {
+            "id": "glb",
+            "stencil": "gcp.cloud-load-balancing",
+            "label": "Global load balancer",
+            "sublabel": "route table",
+            "group": "gcp",
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "routeTable": {
+                "rules": [
+                  {
+                    "id": "orders",
+                    "label": "Orders",
+                    "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/v2/orders" } },
+                    "targets": [{ "edgeId": "glb--order-api", "weight": 1 }]
+                  },
+                  {
+                    "id": "menus",
+                    "label": "Menus",
+                    "match": {
+                      "methods": ["GET"],
+                      "path": { "kind": "template", "value": "/v2/restaurants/{id}/menu" }
+                    },
+                    "targets": [{ "edgeId": "glb--menu-api", "weight": 1 }]
+                  },
+                  {
+                    "id": "ready",
+                    "label": "Order ready",
+                    "match": {
+                      "methods": ["POST"],
+                      "path": { "kind": "template", "value": "/v2/restaurant/orders/{id}/ready" }
+                    },
+                    "targets": [{ "edgeId": "glb--restaurant-api", "weight": 1 }]
+                  }
+                ]
+              }
+            },
+            "x": 440,
+            "y": 460
+          },
+          { "id": "mqtt", "stencil": "mqtt.broker", "label": "Courier MQTT", "sublabel": "EMQX · QoS 1", "group": "ingest", "x": 440, "y": 1160 },
+          {
+            "id": "order-api",
+            "stencil": "service.go",
+            "label": "Order API",
+            "group": "orders",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "x": 900,
+            "y": 340
+          },
+          {
+            "id": "restaurant-api",
+            "stencil": "service.go",
+            "label": "Restaurant API",
+            "group": "orders",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0, "emits": "OrderReady" },
+            "x": 900,
+            "y": 620
+          },
+          {
+            "id": "order-wf",
+            "stencil": "temporal",
+            "label": "Order workflow",
+            "sublabel": "Temporal · accept to deliver",
+            "group": "orders",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 64, "latencyMs": 20, "jitter": 0.1, "failureRate": 0, "emits": "OrderAccepted" },
+            "x": 1340,
+            "y": 340
+          },
+          {
+            "id": "menu-api",
+            "stencil": "service.node",
+            "label": "Menu API",
+            "group": "orders",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 64, "latencyMs": 15, "jitter": 0.1, "failureRate": 0 },
+            "x": 900,
+            "y": 480
+          },
+          {
+            "id": "menu-cache",
+            "stencil": "redis.cache",
+            "label": "Menu cache",
+            "sublabel": "Memorystore",
+            "group": "orders",
+            "props": { "latencyMs": 0 },
+            "x": 1340,
+            "y": 760
+          },
+          {
+            "id": "orders-db",
+            "stencil": "gcp.spanner",
+            "label": "Orders",
+            "sublabel": "Cloud Spanner",
+            "group": "orders",
+            "props": { "latencyMs": 0 },
+            "x": 1340,
+            "y": 480
+          },
+          {
+            "id": "orders-topic",
+            "stencil": "kafka.topic",
+            "label": "Order events",
+            "sublabel": "orders.v1 · 12 partitions",
+            "group": "kafka",
+            "props": { "partitions": 12 },
+            "x": 1800,
+            "y": 340
+          },
+          {
+            "id": "ready-topic",
+            "stencil": "kafka.topic",
+            "label": "Ready for pickup",
+            "sublabel": "order-ready.v1 · 12 partitions",
+            "group": "kafka",
+            "props": { "partitions": 12 },
+            "x": 1800,
+            "y": 620
+          },
+          {
+            "id": "locations-topic",
+            "stencil": "kafka.topic",
+            "label": "Courier locations",
+            "sublabel": "locations.v1 · 8 partitions by H3 cell",
+            "group": "kafka-loc",
+            "props": { "partitions": 8 },
+            "x": 1800,
+            "y": 1180
+          },
+          {
+            "id": "loc-ingest",
+            "stencil": "service.go",
+            "label": "Location ingest",
+            "sublabel": "dedupe, snap to road",
+            "group": "ingest",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "x": 900,
+            "y": 1160
+          },
+          {
+            "id": "geo-indexer",
+            "stencil": "service.go",
+            "label": "Geo indexer",
+            "sublabel": "KEDA on lag",
+            "group": "locations",
+            "props": {
+              "preset": "processor-lesson",
+              "presetRevision": "1",
+              "replicas": 3,
+              "concurrency": 8,
+              "latencyMs": 20,
+              "jitter": 0.1,
+              "failureRate": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 1,
+                "baselineMemoryMiB": 192,
+                "memoryMiBPerMessage": 1,
+                "cpuRequestMilli": 250,
+                "cpuLimitMilli": 500,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 1000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a2",
+                "preset": "keda-kafka",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "keda",
+                  "minReplicas": 3,
+                  "maxReplicas": 16,
+                  "initialReplicas": 3,
+                  "pollingMs": 1000,
+                  "cooldownMs": 5000,
+                  "initialCooldownMs": 0,
+                  "triggers": [
+                    {
+                      "type": "kafka",
+                      "source": { "node": "locations-topic", "group": "geo-index" },
+                      "target": 500,
+                      "activation": 0,
+                      "useCachedMetrics": false,
+                      "allowIdleConsumers": false
+                    }
+                  ],
+                  "settings": {
+                    "syncMs": 1000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 0,
+                    "cpuInitializationPeriodMs": 0,
+                    "metrics": [],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 3000 },
+                        { "type": "Percent", "value": 100, "periodMs": 3000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 300000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            },
+            "x": 2260,
+            "y": 1000
+          },
+          {
+            "id": "eta-features",
+            "stencil": "flink",
+            "label": "ETA features",
+            "sublabel": "speed per H3 cell",
+            "group": "locations",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "x": 2260,
+            "y": 1140
+          },
+          {
+            "id": "tracking",
+            "stencil": "service.node",
+            "label": "Live tracking",
+            "sublabel": "diner map, websockets",
+            "group": "locations",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "x": 2260,
+            "y": 1420
+          },
+          {
+            "id": "surge",
+            "stencil": "flink",
+            "label": "Surge pricing",
+            "sublabel": "demand vs supply per cell",
+            "group": "locations",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "x": 2260,
+            "y": 1280
+          },
+          {
+            "id": "surge-cache",
+            "stencil": "redis.cache",
+            "label": "Delivery fees",
+            "sublabel": "multiplier per H3 cell",
+            "group": "redis",
+            "props": { "latencyMs": 0 },
+            "x": 2760,
+            "y": 1280
+          },
+          {
+            "id": "earnings",
+            "stencil": "service.java",
+            "label": "Courier earnings",
+            "group": "pay",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+            "x": 2260,
+            "y": 340
+          },
+          {
+            "id": "earnings-db",
+            "stencil": "gcp.cloud-sql",
+            "label": "Earnings ledger",
+            "sublabel": "Cloud SQL",
+            "group": "pay",
+            "props": { "latencyMs": 0 },
+            "x": 2260,
+            "y": 480
+          },
+          {
+            "id": "geo-index",
+            "stencil": "redis.cache",
+            "label": "Geo index",
+            "sublabel": "couriers by H3 cell",
+            "group": "redis",
+            "props": { "latencyMs": 0 },
+            "x": 2760,
+            "y": 1000
+          },
+          {
+            "id": "features",
+            "stencil": "redis.cache",
+            "label": "Feature store",
+            "sublabel": "online features",
+            "group": "redis",
+            "props": { "latencyMs": 0 },
+            "x": 2760,
+            "y": 1140
+          },
+          {
+            "id": "matcher",
+            "stencil": "service.java",
+            "label": "Dispatch matcher",
+            "sublabel": "batch match every 2 s",
+            "group": "dispatch",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 60, "jitter": 0.1, "failureRate": 0 },
+            "x": 2700,
+            "y": 620
+          },
+          {
+            "id": "eta-model",
+            "stencil": "generic.ml-model",
+            "label": "ETA model",
+            "sublabel": "pickup and drop-off",
+            "group": "dispatch",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 15, "jitter": 0.1, "failureRate": 0 },
+            "x": 3140,
+            "y": 480
+          },
+          {
+            "id": "offers",
+            "stencil": "service.node",
+            "label": "Offer service",
+            "sublabel": "accept within 30 s",
+            "group": "dispatch",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0, "emits": "CourierOffer" },
+            "x": 3140,
+            "y": 760
+          },
+          { "id": "notifications", "stencil": "gcp.pubsub", "label": "Notifications", "sublabel": "Pub/Sub", "group": "notify", "x": 3700, "y": 760 },
+          {
+            "id": "push-sender",
+            "stencil": "gcp.cloud-run",
+            "label": "Push sender",
+            "sublabel": "Cloud Run",
+            "group": "notify",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 80, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "x": 4140,
+            "y": 760
+          },
+          {
+            "id": "bq-sink",
+            "stencil": "kafka.connect",
+            "label": "BigQuery sink",
+            "sublabel": "Kafka Connect",
+            "group": "kafka",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "x": 1800,
+            "y": 480
+          },
+          {
+            "id": "bigquery",
+            "stencil": "gcp.bigquery",
+            "label": "Delivery history",
+            "sublabel": "BigQuery",
+            "group": "analytics",
+            "props": { "latencyMs": 0 },
+            "x": 900,
+            "y": 1560
+          },
+          {
+            "id": "retrain",
+            "stencil": "generic.scheduler",
+            "label": "Nightly retrain",
+            "sublabel": "Cloud Scheduler",
+            "group": "analytics",
+            "props": { "ratePerSec": 0.05, "messageType": "TrainRun" },
+            "x": 900,
+            "y": 1680
+          },
+          {
+            "id": "training",
+            "stencil": "generic.batch-job",
+            "label": "ETA training",
+            "sublabel": "Vertex AI job",
+            "group": "analytics",
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 1, "latencyMs": 3000, "jitter": 0.1, "failureRate": 0 },
+            "x": 1340,
+            "y": 1560
+          },
+          {
+            "id": "registry",
+            "stencil": "gcp.cloud-storage",
+            "label": "Model registry",
+            "sublabel": "versioned models",
+            "group": "analytics",
+            "props": { "latencyMs": 0 },
+            "x": 1780,
+            "y": 1560
+          },
+          { "id": "secrets", "stencil": "gcp.secret-manager", "label": "Secret Manager", "group": "platform", "x": 3140, "y": 1560 },
+          { "id": "sa", "stencil": "gcp.service-account", "label": "Service accounts", "sublabel": "Workload Identity", "group": "platform", "x": 3580, "y": 1560 },
+          { "id": "grafana", "stencil": "grafana", "label": "Grafana", "sublabel": "dispatch SLOs", "group": "platform", "x": 4020, "y": 1560 },
+          {
+            "id": "stripe",
+            "stencil": "stripe",
+            "label": "Stripe",
+            "sublabel": "card payments",
+            "group": "partners",
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "latencyMs": 200,
+              "jitter": 0.1,
+              "failureRate": 0,
+              "api": {
+                "maxInFlight": 100,
+                "quotas": [
+                  { "id": "stripe-rate", "unit": "requests", "amount": 100, "windowMs": 1000, "algorithm": "token-bucket" }
+                ]
+              }
+            },
+            "x": 2260,
+            "y": 0
+          },
+          {
+            "id": "maps",
+            "stencil": "generic.external-api",
+            "label": "Maps routing API",
+            "sublabel": "road ETAs",
+            "group": "partners",
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "latencyMs": 80,
+              "jitter": 0.1,
+              "failureRate": 0,
+              "api": {
+                "maxInFlight": 50,
+                "quotas": [
+                  { "id": "maps-rate", "unit": "requests", "amount": 50, "windowMs": 1000, "algorithm": "token-bucket" }
+                ]
+              }
+            },
+            "x": 3140,
+            "y": 0
+          },
+          { "id": "fcm", "stencil": "generic.push", "label": "FCM and APNs", "sublabel": "push delivery", "group": "push-providers", "x": 4700, "y": 760 }
+        ],
+        "edges": [
+          { "id": "diners--glb", "from": "diners", "to": "glb", "kind": "sync", "label": "HTTPS" },
+          { "id": "restaurants--glb", "from": "restaurants", "to": "glb", "kind": "sync", "label": "HTTPS" },
+          { "id": "glb--order-api", "from": "glb", "to": "order-api", "kind": "sync", "label": "Orders" },
+          { "id": "glb--restaurant-api", "from": "glb", "to": "restaurant-api", "kind": "sync", "label": "Ready" },
+          { "id": "glb--menu-api", "from": "glb", "to": "menu-api", "kind": "sync", "label": "Menus" },
+          { "id": "menu-api--menu-cache", "from": "menu-api", "to": "menu-cache", "kind": "sync" },
+          { "id": "order-api--surge-cache", "from": "order-api", "to": "surge-cache", "kind": "sync", "label": "Delivery fee" },
+          {
+            "id": "locations-topic--surge",
+            "from": "locations-topic",
+            "to": "surge",
+            "kind": "async",
+            "props": { "group": "surge" }
+          },
+          { "id": "surge--surge-cache", "from": "surge", "to": "surge-cache", "kind": "sync", "label": "Update" },
+          {
+            "id": "orders-topic--earnings",
+            "from": "orders-topic",
+            "to": "earnings",
+            "kind": "async",
+            "props": { "group": "earnings" }
+          },
+          { "id": "earnings--earnings-db", "from": "earnings", "to": "earnings-db", "kind": "sync" },
+          { "id": "order-api--stripe", "from": "order-api", "to": "stripe", "kind": "sync", "label": "Charge" },
+          { "id": "order-api--order-wf", "from": "order-api", "to": "order-wf", "kind": "sync", "label": "Start" },
+          { "id": "order-wf--orders-db", "from": "order-wf", "to": "orders-db", "kind": "sync", "label": "State" },
+          { "id": "order-wf--orders-topic", "from": "order-wf", "to": "orders-topic", "kind": "async", "label": "OrderAccepted" },
+          { "id": "restaurant-api--ready-topic", "from": "restaurant-api", "to": "ready-topic", "kind": "async", "label": "OrderReady" },
+          {
+            "id": "orders-topic--bq-sink",
+            "from": "orders-topic",
+            "to": "bq-sink",
+            "kind": "async",
+            "props": { "group": "bigquery" }
+          },
+          {
+            "id": "ready-topic--matcher",
+            "from": "ready-topic",
+            "to": "matcher",
+            "kind": "async",
+            "props": { "group": "dispatch" }
+          },
+          { "id": "couriers--mqtt", "from": "couriers", "to": "mqtt", "kind": "async", "label": "LocationPing" },
+          {
+            "id": "mqtt--loc-ingest",
+            "from": "mqtt",
+            "to": "loc-ingest",
+            "kind": "async",
+            "props": { "group": "ingest" }
+          },
+          { "id": "loc-ingest--locations-topic", "from": "loc-ingest", "to": "locations-topic", "kind": "async", "label": "Snapped ping" },
+          {
+            "id": "locations-topic--geo-indexer",
+            "from": "locations-topic",
+            "to": "geo-indexer",
+            "kind": "async",
+            "props": { "group": "geo-index" }
+          },
+          {
+            "id": "locations-topic--eta-features",
+            "from": "locations-topic",
+            "to": "eta-features",
+            "kind": "async",
+            "props": { "group": "features" }
+          },
+          {
+            "id": "locations-topic--tracking",
+            "from": "locations-topic",
+            "to": "tracking",
+            "kind": "async",
+            "props": { "group": "tracking" }
+          },
+          { "id": "geo-indexer--geo-index", "from": "geo-indexer", "to": "geo-index", "kind": "sync", "label": "GEOADD" },
+          { "id": "eta-features--features", "from": "eta-features", "to": "features", "kind": "sync", "label": "Update" },
+          { "id": "matcher--geo-index", "from": "matcher", "to": "geo-index", "kind": "sync", "label": "Nearby couriers" },
+          { "id": "matcher--eta-model", "from": "matcher", "to": "eta-model", "kind": "sync", "label": "Score pairs" },
+          { "id": "matcher--maps", "from": "matcher", "to": "maps", "kind": "sync", "label": "Road ETA" },
+          { "id": "matcher--offers", "from": "matcher", "to": "offers", "kind": "sync", "label": "Best match" },
+          { "id": "eta-model--features", "from": "eta-model", "to": "features", "kind": "sync" },
+          { "id": "offers--notifications", "from": "offers", "to": "notifications", "kind": "async", "label": "CourierOffer" },
+          {
+            "id": "notifications--push-sender",
+            "from": "notifications",
+            "to": "push-sender",
+            "kind": "async",
+            "props": { "group": "push" }
+          },
+          { "id": "push-sender--fcm", "from": "push-sender", "to": "fcm", "kind": "sync", "label": "Send" },
+          { "id": "bq-sink--bigquery", "from": "bq-sink", "to": "bigquery", "kind": "sync", "label": "Rows" },
+          { "id": "retrain--training", "from": "retrain", "to": "training", "kind": "async", "label": "Run" },
+          { "id": "training--registry", "from": "training", "to": "registry", "kind": "sync", "label": "New model" },
+          { "id": "eta-model--registry", "from": "eta-model", "to": "registry", "kind": "async", "label": "Loads model", "relation": "depends" },
+          { "id": "training--bigquery", "from": "training", "to": "bigquery", "kind": "async", "label": "Reads history", "relation": "depends" },
+          { "id": "order-api--secrets", "from": "order-api", "to": "secrets", "kind": "async", "label": "Stripe key", "relation": "secret", "sourceSide": "top", "targetSide": "top" },
+          { "id": "matcher--secrets", "from": "matcher", "to": "secrets", "kind": "async", "label": "Maps key", "relation": "secret" },
+          { "id": "matcher--sa", "from": "matcher", "to": "sa", "kind": "async", "relation": "identity" },
+          { "id": "order-api--sa", "from": "order-api", "to": "sa", "kind": "async", "relation": "identity" },
+          { "id": "matcher--grafana", "from": "matcher", "to": "grafana", "kind": "async", "relation": "telemetry" },
+          { "id": "geo-indexer--grafana", "from": "geo-indexer", "to": "grafana", "kind": "async", "relation": "telemetry" }
+        ],
+        "annotations": [
+          { "id": "note-h3", "kind": "note", "text": "Pings are keyed by H3 cell, so one busy neighbourhood lands on one partition. Partitions cap how many indexers can help.", "x": 0, "y": 1500, "width": 280, "height": 150 }
+        ],
+        "simulations": [
+          {
+            "id": "dinner-rush",
+            "title": "Friday dinner rush",
+            "description": "Orders climb from 30 to 90 a second and couriers report more often. KEDA scales the geo indexer on Kafka lag, and the dispatch matcher hits the maps provider's 50 calls a second: the excess is rejected, so ETAs fall back to the model.",
+            "seed": 41,
+            "scale": 20,
+            "durationMs": 30000,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "diners",
+                "label": "Diner app",
+                "shape": {
+                  "kind": "ramp",
+                  "fromMs": 0,
+                  "startRate": 150,
+                  "stages": [
+                    { "durationMs": 6000, "targetRate": 450 },
+                    { "durationMs": 14000, "targetRate": 450 },
+                    { "durationMs": 4000, "targetRate": 150 }
+                  ]
+                }
+              },
+              {
+                "id": "ready",
+                "node": "restaurants",
+                "label": "Orders ready",
+                "shape": {
+                  "kind": "ramp",
+                  "fromMs": 2000,
+                  "startRate": 30,
+                  "stages": [
+                    { "durationMs": 6000, "targetRate": 90 },
+                    { "durationMs": 14000, "targetRate": 90 },
+                    { "durationMs": 4000, "targetRate": 30 }
+                  ]
+                }
+              },
+              {
+                "id": "pings",
+                "node": "couriers",
+                "label": "Courier pings",
+                "shape": {
+                  "kind": "ramp",
+                  "fromMs": 0,
+                  "startRate": 1000,
+                  "stages": [{ "durationMs": 6000, "targetRate": 1500 }, { "durationMs": 18000, "targetRate": 1500 }]
+                }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Two streams meet in dispatch: orders that are ready, and couriers' locations indexed by H3 cell.", "focus": ["ready-topic", "locations-topic", "matcher", "geo-index"] }
+              },
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "The rush starts. Location lag rises and KEDA adds geo indexers, one per partition at most.", "focus": ["locations-topic", "geo-indexer"] }
+              },
+              {
+                "atMs": 9000,
+                "action": { "do": "note", "text": "Ninety ready orders a second, but the maps API allows 50 calls: the rest are rejected and the matcher uses the model's ETA.", "focus": ["matcher", "maps", "eta-model"] }
+              },
+              {
+                "atMs": 20000,
+                "action": { "do": "note", "text": "The rush eases. Every ready order got a courier offer.", "focus": ["offers", "notifications", "push-sender"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "maps-limited",
+                "label": "The maps API rejects calls over its quota",
+                "metric": { "node": "maps", "field": "rejected" },
+                "op": ">",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "offers-sent",
+                "label": "Couriers get offers",
+                "metric": { "node": "fcm", "field": "processed" },
+                "op": ">",
+                "value": 1500,
+                "when": "end"
+              },
+              {
+                "id": "located",
+                "label": "Location lag drains",
+                "metric": { "node": "locations-topic", "field": "lag", "group": "geo-index" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "partition-ceiling",
+            "title": "Eight partitions, a stadium's worth of couriers",
+            "description": "A stadium lets out and 3,600 pings a second arrive. KEDA wants more geo indexers, but a consumer group can't use more readers than the topic has partitions: eight. Lag grows until the team raises the topic to 24 partitions.",
+            "seed": 42,
+            "scale": 50,
+            "durationMs": 30000,
+            "traffic": [
+              {
+                "id": "pings",
+                "node": "couriers",
+                "label": "Courier pings",
+                "shape": { "kind": "constant", "ratePerSec": 3600, "durationMs": 22000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["couriers", "mqtt", "loc-ingest", "locations-topic"] }
+              },
+              {
+                "atMs": 5000,
+                "action": { "do": "note", "text": "KEDA scales to eight indexers and stops: the topic has eight partitions, so lag keeps growing.", "focus": ["locations-topic", "geo-indexer"] }
+              },
+              { "atMs": 12000, "action": { "do": "props", "node": "locations-topic", "props": { "partitions": 24 } } },
+              {
+                "atMs": 12000,
+                "action": {
+                  "do": "props",
+                  "node": "geo-indexer",
+                  "props": {
+                    "autoscaling": {
+                      "mode": "on",
+                      "modelRevision": "a2",
+                      "preset": "keda-kafka",
+                      "presetRevision": "1",
+                      "controller": {
+                        "kind": "keda",
+                        "minReplicas": 3,
+                        "maxReplicas": 24,
+                        "initialReplicas": 3,
+                        "pollingMs": 1000,
+                        "cooldownMs": 5000,
+                        "initialCooldownMs": 0,
+                        "triggers": [
+                          {
+                            "type": "kafka",
+                            "source": { "node": "locations-topic", "group": "geo-index" },
+                            "target": 500,
+                            "activation": 0,
+                            "useCachedMetrics": false,
+                            "allowIdleConsumers": false
+                          }
+                        ],
+                        "settings": {
+                          "syncMs": 1000,
+                          "tolerance": 0.1,
+                          "initialReadinessDelayMs": 0,
+                          "cpuInitializationPeriodMs": 0,
+                          "metrics": [],
+                          "up": {
+                            "stabilizationMs": 0,
+                            "selectPolicy": "Max",
+                            "policies": [
+                              { "type": "Pods", "value": 4, "periodMs": 3000 },
+                              { "type": "Percent", "value": 100, "periodMs": 3000 }
+                            ]
+                          },
+                          "down": {
+                            "stabilizationMs": 300000,
+                            "selectPolicy": "Max",
+                            "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "atMs": 12000,
+                "action": { "do": "note", "text": "The team raises the topic to 24 partitions and KEDA's maximum to match. KEDA adds indexers and the lag drains.", "focus": ["locations-topic", "geo-indexer", "geo-index"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "capped",
+                "label": "Lag builds at eight partitions",
+                "metric": { "node": "locations-topic", "field": "lag", "group": "geo-index" },
+                "op": ">",
+                "value": 1000,
+                "when": "at",
+                "atMs": 11000
+              },
+              {
+                "id": "drained",
+                "label": "Lag drains after the change",
+                "metric": { "node": "locations-topic", "field": "lag", "group": "geo-index" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          }
+        ]
+      },
+      "icons": {
+        "client-mobile": { "sha256": "b59f9659c6a761a2d7413154aa557fbddef653dd248cfc9ac6a240556c09625b", "bytes": 419 },
+        "flink": { "sha256": "e054482f1f069e432b744e4eb50d76bc3eb8f8d11cea02000c2f0535f9ff6ca6", "bytes": 73080 },
+        "gcp-bigquery": { "sha256": "e8ef923d5b9029086b69d18e67323040f9f38d7c39f5ccca7095f027bf1f4496", "bytes": 929 },
+        "gcp-cloud-load-balancing": { "sha256": "2c97acbee4558f37ef5dd08cf900391ed1534ab6a627b954d40c2fccf7f1e63d", "bytes": 840 },
+        "gcp-cloud-run": { "sha256": "2b8dd430d769a3f7580b05db939225808889f58fc3afcfbd611a069b0a0d6703", "bytes": 460 },
+        "gcp-cloud-sql": { "sha256": "8d6129e1af063cbabaef45cf2fcf8f05c3c6f2b130e2e3a993254d100ca7b82f", "bytes": 750 },
+        "gcp-cloud-storage": { "sha256": "6747250ce9ec32b7d417333bbf7e544700f58a2027154ebbaf263f9b3432dc4b", "bytes": 1009 },
+        "gcp-pubsub": { "sha256": "416bb0990be92e547b172293458c8e0540c92009a501c25c1db16e6caadd97b1", "bytes": 1746 },
+        "gcp-secret-manager": { "sha256": "90488123d36bef3897f995c8333fe18a64d20014023e86e3f285b05de7dd03a5", "bytes": 1095 },
+        "gcp-service-account": { "sha256": "88a1db289ac6bbc09e89af983ea9cacf1c709fa57fc778f33c47b75f4b481bb2", "bytes": 764 },
+        "gcp-spanner": { "sha256": "0df185e87fea9ccee2b41dc03a51966d6ff3f08f19a1f506e0f08d8eeb096133", "bytes": 1039 },
+        "generic-batch-job": { "sha256": "c5e8748f24bb852e0fc782d36cb9a95bf4b4333cc0313a228b980298f041c2ee", "bytes": 732 },
+        "generic-external-api": { "sha256": "d3a95660f5a9fb8dbd298a79af1604cd83926a306583abeee407a7389b130be8", "bytes": 369 },
+        "generic-ml-model": { "sha256": "a5bf688c8fa897b8be4409278db4e52bfefa0eb1728dca80fadaaca006e8a8d3", "bytes": 1168 },
+        "generic-push": { "sha256": "50d924eb3d08a76fcd9c01ba00327022a7066df5efc79fa2d37e0e9051729f7d", "bytes": 658 },
+        "generic-scheduler": { "sha256": "266deca56e169c26ee822773d0161086c467ac0822e7830b434cdaa2555a3919", "bytes": 374 },
+        "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+        "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+        "grafana": { "sha256": "47b2cb370fb846522ea552fc41a39ffb273b24d0a7fe51dd73342e3c1b78b090", "bytes": 6627 },
+        "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+        "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+        "mqtt": { "sha256": "b6669f4c99524b6e7b1eb9d5599a5492e7a816b3a20804e7b61406e26bfa97b5", "bytes": 727 },
+        "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+        "redis": { "sha256": "985d03e20de4a6caf7eccc34ba6b73e2a5bab3aa1dc1b0d3e0613b5342a1e30e", "bytes": 3257 },
+        "stripe": { "sha256": "d73033ac5105145a1a5dc226c8c4a9b744369e2c0ae7234e97671c799656fd31", "bytes": 738 },
+        "temporal": { "sha256": "cfe062af6913957c246d2882d877a16a303b78e01a0019a8c269bc524b261b5d", "bytes": 1334 }
+      },
+      "options": { "theme": "dark", "startSimulation": "dinner-rush", "exportedOn": "2026-01-01" }
+    }
+  }
+}
