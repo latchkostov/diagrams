@@ -7,6 +7,7 @@ import { isMac } from "../../editor/shortcuts";
 import type { InteractionController } from "../interaction";
 import type { ConnectedMenuAnchor } from "../geometry/connectedMenuPlacement";
 import type { InlineEdit } from "../DiagramContext";
+import { menuTargets } from "./menuTargets";
 import { isAnnotationNode, isGroupNode, type DiagramFlowEdge, type FlowNode } from "../types";
 
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
@@ -72,10 +73,7 @@ export function useCanvasContextMenus(
           x: e.clientX,
           y: e.clientY,
           items: () => actionRegistry.build(full),
-          targets:
-            ctx.target === "selection"
-              ? [...ctx.selection.nodeIds, ...ctx.selection.edgeIds]
-              : [ctx.nodeId, ctx.edgeId].filter((id): id is string => !!id),
+          targets: menuTargets(ctx),
           get label() {
             return tr("menu.valueNodeValueEdgeValueGroupValueSelectionValueAnnotation", { target: ctx.target });
           },

@@ -123,6 +123,7 @@ import {
 } from "./camera";
 import type { EditorRoom } from "../editor/room";
 import { remoteTargetRemoved } from "../editor/remoteSnapshot";
+import { targetRemoved } from "./menus/menuTargets";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -373,9 +374,12 @@ function CanvasInner({
         onRemote.current();
         // A context menu on something a peer deleted closes (M7): its commands would act on nothing.
         const open = interaction.getSnapshot().menu;
-        const targets = open?.kind === "context" ? open.payload?.targets : undefined;
-        if (open && targets?.some((id) => !s.nodes.some((n) => n.id === id) && !s.edges.some((e) => e.id === id)))
+        if (open?.kind === "context" && targetRemoved(open.payload?.targets, s)) {
+          // The menu is portalled outside the canvas, so R1's announcement above can't have said why.
+          const focusedMenu = !!document.activeElement?.closest(".cm");
           interaction.closeMenu("remote", open.seq);
+          if (focusedMenu) setAnnouncement((a) => ({ text: tr("collab.targetRemoved"), seq: a.seq + 1 }));
+        }
       }
       if (!remote) setEditing(null);
       else setEditing((current) => (current && !s.nodes.some((n) => n.id === current.id) ? null : current));

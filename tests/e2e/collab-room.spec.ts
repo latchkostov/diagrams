@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import type { BrowserContext, Page, WebSocketRoute } from "@playwright/test";
 import {
   test,
@@ -11,8 +12,10 @@ import {
   interactionLog,
   interactionJournalMark,
   viewportTransform,
+  openShareChooser,
 } from "./fixtures";
 import { COLLAB_LIMITS } from "../../src/collab/limits";
+import { RECONNECT_MS } from "../../src/collab/room/timing";
 
 // Edit together in the app (collaboration plan E2): a room's life between two browsers, with real WebRTC between
 // them over host candidates. The matchmaking tracker is emulated here, in the test runner (routeWebSocket on the
@@ -24,7 +27,20 @@ const TRACKER_PATH = "/__test-tracker";
 /** One emulated tracker shared by every context given: swarms by info hash, offers and answers forwarded. */
 async function emulateTracker(contexts: BrowserContext[]) {
   const swarms = new Map<string, Map<string, WebSocketRoute>>();
-  const sockets = { opened: 0 };
+  const queued: (() => void)[] = [];
+  const sockets = {
+    opened: 0,
+    held: false,
+    /** Holds every offer and answer it would forward, until release(). */
+    hold() {
+      sockets.held = true;
+    },
+    release() {
+      sockets.held = false;
+      for (const send of queued.splice(0)) send();
+    },
+  };
+  const forward = (send: () => void) => (sockets.held ? queued.push(send) : send());
   for (const context of contexts) {
     await context.addInitScript((path) => {
       window.__collabEndpoints = { trackers: [`${location.origin.replace(/^http/, "ws")}${path}`], iceServers: [] };
@@ -50,14 +66,17 @@ async function emulateTracker(contexts: BrowserContext[]) {
           }
           swarm.set(msg.peer_id, ws);
           if (msg.answer) {
-            swarm.get(String(msg.to_peer_id))?.send(
-              JSON.stringify({
-                action: "announce",
-                info_hash: hash,
-                peer_id: msg.peer_id,
-                offer_id: msg.offer_id,
-                answer: msg.answer,
-              }),
+            const to = swarm.get(String(msg.to_peer_id));
+            forward(() =>
+              to?.send(
+                JSON.stringify({
+                  action: "announce",
+                  info_hash: hash,
+                  peer_id: msg.peer_id,
+                  offer_id: msg.offer_id,
+                  answer: msg.answer,
+                }),
+              ),
             );
             return;
           }
@@ -65,14 +84,16 @@ async function emulateTracker(contexts: BrowserContext[]) {
           const offers = (msg.offers as { offer_id: string; offer: unknown }[] | undefined) ?? [];
           const others = [...swarm].filter(([id]) => id !== msg.peer_id);
           others.slice(0, offers.length).forEach(([, peer], i) =>
-            peer.send(
-              JSON.stringify({
-                action: "announce",
-                info_hash: hash,
-                peer_id: msg.peer_id,
-                offer_id: offers[i].offer_id,
-                offer: offers[i].offer,
-              }),
+            forward(() =>
+              peer.send(
+                JSON.stringify({
+                  action: "announce",
+                  info_hash: hash,
+                  peer_id: msg.peer_id,
+                  offer_id: offers[i].offer_id,
+                  offer: offers[i].offer,
+                }),
+              ),
             ),
           );
         });
@@ -130,6 +151,13 @@ async function startRoom(page: Page): Promise<string> {
 }
 
 const chip = (page: Page) => page.getByTestId("room-chip");
+
+/** One of the room chip's menu items (Copy room link, Leave room, Retry, Show). */
+async function roomAction(page: Page, item: "room-leave" | "room-retry" | "room-copy-link" | "room-show") {
+  await chip(page).click();
+  await expect(page.getByTestId("room-menu")).toBeVisible();
+  await page.getByTestId(item).click();
+}
 
 /** The top bar's brand ("Live Diagrams") stays on one line: the room chip gives way first. */
 async function expectBrandOnOneLine(page: Page) {
@@ -240,7 +268,7 @@ test("Leave keeps your copy in Your diagrams, and Don't join leaves nothing behi
     await expect(guest.getByTestId("room-chip")).toHaveCount(0);
 
     await rename(page, "gateway", "Kept after leaving");
-    await page.getByTestId("room-leave").click();
+    await roomAction(page, "room-leave");
     await expect(chip(page)).toHaveCount(0);
     await expect(page.getByTestId("node-gateway")).toContainText("Kept after leaving");
     await page.reload();
@@ -380,7 +408,7 @@ test("a copy that can't be saved holds the room's canvas behind a dialog: file c
       setItem.call(this, key, value);
     };
   });
-  await page.getByTestId("room-leave").click();
+  await roomAction(page, "room-leave");
   const dialog = page.getByTestId("room-unsaved-dialog");
   await expect(dialog).toBeVisible();
   // One message: no storage toast pointing at File ▸ Save behind the modal.
@@ -617,8 +645,262 @@ test("a room dialog gives focus back to what opened it; Retry hands it to the ro
   await pauseClock(page);
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
   await expect(chip(page)).toHaveAttribute("data-state", "failed");
-  await page.getByTestId("room-retry").click();
+  await roomAction(page, "room-retry");
   await expect(chip(page)).not.toHaveAttribute("data-state", "failed");
   await expect(chip(page)).toBeFocused();
   expectNoErrors(consoleErrors);
 });
+
+// ---------------------------------------------------------------- E4: Share's Edit together, the chip, failures
+
+test("Share's Edit together, after Link with password and never first, starts a room from the open diagram", async ({
+  context,
+  page,
+  consoleErrors,
+}) => {
+  await emulateTracker([context]);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await openShareChooser(page);
+  // The safest row has the keyboard; Edit together sits after Link with password, behind its own rule.
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  const row = page.getByTestId("share-option-edit-together");
+  await expect(row).toBeVisible();
+  expect(
+    await page.evaluate(() => {
+      const password = document.querySelector('[data-testid="share-option-password"]');
+      const room = document.querySelector('[data-testid="share-option-edit-together"]');
+      return !!password && !!room && !!(password.compareDocumentPosition(room) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }),
+  ).toBe(true);
+  await expectAxeClean(page, "share-chooser");
+  // The keyboard reaches it with the arrows.
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowDown");
+  await expect(row).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("room-start-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expectAxeClean(page, "room-start-dialog");
+  await page.getByTestId("room-start-confirm").click();
+  await expect(page.getByTestId("room-started-dialog")).toBeVisible();
+  const link = await page.getByTestId("room-link").inputValue();
+  await page.getByTestId("room-started-done").click();
+  await expect(chip(page)).toHaveAttribute("data-state", "waiting");
+  // The chip's menu: who is here (you, by your name in the room), the link and Leave.
+  await chip(page).click();
+  await expect(page.getByTestId("room-person-you")).toContainText("You — Anonymous");
+  await expectAxeClean(page, "room-menu");
+  await page.getByTestId("room-copy-link").click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+  // Copying refused: the link in a dialog, selected.
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = () => Promise.reject(new Error("blocked"));
+    document.execCommand = () => false;
+  });
+  await roomAction(page, "room-copy-link");
+  await expect(page.getByTestId("room-link-selectable")).toHaveValue(link);
+  await expect(page.getByTestId("room-link-selectable")).toBeFocused();
+  await page.getByTestId("room-link-dialog-done").click();
+  await expect(chip(page)).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("Ctrl+K finds Edit together; a Private diagram has no room row and explains why", async ({ page }) => {
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill("collaborate");
+  await page.getByTestId("command-item-file:edit-together").click();
+  await expect(page.getByTestId("room-start-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("room-start-cancel").click();
+  // Private: File ▸ Privacy ▸ this diagram (an example becomes a private copy).
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await page.getByTestId("privacy-diagram").click();
+  await expect(page.getByTestId("example-badge")).toHaveCount(0);
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-option-edit-together")).toHaveCount(0);
+  await expect(page.getByTestId("share-private-note")).toContainText(
+    "Links, rooms and public embeds are off for a private diagram.",
+  );
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill("edit together");
+  await page.getByTestId("command-item-file:edit-together").click();
+  await expect(page.getByTestId("room-private-off")).toContainText("off for a private diagram");
+});
+
+test("matchmaking unreachable: the alert says so, offers a file, and Retry keeps the keyboard on the chip", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.clock.install();
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await startRoom(page);
+  await pauseClock(page);
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+  const alert = page.getByTestId("room-alert");
+  await expect(alert).toContainText("Could not connect to this room");
+  await expect(alert).toContainText("You can send a diagram file instead");
+  await page.clock.resume();
+  await expectAxeClean(page, "room-alert");
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("room-alert-file").click();
+  const chunks: Buffer[] = [];
+  for await (const chunk of await (await downloading).createReadStream()) chunks.push(Buffer.from(chunk));
+  expect(Buffer.concat(chunks).toString()).toContain("Commerce gateway");
+  await page.getByTestId("room-alert-retry").click();
+  await expect(alert).toHaveCount(0);
+  await expect(chip(page)).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("a peer that leaves shows Reconnecting…, then Everyone else left; a joiner nobody answers is told so", async ({
+  browser,
+  context,
+  page,
+}) => {
+  test.slow();
+  const other = await browser.newContext();
+  try {
+    await page.clock.install();
+    const guest = await twoInARoom(page, context, other);
+    await roomAction(guest, "room-leave");
+    await expect(chip(page)).toHaveAttribute("data-state", "reconnecting");
+    await expect(chip(page)).toContainText("Reconnecting…");
+    await pauseClock(page);
+    await page.clock.runFor(RECONNECT_MS);
+    await expect(chip(page)).toHaveAttribute("data-state", "alone");
+    await expect(chip(page)).toContainText("Everyone else left");
+  } finally {
+    await other.close();
+  }
+});
+
+test("a joiner nobody answers is told they may have left, with Retry", async ({ browser, context, page }) => {
+  const other = await browser.newContext();
+  try {
+    await emulateTracker([context, other]);
+    await page.goto("./?view=canvas&example=kafka-order-pipeline");
+    await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    const link = await startRoom(page);
+    await roomAction(page, "room-leave");
+    const guest = await other.newPage();
+    await guest.clock.install();
+    await guest.goto(link);
+    await guest.getByTestId("room-join-accept").click();
+    await expect(guest.getByTestId("room-connecting")).toBeVisible({ timeout: pageLoadTimeout() });
+    await pauseClock(guest);
+    await guest.clock.runFor(RECONNECT_MS);
+    const said = guest.getByTestId("room-connecting-failed");
+    await expect(said).toHaveAttribute("data-reason", "no-answer");
+    await expect(said).toContainText("No one else is in this room right now");
+    await guest.getByTestId("room-connecting-retry").click();
+    await expect(guest.getByTestId("room-connecting")).toBeFocused();
+  } finally {
+    await other.close();
+  }
+});
+
+test("joining focuses the connecting status, then the canvas; focus moved to the toolbar stays there", async ({
+  browser,
+  context,
+  page,
+}) => {
+  test.slow();
+  const other = await browser.newContext();
+  try {
+    const tracker = await emulateTracker([context, other]);
+    await page.goto("./?view=canvas&example=kafka-order-pipeline");
+    await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    const link = await startRoom(page);
+    const join = async (guest: Page) => {
+      tracker.hold();
+      await guest.goto(link);
+      await guest.getByTestId("room-join-accept").click();
+      await expect(guest.getByTestId("room-connecting")).toBeFocused();
+    };
+    const first = await other.newPage();
+    await join(first);
+    await first.keyboard.press("Tab");
+    await expect(first.getByTestId("room-connecting-leave")).toBeFocused();
+    tracker.release();
+    await expect(first.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect(first.getByTestId("canvas-wrap")).toBeFocused();
+    await first.close();
+    // Focus moved to the toolbar during the wait stays there when the room's canvas arrives.
+    const second = await other.newPage();
+    await join(second);
+    await second.getByTestId("file-button").focus();
+    tracker.release();
+    await expect(second.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect.poll(() => interactionLog(second)).toContainEqual(expect.stringMatching(/^room\.ready ->/));
+    await expect(second.getByTestId("file-button")).toBeFocused();
+  } finally {
+    await other.close();
+  }
+});
+
+/** A peer (the creator) deletes what the guest's open context menu is for. */
+async function deleteUnderMenu(page: Page, guest: Page, open: () => Promise<void>, remove: () => Promise<void>) {
+  await open();
+  await expect(guest.getByTestId("context-menu")).toBeVisible();
+  const mark = await interactionJournalMark(guest);
+  await page.bringToFront();
+  await remove();
+  await expect(guest.getByTestId("context-menu")).toHaveCount(0);
+  expect(await interactionLog(guest, mark)).toContain("menu.closed:remote -> focus:canvas@commit");
+  await expect(guest.getByTestId("canvas-wrap")).toBeFocused();
+  await expect(guest.getByTestId("canvas-announce")).toContainText("removed by a peer");
+}
+
+test("remote boundary removal closes its context menu, and a selection menu holding a boundary", async ({
+  browser,
+  context,
+  page,
+}) => {
+  test.slow();
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await waitForStableViewport(guest);
+    const removeBoundary = async () => {
+      await page.getByTestId("group-label-aks").click();
+      await page.keyboard.press("Delete");
+      await expect(page.getByTestId("group-aks")).toHaveCount(0);
+    };
+    await deleteUnderMenu(
+      page,
+      guest,
+      () => guest.getByTestId("group-label-aks").click({ button: "right" }),
+      removeBoundary,
+    );
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(guest.getByTestId("group-aks")).toBeVisible();
+    // A selection of a node and the boundary: its menu goes when the boundary does.
+    await deleteUnderMenu(
+      page,
+      guest,
+      async () => {
+        await guest.bringToFront();
+        await guest.getByTestId("group-label-aks").click();
+        await guest.getByTestId("node-shopper").click({ modifiers: ["Shift"] });
+        await guest.getByTestId("node-shopper").click({ button: "right" });
+      },
+      removeBoundary,
+    );
+  } finally {
+    await other.close();
+  }
+});
+
+/** axe (WCAG 2.x A and AA) on one test id's subtree. */
+async function expectAxeClean(page: Page, scope: string) {
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .include(`[data-testid="${scope}"]`)
+    .analyze();
+  expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+}

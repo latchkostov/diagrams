@@ -44,6 +44,8 @@ export interface SourceInput {
   runSimulation(id: string): void;
   /** The top bar's Present, so Ctrl+K finds it too (absent while presenting). */
   present?(): void;
+  /** Share's "Edit together…", so Ctrl+K finds it too (absent where rooms are off). */
+  editTogether?(): void;
   /** View ▸ Language…, so Ctrl+K finds it too (absent in a copy built for one language). */
   language?(): void;
 }
@@ -220,6 +222,17 @@ export function collectCommands(input: SourceInput): Command[] {
       run: input.present,
     });
   if (onCanvas) out.push(...actionCommands(input.registry, contextsFor(editor!, canvas.live ? "live" : "edit")));
+  if (onCanvas && !canvas.live && input.editTogether)
+    out.push({
+      id: "file:edit-together",
+      group: "actions",
+      label: t("collab.palette"),
+      icon: "users",
+      // The English words always, as the Language command does. A Private diagram gets the start dialog's
+      // explanation, never a disabled row.
+      keywords: `${t("collab.paletteKeywords")} collaborate room edit together share`,
+      run: input.editTogether,
+    });
   if (input.language)
     out.push({
       id: "view:language",

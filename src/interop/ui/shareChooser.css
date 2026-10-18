@@ -163,3 +163,9 @@
 [dir="rtl"] .ix-share-public-toggle:not([aria-expanded="true"]) svg {
   transform: scaleX(-1);
 }
+
+/* Edit together: its own rule, between the controlled rows and the public section. */
+.ix-share-room {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
