@@ -1014,14 +1014,6 @@ exports[`public examples route cleanly (estimated card sizes) > azure-service-bu
       },
       {
         "x": 2450,
-        "y": 141.5,
-      },
-      {
-        "x": 2443,
-        "y": 141.5,
-      },
-      {
-        "x": 2443,
         "y": 112,
       },
     ],
@@ -1175,35 +1167,6 @@ exports[`public examples route cleanly (estimated card sizes) > azure-service-bu
       {
         "x": 2320,
         "y": 563,
-      },
-    ],
-  },
-  {
-    "id": "dlq-to-dlq-triage",
-    "points": [
-      {
-        "x": 2457,
-        "y": 112,
-      },
-      {
-        "x": 2457,
-        "y": 130.5,
-      },
-      {
-        "x": 2282,
-        "y": 130.5,
-      },
-      {
-        "x": 2282,
-        "y": 496,
-      },
-      {
-        "x": 2450,
-        "y": 496,
-      },
-      {
-        "x": 2450,
-        "y": 520,
       },
     ],
   },
