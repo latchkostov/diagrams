@@ -8,10 +8,25 @@ const publicItems = examples.filter((e) => !e.localOnly);
 describe("example gallery", () => {
   it("groups in theme order and keeps input order inside each theme", () => {
     const sections = filterExamples(publicItems, "");
-    expect(sections.map((s) => s.theme?.id)).toEqual(["streaming", "data", "cloud", "integration", "reliability"]);
-    expect(sections[0].items.map((e) => e.slug)).toEqual(
+    expect(sections.map((s) => s.theme?.id)).toEqual([
+      "systems",
+      "streaming",
+      "data",
+      "cloud",
+      "integration",
+      "reliability",
+    ]);
+    expect(sections[1].items.map((e) => e.slug)).toEqual(
       publicItems.filter((e) => e.theme === "streaming").map((e) => e.slug),
     );
+    // The large examples lead the gallery, as one theme.
+    expect(sections[0].items.map((e) => e.slug)).toEqual([
+      "black-friday-commerce",
+      "cell-based-bookings",
+      "payments-ledger",
+      "delivery-dispatch",
+      "ev-charging-network",
+    ]);
   });
   it("matches all words across title, summary, description, slug and translated feature labels", () => {
     expect(
@@ -42,11 +57,11 @@ describe("example gallery", () => {
         .flatMap((s) => s.items)
         .map((e) => e.slug),
     ).toEqual([
+      "black-friday-commerce",
+      "payments-ledger",
       "delivery-dispatch",
       "ev-charging-network",
       "shared-api-quotas",
-      "black-friday-commerce",
-      "payments-ledger",
       "notification-fanout",
     ]);
     expect(filterExamples(publicItems, "Kafka", "networkDevices")).toEqual([]);
@@ -56,25 +71,18 @@ describe("example gallery", () => {
     expect(tags("branch-to-datacentre")).toEqual(["networkDevices"]);
     expect(tags("notification-fanout")).toEqual(["partitions", "rateLimits"]);
     expect(tags("nightly-batch-elt")).toEqual([]);
-    expect(tags("keda-render-workers")).toEqual(["partitions", "autoscaling"]);
-    expect(tags("autoscaling-image-workers")).toEqual(["partitions", "autoscaling"]);
+    expect(tags("autoscaling-basics")).toEqual(["partitions", "autoscaling"]);
     expect(tags("cloud-run-timetable-api")).toEqual(["autoscaling"]);
     expect(
       filterExamples(publicItems, "", "autoscaling")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual([
-      "delivery-dispatch",
-      "keda-render-workers",
-      "autoscaling-image-workers",
-      "black-friday-commerce",
-      "cloud-run-timetable-api",
-    ]);
+    ).toEqual(["black-friday-commerce", "delivery-dispatch", "autoscaling-basics", "cloud-run-timetable-api"]);
     expect(
       filterExamples(publicItems, "", "routing")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["delivery-dispatch", "black-friday-commerce", "payments-ledger", "api-route-table"]);
+    ).toEqual(["black-friday-commerce", "payments-ledger", "delivery-dispatch", "api-route-table"]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {

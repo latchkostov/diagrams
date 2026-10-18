@@ -244,7 +244,9 @@ describe("tracing the public examples end to end", () => {
     const j = buildJourney(trace, azure);
     expect(j.deadLettered).toBe(1);
     expect(j.retries).toBeGreaterThan(0);
-    expect(j.rows.at(-1)).toMatchObject({ kind: "dlq", node: "dlq", from: "commands" });
+    expect(j.rows.find((r) => r.kind === "dlq")).toMatchObject({ kind: "dlq", node: "dlq", from: "commands" });
+    // Then triage reads the dead letter, and the journey ends there.
+    expect(j.rows.at(-1)).toMatchObject({ kind: "hop", node: "dlq-triage", from: "dlq" });
     expect(toMermaid(buildSequence(trace, azure))).toContain("commands-)dlq: PostInvoice (dead letter)");
   });
 

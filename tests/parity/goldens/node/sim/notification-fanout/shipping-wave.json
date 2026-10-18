@@ -38,7 +38,12 @@
         "sendgrid": { "replicas": [1, 1, 0] },
         "key-vault": { "replicas": [1, 1, 0] },
         "twilio": { "replicas": [1, 1, 0] },
-        "push": { "replicas": [1, 1, 0] }
+        "push": { "replicas": [1, 1, 0] },
+        "email-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -70,7 +75,12 @@
         "sendgrid": { "processed": 181, "throughput": 1.5527160068282992, "replicas": [1, 1, 0] },
         "key-vault": { "replicas": [1, 1, 0] },
         "twilio": { "processed": 41, "throughput": 5.303862925216551, "replicas": [1, 1, 0] },
-        "push": { "processed": 134, "throughput": 1.0483270290465625, "replicas": [1, 1, 0] }
+        "push": { "processed": 134, "throughput": 1.0483270290465625, "replicas": [1, 1, 0] },
+        "email-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "sms-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "push-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
       }
     }
   ],
@@ -97,7 +107,12 @@
       "sendgrid": { "processed": 1810, "throughput": 0.06473784959680505, "replicas": [1, 1, 0] },
       "key-vault": { "replicas": [1, 1, 0] },
       "twilio": { "processed": 610, "throughput": 12.142745353195767, "replicas": [1, 1, 0] },
-      "push": { "processed": 1340, "throughput": 0.04370821015319545, "replicas": [1, 1, 0] }
+      "push": { "processed": 1340, "throughput": 0.04370821015319545, "replicas": [1, 1, 0] },
+      "email-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "sms-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "push-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "dlq-triage": { "replicas": [1, 1, 0] },
+      "identity": { "replicas": [1, 1, 0] }
     },
     "edges": {
       "carrier-to-shipping": 200,
@@ -114,7 +129,15 @@
       "sms-limiter-to-twilio": 61,
       "push-sender-to-push": 134,
       "email-sender-to-key-vault": 0,
-      "sms-limiter-to-key-vault": 0
+      "sms-limiter-to-key-vault": 0,
+      "email-q-to-email-dlq": 0,
+      "sms-q-to-sms-dlq": 0,
+      "push-q-to-push-dlq": 0,
+      "email-dlq-to-dlq-triage": 0,
+      "sms-dlq-to-dlq-triage": 0,
+      "push-dlq-to-dlq-triage": 0,
+      "email-sender-to-identity": 0,
+      "sms-limiter-to-identity": 0
     }
   },
   "events": {

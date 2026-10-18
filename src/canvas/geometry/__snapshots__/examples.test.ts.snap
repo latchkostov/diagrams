@@ -331,10 +331,10 @@ exports[`public examples route cleanly (estimated card sizes) > api-route-table.
 ]
 `;
 
-exports[`public examples route cleanly (estimated card sizes) > autoscaling-image-workers.json 1`] = `
+exports[`public examples route cleanly (estimated card sizes) > autoscaling-basics.json 1`] = `
 [
   {
-    "id": "publish",
+    "id": "upload",
     "points": [
       {
         "x": 300,
@@ -347,7 +347,7 @@ exports[`public examples route cleanly (estimated card sizes) > autoscaling-imag
     ],
   },
   {
-    "id": "consume",
+    "id": "thumbnail",
     "points": [
       {
         "x": 640,
@@ -360,7 +360,7 @@ exports[`public examples route cleanly (estimated card sizes) > autoscaling-imag
     ],
   },
   {
-    "id": "save",
+    "id": "store",
     "points": [
       {
         "x": 1000,
@@ -372,251 +372,29 @@ exports[`public examples route cleanly (estimated card sizes) > autoscaling-imag
       },
     ],
   },
-]
-`;
-
-exports[`public examples route cleanly (estimated card sizes) > aws-fanout.json 1`] = `
-[
   {
-    "id": "client-to-api",
+    "id": "request-render",
     "points": [
       {
-        "x": 274,
-        "y": 316,
+        "x": 300,
+        "y": 476,
       },
       {
         "x": 420,
-        "y": 316,
+        "y": 476,
       },
     ],
   },
   {
-    "id": "api-to-intake",
+    "id": "render",
     "points": [
       {
-        "x": 680,
-        "y": 316,
+        "x": 640,
+        "y": 476,
       },
       {
-        "x": 800,
-        "y": 316,
-      },
-    ],
-  },
-  {
-    "id": "intake-to-sns",
-    "points": [
-      {
-        "x": 1060,
-        "y": 316,
-      },
-      {
-        "x": 1180,
-        "y": 316,
-      },
-    ],
-  },
-  {
-    "id": "sns-to-fulfillment-q",
-    "points": [
-      {
-        "x": 1440,
-        "y": 302,
-      },
-      {
-        "x": 1500,
-        "y": 302,
-      },
-      {
-        "x": 1500,
-        "y": 196,
-      },
-      {
-        "x": 1560,
-        "y": 196,
-      },
-    ],
-  },
-  {
-    "id": "sns-to-archive-q",
-    "points": [
-      {
-        "x": 1440,
-        "y": 316,
-      },
-      {
-        "x": 1560,
-        "y": 316,
-      },
-    ],
-  },
-  {
-    "id": "sns-to-receipt-q",
-    "points": [
-      {
-        "x": 1440,
-        "y": 330,
-      },
-      {
-        "x": 1500,
-        "y": 330,
-      },
-      {
-        "x": 1500,
-        "y": 436,
-      },
-      {
-        "x": 1560,
-        "y": 436,
-      },
-    ],
-  },
-  {
-    "id": "fulfillment-q-to-fulfill",
-    "points": [
-      {
-        "x": 1820,
-        "y": 196,
-      },
-      {
-        "x": 1940,
-        "y": 196,
-      },
-    ],
-  },
-  {
-    "id": "archive-q-to-archive",
-    "points": [
-      {
-        "x": 1820,
-        "y": 316,
-      },
-      {
-        "x": 1940,
-        "y": 316,
-      },
-    ],
-  },
-  {
-    "id": "receipt-q-to-receipt",
-    "points": [
-      {
-        "x": 1820,
-        "y": 436,
-      },
-      {
-        "x": 1940,
-        "y": 436,
-      },
-    ],
-  },
-  {
-    "id": "fulfill-to-ddb",
-    "points": [
-      {
-        "x": 2200,
-        "y": 196,
-      },
-      {
-        "x": 2260,
-        "y": 196,
-      },
-      {
-        "x": 2260,
-        "y": 203,
-      },
-      {
-        "x": 2320,
-        "y": 203,
-      },
-    ],
-  },
-  {
-    "id": "archive-to-s3",
-    "points": [
-      {
-        "x": 2200,
-        "y": 316,
-      },
-      {
-        "x": 2320,
-        "y": 316,
-      },
-    ],
-  },
-  {
-    "id": "receipt-to-receipt-db",
-    "points": [
-      {
-        "x": 2187,
-        "y": 436,
-      },
-      {
-        "x": 2320,
-        "y": 436,
-      },
-    ],
-  },
-  {
-    "id": "schedule-to-reconcile",
-    "points": [
-      {
-        "x": 1780,
-        "y": 76,
-      },
-      {
-        "x": 1940,
-        "y": 76,
-      },
-    ],
-  },
-  {
-    "id": "reconcile-to-ddb",
-    "points": [
-      {
-        "x": 2193,
-        "y": 76,
-      },
-      {
-        "x": 2260,
-        "y": 76,
-      },
-      {
-        "x": 2260,
-        "y": 189,
-      },
-      {
-        "x": 2320,
-        "y": 189,
-      },
-    ],
-  },
-  {
-    "id": "fulfillment-q-to-dlq",
-    "points": [
-      {
-        "x": 1690,
-        "y": 232,
-      },
-      {
-        "x": 1690,
-        "y": 256,
-      },
-      {
-        "x": 1522,
-        "y": 256,
-      },
-      {
-        "x": 1522,
-        "y": 496,
-      },
-      {
-        "x": 1690,
-        "y": 496,
-      },
-      {
-        "x": 1690,
-        "y": 520,
+        "x": 780,
+        "y": 476,
       },
     ],
   },
@@ -659,8 +437,16 @@ exports[`public examples route cleanly (estimated card sizes) > aws-serverless-o
         "y": 196,
       },
       {
-        "x": 1180,
+        "x": 1100,
         "y": 196,
+      },
+      {
+        "x": 1100,
+        "y": 189,
+      },
+      {
+        "x": 1180,
+        "y": 189,
       },
     ],
   },
@@ -750,11 +536,11 @@ exports[`public examples route cleanly (estimated card sizes) > aws-serverless-o
     "points": [
       {
         "x": 1780,
-        "y": 436,
+        "y": 429,
       },
       {
         "x": 1861,
-        "y": 436,
+        "y": 429,
       },
       {
         "x": 1861,
@@ -892,11 +678,11 @@ exports[`public examples route cleanly (estimated card sizes) > aws-serverless-o
         "y": 683,
       },
       {
-        "x": 1861,
+        "x": 1872,
         "y": 683,
       },
       {
-        "x": 1861,
+        "x": 1872,
         "y": 736,
       },
       {
@@ -923,6 +709,137 @@ exports[`public examples route cleanly (estimated card sizes) > aws-serverless-o
       {
         "x": 541,
         "y": 400,
+      },
+    ],
+  },
+  {
+    "id": "bus-to-archive-q",
+    "points": [
+      {
+        "x": 1780,
+        "y": 443,
+      },
+      {
+        "x": 1850,
+        "y": 443,
+      },
+      {
+        "x": 1850,
+        "y": 896,
+      },
+      {
+        "x": 1940,
+        "y": 896,
+      },
+    ],
+  },
+  {
+    "id": "archive-q-to-archive-fn",
+    "points": [
+      {
+        "x": 2200,
+        "y": 896,
+      },
+      {
+        "x": 2320,
+        "y": 896,
+      },
+    ],
+  },
+  {
+    "id": "archive-fn-to-archive-s3",
+    "points": [
+      {
+        "x": 2430,
+        "y": 932,
+      },
+      {
+        "x": 2430,
+        "y": 1016,
+      },
+      {
+        "x": 2434,
+        "y": 1016,
+      },
+      {
+        "x": 2434,
+        "y": 1100,
+      },
+    ],
+  },
+  {
+    "id": "archive-q-to-archive-dlq",
+    "points": [
+      {
+        "x": 2077,
+        "y": 932,
+      },
+      {
+        "x": 2077,
+        "y": 1016,
+      },
+      {
+        "x": 2064,
+        "y": 1016,
+      },
+      {
+        "x": 2064,
+        "y": 1100,
+      },
+    ],
+  },
+  {
+    "id": "archive-dlq-to-archive-q",
+    "points": [
+      {
+        "x": 2050,
+        "y": 1100,
+      },
+      {
+        "x": 2050,
+        "y": 1016,
+      },
+      {
+        "x": 2063,
+        "y": 1016,
+      },
+      {
+        "x": 2063,
+        "y": 932,
+      },
+    ],
+  },
+  {
+    "id": "schedule-to-reconcile",
+    "points": [
+      {
+        "x": 640,
+        "y": 676,
+      },
+      {
+        "x": 800,
+        "y": 676,
+      },
+    ],
+  },
+  {
+    "id": "reconcile-to-orders-table",
+    "points": [
+      {
+        "x": 1034,
+        "y": 676,
+      },
+      {
+        "x": 1107,
+        "y": 676,
+      },
+      {
+        "x": 1107,
+        "y": 203,
+      },
+      {
+        "x": 1180,
+        "y": 203,
       },
     ],
   },
@@ -1075,11 +992,11 @@ exports[`public examples route cleanly (estimated card sizes) > azure-service-bu
         "y": 203,
       },
       {
-        "x": 2259.5,
+        "x": 2265,
         "y": 203,
       },
       {
-        "x": 2259.5,
+        "x": 2265,
         "y": 429,
       },
       {
@@ -1097,6 +1014,14 @@ exports[`public examples route cleanly (estimated card sizes) > azure-service-bu
       },
       {
         "x": 2450,
+        "y": 141.5,
+      },
+      {
+        "x": 2443,
+        "y": 141.5,
+      },
+      {
+        "x": 2443,
         "y": 112,
       },
     ],
@@ -1109,11 +1034,11 @@ exports[`public examples route cleanly (estimated card sizes) > azure-service-bu
         "y": 443,
       },
       {
-        "x": 2259.5,
+        "x": 2270.5,
         "y": 443,
       },
       {
-        "x": 2259.5,
+        "x": 2270.5,
         "y": 436,
       },
       {
@@ -1165,6 +1090,119 @@ exports[`public examples route cleanly (estimated card sizes) > azure-service-bu
       },
       {
         "x": 930,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "approval-sub-to-approval-dlq",
+    "points": [
+      {
+        "x": 1690,
+        "y": 160,
+      },
+      {
+        "x": 1690,
+        "y": 136,
+      },
+      {
+        "x": 1680.5,
+        "y": 136,
+      },
+      {
+        "x": 1680.5,
+        "y": 112,
+      },
+    ],
+  },
+  {
+    "id": "posting-sub-to-posting-dlq",
+    "points": [
+      {
+        "x": 1690,
+        "y": 472,
+      },
+      {
+        "x": 1690,
+        "y": 496,
+      },
+      {
+        "x": 1670,
+        "y": 496,
+      },
+      {
+        "x": 1670,
+        "y": 520,
+      },
+    ],
+  },
+  {
+    "id": "approval-dlq-to-dlq-triage",
+    "points": [
+      {
+        "x": 1801,
+        "y": 76,
+      },
+      {
+        "x": 2254,
+        "y": 76,
+      },
+      {
+        "x": 2254,
+        "y": 549,
+      },
+      {
+        "x": 2320,
+        "y": 549,
+      },
+    ],
+  },
+  {
+    "id": "posting-dlq-to-dlq-triage",
+    "points": [
+      {
+        "x": 1780,
+        "y": 556,
+      },
+      {
+        "x": 2248.5,
+        "y": 556,
+      },
+      {
+        "x": 2248.5,
+        "y": 563,
+      },
+      {
+        "x": 2320,
+        "y": 563,
+      },
+    ],
+  },
+  {
+    "id": "dlq-to-dlq-triage",
+    "points": [
+      {
+        "x": 2457,
+        "y": 112,
+      },
+      {
+        "x": 2457,
+        "y": 130.5,
+      },
+      {
+        "x": 2282,
+        "y": 130.5,
+      },
+      {
+        "x": 2282,
+        "y": 496,
+      },
+      {
+        "x": 2450,
+        "y": 496,
+      },
+      {
+        "x": 2450,
         "y": 520,
       },
     ],
@@ -6405,6 +6443,32 @@ exports[`public examples route cleanly (estimated card sizes) > ev-charging-netw
     ],
   },
   {
+    "id": "oncall--tech-email",
+    "points": [
+      {
+        "x": 4320,
+        "y": 236,
+      },
+      {
+        "x": 4620,
+        "y": 236,
+      },
+    ],
+  },
+  {
+    "id": "dashboard--state-db",
+    "points": [
+      {
+        "x": 4100,
+        "y": 96,
+      },
+      {
+        "x": 3900,
+        "y": 96,
+      },
+    ],
+  },
+  {
     "id": "drivers--apim",
     "points": [
       {
@@ -6522,11 +6586,11 @@ exports[`public examples route cleanly (estimated card sizes) > ev-charging-netw
         "y": 949,
       },
       {
-        "x": 4247,
+        "x": 4260,
         "y": 949,
       },
       {
-        "x": 4247,
+        "x": 4260,
         "y": 816,
       },
       {
@@ -6543,11 +6607,11 @@ exports[`public examples route cleanly (estimated card sizes) > ev-charging-netw
         "y": 963,
       },
       {
-        "x": 4247,
+        "x": 4260,
         "y": 963,
       },
       {
-        "x": 4247,
+        "x": 4260,
         "y": 956,
       },
       {
@@ -7381,218 +7445,6 @@ exports[`public examples route cleanly (estimated card sizes) > gcp-streaming-an
 ]
 `;
 
-exports[`public examples route cleanly (estimated card sizes) > iot-telemetry.json 1`] = `
-[
-  {
-    "id": "devices-to-hub",
-    "points": [
-      {
-        "x": 300,
-        "y": 316,
-      },
-      {
-        "x": 420,
-        "y": 316,
-      },
-    ],
-  },
-  {
-    "id": "hub-to-hot",
-    "points": [
-      {
-        "x": 680,
-        "y": 309,
-      },
-      {
-        "x": 740,
-        "y": 309,
-      },
-      {
-        "x": 740,
-        "y": 196,
-      },
-      {
-        "x": 800,
-        "y": 196,
-      },
-    ],
-  },
-  {
-    "id": "hub-to-stream",
-    "points": [
-      {
-        "x": 680,
-        "y": 323,
-      },
-      {
-        "x": 740,
-        "y": 323,
-      },
-      {
-        "x": 740,
-        "y": 436,
-      },
-      {
-        "x": 800,
-        "y": 436,
-      },
-    ],
-  },
-  {
-    "id": "hot-to-cosmos",
-    "points": [
-      {
-        "x": 1048,
-        "y": 203,
-      },
-      {
-        "x": 1114,
-        "y": 203,
-      },
-      {
-        "x": 1114,
-        "y": 196,
-      },
-      {
-        "x": 1180,
-        "y": 196,
-      },
-    ],
-  },
-  {
-    "id": "stream-to-blob",
-    "points": [
-      {
-        "x": 1053,
-        "y": 429,
-      },
-      {
-        "x": 1116.5,
-        "y": 429,
-      },
-      {
-        "x": 1116.5,
-        "y": 436,
-      },
-      {
-        "x": 1180,
-        "y": 436,
-      },
-    ],
-  },
-  {
-    "id": "hot-to-alerts",
-    "points": [
-      {
-        "x": 1048,
-        "y": 189,
-      },
-      {
-        "x": 1114,
-        "y": 189,
-      },
-      {
-        "x": 1114,
-        "y": 76,
-      },
-      {
-        "x": 1180,
-        "y": 76,
-      },
-    ],
-  },
-  {
-    "id": "alerts-to-delivery",
-    "points": [
-      {
-        "x": 1440,
-        "y": 76,
-      },
-      {
-        "x": 1560,
-        "y": 76,
-      },
-    ],
-  },
-  {
-    "id": "delivery-to-email",
-    "points": [
-      {
-        "x": 1820,
-        "y": 76,
-      },
-      {
-        "x": 1940,
-        "y": 76,
-      },
-    ],
-  },
-  {
-    "id": "grafana-to-cosmos",
-    "points": [
-      {
-        "x": 1560,
-        "y": 189,
-      },
-      {
-        "x": 1500,
-        "y": 189,
-      },
-      {
-        "x": 1500,
-        "y": 196,
-      },
-      {
-        "x": 1440,
-        "y": 196,
-      },
-    ],
-  },
-  {
-    "id": "metrics-to-stream",
-    "points": [
-      {
-        "x": 1180,
-        "y": 556,
-      },
-      {
-        "x": 1116.5,
-        "y": 556,
-      },
-      {
-        "x": 1116.5,
-        "y": 443,
-      },
-      {
-        "x": 1053,
-        "y": 443,
-      },
-    ],
-  },
-  {
-    "id": "grafana-to-metrics",
-    "points": [
-      {
-        "x": 1560,
-        "y": 203,
-      },
-      {
-        "x": 1500,
-        "y": 203,
-      },
-      {
-        "x": 1500,
-        "y": 556,
-      },
-      {
-        "x": 1440,
-        "y": 556,
-      },
-    ],
-  },
-]
-`;
-
 exports[`public examples route cleanly (estimated card sizes) > kafka-order-pipeline.json 1`] = `
 [
   {
@@ -7857,37 +7709,6 @@ exports[`public examples route cleanly (estimated card sizes) > kafka-order-pipe
 ]
 `;
 
-exports[`public examples route cleanly (estimated card sizes) > keda-render-workers.json 1`] = `
-[
-  {
-    "id": "publish",
-    "points": [
-      {
-        "x": 300,
-        "y": 216,
-      },
-      {
-        "x": 420,
-        "y": 216,
-      },
-    ],
-  },
-  {
-    "id": "consume",
-    "points": [
-      {
-        "x": 640,
-        "y": 216,
-      },
-      {
-        "x": 780,
-        "y": 216,
-      },
-    ],
-  },
-]
-`;
-
 exports[`public examples route cleanly (estimated card sizes) > measured-order-capacity.json 1`] = `
 [
   {
@@ -7963,152 +7784,6 @@ exports[`public examples route cleanly (estimated card sizes) > measured-order-c
       {
         "x": 150,
         "y": 680,
-      },
-    ],
-  },
-]
-`;
-
-exports[`public examples route cleanly (estimated card sizes) > multi-region-active-active.json 1`] = `
-[
-  {
-    "id": "users-to-r53",
-    "points": [
-      {
-        "x": 260,
-        "y": 396,
-      },
-      {
-        "x": 420,
-        "y": 396,
-      },
-    ],
-  },
-  {
-    "id": "r53-to-alb-us",
-    "points": [
-      {
-        "x": 648,
-        "y": 389,
-      },
-      {
-        "x": 711,
-        "y": 389,
-      },
-      {
-        "x": 711,
-        "y": 236,
-      },
-      {
-        "x": 800,
-        "y": 236,
-      },
-    ],
-  },
-  {
-    "id": "r53-to-alb-eu",
-    "points": [
-      {
-        "x": 648,
-        "y": 403,
-      },
-      {
-        "x": 711,
-        "y": 403,
-      },
-      {
-        "x": 711,
-        "y": 556,
-      },
-      {
-        "x": 800,
-        "y": 556,
-      },
-    ],
-  },
-  {
-    "id": "alb-us-to-api-us",
-    "points": [
-      {
-        "x": 1020,
-        "y": 236,
-      },
-      {
-        "x": 1180,
-        "y": 236,
-      },
-    ],
-  },
-  {
-    "id": "alb-eu-to-api-eu",
-    "points": [
-      {
-        "x": 1020,
-        "y": 556,
-      },
-      {
-        "x": 1180,
-        "y": 556,
-      },
-    ],
-  },
-  {
-    "id": "api-us-to-table-us",
-    "points": [
-      {
-        "x": 1414,
-        "y": 236,
-      },
-      {
-        "x": 1560,
-        "y": 236,
-      },
-    ],
-  },
-  {
-    "id": "api-eu-to-table-eu",
-    "points": [
-      {
-        "x": 1414,
-        "y": 556,
-      },
-      {
-        "x": 1560,
-        "y": 556,
-      },
-    ],
-  },
-  {
-    "id": "table-us-to-table-eu",
-    "points": [
-      {
-        "x": 1673,
-        "y": 272,
-      },
-      {
-        "x": 1673,
-        "y": 520,
-      },
-    ],
-  },
-  {
-    "id": "table-eu-to-table-us",
-    "points": [
-      {
-        "x": 1786,
-        "y": 556,
-      },
-      {
-        "x": 1824,
-        "y": 556,
-      },
-      {
-        "x": 1824,
-        "y": 236,
-      },
-      {
-        "x": 1786,
-        "y": 236,
       },
     ],
   },
@@ -8365,8 +8040,16 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
         "y": 316,
       },
       {
-        "x": 1560,
+        "x": 1483,
         "y": 316,
+      },
+      {
+        "x": 1483,
+        "y": 309,
+      },
+      {
+        "x": 1560,
+        "y": 309,
       },
     ],
   },
@@ -8399,8 +8082,16 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
         "y": 76,
       },
       {
-        "x": 1940,
+        "x": 1849,
         "y": 76,
+      },
+      {
+        "x": 1849,
+        "y": 69,
+      },
+      {
+        "x": 1940,
+        "y": 69,
       },
     ],
   },
@@ -8412,8 +8103,16 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
         "y": 316,
       },
       {
-        "x": 1940,
+        "x": 1871,
         "y": 316,
+      },
+      {
+        "x": 1871,
+        "y": 309,
+      },
+      {
+        "x": 1940,
+        "y": 309,
       },
     ],
   },
@@ -8492,6 +8191,190 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
       {
         "x": 2050,
         "y": 232,
+      },
+    ],
+  },
+  {
+    "id": "email-q-to-email-dlq",
+    "points": [
+      {
+        "x": 1670,
+        "y": 112,
+      },
+      {
+        "x": 1670,
+        "y": 160,
+      },
+    ],
+  },
+  {
+    "id": "sms-q-to-sms-dlq",
+    "points": [
+      {
+        "x": 1560,
+        "y": 323,
+      },
+      {
+        "x": 1527.5,
+        "y": 323,
+      },
+      {
+        "x": 1527.5,
+        "y": 556,
+      },
+      {
+        "x": 1560,
+        "y": 556,
+      },
+    ],
+  },
+  {
+    "id": "push-q-to-push-dlq",
+    "points": [
+      {
+        "x": 1670,
+        "y": 472,
+      },
+      {
+        "x": 1670,
+        "y": 496,
+      },
+      {
+        "x": 1516.5,
+        "y": 496,
+      },
+      {
+        "x": 1516.5,
+        "y": 616,
+      },
+      {
+        "x": 1670,
+        "y": 616,
+      },
+      {
+        "x": 1670,
+        "y": 640,
+      },
+    ],
+  },
+  {
+    "id": "email-dlq-to-dlq-triage",
+    "points": [
+      {
+        "x": 1780,
+        "y": 196,
+      },
+      {
+        "x": 1838,
+        "y": 196,
+      },
+      {
+        "x": 1838,
+        "y": 602,
+      },
+      {
+        "x": 1940,
+        "y": 602,
+      },
+    ],
+  },
+  {
+    "id": "sms-dlq-to-dlq-triage",
+    "points": [
+      {
+        "x": 1780,
+        "y": 556,
+      },
+      {
+        "x": 1860,
+        "y": 556,
+      },
+      {
+        "x": 1860,
+        "y": 616,
+      },
+      {
+        "x": 1940,
+        "y": 616,
+      },
+    ],
+  },
+  {
+    "id": "push-dlq-to-dlq-triage",
+    "points": [
+      {
+        "x": 1780,
+        "y": 676,
+      },
+      {
+        "x": 1860,
+        "y": 676,
+      },
+      {
+        "x": 1860,
+        "y": 630,
+      },
+      {
+        "x": 1940,
+        "y": 630,
+      },
+    ],
+  },
+  {
+    "id": "email-sender-to-identity",
+    "points": [
+      {
+        "x": 1940,
+        "y": 83,
+      },
+      {
+        "x": 1860,
+        "y": 83,
+      },
+      {
+        "x": 1860,
+        "y": 485,
+      },
+      {
+        "x": 1412.5,
+        "y": 485,
+      },
+      {
+        "x": 1412.5,
+        "y": 549,
+      },
+      {
+        "x": 1400,
+        "y": 549,
+      },
+    ],
+  },
+  {
+    "id": "sms-limiter-to-identity",
+    "points": [
+      {
+        "x": 1940,
+        "y": 323,
+      },
+      {
+        "x": 1882,
+        "y": 323,
+      },
+      {
+        "x": 1882,
+        "y": 507,
+      },
+      {
+        "x": 1423.5,
+        "y": 507,
+      },
+      {
+        "x": 1423.5,
+        "y": 563,
+      },
+      {
+        "x": 1400,
+        "y": 563,
       },
     ],
   },
@@ -10320,6 +10203,40 @@ exports[`public examples route cleanly (estimated card sizes) > rag-assistant.js
       {
         "x": 1290,
         "y": 392,
+      },
+    ],
+  },
+  {
+    "id": "ingest-q-to-ingest-dlq",
+    "points": [
+      {
+        "x": 537,
+        "y": 552,
+      },
+      {
+        "x": 537,
+        "y": 596,
+      },
+      {
+        "x": 543.5,
+        "y": 596,
+      },
+      {
+        "x": 543.5,
+        "y": 640,
+      },
+    ],
+  },
+  {
+    "id": "ingest-dlq-to-ingest-triage",
+    "points": [
+      {
+        "x": 667,
+        "y": 676,
+      },
+      {
+        "x": 800,
+        "y": 676,
       },
     ],
   },

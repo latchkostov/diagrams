@@ -17,7 +17,8 @@
       { "atMs": 0, "kind": "traffic", "label": "Agent bookings" },
       { "atMs": 5000, "kind": "status", "label": "status: east-alb" },
       { "atMs": 5000, "kind": "note", "label": "us-east-1 goes dark. DNS health checks stop sending travellers there within one check." },
-      { "atMs": 9000, "kind": "note", "label": "us-west-2 and eu-west-1 take the extra half each. Their cells run hotter but stay under capacity: that headroom is the design." },
+      { "atMs": 9000, "kind": "note", "label": "us-west-2 takes half of the extra traffic. Its cells run hotter but stay under capacity: that headroom is the design." },
+      { "atMs": 13000, "kind": "note", "label": "eu-west-1 takes the other half, with the same headroom." },
       { "atMs": 18000, "kind": "status", "label": "status: east-alb" },
       { "atMs": 18000, "kind": "note", "label": "us-east-1 is back and DNS sends its share home. Global tables replicated every booking while it was away." },
       { "atMs": 26000, "kind": "traffic", "label": "Web bookings ends" },
@@ -599,10 +600,11 @@
     ]
   },
   "notes": [
-    { "atMs": 0, "text": "Three regions take bookings. Each region splits customers across two cells; no request ever leaves its cell.", "focus": ["dns", "east-alb", "west-alb", "eu-alb"] },
+    { "atMs": 0, "text": "Three regions take bookings. Each region splits customers across two cells; no request ever leaves its cell.", "focus": ["travellers", "mobile", "agents", "dns"] },
     { "atMs": 5000, "text": "us-east-1 goes dark. DNS health checks stop sending travellers there within one check.", "focus": ["dns", "east-alb", "east-router"] },
-    { "atMs": 9000, "text": "us-west-2 and eu-west-1 take the extra half each. Their cells run hotter but stay under capacity: that headroom is the design.", "focus": ["west-c1-api", "west-c2-api", "eu-c1-api", "eu-c2-api"] },
-    { "atMs": 18000, "text": "us-east-1 is back and DNS sends its share home. Global tables replicated every booking while it was away.", "focus": ["dns", "east-alb", "east-c1-db", "west-c1-db"] }
+    { "atMs": 9000, "text": "us-west-2 takes half of the extra traffic. Its cells run hotter but stay under capacity: that headroom is the design.", "focus": ["west-alb", "west-router", "west-c1-api", "west-c2-api"] },
+    { "atMs": 13000, "text": "eu-west-1 takes the other half, with the same headroom.", "focus": ["eu-alb", "eu-router", "eu-c1-api", "eu-c2-api"] },
+    { "atMs": 18000, "text": "us-east-1 is back and DNS sends its share home. Global tables replicated every booking while it was away.", "focus": ["east-alb", "east-router", "east-c1-db", "east-c2-db"] }
   ],
   "latency": {
     "journeys": { "done": 1248, "retried": 0, "deadLettered": 0, "dropped": 4, "blocked": 0, "partial": 0, "truncated": 0 },

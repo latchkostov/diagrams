@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(16.6724px, 251.376px) scale(0.58319)",
+  "viewport": "translate(16.6724px, 204.72px) scale(0.58319)",
   "nodes": {
     "user": { "kind": "node", "box": "translate(40px, 160px) 223×72", "text": "Help center chat Customers ask questions" },
     "rag-api": { "kind": "node", "box": "translate(420px, 160px) 241×72", "text": "RAG API Retrieve · prompt · stream" },
@@ -13,7 +13,9 @@
     "ingest-q": { "kind": "node", "box": "translate(420px, 480px) 229×72", "text": "Ingest jobs One job per changed page" },
     "embed-worker": { "kind": "node", "box": "translate(800px, 480px) 235×72", "text": "Chunk and embed ~800 tokens · 100 overlap" },
     "embeddings": { "kind": "node", "box": "translate(1180px, 480px) 220×72", "text": "Embeddings API text-embedding-3-large" },
-    "vault": { "kind": "node", "box": "translate(1180px, 320px) 220×72", "text": "Vault LLM API keys" }
+    "vault": { "kind": "node", "box": "translate(1180px, 320px) 220×72", "text": "Vault LLM API keys" },
+    "ingest-dlq": { "kind": "node", "box": "translate(420px, 640px) 241×72", "text": "Failed ingest jobs dead letters after 5 tries" },
+    "ingest-triage": { "kind": "node", "box": "translate(800px, 640px) 247×72", "text": "Ingest triage logs page, alerts docs team" }
   },
   "edges": {
     "user-to-rag-api": "M263,196 L420,196",
@@ -29,7 +31,9 @@
     "embed-worker-to-embeddings": "M1035,523 L1104,523 Q1107.5,523 1107.5,519.5 L1107.5,519.5 Q1107.5,516 1111,516 L1180,516",
     "embed-worker-to-vector-db": "M917.5,480 L917.5,439.8 Q917.5,436 913.8,436 L913.8,436 Q910,436 910,432.3 L910,392",
     "rag-api-to-vault": "M547.5,232 L547.5,266 Q547.5,276 557.5,276 L1280,276 Q1290,276 1290,286 L1290,320",
-    "embed-worker-to-vault": "M1035,509 L1097.5,509 Q1107.5,509 1107.5,499 L1107.5,446 Q1107.5,436 1117.5,436 L1280,436 Q1290,436 1290,426 L1290,392"
+    "embed-worker-to-vault": "M1035,509 L1097.5,509 Q1107.5,509 1107.5,499 L1107.5,446 Q1107.5,436 1117.5,436 L1280,436 Q1290,436 1290,426 L1290,392",
+    "ingest-q-to-ingest-dlq": "M534.5,552 L534.5,593 Q534.5,596 537.5,596 L537.5,596 Q540.5,596 540.5,599 L540.5,640",
+    "ingest-dlq-to-ingest-triage": "M661,676 L800,676"
   },
   "labels": {
     "user-to-rag-api": { "style": "transform: translate(-50%, -50%) translate(335.5px, 196px); --fe-w: 71px; --fe-h: 19px;", "text": "POST /ask" },
@@ -45,6 +49,7 @@
     "embed-worker-to-embeddings": { "style": "transform: translate(-50%, -50%) translate(1082.25px, 523px); --fe-w: 83px; --fe-h: 19px;", "text": "Embed batch" },
     "embed-worker-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(917.5px, 457px); --fe-w: 95px; --fe-h: 19px;", "text": "Upsert chunks" },
     "rag-api-to-vault": { "style": "transform: translate(-50%, -50%) translate(918.75px, 276px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-    "embed-worker-to-vault": { "style": "transform: translate(-50%, -50%) translate(1198.75px, 436px); --fe-w: 20px; --fe-h: 20px;", "text": "" }
+    "embed-worker-to-vault": { "style": "transform: translate(-50%, -50%) translate(1198.75px, 436px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
+    "ingest-q-to-ingest-dlq": { "style": "transform: translate(-50%, -50%) translate(534.5px, 575px); --fe-w: 95px; --fe-h: 19px;", "text": "After 5 tries" }
   }
 }

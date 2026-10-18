@@ -151,6 +151,26 @@
       "sublabel": "LLM API keys",
       "x": 1180,
       "y": 320
+    },
+    {
+      "id": "ingest-dlq",
+      "stencil": "generic.queue",
+      "label": "Failed ingest jobs",
+      "sublabel": "dead letters after 5 tries",
+      "x": 420,
+      "y": 640
+    },
+    {
+      "id": "ingest-triage",
+      "stencil": "service.python",
+      "label": "Ingest triage",
+      "sublabel": "logs page, alerts docs team",
+      "x": 800,
+      "y": 640,
+      "props": {
+        "concurrency": 4,
+        "latencyMs": 100
+      }
     }
   ],
   "edges": [
@@ -294,6 +314,22 @@
       "relation": "secret",
       "sourceSide": "right",
       "targetSide": "bottom"
+    },
+    {
+      "id": "ingest-q-to-ingest-dlq",
+      "from": "ingest-q",
+      "to": "ingest-dlq",
+      "kind": "async",
+      "label": "After 5 tries",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "ingest-dlq-to-ingest-triage",
+      "from": "ingest-dlq",
+      "to": "ingest-triage",
+      "kind": "async"
     }
   ],
   "simulations": [

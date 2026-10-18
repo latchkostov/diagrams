@@ -17,7 +17,7 @@ async function screenshot(page: import("@playwright/test").Page, name: string) {
 
 test.describe("external discovery", () => {
   test("HTTP API selects External API by default in the rail and Ctrl+K", async ({ page }) => {
-    await gotoCanvas(page, "aws-fanout");
+    await gotoCanvas(page, "aws-serverless-orders");
     await page.getByTestId("palette-search").fill("HTTP API");
     await expect(page.getByTestId(/^palette-item-/).first()).toHaveAttribute(
       "data-testid",
@@ -37,7 +37,7 @@ test.describe("external discovery", () => {
 
   for (const [query, id] of searches) {
     test(`library and Ctrl+K find ${query}`, async ({ page, consoleErrors }) => {
-      await gotoCanvas(page, "aws-fanout");
+      await gotoCanvas(page, "aws-serverless-orders");
       await page.getByTestId("palette-search").fill(query);
       await expect(page.getByTestId(`palette-item-${id}`)).toBeVisible();
       await page.keyboard.press(`${MOD}+k`);
@@ -72,7 +72,7 @@ test.describe("external discovery", () => {
   for (const width of [1024, 1280]) {
     test(`Clients & external folds and reopens at ${width}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
-      await gotoCanvas(page, "aws-fanout");
+      await gotoCanvas(page, "aws-serverless-orders");
       if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("palette-toggle").click();
       const section = page.getByTestId("palette-section-clients");
       await expect(section).toContainText("Clients & external");
@@ -160,7 +160,7 @@ test.describe("external discovery", () => {
 
   test("WebMCP finds generic and named external APIs within the Clients category", async ({ page }) => {
     await installFakeModelContext(page);
-    await gotoCanvas(page, "aws-fanout");
+    await gotoCanvas(page, "aws-serverless-orders");
     await expect.poll(() => toolNames(page)).toContain("find_stencils");
     for (const [query, id] of searches) {
       const result = await callTool(page, "find_stencils", { query, category: "clients", limit: 10 });

@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Felhőalkalmazások",
   "examples.themeIntegration": "Integráció",
   "examples.themeReliability": "Megbízhatóság",
+  "examples.themeSystems": "Teljes rendszerek",
   "autoscaling.budget": "Az erőforrás-életciklus kerete túllépve: {limit, number}. Csökkentse a beállított csoportokat vagy a kapacitásszorzót.",
   "autoscaling.bindingInvalid": "Ez a módosítás érvénytelenné tenne egy skálázási forrást. Először módosítsd vagy kapcsold ki az érintett csomópont vagy mentett szimuláció szabályzatát.",
   "autoscaling.bindingRequired": "Csatlakoztasson kompatibilis brokert és fogyasztói csoportot, majd válassza ki a forrást a speciális beállításokban. Az előbeállítás csak a forrás kiválasztása után mentődik.",

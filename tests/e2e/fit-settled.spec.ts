@@ -1,8 +1,8 @@
 import { test, expect, savedDiagram, pauseClock, gotoLab, waitForStableBox } from "./fixtures";
 import { checksChrome, command, readCanvas, settledCanvas } from "../parity/browser/canvas";
 import type { Drawn } from "../parity/browser/canvas";
-import layout from "../parity/goldens/browser/layout/aws-fanout.json" with { type: "json" };
-import example from "../../src/examples/aws-fanout.json" with { type: "json" };
+import layout from "../parity/goldens/browser/layout/aws-serverless-orders.json" with { type: "json" };
+import example from "../../src/examples/aws-serverless-orders.json" with { type: "json" };
 import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
 import { boundaryAround } from "../../src/editor/arrange";
 import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
@@ -25,7 +25,7 @@ function holdFitFonts() {
 
 test("a viewport chosen before initial measurements cancels the bootstrap fit", async ({ page }) => {
   await page.addInitScript(holdResizeObservers, true);
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await expect(page.getByTestId("diagram-title")).toBeVisible();
   await page.clock.install();
   await pauseClock(page);
@@ -83,7 +83,7 @@ test("pressing a node stops an active fit transition", async ({ page }) => {
     });
   });
   await page.clock.install();
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
   await page.mouse.move(800, 500);
   await page.mouse.wheel(300, 200);
@@ -165,7 +165,7 @@ test("the first visible frame is fitted while font readiness is pending", async 
 test("pressing a node cancels a pending refinement without moving its screen box", async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(holdFitFonts);
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   const canvas = page.getByTestId("canvas-wrap");
   const node = page.getByTestId("node-client");
   await expect(node).toBeVisible();
@@ -305,7 +305,7 @@ function expectLaidOut(drawn: Drawn) {
 
 test("a failed font download settles using measured fallback fonts", async ({ page }) => {
   await page.route(/\.woff2?(\?.*)?$/, (route) => route.abort());
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   const canvas = page.getByTestId("canvas-wrap");
   await expect(canvas).toHaveAttribute("data-fit-pending", "false");
   const before = await readCanvas(page);
@@ -315,7 +315,7 @@ test("a failed font download settles using measured fallback fonts", async ({ pa
 });
 
 test("a decorative node animation does not block fitting the chrome", async ({ page }) => {
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   const canvas = page.getByTestId("canvas-wrap");
   await expect(canvas).toHaveAttribute("data-fit-pending", "false");
   await page.getByTestId("rf__node-client").evaluate((node) => {
@@ -368,7 +368,7 @@ test("measurement transactions release all node observations while idle and regi
     page.evaluate(() =>
       (window as unknown as { nodeObservations(): { registrations: number; retained: number } }).nodeObservations(),
     );
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
   const opened = await observations();
   expect(opened.registrations).toBeGreaterThan(0);
@@ -419,9 +419,9 @@ test("a folded title card caches its expanded footprint across resize notificati
       },
     });
   });
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
-  await checksChrome(page, "aws-fanout");
+  await checksChrome(page, "aws-serverless-orders");
   const card = page.getByTestId("diagram-card");
   const box = await card.boundingBox();
   const node = await page.getByTestId("rf__node-client").boundingBox();
@@ -495,7 +495,7 @@ test("Auto-layout commits before fitting even when React's deferred work is held
       pending.splice(0).forEach((run) => run());
     });
   });
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
   await page.clock.install();
   await page.keyboard.press("ControlOrMeta+k");
@@ -515,7 +515,7 @@ for (const scenario of ["opening", "early Auto-layout", "Auto-layout chrome", "A
   test(`fit waits for measurements: ${scenario}`, async ({ page }) => {
     const autoLayout = scenario !== "opening";
     await page.addInitScript(holdResizeObservers, scenario !== "Auto-layout chrome");
-    await page.goto("./?view=canvas&example=aws-fanout");
+    await page.goto("./?view=canvas&example=aws-serverless-orders");
     await expect(page.getByTestId("diagram-title")).toBeVisible();
     if (scenario === "Auto-layout chrome") {
       await settledCanvas(page);
@@ -552,7 +552,7 @@ for (const scenario of ["opening", "early Auto-layout", "Auto-layout chrome", "A
 
 test("Undo cancels Auto-layout while measurements are held and preserves history", async ({ page }) => {
   await page.addInitScript(holdResizeObservers, true);
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await expect(page.getByTestId("diagram-title")).toBeVisible();
   // Hold observer delivery, not font loading: both snapshots need the same real metrics.
   await page.getByTestId("canvas-wrap").evaluate(readyFonts);
@@ -592,7 +592,7 @@ test("opening Checks refits after its delayed UI chunk mounts", async ({ page })
     await held;
     await route.continue();
   });
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
   await command(page, "Check diagram", "canvas.check-diagram");
   await expect.poll(() => requested).toBe(true);
@@ -665,7 +665,7 @@ for (const interrupted of [false, true]) {
             }
           ).canvasMutations,
       );
-    await page.goto("./?view=canvas&example=aws-fanout");
+    await page.goto("./?view=canvas&example=aws-serverless-orders");
     await settledCanvas(page);
     const opened = await stats();
     expect(opened.observes).toBeGreaterThan(0);
@@ -735,7 +735,7 @@ for (const [width, height] of [
   [0.1, 0.4],
 ]) {
   test(`an imported ${width}×${height} boundary does not block opening, Fit view or Auto-layout`, async ({ page }) => {
-    await page.goto("./?view=canvas&example=aws-fanout");
+    await page.goto("./?view=canvas&example=aws-serverless-orders");
     await settledCanvas(page);
     const title = "Empty boundary import";
     await page.getByTestId("import-input").setInputFiles({
@@ -760,7 +760,7 @@ for (const [width, height] of [
 
 test("nested empty boundaries refit measured descendants before a later Fit view", async ({ page }) => {
   await page.addInitScript(holdResizeObservers, false);
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
   await page.evaluate(() => window.dispatchEvent(new Event("hold-resize-observers")));
   await page.getByTestId("import-input").setInputFiles({

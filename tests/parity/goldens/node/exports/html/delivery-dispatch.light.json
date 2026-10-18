@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "bf9424af8d64f699148be8359e2760d2f67924c0bd5c1f5eab014c98d6a9b60a", "bytes": 138640 },
+  "file": { "sha256": "57f765261c74a2362a865fadece1790c687c57edf102ab60470da9c23fd68e52", "bytes": 138622 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -732,7 +732,7 @@
           "timeline": [
             {
               "atMs": 0,
-              "action": { "do": "note", "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["couriers", "mqtt", "loc-ingest", "locations-topic"] }
+              "action": { "do": "note", "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["loc-ingest", "locations-topic"] }
             },
             {
               "atMs": 5000,

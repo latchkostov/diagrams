@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "af8e95b52c6c2cb40f2e5b2020a1833f56f386b5a86f059bb28ecd2d0d63f2e8", "bytes": 195757 },
+  "file": { "sha256": "b3ac8c1901b9e82f32393de1dccd35f6d2b10ddeba02ad7ac83806c396f3dc19", "bytes": 195730 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -1062,7 +1062,7 @@
           "timeline": [
             {
               "atMs": 0,
-              "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["checkout-api", "orders-db", "outbox-relay", "orders"] }
+              "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["outbox-relay", "orders"] }
             },
             {
               "atMs": 4000,

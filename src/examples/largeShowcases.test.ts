@@ -4,6 +4,8 @@ import { validateDiagram } from "../interop/native";
 import { createSimulationRun } from "../sim/simulation";
 import type { SimSnapshot } from "../sim/types";
 import { loadExample } from "./index";
+import { estimateCardSize } from "../canvas/nodes/size";
+import { LIVE_FIT, NOTE_FIT } from "../canvas/camera/geometry";
 
 // The large public showcases (docs/EXAMPLES.md): each tells its saved stories on a realistic, invented system.
 // Public fixtures only: this shallow glob never descends into local-only examples.
@@ -47,7 +49,43 @@ const between = (samples: { time: number; snap: SimSnapshot }[], from: number, t
 const most = (snaps: SimSnapshot[], node: string, field: "replicas" | "activeReplicas") =>
   Math.max(...snaps.map((s) => s.nodes[node]?.[field] ?? 0));
 
+/** The zoom React Flow's fit gives these node boxes inside a pane, as Live's camera does (src/canvas/camera/geometry.ts). */
+function fitZoom(
+  d: DiagramFile,
+  ids: readonly string[] | null,
+  pane: { width: number; height: number },
+  fit: typeof NOTE_FIT,
+) {
+  const boxes = d.nodes
+    .filter((n) => !ids || ids.includes(n.id))
+    .map((n) => ({ x: n.x, y: n.y, ...estimateCardSize(n.label, n.sublabel) }));
+  const width = Math.max(...boxes.map((b) => b.x + b.width)) - Math.min(...boxes.map((b) => b.x));
+  const height = Math.max(...boxes.map((b) => b.y + b.height)) - Math.min(...boxes.map((b) => b.y));
+  const room = {
+    width: pane.width - fit.insets.left - fit.insets.right,
+    height: pane.height - fit.insets.top - fit.insets.bottom,
+  };
+  return Math.min(fit.maxZoom, room.width / width, room.height / height);
+}
+/** Live's canvas at 1920 × 1080 (less the top bar and rails), and on a 390-pixel phone. */
+const DESKTOP = { width: 1820, height: 1000 };
+const PHONE = { width: 390, height: 760 };
+
 describe("large showcases", () => {
+  it.each(LARGE)("%s narrates in readable close-ups", (slug) => {
+    const d = diagram(slug);
+    const overview = fitZoom(d, null, PHONE, LIVE_FIT);
+    for (const s of d.simulations ?? [])
+      for (const step of s.timeline ?? []) {
+        if (step.action.do !== "note" || !step.action.focus?.length) continue;
+        const at = `${s.id}@${step.atMs}`;
+        // On a desktop the focused cards' 13.5 px names render at 8 px or more.
+        expect(fitZoom(d, step.action.focus, DESKTOP, NOTE_FIT), at).toBeGreaterThanOrEqual(0.6);
+        // A phone can't show a large close-up at full size, but the note still zooms in well past the overview.
+        expect(fitZoom(d, step.action.focus, PHONE, NOTE_FIT) / overview, at).toBeGreaterThanOrEqual(2);
+      }
+  });
+
   it.each(LARGE)("%s is large, valid, laid out and replays deterministically", async (slug) => {
     const d = await loadExample(slug);
     expect(validateDiagram(d)).toMatchObject({ ok: true });
@@ -195,5 +233,34 @@ describe("large showcases", () => {
     expect(failover.nodes.ingress.processed).toBe(failover.nodes["depot-chargers"].processed);
     const storm = play("ev-charging-network", "reboot-storm").end;
     expect(storm.nodes.ocpp.dropped).toBe(0);
+  });
+
+  it("EV charging: driver sessions reach billing, and a dead-lettered firmware command is retried", () => {
+    const d = diagram("ev-charging-network");
+    const engine = createSimulationRun(d, { id: "drivers", title: "Drivers", seed: 1, traffic: [] }).engine;
+    engine.inject("drivers", 10, { type: "StartSession" });
+    for (let t = 0; t < 400; t++) engine.step(10);
+    let s = engine.snapshot();
+    expect(s.nodes["sessions-db"].processed).toBe(10);
+    expect(s.nodes.billing.processed).toBe(10);
+    expect(s.nodes.stripe.processed).toBe(10);
+    expect(s.nodes.roaming.processed).toBe(10);
+    // Every command fails until it dead-letters; the DLQ hands the firmware command back to the campaign.
+    const failing = structuredClone(d);
+    failing.nodes.find((n) => n.id === "commands")!.props!.failureRate = 1;
+    const run = createSimulationRun(failing, { id: "wave", title: "Wave", seed: 1, traffic: [] }).engine;
+    run.inject("rollout", 1, { type: "FirmwareJob" });
+    for (let t = 0; t < 600; t++) run.step(10);
+    s = run.snapshot();
+    expect(s.nodes["cmd-q"].deadLettered).toBeGreaterThan(0);
+    expect(s.nodes.firmware.processed).toBeGreaterThan(1);
+  });
+
+  it("Dispatch: the partition story differs from the dinner rush at eight seconds", () => {
+    const at8 = (id: string) => play("delivery-dispatch", id).samples.find((x) => x.time >= 8000)!.snap.nodes;
+    const ceiling = at8("partition-ceiling");
+    const rush = at8("dinner-rush");
+    expect(ceiling["geo-indexer"].activeReplicas).toBe(8);
+    expect(rush["geo-indexer"].activeReplicas).toBeLessThan(8);
   });
 });

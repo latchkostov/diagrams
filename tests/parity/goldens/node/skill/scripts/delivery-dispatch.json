@@ -64,7 +64,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "247600e3ed8dfdf945d04698d612c256fc2a9709b3a6c5ef2ceda97436103791", "bytes": 21900 },
+    "decoded": { "sha256": "215a4b6c50adf0f9750a4f303c12f7a29f17ff641cc79c5039b3541f4396237b", "bytes": 21882 },
     "sameAsFile": true,
     "warned": false
   },
@@ -807,7 +807,7 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["couriers", "mqtt", "loc-ingest", "locations-topic"] }
+                "action": { "do": "note", "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["loc-ingest", "locations-topic"] }
               },
               {
                 "atMs": 5000,

@@ -350,3 +350,106 @@ test.describe("phone live panels", () => {
     await page.getByTestId("capacity-close").click();
   });
 });
+
+/** A known note in each large story, and the cards it brings into view. */
+const narrations = [
+  {
+    slug: "black-friday-commerce",
+    sim: "doors-open",
+    at: 4500,
+    text: "Doors open",
+    focus: ["gateway", "checkout-api"],
+  },
+  {
+    slug: "cell-based-bookings",
+    sim: "region-evacuation",
+    at: 5500,
+    text: "us-east-1 goes dark",
+    focus: ["dns", "east-alb"],
+  },
+  {
+    slug: "payments-ledger",
+    sim: "psp-brownout",
+    at: 4500,
+    text: "Adyen starts failing",
+    focus: ["psp-router", "adyen"],
+  },
+  {
+    slug: "delivery-dispatch",
+    sim: "partition-ceiling",
+    at: 5500,
+    text: "KEDA scales to eight",
+    focus: ["locations-topic", "geo-indexer"],
+  },
+  {
+    slug: "ev-charging-network",
+    sim: "vendor-shell",
+    at: 6500,
+    text: "deny rule stops",
+    focus: ["depot-fw", "depot-switch"],
+  },
+] as const;
+
+const boxOf = async (page: Page, testId: string) => {
+  const box = await page.getByTestId(testId).boundingBox();
+  if (!box) throw new Error(`No box for ${testId}`);
+  return box;
+};
+const clear = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+  a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+
+for (const viewport of [
+  { width: 1920, height: 1080 },
+  { width: 390, height: 844 },
+])
+  test.describe(`large showcases focus the current narration at ${viewport.width}`, () => {
+    test.use({ viewport });
+    for (const n of narrations)
+      test(`${n.slug}: “${n.text}” brings its cards into view`, async ({ page }) => {
+        test.slow();
+        await page.clock.install();
+        await gotoLive(page, `./?view=canvas&example=${n.slug}&live=1&sim=${n.sim}`);
+        await pauseClock(page);
+        await page.clock.runFor(1000);
+        await waitForStableViewport(page);
+        await page.getByTestId("live-restart").click();
+        await page.clock.runFor(n.at);
+        await expect(page.getByTestId("live-note")).toContainText(n.text);
+        // Let the narration camera finish its move.
+        await page.clock.runFor(1500);
+        await waitForStableViewport(page);
+        const canvas = await boxOf(page, "canvas-wrap");
+        const note = await boxOf(page, "live-note");
+        const bar = await boxOf(page, "live-controls");
+        for (const id of n.focus) {
+          const card = await boxOf(page, `rf__node-${id}`);
+          expect(card.x, id).toBeGreaterThanOrEqual(canvas.x - 0.5);
+          expect(card.y, id).toBeGreaterThanOrEqual(canvas.y - 0.5);
+          expect(card.x + card.width, id).toBeLessThanOrEqual(canvas.x + canvas.width + 0.5);
+          expect(card.y + card.height, id).toBeLessThanOrEqual(canvas.y + canvas.height + 0.5);
+          expect(clear(card, note), `${id} clear of the note`).toBe(true);
+          expect(clear(card, bar), `${id} clear of the playback bar`).toBe(true);
+          // The camera fitted the note's focus: on a desktop, cards render at 60% or more (220 px cards).
+          if (viewport.width >= 1280) expect(card.width, id).toBeGreaterThanOrEqual(132);
+        }
+      });
+  });
+
+test("dispatch opens the requested partition-ceiling story", async ({ page }) => {
+  test.slow();
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=delivery-dispatch&live=1&sim=partition-ceiling");
+  await pauseClock(page);
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("partition-ceiling");
+  await page.clock.runFor(1000);
+  await waitForStableViewport(page);
+  await page.getByTestId("live-restart").click();
+  await page.clock.runFor(5500);
+  await expect(page.getByTestId("live-note")).toContainText("KEDA scales to eight indexers and stops");
+  // Before the 12 s partition change, eight partitions hold the indexers at eight (the dinner rush peaks at five).
+  await page.clock.runFor(5000);
+  const indexers = page.getByTestId("node-badge-geo-indexer");
+  await expect(indexers).toHaveAttribute("data-ready", "8");
+  await expect(indexers).toHaveAttribute("data-desired", "8");
+});

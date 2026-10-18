@@ -1,5 +1,6 @@
 import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
 import { examples, getLoadedExample } from "../examples";
+import { RETIRED_EXAMPLES } from "../examples/retired";
 import { LIMITS, parseNative, preserveUnknown, validateDiagram } from "../interop/native";
 import { notify } from "../interop/ui/toast";
 import { safeStorage } from "./storage";
@@ -916,3 +917,25 @@ export const emptyDiagram = (): DiagramFile => ({
   nodes: [],
   edges: [],
 });
+
+/**
+ * Edits saved under a retired example's slug (an example autosave from before copies existed) become one of your
+ * diagrams, so retiring an example never loses them; the old key is removed once the copy is stored. Returns the
+ * new entries' slugs. Runs once at startup (src/main.tsx).
+ */
+export function adoptRetiredExampleEdits(): string[] {
+  const adopted: string[] = [];
+  for (const slug of Object.keys(RETIRED_EXAMPLES)) {
+    const key = AUTOSAVE_PREFIX + slug;
+    const edited = readDiagram(key);
+    if (!edited) continue;
+    try {
+      adopted.push(createLibraryDiagram(edited));
+    } catch {
+      continue; // Storage is full: keep the edits where they are and try again next time.
+    }
+    safeStorage.removeItem(key);
+  }
+  if (adopted.length) changed();
+  return adopted;
+}

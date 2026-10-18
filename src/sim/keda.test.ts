@@ -4,7 +4,7 @@ import { createFleet } from "./autoscaling";
 import { evaluateKeda, resetKeda, triggerValue } from "./keda";
 import { kedaLesson, resourceLesson, replicaRange } from "../model/autoscaling";
 import { kedaFixture } from "../lab/kedaFixture";
-import example from "../examples/keda-render-workers.json";
+import example from "../examples/autoscaling-basics.json";
 import type { DiagramFile } from "../model/types";
 import { createSimulationRun } from "./simulation";
 import { Deque } from "./deque";
@@ -23,14 +23,19 @@ describe("KEDA activation and generated HPA", () => {
   });
   it("shows zero, waking, backlog drain and return to zero within ten seconds in the public example", () => {
     const d = example as DiagramFile,
-      run = createSimulationRun(d, d.simulations![0]);
-    expect(run.engine.frame().nodes.worker.fleet!.ready).toBe(0);
+      run = createSimulationRun(
+        d,
+        d.simulations!.find((s) => s.id === "wake-on-burst")!,
+      );
+    const workers = () => run.engine.frame().nodes["render-workers"];
+    const requests = () => run.engine.frame().nodes["render-requests"];
+    expect(workers().fleet!.ready).toBe(0);
     run.step(2000);
-    expect(run.engine.frame().nodes.worker.fleet).toMatchObject({ desired: 1, ready: 0, starting: 1 });
-    expect(run.engine.frame().nodes.uploads.backlog).toBe(80);
+    expect(workers().fleet).toMatchObject({ desired: 1, ready: 0, starting: 1 });
+    expect(requests().backlog).toBe(80);
     run.step(8000);
-    expect(run.engine.frame().nodes.worker).toMatchObject({ processed: 80, fleet: { ready: 0, desired: 0 } });
-    expect(run.engine.frame().nodes.uploads.backlog).toBe(0);
+    expect(workers()).toMatchObject({ processed: 80, fleet: { ready: 0, desired: 0 } });
+    expect(requests().backlog).toBe(0);
   });
   it("uses one indexed metric read without traversing queued messages", () => {
     for (const count of [1000, 8000]) {

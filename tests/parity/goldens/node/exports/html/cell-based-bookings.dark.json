@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "5672981b49cbf7b78a50c544a8a39d32436d1eaca57e4334655f0bef87d35650", "bytes": 80268 },
+  "file": { "sha256": "ed0f9cb7385c246aca5b34b4a8dc6b8022d25c82ecac946d056809efd224b021", "bytes": 80340 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -732,21 +732,21 @@
           "timeline": [
             {
               "atMs": 0,
-              "action": { "do": "note", "text": "Six cells, each a complete copy of the booking stack. The pipeline deploys to one cell at a time.", "focus": ["pipeline", "east-c1-api"] }
+              "action": { "do": "note", "text": "Six cells, each a complete copy of the booking stack. The release pipeline deploys to one cell at a time, starting here.", "focus": ["east-c1-api", "east-c1-avail", "east-c1-db", "east-c1-cache"] }
             },
             { "atMs": 4000, "action": { "do": "props", "node": "east-c1-api", "props": { "failureRate": 0.8 } } },
             {
               "atMs": 4000,
-              "action": { "do": "note", "text": "Build 7.3 reaches the canary cell and fails most of its bookings.", "focus": ["pipeline", "east-c1-api", "east-c1-db"] }
+              "action": { "do": "note", "text": "Build 7.3 reaches the canary cell and fails most of its bookings.", "focus": ["east-c1-api", "east-c1-avail", "east-c1-db"] }
             },
             {
               "atMs": 8000,
-              "action": { "do": "note", "text": "Only that cell's customers notice. The other five cells, and every other region, carry on untouched.", "focus": ["east-c1-api", "east-c2-api", "west-c1-api", "eu-c1-api"] }
+              "action": { "do": "note", "text": "Only that cell's customers notice. The neighbouring cell, and the four cells in the other regions, carry on untouched.", "focus": ["east-c1-api", "east-c2-api", "east-c1-db", "east-c2-db"] }
             },
             { "atMs": 12000, "action": { "do": "props", "node": "east-c1-api", "props": { "failureRate": 0 } } },
             {
               "atMs": 12000,
-              "action": { "do": "note", "text": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again.", "focus": ["metrics", "pipeline", "east-c1-api"] }
+              "action": { "do": "note", "text": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again.", "focus": ["east-c1-api", "east-c1-db"] }
             }
           ],
           "expectations": [

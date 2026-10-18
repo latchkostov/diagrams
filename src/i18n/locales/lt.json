@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Debesijos programos",
   "examples.themeIntegration": "Integracija",
   "examples.themeReliability": "Patikimumas",
+  "examples.themeSystems": "Visos sistemos",
   "autoscaling.budget": "Viršytas išteklių gyvavimo ciklo biudžetas: {limit, number}. Sumažinkite sukonfigūruotas grupes arba pajėgumo daugiklį.",
   "autoscaling.bindingInvalid": "Šis pakeitimas padarytų mastelio keitimo šaltinį netinkamą. Pirmiausia pakeiskite arba išjunkite paveikto mazgo ar išsaugotos simuliacijos politiką.",
   "autoscaling.bindingRequired": "Prijunkite suderinamą brokerį ir gavėjų grupę, tada pasirinkite šaltinį išplėstinėse nuostatose. Išankstinė nuostata išsaugoma tik pasirinkus šaltinį.",

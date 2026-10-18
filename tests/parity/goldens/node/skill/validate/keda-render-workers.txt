@@ -1,2 +1,0 @@
-exit 0
-VALID <repo>/src/examples/keda-render-workers.json: 3 nodes, 2 edges, 2 simulations

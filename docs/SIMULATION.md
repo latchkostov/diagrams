@@ -899,10 +899,11 @@ raw recommendation, bounded desired count, reason and next deadline. The existin
 main fields (preset, target, min, max); source choice, activation, polling, cooldown, resource assumptions
 and complete controller JSON stay in Advanced. No scaler node or global control is added.
 
-`keda-render-workers` is the public Autoscaling showcase: a synthetic poster-rendering burst wakes an
-idle Kafka consumer and returns it to zero within ten simulated seconds. Its explicitly shortened
+`autoscaling-basics` is the public Autoscaling showcase: its KEDA story, a synthetic poster-rendering burst, wakes an
+idle Kafka consumer and returns it to zero within ten simulated seconds (its HPA story scales image workers on CPU). Its explicitly shortened
 1 s polling/sync/startup and 2 s cooldown teach the phases rather than claiming vendor defaults.
-Three frozen `a2-*` corpus diagrams pin activation, published cooldown and idle-reader behavior.
+Four frozen `a2-*` corpus diagrams pin activation, published cooldown, idle-reader behavior and the original
+standalone showcase (`a2-render-workers`, with `a1-image-workers` for HPA).
 The seeded per-step ownership oracle includes KEDA zero activation, strict threshold edges, cooldown,
 lag bursts, pause/resume, policy refusal and scaler disable/re-enable. It also checks nonnegative broker
 pending/outstanding counts, desired bounds and successful zero-transition eligibility. Deliberate regression

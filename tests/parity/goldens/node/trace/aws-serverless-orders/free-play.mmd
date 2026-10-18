@@ -1,5 +1,5 @@
 ---
-title: "PlaceOrder #1 · 3.87 s end to end · 3 copies"
+title: "PlaceOrder #1 · 3.90 s end to end · 5 copies"
 ---
 sequenceDiagram
   participant client as Web shop
@@ -9,7 +9,10 @@ sequenceDiagram
   participant stream_fn as Stream publisher
   participant bus as commerce-bus
   participant sfn as Payment workflow
+  participant archive_q as order-archive
+  participant archive_fn as Archive orders
   participant stripe as Stripe
+  participant archive_s3 as Order archive
   participant fulfillment_q as fulfillment-queue
   participant sns as order-updates
   participant fulfillment_fn as RequestShipment
@@ -25,16 +28,24 @@ sequenceDiagram
   orders_table-)stream_fn: OrderPlaced (+0.69 s)<br/>DynamoDB Streams
   stream_fn-)bus: OrderPlaced (+1.06 s)<br/>PutEvents
   bus-)sfn: OrderPlaced (+1.36 s)<br/>Rule: OrderPlaced
+  bus-)archive_q: OrderPlaced (+1.36 s)<br/>Rule: all orders
+  archive_q-)archive_fn: OrderPlaced (+1.66 s)<br/>Event source
   sfn->>stripe: OrderPaid (+2.06 s)<br/>Task: charge
   sfn->>orders_table: OrderPaid (+2.06 s)<br/>UpdateItem: PAID
+  archive_fn->>archive_s3: OrderArchived (+2.10 s)<br/>PutObject
   stripe-->>sfn: reply (+2.26 s)
   orders_table-->>sfn: reply (+2.27 s)
   orders_table-)stream_fn: OrderPaid (+2.27 s)<br/>DynamoDB Streams
+  archive_s3-->>archive_fn: reply (+2.31 s)
   stream_fn-)bus: OrderPaid (+2.64 s)<br/>PutEvents
   bus-)fulfillment_q: OrderPaid (+2.94 s)<br/>Rule: OrderPaid
   bus-)sns: OrderPaid (+2.94 s)<br/>Rule: OrderPaid
+  bus-)archive_q: OrderPaid (+2.94 s)<br/>Rule: all orders
   fulfillment_q-)fulfillment_fn: OrderPaid (+3.24 s)<br/>Event source
   sns-)email: OrderPaid (+3.24 s)<br/>Email
   sns-)sms: OrderPaid (+3.24 s)<br/>SMS
-  fulfillment_fn->>three_pl: ShipmentRequested (+3.67 s)<br/>Create shipment
-  three_pl-->>fulfillment_fn: reply (+3.87 s)
+  archive_q-)archive_fn: OrderPaid (+3.24 s)<br/>Event source
+  fulfillment_fn->>three_pl: ShipmentRequested (+3.68 s)<br/>Create shipment
+  archive_fn->>archive_s3: OrderArchived (+3.69 s)<br/>PutObject
+  three_pl-->>fulfillment_fn: reply (+3.88 s)
+  archive_s3-->>archive_fn: reply (+3.90 s)

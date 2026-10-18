@@ -1,0 +1,785 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "uploader": { "ratePerSec": 4, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Upload clients", "healthChecks": false },
+    "uploads": { "partitions": 6, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "Image uploads", "healthChecks": false },
+    "image-workers": {
+      "replicas": 1,
+      "concurrency": 4,
+      "latencyMs": 250,
+      "jitter": 0,
+      "resources": {
+        "preset": "io-service",
+        "presetRevision": "1",
+        "cpuMsPerMessage": 40,
+        "baselineMemoryMiB": 128,
+        "memoryMiBPerMessage": 2,
+        "cpuRequestMilli": 500,
+        "cpuLimitMilli": 1000,
+        "memoryRequestMiB": 256,
+        "memoryLimitMiB": 512,
+        "startup": { "delayMs": 2000, "jitterFraction": 0 },
+        "terminationGraceMs": 30000
+      },
+      "autoscaling": {
+        "mode": "on",
+        "modelRevision": "a1",
+        "preset": "hpa-service",
+        "presetRevision": "1",
+        "controller": {
+          "kind": "hpa",
+          "minReplicas": 1,
+          "maxReplicas": 6,
+          "initialReplicas": 1,
+          "settings": {
+            "syncMs": 1000,
+            "tolerance": 0.1,
+            "initialReadinessDelayMs": 0,
+            "cpuInitializationPeriodMs": 0,
+            "metrics": [
+              {
+                "source": { "kind": "resource", "resource": "cpu" },
+                "target": { "kind": "utilization", "percentOfRequest": 70 },
+                "windowMs": 1000,
+                "metricDelayMs": 0
+              }
+            ],
+            "up": {
+              "stabilizationMs": 0,
+              "selectPolicy": "Max",
+              "policies": [
+                { "type": "Pods", "value": 4, "periodMs": 15000 },
+                { "type": "Percent", "value": 100, "periodMs": 15000 }
+              ]
+            },
+            "down": {
+              "stabilizationMs": 30000,
+              "selectPolicy": "Max",
+              "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+            }
+          }
+        }
+      },
+      "ratePerSec": 2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Thumbnail workers",
+      "healthChecks": false,
+      "preset": "processor-lesson",
+      "presetRevision": "1"
+    },
+    "thumbnails": { "latencyMs": 10, "jitter": 0, "ratePerSec": 2, "replicas": 1, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Thumbnails", "healthChecks": false },
+    "poster-studio": { "ratePerSec": 0, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Poster studio", "healthChecks": false },
+    "render-requests": { "partitions": 3, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "Render requests", "healthChecks": false },
+    "render-workers": {
+      "replicas": 1,
+      "concurrency": 4,
+      "latencyMs": 250,
+      "jitter": 0,
+      "resources": {
+        "preset": "io-service",
+        "presetRevision": "1",
+        "cpuMsPerMessage": 40,
+        "baselineMemoryMiB": 128,
+        "memoryMiBPerMessage": 2,
+        "cpuRequestMilli": 500,
+        "cpuLimitMilli": 1000,
+        "memoryRequestMiB": 256,
+        "memoryLimitMiB": 512,
+        "startup": { "delayMs": 1000, "jitterFraction": 0 },
+        "terminationGraceMs": 30000
+      },
+      "autoscaling": {
+        "mode": "on",
+        "modelRevision": "a2",
+        "preset": "keda-kafka",
+        "presetRevision": "1",
+        "controller": {
+          "kind": "keda",
+          "minReplicas": 0,
+          "maxReplicas": 6,
+          "initialReplicas": 0,
+          "pollingMs": 1000,
+          "cooldownMs": 2000,
+          "initialCooldownMs": 0,
+          "triggers": [
+            {
+              "type": "kafka",
+              "source": { "node": "render-requests", "group": "renders" },
+              "target": 10,
+              "activation": 0,
+              "useCachedMetrics": false,
+              "allowIdleConsumers": false
+            }
+          ],
+          "settings": {
+            "syncMs": 1000,
+            "tolerance": 0.1,
+            "initialReadinessDelayMs": 0,
+            "cpuInitializationPeriodMs": 0,
+            "metrics": [],
+            "up": {
+              "stabilizationMs": 0,
+              "selectPolicy": "Max",
+              "policies": [
+                { "type": "Pods", "value": 4, "periodMs": 15000 },
+                { "type": "Percent", "value": 100, "periodMs": 15000 }
+              ]
+            },
+            "down": {
+              "stabilizationMs": 300000,
+              "selectPolicy": "Max",
+              "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+            }
+          }
+        }
+      },
+      "ratePerSec": 2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Poster workers",
+      "healthChecks": false,
+      "preset": "processor-lesson",
+      "presetRevision": "1"
+    }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "image-workers.props.resources", "image-workers.props.autoscaling", "image-workers.props.preset", "image-workers.props.presetRevision", "render-workers.props.resources", "render-workers.props.autoscaling", "render-workers.props.preset", "render-workers.props.presetRevision"] },
+  "autoScale": { "freePlay": 1, "upload-burst": 1, "wake-on-burst": 2 },
+  "brokerAssignments": {
+    "brokers": {
+      "uploads": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+      "render-requests": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "image-workers": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "render-workers": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "image-workers",
+      "suggestion": "Thumbnail workers: 25% utilized",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "uploader": ["Infinity", 4, 0, 1, 1, 0],
+        "uploads": [16, 4, 0.25, 1, 1, 0],
+        "image-workers": [
+          16,
+          4,
+          0.25,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "thumbnails": ["Infinity", 4, 0, 1, 1, 0],
+        "poster-studio": ["Infinity", 0, 0, 1, 1, 0],
+        "render-requests": [16, 0, 0, 1, 1, 0],
+        "render-workers": [
+          16,
+          0,
+          0,
+          1,
+          1,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ]
+      },
+      "connections": { "upload": 4, "thumbnail": 4, "store": 4 },
+      "offeredTypes": { "uploader": ["Upload clients"], "uploads": ["Upload clients"], "image-workers": ["Upload clients"], "thumbnails": ["Upload clients"] }
+    },
+    "explanations": {
+      "image-workers": {
+        "id": "image-workers",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 16,
+        "offered": 4,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "uploads",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 6
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0.25,
+        "growth": 0,
+        "contributors": [{ "edge": "thumbnail", "node": "uploads", "label": "Image uploads", "rate": 4 }],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "render-workers": {
+        "id": "render-workers",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 16,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "render-requests",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 4,
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "uploader": [{ "kind": "publishes", "edge": "upload", "peer": "uploads" }],
+      "image-workers": [
+        {
+          "kind": "consumes",
+          "edge": "thumbnail",
+          "peer": "uploads",
+          "group": "thumbnails",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ],
+      "poster-studio": [{ "kind": "publishes", "edge": "request-render", "peer": "render-requests" }],
+      "render-workers": [
+        {
+          "kind": "consumes",
+          "edge": "render",
+          "peer": "render-requests",
+          "group": "renders",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "uploader": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 4,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Upload clients",
+        "healthChecks": false
+      },
+      "uploads": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 6,
+        "messageType": "Image uploads",
+        "healthChecks": false
+      },
+      "image-workers": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Thumbnail workers",
+        "healthChecks": false
+      },
+      "thumbnails": {
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Thumbnails",
+        "healthChecks": false
+      },
+      "poster-studio": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 0,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Poster studio",
+        "healthChecks": false
+      },
+      "render-requests": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Render requests",
+        "healthChecks": false
+      },
+      "render-workers": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Poster workers",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "upload-burst": {
+      "configured": "(same as edit)",
+      "simulation": "upload-burst",
+      "analysis": {
+        "bottleneck": "image-workers",
+        "suggestion": "Thumbnail workers: raise replicas from 1 to 3.",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "uploader": ["Infinity", 48, 0, 1, 1, 0],
+          "uploads": [16, 48, 3, 1, 1, 0],
+          "image-workers": [
+            16,
+            48,
+            3,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "thumbnails": ["Infinity", 48, 0, 1, 1, 0],
+          "poster-studio": ["Infinity", 0, 0, 1, 1, 0],
+          "render-requests": [16, 0, 0, 1, 1, 0],
+          "render-workers": [
+            16,
+            0,
+            0,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ]
+        },
+        "connections": { "upload": 48, "thumbnail": 48, "store": 48 },
+        "offeredTypes": { "uploader": ["ImageUploaded"], "uploads": ["ImageUploaded"], "image-workers": ["ImageUploaded"], "thumbnails": ["ImageUploaded"] }
+      },
+      "explanations": {
+        "image-workers": {
+          "id": "image-workers",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 16,
+          "offered": 48,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "uploads",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 6
+            }
+          ],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 3,
+          "growth": 32,
+          "contributors": [{ "edge": "thumbnail", "node": "uploads", "label": "Image uploads", "rate": 48 }],
+          "target": 0.5,
+          "minimumReplicas": 3,
+          "targetReplicas": 6,
+          "changes": [{ "nodeId": "image-workers", "key": "replicas", "from": 1, "to": 6 }],
+          "fixId": "capacity:image-workers",
+          "converged": true
+        },
+        "render-workers": {
+          "id": "render-workers",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 16,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "render-requests",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 3
+            }
+          ],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": [{ "nodeId": "image-workers", "key": "replicas", "from": 1, "to": 6 }],
+      "redundancy": {
+        "uploads": { "replicas": 2, "enough": false },
+        "image-workers": { "replicas": 6, "enough": true }
+      },
+      "resolved": "(same as edit)"
+    },
+    "wake-on-burst": {
+      "configured": "(same as edit)",
+      "simulation": "wake-on-burst",
+      "analysis": {
+        "bottleneck": "render-workers",
+        "suggestion": "Poster workers: raise replicas from 1 to 5.",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "uploader": ["Infinity", 0, 0, 1, 1, 0],
+          "uploads": [16, 0, 0, 1, 1, 0],
+          "image-workers": [
+            16,
+            0,
+            0,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "thumbnails": ["Infinity", 0, 0, 1, 1, 0],
+          "poster-studio": ["Infinity", 80, 0, 1, 1, 0],
+          "render-requests": [16, 80, 5, 1, 1, 0],
+          "render-workers": [
+            16,
+            80,
+            5,
+            1,
+            1,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ]
+        },
+        "connections": { "request-render": 80, "render": 80 },
+        "offeredTypes": { "poster-studio": ["Poster studio"], "render-requests": ["Poster studio"], "render-workers": ["Poster studio"] }
+      },
+      "explanations": {
+        "image-workers": {
+          "id": "image-workers",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 16,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "uploads",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 6
+            }
+          ],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "render-workers": {
+          "id": "render-workers",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 16,
+          "offered": 80,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "render-requests",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 3
+            }
+          ],
+          "slots": 4,
+          "seconds": 0.25,
+          "utilization": 5,
+          "growth": 64,
+          "contributors": [{ "edge": "render", "node": "render-requests", "label": "Render requests", "rate": 80 }],
+          "target": 0.5,
+          "minimumReplicas": 5,
+          "targetReplicas": 10,
+          "changes": [
+            { "nodeId": "render-workers", "key": "replicas", "from": 1, "to": 10 },
+            { "nodeId": "render-requests", "key": "partitions", "from": 3, "to": 10 }
+          ],
+          "fixId": "capacity:render-workers",
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": [
+        { "nodeId": "render-workers", "key": "replicas", "from": 1, "to": 10 },
+        { "nodeId": "render-requests", "key": "partitions", "from": 3, "to": 10 }
+      ],
+      "redundancy": {
+        "render-requests": { "replicas": 2, "enough": false },
+        "render-workers": { "replicas": 10, "enough": true }
+      },
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "image-workers",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Thumbnail workers at 25% · 4/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "uploader": ["idle", "4/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "25% · 4/s of 16/s"],
+            "image-workers": ["ok", "25% · 4/s of 16/s"],
+            "thumbnails": ["idle", "4/s · no limit", { "modeled": false }],
+            "poster-studio": ["idle", "", { "modeled": false }],
+            "render-requests": ["idle", ""],
+            "render-workers": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "image-workers",
+          "headline": "Thumbnail workers and 1 more are over capacity",
+          "detail": "125% · 20/s of 16/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "image-workers", "key": "replicas", "from": 1, "to": 3, "label": "Thumbnail workers" }
+            ],
+            "label": "Thumbnail workers 1 → 3 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "uploader": ["idle", "20/s · no limit", { "modeled": false }],
+            "uploads": ["over", "125% · 20/s of 16/s"],
+            "image-workers": ["over", "125% · 20/s of 16/s"],
+            "thumbnails": ["idle", "20/s · no limit", { "modeled": false }],
+            "poster-studio": ["idle", "", { "modeled": false }],
+            "render-requests": ["idle", ""],
+            "render-workers": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "image-workers",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Thumbnail workers at 25% · 4/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "uploader": ["idle", "4/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "25% · 4/s of 16/s"],
+            "image-workers": ["ok", "25% · 4/s of 16/s"],
+            "thumbnails": ["idle", "4/s · no limit", { "modeled": false }],
+            "poster-studio": ["idle", "", { "modeled": false }],
+            "render-requests": ["idle", ""],
+            "render-workers": ["idle", ""]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "uploads": { "partitions": 12 }, "render-requests": { "partitions": 6 } }, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "image-workers",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Thumbnail workers at 25% · 4/s of 16/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "uploader": ["idle", "4/s · no limit", { "modeled": false }],
+            "uploads": ["ok", "25% · 4/s of 16/s"],
+            "image-workers": ["ok", "25% · 4/s of 16/s"],
+            "thumbnails": ["idle", "4/s · no limit", { "modeled": false }],
+            "poster-studio": ["idle", "", { "modeled": false }],
+            "render-requests": ["idle", ""],
+            "render-workers": ["idle", ""]
+          }
+        },
+        "partitionsNotes": { "uploads": "All configured reader instances already have an assignment.", "render-requests": "All configured reader instances already have an assignment." }
+      }
+    },
+    "upload-burst": {
+      "tone": "over",
+      "top": "image-workers",
+      "headline": "Thumbnail workers and 1 more are over capacity",
+      "detail": "300% · 48/s of 16/s",
+      "fix": {
+        "changes": [{ "nodeId": "image-workers", "key": "replicas", "from": 1, "to": 6, "label": "Thumbnail workers" }],
+        "label": "Thumbnail workers 1 → 6 replicas"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "uploader": ["idle", "48/s · no limit", { "modeled": false }],
+        "uploads": ["over", "300% · 48/s of 16/s"],
+        "image-workers": ["over", "300% · 48/s of 16/s"],
+        "thumbnails": ["idle", "48/s · no limit", { "modeled": false }],
+        "poster-studio": ["idle", "", { "modeled": false }],
+        "render-requests": ["idle", ""],
+        "render-workers": ["idle", ""]
+      }
+    },
+    "wake-on-burst": {
+      "tone": "over",
+      "top": "render-workers",
+      "headline": "Poster workers and 1 more are over capacity",
+      "detail": "500% · 80/s of 16/s",
+      "fix": {
+        "changes": [
+          { "nodeId": "render-workers", "key": "replicas", "from": 1, "to": 10, "label": "Poster workers" },
+          { "nodeId": "render-requests", "key": "partitions", "from": 3, "to": 10, "label": "Render requests" }
+        ],
+        "label": "Poster workers 1 → 10 replicas, Render requests: Partitions → 10"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "uploader": ["idle", "", { "modeled": false }],
+        "uploads": ["idle", ""],
+        "image-workers": ["idle", ""],
+        "thumbnails": ["idle", "", { "modeled": false }],
+        "poster-studio": ["idle", "80/s · no limit", { "modeled": false }],
+        "render-requests": ["over", "500% · 80/s of 16/s"],
+        "render-workers": ["over", "500% · 80/s of 16/s"]
+      }
+    }
+  }
+}

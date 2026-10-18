@@ -1,0 +1,12 @@
+---
+title: "Upload clients #1 · 300 ms end to end"
+---
+sequenceDiagram
+  participant uploader as Upload clients
+  participant uploads as Image uploads
+  participant image_workers as Thumbnail workers
+  participant thumbnails as Thumbnails
+  uploader-)uploads: Upload clients (+0.00 s)
+  uploads-)image_workers: Upload clients (+0.01 s)
+  Note over uploader,thumbnails: ⏱ 250 ms at Thumbnail workers: processing
+  image_workers-)thumbnails: Upload clients (+0.27 s)

@@ -84,7 +84,7 @@ test("Undo selects changed nodes; canvas Ctrl+A and palette Select all include t
 });
 
 test("Tidy of all AWS nodes preserves the drawing when boundary membership leaves no room", async ({ page }) => {
-  const opened = await openExample(page, "aws-fanout");
+  const opened = await openExample(page, "aws-serverless-orders");
   await tidyAll(page, opened);
   expect((await settledCanvas(page)).nodes).toEqual(opened.nodes);
   await expect(page.getByTestId("toast")).toContainText("Couldn't find room. Nothing moved.");

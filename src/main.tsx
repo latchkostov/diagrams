@@ -17,6 +17,14 @@ import { startStorageLifecycle } from "./lib/storage";
 import { startI18n } from "./i18n/start";
 import { preloadCanvasView } from "./canvas/loadCanvasView";
 import { registerScenarioPlanner } from "./lib/scenarioPlanner";
+import { redirectRetiredExample } from "./examples/retired";
+import { adoptRetiredExampleEdits } from "./lib/diagramIO";
+
+// A retired example’s address opens its replacement before anything reads the URL, and edits saved under its old
+// slug become one of your diagrams (src/examples/retired.ts).
+const redirected = redirectRetiredExample(window.location.href);
+if (redirected) window.history.replaceState(window.history.state, "", redirected);
+adoptRetiredExampleEdits();
 
 // Scenario sizing plays simulations, so in the editor it runs in the checks worker; agent tools, Copy prompt and a
 // fix’s re-check read the worker’s results (src/lib/scenarioPlanner.ts). Registered before anything can check.

@@ -23,7 +23,7 @@ for (const [width, height] of [
 }
 
 test("changing badge text cannot prevent geometric convergence; text is still recorded", async ({ page }) => {
-  await openExample(page, "aws-fanout");
+  await openExample(page, "aws-serverless-orders");
   await page.getByTestId("rf__node-client").evaluate((node) => {
     const badge = document.createElement("span");
     badge.dataset.testid = "parity-changing-badge";

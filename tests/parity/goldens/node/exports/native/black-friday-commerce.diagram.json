@@ -2365,8 +2365,6 @@
             "do": "note",
             "text": "A sustained peak: about 130 orders a second reach Kafka.",
             "focus": [
-              "checkout-api",
-              "orders-db",
               "outbox-relay",
               "orders"
             ]

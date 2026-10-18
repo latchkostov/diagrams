@@ -24,33 +24,21 @@ const bySlug = Object.fromEntries(
 const EXPECTED: Record<string, string[]> = {
   "where-the-time-goes": [],
   "zone-outage-drill": [],
-  "autoscaling-image-workers": [],
-  "keda-render-workers": ["warning capacity:uploads", "suggestion capacity:worker"],
+  // The KEDA pipeline sleeps at zero in free play (no rate), so nothing is offered to it until a story sends work.
+  "autoscaling-basics": [],
   "aks-app-config-key-vault": [],
-  "aws-fanout": ["suggestion dead-letter:archive-q", "suggestion dead-letter:receipt-q", "suggestion no-reader:dlq"],
   "aws-serverless-orders": [],
   "branch-to-datacentre": [],
-  "azure-service-bus-integration": [
-    "warning dead-letter:posting-sub",
-    "suggestion dead-letter:approval-sub",
-    "suggestion no-reader:dlq",
-  ],
+  "azure-service-bus-integration": [],
   "cdc-analytics": [],
   "cqrs-event-sourcing": [],
   "event-driven-data-platform": [],
   "gcp-streaming-analytics": [],
-  "iot-telemetry": ["warning capacity:hot"],
   "kafka-order-pipeline": [],
-  "multi-region-active-active": [],
   "nightly-batch-elt": [],
-  "notification-fanout": [
-    "suggestion dead-letter:email-q",
-    "suggestion dead-letter:sms-q",
-    "suggestion dead-letter:push-q",
-    "suggestion secret-identity:key-vault",
-  ],
+  "notification-fanout": [],
   "outbox-saga-checkout": ["suggestion no-reader:payments-dlq"],
-  "rag-assistant": ["suggestion dead-letter:ingest-q"],
+  "rag-assistant": [],
   "webhook-ingestion": [],
   "partitions-vs-subscriptions": ["warning capacity:log-readers"],
   "shared-api-quotas": ["warning capacity:answer"],
@@ -119,8 +107,6 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  */
 const PLANNED: Record<string, string[]> = {
   "zone-outage-drill": ["26 dropped api-b in Zone outage: no health checks (down)"],
-  "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
-  "multi-region-active-active": ["96 dropped alb-us in Region outage and failover (down)"],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
   // A dark region drops what was already on its way there; a bad canary build fails requests in its own cell only.

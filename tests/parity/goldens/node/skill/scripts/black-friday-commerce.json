@@ -81,7 +81,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "d07a57eec09e9f9bf8463a44a347ea280ed7b456d6925c0b577d0732ef8749c4", "bytes": 32415 },
+    "decoded": { "sha256": "44d88cc89b29afad51a1c520a85c0e2de0a7137821dcc81ea251cc0e486aeda2", "bytes": 32388 },
     "sameAsFile": true,
     "warned": true
   },
@@ -1295,7 +1295,7 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["checkout-api", "orders-db", "outbox-relay", "orders"] }
+                "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["outbox-relay", "orders"] }
               },
               {
                 "atMs": 4000,

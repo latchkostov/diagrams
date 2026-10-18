@@ -36,7 +36,9 @@
         "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
         "embed-worker": { "replicas": [4, 4, 0] },
         "embeddings": { "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -55,7 +57,9 @@
         "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
         "embed-worker": { "replicas": [4, 4, 0] },
         "embeddings": { "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     }
   ],
@@ -75,9 +79,28 @@
       "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
       "embed-worker": { "replicas": [4, 4, 0] },
       "embeddings": { "replicas": [1, 1, 0] },
-      "vault": { "replicas": [1, 1, 0] }
+      "vault": { "replicas": [1, 1, 0] },
+      "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "ingest-triage": { "replicas": [1, 1, 0] }
     },
-    "edges": { "user-to-rag-api": 250, "rag-api-to-cache": 250, "rag-api-to-vector-db": 250, "rag-api-to-llm": 250, "rag-api-to-feedback": 60, "feedback-to-eval-job": 60, "eval-job-to-llm": 60, "eval-job-to-quality": 60, "docs-to-ingest-q": 0, "ingest-q-to-embed-worker": 0, "embed-worker-to-embeddings": 0, "embed-worker-to-vector-db": 0, "rag-api-to-vault": 0, "embed-worker-to-vault": 0 }
+    "edges": {
+      "user-to-rag-api": 250,
+      "rag-api-to-cache": 250,
+      "rag-api-to-vector-db": 250,
+      "rag-api-to-llm": 250,
+      "rag-api-to-feedback": 60,
+      "feedback-to-eval-job": 60,
+      "eval-job-to-llm": 60,
+      "eval-job-to-quality": 60,
+      "docs-to-ingest-q": 0,
+      "ingest-q-to-embed-worker": 0,
+      "embed-worker-to-embeddings": 0,
+      "embed-worker-to-vector-db": 0,
+      "rag-api-to-vault": 0,
+      "embed-worker-to-vault": 0,
+      "ingest-q-to-ingest-dlq": 0,
+      "ingest-dlq-to-ingest-triage": 0
+    }
   },
   "events": {
     "total": 2980,

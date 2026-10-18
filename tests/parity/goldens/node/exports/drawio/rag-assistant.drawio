@@ -71,6 +71,16 @@
             <mxGeometry x="1200" y="326" width="180" height="60" as="geometry" />
           </mxCell>
         </object>
+        <object id="dg-n-ingest-dlq" label="Failed ingest jobs&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;dead letters after 5 tries&lt;/span&gt;" dg_id="ingest-dlq" dg_stencil="generic.queue">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F59E0B1A;strokeColor=#F59E0B;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="440" y="646" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ingest-triage" label="Ingest triage&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;logs page, alerts docs team&lt;/span&gt;" dg_id="ingest-triage" dg_stencil="service.python" dg_props="{&quot;concurrency&quot;:4,&quot;latencyMs&quot;:100}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="820" y="646" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
         <object id="dg-e-user-to-rag-api" label="POST /ask" dg_id="user-to-rag-api" dg_kind="sync" dg_props="{&quot;travelMs&quot;:200}">
           <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-user" target="dg-n-rag-api">
             <mxGeometry relative="1" as="geometry" />
@@ -138,6 +148,16 @@
         </object>
         <object id="dg-e-embed-worker-to-vault" label="" dg_id="embed-worker-to-vault" dg_kind="async" dg_relation="secret">
           <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-embed-worker" target="dg-n-vault">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingest-q-to-ingest-dlq" label="After 5 tries" dg_id="ingest-q-to-ingest-dlq" dg_kind="async" dg_props="{&quot;dlq&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ingest-q" target="dg-n-ingest-dlq">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingest-dlq-to-ingest-triage" label="" dg_id="ingest-dlq-to-ingest-triage" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ingest-dlq" target="dg-n-ingest-triage">
             <mxGeometry relative="1" as="geometry" />
           </mxCell>
         </object>

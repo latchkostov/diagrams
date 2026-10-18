@@ -1009,3 +1009,25 @@ it("example-session cleanup leaves a pending promoted draft save alone", () => {
   expect(pending.resolve()).toEqual(owner);
   pending.dispose();
 });
+
+describe("retired examples", () => {
+  it("edits saved under a retired example's slug become one of your diagrams, once", () => {
+    storage.setItem("diagrams.autosave.v1:aws-fanout", JSON.stringify({ ...good, title: "My fan-out edits" }));
+    storage.setItem("diagrams.autosave.v1:kafka-order-pipeline", JSON.stringify(good));
+    const [slug, ...more] = io.adoptRetiredExampleEdits();
+    expect(more).toEqual([]);
+    expect(io.listLibrary().map((e) => [e.slug, e.title])).toEqual([[slug, "My fan-out edits"]]);
+    expect(io.getCurrent(slug)?.nodes.map((n) => n.id)).toEqual(["a"]);
+    expect(storage.getItem("diagrams.autosave.v1:aws-fanout")).toBeNull();
+    // A current example's legacy autosave keeps working as before.
+    expect(storage.getItem("diagrams.autosave.v1:kafka-order-pipeline")).not.toBeNull();
+    expect(io.adoptRetiredExampleEdits()).toEqual([]);
+  });
+
+  it("keeps the edits under the old slug when Your diagrams can't store them", () => {
+    storage.setItem("diagrams.autosave.v1:iot-telemetry", JSON.stringify(good));
+    storage.quotaBytes = 10;
+    expect(io.adoptRetiredExampleEdits()).toEqual([]);
+    expect(storage.getItem("diagrams.autosave.v1:iot-telemetry")).not.toBeNull();
+  });
+});

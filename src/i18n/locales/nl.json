@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Cloudapps",
   "examples.themeIntegration": "Integratie",
   "examples.themeReliability": "Betrouwbaarheid",
+  "examples.themeSystems": "Complete systemen",
   "autoscaling.budget": "Budget voor de levenscyclus van resources overschreden: {limit, number}. Verklein de ingestelde groepen of de capaciteitsfactor.",
   "autoscaling.bindingInvalid": "Deze wijziging zou een schaalbron ongeldig maken. Wijzig of deactiveer eerst het beleid van het betrokken knooppunt of de opgeslagen simulatie.",
   "autoscaling.bindingRequired": "Verbind een compatibele broker en consumer group en kies de bron onder Geavanceerd. Deze voorinstelling wordt pas opgeslagen nadat een bron is gekozen.",

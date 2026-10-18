@@ -233,14 +233,15 @@ test.describe("inputs & capacity", () => {
   });
 
   test("idle replicas behind too few partitions say so, and the fix adds partitions", async ({ page }) => {
-    await gotoLive(page, "./?view=canvas&example=iot-telemetry&live=1&sim=hot-spot&paused=1");
+    await gotoLive(page, "./?view=canvas&example=ev-charging-network&live=1&sim=hot-spot&paused=1");
     await page.getByTestId("live-capacity").click();
-    await expect(page.getByTestId("bottleneck-headline")).toHaveText("Device state projector: 63 of 64 replicas idle");
-    await expect(page.getByTestId("capacity-idle-hot")).toContainText("63/64 idle");
-    await expect(page.getByTestId("bottleneck-fix")).toContainText("1 → 64 partitions");
+    await expect(page.getByTestId("bottleneck-headline")).toHaveText("Twin updater: 63 of 64 replicas idle");
+    await expect(page.getByTestId("capacity-idle-state")).toContainText("63/64 idle");
+    await expect(page.getByTestId("bottleneck-fix")).toHaveText("Fix: Charger events: Partitions → 64");
+    await expect(page.getByTestId("bottleneck-fix")).toHaveAttribute("title", "Charger events 1 → 64 partitions");
     await page.getByTestId("bottleneck-apply").click();
-    await expect(page.getByTestId("capacity-partitions-hub")).toHaveValue("64");
-    await expect(page.getByTestId("capacity-idle-hot")).toHaveCount(0);
+    await expect(page.getByTestId("capacity-partitions-events")).toHaveValue("64");
+    await expect(page.getByTestId("capacity-idle-state")).toHaveCount(0);
   });
 
   test("fan-out edges take a share of messages in the inspector; it feeds the analysis", async ({ page }) => {

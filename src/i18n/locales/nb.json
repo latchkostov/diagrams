@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Skyapper",
   "examples.themeIntegration": "Integrasjon",
   "examples.themeReliability": "Pålitelighet",
+  "examples.themeSystems": "Hele systemer",
   "autoscaling.budget": "Budsjettet for ressursenes livssyklus er overskredet: {limit, number}. Reduser de konfigurerte gruppene eller kapasitetsfaktoren.",
   "autoscaling.bindingInvalid": "Denne endringen vil gjøre en skaleringskilde ugyldig. Endre eller deaktiver først policyen for den berørte noden eller den lagrede simuleringen.",
   "autoscaling.bindingRequired": "Koble til en kompatibel broker og forbrukergruppe, og velg kilden under Avansert. Forhåndsinnstillingen lagres først når en kilde er valgt.",

@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "ee14a17e1165d02bd5d6e4b8cd5b138538b7a3663535955541aeaab52dec505a",
-    "bytes": 168613,
+    "sha256": "bbcc6d08f3252342bff121566e4efd95739479f4538056fdb79139737f221f1a",
+    "bytes": 181304,
     "inlined": {
       "cisco.catalyst": "net-switch c2f4dc3f7e8bbddd",
       "cisco.isr": "net-router 470e17f3277c44a1",
@@ -12,8 +12,10 @@
       "databricks": "databricks e12c620773a11ca3",
       "flink": "flink c8f2d493877447b7",
       "generic.batch-job": "generic-batch-job b4b740a6bd33435a",
+      "generic.email": "generic-email ce10423898f3e51d",
       "generic.external-api": "generic-external-api 8115696d1b46c6c6",
       "generic.scheduler": "generic-scheduler e9060d1f29acbbe0",
+      "grafana": "grafana 6d9cdbf24a7433ad",
       "juniper.ex": "net-switch c2f4dc3f7e8bbddd",
       "juniper.mx": "net-router 470e17f3277c44a1",
       "juniper.srx": "net-firewall 6643d189423b9fb6",
@@ -44,7 +46,7 @@
           { "id": "ota", "label": "Firmware and commands", "tone": "neutral", "x": 1900, "y": 1116, "width": 1140, "height": 316, "group": "azure" },
           { "id": "cold", "label": "Cold path", "tone": "neutral", "x": 3220, "y": 436, "width": 720, "height": 316, "group": "azure" },
           { "id": "platform", "label": "Platform", "tone": "neutral", "x": 3220, "y": 1116, "width": 1153, "height": 176, "group": "azure" },
-          { "id": "partners", "label": "Partners", "tone": "neutral", "x": 4580, "y": 576, "width": 300, "height": 456 }
+          { "id": "partners", "label": "Partners", "tone": "neutral", "x": 4580, "y": 136, "width": 300, "height": 896 }
         ],
         "nodes": [
           {
@@ -201,7 +203,7 @@
             "sublabel": "32 partitions · capture on",
             "x": 2780,
             "y": 200,
-            "props": { "partitions": 32 },
+            "props": { "partitions": 32, "retentionDays": 7 },
             "group": "hub"
           },
           {
@@ -235,6 +237,7 @@
             "group": "hot"
           },
           { "id": "alerts", "stencil": "azure.event-grid", "label": "Fault alerts", "sublabel": "Event Grid", "x": 3680, "y": 200, "group": "hot" },
+          { "id": "dashboard", "stencil": "grafana", "label": "Fleet dashboard", "sublabel": "availability by site", "x": 4100, "y": 60, "group": "hot" },
           {
             "id": "oncall",
             "stencil": "azure.logic-apps",
@@ -262,7 +265,7 @@
             "sublabel": "start, stop, receipts",
             "x": 2360,
             "y": 780,
-            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "emits": "RemoteStart" },
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
             "group": "sessions"
           },
           {
@@ -395,7 +398,7 @@
               "api": {
                 "maxInFlight": 20,
                 "quotas": [
-                  { "id": "ocpi-rate", "unit": "requests", "amount": 20, "windowMs": 1000, "algorithm": "token-bucket" }
+                  { "id": "ocpi-rate", "unit": "requests", "amount": 50, "windowMs": 1000, "algorithm": "token-bucket" }
                 ]
               }
             },
@@ -411,6 +414,7 @@
             "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 200, "jitter": 0.1, "failureRate": 0 },
             "group": "partners"
           },
+          { "id": "tech-email", "stencil": "generic.email", "label": "Technician email", "sublabel": "fault tickets", "x": 4620, "y": 200, "group": "partners" },
           { "id": "dso", "stencil": "client.partner", "label": "Grid operator", "sublabel": "load reports", "x": 4620, "y": 640, "group": "partners" }
         ],
         "edges": [
@@ -495,10 +499,27 @@
             "kind": "async",
             "props": { "group": "field-service" }
           },
+          {
+            "id": "oncall--tech-email",
+            "from": "oncall",
+            "to": "tech-email",
+            "label": "Ticket",
+            "kind": "sync",
+            "props": { "emits": "FaultTicket" }
+          },
+          { "id": "dashboard--state-db", "from": "dashboard", "to": "state-db", "label": "Queries twins", "kind": "async", "relation": "depends" },
           { "id": "drivers--apim", "from": "drivers", "to": "apim", "label": "HTTPS", "kind": "sync" },
           { "id": "apim--sessions-api", "from": "apim", "to": "sessions-api", "kind": "sync" },
           { "id": "sessions-api--sessions-db", "from": "sessions-api", "to": "sessions-db", "label": "Session", "kind": "sync" },
-          { "id": "sessions-api--cmd-q", "from": "sessions-api", "to": "cmd-q", "label": "RemoteStart", "kind": "async", "targetSide": "top" },
+          {
+            "id": "sessions-api--cmd-q",
+            "from": "sessions-api",
+            "to": "cmd-q",
+            "label": "RemoteStart",
+            "kind": "async",
+            "targetSide": "top",
+            "props": { "emits": "RemoteStart" }
+          },
           { "id": "metering--sessions-db", "from": "metering", "to": "sessions-db", "label": "kWh", "kind": "sync" },
           {
             "id": "sessions-db--billing",
@@ -521,7 +542,14 @@
           },
           { "id": "rollout--firmware", "from": "rollout", "to": "firmware", "label": "Wave", "kind": "async" },
           { "id": "firmware--images", "from": "firmware", "to": "images", "label": "Stage", "kind": "sync" },
-          { "id": "firmware--cmd-q", "from": "firmware", "to": "cmd-q", "label": "UpdateFirmware", "kind": "async" },
+          {
+            "id": "firmware--cmd-q",
+            "from": "firmware",
+            "to": "cmd-q",
+            "label": "UpdateFirmware",
+            "kind": "async",
+            "props": { "emits": "UpdateFirmware" }
+          },
           {
             "id": "cmd-dlq--firmware",
             "from": "cmd-dlq",
@@ -642,7 +670,7 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "Four consumer groups read charger events: twins, fault detection, metering and capture to the lake.", "focus": ["events", "state", "faults", "metering", "raw"] }
+                "action": { "do": "note", "text": "Four consumer groups read charger events: twins, fault detection, metering and capture to the lake.", "focus": ["events", "state", "faults", "state-db"] }
               },
               {
                 "atMs": 4000,
@@ -730,6 +758,67 @@
                 "op": "==",
                 "value": 0,
                 "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "hot-spot",
+            "title": "One partition runs hot",
+            "description": "A misconfigured partition key sends every street charger's events to one Event Hubs partition. Each consumer group can use one reader per partition, so 63 of the twin updater's 64 replicas sit idle and lag grows; redistributing the key across 32 partitions drains it.",
+            "seed": 54,
+            "scale": 2,
+            "durationMs": 20000,
+            "setup": {
+              "props": {
+                "events": { "partitions": 1 },
+                "state": { "replicas": 64, "concurrency": 1, "latencyMs": 150 }
+              }
+            },
+            "traffic": [
+              {
+                "id": "street",
+                "node": "street",
+                "label": "200 readings on one partition",
+                "messageType": "MeterValues",
+                "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 4000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Every reading lands on one partition. One partition activates one twin updater; the other 63 replicas sit idle while lag grows.", "focus": ["events", "state"] }
+              },
+              { "atMs": 8000, "action": { "do": "props", "node": "events", "props": { "partitions": 32 } } },
+              {
+                "atMs": 8000,
+                "action": { "do": "note", "text": "The partition key is fixed and spread across 32 partitions. More replicas get work and the lag drains.", "focus": ["events", "state", "state-db"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "hot-lag",
+                "label": "Lag builds on the hot partition",
+                "metric": { "node": "events", "field": "lag", "group": "state" },
+                "op": ">",
+                "value": 0,
+                "when": "at",
+                "atMs": 6000
+              },
+              {
+                "id": "twins",
+                "label": "Every reading reaches the twins",
+                "metric": { "node": "state-db", "field": "processed" },
+                "op": "==",
+                "value": 200,
+                "when": "end"
+              },
+              {
+                "id": "drained",
+                "label": "The lag drains",
+                "metric": { "node": "events", "field": "lag", "group": "state" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
               }
             ]
           }

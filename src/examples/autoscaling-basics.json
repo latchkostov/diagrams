@@ -1,0 +1,464 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-a1"
+  },
+  "title": "Autoscaling basics",
+  "description": "Two invented pipelines, one per autoscaler. Image workers scale on CPU with a Kubernetes HPA while Kafka buffers an upload burst; poster render workers sleep at zero until KEDA sees Kafka lag, wake, drain the burst and return to zero. Teaching timings (1 s syncs and polling, 1-2 s startup, short stabilization and cooldown) are deliberately shorter than the published defaults. Open a worker's Live details for replica history.",
+  "nodes": [
+    {
+      "id": "uploader",
+      "stencil": "client.browser",
+      "label": "Upload clients",
+      "x": 80,
+      "y": 180,
+      "props": {
+        "ratePerSec": 4
+      }
+    },
+    {
+      "id": "uploads",
+      "stencil": "kafka.topic",
+      "label": "Image uploads",
+      "sublabel": "6 partitions",
+      "x": 420,
+      "y": 180,
+      "props": {
+        "partitions": 6
+      }
+    },
+    {
+      "id": "image-workers",
+      "stencil": "service.go",
+      "label": "Thumbnail workers",
+      "x": 780,
+      "y": 180,
+      "props": {
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 250,
+        "jitter": 0,
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": {
+            "delayMs": 2000,
+            "jitterFraction": 0
+          },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a1",
+          "preset": "hpa-service",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "hpa",
+            "minReplicas": 1,
+            "maxReplicas": 6,
+            "initialReplicas": 1,
+            "settings": {
+              "syncMs": 1000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 0,
+              "cpuInitializationPeriodMs": 0,
+              "metrics": [
+                {
+                  "source": {
+                    "kind": "resource",
+                    "resource": "cpu"
+                  },
+                  "target": {
+                    "kind": "utilization",
+                    "percentOfRequest": 70
+                  },
+                  "windowMs": 1000,
+                  "metricDelayMs": 0
+                }
+              ],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Pods",
+                    "value": 4,
+                    "periodMs": 15000
+                  },
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 30000,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "thumbnails",
+      "stencil": "aws.s3",
+      "label": "Thumbnails",
+      "x": 1140,
+      "y": 180,
+      "props": {
+        "latencyMs": 10,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "poster-studio",
+      "stencil": "client.browser",
+      "label": "Poster studio",
+      "x": 80,
+      "y": 440,
+      "props": {
+        "ratePerSec": 0
+      }
+    },
+    {
+      "id": "render-requests",
+      "stencil": "kafka.topic",
+      "label": "Render requests",
+      "sublabel": "3 partitions",
+      "x": 420,
+      "y": 440,
+      "props": {
+        "partitions": 3
+      }
+    },
+    {
+      "id": "render-workers",
+      "stencil": "service.go",
+      "label": "Poster workers",
+      "x": 780,
+      "y": 440,
+      "props": {
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 250,
+        "jitter": 0,
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 40,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 500,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 256,
+          "memoryLimitMiB": 512,
+          "startup": {
+            "delayMs": 1000,
+            "jitterFraction": 0
+          },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a2",
+          "preset": "keda-kafka",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "keda",
+            "minReplicas": 0,
+            "maxReplicas": 6,
+            "initialReplicas": 0,
+            "pollingMs": 1000,
+            "cooldownMs": 2000,
+            "initialCooldownMs": 0,
+            "triggers": [
+              {
+                "type": "kafka",
+                "source": {
+                  "node": "render-requests",
+                  "group": "renders"
+                },
+                "target": 10,
+                "activation": 0,
+                "useCachedMetrics": false,
+                "allowIdleConsumers": false
+              }
+            ],
+            "settings": {
+              "syncMs": 1000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 0,
+              "cpuInitializationPeriodMs": 0,
+              "metrics": [],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Pods",
+                    "value": 4,
+                    "periodMs": 15000
+                  },
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 300000,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "upload",
+      "from": "uploader",
+      "to": "uploads",
+      "kind": "async",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "thumbnail",
+      "from": "uploads",
+      "to": "image-workers",
+      "kind": "async",
+      "props": {
+        "travelMs": 10,
+        "group": "thumbnails"
+      }
+    },
+    {
+      "id": "store",
+      "from": "image-workers",
+      "to": "thumbnails",
+      "kind": "async",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "request-render",
+      "from": "poster-studio",
+      "to": "render-requests",
+      "kind": "async",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "render",
+      "from": "render-requests",
+      "to": "render-workers",
+      "kind": "async",
+      "props": {
+        "travelMs": 10,
+        "group": "renders"
+      }
+    }
+  ],
+  "annotations": [
+    {
+      "id": "label-hpa",
+      "kind": "text",
+      "text": "HPA on CPU",
+      "x": 80,
+      "y": 120,
+      "width": 240,
+      "height": 40,
+      "textSize": "m"
+    },
+    {
+      "id": "label-keda",
+      "kind": "text",
+      "text": "KEDA on Kafka lag, from zero",
+      "x": 80,
+      "y": 380,
+      "width": 320,
+      "height": 40,
+      "textSize": "m"
+    }
+  ],
+  "simulations": [
+    {
+      "id": "upload-burst",
+      "title": "HPA: image workers absorb a burst",
+      "seed": 42,
+      "scale": 1,
+      "durationMs": 24000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "uploader",
+          "messageType": "ImageUploaded",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 48,
+            "durationMs": 4000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 1000,
+          "action": {
+            "do": "note",
+            "text": "Demand is above one worker’s target. New replicas start while Kafka holds the backlog.",
+            "focus": ["uploads", "image-workers"]
+          }
+        },
+        {
+          "atMs": 7000,
+          "action": {
+            "do": "note",
+            "text": "Ready workers drain the upload burst. Open Live details to see desired and ready replicas over time.",
+            "focus": ["image-workers"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "buffered",
+          "label": "Uploads wait for starting workers",
+          "metric": {
+            "node": "uploads",
+            "field": "lag",
+            "group": "thumbnails"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 2000
+        },
+        {
+          "id": "drained",
+          "label": "Every upload finishes",
+          "metric": {
+            "node": "image-workers",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 192,
+          "when": "end"
+        },
+        {
+          "id": "empty",
+          "label": "The topic backlog drains",
+          "metric": {
+            "node": "uploads",
+            "field": "lag",
+            "group": "thumbnails"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "wake-on-burst",
+      "title": "KEDA: render workers wake from zero",
+      "seed": 7,
+      "scale": 1,
+      "durationMs": 10000,
+      "traffic": [
+        {
+          "id": "burst",
+          "node": "poster-studio",
+          "shape": {
+            "kind": "burst",
+            "count": 80,
+            "atMs": 1000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 1000,
+          "action": {
+            "do": "note",
+            "text": "Eighty render requests arrive while no worker runs. KEDA sees the group's lag and wakes one.",
+            "focus": ["render-requests", "render-workers"]
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "HPA takes over from one replica and scales on lag; the backlog drains, then the workers return to zero.",
+            "focus": ["render-workers"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "woke",
+          "label": "A render worker starts from zero",
+          "metric": {
+            "node": "render-requests",
+            "field": "lag",
+            "group": "renders"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 2000
+        },
+        {
+          "id": "rendered",
+          "label": "All 80 posters render",
+          "metric": {
+            "node": "render-workers",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 80,
+          "when": "end"
+        },
+        {
+          "id": "drained",
+          "label": "The lag drains",
+          "metric": {
+            "node": "render-requests",
+            "field": "lag",
+            "group": "renders"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        }
+      ]
+    }
+  ]
+}

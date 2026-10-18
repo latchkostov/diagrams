@@ -16,6 +16,12 @@ flowchart LR
     email(["Email receipt<br/>Amazon SES"])
     sms(["SMS update<br/>End User Messaging"])
     cognito["Cognito user pool<br/>Shopper sign-in"]
+    archive_q["order-archive<br/>Batch 100 · retention 14 days"]
+    archive_dlq["order-archive-dlq<br/>Redrive after 5 receives"]
+    archive_fn["Archive orders<br/>Batch 100 · JSONL"]
+    archive_s3[("Order archive<br/>s3://orders/year/month/")]
+    schedule["Reconcile schedule<br/>rate(15 minutes)"]
+    reconcile["Reconcile orders<br/>Find stuck PLACED orders"]
   end
   client(["Web shop<br/>Signed-in customers"])
   stripe(["Stripe<br/>Payment intents"])
@@ -37,5 +43,12 @@ flowchart LR
   sns -.->|"Email"| email
   sns -.->|"SMS"| sms
   apigw -.->|"gets tokens from: JWT authorizer"| cognito
-  linkStyle 3,4,5,8,9,11,12,13,14,15 stroke-dasharray: 6 4
+  bus -.->|"Rule: all orders"| archive_q
+  archive_q -.->|"Event source"| archive_fn
+  archive_fn -->|"PutObject"| archive_s3
+  archive_q -.->|"After 5 receives"| archive_dlq
+  archive_dlq -.->|"Redrive"| archive_q
+  schedule -.->|"Scheduled event"| reconcile
+  reconcile -->|"Query PLACED"| orders_table
+  linkStyle 3,4,5,8,9,11,12,13,14,15,17,18,20,21,22 stroke-dasharray: 6 4
   linkStyle 16 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4

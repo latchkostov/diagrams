@@ -1,9 +1,7 @@
 exit 1
 VALID <repo>/src/examples/aks-app-config-key-vault.json: 11 nodes, 10 edges, 2 boundaries, 2 simulations
-VALID <repo>/src/examples/autoscaling-image-workers.json: 4 nodes, 3 edges, 2 simulations
-VALID <repo>/src/examples/aws-fanout.json: 16 nodes, 15 edges, 1 boundary, 2 simulations
-VALID <repo>/src/examples/aws-serverless-orders.json: 16 nodes, 17 edges, 1 boundary, 2 simulations
-VALID <repo>/src/examples/azure-service-bus-integration.json: 14 nodes, 14 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/aws-serverless-orders.json: 22 nodes, 24 edges, 1 boundary, 3 simulations
+VALID <repo>/src/examples/azure-service-bus-integration.json: 17 nodes, 19 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/branch-to-datacentre.json: 13 nodes, 16 edges, 2 boundaries, 2 simulations
   warning: simulations[0] "One firewall fails over": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
   warning: simulations[1] "The firewall blocks the branch from payments": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
@@ -11,22 +9,22 @@ VALID <repo>/src/examples/cdc-analytics.json: 10 nodes, 11 edges, 2 boundaries, 
 VALID <repo>/src/examples/cqrs-event-sourcing.json: 12 nodes, 13 edges, 2 boundaries, 2 simulations
 VALID <repo>/src/examples/event-driven-data-platform.json: 21 nodes, 20 edges, 2 boundaries, 2 simulations
 VALID <repo>/src/examples/gcp-streaming-analytics.json: 9 nodes, 8 edges, 1 boundary, 2 simulations
-VALID <repo>/src/examples/iot-telemetry.json: 11 nodes, 11 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/kafka-order-pipeline.json: 15 nodes, 15 edges, 1 boundary, 2 simulations
-VALID <repo>/src/examples/multi-region-active-active.json: 8 nodes, 9 edges, 2 boundaries, 2 simulations
 VALID <repo>/src/examples/nightly-batch-elt.json: 10 nodes, 10 edges, 1 boundary, 2 simulations
-VALID <repo>/src/examples/notification-fanout.json: 15 nodes, 15 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/notification-fanout.json: 20 nodes, 23 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/outbox-saga-checkout.json: 18 nodes, 20 edges, 1 boundary, 2 simulations
-VALID <repo>/src/examples/rag-assistant.json: 13 nodes, 14 edges, 2 simulations
+VALID <repo>/src/examples/rag-assistant.json: 15 nodes, 16 edges, 2 simulations
 VALID <repo>/src/examples/webhook-ingestion.json: 13 nodes, 13 edges, 1 boundary, 2 simulations
 VALID <repo>/tests/parity/corpus/a1-burst-scale-up.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a1-downscale-stabilization.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a1-idle-partitions.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a1-image-workers.diagram.json: 4 nodes, 3 edges, 2 simulations
 VALID <repo>/tests/parity/corpus/a1-max-reached.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a1-startup-backlog.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a2-activation.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a2-cooldown.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a2-idle.diagram.json: 3 nodes, 2 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/a2-render-workers.diagram.json: 3 nodes, 2 edges, 2 simulations
 VALID <repo>/tests/parity/corpus/a3-aca-event.diagram.json: 2 nodes, 1 edge, 1 simulation
 VALID <repo>/tests/parity/corpus/a3-aca-http.diagram.json: 2 nodes, 1 edge, 1 simulation
 VALID <repo>/tests/parity/corpus/a3-app-service.diagram.json: 2 nodes, 1 edge, 1 simulation

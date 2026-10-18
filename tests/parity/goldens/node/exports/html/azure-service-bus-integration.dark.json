@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "ba90e0225daf828d179c29acd0a631aaee44248db76fb1df1ee1ff174389efb4", "bytes": 40299 },
+  "file": { "sha256": "252425cef7e7e564766c8f9a70643165fed0bc5b46076f3a8511e49aba907d47", "bytes": 41410 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -8,7 +8,7 @@
       "description": "Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.",
       "direction": "LR",
       "groups": [
-        { "id": "azure", "label": "Azure · enterprise integration", "tone": "azure", "x": 380, "y": 0, "width": 2240, "height": 632 }
+        { "id": "azure", "label": "Azure · enterprise integration", "tone": "azure", "x": 380, "y": -24, "width": 2240, "height": 656 }
       ],
       "nodes": [
         {
@@ -149,6 +149,18 @@
           "y": 520,
           "group": "azure",
           "props": {}
+        },
+        { "id": "approval-dlq", "stencil": "azure.service-bus.queue", "label": "approval-workflow DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 40, "group": "azure" },
+        { "id": "posting-dlq", "stencil": "azure.service-bus.queue", "label": "ledger-posting DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure" },
+        {
+          "id": "dlq-triage",
+          "stencil": "azure.logic-apps",
+          "label": "DLQ triage",
+          "sublabel": "alert finance ops, then replay",
+          "x": 2320,
+          "y": 520,
+          "group": "azure",
+          "props": { "concurrency": 8, "latencyMs": 150 }
         }
       ],
       "edges": [
@@ -249,7 +261,26 @@
           "props": { "travelMs": 200 }
         },
         { "id": "ingest-to-vault", "from": "ingest", "to": "vault", "kind": "sync", "relation": "secret" },
-        { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" }
+        { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" },
+        {
+          "id": "approval-sub-to-approval-dlq",
+          "from": "approval-sub",
+          "to": "approval-dlq",
+          "kind": "async",
+          "label": "After 10 deliveries",
+          "props": { "dlq": true }
+        },
+        {
+          "id": "posting-sub-to-posting-dlq",
+          "from": "posting-sub",
+          "to": "posting-dlq",
+          "kind": "async",
+          "label": "After 10 deliveries",
+          "props": { "dlq": true }
+        },
+        { "id": "approval-dlq-to-dlq-triage", "from": "approval-dlq", "to": "dlq-triage", "kind": "async" },
+        { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" },
+        { "id": "dlq-to-dlq-triage", "from": "dlq", "to": "dlq-triage", "kind": "async" }
       ],
       "simulations": [
         {
@@ -272,7 +303,7 @@
             },
             {
               "atMs": 10000,
-              "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ for operator replay.", "focus": ["commands", "dlq"], "pause": true }
+              "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ. Triage alerts finance operations, who replay them once the schema is fixed.", "focus": ["commands", "dlq", "dlq-triage"], "pause": true }
             },
             { "atMs": 12000, "action": { "do": "props", "node": "worker", "props": { "failureRate": 0 } } }
           ],
@@ -286,9 +317,9 @@
               "when": "end"
             },
             {
-              "id": "dlq-retains",
-              "label": "All 30 poison invoices are retained",
-              "metric": { "node": "dlq", "field": "backlog" },
+              "id": "triaged",
+              "label": "All 30 poison invoices reach DLQ triage",
+              "metric": { "node": "dlq-triage", "field": "processed" },
               "op": "==",
               "value": 30,
               "when": "end"

@@ -146,10 +146,12 @@
           { "id": "blob", "label": "Invoice originals", "stencil": "azure.blob-storage" },
           { "id": "vault", "label": "Integration secrets", "stencil": "azure.key-vault" },
           { "id": "insights", "label": "Integration telemetry", "stencil": "azure.app-insights" },
+          { "id": "approval-dlq", "label": "approval-workflow DLQ", "stencil": "azure.service-bus.queue" },
+          { "id": "posting-dlq", "label": "ledger-posting DLQ", "stencil": "azure.service-bus.queue" },
+          { "id": "dlq-triage", "label": "DLQ triage", "stencil": "azure.logic-apps" },
           { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
           { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
-          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
-          { "id": "note-1", "label": "Pinned by the parity harness" }
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" }
         ],
         "hint": "Use an id from candidates, or call describe_diagram.",
         "applied": false
@@ -363,6 +365,18 @@
         "group": "azure",
         "props": {}
       },
+      { "id": "approval-dlq", "stencil": "azure.service-bus.queue", "label": "approval-workflow DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 40, "group": "azure" },
+      { "id": "posting-dlq", "stencil": "azure.service-bus.queue", "label": "ledger-posting DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure" },
+      {
+        "id": "dlq-triage",
+        "stencil": "azure.logic-apps",
+        "label": "DLQ triage",
+        "sublabel": "alert finance ops, then replay",
+        "x": 2320,
+        "y": 520,
+        "group": "azure",
+        "props": { "concurrency": 8, "latencyMs": 150 }
+      },
       { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 379, "y": 728 },
       { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
       { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 379, "y": 840 }
@@ -458,6 +472,25 @@
       },
       { "id": "ingest-to-vault", "from": "ingest", "to": "vault", "kind": "sync", "relation": "secret" },
       { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" },
+      {
+        "id": "approval-sub-to-approval-dlq",
+        "from": "approval-sub",
+        "to": "approval-dlq",
+        "kind": "async",
+        "label": "After 10 deliveries",
+        "props": { "dlq": true }
+      },
+      {
+        "id": "posting-sub-to-posting-dlq",
+        "from": "posting-sub",
+        "to": "posting-dlq",
+        "kind": "async",
+        "label": "After 10 deliveries",
+        "props": { "dlq": true }
+      },
+      { "id": "approval-dlq-to-dlq-triage", "from": "approval-dlq", "to": "dlq-triage", "kind": "async" },
+      { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" },
+      { "id": "dlq-to-dlq-triage", "from": "dlq", "to": "dlq-triage", "kind": "async" },
       { "id": "e-1", "from": "partner", "to": "topic-1", "kind": "async" },
       {
         "id": "e-4",
@@ -549,7 +582,7 @@
           },
           {
             "atMs": 10000,
-            "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ for operator replay.", "focus": ["commands", "dlq"], "pause": true }
+            "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ. Triage alerts finance operations, who replay them once the schema is fixed.", "focus": ["commands", "dlq", "dlq-triage"], "pause": true }
           },
           { "atMs": 12000, "action": { "do": "props", "node": "worker", "props": { "failureRate": 0 } } }
         ],
@@ -563,9 +596,9 @@
             "when": "end"
           },
           {
-            "id": "dlq-retains",
-            "label": "All 30 poison invoices are retained",
-            "metric": { "node": "dlq", "field": "backlog" },
+            "id": "triaged",
+            "label": "All 30 poison invoices reach DLQ triage",
+            "metric": { "node": "dlq-triage", "field": "processed" },
             "op": "==",
             "value": 30,
             "when": "end"

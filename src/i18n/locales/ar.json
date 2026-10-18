@@ -1845,6 +1845,7 @@
   "examples.themeCloud": "تطبيقات السحابة",
   "examples.themeIntegration": "التكامل",
   "examples.themeReliability": "الموثوقية",
+  "examples.themeSystems": "أنظمة كاملة",
   "autoscaling.budget": "تم تجاوز ميزانية دورة حياة الموارد: {limit, number}. قلّل الأساطيل المكوّنة أو مضاعف السعة.",
   "autoscaling.bindingInvalid": "سيؤدي هذا التعديل إلى تعطيل مصدر التوسع. غيّر سياسة التوسع للعقدة المتأثرة أو للمحاكاة المحفوظة أو عطّلها أولاً.",
   "autoscaling.bindingRequired": "صِل وسيطًا متوافقًا ومجموعة المستهلكين، ثم اختر المصدر في الإعدادات المتقدمة. لن يُحفظ هذا الإعداد المسبق حتى تختار مصدرًا.",

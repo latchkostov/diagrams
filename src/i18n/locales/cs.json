@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Cloudové aplikace",
   "examples.themeIntegration": "Integrace",
   "examples.themeReliability": "Spolehlivost",
+  "examples.themeSystems": "Celé systémy",
   "autoscaling.budget": "Překročen rozpočet životního cyklu zdrojů: {limit, number}. Zmenšete nakonfigurované skupiny nebo násobek kapacity.",
   "autoscaling.bindingInvalid": "Tato úprava naruší zdroj škálování. Nejprve změňte nebo vypněte zásady dotčeného uzlu nebo uložené simulace.",
   "autoscaling.bindingRequired": "Připojte kompatibilní broker a skupinu konzumentů a pak vyberte zdroj v pokročilých nastaveních. Předvolba se uloží až po výběru zdroje.",

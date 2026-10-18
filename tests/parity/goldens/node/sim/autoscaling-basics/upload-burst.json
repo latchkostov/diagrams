@@ -1,0 +1,143 @@
+{
+  "run": {
+    "time": 24000,
+    "totalMs": 24000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "buffered", "label": "Uploads wait for starting workers", "status": "pass", "value": 0 },
+      { "id": "drained", "label": "Every upload finishes", "status": "pass", "value": 192 },
+      { "id": "empty", "label": "The topic backlog drains", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "burst" },
+      { "atMs": 1000, "kind": "note", "label": "Demand is above one worker’s target. New replicas start while Kafka holds the backlog." },
+      { "atMs": 4000, "kind": "traffic", "label": "burst ends" },
+      { "atMs": 7000, "kind": "note", "label": "Ready workers drain the upload burst. Open Live details to see desired and ready replicas over time." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "uploader": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "image-workers": { "replicas": [1, 1, 0] },
+        "thumbnails": { "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "uploader": { "processed": 192, "throughput": 0.11913465172219197, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 192,
+          "throughput": 0.11913465172219197,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 192, "throughput": 2.1913385743725033, "replicas": [5, 5, 0] },
+        "thumbnails": { "processed": 192, "throughput": 2.2580747693893812, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 0,
+      "nodes": {
+        "uploader": { "processed": 192, "throughput": 0.0000054087048204659, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 192,
+          "throughput": 0.0000054087048204659,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 192, "throughput": 0.00009948661736234068, "replicas": [5, 5, 0] },
+        "thumbnails": { "processed": 192, "throughput": 0.00010251643592872261, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 24000,
+    "inSystem": 0,
+    "real": {
+      "uploader": { "processed": 192, "throughput": 9.906388434741138e-8, "replicas": [1, 1, 0] },
+      "uploads": {
+        "processed": 192,
+        "throughput": 9.906388434741138e-8,
+        "lag": { "thumbnails": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "image-workers": { "processed": 192, "throughput": 0.0000018221609578703418, "replicas": [5, 5, 0] },
+      "thumbnails": { "processed": 192, "throughput": 0.0000018776540206305768, "replicas": [1, 1, 0] },
+      "poster-studio": { "replicas": [1, 1, 0] },
+      "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+      "render-workers": { "replicas": [0, 0, 0] }
+    },
+    "edges": { "upload": 192, "thumbnail": 192, "store": 192, "request-render": 0, "render": 0 }
+  },
+  "events": {
+    "total": 1536,
+    "byKind": { "inject": 192, "process": 768, "deliver": 576 },
+    "byNode": {
+      "uploader": { "inject": 192, "process": 192 },
+      "uploads": { "deliver": 192, "process": 192 },
+      "image-workers": { "deliver": 192, "process": 192 },
+      "thumbnails": { "deliver": 192, "process": 192 }
+    },
+    "perSecond": [
+      "2b2e61ba81db",
+      "2e2300c3ab51",
+      "d7cf153cebc0",
+      "4890b69eef04",
+      "89bd327ee8ba",
+      "275482585d40",
+      "eb4ea68d14ac",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Demand is above one worker’s target. New replicas start while Kafka holds the backlog.", "focus": ["uploads", "image-workers"] },
+    { "atMs": 7000, "text": "Ready workers drain the upload burst. Open Live details to see desired and ready replicas over time.", "focus": ["image-workers"] }
+  ],
+  "latency": {
+    "journeys": { "done": 192, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 192, "min": 300, "mean": 2407.7083333333335, "p50": 2700, "p90": 3120, "max": 3250 },
+    "waitMs": {
+      "image-workers": { "count": 192, "min": 0, "mean": 58.854166666666664, "p50": 30, "p90": 200, "max": 200 },
+      "thumbnails": { "count": 192, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "image-workers": { "count": 192, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 },
+      "thumbnails": { "count": 192, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

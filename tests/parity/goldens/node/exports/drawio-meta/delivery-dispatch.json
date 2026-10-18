@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "a1697d852d980e680114f1c14f17133a824c3fafa373da194d70d9129e5e6261",
-    "bytes": 310681,
+    "sha256": "6924825b9c2f1d313b0c537906f840c4cfc61bd892f4c0a906e60b1a456ee4eb",
+    "bytes": 310643,
     "inlined": {
       "client.mobile": "client-mobile d67b2ae30eb449e3",
       "flink": "flink c8f2d493877447b7",
@@ -765,7 +765,7 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["couriers", "mqtt", "loc-ingest", "locations-topic"] }
+                "action": { "do": "note", "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["loc-ingest", "locations-topic"] }
               },
               {
                 "atMs": 5000,

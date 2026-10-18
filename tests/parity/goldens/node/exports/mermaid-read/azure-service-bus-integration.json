@@ -13,14 +13,17 @@
       { "id": "invoices", "stencil": "generic.service", "label": "invoices", "sublabel": "InvoiceAccepted · session: tenantId", "x": 1294, "y": 104, "group": "g_azure" },
       { "id": "approval_sub", "stencil": "generic.service", "label": "approval-workflow", "sublabel": "Subscription · amount > 10000", "x": 1703, "y": 224, "group": "g_azure" },
       { "id": "posting_sub", "stencil": "generic.service", "label": "ledger-posting", "sublabel": "Subscription · all accepted invoices", "x": 1703, "y": 344, "group": "g_azure" },
-      { "id": "workflow", "stencil": "generic.service", "label": "Invoice approval", "sublabel": "Finance approval workflow", "x": 2103, "y": 284, "group": "g_azure" },
-      { "id": "worker", "stencil": "generic.service", "label": "Ledger worker", "sublabel": "KEDA · group: ledger-posting", "x": 2893, "y": 344, "group": "g_azure" },
+      { "id": "workflow", "stencil": "generic.service", "label": "Invoice approval", "sublabel": "Finance approval workflow", "x": 2103, "y": 164, "group": "g_azure" },
+      { "id": "worker", "stencil": "generic.service", "label": "Ledger worker", "sublabel": "KEDA · group: ledger-posting", "x": 2893, "y": 224, "group": "g_azure" },
       { "id": "commands", "stencil": "generic.service", "label": "invoice.commands", "sublabel": "PostInvoice · session: tenantId", "x": 2484, "y": 284, "group": "g_azure" },
-      { "id": "dlq", "stencil": "generic.service", "label": "invoice.commands DLQ", "sublabel": "$DeadLetterQueue · operator replay", "x": 2893, "y": 224, "group": "g_azure" },
-      { "id": "cosmos", "stencil": "generic.database", "label": "Invoice ledger", "sublabel": "Partition key: /tenantId", "x": 3296, "y": 284, "group": "g_azure" },
+      { "id": "dlq", "stencil": "generic.service", "label": "invoice.commands DLQ", "sublabel": "$DeadLetterQueue · operator replay", "x": 2893, "y": 344, "group": "g_azure" },
+      { "id": "cosmos", "stencil": "generic.database", "label": "Invoice ledger", "sublabel": "Partition key: /tenantId", "x": 3296, "y": 224, "group": "g_azure" },
       { "id": "blob", "stencil": "generic.database", "label": "Invoice originals", "sublabel": "invoices-raw · immutable archive", "x": 1294, "y": 224, "group": "g_azure" },
       { "id": "vault", "stencil": "azure.managed-identity", "label": "Integration secrets", "sublabel": "ERP credentials · managed identity", "x": 1294, "y": 344, "group": "g_azure" },
       { "id": "insights", "stencil": "generic.service", "label": "Integration telemetry", "sublabel": "Trace by invoiceId · DLQ alerts", "x": 1294, "y": 464, "group": "g_azure" },
+      { "id": "approval_dlq", "stencil": "generic.service", "label": "approval-workflow DLQ", "sublabel": "$DeadLetterQueue", "x": 2103, "y": 284, "group": "g_azure" },
+      { "id": "posting_dlq", "stencil": "generic.service", "label": "ledger-posting DLQ", "sublabel": "$DeadLetterQueue", "x": 2103, "y": 404, "group": "g_azure" },
+      { "id": "dlq_triage", "stencil": "generic.service", "label": "DLQ triage", "sublabel": "alert finance ops, then replay", "x": 3296, "y": 344, "group": "g_azure" },
       { "id": "partner", "stencil": "generic.service", "label": "Contoso ERP", "sublabel": "Invoice integration · OAuth2", "x": 80, "y": 284 }
     ],
     "edges": [
@@ -37,7 +40,12 @@
       { "id": "e11-worker-cosmos", "from": "worker", "to": "cosmos", "label": "Upsert ledger", "kind": "sync" },
       { "id": "e12-ingest-blob", "from": "ingest", "to": "blob", "label": "Archive original PDF", "kind": "sync" },
       { "id": "e13-ingest-vault", "from": "ingest", "to": "vault", "kind": "async", "relation": "secret" },
-      { "id": "e14-ingest-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" }
+      { "id": "e14-ingest-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" },
+      { "id": "e15-approval_sub-approval_dlq", "from": "approval_sub", "to": "approval_dlq", "label": "After 10 deliveries", "kind": "async" },
+      { "id": "e16-posting_sub-posting_dlq", "from": "posting_sub", "to": "posting_dlq", "label": "After 10 deliveries", "kind": "async" },
+      { "id": "e17-approval_dlq-dlq_triage", "from": "approval_dlq", "to": "dlq_triage", "kind": "async" },
+      { "id": "e18-posting_dlq-dlq_triage", "from": "posting_dlq", "to": "dlq_triage", "kind": "async" },
+      { "id": "e19-dlq-dlq_triage", "from": "dlq", "to": "dlq_triage", "kind": "async" }
     ]
   }
 }

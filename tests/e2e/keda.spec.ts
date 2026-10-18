@@ -16,7 +16,7 @@ import {
   expectNoErrors,
 } from "./fixtures";
 
-const slug = "keda-render-workers";
+const slug = "autoscaling-basics";
 async function seed(page: Page, { fixed = false, dark = false, locale = "en", multiple = false, budget = false } = {}) {
   const d = kedaFixture();
   if (fixed) {
@@ -125,7 +125,7 @@ test("KEDA: production playback sleeps, wakes with cold start and returns to zer
   await page.clock.install();
   await gotoLive(page, `./?view=canvas&example=${slug}&live=1&sim=wake-on-burst&paused=1`);
   await pauseClock(page);
-  const badge = page.getByTestId("node-badge-worker");
+  const badge = page.getByTestId("node-badge-render-workers");
   await expect(badge).toHaveAttribute("data-ready", "0");
   await page.getByTestId("live-play").click();
   await page.clock.runFor(2500);
@@ -133,7 +133,7 @@ test("KEDA: production playback sleeps, wakes with cold start and returns to zer
   await expect(badge).toHaveAttribute("data-ready", "0");
   await page.clock.runFor(1100);
   await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(0);
-  await page.getByTestId("node-worker").dblclick();
+  await page.getByTestId("node-render-workers").dblclick();
   await page.getByTestId("planning-live-details-toggle").click();
   await expect(page.getByTestId("autoscaling-chart")).toBeVisible();
   await page.getByTestId("autoscaling-why-toggle").click();

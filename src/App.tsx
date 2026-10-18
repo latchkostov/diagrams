@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { examples, exampleSummary, getLoadedExample, loadExample } from "./examples";
+import { currentExampleSlug } from "./examples/retired";
 import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
@@ -203,8 +204,9 @@ function MainApp() {
       library.entries.some((e) => e.slug === s) ||
       (s === SHARED_SLUG && !!library.shared) ||
       examples.some((e) => e.slug === s));
-  const requested = url.example ? resolveSlug(url.example) : undefined;
-  const remembered = lastCanvas();
+  const requested = url.example ? resolveSlug(currentExampleSlug(url.example)) : undefined;
+  const lastSeen = lastCanvas();
+  const remembered = lastSeen && currentExampleSlug(lastSeen);
   const targetSlug = valid(requested)
     ? requested
     : remembered && valid(resolveSlug(remembered))

@@ -1,5 +1,5 @@
 {
-  "trace": { "rootId": 1, "type": "InvoiceHighValue", "origin": "ingest", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 41, "endedAt": 3550 },
+  "trace": { "rootId": 1, "type": "InvoiceHighValue", "origin": "ingest", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 45, "endedAt": 4020 },
   "steps": [
     { "t": 0, "kind": "emit", "id": 1, "type": "InvoiceHighValue", "node": "ingest" },
     { "t": 10, "kind": "start", "id": 1, "type": "InvoiceHighValue", "node": "ingest" },
@@ -41,14 +41,18 @@
     { "t": 3250, "kind": "send", "id": 1, "type": "PostInvoice", "node": "commands", "edge": "commands-to-dlq", "via": "dlq", "until": 3550 },
     { "t": 3550, "kind": "arrive", "id": 1, "type": "PostInvoice", "node": "dlq", "edge": "commands-to-dlq" },
     { "t": 3550, "kind": "done", "id": 1, "type": "PostInvoice", "node": "dlq" },
-    { "t": 3550, "kind": "park", "id": 1, "type": "PostInvoice", "node": "dlq" }
+    { "t": 3550, "kind": "send", "id": 1, "type": "PostInvoice", "node": "dlq", "edge": "dlq-to-dlq-triage", "via": "message", "until": 3850 },
+    { "t": 3850, "kind": "arrive", "id": 1, "type": "PostInvoice", "node": "dlq-triage", "edge": "dlq-to-dlq-triage" },
+    { "t": 3850, "kind": "start", "id": 1, "type": "PostInvoice", "node": "dlq-triage" },
+    { "t": 4020, "kind": "done", "id": 1, "type": "PostInvoice", "node": "dlq-triage" },
+    { "t": 4020, "kind": "end", "id": 1, "type": "PostInvoice", "node": "dlq-triage", "reason": "consumed" }
   ],
   "journey": {
     "rootId": 1,
     "type": "InvoiceHighValue",
     "origin": "ingest",
     "startedAt": 0,
-    "totalMs": 3550,
+    "totalMs": 4020,
     "done": true,
     "partial": false,
     "truncated": false,
@@ -62,7 +66,8 @@
       { "key": "24", "kind": "hop", "t": 1800, "id": 1, "type": "PostInvoice", "node": "worker", "from": "commands", "edge": "commands-to-worker", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": false },
       { "key": "26", "kind": "fail", "t": 1960, "id": 1, "type": "PostInvoice", "node": "worker", "attempt": 1, "copy": false, "lastAttempt": 5 },
       { "key": "36", "kind": "deadletter", "t": 3250, "id": 1, "type": "PostInvoice", "node": "commands", "attempt": 5, "copy": false },
-      { "key": "38", "kind": "dlq", "t": 3550, "id": 1, "type": "PostInvoice", "node": "dlq", "from": "commands", "edge": "commands-to-dlq", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": false }
+      { "key": "38", "kind": "dlq", "t": 3550, "id": 1, "type": "PostInvoice", "node": "dlq", "from": "commands", "edge": "commands-to-dlq", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": false },
+      { "key": "41", "kind": "hop", "t": 3850, "id": 1, "type": "PostInvoice", "node": "dlq-triage", "from": "dlq", "edge": "dlq-to-dlq-triage", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": false }
     ],
     "visits": [
       { "id": 1, "node": "ingest", "at": 0, "start": 10, "done": 140, "left": 140 },
@@ -74,7 +79,8 @@
       { "id": 1, "node": "commands", "at": 1500, "done": 1500, "left": 1500 },
       { "id": 1, "node": "worker", "at": 1800, "start": 1800 },
       { "id": 1, "node": "commands", "at": 3250, "left": 3250 },
-      { "id": 1, "node": "dlq", "at": 3550, "done": 3550 }
+      { "id": 1, "node": "dlq", "at": 3550, "done": 3550, "left": 3550 },
+      { "id": 1, "node": "dlq-triage", "at": 3850, "start": 3850, "done": 4020 }
     ],
     "ids": [1, 6],
     "copies": 1,
@@ -83,8 +89,8 @@
     "deadLettered": 1,
     "dropped": 0,
     "blocked": 0,
-    "kept": ["dlq"],
-    "nodes": ["ingest", "blob", "invoices", "approval-sub", "workflow", "commands", "worker", "dlq"],
+    "kept": [],
+    "nodes": ["ingest", "blob", "invoices", "approval-sub", "workflow", "commands", "worker", "dlq", "dlq-triage"],
     "edges": [
       "ingest-to-invoices",
       "ingest-to-blob",
@@ -92,13 +98,14 @@
       "approval-sub-to-workflow",
       "workflow-to-commands",
       "commands-to-worker",
-      "commands-to-dlq"
+      "commands-to-dlq",
+      "dlq-to-dlq-triage"
     ],
-    "rowOf": { "0": "0", "6": "6", "11": "11", "14": "14", "17": "17", "21": "21", "24": "24", "26": "26", "28": "26", "30": "26", "32": "26", "34": "26", "36": "36", "38": "38" }
+    "rowOf": { "0": "0", "6": "6", "11": "11", "14": "14", "17": "17", "21": "21", "24": "24", "26": "26", "28": "26", "30": "26", "32": "26", "34": "26", "36": "36", "38": "38", "41": "41" }
   },
   "sequence": {
     "title": "InvoiceHighValue #1",
-    "summary": "3.55 s end to end · 1 copy · 4 retries · dead-lettered",
+    "summary": "4.02 s end to end · 1 copy · 4 retries · dead-lettered",
     "participants": [
       { "id": "ingest", "label": "Invoice intake" },
       { "id": "invoices", "label": "invoices" },
@@ -107,7 +114,8 @@
       { "id": "workflow", "label": "Invoice approval" },
       { "id": "commands", "label": "invoice.commands" },
       { "id": "worker", "label": "Ledger worker" },
-      { "id": "dlq", "label": "invoice.commands DLQ" }
+      { "id": "dlq", "label": "invoice.commands DLQ" },
+      { "id": "dlq-triage", "label": "DLQ triage" }
     ],
     "items": [
       { "kind": "arrow", "t": 140, "until": 440, "from": "ingest", "to": "invoices", "style": "async", "label": "InvoiceHighValue", "detail": "InvoiceAccepted", "id": 1, "type": "InvoiceHighValue" },
@@ -121,17 +129,18 @@
       { "kind": "gap", "t": 1960, "ms": 990, "text": "990 ms at Ledger worker: failing and retrying", "node": "worker" },
       { "kind": "arrow", "t": 2950, "until": 3250, "from": "worker", "to": "commands", "style": "retry", "label": "back to the broker after attempt 5", "id": 1, "type": "PostInvoice" },
       { "kind": "note", "t": 3250, "over": "commands", "text": "Dead-lettered after 5 deliveries", "tone": "danger" },
-      { "kind": "arrow", "t": 3250, "until": 3550, "from": "commands", "to": "dlq", "style": "dlq", "label": "PostInvoice (dead letter)", "id": 1, "type": "PostInvoice" }
+      { "kind": "arrow", "t": 3250, "until": 3550, "from": "commands", "to": "dlq", "style": "dlq", "label": "PostInvoice (dead letter)", "id": 1, "type": "PostInvoice" },
+      { "kind": "arrow", "t": 3550, "until": 3850, "from": "dlq", "to": "dlq-triage", "style": "async", "label": "PostInvoice", "id": 1, "type": "PostInvoice" }
     ],
-    "totalMs": 3550,
+    "totalMs": 4020,
     "done": true,
     "partial": false,
     "truncated": false
   },
-  "mermaidPlain": "---\ntitle: \"InvoiceHighValue #1 · 3.55 s end to end · 1 copy · 4 retries · dead-lettered\"\n---\nsequenceDiagram\n  participant ingest as Invoice intake\n  participant invoices as invoices\n  participant blob as Invoice originals\n  participant approval_sub as approval-workflow\n  participant workflow as Invoice approval\n  participant commands as invoice.commands\n  participant worker as Ledger worker\n  participant dlq as invoice.commands DLQ\n  ingest-)invoices: InvoiceHighValue (+0.14 s)<br/>InvoiceAccepted\n  ingest->>blob: InvoiceHighValue (+0.14 s)<br/>Archive original PDF\n  blob-->>ingest: reply (+0.38 s)\n  invoices-)approval_sub: InvoiceHighValue (+0.44 s)<br/>amount > 10000\n  approval_sub-)workflow: InvoiceHighValue (+0.74 s)<br/>Peek-lock delivery\n  workflow-)commands: PostInvoice (+1.20 s)\n  commands-)worker: PostInvoice (+1.50 s)<br/>Execute command\n  Note over worker: ✕ attempts 1–5 failed\n  Note over ingest,dlq: ⏱ 990 ms at Ledger worker: failing and retrying\n  worker--)commands: back to the broker after attempt 5 (+2.95 s)\n  Note over commands: Dead-lettered after 5 deliveries\n  rect rgba(209, 57, 63, 0.14)\n    commands-)dlq: PostInvoice (dead letter) (+3.25 s)\n  end\n",
+  "mermaidPlain": "---\ntitle: \"InvoiceHighValue #1 · 4.02 s end to end · 1 copy · 4 retries · dead-lettered\"\n---\nsequenceDiagram\n  participant ingest as Invoice intake\n  participant invoices as invoices\n  participant blob as Invoice originals\n  participant approval_sub as approval-workflow\n  participant workflow as Invoice approval\n  participant commands as invoice.commands\n  participant worker as Ledger worker\n  participant dlq as invoice.commands DLQ\n  participant dlq_triage as DLQ triage\n  ingest-)invoices: InvoiceHighValue (+0.14 s)<br/>InvoiceAccepted\n  ingest->>blob: InvoiceHighValue (+0.14 s)<br/>Archive original PDF\n  blob-->>ingest: reply (+0.38 s)\n  invoices-)approval_sub: InvoiceHighValue (+0.44 s)<br/>amount > 10000\n  approval_sub-)workflow: InvoiceHighValue (+0.74 s)<br/>Peek-lock delivery\n  workflow-)commands: PostInvoice (+1.20 s)\n  commands-)worker: PostInvoice (+1.50 s)<br/>Execute command\n  Note over worker: ✕ attempts 1–5 failed\n  Note over ingest,dlq_triage: ⏱ 990 ms at Ledger worker: failing and retrying\n  worker--)commands: back to the broker after attempt 5 (+2.95 s)\n  Note over commands: Dead-lettered after 5 deliveries\n  rect rgba(209, 57, 63, 0.14)\n    commands-)dlq: PostInvoice (dead letter) (+3.25 s)\n  end\n  dlq-)dlq_triage: PostInvoice (+3.55 s)\n",
   "svg": {
-    "light": { "sha256": "400cedc3d1db2ab717def6aac890e8b55a25fcd455f5c026c801e6075869885e", "bytes": 17074, "width": 1518, "height": 738, "headerHeight": 142 },
-    "dark": { "sha256": "273a935bcb870ca4324e24943ddacd345baaebe2a429d723cda96a1f28c98bd3", "bytes": 17075, "width": 1518, "height": 738, "headerHeight": 142 }
+    "light": { "sha256": "bee55f77b021b3152fc6bcac2bc311e8387c9d59bc8c08d03ec297d47cb78ba2", "bytes": 18532, "width": 1639, "height": 782, "headerHeight": 142 },
+    "dark": { "sha256": "7b3ec00f525ffe1d7b6c74a0a521a30fcac937b330eded9d2767dd3307f0eef3", "bytes": 18533, "width": 1639, "height": 782, "headerHeight": 142 }
   },
   "slowMotion": {
     "rootId": 1,
@@ -335,17 +344,34 @@
         "duration": 450,
         "realFrom": 3550,
         "realTo": 3550,
-        "caption": "parked in invoice.commands DLQ",
+        "caption": "queued in invoice.commands DLQ",
         "i": 20,
         "color": "#497fe8",
         "tone": "plain"
       },
-      { "kind": "end", "msg": 1, "type": "InvoiceHighValue", "node": "dlq", "start": 16210.685082636395, "duration": 1200, "realFrom": 3550, "realTo": 3550, "caption": "Dead-lettered · 3.55 s · 1 copy · 1 write", "tone": "danger", "i": 21, "color": "#a777ca" }
+      { "kind": "travel", "msg": 1, "type": "PostInvoice", "edge": "dlq-to-dlq-triage", "reverse": false, "start": 16210.685082636395, "duration": 1000, "realFrom": 3550, "realTo": 3850, "caption": "PostInvoice", "tone": "plain", "i": 21, "color": "#497fe8", "rowKey": "41" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "PostInvoice",
+        "node": "dlq-triage",
+        "anchor": { "edge": "dlq-to-dlq-triage", "end": 1 },
+        "start": 17210.685082636395,
+        "duration": 1201.9643072744748,
+        "realFrom": 3850,
+        "realTo": 4020,
+        "caption": "DLQ triage · processing · 170 ms",
+        "i": 22,
+        "color": "#497fe8",
+        "tone": "plain",
+        "short": "processing · 170 ms"
+      },
+      { "kind": "end", "msg": 1, "type": "InvoiceHighValue", "node": "dlq-triage", "start": 18412.64938991087, "duration": 1200, "realFrom": 4020, "realTo": 4020, "caption": "Dead-lettered · 4.02 s · 1 copy · 1 write", "tone": "danger", "i": 23, "color": "#a777ca" }
     ],
-    "duration": 17410.685082636395,
-    "realTotal": 3550,
-    "stops": [0, 2329, 3779, 5229, 7414, 8864, 13561, 14561, 16211],
-    "nodes": ["ingest", "blob", "invoices", "approval-sub", "workflow", "commands", "worker", "dlq"],
+    "duration": 19612.64938991087,
+    "realTotal": 4020,
+    "stops": [0, 2329, 3779, 5229, 7414, 8864, 13561, 14561, 16211, 18413],
+    "nodes": ["ingest", "blob", "invoices", "approval-sub", "workflow", "commands", "worker", "dlq", "dlq-triage"],
     "edges": [
       "ingest-to-invoices",
       "ingest-to-blob",
@@ -353,16 +379,17 @@
       "approval-sub-to-workflow",
       "workflow-to-commands",
       "commands-to-worker",
-      "commands-to-dlq"
+      "commands-to-dlq",
+      "dlq-to-dlq-triage"
     ],
     "hiddenCopies": 0,
     "unfinished": false,
-    "summary": "Dead-lettered · 3.55 s · 1 copy · 1 write",
+    "summary": "Dead-lettered · 4.02 s · 1 copy · 1 write",
     "reduced": false,
-    "rowStart": { "0": 0, "6": 2329.0990074098927, "11": 2329.0990074098927, "14": 3779.0990074098927, "17": 5229.099007409893, "21": 7414.354566973042, "24": 8864.354566973041, "26": 9864.354566973041, "36": 14560.685082636395, "38": 14560.685082636395 }
+    "rowStart": { "0": 0, "6": 2329.0990074098927, "11": 2329.0990074098927, "14": 3779.0990074098927, "17": 5229.099007409893, "21": 7414.354566973042, "24": 8864.354566973041, "26": 9864.354566973041, "36": 14560.685082636395, "38": 14560.685082636395, "41": 16210.685082636395 }
   },
   "slowMotionReduced": {
-    "duration": 27000,
+    "duration": 30000,
     "beats": [
       ["establish", 0, 1500],
       ["process", 1500, 1500],
@@ -384,7 +411,9 @@
       ["retry", 21000, 1500],
       ["dlq", 22500, 1500],
       ["append", 24000, 1500],
-      ["end", 25500, 1500]
+      ["travel", 25500, 1500],
+      ["process", 27000, 1500],
+      ["end", 28500, 1500]
     ]
   }
 }

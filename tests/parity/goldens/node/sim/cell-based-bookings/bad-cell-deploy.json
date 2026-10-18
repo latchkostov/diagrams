@@ -11,13 +11,13 @@
       { "id": "west-ok", "label": "Other regions never fail", "status": "pass", "value": 0 }
     ],
     "markers": [
-      { "atMs": 0, "kind": "note", "label": "Six cells, each a complete copy of the booking stack. The pipeline deploys to one cell at a time." },
+      { "atMs": 0, "kind": "note", "label": "Six cells, each a complete copy of the booking stack. The release pipeline deploys to one cell at a time, starting here." },
       { "atMs": 0, "kind": "traffic", "label": "Web bookings" },
       { "atMs": 0, "kind": "traffic", "label": "App bookings" },
       { "atMs": 0, "kind": "traffic", "label": "Agent bookings" },
       { "atMs": 4000, "kind": "props", "label": "props: east-c1-api" },
       { "atMs": 4000, "kind": "note", "label": "Build 7.3 reaches the canary cell and fails most of its bookings." },
-      { "atMs": 8000, "kind": "note", "label": "Only that cell's customers notice. The other five cells, and every other region, carry on untouched." },
+      { "atMs": 8000, "kind": "note", "label": "Only that cell's customers notice. The neighbouring cell, and the four cells in the other regions, carry on untouched." },
       { "atMs": 12000, "kind": "props", "label": "props: east-c1-api" },
       { "atMs": 12000, "kind": "note", "label": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again." },
       { "atMs": 20000, "kind": "traffic", "label": "Web bookings ends" },
@@ -500,10 +500,10 @@
     ]
   },
   "notes": [
-    { "atMs": 0, "text": "Six cells, each a complete copy of the booking stack. The pipeline deploys to one cell at a time.", "focus": ["pipeline", "east-c1-api"] },
-    { "atMs": 4000, "text": "Build 7.3 reaches the canary cell and fails most of its bookings.", "focus": ["pipeline", "east-c1-api", "east-c1-db"] },
-    { "atMs": 8000, "text": "Only that cell's customers notice. The other five cells, and every other region, carry on untouched.", "focus": ["east-c1-api", "east-c2-api", "west-c1-api", "eu-c1-api"] },
-    { "atMs": 12000, "text": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again.", "focus": ["metrics", "pipeline", "east-c1-api"] }
+    { "atMs": 0, "text": "Six cells, each a complete copy of the booking stack. The release pipeline deploys to one cell at a time, starting here.", "focus": ["east-c1-api", "east-c1-avail", "east-c1-db", "east-c1-cache"] },
+    { "atMs": 4000, "text": "Build 7.3 reaches the canary cell and fails most of its bookings.", "focus": ["east-c1-api", "east-c1-avail", "east-c1-db"] },
+    { "atMs": 8000, "text": "Only that cell's customers notice. The neighbouring cell, and the four cells in the other regions, carry on untouched.", "focus": ["east-c1-api", "east-c2-api", "east-c1-db", "east-c2-db"] },
+    { "atMs": 12000, "text": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again.", "focus": ["east-c1-api", "east-c1-db"] }
   ],
   "latency": {
     "journeys": { "done": 960, "retried": 0, "deadLettered": 0, "dropped": 49, "blocked": 0, "partial": 0, "truncated": 0 },

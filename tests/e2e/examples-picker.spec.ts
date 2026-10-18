@@ -4,6 +4,7 @@ import { openAdvanced } from "./ai-helpers";
 import {
   test,
   gotoCanvas,
+  gotoLive,
   expect,
   publicExamples,
   publicExampleCards,
@@ -21,7 +22,7 @@ import type { Page } from "@playwright/test";
 test("opening and fitting an edited example never saves or promotes; a real edit does", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
-      "diagrams.autosave.v1:aws-fanout",
+      "diagrams.autosave.v1:aws-serverless-orders",
       JSON.stringify({
         format: "diagrams/v1",
         title: "Retained example edits",
@@ -37,7 +38,7 @@ test("opening and fitting an edited example never saves or promotes; a real edit
     };
     Object.assign(window, { persistenceWrites: writes });
   });
-  await page.goto("./?view=canvas&example=aws-fanout");
+  await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
   await page.clock.install();
   await pauseClock(page);
@@ -60,7 +61,7 @@ test("opening and fitting an edited example never saves or promotes; a real edit
       () => (window as unknown as { fitSerializations: { diagrams: number } }).fitSerializations.diagrams,
     ),
   ).toBe(0);
-  expect(await currentDiagram(page)).toBe("aws-fanout");
+  expect(await currentDiagram(page)).toBe("aws-serverless-orders");
   expect(await page.evaluate(() => (window as unknown as { persistenceWrites: string[] }).persistenceWrites)).toEqual(
     [],
   );
@@ -147,16 +148,19 @@ test("ordinary autosaves serialize the diagram once and reuse that result", asyn
 
 /** Every public example's intended theme, in display order (src/examples/themes.ts and index.ts). */
 const BY_THEME: Record<string, string[]> = {
-  streaming: [
+  systems: [
+    "black-friday-commerce",
+    "cell-based-bookings",
+    "payments-ledger",
     "delivery-dispatch",
     "ev-charging-network",
+  ],
+  streaming: [
     "where-the-time-goes",
     "kafka-order-pipeline",
-    "keda-render-workers",
-    "autoscaling-image-workers",
+    "autoscaling-basics",
     "cqrs-event-sourcing",
     "cdc-analytics",
-    "iot-telemetry",
     "partitions-vs-subscriptions",
     "shared-worker-pool",
   ],
@@ -167,26 +171,11 @@ const BY_THEME: Record<string, string[]> = {
     "rag-assistant",
     "shared-api-quotas",
   ],
-  cloud: [
-    "black-friday-commerce",
-    "aws-serverless-orders",
-    "aws-fanout",
-    "aks-app-config-key-vault",
-    "serverless-burst-buffer",
-    "cloud-run-timetable-api",
-  ],
-  integration: [
-    "payments-ledger",
-    "webhook-ingestion",
-    "api-route-table",
-    "notification-fanout",
-    "azure-service-bus-integration",
-  ],
+  cloud: ["aws-serverless-orders", "aks-app-config-key-vault", "serverless-burst-buffer", "cloud-run-timetable-api"],
+  integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
-    "cell-based-bookings",
     "outbox-saga-checkout",
     "zone-outage-drill",
-    "multi-region-active-active",
     "branch-to-datacentre",
     "measured-order-capacity",
     "contoso-dmz",
@@ -250,17 +239,14 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   expectNoErrors(consoleErrors);
 });
 
-test("Autoscaling filter finds the five autoscaling showcases and runs the HPA one's saved burst", async ({ page }) => {
+test("Autoscaling filter finds the four autoscaling showcases and runs the HPA story", async ({ page }) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("autoscaling");
-  await expect(publicExampleCards(page)).toHaveCount(5);
-  await expect(page.getByTestId("example-card-delivery-dispatch")).toBeVisible();
-  await expect(page.getByTestId("example-card-black-friday-commerce")).toBeVisible();
-  await expect(page.getByTestId("example-card-keda-render-workers")).toBeVisible();
-  await expect(page.getByTestId("example-card-autoscaling-image-workers")).toBeVisible();
-  await expect(page.getByTestId("example-card-cloud-run-timetable-api")).toBeVisible();
-  await page.getByTestId("example-run-autoscaling-image-workers").click();
+  await expect(publicExampleCards(page)).toHaveCount(4);
+  for (const slug of ["black-friday-commerce", "delivery-dispatch", "autoscaling-basics", "cloud-run-timetable-api"])
+    await expect(page.getByTestId(`example-card-${slug}`)).toBeVisible();
+  await page.getByTestId("example-run-autoscaling-basics").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("upload-burst");
 });
@@ -867,3 +853,46 @@ for (const exit of ["toggle", "keyboard"] as const) {
     }
   });
 }
+
+test.describe("retired examples", () => {
+  test("a retired example's link opens its replacement, in the mapped story", async ({ page, consoleErrors }) => {
+    await gotoLive(page, "./?view=canvas&example=aws-fanout&live=1&sim=throttle");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "aws-serverless-orders");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("throttle");
+    await expect(page).toHaveURL(/example=aws-serverless-orders/);
+    await expect(page).not.toHaveURL(/aws-fanout/);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a remembered retired example reopens as its replacement", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("diagrams.lastCanvas.v1", "keda-render-workers"));
+    await page.goto("./?view=canvas");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "autoscaling-basics");
+    await expect(page.getByTestId("node-render-workers")).toBeVisible();
+  });
+
+  test("edits kept under a retired example become one of your diagrams", async ({ page }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem(
+        "diagrams.autosave.v1:iot-telemetry",
+        JSON.stringify({
+          format: "diagrams/v1",
+          title: "My plant telemetry",
+          nodes: [{ id: "kept", stencil: "generic.service", label: "Kept", x: 0, y: 0 }],
+          edges: [],
+        }),
+      ),
+    );
+    await page.goto("./?view=canvas&example=iot-telemetry");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "ev-charging-network");
+    await page.getByTestId("example-picker").click();
+    const mine = page.getByTestId(/^picker-option-my-.*(?<!-title)$/).filter({ hasText: "My plant telemetry" });
+    await expect(mine).toHaveCount(1);
+  });
+});
+
+test("the start card features the Black Friday platform among its examples", async ({ page }) => {
+  await page.goto("./");
+  await expect(page.getByTestId("start-example-black-friday-commerce")).toBeVisible();
+  await expect(page.getByTestId("start-example-aws-serverless-orders")).toHaveCount(0);
+});

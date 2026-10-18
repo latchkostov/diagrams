@@ -409,7 +409,8 @@ describe("P2 broker assignment", () => {
         return { example: entry.name.slice(0, -5), before: findings(d), after: findings(upgradePlanning(d)) };
       })
       .filter((row) => row !== undefined);
-    expect(rows.length).toBe(18);
+    // Eighteen legacy examples, less the three retired ones (src/examples/retired.ts).
+    expect(rows.length).toBe(15);
     expect(rows.filter((r) => JSON.stringify(r.before) !== JSON.stringify(r.after))).toEqual([
       { example: "branch-to-datacentre", before: [], after: ["single-point:branch-router"] },
       { example: "cqrs-event-sourcing", before: [], after: ["single-point:gateway"] },

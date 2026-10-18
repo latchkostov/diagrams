@@ -2247,6 +2247,7 @@ const en = {
   "examples.themeCloud": "Cloud apps",
   "examples.themeIntegration": "Integration",
   "examples.themeReliability": "Reliability",
+  "examples.themeSystems": "Full systems",
   "autoscaling.cpuBudget":
     "Too much simultaneous CPU work. New messages are waiting. Reduce traffic or restart with smaller fleets or less startup jitter.",
   "autoscaling.budget": "Resource lifecycle budget exceeded: {limit, number}. Reduce configured fleets or Capacity ×.",

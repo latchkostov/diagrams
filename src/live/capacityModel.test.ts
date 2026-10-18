@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DIAGRAM_FORMAT, type DiagramFile, type Simulation } from "../model/types";
 import kafka from "../examples/kafka-order-pipeline.json";
-import iot from "../examples/iot-telemetry.json";
+import ev from "../examples/ev-charging-network.json";
+// The retired IoT example, frozen as a legacy (v1) input: its playback keeps the pre-p2 wording.
+import legacyIot from "../test/fixtures/legacy-iot-telemetry.json";
 import {
   applyPreset,
   CAPACITY_STOPS,
@@ -35,9 +37,11 @@ import {
 } from "./capacityModel";
 
 const KAFKA = kafka as DiagramFile;
-const IOT = iot as DiagramFile;
+const EV = ev as DiagramFile;
+const IOT = legacyIot as DiagramFile;
 const blackFriday = KAFKA.simulations!.find((s) => s.id === "black-friday")!;
 const hotSpot = IOT.simulations!.find((s) => s.id === "hot-spot")!;
+const evHotSpot = EV.simulations!.find((s) => s.id === "hot-spot")!;
 
 /** api → topic (3 partitions) → worker (6 replicas) → db, plus a second, idle consumer group. */
 const small = (): DiagramFile => ({
@@ -286,6 +290,17 @@ describe("capacity view", () => {
     expect(view.detail).toMatch(/can't use more consumers than partitions/);
     expect(view.fix?.changes).toEqual([expect.objectContaining({ nodeId: "hub", key: "partitions", from: 1, to: 64 })]);
     expect(capacityView(IOT, withFix(hotSpot, view.fix!)).nodes.hot.idleReplicas).toBe(0);
+  });
+
+  it("the EV example's hot partition: the headline, the assignment and the partitions fix", () => {
+    const view = capacityView(EV, evHotSpot);
+    expect(view.top?.id).toBe("state");
+    expect(view.headline).toBe("Twin updater: 63 of 64 replicas idle");
+    expect(view.detail.startsWith("Assigned instances: 1 / 64")).toBe(true);
+    expect(view.fix?.changes).toEqual([
+      expect.objectContaining({ nodeId: "events", key: "partitions", from: 1, to: 64 }),
+    ]);
+    expect(capacityView(EV, withFix(evHotSpot, view.fix!)).nodes.state.idleReplicas).toBe(0);
   });
 
   it("a saturated consumer behind a topic needs partitions as well as replicas", () => {

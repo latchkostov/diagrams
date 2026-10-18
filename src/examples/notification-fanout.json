@@ -1,7 +1,7 @@
 {
   "format": "diagrams/v1",
   "title": "Notification fan-out",
-  "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.",
+  "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.",
   "direction": "LR",
   "groups": [
     {
@@ -9,9 +9,9 @@
       "label": "Azure · notifications",
       "tone": "azure",
       "x": 380,
-      "y": 0,
-      "width": 1860,
-      "height": 512
+      "y": -24,
+      "width": 1820,
+      "height": 776
     }
   ],
   "nodes": [
@@ -22,7 +22,10 @@
       "sublabel": "Parcel scanned",
       "x": 40,
       "y": 280,
-      "props": { "ratePerSec": 10, "messageType": "ParcelScanned" }
+      "props": {
+        "ratePerSec": 10,
+        "messageType": "ParcelScanned"
+      }
     },
     {
       "id": "shipping",
@@ -32,7 +35,11 @@
       "x": 420,
       "y": 280,
       "group": "azure",
-      "props": { "concurrency": 200, "latencyMs": 50, "emits": "OrderShipped" }
+      "props": {
+        "concurrency": 200,
+        "latencyMs": 50,
+        "emits": "OrderShipped"
+      }
     },
     {
       "id": "events",
@@ -42,7 +49,9 @@
       "x": 800,
       "y": 280,
       "group": "azure",
-      "props": { "partitions": 32 }
+      "props": {
+        "partitions": 32
+      }
     },
     {
       "id": "preferences",
@@ -52,7 +61,9 @@
       "x": 1180,
       "y": 120,
       "group": "azure",
-      "props": { "latencyMs": 0 }
+      "props": {
+        "latencyMs": 0
+      }
     },
     {
       "id": "router",
@@ -62,7 +73,10 @@
       "x": 1180,
       "y": 280,
       "group": "azure",
-      "props": { "concurrency": 400, "latencyMs": 60 }
+      "props": {
+        "concurrency": 400,
+        "latencyMs": 60
+      }
     },
     {
       "id": "email-q",
@@ -72,7 +86,9 @@
       "x": 1560,
       "y": 40,
       "group": "azure",
-      "props": {}
+      "props": {
+        "maxDeliveryCount": 10
+      }
     },
     {
       "id": "sms-q",
@@ -82,7 +98,9 @@
       "x": 1560,
       "y": 280,
       "group": "azure",
-      "props": {}
+      "props": {
+        "maxDeliveryCount": 10
+      }
     },
     {
       "id": "push-q",
@@ -92,7 +110,9 @@
       "x": 1560,
       "y": 400,
       "group": "azure",
-      "props": {}
+      "props": {
+        "maxDeliveryCount": 10
+      }
     },
     {
       "id": "email-sender",
@@ -102,7 +122,12 @@
       "x": 1940,
       "y": 40,
       "group": "azure",
-      "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "EmailSent" }
+      "props": {
+        "replicas": 10,
+        "concurrency": 5,
+        "latencyMs": 100,
+        "emits": "EmailSent"
+      }
     },
     {
       "id": "sms-limiter",
@@ -112,7 +137,12 @@
       "x": 1940,
       "y": 280,
       "group": "azure",
-      "props": { "replicas": 1, "concurrency": 5, "latencyMs": 100, "emits": "SmsSent" }
+      "props": {
+        "replicas": 1,
+        "concurrency": 5,
+        "latencyMs": 100,
+        "emits": "SmsSent"
+      }
     },
     {
       "id": "push-sender",
@@ -122,7 +152,12 @@
       "x": 1940,
       "y": 400,
       "group": "azure",
-      "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "PushSent" }
+      "props": {
+        "replicas": 10,
+        "concurrency": 5,
+        "latencyMs": 100,
+        "emits": "PushSent"
+      }
     },
     {
       "id": "sendgrid",
@@ -142,7 +177,15 @@
       "y": 160,
       "group": "azure"
     },
-    { "id": "twilio", "stencil": "twilio", "label": "Twilio", "sublabel": "SMS", "x": 2320, "y": 280, "props": {} },
+    {
+      "id": "twilio",
+      "stencil": "twilio",
+      "label": "Twilio",
+      "sublabel": "SMS",
+      "x": 2320,
+      "y": 280,
+      "props": {}
+    },
     {
       "id": "push",
       "stencil": "generic.push",
@@ -151,6 +194,55 @@
       "x": 2320,
       "y": 400,
       "props": {}
+    },
+    {
+      "id": "email-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "Email DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 160,
+      "group": "azure"
+    },
+    {
+      "id": "sms-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "SMS DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 520,
+      "group": "azure"
+    },
+    {
+      "id": "push-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "Push DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 640,
+      "group": "azure"
+    },
+    {
+      "id": "dlq-triage",
+      "stencil": "azure.functions",
+      "label": "DLQ triage",
+      "sublabel": "alert, then replay",
+      "x": 1940,
+      "y": 580,
+      "group": "azure",
+      "props": {
+        "concurrency": 8,
+        "latencyMs": 100
+      }
+    },
+    {
+      "id": "identity",
+      "stencil": "azure.managed-identity",
+      "label": "Sender identity",
+      "sublabel": "user-assigned",
+      "x": 1180,
+      "y": 520,
+      "group": "azure"
     }
   ],
   "edges": [
@@ -160,7 +252,9 @@
       "to": "shipping",
       "label": "Webhook",
       "kind": "sync",
-      "props": { "travelMs": 200 }
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "shipping-to-events",
@@ -168,7 +262,9 @@
       "to": "events",
       "label": "OrderShipped",
       "kind": "async",
-      "props": { "travelMs": 300 }
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "events-to-router",
@@ -176,7 +272,10 @@
       "to": "router",
       "label": "Subscription",
       "kind": "async",
-      "props": { "travelMs": 300, "group": "notifications" }
+      "props": {
+        "travelMs": 300,
+        "group": "notifications"
+      }
     },
     {
       "id": "router-to-preferences",
@@ -184,7 +283,9 @@
       "to": "preferences",
       "label": "Read preferences",
       "kind": "sync",
-      "props": { "travelMs": 200 }
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "router-to-email-q",
@@ -192,7 +293,10 @@
       "to": "email-q",
       "label": "If email",
       "kind": "async",
-      "props": { "travelMs": 300, "share": 0.9 }
+      "props": {
+        "travelMs": 300,
+        "share": 0.9
+      }
     },
     {
       "id": "router-to-sms-q",
@@ -200,7 +304,10 @@
       "to": "sms-q",
       "label": "If SMS",
       "kind": "async",
-      "props": { "travelMs": 300, "share": 0.3 }
+      "props": {
+        "travelMs": 300,
+        "share": 0.3
+      }
     },
     {
       "id": "router-to-push-q",
@@ -208,28 +315,37 @@
       "to": "push-q",
       "label": "If push",
       "kind": "async",
-      "props": { "travelMs": 300, "share": 0.7 }
+      "props": {
+        "travelMs": 300,
+        "share": 0.7
+      }
     },
     {
       "id": "email-q-to-email-sender",
       "from": "email-q",
       "to": "email-sender",
       "kind": "async",
-      "props": { "travelMs": 300 }
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "sms-q-to-sms-limiter",
       "from": "sms-q",
       "to": "sms-limiter",
       "kind": "async",
-      "props": { "travelMs": 300 }
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "push-q-to-push-sender",
       "from": "push-q",
       "to": "push-sender",
       "kind": "async",
-      "props": { "travelMs": 300 }
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "email-sender-to-sendgrid",
@@ -237,7 +353,9 @@
       "to": "sendgrid",
       "label": "Mail Send API",
       "kind": "sync",
-      "props": { "travelMs": 200 }
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "sms-limiter-to-twilio",
@@ -245,7 +363,9 @@
       "to": "twilio",
       "label": "Messages API",
       "kind": "sync",
-      "props": { "travelMs": 200 }
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "push-sender-to-push",
@@ -253,7 +373,9 @@
       "to": "push",
       "label": "Send",
       "kind": "sync",
-      "props": { "travelMs": 200 }
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "email-sender-to-key-vault",
@@ -272,6 +394,72 @@
       "relation": "secret",
       "sourceSide": "top",
       "targetSide": "bottom"
+    },
+    {
+      "id": "email-q-to-email-dlq",
+      "from": "email-q",
+      "to": "email-dlq",
+      "kind": "async",
+      "label": "After 10 tries",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "sms-q-to-sms-dlq",
+      "from": "sms-q",
+      "to": "sms-dlq",
+      "kind": "async",
+      "label": "After 10 tries",
+      "sourceSide": "left",
+      "targetSide": "left",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "push-q-to-push-dlq",
+      "from": "push-q",
+      "to": "push-dlq",
+      "kind": "async",
+      "label": "After 10 tries",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "email-dlq-to-dlq-triage",
+      "from": "email-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
+    },
+    {
+      "id": "sms-dlq-to-dlq-triage",
+      "from": "sms-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
+    },
+    {
+      "id": "push-dlq-to-dlq-triage",
+      "from": "push-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
+    },
+    {
+      "id": "email-sender-to-identity",
+      "from": "email-sender",
+      "to": "identity",
+      "kind": "async",
+      "label": "runs as",
+      "relation": "identity"
+    },
+    {
+      "id": "sms-limiter-to-identity",
+      "from": "sms-limiter",
+      "to": "identity",
+      "kind": "async",
+      "label": "runs as",
+      "relation": "identity"
     }
   ],
   "simulations": [
@@ -287,7 +475,11 @@
           "node": "carrier",
           "messageType": "ParcelScanned",
           "label": "400 parcels/s for 5 seconds",
-          "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 5000 }
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 400,
+            "durationMs": 5000
+          }
         }
       ],
       "timeline": [
@@ -321,7 +513,10 @@
         {
           "id": "sms-backlog",
           "label": "SMS queues behind its rate limit",
-          "metric": { "node": "sms-q", "field": "lag" },
+          "metric": {
+            "node": "sms-q",
+            "field": "lag"
+          },
           "op": ">",
           "value": 100,
           "when": "at",
@@ -330,7 +525,10 @@
         {
           "id": "email-current",
           "label": "Email keeps up",
-          "metric": { "node": "email-q", "field": "lag" },
+          "metric": {
+            "node": "email-q",
+            "field": "lag"
+          },
           "op": "<=",
           "value": 200,
           "when": "always"
@@ -338,7 +536,10 @@
         {
           "id": "sms-drained",
           "label": "Every SMS is eventually sent",
-          "metric": { "node": "sms-q", "field": "lag" },
+          "metric": {
+            "node": "sms-q",
+            "field": "lag"
+          },
           "op": "==",
           "value": 0,
           "when": "end"
@@ -346,7 +547,10 @@
         {
           "id": "preferences",
           "label": "Preferences read for all 2,000",
-          "metric": { "node": "preferences", "field": "processed" },
+          "metric": {
+            "node": "preferences",
+            "field": "processed"
+          },
           "op": "==",
           "value": 2000,
           "when": "end"
@@ -365,11 +569,22 @@
           "node": "carrier",
           "messageType": "ParcelScanned",
           "label": "40 parcels/s for 8 seconds",
-          "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 8000 }
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "durationMs": 8000
+          }
         }
       ],
       "timeline": [
-        { "atMs": 1500, "action": { "do": "status", "node": "sms-limiter", "status": "paused" } },
+        {
+          "atMs": 1500,
+          "action": {
+            "do": "status",
+            "node": "sms-limiter",
+            "status": "paused"
+          }
+        },
         {
           "atMs": 1500,
           "action": {
@@ -379,7 +594,14 @@
             "pause": true
           }
         },
-        { "atMs": 6500, "action": { "do": "status", "node": "sms-limiter", "status": "up" } },
+        {
+          "atMs": 6500,
+          "action": {
+            "do": "status",
+            "node": "sms-limiter",
+            "status": "up"
+          }
+        },
         {
           "atMs": 6500,
           "action": {
@@ -393,7 +615,10 @@
         {
           "id": "waiting",
           "label": "SMS waits during the outage",
-          "metric": { "node": "sms-q", "field": "lag" },
+          "metric": {
+            "node": "sms-q",
+            "field": "lag"
+          },
           "op": ">",
           "value": 20,
           "when": "at",
@@ -402,7 +627,10 @@
         {
           "id": "drained",
           "label": "The SMS backlog drains",
-          "metric": { "node": "sms-q", "field": "lag" },
+          "metric": {
+            "node": "sms-q",
+            "field": "lag"
+          },
           "op": "==",
           "value": 0,
           "when": "end"
@@ -410,7 +638,10 @@
         {
           "id": "email",
           "label": "Email is unaffected",
-          "metric": { "node": "email-q", "field": "lag" },
+          "metric": {
+            "node": "email-q",
+            "field": "lag"
+          },
           "op": "<=",
           "value": 10,
           "when": "always"
@@ -418,7 +649,10 @@
         {
           "id": "all-routed",
           "label": "All 320 events are routed",
-          "metric": { "node": "preferences", "field": "processed" },
+          "metric": {
+            "node": "preferences",
+            "field": "processed"
+          },
           "op": "==",
           "value": 320,
           "when": "end"

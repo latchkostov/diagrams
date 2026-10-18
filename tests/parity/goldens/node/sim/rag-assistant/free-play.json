@@ -17,7 +17,9 @@
         "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
         "embed-worker": { "replicas": [4, 4, 0] },
         "embeddings": { "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -46,7 +48,9 @@
         },
         "embed-worker": { "processed": 1, "throughput": 0.015529779607332084, "replicas": [4, 4, 0] },
         "embeddings": { "processed": 1, "throughput": 0.02270895739711155, "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -70,7 +74,9 @@
         },
         "embed-worker": { "processed": 3, "throughput": 0.015175107965959491, "replicas": [4, 4, 0] },
         "embeddings": { "processed": 3, "throughput": 0.022187326833315424, "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -94,7 +100,9 @@
         },
         "embed-worker": { "processed": 5, "throughput": 0.015632014843222554, "replicas": [4, 4, 0] },
         "embeddings": { "processed": 5, "throughput": 0.021966545819144305, "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -118,7 +126,9 @@
         },
         "embed-worker": { "processed": 7, "throughput": 0.014579125363474438, "replicas": [4, 4, 0] },
         "embeddings": { "processed": 7, "throughput": 0.02028187790294307, "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -147,7 +157,9 @@
         },
         "embed-worker": { "processed": 9, "throughput": 0.014584130079773333, "replicas": [4, 4, 0] },
         "embeddings": { "processed": 9, "throughput": 0.020694384453498166, "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -176,7 +188,9 @@
         },
         "embed-worker": { "processed": 11, "throughput": 0.015173013662464097, "replicas": [4, 4, 0] },
         "embeddings": { "processed": 11, "throughput": 0.021315878706031906, "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     }
   ],
@@ -196,9 +210,28 @@
       "ingest-q": { "processed": 11, "throughput": 0.009111343676710123, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
       "embed-worker": { "processed": 11, "throughput": 0.015173013662464097, "replicas": [4, 4, 0] },
       "embeddings": { "processed": 11, "throughput": 0.021315878706031906, "replicas": [1, 1, 0] },
-      "vault": { "replicas": [1, 1, 0] }
+      "vault": { "replicas": [1, 1, 0] },
+      "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "ingest-triage": { "replicas": [1, 1, 0] }
     },
-    "edges": { "user-to-rag-api": 119, "rag-api-to-cache": 118, "rag-api-to-vector-db": 118, "rag-api-to-llm": 118, "rag-api-to-feedback": 23, "feedback-to-eval-job": 23, "eval-job-to-llm": 23, "eval-job-to-quality": 23, "docs-to-ingest-q": 11, "ingest-q-to-embed-worker": 11, "embed-worker-to-embeddings": 11, "embed-worker-to-vector-db": 11, "rag-api-to-vault": 0, "embed-worker-to-vault": 0 }
+    "edges": {
+      "user-to-rag-api": 119,
+      "rag-api-to-cache": 118,
+      "rag-api-to-vector-db": 118,
+      "rag-api-to-llm": 118,
+      "rag-api-to-feedback": 23,
+      "feedback-to-eval-job": 23,
+      "eval-job-to-llm": 23,
+      "eval-job-to-quality": 23,
+      "docs-to-ingest-q": 11,
+      "ingest-q-to-embed-worker": 11,
+      "embed-worker-to-embeddings": 11,
+      "embed-worker-to-vector-db": 11,
+      "rag-api-to-vault": 0,
+      "embed-worker-to-vault": 0,
+      "ingest-q-to-ingest-dlq": 0,
+      "ingest-dlq-to-ingest-triage": 0
+    }
   },
   "events": {
     "total": 1347,

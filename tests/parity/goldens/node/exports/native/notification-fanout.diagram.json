@@ -1,7 +1,7 @@
 {
   "format": "diagrams/v1",
   "title": "Notification fan-out",
-  "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.",
+  "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.",
   "direction": "LR",
   "groups": [
     {
@@ -9,9 +9,9 @@
       "label": "Azure · notifications",
       "tone": "azure",
       "x": 380,
-      "y": 0,
-      "width": 1860,
-      "height": 512
+      "y": -24,
+      "width": 1820,
+      "height": 776
     }
   ],
   "nodes": [
@@ -86,7 +86,9 @@
       "x": 1560,
       "y": 40,
       "group": "azure",
-      "props": {}
+      "props": {
+        "maxDeliveryCount": 10
+      }
     },
     {
       "id": "sms-q",
@@ -96,7 +98,9 @@
       "x": 1560,
       "y": 280,
       "group": "azure",
-      "props": {}
+      "props": {
+        "maxDeliveryCount": 10
+      }
     },
     {
       "id": "push-q",
@@ -106,7 +110,9 @@
       "x": 1560,
       "y": 400,
       "group": "azure",
-      "props": {}
+      "props": {
+        "maxDeliveryCount": 10
+      }
     },
     {
       "id": "email-sender",
@@ -188,6 +194,55 @@
       "x": 2320,
       "y": 400,
       "props": {}
+    },
+    {
+      "id": "email-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "Email DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 160,
+      "group": "azure"
+    },
+    {
+      "id": "sms-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "SMS DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 520,
+      "group": "azure"
+    },
+    {
+      "id": "push-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "Push DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 640,
+      "group": "azure"
+    },
+    {
+      "id": "dlq-triage",
+      "stencil": "azure.functions",
+      "label": "DLQ triage",
+      "sublabel": "alert, then replay",
+      "x": 1940,
+      "y": 580,
+      "group": "azure",
+      "props": {
+        "concurrency": 8,
+        "latencyMs": 100
+      }
+    },
+    {
+      "id": "identity",
+      "stencil": "azure.managed-identity",
+      "label": "Sender identity",
+      "sublabel": "user-assigned",
+      "x": 1180,
+      "y": 520,
+      "group": "azure"
     }
   ],
   "edges": [
@@ -339,6 +394,72 @@
       "relation": "secret",
       "sourceSide": "top",
       "targetSide": "bottom"
+    },
+    {
+      "id": "email-q-to-email-dlq",
+      "from": "email-q",
+      "to": "email-dlq",
+      "kind": "async",
+      "label": "After 10 tries",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "sms-q-to-sms-dlq",
+      "from": "sms-q",
+      "to": "sms-dlq",
+      "kind": "async",
+      "label": "After 10 tries",
+      "sourceSide": "left",
+      "targetSide": "left",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "push-q-to-push-dlq",
+      "from": "push-q",
+      "to": "push-dlq",
+      "kind": "async",
+      "label": "After 10 tries",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "email-dlq-to-dlq-triage",
+      "from": "email-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
+    },
+    {
+      "id": "sms-dlq-to-dlq-triage",
+      "from": "sms-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
+    },
+    {
+      "id": "push-dlq-to-dlq-triage",
+      "from": "push-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
+    },
+    {
+      "id": "email-sender-to-identity",
+      "from": "email-sender",
+      "to": "identity",
+      "kind": "async",
+      "label": "runs as",
+      "relation": "identity"
+    },
+    {
+      "id": "sms-limiter-to-identity",
+      "from": "sms-limiter",
+      "to": "identity",
+      "kind": "async",
+      "label": "runs as",
+      "relation": "identity"
     }
   ],
   "simulations": [

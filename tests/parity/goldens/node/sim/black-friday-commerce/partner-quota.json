@@ -517,7 +517,7 @@
     ]
   },
   "notes": [
-    { "atMs": 0, "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["checkout-api", "orders-db", "outbox-relay", "orders"] },
+    { "atMs": 0, "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["outbox-relay", "orders"] },
     { "atMs": 4000, "text": "KEDA adds fulfilment workers to keep lag near its target of 20 per worker.", "focus": ["orders", "fulfilment"] },
     { "atMs": 8000, "text": "Every worker calls the 3PL API, which allows 60 picks a second, so the rest are rejected. More workers can't raise a partner's quota: batch picks, or agree a higher limit.", "focus": ["fulfilment", "wms"] }
   ],

@@ -162,7 +162,7 @@ test("without clone(), every request gets a session of its own, the next diagram
   // Another diagram, opened in the same page (the model's sessions live as long as the page): its request reaches
   // none of those sessions, and they're all gone.
   const title = await page.getByTestId("diagram-title").innerText();
-  await openExample(page, "aws-fanout");
+  await openExample(page, "aws-serverless-orders");
   await expect(page.getByTestId("diagram-title")).not.toHaveText(title);
   await expect(page.getByTestId("ai-ondevice")).toBeVisible();
   await ask(page, "Add a billing queue");

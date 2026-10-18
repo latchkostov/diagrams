@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Mākoņa lietotnes",
   "examples.themeIntegration": "Integrācija",
   "examples.themeReliability": "Uzticamība",
+  "examples.themeSystems": "Pilnas sistēmas",
   "autoscaling.budget": "Pārsniegts resursu dzīves cikla budžets: {limit, number}. Samaziniet konfigurētās grupas vai kapacitātes reizinātāju.",
   "autoscaling.bindingInvalid": "Šis labojums padarītu mērogošanas avotu nederīgu. Vispirms mainiet vai atspējojiet skartā mezgla vai saglabātās simulācijas politiku.",
   "autoscaling.bindingRequired": "Pievienojiet saderīgu brokeri un patērētāju grupu, tad papildu iestatījumos izvēlieties avotu. Priekšiestatījums tiek saglabāts tikai pēc avota izvēles.",

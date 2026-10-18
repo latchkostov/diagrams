@@ -1,9 +1,10 @@
 {
-  "autoScale": { "freePlay": 1, "flash-sale": 5, "three-pl-outage": 1 },
+  "autoScale": { "freePlay": 1, "flash-sale": 5, "three-pl-outage": 1, "throttle": 1 },
   "brokerAssignments": {
     "brokers": {
       "bus": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
-      "sns": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      "sns": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+      "schedule": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
     },
     "consumers": {
       "sfn": {
@@ -18,6 +19,10 @@
         "count": 64,
         "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
       },
+      "archive-q": {
+        "count": 64,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
       "fulfillment-fn": { "count": 1 },
       "email": {
         "count": 64,
@@ -26,6 +31,11 @@
       "sms": {
         "count": 64,
         "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      },
+      "archive-fn": { "count": 1 },
+      "reconcile": {
+        "count": 1,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
       }
     }
   },
@@ -33,8 +43,8 @@
     "configured": false,
     "simulation": "free-play",
     "analysis": {
-      "bottleneck": "fulfillment-q",
-      "suggestion": "fulfillment-queue: 3% utilized",
+      "bottleneck": "archive-fn",
+      "suggestion": "Archive orders: 15% utilized",
       "converged": true,
       "iterations": 13,
       "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -53,9 +63,33 @@
         "sns": ["Infinity", 10, 0, 1, 1, 0],
         "email": ["Infinity", 10, 0, 1, 1, 0],
         "sms": ["Infinity", 10, 0, 1, 1, 0],
-        "cognito": ["Infinity", 0, 0, 1, 1, 0]
+        "cognito": ["Infinity", 0, 0, 1, 1, 0],
+        "archive-q": [133.33333333333334, 20, 0.15, 1, 1, 0],
+        "archive-dlq": ["Infinity", 0, 0, 1, 1, 0],
+        "archive-fn": [133.33333333333334, 20, 0.15, 1, 1, 0],
+        "archive-s3": ["Infinity", 20, 0, 1, 1, 0],
+        "schedule": [66.66666666666667, 0, 0, 1, 1, 0],
+        "reconcile": [66.66666666666667, 0, 0, 1, 1, 0]
       },
-      "connections": { "client-to-apigw": 10, "apigw-to-create-order": 10, "create-order-to-orders-table": 10, "orders-table-to-stream-fn": 20, "stream-fn-to-bus": 20, "bus-to-sfn": 10, "bus-to-fulfillment-q": 10, "bus-to-sns": 10, "sfn-to-stripe": 10, "sfn-to-orders-table": 10, "fulfillment-q-to-fulfillment-fn": 10, "sns-to-email": 10, "sns-to-sms": 10, "fulfillment-fn-to-three-pl": 10 },
+      "connections": {
+        "client-to-apigw": 10,
+        "apigw-to-create-order": 10,
+        "create-order-to-orders-table": 10,
+        "orders-table-to-stream-fn": 20,
+        "stream-fn-to-bus": 20,
+        "bus-to-sfn": 10,
+        "bus-to-archive-q": 20,
+        "bus-to-fulfillment-q": 10,
+        "bus-to-sns": 10,
+        "sfn-to-stripe": 10,
+        "sfn-to-orders-table": 10,
+        "archive-q-to-archive-fn": 20,
+        "fulfillment-q-to-fulfillment-fn": 10,
+        "sns-to-email": 10,
+        "sns-to-sms": 10,
+        "archive-fn-to-archive-s3": 20,
+        "fulfillment-fn-to-three-pl": 10
+      },
       "offeredTypes": {
         "client": ["PlaceOrder"],
         "apigw": ["PlaceOrder"],
@@ -64,12 +98,15 @@
         "stream-fn": ["OrderPlaced", "OrderPaid"],
         "bus": ["OrderPlaced", "OrderPaid"],
         "sfn": ["OrderPlaced"],
+        "archive-q": ["OrderPlaced", "OrderPaid"],
         "fulfillment-q": ["OrderPaid"],
         "sns": ["OrderPaid"],
         "stripe": ["OrderPaid"],
+        "archive-fn": ["OrderPlaced", "OrderPaid"],
         "fulfillment-fn": ["OrderPaid"],
         "email": ["OrderPaid"],
         "sms": ["OrderPaid"],
+        "archive-s3": ["OrderArchived"],
         "three-pl": ["ShipmentRequested"]
       }
     },
@@ -181,6 +218,62 @@
         "minimumReplicas": 1,
         "changes": null,
         "converged": true
+      },
+      "archive-fn": {
+        "id": "archive-fn",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 133.33333333333334,
+        "offered": 20,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 20,
+        "seconds": 0.15,
+        "utilization": 0.15,
+        "growth": 0,
+        "contributors": [
+          { "edge": "archive-q-to-archive-fn", "node": "archive-q", "label": "order-archive", "rate": 20 }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "reconcile": {
+        "id": "reconcile",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 66.66666666666667,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [
+          {
+            "broker": "schedule",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 3
+          }
+        ],
+        "slots": 10,
+        "seconds": 0.15,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
       }
     },
     "capabilities": {
@@ -190,7 +283,8 @@
       "stream-fn": [{ "kind": "publishes", "edge": "stream-fn-to-bus", "peer": "bus" }],
       "bus": [
         { "kind": "publishes", "edge": "bus-to-fulfillment-q", "peer": "fulfillment-q", "filter": ["OrderPaid"] },
-        { "kind": "publishes", "edge": "bus-to-sns", "peer": "sns", "filter": ["OrderPaid"] }
+        { "kind": "publishes", "edge": "bus-to-sns", "peer": "sns", "filter": ["OrderPaid"] },
+        { "kind": "publishes", "edge": "bus-to-archive-q", "peer": "archive-q", "filter": ["Order*"] }
       ],
       "sfn": [
         {
@@ -210,6 +304,23 @@
       "fulfillment-fn": [
         { "kind": "consumes", "edge": "fulfillment-q-to-fulfillment-fn", "peer": "fulfillment-q", "retry": "requeue", "retryBackoffMs": 300 },
         { "kind": "calls", "edge": "fulfillment-fn-to-three-pl", "peer": "three-pl" }
+      ],
+      "archive-dlq": [{ "kind": "publishes", "edge": "archive-dlq-to-archive-q", "peer": "archive-q" }],
+      "archive-fn": [
+        { "kind": "consumes", "edge": "archive-q-to-archive-fn", "peer": "archive-q", "retry": "requeue", "retryBackoffMs": 0 },
+        { "kind": "calls", "edge": "archive-fn-to-archive-s3", "peer": "archive-s3" }
+      ],
+      "reconcile": [
+        {
+          "kind": "consumes",
+          "edge": "schedule-to-reconcile",
+          "peer": "schedule",
+          "group": "schedule-to-reconcile",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "reconcile-to-orders-table", "peer": "orders-table" }
       ]
     },
     "sizing": null,
@@ -459,6 +570,98 @@
         "partitions": 3,
         "messageType": "Cognito user pool",
         "healthChecks": false
+      },
+      "archive-q": {
+        "profile": { "family": "queue", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 5,
+        "partitions": 3,
+        "messageType": "order-archive",
+        "healthChecks": false
+      },
+      "archive-dlq": {
+        "profile": { "family": "queue", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "order-archive-dlq",
+        "healthChecks": false
+      },
+      "archive-fn": {
+        "profile": { "family": "serverless", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 20,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "emits": "OrderArchived",
+        "messageType": "Archive orders",
+        "healthChecks": false
+      },
+      "archive-s3": {
+        "profile": { "family": "object", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Order archive",
+        "healthChecks": false
+      },
+      "schedule": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "pubsub", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 0.0011111111111111111,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "ReconcileTick",
+        "healthChecks": false
+      },
+      "reconcile": {
+        "profile": { "family": "serverless", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 10,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Reconcile orders",
+        "healthChecks": false
       }
     }
   },
@@ -467,8 +670,8 @@
       "configured": "(same as edit)",
       "simulation": "flash-sale",
       "analysis": {
-        "bottleneck": "fulfillment-q",
-        "suggestion": "fulfillment-queue: 90% utilized",
+        "bottleneck": "archive-fn",
+        "suggestion": "Archive orders: raise replicas from 1 to 5.",
         "converged": true,
         "iterations": 13,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -487,9 +690,33 @@
           "sns": ["Infinity", 300, 0, 1, 1, 0],
           "email": ["Infinity", 300, 0, 1, 1, 0],
           "sms": ["Infinity", 300, 0, 1, 1, 0],
-          "cognito": ["Infinity", 0, 0, 1, 1, 0]
+          "cognito": ["Infinity", 0, 0, 1, 1, 0],
+          "archive-q": [133.33333333333334, 600, 4.5, 1, 1, 0],
+          "archive-dlq": ["Infinity", 0, 0, 1, 1, 0],
+          "archive-fn": [133.33333333333334, 600, 4.5, 1, 1, 0],
+          "archive-s3": ["Infinity", 600, 0, 1, 1, 0],
+          "schedule": [66.66666666666667, 0, 0, 1, 1, 0],
+          "reconcile": [66.66666666666667, 0, 0, 1, 1, 0]
         },
-        "connections": { "client-to-apigw": 300, "apigw-to-create-order": 300, "create-order-to-orders-table": 300, "orders-table-to-stream-fn": 600, "stream-fn-to-bus": 600, "bus-to-sfn": 300, "bus-to-fulfillment-q": 300, "bus-to-sns": 300, "sfn-to-stripe": 300, "sfn-to-orders-table": 300, "fulfillment-q-to-fulfillment-fn": 300, "sns-to-email": 300, "sns-to-sms": 300, "fulfillment-fn-to-three-pl": 300 },
+        "connections": {
+          "client-to-apigw": 300,
+          "apigw-to-create-order": 300,
+          "create-order-to-orders-table": 300,
+          "orders-table-to-stream-fn": 600,
+          "stream-fn-to-bus": 600,
+          "bus-to-sfn": 300,
+          "bus-to-archive-q": 600,
+          "bus-to-fulfillment-q": 300,
+          "bus-to-sns": 300,
+          "sfn-to-stripe": 300,
+          "sfn-to-orders-table": 300,
+          "archive-q-to-archive-fn": 600,
+          "fulfillment-q-to-fulfillment-fn": 300,
+          "sns-to-email": 300,
+          "sns-to-sms": 300,
+          "archive-fn-to-archive-s3": 600,
+          "fulfillment-fn-to-three-pl": 300
+        },
         "offeredTypes": {
           "client": ["PlaceOrder"],
           "apigw": ["PlaceOrder"],
@@ -498,12 +725,15 @@
           "stream-fn": ["OrderPlaced", "OrderPaid"],
           "bus": ["OrderPlaced", "OrderPaid"],
           "sfn": ["OrderPlaced"],
+          "archive-q": ["OrderPlaced", "OrderPaid"],
           "fulfillment-q": ["OrderPaid"],
           "sns": ["OrderPaid"],
           "stripe": ["OrderPaid"],
+          "archive-fn": ["OrderPlaced", "OrderPaid"],
           "fulfillment-fn": ["OrderPaid"],
           "email": ["OrderPaid"],
           "sms": ["OrderPaid"],
+          "archive-s3": ["OrderArchived"],
           "three-pl": ["ShipmentRequested"]
         }
       },
@@ -617,13 +847,76 @@
           "changes": [{ "nodeId": "fulfillment-fn", "key": "replicas", "from": 1, "to": 2 }],
           "fixId": "capacity:fulfillment-fn",
           "converged": true
+        },
+        "archive-fn": {
+          "id": "archive-fn",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 133.33333333333334,
+          "offered": 600,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 20,
+          "seconds": 0.15,
+          "utilization": 4.5,
+          "growth": 466.66666666666663,
+          "contributors": [
+            { "edge": "archive-q-to-archive-fn", "node": "archive-q", "label": "order-archive", "rate": 600 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 5,
+          "targetReplicas": 9,
+          "changes": [{ "nodeId": "archive-fn", "key": "replicas", "from": 1, "to": 9 }],
+          "fixId": "capacity:archive-fn",
+          "converged": true
+        },
+        "reconcile": {
+          "id": "reconcile",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 66.66666666666667,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "schedule",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 3
+            }
+          ],
+          "slots": 10,
+          "seconds": 0.15,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
-      "sizing": [{ "nodeId": "fulfillment-fn", "key": "replicas", "from": 1, "to": 2 }],
+      "sizing": [
+        { "nodeId": "fulfillment-fn", "key": "replicas", "from": 1, "to": 2 },
+        { "nodeId": "archive-fn", "key": "replicas", "from": 1, "to": 9 }
+      ],
       "redundancy": {
         "fulfillment-q": { "replicas": 2, "enough": false },
-        "fulfillment-fn": { "replicas": 2, "enough": true }
+        "fulfillment-fn": { "replicas": 2, "enough": true },
+        "archive-q": { "replicas": 2, "enough": false },
+        "archive-fn": { "replicas": 9, "enough": true }
       },
       "resolved": "(same as edit)"
     },
@@ -631,8 +924,8 @@
       "configured": "(same as edit)",
       "simulation": "three-pl-outage",
       "analysis": {
-        "bottleneck": "fulfillment-q",
-        "suggestion": "fulfillment-queue: 6% utilized",
+        "bottleneck": "archive-fn",
+        "suggestion": "Archive orders: 30% utilized",
         "converged": true,
         "iterations": 13,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
@@ -651,9 +944,33 @@
           "sns": ["Infinity", 20, 0, 1, 1, 0],
           "email": ["Infinity", 20, 0, 1, 1, 0],
           "sms": ["Infinity", 20, 0, 1, 1, 0],
-          "cognito": ["Infinity", 0, 0, 1, 1, 0]
+          "cognito": ["Infinity", 0, 0, 1, 1, 0],
+          "archive-q": [133.33333333333334, 40, 0.3, 1, 1, 0],
+          "archive-dlq": ["Infinity", 0, 0, 1, 1, 0],
+          "archive-fn": [133.33333333333334, 40, 0.3, 1, 1, 0],
+          "archive-s3": ["Infinity", 40, 0, 1, 1, 0],
+          "schedule": [66.66666666666667, 0, 0, 1, 1, 0],
+          "reconcile": [66.66666666666667, 0, 0, 1, 1, 0]
         },
-        "connections": { "client-to-apigw": 20, "apigw-to-create-order": 20, "create-order-to-orders-table": 20, "orders-table-to-stream-fn": 40, "stream-fn-to-bus": 40, "bus-to-sfn": 20, "bus-to-fulfillment-q": 20, "bus-to-sns": 20, "sfn-to-stripe": 20, "sfn-to-orders-table": 20, "fulfillment-q-to-fulfillment-fn": 20, "sns-to-email": 20, "sns-to-sms": 20, "fulfillment-fn-to-three-pl": 20 },
+        "connections": {
+          "client-to-apigw": 20,
+          "apigw-to-create-order": 20,
+          "create-order-to-orders-table": 20,
+          "orders-table-to-stream-fn": 40,
+          "stream-fn-to-bus": 40,
+          "bus-to-sfn": 20,
+          "bus-to-archive-q": 40,
+          "bus-to-fulfillment-q": 20,
+          "bus-to-sns": 20,
+          "sfn-to-stripe": 20,
+          "sfn-to-orders-table": 20,
+          "archive-q-to-archive-fn": 40,
+          "fulfillment-q-to-fulfillment-fn": 20,
+          "sns-to-email": 20,
+          "sns-to-sms": 20,
+          "archive-fn-to-archive-s3": 40,
+          "fulfillment-fn-to-three-pl": 20
+        },
         "offeredTypes": {
           "client": ["PlaceOrder"],
           "apigw": ["PlaceOrder"],
@@ -662,12 +979,15 @@
           "stream-fn": ["OrderPlaced", "OrderPaid"],
           "bus": ["OrderPlaced", "OrderPaid"],
           "sfn": ["OrderPlaced"],
+          "archive-q": ["OrderPlaced", "OrderPaid"],
           "fulfillment-q": ["OrderPaid"],
           "sns": ["OrderPaid"],
           "stripe": ["OrderPaid"],
+          "archive-fn": ["OrderPlaced", "OrderPaid"],
           "fulfillment-fn": ["OrderPaid"],
           "email": ["OrderPaid"],
           "sms": ["OrderPaid"],
+          "archive-s3": ["OrderArchived"],
           "three-pl": ["ShipmentRequested"]
         }
       },
@@ -779,6 +1099,304 @@
           "minimumReplicas": 1,
           "changes": null,
           "converged": true
+        },
+        "archive-fn": {
+          "id": "archive-fn",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 133.33333333333334,
+          "offered": 40,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 20,
+          "seconds": 0.15,
+          "utilization": 0.3,
+          "growth": 0,
+          "contributors": [
+            { "edge": "archive-q-to-archive-fn", "node": "archive-q", "label": "order-archive", "rate": 40 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "reconcile": {
+          "id": "reconcile",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 66.66666666666667,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "schedule",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 3
+            }
+          ],
+          "slots": 10,
+          "seconds": 0.15,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "throttle": {
+      "configured": "(same as edit)",
+      "simulation": "throttle",
+      "analysis": {
+        "bottleneck": "archive-fn",
+        "suggestion": "Archive orders: 45% utilized",
+        "converged": true,
+        "iterations": 13,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "client": ["Infinity", 30, 0, 1, 1, 0],
+          "apigw": ["Infinity", 30, 0, 1, 1, 0],
+          "create-order": [1250, 30, 0.024, 1, 1, 0],
+          "orders-table": ["Infinity", 60, 0, 1, 1, 0],
+          "stream-fn": [1666.6666666666667, 60, 0.036, 1, 1, 0],
+          "bus": [1000.0000000000001, 60, 0.05999999999999999, 1, 1, 0],
+          "sfn": [500, 30, 0.06, 1, 1, 0],
+          "stripe": ["Infinity", 30, 0, 1, 1, 0],
+          "dlq": ["Infinity", 0, 0, 1, 1, 0],
+          "fulfillment-q": [333.3333333333333, 30, 0.09000000000000001, 1, 1, 0],
+          "fulfillment-fn": [333.3333333333333, 30, 0.09000000000000001, 1, 1, 0],
+          "three-pl": ["Infinity", 30, 0, 1, 1, 0],
+          "sns": ["Infinity", 30, 0, 1, 1, 0],
+          "email": ["Infinity", 30, 0, 1, 1, 0],
+          "sms": ["Infinity", 30, 0, 1, 1, 0],
+          "cognito": ["Infinity", 0, 0, 1, 1, 0],
+          "archive-q": [133.33333333333334, 60, 0.44999999999999996, 1, 1, 0],
+          "archive-dlq": ["Infinity", 0, 0, 1, 1, 0],
+          "archive-fn": [133.33333333333334, 60, 0.44999999999999996, 1, 1, 0],
+          "archive-s3": ["Infinity", 60, 0, 1, 1, 0],
+          "schedule": [66.66666666666667, 0, 0, 1, 1, 0],
+          "reconcile": [66.66666666666667, 0, 0, 1, 1, 0]
+        },
+        "connections": {
+          "client-to-apigw": 30,
+          "apigw-to-create-order": 30,
+          "create-order-to-orders-table": 30,
+          "orders-table-to-stream-fn": 60,
+          "stream-fn-to-bus": 60,
+          "bus-to-sfn": 30,
+          "bus-to-archive-q": 60,
+          "bus-to-fulfillment-q": 30,
+          "bus-to-sns": 30,
+          "sfn-to-stripe": 30,
+          "sfn-to-orders-table": 30,
+          "archive-q-to-archive-fn": 60,
+          "fulfillment-q-to-fulfillment-fn": 30,
+          "sns-to-email": 30,
+          "sns-to-sms": 30,
+          "archive-fn-to-archive-s3": 60,
+          "fulfillment-fn-to-three-pl": 30
+        },
+        "offeredTypes": {
+          "client": ["PlaceOrder"],
+          "apigw": ["PlaceOrder"],
+          "create-order": ["PlaceOrder"],
+          "orders-table": ["OrderPlaced", "OrderPaid"],
+          "stream-fn": ["OrderPlaced", "OrderPaid"],
+          "bus": ["OrderPlaced", "OrderPaid"],
+          "sfn": ["OrderPlaced"],
+          "archive-q": ["OrderPlaced", "OrderPaid"],
+          "fulfillment-q": ["OrderPaid"],
+          "sns": ["OrderPaid"],
+          "stripe": ["OrderPaid"],
+          "archive-fn": ["OrderPlaced", "OrderPaid"],
+          "fulfillment-fn": ["OrderPaid"],
+          "email": ["OrderPaid"],
+          "sms": ["OrderPaid"],
+          "archive-s3": ["OrderArchived"],
+          "three-pl": ["ShipmentRequested"]
+        }
+      },
+      "explanations": {
+        "create-order": {
+          "id": "create-order",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 1250,
+          "offered": 30,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 100,
+          "seconds": 0.08,
+          "utilization": 0.024,
+          "growth": 0,
+          "contributors": [
+            { "edge": "apigw-to-create-order", "node": "apigw", "label": "Web shop", "rate": 30, "via": "Orders API" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "stream-fn": {
+          "id": "stream-fn",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 1666.6666666666667,
+          "offered": 60,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 100,
+          "seconds": 0.06,
+          "utilization": 0.036,
+          "growth": 0,
+          "contributors": [
+            { "edge": "orders-table-to-stream-fn", "node": "orders-table", "label": "Orders table", "rate": 60 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "sfn": {
+          "id": "sfn",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 500,
+          "offered": 30,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "bus",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 64
+            }
+          ],
+          "slots": 200,
+          "seconds": 0.4,
+          "utilization": 0.06,
+          "growth": 0,
+          "contributors": [{ "edge": "bus-to-sfn", "node": "bus", "label": "commerce-bus", "rate": 30 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "fulfillment-fn": {
+          "id": "fulfillment-fn",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 333.3333333333333,
+          "offered": 30,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 50,
+          "seconds": 0.15,
+          "utilization": 0.09000000000000001,
+          "growth": 0,
+          "contributors": [
+            { "edge": "fulfillment-q-to-fulfillment-fn", "node": "fulfillment-q", "label": "fulfillment-queue", "rate": 30 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "archive-fn": {
+          "id": "archive-fn",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 133.33333333333334,
+          "offered": 60,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 20,
+          "seconds": 0.15,
+          "utilization": 0.44999999999999996,
+          "growth": 0,
+          "contributors": [
+            { "edge": "archive-q-to-archive-fn", "node": "archive-q", "label": "order-archive", "rate": 60 }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "reconcile": {
+          "id": "reconcile",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 66.66666666666667,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [
+            {
+              "broker": "schedule",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 3
+            }
+          ],
+          "slots": 10,
+          "seconds": 0.15,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -793,9 +1411,9 @@
         "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
         "view": {
           "tone": "ok",
-          "top": "fulfillment-q",
+          "top": "archive-fn",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: fulfillment-queue at 3% · 10/s of 333/s",
+          "detail": "Busiest: Archive orders at 15% · 20/s of 133/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -815,7 +1433,13 @@
             "sns": ["idle", "10/s · no limit"],
             "email": ["idle", "10/s · no limit", { "modeled": false }],
             "sms": ["idle", "10/s · no limit", { "modeled": false }],
-            "cognito": ["idle", "", { "modeled": false }]
+            "cognito": ["idle", "", { "modeled": false }],
+            "archive-q": ["ok", "15% · 20/s of 133/s"],
+            "archive-dlq": ["idle", ""],
+            "archive-fn": ["ok", "15% · 20/s of 133/s"],
+            "archive-s3": ["idle", "20/s · no limit", { "modeled": false }],
+            "schedule": ["idle", ""],
+            "reconcile": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -823,10 +1447,10 @@
       "black-friday": {
         "inputs": { "props": {}, "rates": {}, "traffic": 5 },
         "view": {
-          "tone": "ok",
-          "top": "fulfillment-fn",
-          "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: RequestShipment at 15% · 50/s of 333/s",
+          "tone": "warn",
+          "top": "archive-fn",
+          "headline": "Archive orders is busy",
+          "detail": "75% · 100/s of 133/s. Still some headroom.",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -846,7 +1470,13 @@
             "sns": ["idle", "50/s · no limit"],
             "email": ["idle", "50/s · no limit", { "modeled": false }],
             "sms": ["idle", "50/s · no limit", { "modeled": false }],
-            "cognito": ["idle", "", { "modeled": false }]
+            "cognito": ["idle", "", { "modeled": false }],
+            "archive-q": ["warn", "75% · 100/s of 133/s"],
+            "archive-dlq": ["idle", ""],
+            "archive-fn": ["warn", "75% · 100/s of 133/s"],
+            "archive-s3": ["idle", "100/s · no limit", { "modeled": false }],
+            "schedule": ["idle", ""],
+            "reconcile": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -855,9 +1485,9 @@
         "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
         "view": {
           "tone": "ok",
-          "top": "fulfillment-q",
+          "top": "archive-fn",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: fulfillment-queue at 3% · 10/s of 333/s",
+          "detail": "Busiest: Archive orders at 15% · 20/s of 133/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -877,18 +1507,27 @@
             "sns": ["idle", "10/s · no limit"],
             "email": ["idle", "10/s · no limit", { "modeled": false }],
             "sms": ["idle", "10/s · no limit", { "modeled": false }],
-            "cognito": ["idle", "", { "modeled": false }]
+            "cognito": ["idle", "", { "modeled": false }],
+            "archive-q": ["ok", "15% · 20/s of 133/s"],
+            "archive-dlq": ["idle", ""],
+            "archive-fn": ["ok", "15% · 20/s of 133/s"],
+            "archive-s3": ["idle", "20/s · no limit", { "modeled": false }],
+            "schedule": ["idle", ""],
+            "reconcile": ["idle", ""]
           }
         },
         "partitionsNotes": {}
       },
       "double-partitions": {
-        "inputs": { "props": { "bus": { "partitions": 128 }, "sns": { "partitions": 128 } }, "rates": {} },
+        "inputs": {
+          "props": { "bus": { "partitions": 128 }, "sns": { "partitions": 128 }, "schedule": { "partitions": 6 } },
+          "rates": {}
+        },
         "view": {
           "tone": "ok",
-          "top": "fulfillment-q",
+          "top": "archive-fn",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: fulfillment-queue at 3% · 10/s of 333/s",
+          "detail": "Busiest: Archive orders at 15% · 20/s of 133/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
@@ -908,20 +1547,29 @@
             "sns": ["idle", "10/s · no limit"],
             "email": ["idle", "10/s · no limit", { "modeled": false }],
             "sms": ["idle", "10/s · no limit", { "modeled": false }],
-            "cognito": ["idle", "", { "modeled": false }]
+            "cognito": ["idle", "", { "modeled": false }],
+            "archive-q": ["ok", "15% · 20/s of 133/s"],
+            "archive-dlq": ["idle", ""],
+            "archive-fn": ["ok", "15% · 20/s of 133/s"],
+            "archive-s3": ["idle", "20/s · no limit", { "modeled": false }],
+            "schedule": ["idle", ""],
+            "reconcile": ["idle", ""]
           }
         },
-        "partitionsNotes": {}
+        "partitionsNotes": { "schedule": "Its consumer group has 1 replica: partitions past 1 add no speed." }
       }
     },
     "flash-sale": {
-      "tone": "hot",
-      "top": "fulfillment-q",
-      "headline": "fulfillment-queue and 1 more are near capacity",
-      "detail": "90% · 300/s of 333/s",
+      "tone": "over",
+      "top": "archive-fn",
+      "headline": "Archive orders and 3 more are over capacity",
+      "detail": "450% · 600/s of 133/s",
       "fix": {
-        "changes": [{ "nodeId": "fulfillment-fn", "key": "replicas", "from": 1, "to": 2, "label": "RequestShipment" }],
-        "label": "RequestShipment 1 → 2 replicas"
+        "changes": [
+          { "nodeId": "archive-fn", "key": "replicas", "from": 1, "to": 9, "label": "Archive orders" },
+          { "nodeId": "fulfillment-fn", "key": "replicas", "from": 1, "to": 2, "label": "RequestShipment" }
+        ],
+        "label": "Archive orders 1 → 9 replicas, RequestShipment 1 → 2 replicas"
       },
       "addConsumer": null,
       "converged": true,
@@ -941,7 +1589,13 @@
         "sns": ["idle", "300/s · no limit"],
         "email": ["idle", "300/s · no limit", { "modeled": false }],
         "sms": ["idle", "300/s · no limit", { "modeled": false }],
-        "cognito": ["idle", "", { "modeled": false }]
+        "cognito": ["idle", "", { "modeled": false }],
+        "archive-q": ["over", "450% · 600/s of 133/s"],
+        "archive-dlq": ["idle", ""],
+        "archive-fn": ["over", "450% · 600/s of 133/s"],
+        "archive-s3": ["idle", "600/s · no limit", { "modeled": false }],
+        "schedule": ["idle", ""],
+        "reconcile": ["idle", ""]
       }
     },
     "three-pl-outage": {
@@ -968,7 +1622,46 @@
         "sns": ["idle", "20/s · no limit"],
         "email": ["idle", "20/s · no limit", { "modeled": false }],
         "sms": ["idle", "20/s · no limit", { "modeled": false }],
-        "cognito": ["idle", "", { "modeled": false }]
+        "cognito": ["idle", "", { "modeled": false }],
+        "archive-q": ["ok", "30% · 40/s of 133/s"],
+        "archive-dlq": ["idle", ""],
+        "archive-fn": ["ok", "30% · 40/s of 133/s"],
+        "archive-s3": ["idle", "40/s · no limit", { "modeled": false }],
+        "schedule": ["idle", ""],
+        "reconcile": ["idle", ""]
+      }
+    },
+    "throttle": {
+      "tone": "ok",
+      "top": "archive-fn",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Archive orders at 45% · 60/s of 133/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "client": ["idle", "30/s · no limit", { "modeled": false }],
+        "apigw": ["idle", "30/s · no limit", { "modeled": false }],
+        "create-order": ["ok", "2% · 30/s of 1.3k/s"],
+        "orders-table": ["idle", "60/s · no limit", { "modeled": false }],
+        "stream-fn": ["ok", "4% · 60/s of 1.7k/s"],
+        "bus": ["ok", "6% · 60/s of 1k/s"],
+        "sfn": ["ok", "6% · 30/s of 500/s"],
+        "stripe": ["idle", "30/s · no limit", { "modeled": false }],
+        "dlq": ["idle", ""],
+        "fulfillment-q": ["ok", "9% · 30/s of 333/s"],
+        "fulfillment-fn": ["ok", "9% · 30/s of 333/s"],
+        "three-pl": ["idle", "30/s · no limit", { "modeled": false }],
+        "sns": ["idle", "30/s · no limit"],
+        "email": ["idle", "30/s · no limit", { "modeled": false }],
+        "sms": ["idle", "30/s · no limit", { "modeled": false }],
+        "cognito": ["idle", "", { "modeled": false }],
+        "archive-q": ["ok", "45% · 60/s of 133/s"],
+        "archive-dlq": ["idle", ""],
+        "archive-fn": ["ok", "45% · 60/s of 133/s"],
+        "archive-s3": ["idle", "60/s · no limit", { "modeled": false }],
+        "schedule": ["idle", ""],
+        "reconcile": ["idle", ""]
       }
     }
   }

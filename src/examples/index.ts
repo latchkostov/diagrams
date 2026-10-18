@@ -50,13 +50,29 @@ const privateExamples: LocalExample[] = import.meta.env.DEV
 const publicExamples: PublicExample[] = (
   [
     {
+      slug: "black-friday-commerce",
+      theme: "systems",
+      summary: "60 services: route table, HPA, KEDA, outbox, DLQ",
+      featured: true,
+    },
+    {
+      slug: "cell-based-bookings",
+      theme: "systems",
+      summary: "Three regions, six cells, global tables, failover",
+    },
+    {
+      slug: "payments-ledger",
+      theme: "systems",
+      summary: "PSP router, PCI zone, outbox, ledger, webhooks",
+    },
+    {
       slug: "delivery-dispatch",
-      theme: "streaming",
+      theme: "systems",
       summary: "Courier pings, H3 partitions, KEDA, maps quota",
     },
     {
       slug: "ev-charging-network",
-      theme: "streaming",
+      theme: "systems",
       summary: "Depot firewalls, Event Hubs, twins, firmware waves",
     },
     {
@@ -71,14 +87,9 @@ const publicExamples: PublicExample[] = (
       featured: true,
     },
     {
-      slug: "keda-render-workers",
+      slug: "autoscaling-basics",
       theme: "streaming",
-      summary: "Kafka lag wakes workers from zero; idle workers sleep",
-    },
-    {
-      slug: "autoscaling-image-workers",
-      theme: "streaming",
-      summary: "HPA startup, buffered uploads and replica history",
+      summary: "HPA on CPU and KEDA from zero, side by side",
     },
     {
       slug: "cqrs-event-sourcing",
@@ -91,9 +102,14 @@ const publicExamples: PublicExample[] = (
       summary: "Debezium CDC into search, a warehouse and a lake",
     },
     {
-      slug: "iot-telemetry",
+      slug: "partitions-vs-subscriptions",
       theme: "streaming",
-      summary: "Partitioned telemetry, hot state, threshold alerts",
+      summary: "Three partitions, eight readers, independent subscriptions",
+    },
+    {
+      slug: "shared-worker-pool",
+      theme: "streaming",
+      summary: "Two inputs share four worker slots",
     },
     {
       slug: "event-driven-data-platform",
@@ -118,20 +134,14 @@ const publicExamples: PublicExample[] = (
       featured: true,
     },
     {
-      slug: "black-friday-commerce",
-      theme: "cloud",
-      summary: "60 services: route table, HPA, KEDA, outbox, DLQ",
+      slug: "shared-api-quotas",
+      theme: "data",
+      summary: "Shared model tokens and payment rate limits",
     },
     {
       slug: "aws-serverless-orders",
       theme: "cloud",
-      summary: "Lambda, DynamoDB Streams, EventBridge rules",
-      featured: true,
-    },
-    {
-      slug: "aws-fanout",
-      theme: "cloud",
-      summary: "SNS to isolated SQS queues and Lambda workers",
+      summary: "Lambda, DynamoDB Streams, EventBridge fan-out",
     },
     {
       slug: "aks-app-config-key-vault",
@@ -139,9 +149,14 @@ const publicExamples: PublicExample[] = (
       summary: "Settings, Key Vault references and identity",
     },
     {
-      slug: "payments-ledger",
-      theme: "integration",
-      summary: "PSP router, PCI zone, outbox, ledger, webhooks",
+      slug: "serverless-burst-buffer",
+      theme: "cloud",
+      summary: "Reserved concurrency rejects; a queue buffers",
+    },
+    {
+      slug: "cloud-run-timetable-api",
+      theme: "cloud",
+      summary: "Cloud Run sleeps overnight; sizing suggests a max",
     },
     {
       slug: "webhook-ingestion",
@@ -164,11 +179,6 @@ const publicExamples: PublicExample[] = (
       summary: "Filtered subscriptions, commands, dead lettering",
     },
     {
-      slug: "cell-based-bookings",
-      theme: "reliability",
-      summary: "Three regions, six cells, global tables, failover",
-    },
-    {
       slug: "outbox-saga-checkout",
       theme: "reliability",
       summary: "Transactional outbox, saga steps, compensation",
@@ -179,39 +189,9 @@ const publicExamples: PublicExample[] = (
       summary: "A zone outage, health checks and a drill without them",
     },
     {
-      slug: "multi-region-active-active",
-      theme: "reliability",
-      summary: "Two live regions, failover, a global table",
-    },
-    {
       slug: "branch-to-datacentre",
       theme: "reliability",
       summary: "Routers, a firewall pair, spine and leaf, an ADC",
-    },
-    {
-      slug: "partitions-vs-subscriptions",
-      theme: "streaming",
-      summary: "Three partitions, eight readers, independent subscriptions",
-    },
-    {
-      slug: "shared-worker-pool",
-      theme: "streaming",
-      summary: "Two inputs share four worker slots",
-    },
-    {
-      slug: "shared-api-quotas",
-      theme: "data",
-      summary: "Shared model tokens and payment rate limits",
-    },
-    {
-      slug: "serverless-burst-buffer",
-      theme: "cloud",
-      summary: "Reserved concurrency rejects; a queue buffers",
-    },
-    {
-      slug: "cloud-run-timetable-api",
-      theme: "cloud",
-      summary: "Cloud Run sleeps overnight; sizing suggests a max",
     },
     {
       slug: "measured-order-capacity",
