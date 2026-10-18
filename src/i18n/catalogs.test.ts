@@ -136,7 +136,7 @@ describe("the catalogs", () => {
       expect(catalogLocales(path.join(root, "locales"))).toEqual(["ca"]);
       expect(check("ca", root).errors.map((e) => e.kind)).toEqual(["placeholders"]);
     } finally {
-      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 

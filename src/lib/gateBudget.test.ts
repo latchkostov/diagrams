@@ -14,7 +14,8 @@ const cleanups: (() => Promise<unknown>)[] = [];
 const directories: string[] = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
-  for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
+  for (const directory of directories.splice(0))
+    rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 function fixture() {
   mkdirSync("tests/.output", { recursive: true });

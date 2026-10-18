@@ -81,7 +81,7 @@ export function sync(root: string, run: Run, log: (text: string) => void, contin
               // Rebase stage 2 is the new upstream; stage 3 is the commit being replayed.
               merged = checked(git("merge-file", "-p", files[1], files[0], files[2]));
             } finally {
-              rmSync(temp, { recursive: true, force: true });
+              rmSync(temp, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
             }
           }
           writeFileSync(path.join(root, file), merged);

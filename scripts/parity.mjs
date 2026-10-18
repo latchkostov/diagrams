@@ -22,6 +22,7 @@ import process from "node:process";
 import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath, URL } from "node:url";
+import { createTempRun } from "./test-temp.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const GOLDENS = join(ROOT, "tests/parity/goldens");
@@ -56,8 +57,7 @@ const tiers = requested.filter(matches);
 if (!tiers.length) fail(`no parity file under tests/parity/{${requested.join(",")}} matches ${filters.join(", ")}`);
 
 function fail(message) {
-  console.error(`parity: ${message}`);
-  process.exit(2);
+  throw new Error(`parity: ${message}`);
 }
 
 function run(command, commandArgs, env = {}, shell = process.platform === "win32") {
@@ -148,107 +148,117 @@ function browserInContainer() {
   );
 }
 
-if (!inner) rmSync(OUTPUT, { recursive: true, force: true });
-const ran = {};
-for (const tier of tiers) {
-  if (tier === "node")
-    ran.node = run(
-      "pnpm",
-      [
-        "exec",
-        "vitest",
-        "run",
-        "--config",
-        "tests/parity/vitest.config.ts",
-        ...filters,
-        ...(process.env.GATE_WORKERS ? [`--maxWorkers=${process.env.GATE_WORKERS}`] : []),
-      ],
-      env,
-    );
-  else ran.browser = IN_CONTAINER || process.env.PARITY_BROWSER_HOST === "1" ? browserHere() : browserInContainer();
-}
-if (inner) process.exit(ran.browser ? 0 : 1);
-
-// ------------------------------------------------------------------------------------------------- summary
-
-/** @type {{name: string, status: string, total?: number, lines?: string[]}[]} */
-const ledger = [];
-const ledgerDir = join(OUTPUT, "ledger");
-if (existsSync(ledgerDir))
-  for (const file of readdirSync(ledgerDir).sort())
-    for (const line of readFileSync(join(ledgerDir, file), "utf8").split("\n"))
-      if (line.trim()) ledger.push(JSON.parse(line));
-
-const names = new Map();
-for (const entry of ledger) names.set(entry.name, (names.get(entry.name) ?? 0) + 1);
-const twice = [...names].filter(([, n]) => n > 1).map(([name]) => name);
-
-/** Files under `dir`, as paths relative to `base` with forward slashes. */
-function walk(dir, base = GOLDENS) {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir).flatMap((name) => {
-    const full = join(dir, name);
-    return statSync(full).isDirectory() ? walk(full, base) : [relative(base, full).split(sep).join("/")];
-  });
-}
-
-// Stale goldens: only after a whole tier ran (a filter runs part of it), and only for a tier that ran at all
-// (a crash before any golden would otherwise call every golden stale).
-const stale = [];
-if (!filters.length)
+function main() {
+  if (!inner) rmSync(OUTPUT, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  const ran = {};
   for (const tier of tiers) {
-    const produced = ledger.filter((e) => e.name.startsWith(`${tier}/`));
-    if (!produced.length || !ran[tier]) continue;
-    for (const file of walk(join(GOLDENS, tier))) if (!names.has(file)) stale.push(file);
+    if (tier === "node")
+      ran.node = run(
+        "pnpm",
+        [
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "tests/parity/vitest.config.ts",
+          ...filters,
+          ...(process.env.GATE_WORKERS ? [`--maxWorkers=${process.env.GATE_WORKERS}`] : []),
+        ],
+        env,
+      );
+    else ran.browser = IN_CONTAINER || process.env.PARITY_BROWSER_HOST === "1" ? browserHere() : browserInContainer();
   }
-if (update)
-  for (const file of stale) {
-    rmSync(join(GOLDENS, file));
-    // Leave no empty directories behind.
-    for (let dir = join(GOLDENS, file, ".."); dir.startsWith(GOLDENS) && dir !== GOLDENS; dir = join(dir, "..")) {
-      if (readdirSync(dir).length) break;
-      rmSync(dir, { recursive: true });
+  if (inner) return ran.browser ? 0 : 1;
+
+  // ------------------------------------------------------------------------------------------------- summary
+
+  /** @type {{name: string, status: string, total?: number, lines?: string[]}[]} */
+  const ledger = [];
+  const ledgerDir = join(OUTPUT, "ledger");
+  if (existsSync(ledgerDir))
+    for (const file of readdirSync(ledgerDir).sort())
+      for (const line of readFileSync(join(ledgerDir, file), "utf8").split("\n"))
+        if (line.trim()) ledger.push(JSON.parse(line));
+
+  const names = new Map();
+  for (const entry of ledger) names.set(entry.name, (names.get(entry.name) ?? 0) + 1);
+  const twice = [...names].filter(([, n]) => n > 1).map(([name]) => name);
+
+  /** Files under `dir`, as paths relative to `base` with forward slashes. */
+  function walk(dir, base = GOLDENS) {
+    if (!existsSync(dir)) return [];
+    return readdirSync(dir).flatMap((name) => {
+      const full = join(dir, name);
+      return statSync(full).isDirectory() ? walk(full, base) : [relative(base, full).split(sep).join("/")];
+    });
+  }
+
+  // Stale goldens: only after a whole tier ran (a filter runs part of it), and only for a tier that ran at all
+  // (a crash before any golden would otherwise call every golden stale).
+  const stale = [];
+  if (!filters.length)
+    for (const tier of tiers) {
+      const produced = ledger.filter((e) => e.name.startsWith(`${tier}/`));
+      if (!produced.length || !ran[tier]) continue;
+      for (const file of walk(join(GOLDENS, tier))) if (!names.has(file)) stale.push(file);
     }
+  if (update)
+    for (const file of stale) {
+      rmSync(join(GOLDENS, file));
+      // Leave no empty directories behind.
+      for (let dir = join(GOLDENS, file, ".."); dir.startsWith(GOLDENS) && dir !== GOLDENS; dir = join(dir, "..")) {
+        if (readdirSync(dir).length) break;
+        rmSync(dir, { recursive: true });
+      }
+    }
+
+  const by = (status) => ledger.filter((e) => e.status === status);
+  const changed = by("changed");
+  const added = by("added");
+  const missing = by("missing");
+  const out = [];
+  out.push(
+    `Parity${update ? " (update)" : ""}: ${ledger.length} goldens, ${changed.length} changed, ${added.length} added, ` +
+      `${missing.length} missing, ${stale.length} ${update ? "removed" : "stale"}`,
+  );
+  for (const e of changed)
+    out.push(`  changed  ${e.name}  (${e.total})  ${(e.lines ?? []).slice(0, update ? 2 : 1).join("  ")}`);
+  for (const e of added) out.push(`  added    ${e.name}`);
+  for (const e of missing) out.push(`  missing  ${e.name}`);
+  for (const name of stale) out.push(`  ${update ? "removed" : "stale"}  ${name}`);
+  for (const name of twice) out.push(`  recorded twice: ${name}`);
+  for (const [tier, ok] of Object.entries(ran)) if (!ok) out.push(`  the ${tier} tier failed (see its output above)`);
+  console.log(`\n${out.join("\n")}`);
+
+  const ok =
+    Object.values(ran).every(Boolean) &&
+    !twice.length &&
+    (update || (!stale.length && !changed.length && !missing.length));
+  if (!update && !ok)
+    console.log("\nIf these changes are intended, run `pnpm parity:update` and commit the goldens with them.");
+
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const md = [`### ${ok ? "Output parity holds" : "Output parity failed"}`, "", "```", ...out, "```"];
+    const diffs = join(OUTPUT, "diffs");
+    for (const file of walk(diffs, diffs).slice(0, 20))
+      md.push(
+        "",
+        `<details><summary>${file}</summary>`,
+        "",
+        "```diff",
+        readFileSync(join(diffs, file), "utf8"),
+        "```",
+        "</details>",
+      );
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, md.join("\n") + "\n");
   }
-
-const by = (status) => ledger.filter((e) => e.status === status);
-const changed = by("changed");
-const added = by("added");
-const missing = by("missing");
-const out = [];
-out.push(
-  `Parity${update ? " (update)" : ""}: ${ledger.length} goldens, ${changed.length} changed, ${added.length} added, ` +
-    `${missing.length} missing, ${stale.length} ${update ? "removed" : "stale"}`,
-);
-for (const e of changed)
-  out.push(`  changed  ${e.name}  (${e.total})  ${(e.lines ?? []).slice(0, update ? 2 : 1).join("  ")}`);
-for (const e of added) out.push(`  added    ${e.name}`);
-for (const e of missing) out.push(`  missing  ${e.name}`);
-for (const name of stale) out.push(`  ${update ? "removed" : "stale"}  ${name}`);
-for (const name of twice) out.push(`  recorded twice: ${name}`);
-for (const [tier, ok] of Object.entries(ran)) if (!ok) out.push(`  the ${tier} tier failed (see its output above)`);
-console.log(`\n${out.join("\n")}`);
-
-const ok =
-  Object.values(ran).every(Boolean) &&
-  !twice.length &&
-  (update || (!stale.length && !changed.length && !missing.length));
-if (!update && !ok)
-  console.log("\nIf these changes are intended, run `pnpm parity:update` and commit the goldens with them.");
-
-if (process.env.GITHUB_STEP_SUMMARY) {
-  const md = [`### ${ok ? "Output parity holds" : "Output parity failed"}`, "", "```", ...out, "```"];
-  const diffs = join(OUTPUT, "diffs");
-  for (const file of walk(diffs, diffs).slice(0, 20))
-    md.push(
-      "",
-      `<details><summary>${file}</summary>`,
-      "",
-      "```diff",
-      readFileSync(join(diffs, file), "utf8"),
-      "```",
-      "</details>",
-    );
-  appendFileSync(process.env.GITHUB_STEP_SUMMARY, md.join("\n") + "\n");
+  return ok ? 0 : 1;
 }
-process.exit(ok ? 0 : 1);
+
+const temp = createTempRun("parity", { root: ROOT });
+Object.assign(process.env, temp.env);
+try {
+  process.exitCode = main();
+} finally {
+  temp.dispose();
+}

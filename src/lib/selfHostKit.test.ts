@@ -157,7 +157,7 @@ describe("self-host kit", () => {
       writeFileSync(file, '<html><head><base href="/existing/"></head></html>');
       expect(() => prepareSite(directory)).toThrow(/already has a base/);
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -282,7 +282,7 @@ describe("self-host kit", () => {
       symlinkSync(external, join(input, "dist", "linked"), "junction");
       expect(() => stageOffline(input, join(scratch, "linked-output"), "1.2.3")).toThrow(/symlinks/);
     } finally {
-      rmSync(scratch, { recursive: true, force: true });
+      rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 });

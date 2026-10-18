@@ -54,7 +54,7 @@ describe("documentation fragments", () => {
       writeFileSync(join(dir, "bad.md"), "");
       expect(() => combinedNotes(root)).toThrow(/bad.md/);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 });

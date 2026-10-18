@@ -48,6 +48,6 @@ try {
   console.log(`Offline bundle: ${archive} (archive checksum alongside; per-file SHA256SUMS inside)`);
 } finally {
   // mkdtemp owns exactly this directory; no user-controlled path is deleted.
-  fs.rmSync(scratch, { recursive: true, force: true });
+  fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }
 process.exit(0);

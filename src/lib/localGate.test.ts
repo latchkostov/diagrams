@@ -98,7 +98,7 @@ it.each(["unit,e2e", "unit e2e", "unit, e2e"])("accepts native and PowerShell ca
 it("keeps container browser profiles on the source volume and native profiles on the repo drive", () => {
   const root = resolve("tests/.output/volume-source");
   const report = join(root, "reports/run");
-  expect(browserTemp(root, report, true)).toBe(join(root, "tests/.output/tmp"));
+  expect(browserTemp(root, report, true)).toBe(join(root, "tests/.output/tmp/browser"));
   expect(browserTemp(root, report)).toBe(join(report, "tmp"));
 });
 
@@ -113,7 +113,7 @@ it("cleans browser profiles without unlinking a mount root or escaping the repos
     expect(removed).toEqual([join(dir, "tmp/stale")]);
     expect(() => prepareBrowserTemp(process.cwd(), resolve("../outside-repo"))).toThrow("inside the repository");
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 
@@ -163,7 +163,7 @@ it.each(["", "bind"])(
       expect(calls.some((c) => c[1] === "volume" && c[2] === "rm" && c.includes(`${name}-reports`))).toBe(true);
     } finally {
       vi.unstubAllEnvs();
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   },
 );
@@ -355,7 +355,7 @@ it.each([undefined, 6660])("holds checkout and port leases throughout orchestrat
     ).rejects.toThrow("injected runner failure");
     expect(readEntries()).toEqual([]);
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 
@@ -447,7 +447,7 @@ it("full gate stamps only a complete unchanged-HEAD success", async () => {
     log.mockRestore();
     error.mockRestore();
     warn.mockRestore();
-    rmSync(root, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 
@@ -523,7 +523,7 @@ it("doctor rejects dependencies removed from the manifest without a frozen reins
     writeFileSync(join(dir, "node_modules/.pnpm/lock.yaml"), readFileSync("node_modules/.pnpm/lock.yaml"));
     expect(installed(dir)).toBe(false);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 
@@ -549,6 +549,7 @@ it("fake orchestration retains failures and rejects a flaky zero-exit report", a
   mkdirSync("tests/.output", { recursive: true });
   const dir = mkdtempSync(resolve("tests/.output/gate-unit-"));
   const calls: string[][] = [];
+  const temps = new Set<string>();
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   try {
@@ -560,7 +561,11 @@ it("fake orchestration retains failures and rejects a flaky zero-exit report", a
       {},
       async (args: string[], { env }: { env: Record<string, string> }) => {
         calls.push(args);
-        expect(env.TEMP).toBe(args.includes("playwright") ? join(dir, "tmp") : undefined);
+        temps.add(env.TEMP);
+        if (args.includes("playwright")) expect(env.TEMP).toBe(join(dir, "tmp"));
+        else expect(env.TEMP).toMatch(/[\\/]tests[\\/]\.output[\\/]tmp[\\/]gate-/);
+        expect(env.TMP).toBe(env.TEMP);
+        expect(env.TMPDIR).toBe(env.TEMP);
         expect(env.E2E_CHROMIUM_ONLY).toBe("");
         if (args.includes("playwright"))
           writeFileSync(
@@ -580,6 +585,7 @@ it("fake orchestration retains failures and rejects a flaky zero-exit report", a
     );
     expect(calls.filter((args) => args.includes("playwright"))).toHaveLength(2);
     expect(result.failures).toBe(1);
+    for (const temp of temps) expect(existsSync(temp)).toBe(false);
     expect(JSON.parse(readFileSync(join(dir, "summary.json"), "utf8")).reports).toHaveLength(2);
     const path = win32.join(
       "C:/" + "w".repeat(37),
@@ -591,7 +597,7 @@ it("fake orchestration retains failures and rejects a flaky zero-exit report", a
   } finally {
     log.mockRestore();
     error.mockRestore();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
 
@@ -606,9 +612,12 @@ it("applies the capped worker count to Vitest as well as Playwright", async () =
       config(["--linux", "--cpus", "3", "--memory", "7g", "--only", "unit,e2e", "--ports", "6480"]),
       [],
       dir,
-      {},
+      { GATE_CONTAINER: "1" },
       async (args, { env }) => {
         calls.push(args);
+        expect(existsSync(env.TEMP)).toBe(true);
+        expect(env.TMP).toBe(env.TEMP);
+        expect(env.TMPDIR).toBe(env.TEMP);
         if (args[0] === "test:coverage") {
           expect(args).toContain("--maxWorkers=1");
           writeFileSync(
@@ -632,6 +641,6 @@ it("applies the capped worker count to Vitest as well as Playwright", async () =
     expect(calls.filter((args) => args.includes("playwright"))).toHaveLength(1);
   } finally {
     log.mockRestore();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
