@@ -35,6 +35,7 @@ import { t } from "../i18n";
 import { autoScale } from "../sim/scale";
 import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
+import { snapshotContinuity } from "./snapshotContinuity";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
 /** Sim time one press of "step" advances. */
@@ -148,6 +149,7 @@ export class LiveController {
   private engine!: SimEngine;
   private runner: SimulationRun | null = null;
   private snap!: SimSnapshot;
+  private continuity = {};
   private real: RealSimSnapshot | null = null;
   /** Free play's fractional injection credit per node and type (runs keep their own). */
   private injector!: ReturnType<typeof createRealCountInjector>;
@@ -184,6 +186,7 @@ export class LiveController {
   snapshot(): SimSnapshot {
     if (this.dirty) {
       this.snap = this.engine.snapshot();
+      snapshotContinuity.set(this.snap, this.continuity);
       this.runState = this.runner?.state() ?? null;
       this.real = null;
       this.dirty = false;
@@ -507,6 +510,8 @@ export class LiveController {
     if (!this.runner || this.held) return;
     if (!Number.isFinite(targetMs)) return;
     const target = Math.max(0, targetMs);
+    this.continuity = {};
+    this.dirty = true;
     this.cancelReplay();
     if (target < this.snapshot().time - 1) {
       const rootId = this.engine.tracer.followed(),
@@ -917,6 +922,7 @@ export class LiveController {
   }
 
   private build(): void {
+    this.continuity = {};
     this.resourceError = undefined;
     const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles, traceHistory: TRACE_HISTORY };
     if (this.sim) {

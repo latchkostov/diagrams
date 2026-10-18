@@ -17,7 +17,9 @@ import { nodeSimFields } from "../simFieldRules";
 import { Disclosure } from "./Disclosure";
 import { SIM_FIELDS, showSim } from "./simFields";
 import { SimInput } from "./SimulationFields";
-import { relationDropdownItems } from "./EdgePanel";
+import { relationDropdownItems } from "./edgeChoices";
+import { bulkStep } from "./editTransactions";
+import { countText, countLabel, MIXED, MIXED_VALUE, shared } from "./selectionSummary";
 import { Dropdown } from "../../components/Dropdown";
 import { RELATION_CHOICES, applyChoice, choiceOf } from "../../editor/relationActions";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
@@ -26,8 +28,6 @@ import { toneLabel, colorLabel } from "../../i18n/chrome";
 import { isPresetGroupTone, resolveGroupTone, toneColor } from "../groupTones";
 import { type GroupFlowNode, type GroupTone, type AnnotationFlowNode } from "../types";
 import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, annotationColor, resolveAnnotationColor } from "../annotations";
-import { getLocale } from "../../i18n";
-import { formatList } from "../../i18n/list";
 import type { ReactNode } from "react";
 
 const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
@@ -564,37 +564,4 @@ export function BulkSwatches<T extends string>({
       </div>
     </div>
   );
-}
-
-/** What every item of a list shares: the one value, or MIXED when they differ (undefined when the list is empty). */
-export const MIXED = Symbol("mixed");
-
-export function shared<T, V>(items: readonly T[], read: (t: T) => V): V | typeof MIXED | undefined {
-  if (!items.length) return undefined;
-  const first = read(items[0]);
-  return items.every((i) => read(i) === first) ? first : MIXED;
-}
-
-/** A fresh undo tag per click: one bulk change is one undo step, and the next click is another. */
-let bulkSeq = 0;
-
-export const bulkStep = (what: string) => ({ merge: `bulk:${what}:${++bulkSeq}` });
-
-/** The value a select shows while the selection differs (a disabled "Mixed" option). */
-export const MIXED_VALUE = "__mixed";
-
-export const countLabel = (count: number, kind: "node" | "edge" | "boundary" | "annotation") =>
-  ({
-    node: () => t("inspector.nodes", { count }),
-    edge: () => t("inspector.edges", { count }),
-    boundary: () => t("inspector.boundaries", { count }),
-    annotation: () => t("inspector.annotations", { count }),
-  })[kind]();
-
-/** "15 nodes, 15 edges, 1 boundary" (zero boundaries and annotations are left out). */
-export function countText(nodes: number, edges: number, boundaries: number, annotations = 0): string {
-  const parts = [countLabel(nodes, "node"), countLabel(edges, "edge")]
-    .concat(boundaries ? [countLabel(boundaries, "boundary")] : [])
-    .concat(annotations ? [countLabel(annotations, "annotation")] : []);
-  return getLocale() === "en" ? parts.join(", ") : formatList(parts);
 }

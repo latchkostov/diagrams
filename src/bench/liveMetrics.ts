@@ -41,9 +41,13 @@ function median(values: readonly number[]): number {
 /** The last `windowMs` of frames: their median gap, and whether none of them was slow (the transient is over). */
 export function steadyTail(frames: readonly number[], windowMs = LIVE_STEADY_WINDOW_MS) {
   const end = frames[frames.length - 1];
-  const tail = frames.filter((t) => t >= end - windowMs);
-  const gaps = frameGaps(tail);
-  const gap = median(gaps);
+  const all = frameGaps(frames);
+  // A gap belongs to the window when any part of it does, including a stall that started before it.
+  const first = all.findIndex((_gap, i) => frames[i + 1] > end - windowMs);
+  const windowGaps = first < 0 ? [] : all.slice(first);
+  const gap = median(windowGaps);
+  // Slow but regular playback still settles: eight frames may span longer than the steady window.
+  const gaps = all.slice(Math.min(first < 0 ? all.length : first, Math.max(0, all.length - LIVE_SETTLE_FRAMES)));
   const stable =
     gaps.length >= LIVE_SETTLE_FRAMES &&
     end - frames[0] >= 2 * windowMs &&
@@ -53,16 +57,16 @@ export function steadyTail(frames: readonly number[], windowMs = LIVE_STEADY_WIN
 
 /**
  * The transient after Traffic × 10, from the frames' timestamps (the first is the switch): how long until frames stay
- * within LIVE_SETTLE_FACTOR of the steady frame (`steadyGapMs`, the tail's median) for LIVE_SETTLE_FRAMES frames,
+ * within LIVE_SETTLE_FACTOR of the steady frame (the stable tail's median) for LIVE_SETTLE_FRAMES frames,
  * and the frame rate until then. Unsettled: the whole recording was the slow phase.
  */
-export function slowPhase(frames: readonly number[], steadyGapMs: number) {
+export function slowPhase(frames: readonly number[], steady: ReturnType<typeof steadyTail>) {
   const gaps = frameGaps(frames);
-  const bound = LIVE_SETTLE_FACTOR * steadyGapMs;
+  const bound = LIVE_SETTLE_FACTOR * steady.gapMs;
   let run = 0;
   for (let i = 0; i < gaps.length; i++) {
     run = gaps[i] <= bound ? run + 1 : 0;
-    if (run === LIVE_SETTLE_FRAMES) {
+    if (steady.stable && run === LIVE_SETTLE_FRAMES) {
       const end = i + 1 - LIVE_SETTLE_FRAMES;
       const ms = frames[end] - frames[0];
       return { slowPhaseMs: ms, slowPhaseFps: ms > 0 ? (end * 1000) / ms : 0, settled: true };
@@ -70,6 +74,19 @@ export function slowPhase(frames: readonly number[], steadyGapMs: number) {
   }
   const ms = frames.length > 1 ? frames[frames.length - 1] - frames[0] : 0;
   return { slowPhaseMs: ms, slowPhaseFps: ms > 0 ? (gaps.length * 1000) / ms : 0, settled: false };
+}
+
+/** Eligibility comes from the workload, never from the decorator being measured. */
+export function liveGateLimits(expectedElements: number, gateFlips = false) {
+  // Deliberately independent of decorations.ts: a changed product threshold must not disarm the benchmark.
+  const large = expectedElements > 1_000;
+  return {
+    large,
+    decoratedElements: { op: "==" as const, limit: expectedElements },
+    largeFlag: { op: "==" as const, limit: large ? 1 : 0 },
+    transitions: large || gateFlips ? { limit: LIVE_TRANSITIONS_PER_100_LIMIT } : {},
+    flips: gateFlips ? { limit: LIVE_FLIPS_PER_100_EDGES_LIMIT } : {},
+  };
 }
 
 /** `count` per 100 of `of`; nothing to count against fails any `<=` gate. */

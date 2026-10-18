@@ -1,3 +1,4 @@
+import { isFanOut, relationDropdownItems } from "./edgeChoices";
 import { Dropdown } from "../../components/Dropdown";
 import { Icon } from "../../components/Icon";
 import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../../editor/relationActions";
@@ -24,9 +25,6 @@ import { useState } from "react";
 import { type EditorApi } from "../../editor/types";
 import { relationLabel } from "../../i18n/chrome";
 import { inferRelation } from "../../stencils/relations";
-import type { DropdownItem } from "../../components/Dropdown";
-import type { RelationChoiceId } from "../../editor/relationActions";
-import type { SimRole } from "../../model/types";
 
 export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
@@ -314,39 +312,4 @@ export function RelationHint({ edge, editor }: { edge: DiagramFlowEdge; editor: 
       </button>
     </div>
   );
-}
-
-export const relationDropdownItems = (): readonly DropdownItem<RelationChoiceId>[] => [
-  {
-    get label() {
-      return t("inspector.flow");
-    },
-    options: RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => ({
-      value: c.id,
-      label: c.label,
-      icon: c.icon,
-      hint: c.kind,
-    })),
-  },
-  {
-    get label() {
-      return t("inspector.dependency");
-    },
-    options: RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => ({
-      value: c.id,
-      label: c.label,
-      icon: c.icon,
-      className: `fe-rel-${c.relation}`,
-    })),
-  },
-];
-
-/** Edges whose source copies each message to every route (sources, services, change feeds): they take a share. */
-const FAN_OUT_ROLES: ReadonlySet<SimRole> = new Set(["source", "processor", "none"]);
-
-export function isFanOut(editor: EditorApi, sourceId: string, kind: string | undefined): boolean {
-  const node = editor.getNode(sourceId);
-  if (!node) return false;
-  const role = getStencil(node.stencil).simRole;
-  return FAN_OUT_ROLES.has(role) || (role === "store" && kind !== "sync");
 }

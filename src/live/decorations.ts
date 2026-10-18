@@ -5,6 +5,7 @@
 
 import type { SimSnapshot } from "../sim/types";
 import { heatOf } from "./format";
+import { snapshotContinuity } from "./snapshotContinuity";
 
 export interface DecorationInput {
   snapshot: SimSnapshot;
@@ -53,6 +54,7 @@ export class Decorator {
   /** Edge id → the publish it last carried a message in (dropped once its hold ends). */
   private lastActive = new Map<string, number>();
   private lastTime = NaN;
+  private continuity: object | undefined;
   readonly stats: DecorationStats = { applies: 0, publishes: 0, edgeFlips: 0, elements: 0, large: false };
 
   constructor(private root: HTMLElement) {}
@@ -61,8 +63,10 @@ export class Decorator {
     const root = this.root;
     const stats = this.stats;
     stats.applies++;
-    // A new run, a restart or a scrub back: the clock went backwards, so nothing held is on its way any more.
-    if (snapshot.time < this.lastTime) this.lastActive.clear();
+    // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
+    const continuity = snapshotContinuity.get(snapshot);
+    if (continuity !== this.continuity || snapshot.time < this.lastTime) this.lastActive.clear();
+    this.continuity = continuity;
     // Holds count publishes of a moving simulation: while it stands still, every edge keeps its state.
     if (!still && snapshot.time !== this.lastTime) stats.publishes++;
     this.lastTime = snapshot.time;
@@ -148,6 +152,7 @@ export class Decorator {
     this.history.clear();
     this.lastActive.clear();
     this.lastTime = NaN;
+    this.continuity = undefined;
   }
 }
 
