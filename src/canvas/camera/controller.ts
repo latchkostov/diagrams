@@ -1,13 +1,14 @@
 import { LIVE_BAR_SPACE } from "../../live/layout";
 import type { CameraOwnership } from "../cameraOwnership";
 import type { Viewport } from "../geometry/fit";
-import { decide, initialPolicy, pendingPhase } from "./panePolicy";
+import { decide, initialPolicy, isPaneCause, pendingPhase } from "./panePolicy";
 import type {
   CameraCommand,
   CameraEvent,
   CameraMode,
   CameraPhase,
   FitReason,
+  LiveFitReason,
   PaneCause,
   PolicyState,
   RevealCause,
@@ -68,9 +69,14 @@ export interface CameraPort {
   goToTarget(base: Viewport, id: string): Viewport | null;
   /** 100% zoom about the pane's centre. */
   zoomTarget(base: Viewport, zoom: number): Viewport | null;
+  /** Live's whole-diagram fit for its room (geometry.ts liveFitViewport), or null with nothing to fit. */
+  liveFitTarget(room: { panel: boolean; card: boolean }): Viewport | null;
+  /** A note's focus in view for Live's room (geometry.ts noteFitViewport). */
+  noteFitTarget(focus: readonly string[], room: { panel: boolean; card: boolean }): Viewport | null;
   /**
-   * The pane and the selection as React Flow has measured them, as a sample to compare across frames; null
-   * while React Flow's pane size lags the host's or something selected is unmeasured.
+   * The pane, the nodes and the selection as React Flow has measured them, as a sample to compare across frames;
+   * null while React Flow's pane size lags the host's or something selected is unmeasured. A node just added
+   * changes it until it's measured.
    */
   paneSample(): string | null;
   /** Whether everything selected (and visible) has been measured. */
@@ -91,11 +97,22 @@ export interface CameraPort {
 export interface JournalEntry {
   seq: number;
   command: CameraCommand["type"] | "anchor" | "nudge" | "stop";
-  cause?: RevealCause | FitReason | PaneCause | "user" | "quickAdd";
+  cause?: RevealCause | FitReason | PaneCause | LiveFitReason | "user" | "quickAdd";
   /** Whether the view moved (a reveal that's already satisfied doesn't). */
   moved: boolean;
   from: Viewport;
   to?: Viewport;
+}
+
+/** Slow motion's camera geometry: the controller asks it when its policy says the take needs a view. */
+export interface SlowmoCamera {
+  /** The take's planned view (a fit of its path, or its first node at a readable zoom), or null. */
+  plan(): Viewport | null;
+  /**
+   * The pane changed under the replay: `hold` stops a follow pan where it is (a paused replay keeps its view), a
+   * view replans a playing, fitted take, null leaves it. `following`: slow motion still owns the view.
+   */
+  pane(following: boolean): Viewport | "hold" | null;
 }
 
 export interface CameraOptions {
@@ -106,6 +123,12 @@ export interface CameraOptions {
 
 /** Durations (ms) and interpolation of each move. Pans are linear, so the zoom holds while they run. */
 const MOVES = {
+  /** Live's fits (as its React Flow fitView calls were), a note's close-up, slow motion's plan, pans and return. */
+  liveFit: 700,
+  note: 900,
+  slowmoPlan: 900,
+  follow: 700,
+  restore: 900,
   reveal: 200,
   paneReveal: 250,
   checks: 250,
@@ -165,6 +188,8 @@ export function createCameraController(
   const measuring = new Set<() => void>();
   /** Reveal targets measured for the latest pane.settled, reused when its command runs. */
   let settledReveal: { withEdges: boolean; target: Viewport | null } | null = null;
+  /** Slow motion's geometry while a live session has it mounted. */
+  let slowmo: SlowmoCamera | null = null;
 
   const journal = (entry: Omit<JournalEntry, "seq">) => options.journal?.({ seq: ++seq, ...entry });
   /** Where the view is going: the move in flight's target, else the view now. */
@@ -341,6 +366,31 @@ export function createCameraController(
       }
       case "center":
         return pan(port.centerTarget(base()), MOVES.center, false, { command: "center" });
+      // Live's moves, like its React Flow fitView calls: zoom interpolation, finishing through input.
+      case "liveFit":
+        return pan(port.liveFitTarget(command), MOVES.liveFit, false, { command: "liveFit", cause: command.reason });
+      case "noteFit": {
+        const duration = command.reason === "narration" ? MOVES.note : MOVES.liveFit;
+        const target = port.noteFitTarget(command.focus, command);
+        return pan(target, duration, false, { command: "noteFit", cause: command.reason });
+      }
+      case "slowmoPlan":
+        return pan(slowmo?.plan() ?? null, MOVES.slowmoPlan, false, { command: "slowmoPlan" });
+      case "slowmoPane": {
+        const answer = slowmo?.pane(command.following) ?? null;
+        if (answer !== "hold") return pan(answer, MOVES.slowmoPlan, false, { command: "slowmoPane" });
+        // A follow pan may still be easing from before Pause: stop it where it is.
+        const here = port.viewport();
+        journal({ command: "stop", moved: false, from: here });
+        generation++;
+        early = null;
+        return void move(here, 0, { linear: false, kind: "pan" });
+      }
+      // One move at a time: a follow pan waits for the plan's fit or the last pan to land.
+      case "follow":
+        return inFlight ? undefined : pan(command.view, MOVES.follow, false, { command: "follow" });
+      case "restore":
+        return pan(command.view, MOVES.restore, false, { command: "restore" });
     }
   }
 
@@ -378,9 +428,16 @@ export function createCameraController(
       const from = base();
       const work = policy.pending!;
       const facts = { selection: false, covered: false, coveredWithEdges: false, centreOff: false };
-      // Measure only what the policy will ask about: a fitted view refits, Shift+2 holds still.
-      const refit = work.cause === "panel" && ownership.owner === "fit";
-      if (!refit && !policy.zoomPriority) {
+      // Measure only what the policy will ask about: a fitted (or narrated) view refits, Shift+2 holds still,
+      // Live's own work and slow motion need no reveal.
+      const owner = ownership.owner;
+      const edit = policy.mode === "edit";
+      const reveals =
+        isPaneCause(work.cause) &&
+        !policy.zoomPriority &&
+        !policy.slowmo &&
+        (work.cause !== "panel" || owner === "manual" || (edit && owner === "narration"));
+      if (reveals) {
         const reveal = (withEdges: boolean) => {
           const target = port.revealTarget(from, { kind: "selection", withEdges, roomBelow: 0 });
           settledReveal = { withEdges, target };
@@ -390,7 +447,7 @@ export function createCameraController(
         else {
           facts.selection = port.hasSelection();
           if (facts.selection) facts.coveredWithEdges = reveal(true);
-          else facts.centreOff = port.centerTarget(from) !== null;
+          else if (edit) facts.centreOff = port.centerTarget(from) !== null;
         }
       }
       dispatch({ type: "pane.settled", ...facts });
@@ -445,6 +502,17 @@ export function createCameraController(
     interrupt() {
       interrupt();
       publish();
+    },
+    /** A move is in flight (slow motion's follow pans wait for it before measuring the next one). */
+    get moving() {
+      return inFlight !== null;
+    },
+    /** Slow motion's geometry, while its session is mounted; returns the unmount. */
+    slowmo(camera: SlowmoCamera) {
+      slowmo = camera;
+      return () => {
+        if (slowmo === camera) slowmo = null;
+      };
     },
     /** A fit is still re-applying itself to new geometry (hover over a node then stops it). */
     get fitting() {

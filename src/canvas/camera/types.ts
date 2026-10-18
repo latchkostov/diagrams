@@ -1,4 +1,5 @@
 import type { CameraOwner } from "../cameraOwnership";
+import type { Viewport } from "../geometry/fit";
 import type { RevealScope } from "./controller";
 
 export type { CameraOwner };
@@ -16,9 +17,29 @@ export type MenuKind = "context" | "quickAdd";
 /** The whole-diagram fits: Shift+1 and Fit view, a mode change, full screen, Reset, the Checks card, a pane change. */
 export type FitReason = "command" | "mode" | "fullscreen" | "reset" | "checks" | "pane";
 
-/** Pane work held as data until the pane settles and no menu is open. */
-export interface PaneWork {
-  cause: PaneCause;
+/**
+ * Live's own work, which waits for the pane like pane work: its side panel or the trace card opened or closed, a
+ * note's focus changed, it added a node, or slow motion started a take (or needs one for a new pane).
+ */
+export type LiveCause = "narration" | "live.panel" | "live.card" | "live.added" | "slowmo.take";
+/** What a Live fit is for, in the journal: the pane changed, or one of Live's causes. */
+export type LiveFitReason = "pane" | "panel" | "card" | "narration" | "added";
+
+/**
+ * Work held as data until the pane settles (and, for the canvas's pane work, until no menu is open). `panel`: a
+ * node Live added is brought in clear of the open side panel.
+ */
+export type PaneWork =
+  { cause: PaneCause } | { cause: Exclude<LiveCause, "live.added"> } | { cause: "live.added"; panel: boolean };
+
+/** Live's room on the canvas: what covers the right of the pane, and the note that has the view's focus. */
+export interface LiveRoom {
+  /** The simulation or capacity panel is open (it covers the right 440 px). */
+  panel: boolean;
+  /** The trace card is open (top right). */
+  card: boolean;
+  /** The nodes the current note focuses on (none: no note, or a note without focus). */
+  focus: readonly string[];
 }
 
 export interface PolicyState {
@@ -31,6 +52,12 @@ export interface PolicyState {
   zoomPriority: boolean;
   /** The cause of the latest pane change (Live reads it for its own panel refits). */
   lastCause: PaneCause;
+  /** Live view's room (all clear outside it). */
+  live: LiveRoom;
+  /** Slow motion is recording or replaying a journey: it keeps its own camera. */
+  slowmo: boolean;
+  /** Who had the view when slow motion took it: it goes back when slow motion ends. */
+  resume: CameraOwner;
 }
 
 /** What the controller measured once the pane settled, for the pending work's decision. */
@@ -66,8 +93,23 @@ export type CameraEvent =
   | { type: "fullscreen.changed" }
   /** The Checks card opened over the diagram (floating chrome). */
   | { type: "overlay.opened" }
-  /** Live's narration took the view (a note's focus) or gave it back. */
-  | { type: "narration"; focus: boolean }
+  /** Live's note changed: its focus takes the view (narration), or, when a focused note ends, the fit is back. */
+  | { type: "narration"; focus: readonly string[] }
+  /** Live's simulation or capacity panel opened or closed (it covers the right of the pane). */
+  | { type: "live.panel"; open: boolean }
+  /** Live's trace card opened or closed. */
+  | { type: "live.card"; open: boolean }
+  /** Live added a node (a consumer, a dead-letter queue, an entry point): bring it into view once it's measured. */
+  | { type: "live.added"; panel: boolean }
+  /**
+   * Slow motion started (recording ahead, then replaying) or ended. It takes the view (owner `slowmo`) and gives it
+   * back to its owner from before; `restore`: the view to go back to.
+   */
+  | { type: "slowmo"; on: boolean; restore?: Viewport | null }
+  /** A take starts, or its room changed (presenting, a panel, a recording): plan its camera once the pane settles. */
+  | { type: "slowmo.take" }
+  /** Following: a pan between hops, to keep the frontier in view (only while slow motion owns the view). */
+  | { type: "slowmo.follow"; view: Viewport }
   /** Something was selected or placed and measured: bring it into view (a pan, never a zoom). */
   | { type: "reveal.requested"; cause: RevealCause; scope?: RevealScope }
   /** The pane has its new size and the selection is measured: pending work may run. */
@@ -80,7 +122,18 @@ export type CameraCommand =
   /** The smallest overlay-aware pan that shows the selection (`withEdges`: and its connections). */
   | { type: "reveal"; cause: RevealCause; withEdges: boolean }
   /** Keep the diagram's centre in the pane (a manual view whose pane changed, nothing selected). */
-  | { type: "center" };
+  | { type: "center" }
+  /** Live's whole-diagram fit: clear of the live bar, the open side panel, or beside the trace card. */
+  | { type: "liveFit"; reason: LiveFitReason; panel: boolean; card: boolean }
+  /** The note's focus, clear of the open side panel or the trace card's column. */
+  | { type: "noteFit"; reason: LiveFitReason; focus: readonly string[]; panel: boolean; card: boolean }
+  /** Slow motion plans its camera for the take (a fit of the path, or following from its first node). */
+  | { type: "slowmoPlan" }
+  /** The pane changed under slow motion: it holds a paused replay's view, or replans a playing, fitted one. */
+  | { type: "slowmoPane"; following: boolean }
+  | { type: "follow"; view: Viewport }
+  /** Back to the view from before slow motion. */
+  | { type: "restore"; view: Viewport };
 
 export interface Decision {
   state: PolicyState;

@@ -112,6 +112,12 @@ function harness() {
     centerTarget: () => null,
     goToTarget: (base) => ({ ...base, x: base.x + 100 }),
     zoomTarget: (base, zoom) => ({ ...base, zoom }),
+    liveFitTarget: (room) => ({ x: room.panel ? -440 : room.card ? -400 : 11, y: 11, zoom: 0.9 }),
+    noteFitTarget: (focus, room) => ({
+      x: 20 * focus.length - (room.panel ? 440 : room.card ? 400 : 0),
+      y: 21,
+      zoom: 1,
+    }),
     paneSample: () => env.sample,
     selectionMeasured: () => env.measured,
     hasSelection: () => env.selection,
@@ -440,6 +446,88 @@ describe("camera controller", () => {
     await h.finish();
     h.tick();
     expect(h.camera.phase).toBe("idle");
+  });
+
+  it("Live's panel refit waits for the pane, then fits the room in one 700 ms move (no timer)", async () => {
+    const h = harness();
+    h.camera.mode({ live: true, presenting: false });
+    await h.refine();
+    await h.finish();
+    const mark = h.journal.length;
+    h.camera.dispatch({ type: "live.panel", open: true });
+    expect(h.camera.phase).toBe("pending");
+    h.tick();
+    expect(h.journal.length).toBe(mark);
+    h.tick();
+    expect(h.journal.slice(mark).map((e) => `${e.command}:${e.cause}`)).toEqual(["liveFit:panel"]);
+    expect(h.moves.at(-1)).toEqual({ target: { x: -440, y: 11, zoom: 0.9 }, duration: 700, linear: false });
+    expect(h.camera.phase).toBe("animating");
+    // Input doesn't stop it (as Live's own fits never did); it lands.
+    h.camera.input("other");
+    await h.finish();
+    h.tick();
+    expect(h.camera.phase).toBe("idle");
+  });
+
+  it("a note's focus fits in 900 ms; its later refits for the room take 700 ms", () => {
+    const h = harness();
+    h.camera.dispatch({ type: "narration", focus: ["a", "b"] });
+    h.tick(2);
+    expect(h.moves.at(-1)).toMatchObject({ target: { x: 40, y: 21, zoom: 1 }, duration: 900 });
+    expect(h.ownership.owner).toBe("narration");
+    h.camera.dispatch({ type: "live.card", open: true });
+    h.tick(2);
+    expect(h.journal.at(-1)).toMatchObject({ command: "noteFit", cause: "card" });
+    expect(h.moves.at(-1)?.duration).toBe(700);
+  });
+
+  it("a node Live added is fitted once React Flow has measured it", () => {
+    const h = harness();
+    h.camera.dispatch({ type: "live.added", panel: true });
+    // A node just added changes the sample until it's measured.
+    for (const sample of ["1000x800:3/2", "1000x800:4/3", "1000x800:4/4"]) {
+      h.env.sample = sample;
+      h.tick();
+    }
+    expect(h.journal).toHaveLength(0);
+    h.tick();
+    expect(h.journal.map((e) => `${e.command}:${e.cause}`)).toEqual(["liveFit:added"]);
+  });
+
+  it("slow motion: its take plans once the pane settles, follow pans wait for the move in flight, a pan by hand ends following", async () => {
+    const h = harness();
+    h.camera.mode({ live: true, presenting: false });
+    await h.refine();
+    await h.finish();
+    const asked: boolean[] = [];
+    h.camera.slowmo({
+      plan: () => ({ x: 50, y: 50, zoom: 0.7 }),
+      pane: (following) => (asked.push(following), "hold"),
+    });
+    h.camera.dispatch({ type: "slowmo", on: true });
+    h.camera.dispatch({ type: "slowmo.take" });
+    h.tick(2);
+    expect(h.moves.at(-1)).toMatchObject({ target: { x: 50, y: 50, zoom: 0.7 }, duration: 900 });
+    expect(h.camera.moving).toBe(true);
+    const follow = { x: 60, y: 50, zoom: 0.7 };
+    h.camera.dispatch({ type: "slowmo.follow", view: follow });
+    expect(h.moves.at(-1)?.target).toEqual({ x: 50, y: 50, zoom: 0.7 });
+    await h.finish();
+    h.camera.dispatch({ type: "slowmo.follow", view: follow });
+    expect(h.moves.at(-1)).toMatchObject({ target: follow, duration: 700 });
+    // A paused replay's pane changed: the pan in flight stops where it is.
+    h.camera.dispatch({ type: "pane.changed", cause: "panel" });
+    h.tick(2);
+    expect(asked).toEqual([true]);
+    expect(h.moves.at(-1)?.duration).toBe(0);
+    expect(h.ours()).toBeNull();
+    h.camera.userMoved();
+    h.camera.dispatch({ type: "slowmo.follow", view: { x: 70, y: 50, zoom: 0.7 } });
+    expect(h.moves.at(-1)?.target).not.toEqual({ x: 70, y: 50, zoom: 0.7 });
+    // Back to live: the view from before, and the owner from before unless a pan by hand took it.
+    h.camera.dispatch({ type: "slowmo", on: false, restore: { x: 0, y: 0, zoom: 1 } });
+    expect(h.journal.at(-1)).toMatchObject({ command: "restore", to: { x: 0, y: 0, zoom: 1 } });
+    expect(h.ownership.owner).toBe("manual");
   });
 
   it("a move by hand makes the view manual: later panel work reveals instead of refitting", () => {

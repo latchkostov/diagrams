@@ -11,7 +11,9 @@ import {
   centerViewport,
   focusBoxes,
   goToViewport,
+  liveFitViewport,
   nodeBoxes,
+  noteFitViewport,
   overlayFitViewport,
   revealPan,
   selectionBoxes,
@@ -145,6 +147,8 @@ function createCanvasCamera(
     },
     centerTarget: (base) => (root ? centerViewport(root, store.getState(), base) : null),
     goToTarget: (base, id) => (root ? goToViewport(root, store.getState(), base, id) : null),
+    liveFitTarget: (room) => liveFitViewport(store.getState(), room),
+    noteFitTarget: (focus, room) => noteFitViewport(store.getState(), focus, room),
     zoomTarget(base, zoom) {
       const { minZoom, maxZoom } = store.getState();
       const k = Math.min(maxZoom, Math.max(minZoom, zoom));
@@ -155,7 +159,7 @@ function createCanvasCamera(
       const s = store.getState();
       // A held/late ResizeObserver must not let pane work consume the old pane.
       if (!el || !s.width || s.width !== el.clientWidth || s.height !== el.clientHeight) return null;
-      return selectionMeasured() ? `${s.width}x${s.height}` : null;
+      return selectionMeasured() ? `${s.width}x${s.height}:${measuredNodes(s.nodeLookup)}` : null;
     },
     selectionMeasured,
     hasSelection: () => {
@@ -241,4 +245,11 @@ function transitionStatus(schedule: D3Schedule): MoveStatus {
   if (schedule.state <= 1) return "waiting";
   if (schedule.state === 2) return "starting";
   return schedule.state >= 6 ? "ended" : "running";
+}
+
+/** How many nodes there are and how many are measured: a node just added (by Live, say) changes it until measured. */
+function measuredNodes(lookup: ReadonlyMap<string, { measured: { width?: number } }>) {
+  let measured = 0;
+  for (const n of lookup.values()) if (n.measured.width) measured++;
+  return `${lookup.size}/${measured}`;
 }
