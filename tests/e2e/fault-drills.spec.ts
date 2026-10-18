@@ -28,6 +28,42 @@ async function faultMenu(page: Page, target: string) {
 const nodeCount = (page: Page, id: string, field: string) =>
   page.getByTestId(`node-badge-${id}`).getAttribute(`data-${field}`).then(Number);
 
+for (const cancel of ["close", "escape"] as const) {
+  test(`simulation authoring loads only on open and ${cancel} cancels its pending panel`, async ({ page }) => {
+    test.skip(process.env.E2E_TARGET !== "build", "Checks the production chunk boundary");
+    const editor = /\/assets\/SimPanel-[A-Za-z0-9_-]+\.js(?:\?.*)?$/;
+    let requested = false;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(editor, async (route) => {
+      requested = true;
+      await held;
+      await route.continue();
+    });
+    try {
+      await seed(page);
+      expect(requested).toBe(false);
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-edit-sims").click();
+      await expect(page.getByTestId("sim-panel-loading")).toBeVisible();
+      await expect.poll(() => requested).toBe(true);
+      if (cancel === "close") await page.getByTestId("sim-panel-close").click();
+      else await page.keyboard.press("Escape");
+      await expect(page.getByTestId("sim-panel-loading")).toHaveCount(0);
+      const downloaded = page.waitForResponse((response) => editor.test(response.url()));
+      release();
+      await (await downloaded).finished();
+      await expect(page.getByTestId("sim-panel")).toHaveCount(0);
+      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-edit-sims").click();
+      await expect(page.getByTestId("sim-panel-new")).toBeVisible();
+    } finally {
+      release();
+    }
+  });
+}
+
 test("boundary Fault takes every member down, greys the boundary, restores it and clears on leaving Live", async ({
   page,
   consoleErrors,

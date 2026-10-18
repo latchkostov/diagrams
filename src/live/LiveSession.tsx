@@ -15,7 +15,7 @@ import { EventLog } from "./EventLog";
 import { InjectDialog } from "./InjectDialog";
 import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
-import { SimPanel } from "./SimPanel";
+import { SimPanel } from "./lazySimPanel";
 import { TraceCard } from "./TraceCard";
 import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";

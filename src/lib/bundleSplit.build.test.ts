@@ -218,6 +218,20 @@ describe("production bundle split", () => {
     expect(loading.map((c) => c.name).sort()).toEqual(["CanvasView", "canvas-shared"]);
   });
 
+  it("opens Live without the simulation editor and drill preset controls", () => {
+    const live = chunks.find((c) => c.name === "LiveSession");
+    expect(live).toBeDefined();
+    const editor: [string, RegExp][] = [
+      ["simulation editor", /[/\\]src[/\\]live[/\\]SimPanel\.tsx$/],
+      ["fault step editor", /[/\\]src[/\\]live[/\\]FaultStep\.tsx$/],
+      ["drill presets", /[/\\]src[/\\]live[/\\]faults\.ts$/],
+      ["simulation warnings", /[/\\]src[/\\]live[/\\]validate\.ts$/],
+    ];
+    expect(found(bundled(closure([live!])), editor)).toEqual([]);
+    // Keep the editor available on demand, rather than deleting it to satisfy the split.
+    expect(found(bundled(chunks), editor)).toEqual(editor.map(([what]) => what));
+  });
+
   it("builds the Interactive HTML viewer apart: a file of its own, fetched only by the export", () => {
     const template = assets.filter((a) => /^export\/interactive-viewer-[0-9a-f]{10}\.html$/.test(a.fileName));
     expect(template).toHaveLength(1);
