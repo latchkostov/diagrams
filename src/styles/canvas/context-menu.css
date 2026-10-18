@@ -1,0 +1,196 @@
+/* ---------- context menu ---------- */
+
+.cm-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.cm {
+  position: fixed;
+  min-width: 224px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  border-radius: 11px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 0.06),
+    0 18px 40px -14px rgb(16 24 40 / 0.32);
+  font-size: 13px;
+  pointer-events: auto;
+  outline: none;
+  animation: cm-in 0.11s ease-out;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .cm {
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 20px 48px -12px rgb(0 0 0 / 0.75);
+}
+
+.cm-searchable {
+  width: 280px;
+}
+
+@keyframes cm-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.cm-items {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.cm-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  height: 32px;
+  margin: 0 0 5px;
+  padding: 0 9px;
+  border-radius: 7px;
+  background: var(--surface-3);
+  color: var(--text-3);
+}
+
+.cm-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+.cm-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 30px;
+  padding: 0 8px 0 7px;
+  border-radius: 7px;
+  cursor: default;
+  user-select: none;
+  white-space: normal;
+}
+
+.cm-item.is-active,
+.cm-item.is-open {
+  background: var(--accent-soft);
+}
+
+.cm-item.is-disabled {
+  opacity: 0.42;
+}
+
+.cm-item.is-danger .cm-label,
+.cm-item.is-danger .cm-lead {
+  color: var(--danger);
+}
+
+.cm-item.is-danger.is-active {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+
+.cm-lead {
+  width: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+
+.cm-item.is-active .cm-lead {
+  color: var(--accent);
+}
+
+.cm-item[class*="fe-rel-"] .cm-lead,
+.cm-item[class*="fe-rel-"].is-active .cm-lead {
+  color: var(--rel);
+}
+
+.cm-tile {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
+}
+
+.cm-tile .stencil-icon {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+}
+
+.cm-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3.5px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.cm-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+.cm-hint {
+  max-width: 110px;
+  overflow-wrap: anywhere;
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+
+.cm-kbd {
+  padding-inline-start: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.01em;
+}
+
+.cm-check {
+  display: grid;
+  color: var(--accent);
+}
+
+.cm-chevron {
+  display: grid;
+  margin-inline-end: -3px;
+  color: var(--text-3);
+}
+
+.cm-sep {
+  height: 1px;
+  margin: 5px 2px;
+  background: var(--line);
+}
+
+.cm-header {
+  padding: 6px 8px 3px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-3);
+}
+
+.cm-empty {
+  padding: 10px 8px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}

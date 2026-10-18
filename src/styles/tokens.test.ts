@@ -47,7 +47,7 @@ it("keeps dependency tints at 3:1 on the canvas and label pills in both themes",
 });
 
 it("keeps a highlighted context-menu hint at AA after compositing to display RGB", () => {
-  const canvas = readFileSync("src/styles/canvas.css", "utf8");
+  const canvas = readFileSync("src/styles/canvas/context-menu.css", "utf8");
   const ink = /\.cm-hint \{[^}]*color: var\(--([\w-]+)\)/.exec(canvas)?.[1];
   expect(ink).toBeDefined();
   for (const [i, block] of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]].entries()) {
