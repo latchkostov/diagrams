@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { propertyRuns } from "../../test/fastCheck";
 import { decide, initialPolicy, waitsForMenu } from "./panePolicy";
 import type {
   CameraCommand,
@@ -407,6 +408,19 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [NOTE("narration", ["a"])],
     ],
     [
+      "W1a/W4 starting slow motion folds pending panel work into one take",
+      state(),
+      [
+        { type: "pane.changed", cause: "panel" },
+        { type: "slowmo", on: true, restore: null },
+        settled({ centreOff: true }),
+        { type: "menu.closed" },
+        settled(),
+        settled(),
+      ],
+      [{ type: "slowmoPlan" }],
+    ],
+    [
       "W1/W5 slow motion: a pane change asks it, following",
       state({ mode: "live" }),
       [{ type: "slowmo", on: true }, { type: "pane.changed", cause: "panel" }, settled()],
@@ -715,6 +729,21 @@ const SLOWMO = new Set(["slowmoPlan", "slowmoPane", "follow"]);
 const WHILE_SLOWMO = new Set([...SLOWMO, "restore", "reveal", "fit", "zoom100", "zoomToSelection"]);
 
 describe("panePolicy: event sequences", () => {
+  it("regression seed -673370871 path 840:7:7:6:5:5:6: a pending panel refit gives way to slow motion", () => {
+    const pending = run(initialPolicy(), [
+      { type: "pane.changed", cause: "panel" },
+      { type: "slowmo", on: true, restore: null },
+    ]);
+    expect(pending.state.pending).toEqual({ cause: "slowmo.take" });
+    const first = decide(pending.state, settled({ centreOff: true }));
+    expect(first.commands).toEqual([{ type: "slowmoPlan" }]);
+    expect(first.state.pending).toBeNull();
+    expect(first.state.owner).toBe("slowmo");
+    const end = run(first.state, [{ type: "menu.closed" }, settled(), settled()]);
+    expect(end.commands).toEqual([]);
+    expect(end.state.pending).toBeNull();
+  });
+
   it("never decides more than one command, and pending work runs exactly once unless superseded", () => {
     fc.assert(
       fc.property(fc.array(eventArb, { maxLength: 60 }), (events) => {
@@ -771,7 +800,7 @@ describe("panePolicy: event sequences", () => {
         expect(end.state.pending).toBeNull();
         expect(end.commands.length).toBeLessThanOrEqual(1);
       }),
-      { numRuns: 1000 },
+      { numRuns: propertyRuns(1000) },
     );
   });
 });

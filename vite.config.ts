@@ -196,6 +196,7 @@ export default defineConfig({
     },
   },
   test: {
+    setupFiles: ["src/test/setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     environment: "node",
     // CI runners with coverage are several times slower. Timing tests compare sizes or count work instead of
