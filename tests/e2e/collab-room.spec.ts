@@ -1020,6 +1020,13 @@ test("a peer's selection and cursor show in their colour and name; the view and 
     const alias = await outline.getAttribute("data-peer");
     expect(alias).toMatch(/^Anonymous /);
     await expect(outline).toContainText(alias ?? "");
+    // The ring itself: one, theirs, drawn in their colour.
+    const ring = outline.getByTestId("presence-ring");
+    await expect(ring).toHaveCount(1);
+    await expect(ring).toHaveAttribute("data-peer", alias ?? "");
+    const colour = await ring.evaluate((el) => getComputedStyle(el).getPropertyValue("--peer").trim());
+    expect(colour).not.toBe("");
+    expect(await ring.evaluate((el) => getComputedStyle(el).borderTopStyle)).toBe("solid");
     const cursor = page.getByTestId("presence-cursor");
     await expect(cursor).toBeVisible();
     await expect(cursor).toContainText(alias ?? "");
@@ -1091,6 +1098,48 @@ test("a joiner retrying from the chip keeps the keyboard on its wait; the alert 
     await expect(chip(guest)).toHaveAttribute("data-state", "failed");
     await roomAction(guest, "room-retry");
     await expect(guest.getByTestId("room-connecting")).toBeFocused();
+  } finally {
+    await other.close();
+  }
+});
+
+test("others' outlines and pointers never show while presenting, printing or recording", async ({
+  browser,
+  context,
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await guest.getByTestId("node-orders").click();
+    const box = await guest.getByTestId("canvas-wrap").boundingBox();
+    if (!box) throw new Error("no canvas");
+    await guest.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
+    await page.bringToFront();
+    const ring = page.getByTestId("presence-ring");
+    const cursor = page.getByTestId("presence-cursor");
+    await expect(ring).toBeVisible();
+    await expect(cursor).toBeVisible();
+    // Presenting.
+    await page.getByTestId("present-toggle").click();
+    await expect(page.getByTestId("present-exit")).toBeVisible();
+    await expect(page.getByTestId("presence-layer")).toBeHidden();
+    await page.getByTestId("present-exit").click();
+    await expect(page.getByTestId("present-exit")).toHaveCount(0);
+    await expect(ring).toBeVisible();
+    // Printing.
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByTestId("presence-layer")).toBeHidden();
+    await page.emulateMedia({ media: "screen" });
+    await expect(ring).toBeVisible();
+    // Recording: the recorder marks what it frames (the canvas area, src/live/record) while it records.
+    await page.getByTestId("canvas-wrap").evaluate((el) => el.setAttribute("data-lv-recording", ""));
+    await expect(page.getByTestId("presence-layer")).toBeHidden();
+    await page.getByTestId("canvas-wrap").evaluate((el) => el.removeAttribute("data-lv-recording"));
+    await expect(ring).toBeVisible();
+    expectNoErrors(consoleErrors);
   } finally {
     await other.close();
   }

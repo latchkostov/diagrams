@@ -235,6 +235,104 @@ jobs:
       - uses: ./.github/actions/toolchain
       - run: pnpm skill:check
 
+  # Collaboration over the real public network (collaboration plan §4.2, E6): two browsers start and join a room
+  # through Share ▸ Edit together over the approved public trackers and Cloudflare STUN, then check sync, presence and
+  # Leave. Report-only: never in `report`'s needs and never a failed run; its own trend job alerts after three failed
+  # nights in a row. Never on pull requests (its Playwright project exists only with COLLAB_SMOKE=1).
+  collab-smoke:
+    name: Collaboration network smoke (report only)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    continue-on-error: true
+    env:
+      COLLAB_SMOKE: "1"
+      E2E_TARGET: build
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - uses: ./.github/actions/chromium-cache
+      - name: Two browsers, one room, the approved public trackers and STUN
+        # The result (passed, or why not: trackers unreachable, ICE/NAT, app error) is the report, not the exit code.
+        run: pnpm exec playwright test --project=collab-smoke --reporter=line || true
+      - name: Summary
+        if: always()
+        # A smoke that didn't get as far as its result still uploads one (a failed night), so the trend counts it.
+        run: |
+          node scripts/collab-smoke.mjs ensure tests/.output/collab-smoke/result.json
+          node scripts/collab-smoke.mjs summary tests/.output/collab-smoke/result.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the result and any trace
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-collab-smoke
+          path: |
+            tests/.output/collab-smoke/result.json
+            tests/.output/results
+          retention-days: 90
+
+  collab-smoke-trend:
+    name: Collaboration network smoke trend (report only)
+    needs: collab-smoke
+    if: always()
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: nightly-collab-smoke
+          path: current
+      - name: Earlier scheduled nights
+        # Only runs that uploaded a result count: those from before the smoke existed have none.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          mkdir -p previous
+          for id in $(gh run list --workflow nightly.yml --event schedule --status completed --limit 7 --json databaseId --jq '.[].databaseId'); do
+            [ "$id" = "$RUN_ID" ] && continue
+            gh run download "$id" -n nightly-collab-smoke -D "previous/$id" 2> /dev/null || rm -rf "previous/$id"
+          done
+      - name: Trend
+        id: trend
+        run: node scripts/collab-smoke.mjs trend current/collab-smoke/result.json previous >> "$GITHUB_STEP_SUMMARY"
+      - name: Open or update the issue after three failed nights
+        if: fromJSON(steps.trend.outputs.streak || '0') >= 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STREAK: ${{ steps.trend.outputs.streak }}
+        run: |
+          {
+            echo "## Collaboration network smoke (report-only)"
+            echo
+            echo "It failed $STREAK nights in a row; the latest: $RUN_URL"
+            echo
+            node scripts/collab-smoke.mjs summary current/collab-smoke/result.json
+            echo
+            echo "Trackers unreachable and ICE/NAT failures are the public network; an app error is a bug. The trace is in the run's nightly-collab-smoke artifact."
+          } > body.md
+          gh label create nightly-failure --color B60205 --description "A nightly check failed" 2> /dev/null || true
+          number="$(gh issue list --label nightly-failure --state open --limit 1 --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file body.md
+          else
+            gh issue create --title "Nightly run failed" --label nightly-failure --body-file body.md
+          fi
+
   # Opens the `nightly-failure` issue, or updates the open one (its body is the latest failure, and a
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:
