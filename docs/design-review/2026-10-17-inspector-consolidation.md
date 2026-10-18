@@ -12,5 +12,10 @@ Existing tests provide behavioral coverage without changed assertions or new tim
 
 Keep the 600-line bulk-selection concept together. Reject further visual-section splits, helper
 grab bags, behavior cleanup, new controls and golden updates: each would work against the scope or
-the agreed granularity. InspectorProps remains shared, so types.ts stays. No new product UX or
-independent bug was found during this consolidation.
+the agreed granularity. InspectorProps remains shared, so types.ts stays. No product UX is changed.
+
+The targeted Linux gate exposed a live edge-label naming failure that also occurs on clean master:
+a message-trace card is open during the attempted edge context menu. The branch times out waiting
+for the menu action; master times out when the trace card intercepts the preceding right-click.
+Record both outcomes in `docs/backlog/2026-10-17-inspector-consolidation-live-edge-menu.md`; do not
+change behavior or weaken assertions as part of this consolidation.

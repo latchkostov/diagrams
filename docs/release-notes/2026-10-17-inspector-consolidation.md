@@ -31,3 +31,15 @@ PropsEditor; formatInert lives with the shared fields. DiagramPanel and Annotati
 existing shared bulk helpers from MultiPanel. No additional split is needed: the largest file is
 exactly 600 lines. Keep existing exports; mixed component/helper modules can report advisory Fast
 Refresh warnings without changing lint policy.
+
+## Validation
+
+Lint, typecheck, formatting, all 9,675 unit tests (four skipped), production build, entry size,
+i18n and skill freshness passed. All 2,196 parity goldens are unchanged; all 77 Linux browser parity
+cases passed. Lint reports ten advisory Fast Refresh warnings and no errors.
+
+The targeted Linux quick gate ran 355 cases at four workers: 354 passed and one failed in live
+edge-label menu naming. The same test also fails on a clean checkout of origin/master at b13d4ccf.
+The comparison and distinct timeout points are recorded in
+`docs/backlog/2026-10-17-inspector-consolidation-live-edge-menu.md`. Per the task's stop rule, the
+branch is not pushed; no behavior or test assertion is changed to work around the failure.
