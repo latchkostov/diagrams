@@ -17,18 +17,14 @@ import { Icon, type IconName } from "../components/Icon";
 import { StencilIcon } from "../components/StencilIcon";
 import type { AlignMode } from "../editor/arrange";
 import { stencilMenu } from "../editor/builtinActions";
-import { parseEmits } from "../editor/emits";
 import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../editor/relationActions";
 import { routingIntent } from "../editor/routingIntent";
 import type { EditorApi } from "../editor/types";
 import { t, useLocale } from "../i18n";
 import { colorLabel, kindLabel, relationLabel, shapeLabel, toneLabel } from "../i18n/chrome";
 import { galleryRoleMeta as simRoleMeta } from "../i18n/galleryRoles";
-import { formatNumber } from "../i18n/number";
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { SIM_LIMITS } from "../interop/native";
-import { safeStorage } from "../lib/storage";
-import { formatCount } from "../live/format";
 import { managedKind } from "../model/admissionPresets";
 import { ANNOTATION_LIMITS } from "../model/annotations";
 import { brokerSpec, isClusterWrapper } from "../model/brokers";
@@ -46,10 +42,8 @@ import {
   type ConfigSetting,
 } from "../model/relations";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
-import type { DiagramFile } from "../model/types";
 import {
   AdmissionFields,
-  AutoscalingFields,
   BulkAdmissionFields,
   EdgeRouteFields,
   NodePlanning,
@@ -61,22 +55,7 @@ import {
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import type { NodeSimProps } from "../sim/types";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
-import {
-  DEFAULT_FAILOVER_MS,
-  DEFAULT_MESSAGE_KB,
-  HA_LABEL,
-  deviceSpec,
-  isDenyRule,
-  isDeviceHa,
-  isFirewallStencil,
-  messagesPerSec,
-  presetOf,
-  sizeOf,
-  sizesOf,
-  type DeviceHa,
-  type DeviceSize,
-  type DeviceSpec,
-} from "../stencils/netDevices";
+import { deviceSpec, isDenyRule, isFirewallStencil } from "../stencils/netDevices";
 import { getStencil } from "../stencils/registry";
 import { inferRelation } from "../stencils/relations";
 import {
@@ -90,6 +69,7 @@ import {
   textSizeLabel,
 } from "./annotations";
 import { isPresetGroupTone, resolveGroupTone, toneColor } from "./groupTones";
+import { AutoscalingWorkload } from "./inspector/AutoscalingWorkload";
 import {
   BulkRow,
   BulkSwatches,
@@ -101,6 +81,8 @@ import {
   SideSelect,
   SizeInput,
 } from "./inspector/controls";
+import { DeviceFields } from "./inspector/DeviceFields";
+import { Disclosure } from "./inspector/Disclosure";
 import {
   MIXED,
   MIXED_VALUE,
@@ -113,177 +95,12 @@ import {
   relationDropdownItems,
   shared,
 } from "./inspector/helpers";
+import { ADC_KEYS, DEVICE_KEYS, EDGE_KEYS, RULE_KEYS, SIM_FIELDS, SIM_KEYS, showSim } from "./inspector/simFields";
+import { SimInput } from "./inspector/SimInput";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
 import { edgeSimFields, inertNodeProps, nodeSimFields } from "./simFieldRules";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
-
-// Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
-// is coalesced per field via the `merge` option.
-
-type SimKey = keyof NodeSimProps;
-
-interface SimField {
-  label: string;
-  unit?: string;
-  /** "map": one type, or `In → Out, In2 → Out2` (or JSON) for a map. "list": comma-separated strings. */
-  kind: "number" | "text" | "map" | "list";
-  min?: number;
-  max?: number;
-  step?: number;
-  placeholder: string;
-  hint: string;
-  /** A line shown under the field, for what people get wrong about it. */
-  note?: string;
-}
-
-// Partial on purpose: engine knobs without a designed field yet stay editable under "Custom properties". Bounds are
-// the file format's (SIM_LIMITS): a value the inspector takes always saves and opens again.
-const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
-  ratePerSec: {
-    get label() {
-      return t("inspector.rate");
-    },
-    unit: "msg/s",
-    kind: "number",
-    min: 0,
-    max: SIM_LIMITS.ratePerSec,
-    step: 0.5,
-    placeholder: "2",
-    get hint() {
-      return t("inspector.messagesPerSecondWhileTrafficIsOn");
-    },
-  },
-  messageType: {
-    get label() {
-      return t("inspector.messageType");
-    },
-    kind: "text",
-    get placeholder() {
-      return t("inspector.derivedFromLabel");
-    },
-    get hint() {
-      return t("inspector.typeEmittedByThisSource");
-    },
-  },
-  latencyMs: {
-    get label() {
-      return t("inspector.latency");
-    },
-    unit: "ms",
-    kind: "number",
-    min: 0,
-    max: SIM_LIMITS.timeMs,
-    step: 10,
-    get placeholder() {
-      return t("inspector.default");
-    },
-    get hint() {
-      return t("inspector.processingTimePerMessage");
-    },
-  },
-  concurrency: {
-    get label() {
-      return t("inspector.concurrency");
-    },
-    kind: "number",
-    min: 1,
-    max: SIM_LIMITS.count,
-    step: 1,
-    placeholder: "4",
-    get hint() {
-      return t("inspector.messagesProcessedInParallelPerReplica");
-    },
-  },
-  replicas: {
-    get label() {
-      return t("inspector.replicas");
-    },
-    kind: "number",
-    min: 1,
-    max: SIM_LIMITS.count,
-    step: 1,
-    placeholder: "1",
-    hint: "",
-  },
-  jitter: {
-    get label() {
-      return t("inspector.latencyJitter");
-    },
-    unit: "0–1",
-    kind: "number",
-    min: 0,
-    max: 1,
-    step: 0.05,
-    placeholder: "0.2",
-    get hint() {
-      return t("inspector.randomSpreadOnLatency0220");
-    },
-  },
-  failureRate: {
-    get label() {
-      return t("inspector.failureRate");
-    },
-    unit: "0–1",
-    kind: "number",
-    min: 0,
-    max: 1,
-    step: 0.05,
-    placeholder: "0",
-    get hint() {
-      return t("inspector.probabilityAMessageFailsProcessing");
-    },
-  },
-  maxDeliveryCount: {
-    get label() {
-      return t("inspector.maxDeliveries");
-    },
-    kind: "number",
-    min: 1,
-    max: SIM_LIMITS.count,
-    step: 1,
-    placeholder: "3",
-    get hint() {
-      return t("inspector.attemptsBeforeDeadLettering");
-    },
-  },
-  partitions: {
-    get label() {
-      return t("inspector.partitions");
-    },
-    kind: "number",
-    min: 1,
-    max: SIM_LIMITS.count,
-    step: 1,
-    placeholder: "3",
-    get hint() {
-      return t("inspector.maxInFlightDeliveriesPerConsumerGroup");
-    },
-    get note() {
-      return t("inspector.howManyConsumersInOneGroupCanWorkIn");
-    },
-  },
-  emits: {
-    get label() {
-      return t("inspector.emits");
-    },
-    kind: "map",
-    get placeholder() {
-      return t("inspector.unchangedOrInOutOther");
-    },
-    get hint() {
-      return t("inspector.messageTypeSentDownstreamOneNameRenamesEverythingOrderplaced");
-    },
-  },
-};
-
-const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
-// A setting leaves Custom properties only where a control for it shows: a device's own section, a firewall's rule.
-// Anywhere else (an nginx with a `gbps`, a service's connection with `deny`) it stays there, to see, change or remove.
-const DEVICE_KEYS = new Set<string>([...SIM_KEYS, "size", "gbps", "messageKB", "ha", "failoverMs"]);
-const ADC_KEYS = new Set<string>([...DEVICE_KEYS, "healthChecks"]);
-const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings"]);
-const RULE_KEYS = new Set([...EDGE_KEYS, "deny"]);
 
 export function Inspector(p: InspectorProps) {
   useLocale();
@@ -2085,341 +1902,6 @@ function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps
   );
 }
 
-const OPEN_KEY = "diagrams.inspector.open.v1";
-function readOpen(): Record<string, boolean> {
-  try {
-    const v = JSON.parse(safeStorage.getItem(OPEN_KEY) ?? "{}") as unknown;
-    return v && typeof v === "object" ? (v as Record<string, boolean>) : {};
-  } catch {
-    return {};
-  }
-}
-
-/** A collapsed-by-default section; it stays open once you've opened it (per browser). */
-function Disclosure({
-  id,
-  title,
-  aside,
-  count,
-  children,
-}: {
-  id: string;
-  title: string;
-  aside?: ReactNode;
-  count?: number;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(() => readOpen()[id] === true);
-  const toggle = () => {
-    setOpen(!open);
-    safeStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));
-  };
-  return (
-    <section className={`insp-section insp-disclosure${open ? " is-open" : ""}`}>
-      <h3>
-        <button
-          type="button"
-          className="insp-disclosure-head"
-          aria-expanded={open}
-          onClick={toggle}
-          data-testid={`inspector-section-${id}`}
-        >
-          <Icon name="chevron-right" size={12} />
-          {title}
-          {!!count && <span className="insp-count">{count}</span>}
-        </button>
-        {aside}
-      </h3>
-      {open && children}
-    </section>
-  );
-}
-
-/**
- * A network device's simulation settings: a size preset (its datasheet's throughput and latency), the throughput
- * itself, high availability, and for ADCs health checks. Picking a size clears the throughput and latency typed
- * over the old one, so the new preset shows through.
- */
-function DeviceFields({
-  spec,
-  props,
-  set,
-}: {
-  spec: DeviceSpec;
-  props: Record<string, unknown>;
-  set: (patch: Record<string, unknown>, mergeKey?: string) => void;
-}) {
-  const size: DeviceSize = sizeOf(spec, props.size);
-  const preset = presetOf(spec, size);
-  const ha: DeviceHa = isDeviceHa(props.ha) ? props.ha : "standalone";
-  const num = (key: string, fallback: number) => {
-    const v = props[key];
-    return typeof v === "number" && Number.isFinite(v) ? v : fallback;
-  };
-  const gbps = num("gbps", preset.gbps);
-  const kb = num("messageKB", DEFAULT_MESSAGE_KB);
-  return (
-    <>
-      <Field label={t("inspector.size")} hint={t("inspector.eachSizeSNumbersComeFromAModelS")}>
-        <select
-          className="insp-input"
-          value={size}
-          onChange={(e) => {
-            const size = sizeOf(spec, e.target.value);
-            const preset = presetOf(spec, size);
-            set(
-              props.preset === "device-size"
-                ? { size, gbps: preset.gbps, latencyMs: preset.latencyMs }
-                : { size, gbps: undefined, latencyMs: undefined },
-            );
-          }}
-          name="size"
-          data-testid="inspector-field-size"
-        >
-          {sizesOf(spec).map((s) => (
-            <option key={s} value={s}>
-              {
-                { branch: t("inspector.branch"), campus: t("inspector.campus"), datacentre: t("inspector.dataCentre") }[
-                  s
-                ]
-              }
-              : {presetOf(spec, s).model}, {formatGbps(presetOf(spec, s).gbps)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <SimInput
-        name="gbps"
-        field={{
-          label: t("inspector.throughput"),
-          unit: "Gbps",
-          kind: "number",
-          min: 0,
-          max: 1_000_000,
-          step: 0.5,
-          placeholder: String(preset.gbps),
-          hint: t("inspector.throughputHint", { model: preset.model }),
-        }}
-        value={props.gbps}
-        onChange={(v) => set({ gbps: v }, "gbps")}
-      />
-      <p className="insp-note" data-testid="inspector-device-rate">
-        {t("inspector.deviceRate", { rate: formatCount(messagesPerSec(gbps, kb)), size: kb, model: preset.model })}
-      </p>
-      <Field label={t("inspector.highAvailability")}>
-        <select
-          className="insp-input"
-          value={ha}
-          onChange={(e) => {
-            const next = e.target.value as DeviceHa;
-            set(
-              next === "standalone"
-                ? { ha: undefined, replicas: undefined, failoverMs: undefined }
-                : { ha: next, replicas: Math.max(2, num("replicas", 2)) },
-            );
-          }}
-          name="ha"
-          data-testid="inspector-field-ha"
-        >
-          {(Object.keys(HA_LABEL) as DeviceHa[]).map((h) => (
-            <option key={h} value={h}>
-              {
-                {
-                  standalone: t("inspector.standalone"),
-                  "active-standby": t("inspector.activeStandby"),
-                  "active-active": t("inspector.activeActive"),
-                }[h]
-              }
-            </option>
-          ))}
-        </select>
-      </Field>
-      {ha !== "standalone" && (
-        <SimInput
-          name="replicas"
-          field={{
-            label: t("inspector.units"),
-            kind: "number",
-            min: 1,
-            max: 10_000,
-            step: 1,
-            placeholder: "2",
-            hint:
-              ha === "active-standby"
-                ? t("inspector.boxesInThePairOneCarriesTrafficTheOther")
-                : t("inspector.boxesSharingTheTrafficTheirThroughputAddsUp"),
-          }}
-          value={props.replicas}
-          onChange={(v) => set({ replicas: v }, "replicas")}
-        />
-      )}
-      <SimInput
-        name="latencyMs"
-        field={{
-          label: t("inspector.latency"),
-          unit: "ms",
-          kind: "number",
-          min: 0,
-          max: 600_000,
-          step: 0.05,
-          placeholder: String(preset.latencyMs),
-          hint: t("inspector.timeThroughTheDevicePerMessage"),
-        }}
-        value={props.latencyMs}
-        onChange={(v) => set({ latencyMs: v }, "latencyMs")}
-      />
-      {spec.kind === "adc" && (
-        <label className="insp-check">
-          <input
-            type="checkbox"
-            checked={props.healthChecks !== false}
-            onChange={(e) => set({ healthChecks: e.target.checked ? undefined : false })}
-            name="healthChecks"
-            data-testid="inspector-field-healthChecks"
-          />
-          <span>
-            {t("inspector.healthChecks")}
-            <small>{t("inspector.targetsThatAreDownGetNoTraffic")}</small>
-          </span>
-        </label>
-      )}
-      <div className="insp-row2">
-        <SimInput
-          name="messageKB"
-          field={{
-            label: t("inspector.messageSize"),
-            unit: "kB",
-            kind: "number",
-            min: 0.01,
-            max: 1_000_000,
-            step: 1,
-            placeholder: String(DEFAULT_MESSAGE_KB),
-            hint: t("inspector.theAverageMessageTheThroughputIsConvertedWith1"),
-          }}
-          value={props.messageKB}
-          onChange={(v) => set({ messageKB: v }, "messageKB")}
-        />
-        {ha === "active-standby" && (
-          <SimInput
-            name="failoverMs"
-            field={{
-              label: t("inspector.failover"),
-              unit: "ms",
-              kind: "number",
-              min: 0,
-              max: 600_000,
-              step: 100,
-              placeholder: String(DEFAULT_FAILOVER_MS),
-              hint: t("inspector.howLongTrafficWaitsWhenTheActiveUnitFails"),
-            }}
-            value={props.failoverMs}
-            onChange={(v) => set({ failoverMs: v }, "failoverMs")}
-          />
-        )}
-      </div>
-    </>
-  );
-}
-
-const formatGbps = (gbps: number) =>
-  gbps >= 1000 ? `${Math.round(gbps / 100) / 10} Tbps` : gbps >= 1 ? `${gbps} Gbps` : `${Math.round(gbps * 1000)} Mbps`;
-
-/** Number / text input that keeps a local draft so partially typed numbers ("0.") survive. */
-function showSim(kind: SimField["kind"], value: unknown): string {
-  if (value === undefined || value === null) return "";
-  if (kind === "list" && Array.isArray(value)) return value.join(", ");
-  if (kind === "map" && typeof value === "object" && !Array.isArray(value))
-    return Object.entries(value as Record<string, unknown>)
-      .map(([k, v]) => `${k} → ${String(v)}`)
-      .join(", ");
-  return typeof value === "object" ? JSON.stringify(value) : String(value);
-}
-
-type SimValue = number | string | string[] | Record<string, string> | undefined;
-
-function SimInput({
-  name,
-  field,
-  value,
-  onChange,
-}: {
-  name: string;
-  field: SimField;
-  value: unknown;
-  onChange: (v: SimValue) => void;
-}) {
-  const external = showSim(field.kind, value);
-  const [draft, setDraft] = useState(external);
-  // A number past the field's bound is saved at the bound, and says so while it's typed.
-  const [over, setOver] = useState(false);
-  const focused = useRef(false);
-  useEffect(() => {
-    if (!focused.current) setDraft(external);
-  }, [external]);
-  return (
-    <>
-      <Field label={field.label} hint={field.hint}>
-        <span className="insp-unit-wrap">
-          <input
-            className={`insp-input${field.kind === "number" ? " mono" : ""}`}
-            type={field.kind === "number" ? "number" : "text"}
-            inputMode={field.kind === "number" ? "decimal" : undefined}
-            min={field.min}
-            max={field.max}
-            step={field.step}
-            value={draft}
-            placeholder={field.placeholder}
-            onFocus={() => (focused.current = true)}
-            onBlur={() => {
-              focused.current = false;
-              setDraft(external);
-              setOver(false);
-            }}
-            onChange={(e) => {
-              const raw = e.target.value;
-              setDraft(raw);
-              setOver(field.kind === "number" && field.max !== undefined && Number(raw) > field.max);
-              if (field.kind === "text") return onChange(raw || undefined);
-              if (field.kind === "list") {
-                const items = raw
-                  .split(",")
-                  .map((x) => x.trim())
-                  .filter(Boolean);
-                return onChange(items.length ? items : undefined);
-              }
-              if (field.kind === "map") {
-                const parsed = parseEmits(raw);
-                if (parsed !== null) onChange(parsed);
-                return;
-              }
-              if (raw.trim() === "") return onChange(undefined);
-              const v = Number(raw);
-              // Each bound on its own: a value the file format would reject never reaches the diagram.
-              if (Number.isFinite(v)) onChange(Math.min(field.max ?? Infinity, Math.max(field.min ?? -Infinity, v)));
-            }}
-            name={name}
-            data-testid={`inspector-field-${name}`}
-          />
-          {field.unit && <span className="insp-unit">{field.unit}</span>}
-        </span>
-        {over && field.max !== undefined && (
-          <small className="insp-note" role="status" data-testid={`inspector-limit-${name}`}>
-            {t("inspector.limit", {
-              limit: formatNumber(field.max),
-              unit: field.unit && field.unit !== "0–1" ? ` ${field.unit}` : "",
-            })}
-          </small>
-        )}
-      </Field>
-      {field.note && (
-        <p className="insp-note insp-field-note" data-testid={`inspector-note-${name}`}>
-          {field.note}
-        </p>
-      )}
-    </>
-  );
-}
-
 const showValue = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
 function parseValue(raw: string): unknown {
   const t = raw.trim();
@@ -2523,32 +2005,6 @@ function PropsEditor({
         </button>
       </div>
     </div>
-  );
-}
-
-function AutoscalingWorkload({
-  enabled,
-  props,
-  set,
-  children,
-  stencil,
-  readDiagram,
-  nodeId,
-}: {
-  readDiagram?: () => DiagramFile;
-  nodeId: string;
-  stencil: string;
-  enabled: boolean;
-  props: Record<string, unknown>;
-  set: (patch: Partial<NodeSimProps>, key?: string) => void;
-  children: ReactNode;
-}) {
-  return enabled ? (
-    <AutoscalingFields readDiagram={readDiagram} nodeId={nodeId} stencil={stencil} props={props} set={set}>
-      {children}
-    </AutoscalingFields>
-  ) : (
-    children
   );
 }
 
