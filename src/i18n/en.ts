@@ -944,6 +944,8 @@ const en = {
   "clear.loadingTitle": "Clear everything",
   "clear.subtitle": "Live Diagrams forgets everything it keeps in this browser, then starts over.",
   "clear.confirm": "Clear everything",
+  "clear.failed":
+    "Room copies kept on this device couldn't be cleared (the browser refused). Try again, or clear this site's data in the browser's settings.",
   "clear.diagrams": "Every diagram in Your diagrams, private ones included, and your edits to examples",
   "clear.links": "A diagram opened from a link, AI conversations, and where files were saved",
   "clear.settings": "Your settings, the language included",
@@ -2495,6 +2497,12 @@ const en = {
   "collab.leftNotice": "You left the room. Your copy is in Your diagrams.",
   "collab.leftPrivateNotice": "You left the room because this diagram is now private. Your copy stays on this device.",
   "collab.openFailed": "Could not open the room. Try the link again.",
+  "collab.unsaved":
+    "You left the room, but this browser couldn't keep your copy (its storage is full or blocked). It stays open here: save a file copy or try again.",
+  "collab.unsavedChip": "Not saved · keep this page open",
+  "collab.saveFile": "Save a file copy",
+  "collab.tryAgain": "Try again",
+  "collab.discard": "Discard",
   "collab.privateUnsaved":
     "You left the room because this diagram is now private, but this browser couldn't record that (its storage is full or blocked). Save a file copy: nothing of it is kept here.",
   "collab.storageFull":

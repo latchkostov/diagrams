@@ -386,7 +386,13 @@ function MainApp() {
   });
   const openRoom = roomSnap?.open;
   const roomHere = openRoom?.slug !== undefined && openRoom.slug === slug ? openRoom : undefined;
-  const roomInitial = roomHere?.session.doc.project().diagram;
+  // Read once per room canvas mount (when its document is ready): later changes reach the canvas through the room.
+  const roomSession = roomHere?.session;
+  const roomReady = !!roomHere?.ready;
+  const roomInitial = useMemo(
+    () => (roomReady ? roomSession?.doc.project().diagram : undefined),
+    [roomSession, roomReady],
+  );
   const roomBusy = resuming || !!roomSnap?.opening || (!!openRoom && openRoom.slug === undefined);
 
   const interop = useInterop({
@@ -555,6 +561,7 @@ function MainApp() {
               <rooms.RoomChip
                 room={rooms.room}
                 here={!!roomHere}
+                capture={() => canvasRef.current?.getDiagram()}
                 onShow={() => openRoom.slug && setUrl({ view: "canvas", example: openRoom.slug, present: false })}
               />
             ) : undefined

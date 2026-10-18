@@ -10,6 +10,10 @@
   show both.
 - **Focus handoffs go through the interaction controller in E3.** E2 focuses the joiner's waiting view only when
   focus fell to the page; when the room's diagram arrives the canvas takes no focus request yet.
+- **Remaining PR #174 P2s (E3/E4).** Focus the canvas when it replaces the joiner's waiting view (through the
+  interaction controller); a selectable room link when copying fails from the chip; keep the detached editor (and
+  its local Undo of a Private paste) mounted through a successful privacy exit instead of remounting from the copy;
+  an app-level e2e for a Private paste whose privacy write fails (exported file Private, peer and copy without it).
 - **Translations for the new `collab.*` keys.** E2 adds the consent, chip and notice wording in English only;
   missing messages show in English. Translate once E4 settles the final wording.
 - **Rejoining after Leave makes a second entry.** A joiner who leaves and later opens the same link gets a new entry

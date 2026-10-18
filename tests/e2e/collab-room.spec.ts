@@ -260,6 +260,40 @@ const recoveryRecords = (page: Page) =>
     return counts;
   });
 
+test("an aborted recovery wipe does not report success, and Retry clears it", async ({
+  context,
+  page,
+  consoleErrors,
+}) => {
+  await emulateTracker([context]);
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await startRoom(page);
+  await rename(page, "gateway", "Kept in a checkpoint");
+  await expect.poll(() => recoveryRecords(page).then((r) => r.rooms)).toBe(1);
+  // The clear transaction aborts once.
+  await page.evaluate(() => {
+    const clear = IDBObjectStore.prototype.clear;
+    IDBObjectStore.prototype.clear = function (this: IDBObjectStore) {
+      IDBObjectStore.prototype.clear = clear;
+      this.transaction.abort();
+      return clear.call(this);
+    };
+  });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await page.getByTestId("privacy-clear-device").click();
+  await page.getByTestId("clear-device-confirm").click();
+  await expect(page.getByTestId("clear-device-error")).toBeVisible();
+  await expect(page.getByTestId("clear-device-dialog")).toBeVisible();
+  expect((await recoveryRecords(page)).rooms).toBe(1);
+  await page.getByTestId("clear-device-retry").click();
+  await expect(page.getByTestId("clear-device-dialog")).toHaveCount(0, { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  expect(await recoveryRecords(page)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
+  expectNoErrors(consoleErrors.filter((e) => !/AbortError/.test(e)));
+});
+
 test("Clear everything stops the room's writers, an encryption started before it can't repopulate recovery, and an old link restores nothing", async ({
   browser,
   context,

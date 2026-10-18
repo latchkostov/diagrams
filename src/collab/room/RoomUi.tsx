@@ -6,6 +6,9 @@ import { copyText } from "../../interop/ui/copyText";
 import { Dialog } from "../../interop/ui/Dialog";
 import { Glyph } from "../../interop/ui/glyphs";
 import { notify } from "../../interop/ui/toast";
+import { downloadText } from "../../interop/files";
+import { serializeNative } from "../../interop/native";
+import type { DiagramFile } from "../../model/types";
 import { createLibraryDiagram, getCurrent, getPrivacyFlags, isLibrarySlug, resolveSlug } from "../../lib/diagramIO";
 import { canCollaborate } from "../../lib/localOnly";
 import { COLLAB_LIMITS } from "../limits";
@@ -50,6 +53,7 @@ const NOTICES: Record<RoomNotice, () => string> = {
   failed: () => t("collab.openFailed"),
   "storage-full": () => t("collab.storageFull"),
   "private-unsaved": () => t("collab.privateUnsaved"),
+  unsaved: () => t("collab.unsaved"),
 };
 
 /**
@@ -313,11 +317,57 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
 }
 
 /** In the top bar's save-status slot while a room is open: who's here, the link, and Leave. */
-export function RoomChip({ room, here, onShow }: { room: RoomLifecycle; here: boolean; onShow: () => void }) {
+export function RoomChip({
+  room,
+  here,
+  onShow,
+  capture,
+}: {
+  room: RoomLifecycle;
+  here: boolean;
+  onShow: () => void;
+  /** The canvas's diagram (a detached canvas's file copy is what it shows, Private flag included). */
+  capture: () => DiagramFile | undefined;
+}) {
   useLocale();
   const snap = useRoom(room);
   if (!snap.open) return null;
+  if (snap.open.detached) return <DetachedChip room={room} open={snap.open} capture={capture} />;
   return <OpenChip room={room} open={snap.open} here={here} onShow={onShow} />;
+}
+
+/** Disconnected, with its copy not saved: keep the canvas until it saves, is saved as a file, or is discarded. */
+function DetachedChip({
+  room,
+  open,
+  capture,
+}: {
+  room: RoomLifecycle;
+  open: OpenRoom;
+  capture: () => DiagramFile | undefined;
+}) {
+  return (
+    <div className="ix-shared room-chip" role="status" data-testid="room-chip" data-state="detached">
+      <span className="room-dot" aria-hidden="true" />
+      <span data-testid="room-chip-text">{open.private ? t("collab.privateDraft") : t("collab.unsavedChip")}</span>
+      <button
+        className="ix-shared-keep"
+        onClick={() => {
+          const diagram = capture() ?? open.session.doc.project().diagram;
+          if (diagram) downloadText(serializeNative(diagram), "room-copy.diagram.json", "application/json");
+        }}
+        data-testid="room-save-file"
+      >
+        {t("collab.saveFile")}
+      </button>
+      <button className="ix-shared-keep" onClick={() => room.retrySave()} data-testid="room-save-retry">
+        {t("collab.tryAgain")}
+      </button>
+      <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-discard">
+        {t("collab.discard")}
+      </button>
+    </div>
+  );
 }
 
 function OpenChip({
@@ -334,16 +384,6 @@ function OpenChip({
   useSessionState(open.session);
   const [copied, setCopied] = useState(false);
   const session = open.session;
-  if (open.detached)
-    return (
-      <div className="ix-shared room-chip" role="status" data-testid="room-chip" data-state="detached">
-        <span className="room-dot" aria-hidden="true" />
-        <span data-testid="room-chip-text">{t("collab.privateDraft")}</span>
-        <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
-          {t("collab.leave")}
-        </button>
-      </div>
-    );
   if (!here && open.slug)
     // The room goes on for another diagram: name it, and offer the way back rather than its link.
     return (

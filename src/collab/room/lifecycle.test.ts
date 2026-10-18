@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import type { CanvasPrivacyState } from "../../lib/localOnly";
 import type { DiagramFile } from "../../model/types";
 import { FakeClock } from "../clock";
@@ -26,7 +26,10 @@ class Store implements RecoveryStore {
   records = new Map<string, RecoveryRecord>();
   /** Writes wait here while set: a checkpoint still being saved. */
   hold?: Promise<void>;
-  head(id: string) {
+  /** Reads of the head wait here while set: recovery still loading. */
+  headHold?: Promise<void>;
+  async head(id: string) {
+    await this.headHold;
     const r = this.records.get(id);
     return Promise.resolve(r && recoverySummary(r));
   }
@@ -630,6 +633,123 @@ describe("leaving and reloading", () => {
     expect(a.room.getSnapshot().open).toBeUndefined();
     await start(a);
     expect(a.room.getSnapshot().open?.detached).toBeUndefined();
+  });
+
+  it("Leave with the copy refused keeps the latest document, says so, and saves it on Try again", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 55),
+      b = browser(net, clock, 56);
+    const slug = await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    const save = a.library.save.bind(a.library);
+    a.library.save = () => false;
+    edit(a, (d) => ({ ...d, title: "Not saved yet" }));
+    const open = a.room.getSnapshot().open!;
+    await a.room.leave();
+    // Disconnected all the same...
+    expect(open.session.status).toBe("left");
+    await settle(net, b);
+    expect(session(b).transport.peers()).toHaveLength(0);
+    // ...with the canvas kept as it is, and the reason shown.
+    expect(a.room.getSnapshot().open).toMatchObject({ detached: true, slug });
+    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "unsaved", slug });
+    expect(open.session.doc.project().diagram?.title).toBe("Not saved yet");
+    expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
+    expect(a.room.retrySave()).toBe(false);
+    a.library.save = save;
+    expect(a.room.retrySave()).toBe(true);
+    expect(a.room.getSnapshot().open).toBeUndefined();
+    expect(a.library.read(slug)?.title).toBe("Not saved yet");
+  });
+
+  it("a Private paste whose copy can't be saved is kept, Private, until it saves", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 57);
+    const slug = await start(a);
+    const save = a.library.save.bind(a.library);
+    a.library.save = () => false;
+    const pasted = { ...canaryDiagram(), title: "Too large to save", private: true };
+    a.room.configure({ capture: (s) => (s === slug ? pasted : undefined) });
+    const open = a.room.getSnapshot().open!;
+    open.editor.refusal = "private";
+    await open.session.leave();
+    expect(a.room.getSnapshot().open).toMatchObject({ detached: true, private: true, slug });
+    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "private-unsaved", slug });
+    expect(a.library.privacy(slug).private).toBe(true);
+    expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
+    a.library.save = save;
+    expect(a.room.retrySave()).toBe(true);
+    expect(a.library.read(slug)?.title).toBe("Too large to save");
+    expect(a.library.privacy(slug).private).toBe(true);
+  });
+
+  it("a diagram marked Private while its room opens sends nothing", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 58),
+      b = browser(net, clock, 59);
+    const slug = await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    a.room.pageHidden();
+    await settle(net, b);
+    const record = a.tab.read()!;
+    // Before the keys are ready: no transport at all.
+    const early = browser(net, clock, 60, a);
+    const opening = early.room.resume();
+    a.library.flags.set(slug, { private: true });
+    a.library.changed();
+    await opening;
+    expect(early.transports).toHaveLength(0);
+    expect(early.room.getSnapshot().notice).toMatchObject({ kind: "private", slug });
+    // While recovery loads: the transport exists, but not a frame leaves it.
+    a.library.flags.delete(slug);
+    a.tab.write(record);
+    const late = browser(net, clock, 61, { ...a, store: new Store() });
+    late.store.records = a.store.records;
+    let release = () => {};
+    late.store.headHold = new Promise((resolve) => (release = resolve));
+    const sent: string[] = [];
+    net.tap((r) => sent.push(r.from));
+    const resuming = late.room.resume();
+    await vi.waitFor(() => expect(late.transports).toHaveLength(1));
+    a.library.flags.set(slug, { private: true });
+    a.library.changed();
+    release();
+    await resuming;
+    await settle(net, b);
+    expect(late.room.getSnapshot().open).toBeUndefined();
+    expect(late.room.getSnapshot().notice).toMatchObject({ kind: "private", slug });
+    expect(sent.filter((from) => from === late.transports[0].self)).toEqual([]);
+  });
+
+  it("resuming, then a crash before the checkpoint acknowledges, keeps the edits", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 62);
+    await start(a);
+    a.store.hold = new Promise(() => {});
+    edit(a, (d) => ({ ...d, title: "Unsaved through two reloads" }));
+    a.room.pageHidden();
+    const tab = memoryTabRoom();
+    tab.text = a.tab.text;
+    const shared = (hold?: Promise<void>) => {
+      const store = new Store();
+      store.records = a.store.records;
+      store.hold = hold;
+      return store;
+    };
+    const first = browser(net, clock, 63, { library: a.library, tab, store: shared(new Promise(() => {})) });
+    await first.room.resume();
+    expect(titleOf(first)).toBe("Unsaved through two reloads");
+    expect(first.tab.read()?.pending).toBeDefined();
+    // The page dies before its checkpoint write is acknowledged (no pagehide).
+    const second = browser(net, clock, 64, { library: a.library, tab, store: shared() });
+    await second.room.resume();
+    expect(titleOf(second)).toBe("Unsaved through two reloads");
   });
 
   it("writes the copy only when the room changed", async () => {

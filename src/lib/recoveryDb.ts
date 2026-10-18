@@ -91,28 +91,37 @@ export function guardWrite(tx: IDBTransaction, run: () => void, refused: () => v
   };
 }
 
-/** Whether a recovery database may exist here: listed by the browser, or (where it can't list) a collaboration build. */
-async function mayExist(factory: IDBFactory, collab: boolean): Promise<boolean> {
-  if (typeof factory.databases !== "function") return collab;
+/**
+ * Whether a recovery database exists here, as the browser lists it; "unknown" where it can't list them (an earlier
+ * collaboration-enabled build on this origin may have left one, whatever this build is).
+ */
+async function exists(factory: IDBFactory): Promise<boolean | "unknown"> {
+  if (typeof factory.databases !== "function") return "unknown";
   try {
     return (await factory.databases()).some((d) => d.name === RECOVERY_DB);
   } catch {
-    return collab;
+    return "unknown";
   }
 }
 
 /**
  * Clear everything: empties the recovery database and records `generation`, in one transaction. Resolves once it has
  * committed, after any write already running in another tab. Nothing to do where there is no IndexedDB or no
- * database.
+ * database. Rejects when a database that may hold rooms couldn't be emptied: the wipe must not report success.
  */
-export async function wipeRecoveryDb(
-  generation: string,
-  opts: { factory?: IDBFactory; collab: boolean },
-): Promise<void> {
+export async function wipeRecoveryDb(generation: string, opts: { factory?: IDBFactory } = {}): Promise<void> {
   const factory = opts.factory ?? (typeof indexedDB === "undefined" ? undefined : indexedDB);
-  if (!factory || !(await mayExist(factory, opts.collab))) return;
-  const db = await openRecoveryDb(factory, (record) => record, { waitIfBlocked: true });
+  if (!factory) return;
+  const listed = await exists(factory);
+  if (!listed) return;
+  let db: IDBDatabase;
+  try {
+    db = await openRecoveryDb(factory, (record) => record, { waitIfBlocked: true });
+  } catch (error) {
+    // Unlisted and unopenable: IndexedDB is off here, so nothing was ever kept in it.
+    if (listed === "unknown") return;
+    throw error;
+  }
   try {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction([...RECOVERY_STORES], "readwrite");

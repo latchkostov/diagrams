@@ -59,7 +59,7 @@ export interface RoomDeps {
   mirrorMs?: number;
 }
 
-export type RoomNotice = "left" | "private" | "private-unsaved" | "failed" | "storage-full";
+export type RoomNotice = "left" | "private" | "private-unsaved" | "unsaved" | "failed" | "storage-full";
 
 export interface OpenRoom {
   role: RoomRole;
@@ -73,10 +73,12 @@ export interface OpenRoom {
   /** The session has the room's document (a joiner, or a reload without its checkpoint, waits for a peer's). */
   ready: boolean;
   /**
-   * The room left because its content became Private, but this device couldn't record that (storage full or
-   * blocked): the canvas stays as it is, Private in memory only, and nothing of it is saved. Leave room drops it.
+   * Disconnected, but its copy couldn't be kept (storage full or blocked, or Private that couldn't be recorded): the
+   * canvas stays as it is, editable in memory only, until a save succeeds (`retrySave`) or Leave room discards it.
    */
   detached?: boolean;
+  /** Detached because its content became Private: kept Private in memory, and saved only once marked Private. */
+  private?: boolean;
 }
 
 export type RoomPrompt =
@@ -104,6 +106,8 @@ interface Active {
   mirror?: () => void;
   /** Edits not yet in the encrypted checkpoint, as recorded for a reload (base64url CRDT update). */
   pending?: string;
+  /** The change count `pending` was computed at: an unchanged document doesn't encode it again. */
+  pendingAt?: number;
   /** Document changes seen, and the count the copy in Your diagrams was last written at. */
   changes: number;
   mirrored: number;
@@ -145,6 +149,8 @@ export class RoomLifecycle {
   private readonly clock: Clock;
   private readonly random: RandomBytes;
   private navigate?: (slug: string) => void;
+  /** A room that disconnected without its copy saved: its canvas stays until the copy saves or is discarded. */
+  private held?: { a: Active; private: boolean };
   private capture?: (slug: string) => DiagramFile | undefined;
 
   constructor(private readonly deps: RoomDeps) {
@@ -264,16 +270,20 @@ export class RoomLifecycle {
       : {};
     let transport: CollabTransport | undefined;
     let session: CollabSession | undefined;
+    // The entry's flags as they are now: another tab may mark it Private while the keys and recovery load.
+    const allowed = () => !o.slug || canCollaborate(this.deps.library.privacy(o.slug));
     try {
       // Before anything is contacted: a Private diagram never reaches a tracker.
       if (!canCollaborate(privacy) || privacy.diagram?.private) throw new PrivateDiagramError();
       const keys = await deriveRoomKeys(o.link);
       if (token !== this.attempt) return;
+      if (!allowed()) throw new PrivateDiagramError();
       transport = this.deps.transport(keys);
       session = await CollabSession.open({
         room: o.link,
         transport,
         privacy,
+        allowed,
         initial: o.initial && withoutPrivate(o.initial),
         doc: o.doc,
         recovery: this.deps.recovery?.(),
@@ -306,6 +316,8 @@ export class RoomLifecycle {
       alias: session.me.alias,
       mount: ++this.mounts,
       stops: [],
+      // A reload's unsaved edits stay recorded until a checkpoint that includes them is saved.
+      pending: o.record?.pending,
       // What the session holds now (a checkpoint restored, a reload's edits merged, a seed) counts as unwritten:
       // the copy is current only once a save of it succeeds.
       changes: 1,
@@ -325,6 +337,8 @@ export class RoomLifecycle {
     );
     // Privacy is enforced here too, so it holds while the room's canvas isn't showing (or another tab changes it).
     a.stops.push(this.deps.library.watch(() => this.checkPrivacy(a)));
+    this.checkPrivacy(a);
+    if (this.active !== a) return;
     this.record(a);
     if (a.ready) this.scheduleMirror(a);
     this.changed(a);
@@ -407,20 +421,27 @@ export class RoomLifecycle {
     });
   }
 
-  private flushMirror(a: Active, diagram?: DiagramFile): void {
+  /** Writes the copy; false only when there was something to keep and storage refused it. */
+  private flushMirror(a: Active, diagram?: DiagramFile): boolean {
     a.mirror?.();
     a.mirror = undefined;
     this.notePending(a);
     // Nothing changed since the copy was last written: no second serialization of the whole diagram.
-    if (!a.slug || (!diagram && a.mirrored === a.changes)) return;
+    if (!a.slug || (!diagram && a.mirrored === a.changes)) return true;
     const projected = a.session.doc.project();
     const d = diagram ?? (projected.status === "ok" ? projected.diagram : undefined);
-    if (d && this.deps.library.save(a.slug, withoutPrivate(d))) a.mirrored = a.changes;
+    if (!d) return true;
+    if (!this.deps.library.save(a.slug, withoutPrivate(d))) return false;
+    a.mirrored = a.changes;
+    return true;
   }
 
   /** Records, for a reload, what the checkpoint hasn't saved yet (a CRDT update: merging it reverts nothing). */
   private notePending(a: Active): void {
     if (a.leaving) return;
+    // Unchanged since it was encoded (and not yet saved): the recorded update still covers everything.
+    if (a.pending && a.pendingAt === a.changes && !a.session.recovery?.saved) return;
+    a.pendingAt = a.changes;
     const unsaved = a.session.recovery?.unsaved(a.session.doc);
     const pending = unsaved && bytesToBase64Url(unsaved);
     if (pending === a.pending) return;
@@ -441,8 +462,11 @@ export class RoomLifecycle {
     // Leaving while the room still opens (a reload's rejoin, a join waiting for its keys) forgets it too.
     this.deps.tab.clear();
     if (this.snap.opening) this.set({ opening: undefined });
-    // A canvas kept only in memory (Private that couldn't be recorded) is let go: nothing of it is saved.
-    if (!this.active && this.snap.open?.detached) this.set({ open: undefined });
+    // A canvas kept only in memory (its copy couldn't be saved) is discarded: Leave room on it says so.
+    if (this.held) {
+      this.held = undefined;
+      this.set({ open: undefined });
+    }
     await this.leaveActive("left");
   }
 
@@ -454,36 +478,71 @@ export class RoomLifecycle {
   private async finish(a: Active, kind: RoomNotice): Promise<void> {
     if (a.leaving && !a.suspended) return;
     a.leaving = true;
-    let notice = kind;
+    const isPrivate = kind === "private";
+    let kept = false;
     try {
-      if (kind === "private" && a.slug) {
-        // The entry is Private before the canvas is handed back: the kept copy can't become shareable, whichever way
-        // the content became Private (the switch, or a paste from a Private diagram, which only the canvas knew).
-        try {
-          this.deps.library.markPrivate(a.slug);
-        } catch {
-          // Not recorded (storage full or blocked): nothing is saved, and the canvas stays as it is, Private in
-          // memory, rather than come back as an ordinary (shareable) copy.
-          notice = "private-unsaved";
-        }
-        // The canvas as it is now, beyond what the room last agreed on.
-        if (notice === "private") this.flushMirror(a, this.capture?.(a.slug));
-      } else this.flushMirror(a);
+      kept = this.keep(a, isPrivate);
     } catch {
-      // Saving the copy failed: leaving still completes below.
-    } finally {
+      // Not kept: the canvas is held below.
+    }
+    try {
       for (const stop of a.stops) stop();
       a.stops = [];
       if (this.active === a) {
         this.active = undefined;
         this.deps.tab.clear();
+        // Disconnecting never waits for the copy: when it couldn't be saved, the canvas stays (in memory only).
+        const hold = !kept && !!a.slug;
+        if (hold) this.held = { a, private: isPrivate };
         this.set({
-          open: notice === "private-unsaved" ? { ...this.openSnapshot(a), detached: true } : undefined,
-          notice: this.notice(notice, a.slug),
+          open: hold ? { ...this.openSnapshot(a), detached: true, private: isPrivate } : undefined,
+          notice: this.notice(hold ? (isPrivate ? "private-unsaved" : "unsaved") : kind, a.slug),
         });
       }
+    } finally {
+      await a.session.leave();
     }
-    await a.session.leave();
+  }
+
+  /**
+   * Keeps the room's copy in Your diagrams as it ends. Private first: the entry is marked Private before its content
+   * is written, whichever way the content became Private (the switch, or a paste that only the canvas knew), so the
+   * kept copy can never be shareable; if that can't be recorded, nothing is written.
+   */
+  private keep(a: Active, isPrivate: boolean, again = false): boolean {
+    if (!a.slug) return true;
+    // Again (after a failure): the canvas as it is now, edited since in memory.
+    if (!isPrivate)
+      return this.flushMirror(a, again ? (this.capture?.(a.slug) ?? a.session.doc.project().diagram) : undefined);
+    try {
+      this.deps.library.markPrivate(a.slug);
+    } catch {
+      return false;
+    }
+    // The canvas as it is now, beyond what the room last agreed on.
+    return this.flushMirror(a, this.capture?.(a.slug));
+  }
+
+  /** Try again on a canvas whose copy couldn't be saved; true once it is (the canvas then reloads from it). */
+  retrySave(): boolean {
+    const held = this.held;
+    if (!held) return false;
+    let saved = false;
+    try {
+      saved = this.keep(held.a, held.private, true);
+    } catch {
+      // Still not saved.
+    }
+    if (this.held !== held) return saved;
+    if (saved) this.held = undefined;
+    this.set({
+      ...(saved ? { open: undefined } : {}),
+      notice: this.notice(
+        saved ? (held.private ? "private" : "left") : held.private ? "private-unsaved" : "unsaved",
+        held.a.slug,
+      ),
+    });
+    return saved;
   }
 
   /** Retry after "Could not connect": the room and its edits stay. */

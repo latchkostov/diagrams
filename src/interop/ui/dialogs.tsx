@@ -773,6 +773,15 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
   // The wipe's code comes with this dialog: confirming clears at once, with nothing left to download (so nothing to
   // cancel, or to fail, after the click). Emptying the room recovery database takes a moment: the button waits.
   const [clearing, setClearing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const clear = () => {
+    setClearing(true);
+    setFailed(false);
+    clearDevice().catch(() => {
+      setClearing(false);
+      setFailed(true);
+    });
+  };
   return (
     <Dialog
       title={t("clear.title")}
@@ -787,13 +796,10 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
           <button
             className="btn btn-danger"
             disabled={clearing}
-            onClick={() => {
-              setClearing(true);
-              void clearDevice();
-            }}
-            data-testid="clear-device-confirm"
+            onClick={clear}
+            data-testid={failed ? "clear-device-retry" : "clear-device-confirm"}
           >
-            {t("clear.confirm")}
+            {failed ? t("common.retry") : t("clear.confirm")}
           </button>
           <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
             {t("common.cancel")}
@@ -801,6 +807,11 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
         </>
       }
     >
+      {failed && (
+        <p className="ix-error" role="alert" data-testid="clear-device-error">
+          {t("clear.failed")}
+        </p>
+      )}
       <ul className="ix-privacy-list" data-testid="clear-device-list">
         <li>{t("clear.diagrams")}</li>
         <li>{t("clear.links")}</li>

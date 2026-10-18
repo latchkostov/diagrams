@@ -1,6 +1,5 @@
 import { APP_PREFIX, GENERATION_KEY, stopStorageWrites } from "./storage";
 import { wipeRecoveryDb } from "./recoveryDb";
-import { COLLABORATION_LAB } from "./localOnly";
 
 // File ▸ Privacy ▸ Clear everything on this device…: every key Live Diagrams keeps in this browser goes (Your
 // diagrams, edits to examples, the shared slot, AI conversations, file destinations, settings), then the app starts
@@ -12,7 +11,8 @@ import { COLLABORATION_LAB } from "./localOnly";
 //      hears either, or at its next write at the latest (each write checks the generation), drops its own
 //      sessionStorage keys and reloads. None of them deletes anything shared, so nothing made after the wipe is lost.
 //   4. it empties the room recovery database (./recoveryDb.ts) in one transaction that also records the new
-//      generation, so a late tab's encrypted write can't bring an old room back, and waits for that to commit;
+//      generation, so a late tab's encrypted write can't bring an old room back, and waits for that to commit (if
+//      it can't, clearDevice rejects without starting over: the dialog says so and offers to try again);
 //   5. it drops its own sessionStorage keys (an open room's tab entry with them), and starts over.
 // Before step 1 the open room (if any) stops: its writers, its timers and its connections (onClearDevice).
 
@@ -42,7 +42,8 @@ export const newGeneration = (): string => `${Date.now().toString(36)}.${Math.ra
 
 /**
  * Clears everything (after the one confirmation) and starts this tab afresh at the app's plain address: what was in
- * memory (undo, the clipboard, sign-ins) goes too. Resolves just before the page starts over.
+ * memory (undo, the clipboard, sign-ins) goes too. Resolves just before the page starts over; rejects when the room
+ * recovery database couldn't be emptied (calling it again retries).
  */
 export async function clearDevice(): Promise<void> {
   stopStorageWrites();
@@ -67,11 +68,7 @@ export async function clearDevice(): Promise<void> {
   } catch {
     // No BroadcastChannel: the storage event and the check before every write still reach the other tabs.
   }
-  try {
-    await wipeRecoveryDb(next, { collab: COLLABORATION_LAB });
-  } catch {
-    // IndexedDB unavailable or refused: nothing could be stored there.
-  }
+  await wipeRecoveryDb(next);
   try {
     removeAppKeys(sessionStorage);
   } catch {
