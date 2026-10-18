@@ -21,5 +21,6 @@
   2× CPU throttle: running fades 1,550 to 1,630 → under 10; the Inputs & capacity close click 43 s → 29 s (−32%); the
   steady frame rate unchanged (about 1 fps: the per-node work that remains is backlog hotspot 6). On 1,500 nodes:
   steady frame rate +33% (3.75 → 5.0 fps), edges changing state per publish −70%. On 500 nodes (below the
-  threshold, fades kept): +50% (20 → 30 fps), from the edge hold and the frame clock. At a 4× throttle: pending.
+  threshold, fades kept): +50% (20 → 30 fps), from the edge hold and the frame clock. Not yet measured at
+  a 4× throttle (the CI-like case of the nightly failure).
 - Parity goldens: unchanged. `pnpm regen` refreshed the skill's viewer template (it carries live view's styles).

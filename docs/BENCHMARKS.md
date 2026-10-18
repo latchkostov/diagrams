@@ -571,7 +571,7 @@ median of the last 5 s; capped at 120 s, `slowPhaseSettled` 0 when it never did)
 of running CSS transitions and of composited layers (DevTools `LayerTree`), and edges flipping per publish. Then the
 usual five seconds of steady state.
 
-**Gates** (counts; `live gates pipeline@1500` runs in `pnpm bench:gates`, about a minute; the x10 cases hold the first in
+**Gates** (counts; `live gates pipeline@1500` runs in `pnpm bench:gates`, about two minutes; the x10 cases hold the first in
 full runs too, on large diagrams only):
 
 | Gate                                                           | Limit | master (2×) | perf 5 (2×) |
@@ -591,14 +591,15 @@ timings are bimodal (one quiet-machine master run settled in 44 s where another 
 ```sh
 # the gates (pipeline@1500), and the large-diagram cases at the default 2× throttle
 node scripts/bench/run.mjs --mode gates --only ui --ui live
-BENCH_SIZES=500,1500,5000 node scripts/bench/run.mjs --only ui --ui live --grep "live (pipeline@(500|1500|5000)|mesh@500|gates)"
+BENCH_SIZES=500,1500,5000 node scripts/bench/run.mjs --only ui --ui live --grep "live (pipeline@(500|1500|5000)|mesh@500)"
 # approximating CI's slower runner on a fast machine: the same at a 4× throttle
-BENCH_CPU=4 BENCH_SIZES=5000 node scripts/bench/run.mjs --only ui --ui live --grep "live (pipeline@5000|gates)"
+BENCH_CPU=4 BENCH_SIZES=1500,5000 node scripts/bench/run.mjs --only ui --ui live --grep "live pipeline@(1500|5000)"
 # base against head
 pnpm bench:compare base/results.json head/results.json
 ```
 
-Before and after (same machine, quiet, medians of runs; base = master plus this harness, head = perf 5):
+Before and after (same machine, quiet; one run each, a second base run was discarded for overlapping other work;
+base = master plus this harness, head = perf 5):
 
 | At 2× (5,000 nodes unless noted; each run)          | base        | head        |
 | --------------------------------------------------- | ----------- | ----------- |
@@ -615,7 +616,8 @@ Before and after (same machine, quiet, medians of runs; base = master plus this 
 | Gates: edge flips per publish per 100 edges (1,500) | 8.65        | 2.6         |
 | Steady fps at x10, 1,500 nodes (worker)             | 3.75        | 5           |
 
-At 4×: pending (the runs wait for a quiet machine).
+At 4×: not measured for this change. The machine stayed busy with other work for the two hours set aside for it; the
+recipe above is the one to run.
 
 How to read them. The fades are gone (the counts) and the panel closes a third sooner; the steady frame at 5,000 nodes is
 unchanged at about 1 fps, because what remains is per-node work the fades never caused (hotspot 6, the heat pulses).
