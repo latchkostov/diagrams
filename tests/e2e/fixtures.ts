@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { test as base, expect, type Locator, type Page } from "@playwright/test";
+import { test as base, expect, type FrameLocator, type Locator, type Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { pauseClocks } from "../../scripts/e2e-clock";
 import { textBoundaryKey } from "../../scripts/e2e-keys";
@@ -255,7 +255,7 @@ export async function waitForSelectionSettled(page: Page) {
  * motion's camera are the controller's too. A pan or zoom by hand isn't camera work: wait for it with
  * waitForStableViewport.
  */
-export async function waitForCameraIdle(page: Page) {
+export async function waitForCameraIdle(page: Page | FrameLocator) {
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-camera-state", "idle");
 }
 
@@ -288,7 +288,7 @@ export async function cameraJournalMark(page: Page): Promise<number> {
  * shortcuts dialog is open (`menu-open`) and while a focus move waits for its commit, frame or target
  * (`focus-pending`). A request waiting for a folded Inspector to open doesn't hold it.
  */
-export async function waitForInteractionIdle(page: Page) {
+export async function waitForInteractionIdle(page: Page | FrameLocator) {
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
 }
 

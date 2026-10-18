@@ -252,6 +252,10 @@ test.describe("presenting full screen", () => {
     const left = await cameraJournalMark(page);
     await page.keyboard.press("f");
     await expect.poll(() => fullscreen(page)).toBe(true);
+    // The browser can publish fullscreenElement before delivering fullscreenchange to React.
+    await expect
+      .poll(async () => (await cameraMoves(page, left)).filter((m) => m.startsWith("fit") || m.startsWith("slowmo")))
+      .toEqual(["fit:fullscreen"]);
     await waitForCameraIdle(page);
     // Slow motion gave the view back: full screen refits the fitted presentation (F2).
     const fits = (await cameraMoves(page, left)).filter((m) => m.startsWith("fit") || m.startsWith("slowmo"));

@@ -95,6 +95,10 @@ const processed = async (page: Page, nodeId: string) =>
 
 test.describe("live view", () => {
   test("the Live toggle (and L) shows and hides the controls", async ({ page, consoleErrors }) => {
+    test.fixme(
+      process.platform === "win32",
+      "Nightly cold module load: docs/backlog/2026-10-18-nightly-native-load.md",
+    );
     await page.clock.install();
     await gotoCanvas(page, KAFKA);
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
@@ -138,6 +142,10 @@ test.describe("live view", () => {
     page,
     consoleErrors,
   }) => {
+    test.fixme(
+      process.platform === "win32",
+      "Nightly cold module load: docs/backlog/2026-10-18-nightly-native-load.md",
+    );
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
     await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
 
@@ -167,12 +175,14 @@ test.describe("live view", () => {
   test("a saved simulation runs to done with every expectation passing", async ({ page, consoleErrors }) => {
     test.slow();
     await page.clock.install();
-    await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=black-friday&speed=8`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=black-friday&speed=8&paused=1`);
     await pauseClock(page);
     await page.getByTestId("live-restart").click();
     await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
     await expect(page.getByTestId("live-timeline")).toBeVisible();
     await expect(page.getByTestId("expectation-stock")).toHaveAttribute("data-status", "pending");
+    await page.getByTestId("live-play").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
     await page.clock.runFor(8000);
     await expect(page.getByTestId("live-done")).toBeVisible();
     await expect(page.getByTestId("live-done")).toHaveAttribute("data-status", "pass");

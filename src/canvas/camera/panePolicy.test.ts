@@ -427,6 +427,12 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [{ type: "slowmoPane", following: true }],
     ],
     [
+      "W1b/W5 slow motion owns panel work even before live mode arrives",
+      state(),
+      [{ type: "slowmo", on: true }, { type: "pane.changed", cause: "panel" }, settled({ centreOff: true }), settled()],
+      [{ type: "slowmoPane", following: true }],
+    ],
+    [
       "W5 slow motion after a pan by hand: not following",
       state({ mode: "live" }),
       [{ type: "slowmo", on: true }, { type: "user.moved" }, { type: "pane.changed", cause: "panel" }, settled()],
@@ -729,6 +735,20 @@ const SLOWMO = new Set(["slowmoPlan", "slowmoPane", "follow"]);
 const WHILE_SLOWMO = new Set([...SLOWMO, "restore", "reveal", "fit", "zoom100", "zoomToSelection"]);
 
 describe("panePolicy: event sequences", () => {
+  it("regression seed -1303150540 path 207:5:6:9:10:10: a panel change while slow motion owns the view runs once", () => {
+    const pending = run(initialPolicy(), [
+      { type: "slowmo", on: true, restore: null },
+      { type: "pane.changed", cause: "panel" },
+    ]);
+    const first = decide(pending.state, settled({ centreOff: true }));
+    expect(first.commands).toEqual([{ type: "slowmoPane", following: true }]);
+    expect(first.state.pending).toBeNull();
+    expect(first.state.owner).toBe("slowmo");
+    const end = run(first.state, [{ type: "menu.closed" }, settled(), settled()]);
+    expect(end.commands).toEqual([]);
+    expect(end.state.pending).toBeNull();
+  });
+
   it("regression seed -673370871 path 840:7:7:6:5:5:6: a pending panel refit gives way to slow motion", () => {
     const pending = run(initialPolicy(), [
       { type: "pane.changed", cause: "panel" },
@@ -762,12 +782,18 @@ describe("panePolicy: event sequences", () => {
             work!.ran++;
             expect(work!.ran).toBe(1);
             const cause = before.pending.cause;
-            const refit = cause === "panel" && before.owner === "fit" && before.mode === "edit";
+            const refit = cause === "panel" && before.owner === "fit" && before.mode === "edit" && !before.slowmo;
             expect(command?.type === "fit").toBe(refit);
             // No refit after a selection or placement cause.
             if (cause === "selection" || cause === "placement") expect(command?.type ?? "reveal").toBe("reveal");
-            // Only Live's addition and slow motion's take move a view Zoom to selection owns.
-            if (before.zoomPriority && !refit && cause !== "live.added" && cause !== "slowmo.take")
+            // Live's addition and slow motion's pane planning keep their own rules under Zoom to selection.
+            if (
+              before.zoomPriority &&
+              !refit &&
+              cause !== "live.added" &&
+              cause !== "slowmo.take" &&
+              !(cause === "panel" && before.slowmo)
+            )
               expect(command).toBeUndefined();
             work = null;
           } else if (e.type === "pane.settled") expect(d.commands).toEqual([]);

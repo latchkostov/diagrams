@@ -3,7 +3,13 @@ import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
 import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
-import { interactionJournalMark, liveKeyLevels, waitForStableViewport } from "./fixtures";
+import {
+  interactionJournalMark,
+  liveKeyLevels,
+  waitForStableViewport,
+  waitForCameraIdle,
+  pauseClock,
+} from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -262,12 +268,17 @@ test.describe("message trace", () => {
     // the first message to dead-letter (about 3.3 s), long before the story's pausing note at 10 s. Asked
     // while playing, it raced the run: whether a journey existed yet, and which one, depended on how long
     // the menu took to open.
+    await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=${AZURE}&live=1&sim=poison&speed=8&paused=1`);
     await openCanvasSubmenu(page, "sim.trace-message", "sim.trace-message:dead-letter");
     await expect(card(page)).toHaveAttribute("data-state", "waiting");
     await expect(page.getByTestId("trace-waiting")).toContainText("dead-letter");
+    await waitForCameraIdle(page);
+    await pauseClock(page);
     await page.getByTestId("live-play").click();
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    // Eight simulated seconds include the DLQ hop, before the note at ten seconds pauses playback.
+    await page.clock.runFor(1000);
     // "Dead-lettered" shows when the broker gives up; the message then travels 300 ms (sim) to the DLQ.
     // Wait for that last hop before reading the journey, or the list can still end at the dead letter.
     await expect(card(page)).toHaveAttribute("data-state", "dlq", { timeout: 20_000 });
@@ -280,6 +291,7 @@ test.describe("message trace", () => {
     expect(kinds.at(-1)).toBe("dlq");
     expect((await hopAttr(page, "data-node")).at(-1)).toBe("dlq");
 
+    await page.clock.resume();
     await page.getByTestId("trace-sequence").click();
     await expect(page.getByTestId("sequence-messages")).toContainText("failed");
     await expect(page.getByTestId("sequence-messages")).toContainText("Dead-lettered");

@@ -1,8 +1,18 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLive, STORAGE_KEYS, viewportTransform, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  STORAGE_KEYS,
+  viewportTransform,
+  waitForStableViewport,
+  waitForCameraIdle,
+} from "./fixtures";
 
 // Opening or closing a side panel refits the diagram only while the whole of it is in view (a fit).
-// A view the person zoomed or panned, by hand or by command (Shift+0), stays where they put it.
+// A manually zoomed view whose diagram centre stays in the pane keeps its position.
+// The policy tests cover R6's separate off-pane centring rule.
 // Timers are driven by the test clock, so the refit (and its animation) has run when we measure.
 
 const KAFKA = "kafka-order-pipeline";
@@ -29,11 +39,13 @@ async function openFitted(page: Page) {
   await gotoCanvas(page, KAFKA);
   await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
   await settle(page);
+  await waitForCameraIdle(page);
 }
 
 async function toggleInspector(page: Page) {
   await page.getByTestId("inspector-toggle").click();
   await settle(page);
+  await waitForCameraIdle(page);
 }
 
 test.describe("side panels and the camera", () => {
@@ -48,22 +60,36 @@ test.describe("side panels and the camera", () => {
     }
   });
 
-  test("panel toggles keep a viewport zoomed by hand", async ({ page }) => {
-    await openFitted(page);
-    const pane = await boxOf(page, "canvas-wrap");
-    await page.mouse.move(pane.x + pane.width / 3, pane.y + pane.height / 2);
-    // Ctrl+wheel zooms (the wheel alone pans).
-    // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
-    await page.keyboard.down("Control");
-    await page.mouse.wheel(0, -300);
-    await page.keyboard.up("Control");
-    await settle(page);
-    const before = await boxes(page);
-    await toggleInspector(page);
-    expect(await boxes(page)).toEqual(before);
-    await toggleInspector(page);
-    expect(await boxes(page)).toEqual(before);
-  });
+  for (const macPinch of [false, true])
+    test(`panel toggles keep a viewport zoomed by hand (${macPinch ? "macOS" : "Windows"} pinch)`, async ({ page }) => {
+      // React Flow scales Ctrl+wheel tenfold for macOS trackpad pinch events. Exercise both
+      // interpretations on every host, at the same zoom; a huge zoom invokes the separate R6 rule.
+      await page.addInitScript((mac) => {
+        Object.defineProperty(navigator, "userAgent", {
+          configurable: true,
+          value: navigator.userAgent.replace(
+            /\([^)]*\)/,
+            mac ? "(Macintosh; Intel Mac OS X 10_15_7)" : "(Windows NT 10.0; Win64; x64)",
+          ),
+        });
+      }, macPinch);
+      await openFitted(page);
+      const fitted = await boxes(page);
+      const pane = await boxOf(page, "canvas-wrap");
+      await page.mouse.move(pane.x + pane.width / 3, pane.y + pane.height / 2);
+      // Ctrl+wheel zooms (the wheel alone pans).
+      // Literal Control: a trackpad pinch emits ctrl+wheel on every OS.
+      await page.keyboard.down("Control");
+      await page.mouse.wheel(0, macPinch ? -30 : -300);
+      await page.keyboard.up("Control");
+      await settle(page);
+      const before = await boxes(page);
+      expect(before[0].height).toBeGreaterThan(fitted[0].height);
+      await toggleInspector(page);
+      expect(await boxes(page)).toEqual(before);
+      await toggleInspector(page);
+      expect(await boxes(page)).toEqual(before);
+    });
 
   test("panel toggles keep a viewport set by Shift+0 (zoom to 100%)", async ({ page }) => {
     await openFitted(page);

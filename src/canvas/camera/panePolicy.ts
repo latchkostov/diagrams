@@ -49,12 +49,13 @@ import type {
  * | L9  | pane.settled                  | live.added                                 | liveFit clear of the panel, any owner   |
  * | W1  | slowmo(on)                    |                                            | owner slowmo; resume := owner           |
  * | W1a | slowmo(on)                    | starting with pending work                 | pending := slowmo.take (fold the work) |
+ * | W1b | pane.changed(panel)           | slow motion already on, not presenting     | pending := panel; W5 owns its replay    |
  * | W2  | slowmo(off)                   |                                            | owner := resume (if still slowmo);      |
  * |     |                               |                                            | restore the view from before            |
  * | W3  | slowmo.take, fullscreen,      | slow motion on                             | owner slowmo (take); pending := take    |
  * |     | mode.changed (still live)     |                                            |                                         |
  * | W4  | pane.settled                  | pending slowmo.take                        | slowmoPlan                              |
- * | W5  | pane.settled                  | pending panel, slow motion on              | slowmoPane (it holds or replans)        |
+ * | W5  | pane.settled                  | pending panel, slow motion on, any mode    | slowmoPane (it holds or replans)        |
  * | W6  | slowmo.follow                 | owner slowmo, no work waits for the pane   | follow                                  |
  * | W7  | narration, live.*             | slow motion on                             | the room only: slow motion's camera     |
  *
@@ -167,8 +168,9 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (!work || (state.menu && waitsForMenu(work))) return next({});
       const done = { pending: null };
       if (!isPaneCause(work.cause)) return next(done, ...liveWork(state, work as LiveWork));
+      if (work.cause === "panel" && state.slowmo)
+        return next(done, { type: "slowmoPane", following: state.owner === "slowmo" });
       if (work.cause === "panel" && state.mode !== "edit") {
-        if (state.slowmo) return next(done, { type: "slowmoPane", following: state.owner === "slowmo" });
         if (state.owner !== "manual") return next(done, ...refit(state, "pane"));
         // L7: as Live's manual pane changes always did, the selection and its connections only (no centring).
         if (state.zoomPriority || !event.selection || !event.coveredWithEdges) return next(done);

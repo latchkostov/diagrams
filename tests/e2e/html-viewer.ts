@@ -115,6 +115,10 @@ export async function expectPlaying(scope: Page | FrameLocator) {
   await pauseClock(page);
   await scope.getByTestId("live-speed").selectOption("1");
   await scope.getByTestId("live-restart").click();
+  // Restart preserves Play/Pause. Cold file loading can have finished the original autoplay already.
+  if ((await scope.getByTestId("live-play").getAttribute("data-state")) !== "playing")
+    await scope.getByTestId("live-play").click();
+  await expect(scope.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
   await page.clock.runFor(1000);
   await expect(scope.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
   // Particles move: the painted pixels change from one sample to the next.

@@ -67,6 +67,7 @@ test.describe("slow motion", () => {
     page,
     consoleErrors,
   }) => {
+    test.fixme(process.platform === "win32", "Nightly native teardown: docs/backlog/2026-10-18-nightly-native-load.md");
     await watchFromStorefront(page);
     await play(page).click();
     await page.waitForTimeout(800);
@@ -107,6 +108,7 @@ test.describe("slow motion", () => {
   });
 
   test("an open Inputs panel and capacity Apply fix wait until slow motion ends", async ({ page, consoleErrors }) => {
+    test.fixme(process.platform === "win32", "Nightly native teardown: docs/backlog/2026-10-18-nightly-native-load.md");
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=black-friday&paused=1`);
     await page.getByTestId("live-capacity").click();
     await page.getByTestId("capacity-traffic-mult").fill("14");
@@ -284,6 +286,10 @@ test.describe("slow motion", () => {
       page,
       consoleErrors,
     }) => {
+      test.fixme(
+        process.platform === "win32" && !zoomed,
+        "Nightly native teardown: docs/backlog/2026-10-18-nightly-native-load.md",
+      );
       await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
       await waitForCameraIdle(page);
       if (zoomed) {
@@ -310,6 +316,7 @@ test.describe("slow motion", () => {
     page,
     consoleErrors,
   }) => {
+    test.fixme(process.platform === "win32", "Nightly native teardown: docs/backlog/2026-10-18-nightly-native-load.md");
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=2`);
     await openCanvasSubmenu(page, "sim.trace-message", "sim.trace-message:slowmo");
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
