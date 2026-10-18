@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import type { CameraController } from "./controller";
 import type { MenuKind } from "./types";
@@ -74,7 +74,10 @@ export function usePaneCamera(controller: CameraController, p: PaneInputs) {
     else if (selected) controller.dispatch({ type: "selection.changed", cause });
   });
   /** What caused the latest pane change, for Live's own panel refits. */
-  const readPaneChange = () => (controller.state.lastCause === "panel" ? "panel" : "selection");
+  const readPaneChange = useCallback(
+    () => (controller.state.lastCause === "panel" ? "panel" : "selection"),
+    [controller],
+  );
   /** Live's manual pane changes: the selection and its connections stay in view (unless Shift+2 owns it). */
   const onManualPaneChange = () =>
     controller.dispatch({

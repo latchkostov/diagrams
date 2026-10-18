@@ -195,7 +195,7 @@ function createCanvasCamera(
     zoomToSelection: (nodes: ReadonlySet<string>, edges: ReadonlySet<string>) =>
       controller.dispatch({ type: "zoomToSelection", nodes, edges }),
     /** The zoom buttons: the view is the user's now. */
-    zoomedByButton: () => controller.dispatch({ type: "user.moved" }),
+    zoomedByButton: () => controller.userMoved(),
     /** A node drag starting: it stops any fit, and the view is the user's now. */
     dragStarted: () => controller.dragStarted(),
     interruptFit: () => controller.interrupt(),

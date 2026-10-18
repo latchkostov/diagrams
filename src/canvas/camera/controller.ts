@@ -127,8 +127,13 @@ export function createCameraController(
   let early: (() => void) | null = null;
   let inFlight: { id: number; kind: "fit" | "pan"; target: Viewport } | null = null;
   let moves = 0;
-  /** Our moves whose start React Flow hasn't reported yet (a start with no event is then ours). */
-  let ownStarts = 0;
+  /**
+   * Our moves whose start React Flow hasn't reported yet: a start with no event is then ours. A move that hasn't
+   * started two frames after it was issued never will (d3 pre-empted it): it is forgotten.
+   */
+  const awaitingStart: number[] = [];
+  /** A move with no duration starts (and ends) inside port.move. */
+  let issuing = false;
   let firstFit = false;
   let refinement = false;
   let waiters = 0;
@@ -143,6 +148,10 @@ export function createCameraController(
   /** Unmounted: no frames are scheduled (StrictMode unmounts and mounts again, with events in between). */
   let disposed = false;
   const listeners = new Set<() => void>();
+  /** Cancels for work waiting on the selection's measurement. */
+  const measuring = new Set<() => void>();
+  /** Reveal targets measured for the latest pane.settled, reused when its command runs. */
+  let settledReveal: { withEdges: boolean; target: Viewport | null } | null = null;
 
   const journal = (entry: Omit<JournalEntry, "seq">) => options.journal?.({ seq: ++seq, ...entry });
   /** Where the view is going: the move in flight's target, else the view now. */
@@ -161,11 +170,27 @@ export function createCameraController(
     const id = ++moves;
     const ms = motion(duration);
     inFlight = ms > 0 ? { id, kind: o.kind, target } : null;
-    ownStarts++;
-    const done = port.move(target, { duration: ms, linear: o.linear });
+    if (ms > 0) {
+      awaitingStart.push(id);
+      scheduler.frame(() =>
+        scheduler.frame(() => {
+          const i = awaitingStart.indexOf(id);
+          if (i < 0) return;
+          awaitingStart.splice(i, 1);
+          if (inFlight?.id === id) inFlight = null;
+          publish();
+        }),
+      );
+    }
+    issuing = true;
+    let done: Promise<unknown>;
+    try {
+      done = port.move(target, { duration: ms, linear: o.linear });
+    } finally {
+      issuing = false;
+    }
     void Promise.resolve(done).then(() => {
       if (inFlight?.id === id) inFlight = null;
-      if (moves === id) ownStarts = 0;
       publish();
     });
     return done;
@@ -283,7 +308,9 @@ export function createCameraController(
         const duration =
           event.type === "pane.settled" ? MOVES.paneReveal : command.cause === "checks" ? MOVES.checks : MOVES.reveal;
         // A Checks reveal keeps React Flow's default interpolation, as before; every other pan is linear.
-        return pan(port.revealTarget(base(), scope), duration, command.cause !== "checks", {
+        const known =
+          event.type === "pane.settled" && settledReveal?.withEdges === command.withEdges ? settledReveal : null;
+        return pan(known ? known.target : port.revealTarget(base(), scope), duration, command.cause !== "checks", {
           command: "reveal",
           cause: command.cause,
         });
@@ -325,13 +352,26 @@ export function createCameraController(
     if (sample !== null && sample === lastSample) {
       lastSample = null;
       const from = base();
-      return dispatch({
-        type: "pane.settled",
-        selection: port.hasSelection(),
-        covered: port.revealTarget(from, { kind: "selection", withEdges: false, roomBelow: 0 }) !== null,
-        coveredWithEdges: port.revealTarget(from, { kind: "selection", withEdges: true, roomBelow: 0 }) !== null,
-        centreOff: port.centerTarget(from) !== null,
-      });
+      const work = policy.pending!;
+      const facts = { selection: false, covered: false, coveredWithEdges: false, centreOff: false };
+      // Measure only what the policy will ask about: a fitted view refits, Shift+2 holds still.
+      const refit = work.cause === "panel" && ownership.owner === "fit";
+      if (!refit && !policy.zoomPriority) {
+        const reveal = (withEdges: boolean) => {
+          const target = port.revealTarget(from, { kind: "selection", withEdges, roomBelow: 0 });
+          settledReveal = { withEdges, target };
+          return target !== null;
+        };
+        if (work.cause !== "panel") facts.covered = reveal(false);
+        else {
+          facts.selection = port.hasSelection();
+          if (facts.selection) facts.coveredWithEdges = reveal(true);
+          else facts.centreOff = port.centerTarget(from) !== null;
+        }
+      }
+      dispatch({ type: "pane.settled", ...facts });
+      settledReveal = null;
+      return;
     }
     lastSample = sample;
     settle = scheduler.frame(tick);
@@ -393,16 +433,17 @@ export function createCameraController(
     /** React Flow reported a move start: `user` when it came from an input event. */
     moveStarted(user: boolean) {
       if (user) return userMoved();
-      if (ownStarts > 0) {
-        ownStarts--;
+      if (issuing) return;
+      if (awaitingStart.length) {
+        awaitingStart.shift();
         return;
       }
-      // Someone else's programmatic move (Live, slow motion, the minimap, the zoom buttons): it stops our fits,
-      // except React Flow's own opening fit before anything has run.
-      if (firstFit || interrupts > 0) {
-        interrupt();
-        publish();
-      }
+      // Someone else's programmatic move (Live, slow motion, the minimap, the zoom buttons) took the view over.
+      // d3 interrupted our transition and React Flow never resolves its promise: forget it, without moving.
+      takenOver();
+      // It stops our fits too, except React Flow's own opening fit before anything has run.
+      if (firstFit || interrupts > 0) interrupt();
+      publish();
     },
     /** A pan or zoom by hand (React Flow reported its event; d3 stopped any transition). */
     userMoved,
@@ -430,25 +471,30 @@ export function createCameraController(
       };
     },
     /** Waits (on frames) until the selection is measured, then runs `then`: the work that follows a selection. */
-    whenSelectionMeasured(then: () => void) {
+    whenSelectionMeasured(then: () => void, cancelled?: () => void) {
       waiters++;
       publish();
       let cancel: (() => void) | null = null;
+      const stop = () => {
+        if (!cancel) return;
+        cancel();
+        cancel = null;
+        measuring.delete(stop);
+        waiters--;
+        cancelled?.();
+        publish();
+      };
       const step = () => {
         cancel = null;
-        if (disposed) return;
         if (!port.selectionMeasured()) return void (cancel = scheduler.frame(step));
+        measuring.delete(stop);
         waiters--;
         then();
         publish();
       };
       cancel = scheduler.frame(step);
-      return () => {
-        if (!cancel) return;
-        cancel();
-        waiters--;
-        publish();
-      };
+      measuring.add(stop);
+      return stop;
     },
     /** Quick-add's outline and menu need room: the pan that makes it (no change of owner). */
     anchor(target: Viewport | null) {
@@ -489,6 +535,8 @@ export function createCameraController(
         disposed = true;
         settle?.();
         settle = null;
+        // Work waiting for measurement ends with the canvas (quick-add releases its type-ahead capture).
+        for (const stop of [...measuring]) stop();
       };
     },
   };
@@ -500,10 +548,15 @@ export function createCameraController(
     publish();
   }
 
-  function userMoved() {
-    interrupt();
+  /** Another writer (or the user's gesture) replaced the move in flight; its promise may never resolve. */
+  function takenOver() {
     inFlight = null;
-    ownStarts = 0;
+    awaitingStart.length = 0;
+  }
+
+  function userMoved() {
+    takenOver();
+    interrupt();
     dispatch({ type: "user.moved" });
   }
 }

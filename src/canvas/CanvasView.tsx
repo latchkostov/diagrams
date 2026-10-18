@@ -867,24 +867,29 @@ function CanvasInner({
       controller.placing();
       const made = make();
       if (!made) return void typing.stop();
-      revealSelection(() => {
-        const typed = typing.stop();
-        if (typed.done === "escape") return endCreation(made.merge);
-        if (typed.done === "enter") {
-          if (typed.text !== null)
-            editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
-          return endCreation(made.merge);
-        }
-        // In this same task: a key arriving before the field has focus would reach the canvas instead.
-        flushSync(() =>
-          editor.startEditing({
-            kind: "node",
-            id: made.id,
-            text: typed.text ?? undefined,
-            edge: made.edge ?? undefined,
-          }),
-        );
-      }, 90);
+      revealSelection(
+        () => {
+          const typed = typing.stop();
+          if (typed.done === "escape") return endCreation(made.merge);
+          if (typed.done === "enter") {
+            if (typed.text !== null)
+              editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
+            return endCreation(made.merge);
+          }
+          // In this same task: a key arriving before the field has focus would reach the canvas instead.
+          flushSync(() =>
+            editor.startEditing({
+              kind: "node",
+              id: made.id,
+              text: typed.text ?? undefined,
+              edge: made.edge ?? undefined,
+            }),
+          );
+        },
+        90,
+        "placement",
+        () => void typing.stop(),
+      );
     },
     [editor, revealSelection, endCreation, controller],
   );

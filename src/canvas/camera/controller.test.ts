@@ -29,16 +29,26 @@ function harness() {
     panePending: false,
     fitted: 0,
   };
+  /** React Flow reports every move start to the canvas (onMoveStart without an event). */
+  const started = { report: (_user: boolean) => {} };
+  /** Our transitions issued but not yet started (d3 starts them on its next tick). */
+  let starting = 0;
   const port: CameraPort = {
     viewport: () => view.current,
     move(target, o) {
       moves.push({ target, ...o });
-      active?.resolve();
+      // As React Flow: a transition another move replaces (d3 interrupts it) never resolves its promise.
       if (o.duration <= 0) {
         active = null;
         view.current = target;
+        started.report(false);
         return Promise.resolve(true);
       }
+      starting++;
+      frames.unshift(() => {
+        starting--;
+        started.report(false);
+      });
       const from = view.current;
       // Mid-way: the zoom and position of an intermediate frame.
       view.current = { x: (from.x + target.x) / 2, y: (from.y + target.y) / 2, zoom: (from.zoom + target.zoom) / 2 };
@@ -93,6 +103,7 @@ function harness() {
     ownership,
     { journal: (e) => journal.push(e) },
   );
+  started.report = (user) => camera.moveStarted(user);
   const tick = (n = 1) => {
     for (let i = 0; i < n; i++) for (const run of frames.splice(0)) run();
   };
@@ -127,6 +138,11 @@ function harness() {
     refine,
     frames,
     active: () => active,
+    starting: () => starting,
+    /** Another writer's move: d3 interrupts ours, and React Flow never resolves its promise. */
+    interruptActive: () => {
+      active = null;
+    },
     midMove: () => midMove,
   };
 }
@@ -248,8 +264,8 @@ describe("camera controller", () => {
   it("tells its own move starts from others' (Live, the minimap), which stop its fits", async () => {
     const h = harness();
     h.camera.dispatch({ type: "fit", reason: "command" });
-    // Its own fit starting is not an interruption.
-    h.camera.moveStarted(false);
+    // Its own fit starting (on d3's next tick) is not an interruption.
+    h.tick();
     expect(h.env.refine).not.toBeNull();
     // Before anything has run or been interrupted, a foreign start is React Flow's own opening fit.
     h.camera.moveStarted(false);
@@ -257,12 +273,84 @@ describe("camera controller", () => {
     await h.finish();
     h.camera.input("other");
     h.camera.dispatch({ type: "fit", reason: "command" });
-    h.camera.moveStarted(false);
+    h.tick();
     expect(h.env.refine).not.toBeNull();
     // Once the fit has landed, a start without an event is someone else's (Live, slow motion): it stops the fit.
     await h.finish();
     h.camera.moveStarted(false);
     expect(h.env.refine).toBeNull();
+  });
+
+  it("a foreign zoom that interrupts a pan leaves nothing in flight, and the next reveal starts from the real view", () => {
+    const h = harness();
+    h.env.covered = true;
+    h.camera.dispatch({ type: "reveal.requested", cause: "placement" });
+    h.tick();
+    expect(h.camera.phase).toBe("animating");
+    // The zoom buttons (React Flow's own zoomIn) replace the pan; its promise never resolves.
+    h.camera.userMoved();
+    h.view.current = { x: 3, y: 4, zoom: 1.5 };
+    h.camera.moveStarted(false);
+    expect(h.camera.phase).toBe("idle");
+    h.camera.dispatch({ type: "input" });
+    h.camera.dispatch({ type: "reveal.requested", cause: "navigation" });
+    expect(h.revealBases.at(-1)).toEqual({ x: 3, y: 4, zoom: 1.5 });
+    expect(h.moves.at(-1)?.target.zoom).toBe(1.5);
+  });
+
+  it("a Live or slow-motion move that interrupts a pan clears it too", () => {
+    const h = harness();
+    h.env.covered = true;
+    h.camera.dispatch({ type: "reveal.requested", cause: "placement" });
+    h.tick();
+    expect(h.camera.phase).toBe("animating");
+    h.view.current = { x: 9, y: 9, zoom: 0.7 };
+    h.camera.moveStarted(false);
+    expect(h.camera.phase).toBe("idle");
+    h.camera.dispatch({ type: "reveal.requested", cause: "navigation" });
+    expect(h.revealBases.at(-1)).toEqual({ x: 9, y: 9, zoom: 0.7 });
+  });
+
+  it("unmounting cancels work waiting for measurement (quick-add releases its key capture)", () => {
+    const h = harness();
+    h.env.measured = false;
+    let ran = 0;
+    let cancelled = 0;
+    const unmount = h.camera.connect();
+    h.camera.whenSelectionMeasured(
+      () => ran++,
+      () => cancelled++,
+    );
+    expect(h.camera.phase).toBe("pending");
+    unmount();
+    h.env.measured = true;
+    h.tick(3);
+    expect([ran, cancelled]).toEqual([0, 1]);
+    expect(h.camera.phase).toBe("idle");
+  });
+
+  it("measures only what the policy asks: a fitted refit needs no reveal geometry", () => {
+    const h = harness();
+    h.camera.dispatch({ type: "pane.changed", cause: "panel" });
+    h.tick(2);
+    expect(h.revealBases).toHaveLength(0);
+    h.env.covered = true;
+    h.camera.dispatch({ type: "pane.changed", cause: "selection" });
+    h.tick(2);
+    // One measurement, reused by the reveal it decided.
+    expect(h.revealBases).toHaveLength(1);
+    expect(h.journal.at(-1)?.command).toBe("reveal");
+  });
+
+  it("forgets a move that never started (d3 pre-empted it), so readiness can't stick on animating", () => {
+    const h = harness();
+    h.env.covered = true;
+    h.camera.dispatch({ type: "reveal.requested", cause: "placement" });
+    // React Flow never reports its start: drop the queued start report.
+    h.frames.shift();
+    h.interruptActive();
+    h.tick(2);
+    expect(h.camera.phase).toBe("idle");
   });
 
   it("a move by hand makes the view manual: later panel work reveals instead of refitting", () => {
@@ -307,7 +395,7 @@ describe("camera controller", () => {
 
 // ---------------------------------------------------------------- interleavings (fast-check model run)
 
-type Model = { pending: boolean; menu: boolean; fits: number; created: number };
+type Model = { pending: boolean; menu: boolean; fits: number; created: number; last: string | null };
 type Real = ReturnType<typeof harness>;
 const check = (m: Model, r: Real) => {
   // At most one move in flight, and the readiness signal tells the truth about it.
@@ -335,6 +423,7 @@ class MenuOpen implements fc.AsyncCommand<Model, Real> {
   async run(m: Model, r: Real) {
     r.camera.dispatch({ type: "menu.opened", kind: "context" });
     m.menu = true;
+    m.last = null;
     check(m, r);
   }
   toString = () => "menu.open";
@@ -356,8 +445,12 @@ class Frame implements fc.AsyncCommand<Model, Real> {
     r.env.sample = this.sample;
     r.tick();
     const ran = r.journal.slice(before).filter((e) => e.command === "fit" || e.command === "reveal").length;
+    // The model's own settle rule: armed work runs on the second of two agreeing, present samples.
+    const armed = m.pending && !m.menu;
+    const expected = armed && this.sample !== null && this.sample === m.last;
+    expect(ran > 0).toBe(expected);
+    m.last = armed && !expected ? this.sample : null;
     if (ran) {
-      expect(m.pending && !m.menu).toBe(true);
       m.pending = false;
       m.fits++;
     }
@@ -380,6 +473,20 @@ class Input implements fc.AsyncCommand<Model, Real> {
     check(m, r);
   }
   toString = () => "input";
+}
+/** Live, slow motion or the zoom buttons move the view: d3 replaces our transition, whose promise never resolves. */
+class Foreign implements fc.AsyncCommand<Model, Real> {
+  // Generated after our transitions have started: one pre-empted before its first tick is a known gap
+  // (docs/backlog/2026-10-17-camera-review-followups.md).
+  check = () => true;
+  async run(m: Model, r: Real) {
+    if (r.starting()) return check(m, r);
+    r.interruptActive();
+    r.view.current = { x: r.view.current.x + 7, y: r.view.current.y, zoom: r.view.current.zoom };
+    r.camera.moveStarted(false);
+    check(m, r);
+  }
+  toString = () => "foreign";
 }
 class Reveal implements fc.AsyncCommand<Model, Real> {
   check = () => true;
@@ -404,14 +511,32 @@ describe("camera controller: interleavings", () => {
             fc.constant(new Finish()),
             fc.constant(new Input()),
             fc.constant(new Reveal()),
+            fc.constant(new Foreign()),
           ],
           { maxCommands: 40 },
         ),
         async (cmds) => {
-          await fc.asyncModelRun(
-            () => ({ model: { pending: false, menu: false, fits: 0, created: 0 }, real: harness() }),
-            cmds,
-          );
+          const model: Model = { pending: false, menu: false, fits: 0, created: 0, last: null };
+          const real = harness();
+          await fc.asyncModelRun(() => ({ model, real }), cmds);
+          // Drains: whatever the interleaving left, closing the menu, releasing input and letting the pane settle
+          // runs the outstanding work exactly once, and every move lands: the camera ends idle.
+          const ran = model.fits;
+          const start = real.journal.length;
+          if (model.menu) real.camera.dispatch({ type: "menu.closed" });
+          real.camera.input("release");
+          real.env.sample = "1000x800";
+          real.tick(3);
+          const runs = real.journal.slice(start).filter((e) => e.command === "fit" && e.cause === "pane").length;
+          for (let i = 0; i < 4; i++) {
+            await real.refine();
+            await real.finish();
+            real.tick();
+          }
+          expect(real.camera.phase).toBe("idle");
+          expect(real.env.panePending).toBe(false);
+          expect(runs).toBe(model.pending ? 1 : 0);
+          expect(ran).toBeLessThanOrEqual(model.created);
         },
       ),
       { numRuns: 300 },

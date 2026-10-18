@@ -17,7 +17,7 @@ import type { RevealCause } from "./types";
  */
 export function useRevealSelection(controller: CameraController) {
   const revealSelection = useCallback(
-    (then?: () => void, roomBelow = 0, cause: RevealCause = "placement") =>
+    (then?: () => void, roomBelow = 0, cause: RevealCause = "placement", cancelled?: () => void) =>
       void controller.whenSelectionMeasured(() => {
         // The editor opens at once (keys typed next belong to it); the view follows meanwhile.
         then?.();
@@ -26,7 +26,7 @@ export function useRevealSelection(controller: CameraController) {
           cause,
           scope: { kind: "selection", withEdges: false, roomBelow },
         });
-      }),
+      }, cancelled),
     [controller],
   );
   return { revealSelection };
