@@ -27,6 +27,7 @@ const TRANSLATED = [
   "src/components/ContextMenu.tsx",
   "src/canvas/CanvasView.tsx",
   "src/canvas/Inspector.tsx",
+  "src/canvas/inspector/*.{ts,tsx}",
   "src/canvas/SheetResizeHandle.tsx",
   "src/canvas/Palette.tsx",
   "src/canvas/FirstRunHint.tsx",
