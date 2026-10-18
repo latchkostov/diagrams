@@ -1,5 +1,5 @@
 ---
-title: "InvoiceHighValue #2 · 3.98 s end to end · 1 copy · 4 retries · dead-lettered"
+title: "InvoiceHighValue #2 · 3.53 s end to end · 1 copy · 4 retries · dead-lettered"
 ---
 sequenceDiagram
   participant ingest as Invoice intake
@@ -10,7 +10,6 @@ sequenceDiagram
   participant commands as invoice.commands
   participant worker as Ledger worker
   participant dlq as invoice.commands DLQ
-  participant dlq_triage as DLQ triage
   ingest-)invoices: InvoiceHighValue (+0.13 s)<br/>InvoiceAccepted
   ingest->>blob: InvoiceHighValue (+0.13 s)<br/>Archive original PDF
   blob-->>ingest: reply (+0.37 s)
@@ -19,10 +18,9 @@ sequenceDiagram
   workflow-)commands: PostInvoice (+1.19 s)
   commands-)worker: PostInvoice (+1.49 s)<br/>Execute command
   Note over worker: ✕ attempts 1–5 failed
-  Note over ingest,dlq_triage: ⏱ 1.00 s at Ledger worker: failing and retrying
+  Note over ingest,dlq: ⏱ 1.00 s at Ledger worker: failing and retrying
   worker--)commands: back to the broker after attempt 5 (+2.93 s)
   Note over commands: Dead-lettered after 5 deliveries
   rect rgba(209, 57, 63, 0.14)
     commands-)dlq: PostInvoice (dead letter) (+3.23 s)
   end
-  dlq-)dlq_triage: PostInvoice (+3.53 s)

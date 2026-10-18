@@ -2,7 +2,7 @@ import { currentDiagram, pauseClock } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, pageLoadTimeout } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, openMissingDlq, pageLoadTimeout } from "./fixtures";
 import { MOD, SLUG, openAdvanced } from "./ai-helpers";
 
 // The privacy audit's fixes (docs/PRIVACY-AUDIT.md): what a private diagram must never leave behind in the address
@@ -535,7 +535,7 @@ test.describe("exports", () => {
 
   test("an image exported with the Checks card open has no check markers in it", async ({ page }, info) => {
     test.slow(); // rendering + font embedding is CPU-bound
-    await gotoCanvas(page, "azure-service-bus-integration");
+    await openMissingDlq(page);
     await page.getByTestId("checks-count").click();
     await expect(page.getByTestId("check-marker-posting-sub")).toBeVisible();
     await page.getByTestId("file-button").click();

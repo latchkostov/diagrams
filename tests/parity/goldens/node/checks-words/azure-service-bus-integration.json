@@ -1,6 +1,13 @@
 {
-  "summary": "Nothing to check. 10 checks ran.",
-  "findings": {},
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran." },
-  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 10 checks ran." }
+  "summary": "Nothing to check. 10 checks ran; 1 ignored.",
+  "findings": {
+    "no-reader:dlq": {
+      "title": "Dead letters pile up in invoice.commands DLQ",
+      "message": "Nothing in the diagram reads or alerts on invoice.commands DLQ: failed messages stay there until someone looks.",
+      "rationale": "A dead-letter queue has no automatic cleanup. Someone should be told when messages land there, and be able to replay them.",
+      "fix": { "label": "Add a reader…", "choice": "Pick what reads invoice.commands DLQ, then add it and connect dlq to it." }
+    }
+  },
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran; 1 ignored." },
+  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 10 checks ran; 1 ignored." }
 }

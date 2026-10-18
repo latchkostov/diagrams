@@ -444,6 +444,24 @@ export async function gotoCanvas(page: Page, slug: string) {
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
+/**
+ * The Checks teaching case, imported into Your diagrams: an invoice integration whose ledger worker fails in
+ * "Poison invoices" while its ledger-posting subscription has no dead-letter queue. Exactly one warning
+ * (dead-letter:posting-sub) and two suggestions (dead-letter:approval-sub, no-reader:dlq). It is the Azure
+ * example as it was before the gallery gave every queue a DLQ (tests/fixtures/checks/service-bus-missing-dlq.diagram.json).
+ */
+export const MISSING_DLQ_FIXTURE = "tests/fixtures/checks/service-bus-missing-dlq.diagram.json";
+export async function openMissingDlq(page: Page) {
+  await gotoCanvas(page, "aks-app-config-key-vault");
+  await page.getByTestId("import-input").setInputFiles({
+    name: "service-bus-missing-dlq.diagram.json",
+    mimeType: "application/json",
+    buffer: readFileSync(MISSING_DLQ_FIXTURE),
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText("Invoice intake without a ledger DLQ");
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+}
+
 /** File ▸ Share…: every way out, safest first. Waits for the chooser (its code loads on first use). */
 export async function openShareChooser(page: Page) {
   await page.getByTestId("file-button").click();

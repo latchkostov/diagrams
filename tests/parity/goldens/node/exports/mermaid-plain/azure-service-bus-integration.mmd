@@ -18,7 +18,7 @@ flowchart LR
     insights["Integration telemetry<br/>Trace by invoiceId · DLQ alerts"]
     approval_dlq["approval-workflow DLQ<br/>$DeadLetterQueue"]
     posting_dlq["ledger-posting DLQ<br/>$DeadLetterQueue"]
-    dlq_triage["DLQ triage<br/>alert finance ops, then replay"]
+    dlq_triage["DLQ triage<br/>subscription dead letters: alert, then replay"]
   end
   partner(["Contoso ERP<br/>Invoice integration · OAuth2"])
   partner -->|"HTTPS"| apim
@@ -39,7 +39,6 @@ flowchart LR
   posting_sub -.->|"After 10 deliveries"| posting_dlq
   approval_dlq -.-> dlq_triage
   posting_dlq -.-> dlq_triage
-  dlq -.-> dlq_triage
-  linkStyle 2,3,4,5,6,7,8,9,14,15,16,17,18 stroke-dasharray: 6 4
+  linkStyle 2,3,4,5,6,7,8,9,14,15,16,17 stroke-dasharray: 6 4
   linkStyle 12 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
   linkStyle 13 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4

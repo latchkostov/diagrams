@@ -1,9 +1,12 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran; 1 ignored." } },
+  "warnings": {
+    "isError": false,
+    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran; 1 ignored." }
+  },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran; 1 ignored.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 30 left unread in dlq in “Poison invoices”." }
   }
 }

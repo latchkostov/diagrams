@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "b6ba369b52021bb68257589c23dbe61060946f2c3c795d5143493e209c663c81",
-    "bytes": 27679,
+    "sha256": "a99d36a8e1f06d05c09bd74edcbce22a37743e47a28f9b911910cc3992901acc",
+    "bytes": 27353,
     "inlined": { "client.partner": "client-partner ab557544ad77cdc8", "generic.queue": "generic-queue e831fa8bafcc6fa3" }
   },
   "readBack": [
@@ -161,7 +161,7 @@
             "id": "dlq-triage",
             "stencil": "azure.logic-apps",
             "label": "DLQ triage",
-            "sublabel": "alert finance ops, then replay",
+            "sublabel": "subscription dead letters: alert, then replay",
             "x": 2320,
             "y": 520,
             "props": { "concurrency": 8, "latencyMs": 150 },
@@ -284,8 +284,7 @@
             "props": { "dlq": true }
           },
           { "id": "approval-dlq-to-dlq-triage", "from": "approval-dlq", "to": "dlq-triage", "kind": "async" },
-          { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" },
-          { "id": "dlq-to-dlq-triage", "from": "dlq", "to": "dlq-triage", "kind": "async" }
+          { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" }
         ],
         "simulations": [
           {
@@ -367,7 +366,7 @@
               },
               {
                 "atMs": 10000,
-                "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ. Triage alerts finance operations, who replay them once the schema is fixed.", "focus": ["commands", "dlq", "dlq-triage"], "pause": true }
+                "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ for operator replay.", "focus": ["commands", "dlq"], "pause": true }
               },
               { "atMs": 12000, "action": { "do": "props", "node": "worker", "props": { "failureRate": 0 } } }
             ],
@@ -381,9 +380,9 @@
                 "when": "end"
               },
               {
-                "id": "triaged",
-                "label": "All 30 poison invoices reach DLQ triage",
-                "metric": { "node": "dlq-triage", "field": "processed" },
+                "id": "dlq-retains",
+                "label": "All 30 poison invoices are retained",
+                "metric": { "node": "dlq", "field": "backlog" },
                 "op": "==",
                 "value": 30,
                 "when": "end"
@@ -401,7 +400,12 @@
             "durationMs": 20000,
             "scale": 1
           }
-        ]
+        ],
+        "checks": {
+          "ignore": [
+            { "rule": "no-reader", "target": "dlq", "reason": "Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed" }
+          ]
+        }
       }
     }
   ]

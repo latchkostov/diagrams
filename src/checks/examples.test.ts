@@ -57,6 +57,14 @@ const EXPECTED: Record<string, string[]> = {
   "ev-charging-network": [],
 };
 
+// Every finding a public example ignores, with the reason the file gives: an ignore explains a finding, it
+// never hides one silently.
+const IGNORED: Record<string, string[]> = {
+  "azure-service-bus-integration": [
+    "no-reader:dlq: Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed",
+  ],
+};
+
 describe("checks on the public examples", () => {
   it("covers every public example", () => {
     expect(Object.keys(bySlug).sort()).toEqual(Object.keys(EXPECTED).sort());
@@ -66,6 +74,8 @@ describe("checks on the public examples", () => {
     const d = bySlug[slug];
     const result = runChecks(d);
     expect(result.findings.map((f) => `${f.severity} ${f.id}`)).toEqual(EXPECTED[slug]);
+    const reasons = new Map((d.checks?.ignore ?? []).map((i) => [`${i.rule}:${i.target}`, i.reason]));
+    expect(result.ignored.map((f) => `${f.id}: ${reasons.get(f.id)}`)).toEqual(IGNORED[slug] ?? []);
     // Every fix with ops applies through the ops core and clears its finding.
     for (const f of result.findings.filter((f) => f.fix?.ops)) {
       const applied = applyOps(d, f.fix!.ops!);
@@ -109,6 +119,8 @@ const PLANNED: Record<string, string[]> = {
   "zone-outage-drill": ["26 dropped api-b in Zone outage: no health checks (down)"],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
+  // Poison invoices quarantines its 30 commands for an operator to replay (the file's ignore says why no reader).
+  "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
   // A dark region drops what was already on its way there; a bad canary build fails requests in its own cell only.
   "cell-based-bookings": [
     "20 dropped east-alb in us-east-1 goes dark (down)",

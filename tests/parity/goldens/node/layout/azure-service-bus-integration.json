@@ -10,14 +10,14 @@
       "insights": [1254, 400],
       "approval-sub": [1663, 160],
       "posting-sub": [1663, 280],
-      "approval-dlq": [2063, 100],
-      "workflow": [2063, 220],
+      "workflow": [2063, 100],
+      "approval-dlq": [2063, 220],
       "posting-dlq": [2063, 340],
-      "commands": [2444, 220],
+      "commands": [2444, 160],
+      "dlq-triage": [2444, 280],
       "dlq": [2853, 160],
       "worker": [2853, 280],
-      "dlq-triage": [3256, 160],
-      "cosmos": [3256, 280]
+      "cosmos": [3256, 220]
     },
     "TB": {
       "partner": [520, 40],
@@ -29,14 +29,14 @@
       "blob": [1000, 520],
       "approval-sub": [360, 680],
       "posting-sub": [680, 680],
-      "approval-dlq": [200, 840],
-      "workflow": [520, 840],
+      "workflow": [200, 840],
+      "approval-dlq": [520, 840],
       "posting-dlq": [840, 840],
-      "commands": [520, 1000],
+      "commands": [360, 1000],
+      "dlq-triage": [680, 1000],
       "dlq": [360, 1160],
       "worker": [680, 1160],
-      "dlq-triage": [360, 1320],
-      "cosmos": [680, 1320]
+      "cosmos": [520, 1320]
     }
   },
   "tidy": {
@@ -46,17 +46,17 @@
     "invoices": [1254, 160],
     "approval-sub": [1663, 160],
     "posting-sub": [1663, 280],
-    "workflow": [2063, 220],
+    "workflow": [2063, 100],
     "worker": [2853, 280],
-    "commands": [2444, 220],
+    "commands": [2444, 160],
     "dlq": [2853, 160],
-    "cosmos": [3256, 280],
+    "cosmos": [3256, 220],
     "blob": [1254, 280],
     "vault": [1254, 40],
     "insights": [1254, 400],
-    "approval-dlq": [2063, 100],
+    "approval-dlq": [2063, 220],
     "posting-dlq": [2063, 340],
-    "dlq-triage": [3256, 160]
+    "dlq-triage": [2444, 280]
   },
   "arrange": {
     "alignLeft": { "partner": [40, 280], "apim": [40, 280], "ingest": [40, 280], "invoices": [40, 280], "approval-sub": [40, 160], "posting-sub": [40, 400], "workflow": [40, 160], "worker": [40, 400], "commands": [40, 160], "dlq": [40, 40], "cosmos": [40, 400], "blob": [40, 520], "vault": [40, 40], "insights": [40, 520], "approval-dlq": [40, 40], "posting-dlq": [40, 520], "dlq-triage": [40, 520] },
@@ -131,18 +131,18 @@
       "invoices": [1254, 160],
       "approval-sub": [1663, 160],
       "posting-sub": [1663, 280],
-      "workflow": [2063, 220],
+      "workflow": [2063, 100],
       "worker": [2853, 280],
-      "commands": [2444, 220],
+      "commands": [2444, 160],
       "dlq": [2853, 160],
-      "cosmos": [3256, 280],
+      "cosmos": [3256, 220],
       "blob": [1254, 280],
       "vault": [1254, 40],
       "insights": [1254, 400],
-      "approval-dlq": [2063, 100],
+      "approval-dlq": [2063, 220],
       "posting-dlq": [2063, 340],
-      "dlq-triage": [3256, 160]
+      "dlq-triage": [2444, 280]
     },
-    "groups": { "azure": [399, -24, 3157, 536] }
+    "groups": { "azure": [399, -24, 3131, 536] }
   }
 }

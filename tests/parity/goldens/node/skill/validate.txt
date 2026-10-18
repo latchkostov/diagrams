@@ -1,7 +1,7 @@
 exit 1
 VALID <repo>/src/examples/aks-app-config-key-vault.json: 11 nodes, 10 edges, 2 boundaries, 2 simulations
 VALID <repo>/src/examples/aws-serverless-orders.json: 22 nodes, 24 edges, 1 boundary, 3 simulations
-VALID <repo>/src/examples/azure-service-bus-integration.json: 17 nodes, 19 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/azure-service-bus-integration.json: 17 nodes, 18 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/branch-to-datacentre.json: 13 nodes, 16 edges, 2 boundaries, 2 simulations
   warning: simulations[0] "One firewall fails over": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
   warning: simulations[1] "The firewall blocks the branch from payments": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).

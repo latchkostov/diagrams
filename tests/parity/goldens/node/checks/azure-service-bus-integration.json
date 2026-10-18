@@ -13,6 +13,15 @@
   ],
   "off": [],
   "findings": [],
-  "ignored": [],
+  "ignored": [
+    {
+      "id": "no-reader:dlq",
+      "rule": "no-reader",
+      "severity": "suggestion",
+      "target": "dlq",
+      "elements": ["dlq", "commands"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
   "fixes": {}
 }

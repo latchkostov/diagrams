@@ -16,9 +16,11 @@ start card.
   example's hot-partition story (_One partition runs hot_, 63 of 64 idle replicas until the key spreads over 32
   partitions), a technician email after field service, a fleet dashboard over the twins, and 7-day retention.
 - **No unexplained findings.** `azure-service-bus-integration` gives both subscriptions their own dead-letter queue,
-  and a triage step reads all three. Its poison story now ends with every poison invoice at triage.
+  read by a triage step. The commands DLQ stays for operator replay, as its label says, and the file now ignores
+  its no-reader finding with that reason. So _Poison invoices_ still quarantines all 30 commands there, and a
+  dead-lettered trace still ends at the DLQ.
   `notification-fanout` gives each channel a DLQ read by triage, with a managed identity for the senders.
-  `rag-assistant` dead-letters failed ingest jobs to a triage worker. All three pass the checks with no findings.
+  `rag-assistant` dead-letters failed ingest jobs to a triage worker. All three pass the checks with no findings (Azure's one ignore carries its reason).
 - **#167 review fixes.**
   - Narration close-ups: every note's focus in the large examples now renders at 60% zoom or more on a desktop,
     and on a phone the note pans its cards into view. The cells' region notes split per region.
@@ -50,12 +52,15 @@ start card.
   - the capacity hot-spot spec uses `ev-charging-network`;
   - the deliberate-outage, flaky-writes and custom-throughput specs use `cell-based-bookings`;
   - the KEDA and HPA specs and engine tests use `autoscaling-basics`.
-- Two retired diagrams are frozen where a test pins their exact behaviour:
+- Three diagrams are frozen where a test pins their exact behaviour:
   - `src/test/fixtures/legacy-iot-telemetry.json` keeps the legacy (v1) capacity wording covered;
   - `tests/parity/corpus/a1-image-workers` and `a2-render-workers` keep the frozen A1/A2 controller runs.
+  - `tests/fixtures/checks/service-bus-missing-dlq.diagram.json` is the Azure example before its subscriptions got
+    DLQs: exactly one warning (ledger-posting has no DLQ) and two suggestions. The Checks card, `check_diagram` and
+    the image-export marker specs import it, since no public example keeps an unexplained finding. The
+    suggestions-only count spec uses `outbox-saga-checkout`, now that `rag-assistant` has none.
 - Exact counts updated:
   - the P2 legacy-precision table: 14 legacy examples, down from 17;
-  - the Azure trace now ends at triage, after its DLQ hop;
   - the invoices-without-a-DLQ spec now has 1 warning: the subscriptions' DLQs removed the other.
 
 ### Parity
@@ -85,3 +90,6 @@ an example this batch adds, removes or edits, plus three shared goldens:
   - `node/skill/current-stencils.json` and `node/skill/files.json`: the regenerated stencil reference's
     most-used ranking.
   - `node/skill/validate.txt`: the original-cohort transcript no longer lists the retired examples.
+- **Later round (29 changed, 0 added, 0 removed):** the Azure commands DLQ went back to operator replay with an
+  explained ignore. Only the Azure example's own goldens change (simulation, trace, checks, agent, exports, layout,
+  routes, browser render and layout), plus its line in `node/skill/validate.txt` (18 connections, not 19).

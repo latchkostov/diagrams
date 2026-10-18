@@ -18,7 +18,7 @@
     "insights": { "kind": "node", "box": "translate(800px, 520px) 260×72", "text": "Integration telemetry Trace by invoiceId · DLQ alerts" },
     "approval-dlq": { "kind": "node", "box": "translate(1560px, 40px) 235×72", "text": "approval-workflow DLQ $DeadLetterQueue" },
     "posting-dlq": { "kind": "node", "box": "translate(1560px, 520px) 220×72", "text": "ledger-posting DLQ $DeadLetterQueue" },
-    "dlq-triage": { "kind": "node", "box": "translate(2320px, 520px) 260×72", "text": "DLQ triage alert finance ops, then replay" }
+    "dlq-triage": { "kind": "node", "box": "translate(2320px, 520px) 260×72", "text": "DLQ triage subscription dead letters: alert, then replay" }
   },
   "edges": {
     "partner-to-apim": "M293,316 L420,316",
@@ -30,7 +30,7 @@
     "posting-sub-to-worker": "M1820,436 L1940,436",
     "workflow-to-commands": "M2175,196 L2244,196 Q2247.5,196 2247.5,192.5 L2247.5,192.5 Q2247.5,189 2251,189 L2320,189",
     "commands-to-worker": "M2320,203 L2272,203 Q2262,203 2262,213 L2262,419 Q2262,429 2252,429 L2193,429",
-    "commands-to-dlq": "M2450,160 L2450,145 Q2450,141.5 2446.5,141.5 L2446.5,141.5 Q2443,141.5 2443,138 L2443,112",
+    "commands-to-dlq": "M2450,160 L2450,112",
     "worker-to-cosmos": "M2193,443 L2264,443 Q2267.5,443 2267.5,439.5 L2267.5,439.5 Q2267.5,436 2271,436 L2320,436",
     "ingest-to-blob": "M1060,323 L1110,323 Q1120,323 1120,333 L1120,546 Q1120,556 1130,556 L1180,556",
     "ingest-to-vault": "M930,280 L930,112",
@@ -38,8 +38,7 @@
     "approval-sub-to-approval-dlq": "M1689.5,160 L1689.5,142 Q1689.5,136 1683.5,136 L1683.5,136 Q1677.5,136 1677.5,130 L1677.5,112",
     "posting-sub-to-posting-dlq": "M1690,472 L1690,486 Q1690,496 1680,496 L1680,496 Q1670,496 1670,506 L1670,520",
     "approval-dlq-to-dlq-triage": "M1795,76 L2241,76 Q2251,76 2251,86 L2251,539 Q2251,549 2261,549 L2320,549",
-    "posting-dlq-to-dlq-triage": "M1780,556 L2242,556 Q2245.5,556 2245.5,559.5 L2245.5,559.5 Q2245.5,563 2249,563 L2320,563",
-    "dlq-to-dlq-triage": "M2457,112 L2457,121.3 Q2457,130.5 2447.8,130.5 L2292,130.5 Q2282,130.5 2282,140.5 L2282,486 Q2282,496 2292,496 L2440,496 Q2450,496 2450,506 L2450,520"
+    "posting-dlq-to-dlq-triage": "M1780,556 L2242,556 Q2245.5,556 2245.5,559.5 L2245.5,559.5 Q2245.5,563 2249,563 L2320,563"
   },
   "labels": {
     "partner-to-apim": { "style": "transform: translate(-50%, -50%) translate(350.5px, 316px); --fe-w: 47px; --fe-h: 19px;", "text": "HTTPS" },
@@ -51,7 +50,7 @@
     "posting-sub-to-worker": { "style": "transform: translate(-50%, -50%) translate(1874px, 436px); --fe-w: 71px; --fe-h: 32px;", "text": "Peek-lock delivery" },
     "workflow-to-commands": { "style": "transform: translate(-50%, -50%) translate(2266.75px, 189px); --fe-w: 83px; --fe-h: 19px;", "text": "PostInvoice" },
     "commands-to-worker": { "style": "transform: translate(-50%, -50%) translate(2262px, 316px); --fe-w: 107px; --fe-h: 19px;", "text": "Execute command" },
-    "commands-to-dlq": { "style": "transform: translate(-50%, -50%) translate(2446.5px, 141.5px); --fe-w: 167px; --fe-h: 19px;", "text": "After 5 failed deliveries" },
+    "commands-to-dlq": { "style": "transform: translate(-50%, -50%) translate(2450px, 139.16px); --fe-w: 167px; --fe-h: 19px;", "text": "After 5 failed deliveries" },
     "worker-to-cosmos": { "style": "transform: translate(-50%, -50%) translate(2251.25px, 443px); --fe-w: 95px; --fe-h: 19px;", "text": "Upsert ledger" },
     "ingest-to-blob": { "style": "transform: translate(-50%, -50%) translate(1120px, 439.5px); --fe-w: 137px; --fe-h: 19px;", "text": "Archive original PDF" },
     "ingest-to-vault": { "style": "transform: translate(-50%, -50%) translate(930px, 202px); --fe-w: 20px; --fe-h: 20px;", "text": "" },

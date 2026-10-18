@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "252425cef7e7e564766c8f9a70643165fed0bc5b46076f3a8511e49aba907d47", "bytes": 41410 },
+  "file": { "sha256": "0d512b2880ce323c4dfa09f7b420ebaeee6ebc2fc9bef36073d537a1db34c398", "bytes": 41433 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -156,7 +156,7 @@
           "id": "dlq-triage",
           "stencil": "azure.logic-apps",
           "label": "DLQ triage",
-          "sublabel": "alert finance ops, then replay",
+          "sublabel": "subscription dead letters: alert, then replay",
           "x": 2320,
           "y": 520,
           "group": "azure",
@@ -279,8 +279,7 @@
           "props": { "dlq": true }
         },
         { "id": "approval-dlq-to-dlq-triage", "from": "approval-dlq", "to": "dlq-triage", "kind": "async" },
-        { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" },
-        { "id": "dlq-to-dlq-triage", "from": "dlq", "to": "dlq-triage", "kind": "async" }
+        { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" }
       ],
       "simulations": [
         {
@@ -303,7 +302,7 @@
             },
             {
               "atMs": 10000,
-              "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ. Triage alerts finance operations, who replay them once the schema is fixed.", "focus": ["commands", "dlq", "dlq-triage"], "pause": true }
+              "action": { "do": "note", "text": "Poison commands are quarantined in the DLQ for operator replay.", "focus": ["commands", "dlq"], "pause": true }
             },
             { "atMs": 12000, "action": { "do": "props", "node": "worker", "props": { "failureRate": 0 } } }
           ],
@@ -317,9 +316,9 @@
               "when": "end"
             },
             {
-              "id": "triaged",
-              "label": "All 30 poison invoices reach DLQ triage",
-              "metric": { "node": "dlq-triage", "field": "processed" },
+              "id": "dlq-retains",
+              "label": "All 30 poison invoices are retained",
+              "metric": { "node": "dlq", "field": "backlog" },
               "op": "==",
               "value": 30,
               "when": "end"
@@ -337,7 +336,12 @@
           "durationMs": 20000,
           "scale": 1
         }
-      ]
+      ],
+      "checks": {
+        "ignore": [
+          { "rule": "no-reader", "target": "dlq", "reason": "Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed" }
+        ]
+      }
     },
     "icons": {
       "azure-api-management": { "sha256": "fec79230351f57a3ecd32b6bcc77ff78418797df8378aebedd7c9e664f65970f", "bytes": 2277 },
