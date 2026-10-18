@@ -1,3 +1,4 @@
+import { useConnectionPlacement } from "./placement/useConnectionPlacement";
 import { useQuickAddPlacement, paneQuickAdd } from "./placement/useQuickAddPlacement";
 import {
   useCanvasNaming,
@@ -52,8 +53,6 @@ import {
   type NodeMouseHandler,
   type NodeTypes,
   type EdgeTypes,
-  type OnConnectEnd,
-  type OnConnectStart,
   type OnNodeDrag,
   type IsValidConnection,
 } from "@xyflow/react";
@@ -76,7 +75,7 @@ import { Inspector } from "./Inspector";
 import { ContextMenu } from "../components/ContextMenu";
 import { ShortcutsDialog } from "../components/ShortcutsDialog";
 import { actionRegistry, type ActionContext, type MenuNode } from "../editor/actions";
-import { builtinActions, quickAddMenu } from "../editor/builtinActions";
+import { builtinActions } from "../editor/builtinActions";
 import { useEditorPrefs } from "../editor/prefs";
 import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
 import type { FlowSelection } from "../editor/historySelection";
@@ -96,8 +95,8 @@ import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { notify, toast } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
 import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
-import { getRecentStencils, pushRecentStencil } from "../lib/recentStencils";
-import { connectHitAt, connectOver, connectTarget } from "./gestures";
+
+import { connectHitAt, connectTarget } from "./gestures";
 import { ConnectionLine } from "./ConnectionLine";
 
 import { useSmartGuides } from "./useSmartGuides";
@@ -671,94 +670,17 @@ function CanvasInner({
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
   });
 
-  // ---------------------------------------------------------------- connecting (D1, D2)
-  // While a connection is drawn: a crosshair throughout, the node a drop would connect to lit up (a
-  // drop anywhere on it connects), not-allowed over things that take no edges, and a "+" at the end
-  // of the line over empty canvas, where a drop opens quick-add for the next node.
-  const connecting = useRef<{ from: string; over: Element | null; stop: () => void } | null>(null);
-  const annotationKindOf = useCallback(
-    (id: string) => {
-      const n = getNode(id);
-      return n?.type === "annotation" ? (n as AnnotationFlowNode).data.kind : undefined;
-    },
-    [getNode],
-  );
-  const endConnecting = useCallback(() => {
-    const c = connecting.current;
-    connecting.current = null;
-    c?.stop();
-    connectOver.set(null);
-  }, []);
-  useEffect(() => endConnecting, [endConnecting]);
-  const onConnectStart: OnConnectStart = useCallback(
-    (_e, { nodeId }) => {
-      endConnecting();
-      if (!nodeId) return;
-      setMenu(null);
-      hideTip();
-      const wrap = wrapper.current;
-      wrap?.classList.add("is-connecting");
-      const state = { from: nodeId, over: null as Element | null, stop: () => {} };
-      const mark = (el: Element | null, on: boolean) => el?.classList.toggle("is-connect-target", on);
-      const onMove = (e: PointerEvent) => {
-        const el = e.target instanceof Element ? e.target : null;
-        const t = connectTarget(connectHitAt(el, annotationKindOf), nodeId);
-        const node = t.kind === "node" ? (el?.closest(".react-flow__node") ?? null) : null;
-        if (node !== state.over) {
-          mark(state.over, false);
-          mark(node, true);
-          state.over = node;
-        }
-        wrap?.classList.toggle("is-connect-invalid", t.kind === "invalid");
-        connectOver.set(t.kind);
-      };
-      document.addEventListener("pointermove", onMove, true);
-      state.stop = () => {
-        document.removeEventListener("pointermove", onMove, true);
-        mark(state.over, false);
-        wrap?.classList.remove("is-connecting", "is-connect-invalid");
-      };
-      connecting.current = state;
-    },
-    [endConnecting, hideTip, annotationKindOf],
-  );
-  const onConnectEnd: OnConnectEnd = useCallback(
-    (event, state) => {
-      const from = connecting.current?.from;
-      endConnecting();
-      // A drop on a handle (or near one) already connected in onConnect.
-      if (!from || state.isValid || readOnly) return;
-      const pt = "changedTouches" in event ? event.changedTouches[0] : event;
-      if (!pt) return;
-      const el = document.elementFromPoint(pt.clientX, pt.clientY);
-      const t = connectTarget(connectHitAt(el, annotationKindOf), from);
-      if (t.kind === "node") {
-        editor.connect(from, t.id);
-        return;
-      }
-      if (t.kind !== "canvas" || live) return;
-      // Empty canvas: quick-add there; the pick lands on the drop point, connected, ready to name.
-      const point = screenToFlowPosition({ x: pt.clientX, y: pt.clientY });
-      setMenu({
-        alignment: "physical-left",
-        x: pt.clientX,
-        y: pt.clientY,
-        get label() {
-          return tr("canvas.addAConnectedNode");
-        },
-        testId: "quick-add",
-        get searchable() {
-          return tr("canvas.addANode");
-        },
-        items: () =>
-          quickAddMenu((s) => {
-            pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
-            pushRecentStencil(s.id);
-          }, getRecentStencils()),
-      });
-    },
-    [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, pickNamed],
-  );
+  const { annotationKindOf, onConnectStart, onConnectEnd } = useConnectionPlacement({
+    getNode,
+    hideTip,
+    wrapper,
+    readOnly,
+    live,
+    editor,
+    screenToFlowPosition,
+    pickNamed,
+    setMenu,
+  });
 
   const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({ editGestures, store, setNodes, setEdges });
 
