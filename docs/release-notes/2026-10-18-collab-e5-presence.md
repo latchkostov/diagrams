@@ -34,3 +34,9 @@ Collaboration plan slice E5, behind the collaboration switch (development and e2
   leaving no second entry (fails with the goodbye removed); leaving clears the outline and is announced; Retry
   clearing "No one else is in this room" and starting a fresh wait; a joiner retrying from the chip keeps the
   keyboard on its wait; the alert below the bar on a phone and gone on Stencils.
+- An away tab (hidden) says so to the others (unit), and others hide its pointer.
+- Neighbouring specs (collab Lab, Share, annotations, drawing basics, viewport, inspector, round 4, platform): 125
+  passed. Linux container under load (`--repeat 3`, 4 workers), room spec, collab Lab, viewport and annotations:
+  201 of 201.
+- Output parity: `node/i18n/catalogs.json` changed on purpose (two new English-only messages, "{alias} joined." and
+  "{alias} left.", and Share's corrected description); no other golden changed.
