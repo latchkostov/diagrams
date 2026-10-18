@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { EditorApi } from "../editor/types";
 import { paletteHost, publish } from "./host";
-import { motionMs } from "../lib/motion";
 import { placeNextTo, type Box } from "../canvas/placement";
 
 // The canvas half of the palette host. Kept apart from ./host so the palette itself never pulls in
@@ -23,6 +22,8 @@ export function useCanvasHost(
     allowOnDevice?: (on: boolean) => void;
     documentId?: string;
     revision?: unknown;
+    /** The canvas camera's go-to: the node centred at a readable zoom (the view is the user's after it). */
+    goTo?: (id: string) => void;
   },
 ) {
   const rf = useReactFlow();
@@ -30,7 +31,7 @@ export function useCanvasHost(
   useLayoutEffect(() => {
     rfRef.current = rf;
   });
-  const { live, enabled, localOnly, private: isPrivate, onDevice, allowOnDevice, documentId, revision } = opts;
+  const { live, enabled, localOnly, private: isPrivate, onDevice, allowOnDevice, documentId, revision, goTo } = opts;
   useEffect(() => {
     if (!enabled) return;
     const boxOf = (id: string): Box | null => {
@@ -55,8 +56,7 @@ export function useCanvasHost(
         const box = boxOf(id);
         editor.select({ nodeIds: [id] });
         if (!box) return;
-        const zoom = Math.max(rfRef.current.getZoom(), 0.9);
-        void rfRef.current.setCenter(box.x + box.width / 2, box.y + box.height / 2, { zoom, duration: motionMs(300) });
+        goTo?.(id);
         document
           .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
           ?.focus({ preventScroll: true });
@@ -78,5 +78,5 @@ export function useCanvasHost(
     });
     paletteHost.activateRun();
     return off;
-  }, [editor, live, enabled, localOnly, isPrivate, onDevice, allowOnDevice, documentId, revision]);
+  }, [editor, live, enabled, localOnly, isPrivate, onDevice, allowOnDevice, documentId, revision, goTo]);
 }

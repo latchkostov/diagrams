@@ -11,6 +11,8 @@ import {
   viewportTransform,
   emptyCanvasPoint,
   STORAGE_KEYS,
+  cameraJournalMark,
+  cameraMoves,
 } from "./fixtures";
 
 const ids = ["app", "kong", "orders", "canary", "search"];
@@ -384,13 +386,15 @@ for (const live of [false, true])
     await waitForStableViewport(page);
     const before = await zoom(page);
     await pauseClock(page);
+    const mark = await cameraJournalMark(page);
     await page.getByTestId("inspector-resize").press("End");
-    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
-    await page.clock.runFor(149);
+    // Pending until the pane has settled (rendered frames, not a 150 ms timer since the controller).
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
     await page.clock.runFor(1500);
     expect(await zoom(page)).toBe(before);
     expect(await inPane(page, ["search"])).toBe(true);
+    // A manual view's pane change only reveals (panePolicy R5): the canvas camera never refits it.
+    expect((await cameraMoves(page, mark)).filter((m) => m.startsWith("fit"))).toEqual([]);
   });
 
 test("Inspector resize retains narration focus", async ({ page }) => {

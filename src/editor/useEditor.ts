@@ -68,7 +68,6 @@ import {
 import { toneLabel } from "../canvas/groupTones";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
-import { motionMs } from "../lib/motion";
 import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Positions } from "./arrange";
 import { makePayload, mergeRoutes, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
 import { hasEdgeRouting, hasNodeRouting } from "../model/requestRouting";
@@ -176,8 +175,8 @@ export interface EditorDeps {
   /** Small boxes along the drawn edges (flow coordinates), so new things are placed off them. */
   edgeMarks?: () => EdgeMark[];
   fit: () => void;
-  /** An explicit camera command takes ownership from automatic fits. */
-  onManualCamera?: () => void;
+  /** Zoom to 100% (Shift+0), through the canvas camera: an explicit command, so the view is the user's after it. */
+  zoom100?: () => void;
   /** Subscribe to canvas measurement readiness; returns an unsubscribe function. */
   afterMeasured?: (run: () => void) => undefined | (() => void);
   /** Nominal node size for the current renderer (before React Flow has measured). */
@@ -1771,10 +1770,7 @@ export function createEditor(
     canRedo: () => !waitingLayout && deps().history.canRedo,
 
     fitView: () => deps().fit(),
-    zoomTo100: () => {
-      deps().onManualCamera?.();
-      void rf.zoomTo(1, { duration: motionMs(250) });
-    },
+    zoomTo100: () => deps().zoom100?.(),
     zoomToSelection: () => {
       const sel = api.getSelection();
       const ids = flowIdsOf(sel);

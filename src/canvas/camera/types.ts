@@ -1,4 +1,5 @@
 import type { CameraOwner } from "../cameraOwnership";
+import type { RevealScope } from "./controller";
 
 export type { CameraOwner };
 
@@ -50,8 +51,8 @@ export type CameraEvent =
   /** A new, non-empty selection (it replaces pending panel work, rule b). */
   | { type: "selection.changed"; cause: "selection" | "placement" }
   | { type: "menu.opened"; kind: MenuKind }
-  /** `picked`: an item was chosen (quick-add's pick is a placement); otherwise it was dismissed. */
-  | { type: "menu.closed"; picked: boolean }
+  /** A menu closed, by a pick or a dismissal (quick-add's pick is a placement, which replaces pending work). */
+  | { type: "menu.closed" }
   /** A press, wheel, key or context menu anywhere: Zoom to selection's priority ends. */
   | { type: "input" }
   /** A pan or zoom by hand, a node drag, the zoom buttons. */
@@ -59,8 +60,8 @@ export type CameraEvent =
   | { type: "fit"; reason: Exclude<FitReason, "mode" | "fullscreen" | "checks" | "pane"> }
   /** Shift+0 (keyboard only). */
   | { type: "zoom100" }
-  /** Shift+2. */
-  | { type: "zoomToSelection" }
+  /** Shift+2: the selection (or the hovered node) and its connections. */
+  | { type: "zoomToSelection"; nodes?: ReadonlySet<string>; edges?: ReadonlySet<string> }
   | { type: "mode.changed"; mode: CameraMode }
   | { type: "fullscreen.changed" }
   /** The Checks card opened over the diagram (floating chrome). */
@@ -68,7 +69,7 @@ export type CameraEvent =
   /** Live's narration took the view (a note's focus) or gave it back. */
   | { type: "narration"; focus: boolean }
   /** Something was selected or placed and measured: bring it into view (a pan, never a zoom). */
-  | { type: "reveal.requested"; cause: RevealCause }
+  | { type: "reveal.requested"; cause: RevealCause; scope?: RevealScope }
   /** The pane has its new size and the selection is measured: pending work may run. */
   | ({ type: "pane.settled" } & SettledFacts);
 

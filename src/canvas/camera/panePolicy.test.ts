@@ -102,10 +102,10 @@ describe("panePolicy: the agreed rules, row by row", () => {
         { type: "menu.opened", kind: "context" },
         settled(),
         settled(),
-        { type: "menu.closed", picked: false },
+        { type: "menu.closed" },
         { type: "menu.opened", kind: "context" },
         settled(),
-        { type: "menu.closed", picked: false },
+        { type: "menu.closed" },
         settled(),
         settled(),
       ],
@@ -117,7 +117,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [
         { type: "pane.changed", cause: "panel" },
         { type: "menu.opened", kind: "quickAdd" },
-        { type: "menu.closed", picked: false },
+        { type: "menu.closed" },
         settled(),
       ],
       [FIT("pane")],
@@ -129,7 +129,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
         { type: "pane.changed", cause: "panel" },
         { type: "menu.opened", kind: "quickAdd" },
         { type: "selection.changed", cause: "placement" },
-        { type: "menu.closed", picked: true },
+        { type: "menu.closed" },
         settled({ selection: true }),
       ],
       [],
@@ -141,7 +141,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [
         { type: "pane.changed", cause: "panel" },
         { type: "menu.opened", kind: "context" },
-        { type: "menu.closed", picked: false },
+        { type: "menu.closed" },
         { type: "input" },
         { type: "zoom100" },
         settled({ selection: true, covered: true, coveredWithEdges: true }),
@@ -327,12 +327,7 @@ describe("panePolicy: invariants over every owner, cause, menu, selection, cover
       const changed = decide(s, { type: "pane.changed", cause });
       expect(changed.commands).toEqual([]);
       s = changed.state;
-      const steps: CameraEvent[] = [
-        facts,
-        ...(menu ? [{ type: "menu.closed", picked: false } as const] : []),
-        facts,
-        facts,
-      ];
+      const steps: CameraEvent[] = [facts, ...(menu ? [{ type: "menu.closed" } as const] : []), facts, facts];
       const out: CameraCommand[][] = [];
       for (const e of steps) {
         const d = decide(s, e);
@@ -379,7 +374,7 @@ const eventArb: fc.Arbitrary<CameraEvent> = fc.oneof(
   fc.constantFrom(...CAUSES).map((cause) => ({ type: "pane.changed", cause }) as const),
   fc.constantFrom("selection", "placement" as const).map((cause) => ({ type: "selection.changed", cause }) as const),
   fc.constantFrom<MenuKind>("context", "quickAdd").map((kind) => ({ type: "menu.opened", kind }) as const),
-  fc.boolean().map((picked) => ({ type: "menu.closed", picked }) as const),
+  fc.constant({ type: "menu.closed" } as const),
   fc.constant({ type: "input" } as const),
   fc.constant({ type: "user.moved" } as const),
   fc.constant({ type: "zoom100" } as const),
@@ -433,7 +428,7 @@ describe("panePolicy: event sequences", () => {
           s = d.state;
         }
         // Closing any menu and letting the pane settle always finishes the work in force.
-        const end = run(s, [{ type: "menu.closed", picked: false }, settled(), settled()]);
+        const end = run(s, [{ type: "menu.closed" }, settled(), settled()]);
         expect(end.state.pending).toBeNull();
         expect(end.commands.length).toBeLessThanOrEqual(1);
       }),

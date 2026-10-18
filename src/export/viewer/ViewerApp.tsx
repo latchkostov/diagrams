@@ -1,9 +1,8 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { useReactFlow } from "@xyflow/react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { CanvasView, type CanvasViewerOptions } from "../../canvas/CanvasView";
+import { useCameraController } from "../../canvas/camera";
 import { useCanvasFit } from "../../canvas/canvasFit";
 import { isEditableTarget } from "../../editor/shortcuts";
-import { motionMs } from "../../lib/motion";
 import { Icon } from "../../components/Icon";
 import { Toaster } from "../../interop/ui/Toaster";
 import { Glyph } from "../../interop/ui/glyphs";
@@ -16,8 +15,8 @@ import { readPayload, unlockPayload, type LockedFile, type OpenPayload } from ".
 // A password-protected file opens on its password prompt (LockedView) and shows the diagram once it's unlocked.
 
 const PAN_STEP = 80;
-/** Viewport moves, collapsing to a jump under reduced motion. */
-const ZOOM = () => ({ duration: motionMs(150) });
+/** React Flow's zoom step for its own zoom in and out. */
+const ZOOM_STEP = 1.2;
 
 /** "12 October 2026" in the reader's locale, from "2026-10-12". */
 function formatDay(iso: string): string {
@@ -32,28 +31,28 @@ function formatDay(iso: string): string {
  * canvas's own Fit view (overlay-aware), never a second one.
  */
 function ViewerControls({ hintId }: { hintId: string }) {
-  const rf = useReactFlow();
+  const camera = useCameraController();
   const fit = useCanvasFit();
+  // Moves by hand, through the canvas camera (the view is the reader's after them); motionMs applies there.
+  const zoomIn = useCallback(() => camera?.zoomTo((k) => k * ZOOM_STEP, 150), [camera]);
+  const zoomOut = useCallback(() => camera?.zoomTo((k) => k / ZOOM_STEP, 150), [camera]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target;
       if (isEditableTarget(t) || (t instanceof Element && t.closest("select, [role='dialog'], [role='menu']"))) return;
       const step = e.shiftKey ? PAN_STEP * 3 : PAN_STEP;
-      const pan = (dx: number, dy: number) => {
-        const v = rf.getViewport();
-        void rf.setViewport({ x: v.x + dx, y: v.y + dy, zoom: v.zoom }, { duration: motionMs(120) });
-      };
+      const pan = (dx: number, dy: number) => camera?.panBy(dx, dy, 120);
       const actions: Record<string, () => void> = {
         ArrowLeft: () => pan(step, 0),
         ArrowRight: () => pan(-step, 0),
         ArrowUp: () => pan(0, step),
         ArrowDown: () => pan(0, -step),
-        "+": () => void rf.zoomIn(ZOOM()),
-        "=": () => void rf.zoomIn(ZOOM()),
-        "-": () => void rf.zoomOut(ZOOM()),
+        "+": zoomIn,
+        "=": zoomIn,
+        "-": zoomOut,
         "!": fit,
-        ")": () => void rf.zoomTo(1, ZOOM()),
+        ")": () => camera?.zoomTo(1, 150),
       };
       // Shift+1 and Shift+0 by key code too, whatever the keyboard layout prints there.
       const action =
@@ -68,7 +67,7 @@ function ViewerControls({ hintId }: { hintId: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rf, fit]);
+  }, [camera, fit, zoomIn, zoomOut]);
 
   return (
     <div
@@ -82,7 +81,7 @@ function ViewerControls({ hintId }: { hintId: string }) {
     >
       <button
         className="xv-zoom-btn"
-        onClick={() => void rf.zoomIn(ZOOM())}
+        onClick={zoomIn}
         aria-label="Zoom in"
         title="Zoom in (+)"
         data-testid="viewer-zoom-in"
@@ -91,7 +90,7 @@ function ViewerControls({ hintId }: { hintId: string }) {
       </button>
       <button
         className="xv-zoom-btn"
-        onClick={() => void rf.zoomOut(ZOOM())}
+        onClick={zoomOut}
         aria-label="Zoom out"
         title="Zoom out (−)"
         data-testid="viewer-zoom-out"
