@@ -54,13 +54,14 @@ test("an unchanged Auto-layout needs no Undo; full selection offers Tidy without
 test("Undo selects changed nodes; canvas Ctrl+A and palette Select all include the unchanged node", async ({
   page,
 }) => {
-  const opened = await openExample(page, "rag-assistant");
+  // Auto-layout moves every node of this example but one (its app database).
+  const opened = await openExample(page, "nightly-batch-elt");
   await command(page, "Auto-layout", "canvas.auto-layout");
   await restoreOpening(page, opened, await settledCanvas(page));
   const undone = await canvasSelection(page);
   expect(undone.nodes).toEqual(
     Object.keys(opened.nodes)
-      .filter((id) => id !== "user")
+      .filter((id) => id !== "app-db")
       .sort(),
   );
   expect(undone.edges).toEqual([]);

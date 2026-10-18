@@ -42,8 +42,11 @@ start card.
   retired canvas reopens as the replacement; retired edits appear in Your diagrams; and the start card features the
   Black Friday platform.
 - Tests that used a retired example as a fixture now use its replacement with the same assertions:
-  - palette, stencils, fit-settled, AI panel, AI on-device, gallery, the browser parity selection and settle runs,
-    and the legacy-autosave test use `aws-serverless-orders`;
+  - palette, stencils, fit-settled, AI panel, AI on-device, gallery, the browser parity settle run and the
+    legacy-autosave test use `aws-serverless-orders` (fit-settled now checks the refitted boundary against its
+    measured members, since this example's widest cards follow the platform's fonts);
+  - the browser parity selection run, which needs an example where Auto-layout moves all but one node, uses
+    `nightly-batch-elt`: `rag-assistant`'s new triage path changed its layering;
   - the capacity hot-spot spec uses `ev-charging-network`;
   - the deliberate-outage, flaky-writes and custom-throughput specs use `cell-based-bookings`;
   - the KEDA and HPA specs and engine tests use `autoscaling-basics`.
@@ -57,10 +60,10 @@ start card.
 
 ### Parity
 
-`pnpm parity:update` reported 2,290 goldens: **84 added, 162 changed, 170 removed**, 0 missing. Every change is in
+`pnpm parity:update` reported 2,290 goldens: **84 added, 162 changed, 180 removed**, 0 missing. Every change is in
 an example this batch adds, removes or edits, plus three shared goldens:
 
-- **Removed (170):** every per-diagram golden of the five retired examples:
+- **Removed (180):** every per-diagram golden of the five retired examples, including their browser render and layout:
   - simulation, checks, checks-words, evidence, planning, planning-p2, layout, routes, trace, exports
     (native, draw.io, Mermaid, HTML), agent describe/check/edit, and skill validate/scripts;
   - the A1/A2 controller runs keyed by their example slugs.

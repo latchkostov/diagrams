@@ -44,5 +44,5 @@ test("changing badge text cannot prevent geometric convergence; text is still re
   // Reading words remains part of the contract even though they don't gate readiness.
   await page.getByTestId("parity-changing-badge").evaluate((el) => el.remove());
   const clean = await settledCanvas(page);
-  expect((clean.nodes.client as { text: string }).text).toBe("Retail checkout Authenticated storefront");
+  expect((clean.nodes.client as { text: string }).text).toBe("Web shop Signed-in customers");
 });
