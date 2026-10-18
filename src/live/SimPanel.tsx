@@ -1035,7 +1035,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
       </div>
       {a.do === "fault" ? (
         <>
-          {a.drill && <small>{translate("fault.drill", { name: drillName(a.drill) })}</small>}
+          {a.drill && <small>{translate("fault.preset", { name: drillName(a.drill) })}</small>}
           <FaultStep
             fault={a.fault}
             diagram={diagram}

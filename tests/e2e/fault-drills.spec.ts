@@ -333,6 +333,9 @@ test("Zone outage drill shifts traffic by 5 s without loss; the second simulatio
   expect(await nodeCount(page, "api-b", "dropped")).toBe(0);
   await expect(page.getByTestId("node-loss-api-b")).toHaveCount(0);
   expect(await nodeCount(page, "api-a", "processed")).toBeGreaterThan(await nodeCount(page, "api-b", "processed"));
+  await seek.fill("1000");
+  await seek.press("ArrowRight");
+  await expect(page.getByTestId("live-run-result")).toHaveText("No messages lost");
   await page.getByTestId("live-sim-picker").selectOption("no-health-checks");
   await seek.fill("560");
   await seek.press("ArrowRight");
@@ -343,6 +346,7 @@ test("Zone outage drill shifts traffic by 5 s without loss; the second simulatio
   await seek.press("ArrowRight");
   await expect(page.getByTestId("live-done")).toHaveAttribute("data-status", "fail");
   await expect(page.getByTestId("live-done")).toHaveText("4/5");
+  await expect(page.getByTestId("live-run-result")).toHaveText("Lost 26 messages at Checkout API b");
   await expect(page.getByTestId("expectation-api-b-loss")).toHaveAttribute(
     "aria-label",
     /No checkouts lost at Checkout API b: failed/,
@@ -405,4 +409,23 @@ test("fault markers and expectations show names, and overflow supports arrow key
   await expect(page.getByTestId("live-step")).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await expect(page.getByTestId("live-traffic")).toBeFocused();
+});
+
+test("Go Live on an example starts its first simulation, with Free play one choice away", async ({ page }) => {
+  await page.goto("./?view=canvas&example=zone-outage-drill");
+  await page.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("health-checks");
+  await page.getByTestId("live-sim-picker").selectOption("");
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
+  await expect(page.getByTestId("live-timeline-input")).toHaveCount(0);
+  // A saved personal copy has the same simulations, but keeps the existing Free play default.
+  await page.getByTestId("live-toggle").click();
+  await page.getByTestId("import-input").setInputFiles({
+    name: "own-diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(faultDrillFixture())),
+  });
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await page.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
 });

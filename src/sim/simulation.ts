@@ -157,6 +157,7 @@ export function createSimulationRun(
     if (window.endMs !== window.startMs) markers.push({ atMs: window.endMs, kind: "traffic", label: `${label} ends` });
   }
   markers.sort((a, b) => a.atMs - b.atMs);
+  engine.setLatencySinceFault(timeline.some((step) => step.action.do === "fault"));
   const totalMs = estimateTotalMs(simulation);
   const trafficEnd = Math.max(0, ...simulation.traffic.map((p) => trafficWindow(p.shape).endMs));
   const scheduler = createScheduler();

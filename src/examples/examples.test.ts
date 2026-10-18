@@ -95,6 +95,18 @@ describe("recent-feature showcases", () => {
     expect(exampleMetadata["where-the-time-goes"].shows).toContain("latency");
     expect(run.engine.frame().nodes.orders.backlog).toBeGreaterThan(0);
   });
+  it("showcases fresh latency windows on a Billing fault and its restoration within nine seconds", () => {
+    const d = diagram("where-the-time-goes");
+    const simulation = d.simulations!.find((s) => s.id === "slow-billing-drill")!;
+    const run = createSimulationRun(d, simulation);
+    run.step(2900);
+    expect(run.engine.snapshot().nodes.billing.latency!.sinceFault).toBeUndefined();
+    run.step(2500);
+    expect(run.engine.snapshot().nodes.billing.latency!.sinceFault).toMatchObject({ atMs: 3000, fault: { factor: 5 } });
+    run.step(2700);
+    expect(run.engine.snapshot().nodes.billing.latency!.sinceFault).toMatchObject({ atMs: 6000, fault: { factor: 1 } });
+    expect(exampleMetadata["where-the-time-goes"].shows).toEqual(expect.arrayContaining(["latency", "faultDrills"]));
+  });
   it.each(showcases)("%s validates, loads lazily and replays deterministically", async (slug) => {
     const d = await loadExample(slug);
     expect(validateDiagram(d)).toMatchObject({ ok: true });

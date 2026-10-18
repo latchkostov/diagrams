@@ -104,6 +104,8 @@ export interface LatencySummary {
 
 /** Immutable value view, shared between frames until the next successful sample. */
 export interface LatencyMetrics extends LatencySummary {
+  /** Drill samples completed since this actual fault change. */
+  readonly sinceFault?: { atMs: number; fault: import("../model/faults").Fault };
   readonly byType: Readonly<Record<string, LatencySummary>>;
   /** Additional types contribute only to the total after the node or run recording limit. */
   readonly typesLimited?: true;
@@ -424,6 +426,8 @@ export interface SimEngine {
   /** Inject `count` sampled messages. For real counts use SimulationRun.inject. */
   inject(nodeId: string, count: number, opts?: InjectOptions): void;
   setFault(fault: import("../model/faults").Fault): void;
+  /** Drills discard latency samples on each effective fault change; Free play stays cumulative. */
+  setLatencySinceFault(on: boolean): void;
   setNodeStatus(nodeId: string, status: NodeStatus): void;
   setNodeProps(nodeId: string, patch: NodeSimProps): void;
   /** Preflight ordered lifecycle edits without copying or mutating playback state. */

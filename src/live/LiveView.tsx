@@ -38,6 +38,8 @@ export interface LiveHandle {
 }
 
 export interface LiveViewProps {
+  /** Gallery examples start their first saved simulation when entering Live. */
+  example?: boolean;
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
   editor?: EditorApi;
   presenting: boolean;
@@ -199,7 +201,17 @@ export function LiveView(props: LiveViewProps) {
       {live && ready && (
         <LiveSession
           {...props}
-          params={firstSession ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
+          params={
+            firstSession
+              ? params
+              : {
+                  ...params,
+                  live: true,
+                  sim: props.example ? (props.simulations?.[0]?.id ?? null) : null,
+                  speed: null,
+                  paused: false,
+                }
+          }
           onExit={exit}
           onSession={setSession}
         />

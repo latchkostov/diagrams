@@ -1,3 +1,5 @@
+import type { DiagramFile } from "../model/types";
+import { faultWindowLabel } from "../model/faultWords";
 import { t } from "../i18n";
 import { formatPercent } from "../i18n/format";
 import type { LatencyMetrics } from "../sim/types";
@@ -8,10 +10,12 @@ export function LatencyReadout({
   id,
   latency,
   compact = false,
+  diagram,
 }: {
   id: string;
   latency: LatencyMetrics;
   compact?: boolean;
+  diagram?: DiagramFile;
 }) {
   const total = latency.waitMs + latency.workMs + latency.travelMs;
   const share = (ms: number) => formatPercent(total > 0 ? ms / total : 0);
@@ -23,7 +27,7 @@ export function LatencyReadout({
         <span>{latencyLabel(latency)}</span>
         <span>{t("latency.p99", { duration: latencyDuration(latency.p99) })}</span>
       </div>
-      {!compact && <small>{latencySampling(latency)}</small>}
+      {!compact && !latency.sinceFault && <small>{latencySampling(latency)}</small>}
       {latency.typesLimited && <small data-testid={`node-latency-limited-${id}`}>{t("latency.typesLimited")}</small>}
       <div data-testid={`node-latency-breakdown-${id}`}>
         {compact
@@ -34,7 +38,16 @@ export function LatencyReadout({
               travel: share(latency.travelMs),
             })}
       </div>
-      <small>{compact ? t("latency.finishedScope", { count: latency.samples }) : t("latency.scope")}</small>
+      <small data-testid={`node-latency-scope-${id}`}>
+        {latency.sinceFault
+          ? t("latency.faultScope", {
+              count: latency.samples,
+              change: faultWindowLabel(latency.sinceFault.fault, diagram),
+            })
+          : compact
+            ? t("latency.finishedScope", { count: latency.samples })
+            : t("latency.scope")}
+      </small>
     </div>
   );
 }

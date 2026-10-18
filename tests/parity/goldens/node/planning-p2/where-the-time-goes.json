@@ -23,7 +23,7 @@
     }
   },
   "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "billing.props.preset", "billing.props.presetRevision", "receipts.props.preset", "receipts.props.presetRevision", "receipts.props.api"] },
-  "autoScale": { "freePlay": 50, "billing-spike": 200, "steady-orders": 50 },
+  "autoScale": { "freePlay": 50, "billing-spike": 200, "steady-orders": 50, "slow-billing-drill": 20 },
   "brokerAssignments": {
     "brokers": {
       "orders": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
@@ -296,7 +296,95 @@
       "redundancy": { "orders": { "replicas": 2, "enough": false }, "billing": { "replicas": 91, "enough": true } },
       "resolved": "(same as edit)"
     },
-    "steady-orders": { "configured": "(same as edit)", "simulation": "steady-orders", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
+    "steady-orders": { "configured": "(same as edit)", "simulation": "steady-orders", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "slow-billing-drill": {
+      "configured": "(same as edit)",
+      "simulation": "slow-billing-drill",
+      "analysis": {
+        "bottleneck": "billing",
+        "suggestion": "Billing: 42% utilized",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "checkout": ["Infinity", 1000, 0, 1, 1, 0],
+          "orders": [2400, 1000, 0.4166666666666667, 1, 1, 0],
+          "billing": [
+            2400,
+            1000,
+            0.4166666666666667,
+            12,
+            12,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "receipts": ["Infinity", 1000, 0, 1, 1, 0]
+        },
+        "connections": { "intake-orders": 1000, "orders-billing": 1000, "billing-receipts": 1000 },
+        "offeredTypes": { "checkout": ["OrderPlaced"], "orders": ["OrderPlaced"], "billing": ["OrderPlaced"], "receipts": ["OrderPlaced"] }
+      },
+      "explanations": {
+        "billing": {
+          "id": "billing",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2400,
+          "offered": 1000,
+          "replicas": 12,
+          "baseReplicas": 12,
+          "omittedContributors": 0,
+          "activeReplicas": 12,
+          "assignments": [
+            {
+              "broker": "orders",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 12
+            }
+          ],
+          "slots": 60,
+          "seconds": 0.3,
+          "utilization": 0.4166666666666667,
+          "growth": 0,
+          "contributors": [{ "edge": "orders-billing", "node": "orders", "label": "Orders", "rate": 1000 }],
+          "target": 0.5,
+          "minimumReplicas": 12,
+          "changes": null,
+          "converged": true
+        },
+        "receipts": {
+          "managed": "api",
+          "id": "receipts",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 1000,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "billing-receipts", "node": "billing", "label": "Billing", "rate": 1000 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
   },
   "capacity": {
     "freePlay": {
@@ -422,6 +510,21 @@
         "checkout": ["idle", "2k/s · no limit", { "modeled": false }],
         "orders": ["warn", "83% · 2k/s of 2.4k/s"],
         "billing": ["warn", "83% · 2k/s of 2.4k/s"],
+        "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
+      }
+    },
+    "slow-billing-drill": {
+      "tone": "ok",
+      "top": "billing",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Billing at 42% · 1k/s of 2.4k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "checkout": ["idle", "1k/s · no limit", { "modeled": false }],
+        "orders": ["ok", "42% · 1k/s of 2.4k/s"],
+        "billing": ["ok", "42% · 1k/s of 2.4k/s"],
         "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
       }
     }

@@ -2550,7 +2550,7 @@ details[open] > summary .lv-disclosure-chevron {
 }
 
 .lv-detail-more {
-  display: none;
+  display: block;
 }
 .lv-detail.is-compact > :not(.planning-explanation):not(.lv-detail-more):not(.lv-latency),
 .lv-detail.is-compact .planning-explanation > :not([data-testid="planning-arithmetic"]) {

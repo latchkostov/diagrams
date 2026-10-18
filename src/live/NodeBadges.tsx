@@ -106,6 +106,7 @@ export function NodeBadges({
           <NodeBadge
             key={n.id}
             node={n}
+            diagram={diagram}
             s={s}
             showOutageLoss={boundaryFault}
             fault={nodeFaultLabel(n.id, state.snapshot.faults)}
@@ -186,6 +187,7 @@ function groupNames(d: DiagramFile, nodeId: string, topology: ReturnType<typeof 
 }
 
 interface BadgeProps {
+  diagram: DiagramFile;
   fault: string;
   properties: boolean;
   node: DiagramFlowNode;
@@ -205,6 +207,7 @@ interface BadgeProps {
 
 const NodeBadge = memo(function NodeBadge({
   node,
+  diagram,
   s,
   peak,
   hovered,
@@ -443,7 +446,7 @@ const NodeBadge = memo(function NodeBadge({
           role="tooltip"
           data-testid={`node-detail-${node.id}`}
         >
-          {s.latency && <LatencyReadout id={node.id} latency={s.latency} compact />}
+          {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
           {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}
           <HoverExplanation id={node.id} />
           {properties && (

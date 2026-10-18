@@ -1,3 +1,4 @@
+import { pseudoText } from "../../src/i18n/pseudo";
 import { test, expect, gotoLive, waitForCameraIdle, expectNoErrors } from "./fixtures";
 
 for (const locale of ["en-XA", "ar"]) {
@@ -12,7 +13,9 @@ for (const locale of ["en-XA", "ar"]) {
     });
     await input.dispatchEvent("pointerup");
     await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "9400");
-    await expect(page.getByTestId("live-note")).toContainText("Hover Billing for the split");
+    await expect(page.getByTestId("live-run-result")).toContainText(
+      locale === "en-XA" ? pseudoText("No messages lost") : "No messages lost",
+    );
     await page.getByTestId("node-billing").hover();
     const detail = page.getByTestId("node-latency-detail-billing");
     await expect(detail).toBeVisible();
@@ -96,7 +99,7 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   await expect(page.getByTestId("node-latency-receipts")).toHaveText("p95 0.3 s");
   await expect(page.getByTestId("node-latency-billing")).toHaveCount(0);
   await seek(1000);
-  await expect(page.getByTestId("live-note")).toContainText("Hover Billing for the split");
+  await expect(page.getByTestId("live-note")).toContainText("No messages lost");
   await page.getByTestId("node-billing").hover();
   const detail = page.getByTestId("node-latency-detail-billing");
   await expect(detail).toBeVisible();
@@ -154,3 +157,24 @@ for (const surface of ["embed", "presentation"]) {
       .toBe(true);
   });
 }
+
+test("drill percentiles restart their window on slowdown and restoration", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=where-the-time-goes&sim=slow-billing-drill&paused=1");
+  const seek = async (value: string) => {
+    const input = page.getByTestId("live-timeline-input");
+    await input.fill(value);
+    await input.press("ArrowRight");
+    await waitForCameraIdle(page);
+    await page.getByTestId("node-billing").hover();
+  };
+  await seek("300");
+  const scope = page.getByTestId("node-latency-scope-billing");
+  await expect(scope).toContainText("since restart");
+  await seek("600");
+  await expect(scope).toContainText("since Billing became 5× slower");
+  await seek("900");
+  await expect(scope).toContainText("since Billing was restored");
+  await page.getByTestId("live-restart").click();
+  await seek("300");
+  await expect(scope).toContainText("since restart");
+});

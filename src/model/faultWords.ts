@@ -30,21 +30,23 @@ export function faultLabel(fault: Fault, preset?: DrillPreset, diagram?: Diagram
         : fault.kind === "slow"
           ? t("fault.slow")
           : t("fault.fail");
+  return t("fault.marker", { action, target: faultTargetLabel(fault, diagram) || faultTarget(fault) });
+}
+
+function faultTargetLabel(fault: Fault, diagram?: DiagramFile, ids = true): string | undefined {
   const id = faultTarget(fault);
-  const target =
-    fault.kind === "boundary"
-      ? diagram?.groups?.find((g) => g.id === id)?.label
-      : fault.kind === "link"
-        ? (() => {
-            const edge = diagram?.edges.find((e) => e.id === id);
-            return (
-              edge &&
-              (edge.label ||
-                `${diagram?.nodes.find((n) => n.id === edge.from)?.label || edge.from} → ${diagram?.nodes.find((n) => n.id === edge.to)?.label || edge.to}`)
-            );
-          })()
-        : diagram?.nodes.find((n) => n.id === id)?.label;
-  return t("fault.marker", { action, target: target || id });
+  return fault.kind === "boundary"
+    ? diagram?.groups?.find((g) => g.id === id)?.label
+    : fault.kind === "link"
+      ? (() => {
+          const edge = diagram?.edges.find((e) => e.id === id);
+          return (
+            edge &&
+            (edge.label ||
+              `${diagram?.nodes.find((n) => n.id === edge.from)?.label || (ids ? edge.from : t("fault.unnamedTarget"))} → ${diagram?.nodes.find((n) => n.id === edge.to)?.label || (ids ? edge.to : t("fault.unnamedTarget"))}`)
+          );
+        })()
+      : diagram?.nodes.find((n) => n.id === id)?.label;
 }
 
 export function boundaryRestoreHint(diagram: DiagramFile, node: string, faults?: readonly Fault[]): string | undefined {
@@ -62,4 +64,23 @@ export function nodeFaultLabel(node: string, faults: readonly Fault[] = []): str
           : [],
     )
     .join(" · ");
+}
+
+/** One translated clause for the hover's single scope line. */
+export function faultWindowLabel(fault: Fault, diagram?: DiagramFile): string {
+  const label = faultTargetLabel(fault, diagram, false) || t("fault.unnamedTarget");
+  switch (fault.kind) {
+    case "boundary":
+      return fault.down ? t("latency.windowDown", { label }) : t("latency.windowRestored", { label });
+    case "link":
+      return fault.cut ? t("latency.windowCut", { label }) : t("latency.windowRestored", { label });
+    case "slow":
+      return fault.factor === 1
+        ? t("latency.windowRestored", { label })
+        : t("latency.windowSlow", { label, factor: fault.factor });
+    case "fail":
+      return fault.rate === 0
+        ? t("latency.windowRestored", { label })
+        : t("latency.windowFail", { label, rate: fault.rate * 100 });
+  }
 }

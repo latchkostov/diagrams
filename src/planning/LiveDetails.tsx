@@ -109,7 +109,7 @@ export function LiveDetails({
       {s.resources && s.fleet && <ScalingAnnouncement label={node?.label ?? s.id} fleet={s.fleet} />}
       <details className="insp-section" data-testid="planning-live-details">
         <summary data-testid="planning-live-details-toggle">{t("planning.liveDetails")}</summary>
-        {s.latency && <LatencyReadout id={`${s.id}-properties`} latency={s.latency} />}
+        {s.latency && <LatencyReadout id={`${s.id}-properties`} latency={s.latency} diagram={d} />}
         <p data-testid="planning-live-counters">
           {t("planning.liveCounters", {
             throughput: formatRate(s.throughput),
