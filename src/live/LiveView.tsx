@@ -113,7 +113,7 @@ export function LiveView(props: LiveViewProps) {
   const [ready, setReady] = useState(false);
   if (!ready && mounted && (initialized || empty)) setReady(true);
   if (!live && firstSession) setFirstSession(false);
-  // The running session reports itself (LiveSession's onSession) for a page that drives live view.
+  // Track readiness for every session; onHandle only observes it for a page that drives live view.
   const [session, setSession] = useState<LiveSessionHandle | null>(null);
   const onHandle = props.onHandle;
   useEffect(() => onHandle?.({ goLive, live, session: live ? session : null }), [onHandle, goLive, live, session]);
@@ -201,7 +201,7 @@ export function LiveView(props: LiveViewProps) {
           {...props}
           params={firstSession ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
           onExit={exit}
-          onSession={props.onHandle ? setSession : undefined}
+          onSession={setSession}
         />
       )}
     </>

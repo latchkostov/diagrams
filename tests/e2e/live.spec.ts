@@ -53,6 +53,25 @@ test("presented pausing notes focus Continue without stealing focus in normal li
   expectNoErrors(consoleErrors);
 });
 
+test("standalone Live clears busy after mounting", async ({ page, consoleErrors }) => {
+  // LiveKeyboardLab mounts LiveView without an onHandle observer.
+  await gotoLab(page, "live-keyboard");
+  const toggle = page.getByTestId("live-toggle");
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(toggle).toHaveAttribute("aria-busy", "false");
+
+  await toggle.click();
+  await expect(page.getByTestId("live-controls")).toHaveCount(0);
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(toggle).toHaveAttribute("aria-busy", "false");
+
+  await toggle.click();
+  await waitForLiveSession(page);
+  await expect(toggle).toHaveAttribute("aria-busy", "false");
+  expectNoErrors(consoleErrors);
+});
+
 test("Escape still leaves live when an earlier handler commits a host render", async ({ page }) => {
   await gotoLab(page, "live-keyboard");
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
