@@ -77,10 +77,13 @@ for (const cancel of ["close", "escape"] as const) {
 }
 
 test("the loaded simulations panel retains its opener through the lazy loading handoff", async ({ page }) => {
+  test.skip(process.env.E2E_TARGET !== "build", "Checks the production chunk boundary");
   const editor = /\/assets\/SimPanel-[A-Za-z0-9_-]+\.js(?:\?.*)?$/;
+  let requested = false;
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
   await page.route(editor, async (route) => {
+    requested = true;
     await held;
     await route.continue();
   });
@@ -88,6 +91,7 @@ test("the loaded simulations panel retains its opener through the lazy loading h
     await seed(page);
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-edit-sims").click();
+    await expect.poll(() => requested).toBe(true);
     await expect(page.getByTestId("sim-panel-loading")).toBeVisible();
     await expect(page.getByTestId("sim-panel-heading")).toBeFocused();
     release();

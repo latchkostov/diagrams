@@ -129,7 +129,7 @@ export function faultTimelineProblem(diagram: DiagramFile, simulation: Simulatio
   const steps = simulation.timeline?.filter((s) => s.action.do === "fault") ?? [];
   if (!steps.length) return;
   const topology = faultTopology(diagram);
-  const active = new Map<string, string>();
+  const active = new Map<string, number | boolean>();
   let work = 0;
   for (const { action } of steps.sort((a, b) => a.atMs - b.atMs)) {
     if (action.do !== "fault") continue;
@@ -140,7 +140,7 @@ export function faultTimelineProblem(diagram: DiagramFile, simulation: Simulatio
     if (f.kind === "boundary" ? !range : f.kind === "link" ? !topology.links.has(f.edge) : !topology.nodes.has(f.node))
       return t("fault.repairTarget");
     const key = faultKey(f),
-      value = faultActive(f) ? JSON.stringify(f) : undefined;
+      value = faultActive(f) ? (f.kind === "slow" ? f.factor : f.kind === "fail" ? f.rate : true) : undefined;
     if (active.get(key) === value) continue;
     if (value) active.set(key, value);
     else active.delete(key);

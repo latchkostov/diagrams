@@ -55,6 +55,16 @@ describe("fault overlays", () => {
       action: { do: "fault", fault: { kind: "link", edge: "ab", cut: i % 2 === 0 } },
     }));
     expect(faultTimelineProblem(d, sim)).toMatch(/too many nodes/);
+    // Equivalent active steps with reordered properties charge only one effective change.
+    sim.timeline = timeline.slice(0, 201).map((step, i) => ({
+      ...step,
+      action: {
+        do: "fault",
+        fault: i % 2 ? { kind: "fail", node: "worker", rate: 0.5 } : { rate: 0.5, node: "worker", kind: "fail" },
+      },
+    }));
+    expect(faultTimelineProblem(d, sim)).toBeUndefined();
+    expect(() => createSimulationRun(d, sim)).not.toThrow();
   });
   it("reports the actual connection and resolved fault cause for each loss", () => {
     const losses: import("./types").LossProvenance[] = [];

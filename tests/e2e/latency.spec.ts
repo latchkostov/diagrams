@@ -1,5 +1,64 @@
 import { pseudoText } from "../../src/i18n/pseudo";
+import type { Page } from "@playwright/test";
 import { test, expect, gotoLive, waitForCameraIdle, waitForStableViewport, expectNoErrors } from "./fixtures";
+
+async function editableLatencyDetails(page: Page) {
+  await page.setViewportSize({ width: 1280, height: 400 });
+  await page.addInitScript(() => localStorage.setItem("diagrams.locale", "en-XA"));
+  await gotoLive(page, "./?view=canvas&example=where-the-time-goes&sim=billing-spike&live=1&paused=1");
+  const input = page.getByTestId("live-timeline-input");
+  await input.fill("1000");
+  await input.press("ArrowRight");
+  await waitForCameraIdle(page);
+  const node = page.getByTestId("node-billing");
+  await node.hover();
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, -1600);
+  await page.keyboard.up("Control");
+  await waitForStableViewport(page);
+  await node.click();
+  await node.evaluate((el) => el.parentElement?.focus());
+  const detail = page.getByTestId("node-detail-billing");
+  await expect(detail).toBeVisible();
+  await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  return { node, detail };
+}
+
+test("editable latency details scroll with ArrowDown without moving the selected node", async ({ page }) => {
+  const { node, detail } = await editableLatencyDetails(page);
+  await detail.focus();
+  await expect(detail).toBeFocused();
+  const position = () => node.evaluate((el) => el.parentElement?.style.transform);
+  const before = await position();
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  expect(await position()).toBe(before);
+});
+
+test("editable latency details scroll with Space without changing playback", async ({ page }) => {
+  const { detail } = await editableLatencyDetails(page);
+  await detail.focus();
+  await expect(detail).toBeFocused();
+  const playback = await page.getByTestId("live-play").getAttribute("data-state");
+  if (playback === null) throw new Error("Missing playback state");
+  await page.keyboard.press("Space");
+  await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", playback);
+});
+
+test("editable latency details join Tab reading order before the next node", async ({ page }) => {
+  const { node, detail } = await editableLatencyDetails(page);
+  await page.keyboard.press("Tab");
+  await expect(detail).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => node.evaluate((el) => document.activeElement?.contains(el))).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect(detail).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect
+    .poll(() => page.getByTestId("node-receipts").evaluate((el) => document.activeElement?.contains(el)))
+    .toBe(true);
+});
 
 for (const locale of ["en-XA", "ar"]) {
   test(`latency hover fits the canvas in ${locale}`, async ({ page }) => {

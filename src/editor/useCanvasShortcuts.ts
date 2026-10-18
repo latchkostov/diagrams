@@ -14,7 +14,8 @@ export type NavStep = "next" | "prev" | Toward | "edge-out" | "edge-in";
 const onCanvasItem = (t: EventTarget | null) =>
   t instanceof Element &&
   !!t.closest('[data-testid="canvas-wrap"]') &&
-  (t.matches('[data-testid="canvas-wrap"]') || !!t.closest(".react-flow__node, .react-flow__edge")) &&
+  (t.matches('[data-testid="canvas-wrap"]') ||
+    !!t.closest(".react-flow__node, .react-flow__edge, [data-live-node-detail]")) &&
   !isEditableTarget(t);
 
 /** If no `paste` event follows Ctrl+V within this time, paste the internal clipboard. */
@@ -28,7 +29,7 @@ export const inCanvas = (target: EventTarget | null) =>
   target instanceof Element &&
   !!target.closest('[data-testid="canvas-wrap"]') &&
   !target.closest(
-    'button, input, textarea, select, a, [contenteditable="true"], [role="button"], [role="radio"], [role="slider"], [role="menu"], [role="menuitem"], [role="combobox"], [role="listbox"], [role="switch"], [role="checkbox"], [role="spinbutton"], [role="tab"], [role="option"], [role="menuitemcheckbox"], [role="menuitemradio"], summary',
+    'button, input, textarea, select, a, [contenteditable="true"], [data-canvas-reading-region], [role="button"], [role="radio"], [role="slider"], [role="menu"], [role="menuitem"], [role="combobox"], [role="listbox"], [role="switch"], [role="checkbox"], [role="spinbutton"], [role="tab"], [role="option"], [role="menuitemcheckbox"], [role="menuitemradio"], summary',
   );
 const SELECTION_SHORTCUTS = new Set([
   "delete",

@@ -1080,7 +1080,9 @@ function CanvasInner({
                 preventScrolling={!readOnly || !!viewer?.wheel}
                 // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
                 // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
-                panOnDrag={editGestures ? PAN_MIDDLE : true}
+                panOnDrag={editGestures && !spaceHeld ? PAN_MIDDLE : true}
+                // usePanKeys owns Space; React Flow's global listener would cancel reading-region scrolling.
+                panActivationKeyCode={null}
                 selectionOnDrag={editGestures}
                 selectionKeyCode={editGestures ? null : "Shift"}
                 multiSelectionKeyCode={editGestures ? MULTI_SELECT_KEYS : undefined}

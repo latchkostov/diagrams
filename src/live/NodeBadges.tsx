@@ -488,12 +488,8 @@ const NodeBadge = memo(function NodeBadge({
           aria-label={hasLatency ? t("latency.heading") : undefined}
           tabIndex={hasLatency ? 0 : undefined}
           data-live-node-detail={hasLatency ? node.id : undefined}
+          data-canvas-reading-region={hasLatency ? "" : undefined}
           data-testid={`node-detail-${node.id}`}
-          onKeyDown={(event) => {
-            if (!hasLatency || (event.key !== "Home" && event.key !== "End")) return;
-            event.preventDefault();
-            event.currentTarget.scrollTop = event.key === "Home" ? 0 : event.currentTarget.scrollHeight;
-          }}
         >
           {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
           {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}
