@@ -113,6 +113,8 @@ export interface FocusMove {
   select?: "all" | "end";
   /** Again a frame later, unless input came first or focus is already there (a closing menu took it back). */
   again?: boolean;
+  /** This is that second attempt: it doesn't count as pending, and input stands it down. */
+  retry?: boolean;
   /**
    * The caller brings the target into view itself (keyboard navigation, Undo): the focus doesn't also ask the
    * camera for a focus reveal.
@@ -182,7 +184,9 @@ export type FocusEvent =
   | { type: "focus.entered"; id: string }
   /** A selection target resolved to this node (Undo's first selected node in Tab's order). */
   | { type: "focus.resolved"; id: string }
-  /** The pending move ran (or gave up): nothing is pending. */
+  /** The pending move ran: it goes again a frame later if it asked to (`again`), else nothing is pending. */
+  | { type: "focus.ran" }
+  /** The pending move gave up (its target has gone, it was claimed elsewhere): nothing is pending. */
   | { type: "focus.done" }
   /** A press or a key anywhere: a move's second attempt stands down. */
   | { type: "input" };
