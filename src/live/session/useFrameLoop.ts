@@ -5,7 +5,7 @@ import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { useSettings } from "../../harness/settings";
 import { LiveController } from "../controller";
 import { Decorator, type DecorationStats } from "../decorations";
-import { createFrameClock } from "../frameClock";
+import { createFrameClock, type FrameClock } from "../frameClock";
 import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "../layout";
 import { createLiveRenderer, pickRenderer, type LiveRenderer, type RendererKind } from "../liveRenderer";
 import { DEFAULT_TOKENS, readParticleTokens, type Rect } from "../particleRenderer";
@@ -131,9 +131,7 @@ export function useFrameLoop({
     const tick = (now: number) => {
       const step = clock.step(now);
       const dt = step.visual;
-      const engine = performance.now();
-      controller.advance(step.sim);
-      clock.spent(step.sim, performance.now() - engine);
+      advanceFrame(controller, clock, step.sim);
       const gen = controller.getState().generation;
       if (gen !== generation) {
         generation = gen;
@@ -233,4 +231,13 @@ export function useFrameLoop({
   }, [controller, store, canvas]);
 
   return { setCanvas, setOverlay, rendererKind };
+}
+
+/** Sample engine cost only when an advance moves simulated time, retaining the estimate while live waits. */
+export function advanceFrame(controller: LiveController, clock: FrameClock, wallMs: number): void {
+  const before = controller.snapshot().time;
+  const engine = performance.now();
+  controller.advance(wallMs);
+  const engineMs = performance.now() - engine;
+  if (controller.snapshot().time > before) clock.spent(wallMs, engineMs);
 }
