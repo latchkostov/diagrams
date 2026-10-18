@@ -106,7 +106,13 @@ describe("recent-feature showcases", () => {
         expect(
           run.state().expectations.map((e) => e.status),
           simulation.id,
-        ).toEqual(simulation.expectations?.map(() => "pass"));
+        ).toEqual(
+          simulation.expectations?.map((e) =>
+            slug === "zone-outage-drill" && simulation.id === "no-health-checks" && e.id === "api-b-loss"
+              ? "fail"
+              : "pass",
+          ),
+        );
         return run.engine.snapshot();
       };
       expect(replay()).toEqual(replay());

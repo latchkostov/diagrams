@@ -122,6 +122,17 @@
               "orders"
             ]
           }
+        },
+        {
+          "atMs": 9000,
+          "action": {
+            "do": "note",
+            "text": "Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.",
+            "focus": [
+              "billing",
+              "receipts"
+            ]
+          }
         }
       ],
       "expectations": [

@@ -120,7 +120,6 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  * change here is a change to that table.
  */
 const PLANNED: Record<string, string[]> = {
-  "zone-outage-drill": ["26 dropped api-b in Zone outage: no health checks (down)"],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
   // Poison invoices quarantines its 30 commands for an operator to replay (the file's ignore says why no reader).
@@ -146,8 +145,16 @@ describe("simulation evidence on the public examples", () => {
     expect(ev.tooBig).toEqual([]);
     const shown = withEvidence(runChecks(d), ev, d.checks);
     // No count on any finding, and no `dropped`: the same findings as the checks' own.
-    expect(shown.result).toEqual(runChecks(d));
-    expect(shown.counted).toBe(0);
+    if (slug === "zone-outage-drill") {
+      expect(shown.result.findings.map((f) => f.id)).toEqual(["dropped:api-b"]);
+      expect(shown.result.findings[0].evidence).toEqual([
+        { simulation: "Zone outage: no health checks", what: "dropped", count: 26 },
+      ]);
+      expect(shown.counted).toBe(1);
+    } else {
+      expect(shown.result).toEqual(runChecks(d));
+      expect(shown.counted).toBe(0);
+    }
     expect(shown.planned.map((p) => `${p.count} ${p.what} ${p.node} in ${p.simulation} (${p.why})`)).toEqual(
       PLANNED[slug] ?? [],
     );

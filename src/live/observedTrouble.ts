@@ -15,6 +15,8 @@ const SAMPLE_MS = 1_000;
 
 export type TroubleKind = "down" | "dropping" | "lag";
 export type TroubleAction =
+  | { kind: "restore-boundary"; boundary: string; label: string }
+  | { kind: "clear-fault"; node: string }
   | { kind: "revive"; node: string }
   | { kind: "add-consumer"; node: string }
   | { kind: "add-dlq"; node: string }

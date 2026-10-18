@@ -284,6 +284,10 @@
           {
             "atMs": 3000,
             "action": { "do": "note", "text": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.", "focus": ["billing", "orders"] }
+          },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.", "focus": ["billing", "receipts"] }
           }
         ],
         "expectations": [

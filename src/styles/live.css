@@ -935,7 +935,7 @@
 }
 
 .lv-sim {
-  flex: 0 1 200px;
+  flex: 1 1 200px;
   min-width: 112px;
   border-color: var(--line);
   background: var(--surface);
@@ -2572,11 +2572,11 @@ details[open] > summary .lv-disclosure-chevron {
   overflow: hidden;
 }
 .lv-detail.is-summary > :not(.lv-latency):not(.lv-detail-more),
-.lv-detail.is-summary .lv-latency > :not(.lv-latency-strip) {
+.lv-detail.is-summary .lv-latency > strong {
   display: none;
 }
 .lv-detail.is-summary {
-  overflow: hidden;
+  overflow: auto;
 }
 .lv-detail.is-summary .lv-latency {
   margin-block: 0;
@@ -2604,4 +2604,9 @@ details[open] > summary .lv-disclosure-chevron {
 
 .lv-marker.is-fault {
   background: var(--status-down);
+}
+
+/* Latency leads the hover; the configured estimate remains as secondary context. */
+.lv-detail.has-latency .planning-explanation > :not([data-testid="planning-arithmetic"]) {
+  display: none;
 }

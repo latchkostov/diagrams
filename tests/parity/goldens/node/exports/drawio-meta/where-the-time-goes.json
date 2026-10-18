@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "4ae4e4255f58ac90e178e3c9ddde27a4b834e71f515d4aa25c47b46602cd3fbd",
-    "bytes": 13414,
+    "sha256": "64eb1621ff7720b5ec503369a426775b2157650a36b1d7a89096b5b35ae8ba05",
+    "bytes": 13685,
     "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.email": "generic-email ce10423898f3e51d", "kafka.topic": "kafka 81e432d1da74c5fe", "service.dotnet": "dotnet 625b7d68f63c47d9" }
   },
   "readBack": [
@@ -88,6 +88,10 @@
               {
                 "atMs": 3000,
                 "action": { "do": "note", "text": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.", "focus": ["billing", "orders"] }
+              },
+              {
+                "atMs": 9000,
+                "action": { "do": "note", "text": "Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.", "focus": ["billing", "receipts"] }
               }
             ],
             "expectations": [

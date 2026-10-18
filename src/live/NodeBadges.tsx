@@ -1,3 +1,4 @@
+import { nodeFaultLabel } from "../model/faultWords";
 import { compileTopology } from "../sim/topology";
 import { brokerAssignments } from "../sim/brokerAssignments";
 import { resolveMultiplier } from "../sim/units";
@@ -107,6 +108,8 @@ export function NodeBadges({
             node={n}
             s={s}
             showOutageLoss={boundaryFault}
+            fault={nodeFaultLabel(n.id, state.snapshot.faults)}
+            properties={ui.canEdit && !presenting}
             peak={peak}
             hovered={hovered === n.id}
             cap={capacity?.nodes[n.id]}
@@ -183,6 +186,8 @@ function groupNames(d: DiagramFile, nodeId: string, topology: ReturnType<typeof 
 }
 
 interface BadgeProps {
+  fault: string;
+  properties: boolean;
   node: DiagramFlowNode;
   s: NodeSimState;
   peak: number;
@@ -211,6 +216,8 @@ const NodeBadge = memo(function NodeBadge({
   brokerSpec,
   currentModel,
   showOutageLoss,
+  fault,
+  properties,
 }: BadgeProps) {
   useLocale();
   const domNode = useStore((store) => store.domNode);
@@ -223,7 +230,19 @@ const NodeBadge = memo(function NodeBadge({
     const card = domNode.querySelector<HTMLElement>(`[data-testid="node-${CSS.escape(node.id)}"]`);
     if (!tooltip || !card) return;
     const place = () => {
-      const pane = domNode.getBoundingClientRect(),
+      const bounds = domNode.getBoundingClientRect();
+      const overlays = document.querySelectorAll<HTMLElement>(
+        '[data-testid="live-controls"], [data-testid="live-note"]',
+      );
+      const bottom = Math.min(bounds.bottom, ...Array.from(overlays).map((el) => el.getBoundingClientRect().top - 8));
+      const pane = {
+          left: bounds.left,
+          right: bounds.right,
+          top: bounds.top,
+          bottom,
+          width: bounds.width,
+          height: bottom - bounds.top,
+        },
         box = card.getBoundingClientRect();
       const zoom = card.offsetWidth ? box.width / card.offsetWidth : 1;
       const detailScale = tooltip.offsetWidth ? tooltip.getBoundingClientRect().width / tooltip.offsetWidth : zoom;
@@ -284,7 +303,7 @@ const NodeBadge = memo(function NodeBadge({
   // throughput readout; a broker keeps its lag only while something is waiting.
   const capShown = !!cap && cap.level !== "idle";
   const latencyBadge = s.latency && (s.role === "sink" || !!cap);
-  const showMetric = active && !latencyBadge && !(capShown && (!broker || s.backlog === 0));
+  const showMetric = s.status !== "down" && active && !latencyBadge && !(capShown && (!broker || s.backlog === 0));
   const held = broker ? heldWords(s) : null;
   // A topic nobody reads says so with its count; the heat map's chip would only repeat it as a rate.
   const unread = !!held?.lead;
@@ -351,8 +370,13 @@ const NodeBadge = memo(function NodeBadge({
         </div>
       )}
 
-      {(active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
+      {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
         <div className="lv-strip">
+          {fault && (
+            <span className="lv-metric is-failover" data-testid={`node-fault-${node.id}`}>
+              {fault}
+            </span>
+          )}
           {!showMetric ? null : broker ? (
             <span
               className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`}
@@ -372,12 +396,12 @@ const NodeBadge = memo(function NodeBadge({
               <b className="mono">{formatRate(s.throughput)}</b>
             </span>
           )}
-          {latencyBadge && s.latency && (
+          {s.status !== "down" && latencyBadge && s.latency && (
             <span className="lv-metric mono" data-testid={`node-latency-${node.id}`} title={latencySampling(s.latency)}>
               {latencyLabel(s.latency)}
             </span>
           )}
-          {cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
+          {s.status !== "down" && cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
           {blocked > 0 && (
             <span
               className="lv-metric is-blocked"
@@ -419,11 +443,14 @@ const NodeBadge = memo(function NodeBadge({
           role="tooltip"
           data-testid={`node-detail-${node.id}`}
         >
+          {s.latency && <LatencyReadout id={node.id} latency={s.latency} compact />}
+          {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}
           <HoverExplanation id={node.id} />
-          {s.latency && <LatencyReadout id={node.id} latency={s.latency} />}
-          <small className="lv-detail-more" data-testid="node-detail-more">
-            {t("planning.moreInProperties")}
-          </small>
+          {properties && (
+            <small className="lv-detail-more" data-testid="node-detail-more">
+              {t("planning.moreInProperties")}
+            </small>
+          )}
           {!explained && (
             <>
               <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />

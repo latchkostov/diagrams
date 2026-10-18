@@ -1,3 +1,5 @@
+import { useLayoutEffect } from "react";
+import { useInteraction } from "../canvas/interaction";
 import { t, useLocale } from "../i18n";
 import type { LoadStatus } from "../lib/lazyLoad";
 import { LiveIcon } from "./icons";
@@ -5,11 +7,21 @@ import { usePanelEscape } from "./usePanelEscape";
 export function LoadingPanel({ onClose, failed, retry }: LoadStatus & { onClose(): void }) {
   useLocale();
   usePanelEscape(onClose);
+  const interaction = useInteraction();
+  useLayoutEffect(() => {
+    interaction?.dispatch({
+      type: "panel.field",
+      panel: "sim-panel",
+      field: failed ? "sim-panel-load-retry" : "sim-panel-heading",
+    });
+  }, [interaction, failed]);
   return (
     <aside className="lv-panel" data-testid="sim-panel" data-editor-overlay aria-label={t("htmlExport.simulations")}>
       <header className="lv-panel-head">
         <LiveIcon name="storm" size={16} />
-        <strong>{t("htmlExport.simulations")}</strong>
+        <strong tabIndex={-1} data-testid="sim-panel-heading">
+          {t("htmlExport.simulations")}
+        </strong>
         <button
           className="lv-btn lv-panel-close"
           onClick={onClose}

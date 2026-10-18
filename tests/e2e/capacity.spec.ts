@@ -393,7 +393,7 @@ test.describe("outages in the run (UX gate 3)", () => {
     await expect(page.getByTestId("trouble-detail")).toContainText(
       "Messages wait in orders.created.v1 until it's back",
     );
-    await expect(page.getByTestId("trouble-action")).toHaveText(/Revive/);
+    await expect(page.getByTestId("trouble-action")).toHaveText(/Restore/);
     await expect(page.getByTestId("capacity-label-payments")).toContainText("Down · ");
     await expect(page.getByTestId("capacity-label-payments")).toContainText("waiting in orders.created.v1");
     // Payments comes back at 12.0s.

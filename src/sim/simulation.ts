@@ -147,7 +147,7 @@ export function createSimulationRun(
       step.action.do === "note"
         ? step.action.text
         : step.action.do === "fault"
-          ? faultLabel(step.action.fault, step.action.drill)
+          ? faultLabel(step.action.fault, step.action.drill, diagram)
           : `${step.action.do}: ${step.action.node}`,
   }));
   for (const profile of simulation.traffic) {
