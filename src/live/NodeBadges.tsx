@@ -445,7 +445,8 @@ const NodeBadge = memo(function NodeBadge({
               {latencyLabel(s.latency)}
             </span>
           )}
-          {s.status !== "down" && cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
+          {/* Capacity describes the current outage and waiting traffic, unlike stale throughput/latency. */}
+          {cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
           {blocked > 0 && (
             <span
               className="lv-metric is-blocked"

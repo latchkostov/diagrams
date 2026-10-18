@@ -854,8 +854,9 @@ for (const exit of ["toggle", "keyboard"] as const) {
     try {
       await gotoCanvas(page, SLUG);
       await page.keyboard.press("ControlOrMeta+k");
-      await page.getByTestId("command-input").fill("black friday");
-      await page.getByTestId("command-item-sim:black-friday").click();
+      // Launch a non-default simulation so replaying a cancelled request is observable.
+      await page.getByTestId("command-input").fill("payments service goes down");
+      await page.getByTestId("command-item-sim:payments-outage").click();
       await expect.poll(() => requested).toBe(true);
       const toggle = page.getByTestId("live-toggle");
       await expect(toggle).toHaveAttribute("aria-pressed", "true");
@@ -866,7 +867,8 @@ for (const exit of ["toggle", "keyboard"] as const) {
       // Re-entering proves the cancelled request cannot replay when the session finally mounts.
       await toggle.click();
       await expect(page.getByTestId("live-hud")).toBeVisible();
-      await expect(page.getByTestId("live-sim-picker")).not.toHaveValue("black-friday");
+      await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+      await expect(page.getByTestId("live-sim-picker")).not.toHaveValue("payments-outage");
     } finally {
       release();
     }
