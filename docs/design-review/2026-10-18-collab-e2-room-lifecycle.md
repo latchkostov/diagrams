@@ -13,6 +13,13 @@ the chip in the save-status slot, the join dialog and the joiner's wait.
   room, until the room's diagram arrives as a new entry in Your diagrams.
 - Nothing moves the camera or focus on a peer's change; a room's canvas mounts once when it opens (a local action).
 
+**Fixed in review (PR #174)**
+
+- A joiner's waiting view takes focus when the dialog and canvas go together (focus no longer falls to the page).
+- "Could not connect" in the chip reaches 4.5:1 or better in the light theme (darker than `--danger` alone).
+- A room left running for another diagram no longer looks like the displayed diagram's: the chip reads
+  "In a room: <title>" with Show and Leave room, and no Copy link.
+
 **Interim, for E4**
 
 - The chip's Copy link and Leave room are inline buttons. On a phone the chip takes its own row and its text

@@ -312,17 +312,43 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
 }
 
 /** In the top bar's save-status slot while a room is open: who's here, the link, and Leave. */
-export function RoomChip({ room }: { room: RoomLifecycle }) {
+export function RoomChip({ room, here, onShow }: { room: RoomLifecycle; here: boolean; onShow: () => void }) {
   useLocale();
   const snap = useRoom(room);
   if (!snap.open) return null;
-  return <OpenChip room={room} open={snap.open} />;
+  return <OpenChip room={room} open={snap.open} here={here} onShow={onShow} />;
 }
 
-function OpenChip({ room, open }: { room: RoomLifecycle; open: OpenRoom }) {
+function OpenChip({
+  room,
+  open,
+  here,
+  onShow,
+}: {
+  room: RoomLifecycle;
+  open: OpenRoom;
+  here: boolean;
+  onShow: () => void;
+}) {
   useSessionState(open.session);
   const [copied, setCopied] = useState(false);
   const session = open.session;
+  if (!here)
+    // The room goes on for another diagram: name it, and offer the way back rather than its link.
+    return (
+      <div className="ix-shared room-chip" role="status" data-testid="room-chip" data-state="elsewhere">
+        <span className="room-dot" aria-hidden="true" />
+        <span data-testid="room-chip-text">
+          {t("collab.chipElsewhere", { title: session.doc.project().diagram?.title ?? "" })}
+        </span>
+        <button className="ix-shared-keep" onClick={onShow} data-testid="room-show">
+          {t("collab.show")}
+        </button>
+        <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
+          {t("collab.leave")}
+        </button>
+      </div>
+    );
   const peers = session.transport.peers().length;
   const state = session.connectionFailed ? "failed" : peers ? "here" : !session.hasDocument ? "connecting" : "waiting";
   return (
@@ -369,8 +395,13 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
   useLocale();
   const snap = useRoom(room);
   const session = snap.open?.session;
+  const region = useRef<HTMLDivElement>(null);
+  // Joining removes the dialog and the canvas together: focus that fell to the page lands here instead.
+  useEffect(() => {
+    if (!document.activeElement || document.activeElement === document.body) region.current?.focus();
+  }, []);
   return (
-    <div className="room-connecting" data-testid="room-connecting" role="status">
+    <div ref={region} tabIndex={-1} className="room-connecting" data-testid="room-connecting" role="status">
       <strong>{t("collab.connectingTitle")}</strong>
       <p className="ix-muted">{t("collab.connectingHint")}</p>
       {session && <ConnectingFailure room={room} session={session} />}

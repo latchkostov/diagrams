@@ -81,6 +81,19 @@ class Library implements RoomLibrary {
   privacy(slug: string) {
     return this.flags.get(slug) ?? {};
   }
+  markPrivate(slug: string) {
+    this.flags.set(slug, { ...this.privacy(slug), private: true });
+    this.changed();
+  }
+  private watchers = new Set<() => void>();
+  watch(fn: () => void) {
+    this.watchers.add(fn);
+    return () => void this.watchers.delete(fn);
+  }
+  /** Your diagrams changed (here, or in another tab of this browser). */
+  changed() {
+    for (const fn of [...this.watchers]) fn();
+  }
 }
 
 interface Browser {
@@ -92,7 +105,12 @@ interface Browser {
   shown: string[];
 }
 
-function browser(net: MemoryNetwork, clock: FakeClock, seed: number, from?: Browser): Browser {
+function browser(
+  net: MemoryNetwork,
+  clock: FakeClock,
+  seed: number,
+  from?: Partial<Pick<Browser, "library" | "store" | "tab">>,
+): Browser {
   const b: Browser = {
     library: from?.library ?? new Library(),
     store: from?.store ?? new Store(),
@@ -116,6 +134,13 @@ function browser(net: MemoryNetwork, clock: FakeClock, seed: number, from?: Brow
   b.room.configure({ navigate: (slug) => b.shown.push(slug) });
   onTestFinished(() => b.room.wipe());
   return b;
+}
+
+/** Another tab of `b`'s browser: the same recovery records (its own write hold), its own tab and Your diagrams. */
+function sibling(net: MemoryNetwork, clock: FakeClock, seed: number, b: Browser): Browser {
+  const store = new Store();
+  store.records = b.store.records;
+  return browser(net, clock, seed, { store, library: new Library() });
 }
 
 const linkOf = (b: Browser) => formatRoomLink("https://livediagrams.test/", b.room.getSnapshot().open!.link);
@@ -300,7 +325,7 @@ describe("leaving and reloading", () => {
     expect(reloaded.library.entries.size).toBe(1);
   });
 
-  it("an edit the checkpoint hadn't saved before a reload is replayed from the copy", async () => {
+  it("an edit the checkpoint hadn't saved before a reload is merged back in", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();
     const a = browser(net, clock, 15),
@@ -310,21 +335,72 @@ describe("leaving and reloading", () => {
     await settle(net, a, b);
     let release = () => {};
     a.store.hold = new Promise((resolve) => (release = resolve));
-    // The peer doesn't hear it either (it goes out with the page): only the copy has it.
+    // The peer doesn't hear it either (it goes out with the page): only this tab has it.
     net.partition([[...a.transports.map((t) => t.self)], [...b.transports.map((t) => t.self)]]);
     edit(a, (d) => ({ ...d, title: "Typed just before reload" }));
     a.room.pageHidden();
-    expect(a.tab.read()?.ahead).toBe(true);
+    expect(a.tab.read()?.pending).toBeDefined();
     // The page went before its checkpoint write finished.
-    const stalled = a.store;
     const reloaded = browser(net, clock, 17, { ...a, store: new Store() });
-    reloaded.store.records = new Map(stalled.records);
+    reloaded.store.records = new Map(a.store.records);
     net.heal();
     await reloaded.room.resume();
     expect(titleOf(reloaded)).toBe("Typed just before reload");
     await settle(net, reloaded, b);
     expect(titleOf(b)).toBe("Typed just before reload");
     release();
+  });
+
+  it("reload preserves newer checkpoint state when pending edits outlive their write", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 30);
+    await start(a);
+    const link = linkOf(a);
+    let release = () => {};
+    a.store.hold = new Promise((resolve) => (release = resolve));
+    edit(a, (d) => ({ ...d, title: "A, pending at the reload" }));
+    a.room.pageHidden();
+    expect(a.tab.read()?.pending).toBeDefined();
+    // The held write completes after the page went...
+    release();
+    await a.room.getSnapshot().open!.session.leave();
+    // ...and another tab of this browser saves newer room state over it.
+    const other = sibling(net, clock, 31, a);
+    await join(other, link);
+    expect(titleOf(other)).toBe("A, pending at the reload");
+    edit(other, (d) => ({ ...d, title: "Newer, from another tab" }));
+    await settle(net, other);
+    await other.room.leave();
+    const reloaded = browser(net, clock, 32, a);
+    await reloaded.room.resume();
+    expect(titleOf(reloaded)).toBe("Newer, from another tab");
+  });
+
+  it("A's pending title and B's saved description both survive A's reload, on both peers", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 33);
+    await start(a);
+    const b = sibling(net, clock, 34, a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    net.partition([[...a.transports.map((t) => t.self)], [...b.transports.map((t) => t.self)]]);
+    a.store.hold = new Promise(() => {});
+    edit(a, (d) => ({ ...d, title: "A's pending title" }));
+    a.room.pageHidden();
+    edit(b, (d) => ({ ...d, description: "B's saved description" }));
+    await settle(net, b);
+    const store = new Store();
+    store.records = a.store.records;
+    const reloaded = browser(net, clock, 35, { ...a, store });
+    net.heal();
+    await reloaded.room.resume();
+    await settle(net, reloaded, b);
+    for (const peer of [reloaded, b]) {
+      expect(titleOf(peer)).toBe("A's pending title");
+      expect(session(peer).doc.project().diagram?.description).toBe("B's saved description");
+    }
   });
 
   it("an older copy than the checkpoint is never replayed over newer room state", async () => {
@@ -336,7 +412,7 @@ describe("leaving and reloading", () => {
     await settle(net, a);
     // The page was killed before the debounced copy was written: the copy is the older one.
     expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
-    expect(a.tab.read()?.ahead).toBeUndefined();
+    expect(a.tab.read()?.pending).toBeUndefined();
     const reloaded = browser(net, clock, 19, a);
     await reloaded.room.resume();
     expect(titleOf(reloaded)).toBe("Saved in the checkpoint");
@@ -380,6 +456,79 @@ describe("leaving and reloading", () => {
     await resuming;
     expect(reloaded.room.getSnapshot().open).toBeUndefined();
     expect(reloaded.tab.read()).toBeUndefined();
+  });
+
+  it("content pasted from a Private diagram leaves the room and keeps the copy Private", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 36);
+    const slug = await start(a);
+    const open = a.room.getSnapshot().open!;
+    const pasted = { ...canaryDiagram(), title: "With a Private paste", private: true };
+    // Only the canvas knew (its transient room flag): the binding refused the step and left the room.
+    a.room.configure({ capture: (s) => (s === slug ? pasted : undefined) });
+    open.editor.refusal = "private";
+    await open.session.leave();
+    expect(a.room.getSnapshot().open).toBeUndefined();
+    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "private", slug });
+    expect(a.library.privacy(slug).private).toBe(true);
+    expect(a.library.read(slug)?.title).toBe("With a Private paste");
+    expect(a.library.read(slug)?.private).toBeUndefined();
+  });
+
+  it("marking the room's diagram Private elsewhere leaves the room, with its canvas showing or not", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 37),
+      b = browser(net, clock, 38);
+    const slug = await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    const session = a.room.getSnapshot().open!.session;
+    // Another tab turns Private on: its storage event reaches this tab as a change to Your diagrams.
+    a.library.flags.set(slug, { private: true });
+    a.library.changed();
+    expect(a.room.getSnapshot().open).toBeUndefined();
+    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "private", slug });
+    expect(a.tab.read()).toBeUndefined();
+    await session.idle();
+    await settle(net, b);
+    expect(session.status).toBe("left");
+    expect(b.room.getSnapshot().open!.session.transport.peers()).toHaveLength(0);
+  });
+
+  it("an invitation in the address waits for an answer before this tab's earlier room resumes", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 39),
+      other = browser(net, clock, 40);
+    await start(a);
+    await start(other);
+    const invitation = new URL(linkOf(other));
+    a.room.pageHidden();
+    const reloaded = browser(net, clock, 41, a);
+    reloaded.room.readAddress({ hash: invitation.hash, pathname: "/", search: "" }, nohistory);
+    await reloaded.room.resume();
+    expect(reloaded.room.getSnapshot().prompt?.kind).toBe("join");
+    expect(reloaded.transports).toHaveLength(0);
+    // Don't join: the earlier room comes back.
+    reloaded.room.dismiss();
+    await expect.poll(() => reloaded.room.getSnapshot().open?.role).toBe("creator");
+  });
+
+  it("writes the copy only when the room changed", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 42);
+    await start(a);
+    let saves = 0;
+    const save = a.library.save.bind(a.library);
+    a.library.save = (slug, d) => (saves++, save(slug, d));
+    edit(a, (d) => ({ ...d, title: "One change" }));
+    a.room.flush();
+    a.room.flush();
+    a.room.flush();
+    expect(saves).toBe(1);
   });
 
   it("the open room's own link pasted into its tab changes nothing", async () => {

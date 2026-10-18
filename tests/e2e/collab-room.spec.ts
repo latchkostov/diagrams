@@ -260,7 +260,7 @@ const recoveryRecords = (page: Page) =>
     return counts;
   });
 
-test("Clear everything stops the room's writers, empties recovery and an old link restores nothing", async ({
+test("Clear everything stops the room's writers, an encryption started before it can't repopulate recovery, and an old link restores nothing", async ({
   browser,
   context,
   page,
@@ -315,20 +315,28 @@ test("Clear everything stops the room's writers, empties recovery and an old lin
     await late.getByTestId("room-join-accept").click();
     await expect(late.getByTestId("node-gateway")).toContainText("Before the wipe", { timeout: pageLoadTimeout() });
 
-    // A checkpoint write left pending in the wiping tab: its encryption is held until after the wipe.
-    await page.evaluate(() => {
+    // An encryption started before Clear everything, in the late tab: held at its entry until after the wipe.
+    expect(lateErrors).toEqual([]);
+    await late.evaluate(() => {
       const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
-      const w = window as unknown as { __releaseRecovery?: () => void };
+      const w = window as unknown as { __releaseRecovery: () => void; __recoveryHeld: number };
       let release: () => void = () => {};
       const held = new Promise<void>((resolve) => (release = resolve));
       w.__releaseRecovery = release;
+      w.__recoveryHeld = 0;
       crypto.subtle.encrypt = (async (algorithm: AesGcmParams, key: CryptoKey, data: BufferSource) => {
         const aad = algorithm.additionalData ? new TextDecoder().decode(algorithm.additionalData as ArrayBuffer) : "";
-        if (aad.startsWith("livediagrams/collab/storage/")) await held;
+        if (aad.startsWith("livediagrams/collab/storage/")) {
+          w.__recoveryHeld++;
+          await held;
+        }
         return encrypt(algorithm, key, data);
       }) as typeof crypto.subtle.encrypt;
     });
-    await rename(page, "orders", "Pending at the wipe");
+    const held = () => late.evaluate(() => (window as unknown as { __recoveryHeld: number }).__recoveryHeld);
+    await rename(guest, "orders", "Pending at the wipe");
+    await expect(late.getByTestId("node-orders")).toContainText("Pending at the wipe");
+    await expect.poll(held).toBeGreaterThan(0);
 
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-privacy").click();
@@ -337,14 +345,20 @@ test("Clear everything stops the room's writers, empties recovery and an old lin
     await expect(page.getByTestId("room-chip")).toHaveCount(0, { timeout: pageLoadTimeout() });
     await expect.poll(() => recoveryRecords(late)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
 
-    // The late tab takes the room's edits on; its checkpoint writes abort against the wipe's marker.
-    expect(lateErrors).toEqual([]);
+    // The held encryption completes in the still-open document: its write aborts against the wipe's marker.
     const attempts = () => late.evaluate(() => (window as unknown as { __recoveryWrites: number }).__recoveryWrites);
     const before = await attempts();
+    await late.evaluate(() => (window as unknown as { __releaseRecovery: () => void }).__releaseRecovery());
+    await expect.poll(attempts).toBeGreaterThan(before);
+    expect(await recoveryRecords(late)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
+
+    // The late tab takes the room's later edits on; its checkpoint writes abort too.
+    const after = await attempts();
     await rename(guest, "gateway", "Written after the wipe");
     await expect(late.getByTestId("node-gateway")).toContainText("Written after the wipe");
-    await expect.poll(attempts).toBeGreaterThan(before);
+    await expect.poll(attempts).toBeGreaterThan(after);
     await expect.poll(() => recoveryRecords(late)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
+    expect(lateErrors).toEqual([]);
     await late.close();
     await guest.close();
 

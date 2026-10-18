@@ -24,8 +24,9 @@
   opacity: 0.45;
 }
 
+/* Darker than --danger alone: 4.5:1 or better on the chip's tint in both themes. */
 .room-chip[data-state="failed"] {
-  color: var(--danger);
+  color: color-mix(in oklab, var(--danger) 72%, var(--text));
 }
 
 .room-name {

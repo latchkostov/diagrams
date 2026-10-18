@@ -1,7 +1,7 @@
+import { base64UrlToBytes, bytesToBase64Url } from "../../interop/codec";
 import { canCollaborate, type CanvasPrivacyState } from "../../lib/localOnly";
 import type { DiagramFile } from "../../model/types";
 import { realClock, type Clock } from "../clock";
-import { commandsFromDiff } from "../commands";
 import type { CollabDoc } from "../doc";
 import { CollaborativeEditorRoom } from "../editorRoom";
 import { deriveRoomKeys, newRoom, type RoomKeys } from "../keys";
@@ -26,10 +26,13 @@ import { recordRoom, roomValue, type RoomRole, type TabRoomRecord, type TabRoomS
 //   when the page hides or the room is left), so leaving, or the room failing, keeps your copy. The encrypted
 //   checkpoint (../recovery.ts) keeps the room's CRDT state for a rejoin; the copy is plain, like any diagram.
 // - A reload keeps this tab in the room (./tabRoom.ts): it reopens the room from the checkpoint, without asking
-//   again. When the copy is newer than the checkpoint (an edit just before the reload), the difference is replayed
-//   into the room as an ordinary edit.
+//   again. Edits the checkpoint hadn't saved when the page went are kept beside the record as one CRDT update and
+//   merged on the way back: a merge only adds those edits, so newer room state saved meanwhile (by a peer, by another
+//   tab) is never reverted. The plain copy in Your diagrams is never replayed into the room.
 // - Private: a Private diagram never starts or joins a room (checked before anything is contacted), and turning
-//   Private on in a room leaves it (the binding refuses the next step). The copy keeps the canvas as it is then.
+//   Private on in a room leaves it: the binding refuses the canvas's next step, and Your diagrams' changes (this tab or
+//   another) are watched whether or not the room's canvas is showing. The entry is marked Private before the canvas
+//   is handed back, so the kept copy stays Private.
 
 export interface RoomLibrary {
   /** A new entry in Your diagrams for a joiner's copy; returns its slug. Throws when storage is full. */
@@ -39,6 +42,10 @@ export interface RoomLibrary {
   /** The entry's current copy; undefined once the entry is gone. */
   read(slug: string): DiagramFile | undefined;
   privacy(slug: string): CanvasPrivacyState;
+  /** Marks the entry Private (the copy kept after a room left because its content became Private). */
+  markPrivate(slug: string): void;
+  /** Calls `fn` when Your diagrams change, in this tab or another; returns an unsubscribe. */
+  watch(fn: () => void): () => void;
 }
 
 export interface RoomDeps {
@@ -63,6 +70,8 @@ export interface OpenRoom {
   /** Changes whenever the canvas must mount a new editor (a new session on the same room). */
   mount: number;
   link: RoomLink;
+  /** The session has the room's document (a joiner, or a reload without its checkpoint, waits for a peer's). */
+  ready: boolean;
 }
 
 export type RoomPrompt =
@@ -88,8 +97,12 @@ interface Active {
   mount: number;
   stops: (() => void)[];
   mirror?: () => void;
-  /** The copy in Your diagrams is newer than the encrypted checkpoint. */
-  ahead: boolean;
+  /** Edits not yet in the encrypted checkpoint, as recorded for a reload (base64url CRDT update). */
+  pending?: string;
+  /** Document changes seen, and the count the copy in Your diagrams was last written at. */
+  changes: number;
+  mirrored: number;
+  ready: boolean;
   leaving: boolean;
   suspended: boolean;
 }
@@ -100,7 +113,7 @@ interface OpenRequest {
   slug?: string;
   initial?: DiagramFile;
   alias?: string;
-  /** Reopening after a reload: replay a newer copy. */
+  /** Reopening after a reload: merge its unsaved edits. */
   record?: TabRoomRecord;
   /** Reopening after the page came back from the back/forward cache: the same document. */
   doc?: CollabDoc;
@@ -153,7 +166,15 @@ export class RoomLifecycle {
   }
 
   private openSnapshot(a: Active): OpenRoom {
-    return { role: a.role, slug: a.slug, session: a.session, editor: a.editor, mount: a.mount, link: a.link };
+    return {
+      role: a.role,
+      slug: a.slug,
+      session: a.session,
+      editor: a.editor,
+      mount: a.mount,
+      link: a.link,
+      ready: a.ready,
+    };
   }
 
   private notice(kind: RoomNotice, slug?: string): RoomSnapshot["notice"] {
@@ -188,10 +209,11 @@ export class RoomLifecycle {
     this.set({ prompt: { kind: "start" } });
   }
 
-  /** Don't join, Cancel, or closing a link's error: nothing is left behind. */
+  /** Don't join, Cancel, or closing a link's error: nothing is left behind (a room this tab was in comes back). */
   dismiss(): void {
     this.invite = undefined;
     this.set({ prompt: undefined });
+    void this.resume();
   }
 
   /** A suggested name for the start dialog. */
@@ -219,7 +241,8 @@ export class RoomLifecycle {
 
   /** On load: this tab's room before a reload, reopened without asking again. */
   async resume(): Promise<void> {
-    if (this.active || this.snap.opening) return;
+    // An invitation (or a link's error) in the address comes first: it waits for the person's answer.
+    if (this.active || this.snap.opening || (this.snap.prompt && this.snap.prompt.kind !== "start")) return;
     const record = this.deps.tab.read();
     if (!record) return;
     const link = recordRoom(record);
@@ -278,14 +301,23 @@ export class RoomLifecycle {
       alias: session.me.alias,
       mount: ++this.mounts,
       stops: [],
-      ahead: false,
+      changes: 0,
+      mirrored: 0,
+      ready: session.hasDocument,
       leaving: false,
       suspended: false,
     };
     this.active = a;
-    if (o.record?.ahead && a.slug) this.replay(a);
+    if (o.record?.pending) this.mergePending(a, o.record.pending);
     a.stops.push(session.onChange(() => this.changed(a)));
-    a.stops.push(session.doc.onChange(() => this.scheduleMirror(a)));
+    a.stops.push(
+      session.doc.onChange(() => {
+        a.changes++;
+        this.scheduleMirror(a);
+      }),
+    );
+    // Privacy is enforced here too, so it holds while the room's canvas isn't showing (or another tab changes it).
+    a.stops.push(this.deps.library.watch(() => this.checkPrivacy(a)));
     this.record(a);
     this.changed(a);
     if (this.active !== a) return;
@@ -296,14 +328,22 @@ export class RoomLifecycle {
     return open;
   }
 
-  /** The copy in Your diagrams is newer than the checkpoint: its difference becomes an ordinary edit. */
-  private replay(a: Active): void {
-    const stored = a.slug ? this.deps.library.read(a.slug) : undefined;
-    const projected = a.session.doc.project();
-    // Never from an empty document: that would be a second seed (new CRDT items for every record).
-    if (!stored || !a.session.hasDocument || projected.status !== "ok" || !projected.diagram) return;
-    const commands = commandsFromDiff(projected.diagram, withoutPrivate(stored));
-    if (commands.length) a.session.doc.apply(commands);
+  /** Edits from before a reload that the checkpoint hadn't saved: merged, never replayed as a snapshot. */
+  private mergePending(a: Active, pending: string): void {
+    let update: Uint8Array;
+    try {
+      update = base64UrlToBytes(pending);
+    } catch {
+      return;
+    }
+    a.session.doc.applyCheckpoint(update);
+    a.ready = a.session.hasDocument;
+  }
+
+  private checkPrivacy(a: Active): void {
+    if (this.active !== a || a.leaving || !a.slug) return;
+    const privacy = { ...this.deps.library.privacy(a.slug), diagram: this.deps.library.read(a.slug) };
+    if (!canCollaborate(privacy) || privacy.diagram?.private) void this.finish(a, "private");
   }
 
   private record(a: Active): void {
@@ -312,7 +352,7 @@ export class RoomLifecycle {
       role: a.role,
       alias: a.alias,
       ...(a.slug ? { slug: a.slug } : {}),
-      ...(a.ahead ? { ahead: true } : {}),
+      ...(a.pending ? { pending: a.pending } : {}),
     });
   }
 
@@ -323,9 +363,13 @@ export class RoomLifecycle {
       void this.finish(a, a.editor.refusal === "private" ? "private" : "left");
       return;
     }
-    if (a.ahead && a.session.recovery?.saved) {
-      a.ahead = false;
+    if (a.pending && a.session.recovery?.saved) {
+      a.pending = undefined;
       this.record(a);
+    }
+    if (a.ready !== a.session.hasDocument) {
+      a.ready = a.session.hasDocument;
+      if (a.slug && this.snap.open) this.set({ open: this.openSnapshot(a) });
     }
     if (a.slug || !a.session.hasDocument) return;
     const projected = a.session.doc.project();
@@ -355,15 +399,22 @@ export class RoomLifecycle {
   private flushMirror(a: Active, diagram?: DiagramFile): void {
     a.mirror?.();
     a.mirror = undefined;
-    if (!a.slug) return;
+    this.notePending(a);
+    // Nothing changed since the copy was last written: no second serialization of the whole diagram.
+    if (!a.slug || (!diagram && a.mirrored === a.changes)) return;
     const projected = a.session.doc.project();
     const d = diagram ?? (projected.status === "ok" ? projected.diagram : undefined);
-    if (!d || !this.deps.library.save(a.slug, withoutPrivate(d))) return;
-    const ahead = !!a.session.recovery && !a.session.recovery.saved;
-    if (ahead !== a.ahead) {
-      a.ahead = ahead;
-      if (!a.leaving) this.record(a);
-    }
+    if (d && this.deps.library.save(a.slug, withoutPrivate(d))) a.mirrored = a.changes;
+  }
+
+  /** Records, for a reload, what the checkpoint hasn't saved yet (a CRDT update: merging it reverts nothing). */
+  private notePending(a: Active): void {
+    if (a.leaving) return;
+    const unsaved = a.session.recovery?.unsaved(a.session.doc);
+    const pending = unsaved && bytesToBase64Url(unsaved);
+    if (pending === a.pending) return;
+    a.pending = pending;
+    this.record(a);
   }
 
   /** The page is hiding or going (the canvas's autosave moments): the copy is written now. */
@@ -389,9 +440,14 @@ export class RoomLifecycle {
 
   private async finish(a: Active, kind: RoomNotice): Promise<void> {
     if (a.leaving && !a.suspended) return;
-    // Turning Private on keeps the canvas as it is now, beyond what the room last agreed on.
-    this.flushMirror(a, kind === "private" && a.slug ? this.capture?.(a.slug) : undefined);
     a.leaving = true;
+    if (kind === "private" && a.slug) {
+      // The entry is Private before the canvas is handed back: the kept copy can't become shareable, whichever way
+      // the content became Private (the switch, or a paste from a Private diagram, which only the canvas knew).
+      this.deps.library.markPrivate(a.slug);
+      // The canvas as it is now, beyond what the room last agreed on.
+      this.flushMirror(a, this.capture?.(a.slug));
+    } else this.flushMirror(a);
     for (const stop of a.stops) stop();
     a.stops = [];
     if (this.active === a) {

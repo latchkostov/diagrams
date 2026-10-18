@@ -2486,6 +2486,8 @@ const en = {
   "collab.chipHere": "{count, plural, one {# here} other {# here}}",
   "collab.chipConnecting": "Connecting to the room…",
   "collab.chipFailed": "Could not connect",
+  "collab.chipElsewhere": "In a room: {title}",
+  "collab.show": "Show",
   "collab.copyRoomLink": "Copy link",
   "collab.leave": "Leave room",
   "collab.connectingTitle": "Connecting to the room…",

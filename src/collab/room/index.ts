@@ -1,5 +1,7 @@
 import {
   createLibraryDiagram,
+  DIAGRAMS_CHANGED,
+  setDiagramPrivate,
   getCurrent,
   getDiagramIdentity,
   getPrivacyFlags,
@@ -45,6 +47,12 @@ export const room = new RoomLifecycle({
     save: (slug, diagram) => hasLibraryEntry(slug) && writeAutosave(slug, diagram, getDiagramIdentity(slug)),
     read: (slug) => (hasLibraryEntry(slug) ? getCurrent(slug) : undefined),
     privacy: (slug) => getPrivacyFlags(slug),
+    markPrivate: (slug) => void setDiagramPrivate(slug, true),
+    // Your diagrams' changes here, and another tab's (diagramIO turns its storage events into this one too).
+    watch: (fn) => {
+      window.addEventListener(DIAGRAMS_CHANGED, fn);
+      return () => window.removeEventListener(DIAGRAMS_CHANGED, fn);
+    },
   },
 });
 

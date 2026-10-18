@@ -550,7 +550,15 @@ function MainApp() {
           shared={
             url.view === "canvas" && slug === SHARED_SLUG ? { onKeep: () => void interop.keepSharedCopy() } : undefined
           }
-          room={rooms && openRoom ? <rooms.RoomChip room={rooms.room} /> : undefined}
+          room={
+            rooms && openRoom ? (
+              <rooms.RoomChip
+                room={rooms.room}
+                here={!!roomHere}
+                onShow={() => openRoom.slug && setUrl({ view: "canvas", example: openRoom.slug, present: false })}
+              />
+            ) : undefined
+          }
           onPresent={() => setUrl({ present: true })}
           onNewDiagram={newDiagram}
           onLibrary={openLibrary}
@@ -573,7 +581,7 @@ function MainApp() {
                 <LabView onOpen={onLabOpen} />
               ) : displayedSlug === undefined ? (
                 <ViewLoading />
-              ) : roomBusy || (roomHere && !roomInitial) ? (
+              ) : roomBusy || (roomHere && (!roomHere.ready || !roomInitial)) ? (
                 rooms ? (
                   <rooms.RoomConnecting room={rooms.room} />
                 ) : (

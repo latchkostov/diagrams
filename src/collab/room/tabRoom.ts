@@ -18,10 +18,10 @@ export interface TabRoomRecord {
   slug?: string;
   alias?: string;
   /**
-   * The copy in Your diagrams was written after the last encrypted checkpoint: it is the newer of the two. A reload
-   * then replays the difference into the room (see RoomLifecycle.resume), so an edit made just before it isn't lost.
+   * Edits the encrypted checkpoint hadn't saved when this was written: one CRDT update (base64url). A reload merges
+   * it into the recovered document, so an edit made just before the reload isn't lost and nothing newer is reverted.
    */
-  ahead?: boolean;
+  pending?: string;
 }
 
 export interface TabRoomStore {
@@ -51,7 +51,7 @@ function parseRecord(text: string | null): TabRoomRecord | undefined {
       role: v.role,
       ...(typeof v.slug === "string" ? { slug: v.slug } : {}),
       ...(typeof v.alias === "string" ? { alias: v.alias } : {}),
-      ...(v.ahead === true ? { ahead: true } : {}),
+      ...(typeof v.pending === "string" ? { pending: v.pending } : {}),
     };
   } catch {
     return undefined;
