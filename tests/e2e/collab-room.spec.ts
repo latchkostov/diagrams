@@ -396,7 +396,7 @@ test("a copy that can't be saved holds the room's canvas behind a dialog: file c
   await page.goto("./?view=canvas&example=kafka-order-pipeline");
   await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
   await startRoom(page);
-  await rename(page, "gateway", "Unsaved room edit");
+  // Storage refuses the copy from before the edit on (the edit's debounced copy fails too, however slow the runner).
   await page.evaluate(() => {
     const setItem = Storage.prototype.setItem;
     const w = window as unknown as { __restoreStorage: () => void };
@@ -408,6 +408,7 @@ test("a copy that can't be saved holds the room's canvas behind a dialog: file c
       setItem.call(this, key, value);
     };
   });
+  await rename(page, "gateway", "Unsaved room edit");
   await roomAction(page, "room-leave");
   const dialog = page.getByTestId("room-unsaved-dialog");
   await expect(dialog).toBeVisible();
@@ -811,8 +812,9 @@ test("joining focuses the connecting status, then the canvas; focus moved to the
 }) => {
   test.slow();
   const other = await browser.newContext();
+  const third = await browser.newContext();
   try {
-    const tracker = await emulateTracker([context, other]);
+    const tracker = await emulateTracker([context, other, third]);
     await page.goto("./?view=canvas&example=kafka-order-pipeline");
     await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
     const link = await startRoom(page);
@@ -832,8 +834,9 @@ test("joining focuses the connecting status, then the canvas; focus moved to the
     await expect(first.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(first.getByTestId("canvas-wrap")).toBeFocused();
     await first.close();
-    // Focus moved to the toolbar during the wait stays there when the room's canvas arrives.
-    const second = await other.newPage();
+    // Focus moved to the toolbar during the wait stays there when the room's canvas arrives. Another browser: one
+    // that has been in the room keeps its encrypted copy and needs no wait.
+    const second = await third.newPage();
     await join(second);
     await second.getByTestId("file-button").focus();
     tracker.release();
@@ -842,6 +845,7 @@ test("joining focuses the connecting status, then the canvas; focus moved to the
     await expect(second.getByTestId("file-button")).toBeFocused();
   } finally {
     await other.close();
+    await third.close();
   }
 });
 
