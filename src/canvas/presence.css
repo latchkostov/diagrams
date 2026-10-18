@@ -1,0 +1,53 @@
+/* Others in a room (PresenceLayer): outlines and cursors in their colour, with their names. Never interactive. */
+
+.presence-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.presence-outline {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  border: 2px solid var(--peer);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.presence-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--peer);
+  color: #fff;
+  font: 600 11px/1.4 var(--font-ui, inherit);
+  white-space: nowrap;
+  max-inline-size: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.presence-outline > .presence-tag {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: -2px;
+  margin-block-end: 2px;
+  transform-origin: bottom left;
+}
+
+.presence-cursor {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  transform-origin: 0 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.presence-cursor > .presence-tag {
+  margin-block-start: 14px;
+}

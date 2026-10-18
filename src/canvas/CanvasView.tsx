@@ -108,6 +108,7 @@ import { railAnchor } from "./railAnchor";
 import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
 import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
+import { PresenceLayer } from "./PresenceLayer";
 import { t as tr, useLocale } from "../i18n";
 import { CopyNotice } from "./CopyNotice";
 import {
@@ -858,6 +859,22 @@ function CanvasInner({
     presenting,
   });
   useSelectionEvents(interaction, nodes, edges);
+  // In a room, the others see what this person selects (outlines in their colour; never their own selection).
+  const presence = room?.presence;
+  const selectionKey = useMemo(
+    () =>
+      JSON.stringify([
+        ...nodes.filter((n) => n.selected).map((n) => n.id),
+        ...edges.filter((e) => e.selected).map((e) => e.id),
+      ]),
+    [nodes, edges],
+  );
+  useEffect(() => presence?.setSelection(JSON.parse(selectionKey) as string[]), [presence, selectionKey]);
+  // A peer's presence never moves the view: the camera hears it and decides nothing (C1).
+  const presenceChanged = useCallback(
+    () => controller.dispatch({ type: "remote.changed", kind: "presence" }),
+    [controller],
+  );
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
     setPaletteCollapsed(!paletteHidden);
@@ -952,6 +969,7 @@ function CanvasInner({
               }}
               onPointerMove={(e) => {
                 pointer.current = { x: e.clientX, y: e.clientY };
+                presence?.setCursor(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
                 const target =
                   e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
                 if (controller.fitting && target) {
@@ -971,7 +989,10 @@ function CanvasInner({
                 // Ctrl/Cmd during a box selection: only what's wholly inside.
                 containRef.current = e.ctrlKey || e.metaKey;
               }}
-              onPointerLeave={() => (pointer.current = null)}
+              onPointerLeave={() => {
+                pointer.current = null;
+                presence?.setCursor(undefined);
+              }}
               onDragOver={(e) => {
                 if (
                   e.dataTransfer.types.includes(STENCIL_DND_MIME) ||
@@ -1097,6 +1118,7 @@ function CanvasInner({
                   <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>
                 )}
                 {checksOn && checksCard && <ChecksMarkersView store={checks} />}
+                {presence && <PresenceLayer presence={presence} onChange={presenceChanged} />}
               </ReactFlow>
 
               <CanvasOverlays

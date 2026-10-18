@@ -67,7 +67,10 @@ window.addEventListener("pageshow", (event) => {
   if (event.persisted) void room.restore();
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") room.flush();
+  const hidden = document.visibilityState === "hidden";
+  if (hidden) room.flush();
+  // Away while this tab is hidden: the others stop seeing its pointer.
+  room.setAway(hidden);
 });
 onClearDevice(() => room.wipe());
 

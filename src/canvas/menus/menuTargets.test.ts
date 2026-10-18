@@ -26,4 +26,25 @@ describe("context menu targets", () => {
     expect(targetRemoved(targets, { nodes: nodes.slice(1), edges })).toBe(true);
     expect(targetRemoved(undefined, { nodes, edges })).toBe(false);
   });
+
+  it("target removal work scales linearly", () => {
+    // Counted id reads: the work done, not the time it takes.
+    const run = (n: number) => {
+      let reads = 0;
+      const counted = (id: string) => ({
+        get id() {
+          reads++;
+          return id;
+        },
+      });
+      const nodes = Array.from({ length: n }, (_, i) => counted(`n${i}`));
+      const edges = Array.from({ length: n }, (_, i) => counted(`e${i}`));
+      const targets = Array.from({ length: n }, (_, i) => `n${i}`);
+      targetRemoved(targets, { nodes, edges });
+      return reads;
+    };
+    // Twice the diagram and twice the targets: twice the reads (a nested search would be four times).
+    expect(run(2000)).toBe(2 * run(1000));
+    expect(run(1000)).toBeLessThanOrEqual(2 * 1000);
+  });
 });

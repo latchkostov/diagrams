@@ -447,6 +447,14 @@ export class RoomLifecycle {
     this.record(a);
   }
 
+  /** This person is away (their tab hidden) or back: others hide an away person's pointer. */
+  setAway(away: boolean): void {
+    const a = this.active;
+    if (!a || a.leaving) return;
+    const status = away ? "away" : "active";
+    if (a.session.me.status !== status) a.session.setPresence({ status });
+  }
+
   /** The page is hiding or going (the canvas's autosave moments): the copy is written now. */
   flush(): void {
     if (this.active && !this.active.leaving) this.flushMirror(this.active);
@@ -561,6 +569,8 @@ export class RoomLifecycle {
     if (!a || a.leaving) return;
     this.flushMirror(a);
     a.leaving = true;
+    // The goodbye now (sealed ahead): peers drop this person at once, not after the presence TTL.
+    a.session.goodbyeNow();
     void a.session.leave();
     a.session.transport.close();
   }
@@ -573,6 +583,7 @@ export class RoomLifecycle {
     a.leaving = a.suspended = true;
     for (const stop of a.stops) stop();
     a.stops = [];
+    a.session.goodbyeNow();
     void a.session.leave();
     // At once: a page with open connections can't be kept in the cache.
     a.session.transport.close();

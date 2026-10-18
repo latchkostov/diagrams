@@ -11,7 +11,14 @@ import type { DiagramFile } from "../../model/types";
 import { notify, toast } from "../../interop/ui/toast";
 import { downloadText } from "../../interop/files";
 import { serializeNative } from "../../interop/native";
-import { createLibraryDiagram, getCurrent, getPrivacyFlags, isLibrarySlug, resolveSlug } from "../../lib/diagramIO";
+import {
+  createLibraryDiagram,
+  getCurrent,
+  getPrivacyFlags,
+  isLibrarySlug,
+  resolveSlug,
+  withPrivacyField,
+} from "../../lib/diagramIO";
 import { canCollaborate } from "../../lib/localOnly";
 import { COLLAB_LIMITS } from "../limits";
 import { formatRoomLink, type RoomLinkProblem } from "../link";
@@ -53,7 +60,7 @@ function useSessionState(session: CollabSession) {
   return useSyncExternalStore(
     (fn) => session.onChange(fn),
     () =>
-      `${session.transport.peers().length}:${session.peers().length}:${session.connectivity}:${session.connectionFailed}:${session.hasDocument}`,
+      `${session.transport.peers().length}:${session.peers().length}:${session.connectivity}:${session.connectionFailed}:${session.hasDocument}:${session.noAnswer}`,
   );
 }
 
@@ -87,6 +94,30 @@ const useLinkToShow = () =>
 /** Copy room link: copied (said in a toast), or, refused, the link in a dialog to select and copy. */
 const copyRoomLink = (link: string) =>
   void copyText(link).then((ok) => (ok ? notify(t("collab.roomLinkCopied"), { kind: "success" }) : showLink(link)));
+
+/** The top bar's bottom edge (it wraps onto more rows on narrow screens): what floats over the canvas starts below it. */
+function useToolbarBottom(): number {
+  return useSyncExternalStore(
+    (fn) => {
+      window.addEventListener("resize", fn);
+      return () => window.removeEventListener("resize", fn);
+    },
+    () => document.querySelector('[data-testid="topbar"]')?.getBoundingClientRect().bottom ?? 52,
+  );
+}
+
+/**
+ * Save a file copy, whatever is on screen: the room's canvas (what you see), else the room's document, else the copy
+ * kept in Your diagrams (Private if the entry is).
+ */
+function saveRoomCopy(open: OpenRoom, canvas: RefObject<CanvasHandle | null>) {
+  const kept = open.slug ? getCurrent(open.slug) : undefined;
+  const diagram: DiagramFile | undefined =
+    canvas.current?.getDiagram() ??
+    open.session.doc.project().diagram ??
+    (kept && open.slug ? withPrivacyField(kept, !!getPrivacyFlags(open.slug).private) : undefined);
+  if (diagram) downloadText(serializeNative(diagram), "room-copy.diagram.json", "application/json");
+}
 
 /** Where the room stands, as its chip and alerts say it (§2.6). */
 type RoomState = "connecting" | "waiting" | "here" | "reconnecting" | "alone" | "failed";
@@ -142,10 +173,13 @@ export function RoomLayer({
   room,
   slug,
   canvas,
+  canvasShown,
 }: {
   room: RoomLifecycle;
   slug: string;
   canvas: RefObject<CanvasHandle | null>;
+  /** The diagram view is on screen (not Stencils or the Lab): the alert sits over the room's canvas only. */
+  canvasShown: boolean;
 }) {
   useLocale();
   const snap = useRoom(room);
@@ -179,7 +213,7 @@ export function RoomLayer({
       />
     );
   if (prompt?.kind === "join") return <JoinDialog room={room} alias={prompt.alias} />;
-  if (!prompt && snap.open?.slug && snap.open.slug === slug)
+  if (!prompt && canvasShown && snap.open?.ready && snap.open.slug && snap.open.slug === slug)
     return <RoomAlert room={room} open={snap.open} canvas={canvas} />;
   if (prompt?.kind === "invalid")
     return (
@@ -469,7 +503,37 @@ export function RoomChip({ room, here, onShow }: { room: RoomLifecycle; here: bo
   useLocale();
   const snap = useRoom(room);
   if (!snap.open || snap.open.unsaved) return null;
-  return <OpenChip room={room} open={snap.open} here={here} onShow={onShow} />;
+  return (
+    <>
+      <OpenChip room={room} open={snap.open} here={here} onShow={onShow} />
+      <RoomAnnouncer session={snap.open.session} />
+    </>
+  );
+}
+
+/**
+ * The chip is a button now, so what changes in the room is said here, quietly: the room's state as it changes, and
+ * who joined or left ("Heron left"). Never a focus move or a toast.
+ */
+function RoomAnnouncer({ session }: { session: CollabSession }) {
+  const { state, peers } = useRoomState(session);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    let known = new Map(session.peers().map((p) => [p.sender, p.alias]));
+    return session.onChange(() => {
+      const now = new Map(session.peers().map((p) => [p.sender, p.alias]));
+      const joined = [...now].filter(([id]) => !known.has(id)).map(([, alias]) => t("collab.joined", { alias }));
+      const left = [...known].filter(([id]) => !now.has(id)).map(([, alias]) => t("collab.left", { alias }));
+      known = now;
+      if (joined.length || left.length) setNote([...joined, ...left].join(" "));
+    });
+  }, [session]);
+  return (
+    <span className="sr-only" role="status" data-testid="room-announce">
+      {CHIP_TEXT[state](peers)}
+      {note && `. ${note}`}
+    </span>
+  );
 }
 
 function OpenChip({
@@ -505,12 +569,21 @@ function OpenChip({
         </span>
       </span>
     );
+  const retry = () => {
+    // A joiner without the room's diagram goes back to its wait (the chip turns to status only): the wait keeps the
+    // keyboard. Otherwise the chip does (W3).
+    const status = session.hasDocument
+      ? document.querySelector<HTMLElement>('[data-testid="room-chip"]')
+      : document.querySelector<HTMLElement>('[data-testid="room-connecting"]');
+    if (status) roomFocus.dispatch({ type: "room.status", state, retry: true, status });
+    room.retry();
+  };
   const entries = (): MenuEntry[] => [
     { type: "section", label: t("collab.inRoom") },
     { type: "note", text: <People session={session} /> },
     { type: "separator" },
     ...(state === "failed"
-      ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: () => room.retry() }]
+      ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: retry }]
       : []),
     ...(elsewhere ? [{ type: "item" as const, testId: "room-show", title: t("collab.show"), onSelect: onShow }] : []),
     {
@@ -551,6 +624,11 @@ function OpenChip({
 
 /** Who is here: you, then each peer by the name they gave (unverified), in their colour. */
 function People({ session }: { session: CollabSession }): ReactNode {
+  // Names and statuses change without the count changing: its own subscription.
+  useSyncExternalStore(
+    (fn) => session.onChange(fn),
+    () => session.presenceRevision,
+  );
   const me = session.me;
   return (
     // Inside a menu, so not a list (a menu holds menu items): rows of text with no role of their own.
@@ -622,23 +700,17 @@ function RoomAlert({
   canvas: RefObject<CanvasHandle | null>;
 }) {
   const { state } = useRoomState(open.session);
+  const top = useToolbarBottom();
   if (state !== "failed") return null;
   return (
-    <div className="room-alert" role="alert" data-testid="room-alert">
+    <div className="room-alert" role="alert" data-testid="room-alert" style={{ insetBlockStart: top + 8 }}>
       <p>
         <strong>{t("collab.connectionFailed")}</strong>
         {open.session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
       </p>
       <p className="ix-muted">{t("collab.fileFallback")}</p>
       <div className="room-alert-actions">
-        <button
-          className="btn"
-          onClick={() => {
-            const diagram: DiagramFile | undefined = canvas.current?.getDiagram();
-            if (diagram) downloadText(serializeNative(diagram), "room-copy.diagram.json", "application/json");
-          }}
-          data-testid="room-alert-file"
-        >
+        <button className="btn" onClick={() => saveRoomCopy(open, canvas)} data-testid="room-alert-file">
           {t("collab.saveCopy")}
         </button>
         <button
@@ -689,8 +761,9 @@ function ConnectingFailure({
   region: RefObject<HTMLDivElement | null>;
 }) {
   useSessionState(session);
-  // Matchmaking works but no one answers: they may have left, or a network blocks it (§2.6).
-  const unanswered = useHeld(!session.connectionFailed && !session.hasDocument, RECONNECT_MS);
+  // Matchmaking works but no one answers: they may have left, or a network blocks it (§2.6). The session times each
+  // attempt (Retry starts a fresh wait).
+  const unanswered = session.noAnswer;
   if (!session.connectionFailed && !unanswered) return null;
   return (
     <div

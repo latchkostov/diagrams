@@ -1,10 +1,5 @@
 ## Collaboration E2 follow-ups (room lifecycle in the app)
 
-- **A reload leaves a ghost in presence for up to 30 s.** The reloading tab's goodbye is sealed asynchronously and
-  the page is gone before it's sent, so peers keep its old sender in `session.peers()` until the presence TTL. The
-  E2 chip counts connections (accurate after a reload) and only exposes presence as `data-present`. E5's participant
-  list needs either a goodbye sealed ahead of time (counter reserved, sent synchronously on `pagehide`) or presence
-  tied to the transport peer that carried it (keeping §2.6's "Reconnecting…" for a dropped peer).
 - **A room for another diagram still takes the save-status slot.** E2's chip names the background room and offers
   Show, but the displayed diagram's save status (or shared chip) is hidden meanwhile. E4's chip and popover should
   show both.
@@ -17,7 +12,9 @@
   If a fit landing under the open menu turns out to matter, route top-bar menus through it together.
 - **Not yet in E4:** "Left room · your copy" on the copy in Your diagrams (§2.5); an e2e for "Your network or theirs
   blocks direct connections" (the ICE failure needs a tracker that forwards an unusable answer under the room's
-  signalling key); alias edit and presence come with E5.
+  signalling key); the alias edit in the chip's menu (§2.4's ✎); outlines for connections a peer selects (E5 draws
+  nodes and boundaries; connections are listed in their selection but not outlined); "idle" status (E5 sends
+  "active" and "away" from page visibility).
 - **Translations for the new `collab.*` keys.** E2 adds the consent, chip and notice wording in English only;
   missing messages show in English. Translate once E4 settles the final wording.
 - **Rejoining after Leave makes a second entry.** A joiner who leaves and later opens the same link gets a new entry

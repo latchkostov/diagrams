@@ -793,13 +793,21 @@ test("a joiner nobody answers is told they may have left, with Retry", async ({ 
     await guest.goto(link);
     await guest.getByTestId("room-join-accept").click();
     await expect(guest.getByTestId("room-connecting")).toBeVisible({ timeout: pageLoadTimeout() });
+    // The room has opened (its chip shows): its attempt, and so its wait, has started.
+    await expect(chip(guest)).toHaveAttribute("data-state", "connecting");
     await pauseClock(guest);
-    await guest.clock.runFor(RECONNECT_MS);
+    await guest.clock.runFor(COLLAB_LIMITS.noAnswerMs);
     const said = guest.getByTestId("room-connecting-failed");
     await expect(said).toHaveAttribute("data-reason", "no-answer");
     await expect(said).toContainText("No one else is in this room right now");
     await guest.getByTestId("room-connecting-retry").click();
     await expect(guest.getByTestId("room-connecting")).toBeFocused();
+    // Retry clears it and starts a fresh wait: gone at once, still gone just before the wait ends, then back.
+    await expect(said).toHaveCount(0);
+    await guest.clock.runFor(COLLAB_LIMITS.noAnswerMs - 1000);
+    await expect(said).toHaveCount(0);
+    await guest.clock.runFor(1000);
+    await expect(said).toHaveAttribute("data-reason", "no-answer");
   } finally {
     await other.close();
   }
@@ -978,4 +986,111 @@ test("on a phone the room chip and its menu fit the screen", async ({ context, p
   }
   await page.getByTestId("room-leave").click();
   await expect(chip(page)).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------- E5: presence
+
+test("a peer's selection and cursor show in their colour and name; the view and the keyboard stay yours", async ({
+  browser,
+  context,
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  const other = await browser.newContext();
+  try {
+    await page.clock.install();
+    const guest = await twoInARoom(page, context, other);
+    await waitForStableViewport(page);
+    await page.getByTestId("node-gateway").click();
+    const focused = () => page.evaluate(() => document.activeElement?.closest("[data-id]")?.getAttribute("data-id"));
+    const before = await focused();
+    const camera = await cameraJournalMark(page);
+    const view = await viewportTransform(page);
+    // The guest selects a node and points at the canvas.
+    await guest.bringToFront();
+    await guest.getByTestId("node-orders").click();
+    const box = await guest.getByTestId("canvas-wrap").boundingBox();
+    if (!box) throw new Error("no canvas");
+    await guest.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await guest.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30, { steps: 5 });
+    const outline = page.getByTestId("presence-outline-orders");
+    await expect(outline).toBeVisible();
+    const alias = await outline.getAttribute("data-peer");
+    expect(alias).toMatch(/^Anonymous /);
+    await expect(outline).toContainText(alias ?? "");
+    const cursor = page.getByTestId("presence-cursor");
+    await expect(cursor).toBeVisible();
+    await expect(cursor).toContainText(alias ?? "");
+    // Nothing of the creator's moved: no camera command ran, the view and the keyboard are where they were.
+    expect((await cameraJournal(page, camera)).filter((e) => e.moved)).toEqual([]);
+    expect(await viewportTransform(page)).toBe(view);
+    expect(await focused()).toBe(before);
+    // Who is here: the guest by name, unverified.
+    await chip(page).click();
+    await expect(page.getByTestId("room-person")).toHaveCount(1);
+    await expect(page.getByTestId("room-person")).toContainText(`${alias} (unverified)`);
+    await page.keyboard.press("Escape");
+    // A cursor that stays still hides after a while.
+    await pauseClock(page);
+    await page.clock.runFor(COLLAB_LIMITS.cursorIdleMs + 100);
+    await expect(cursor).toHaveCount(0);
+    await expect(outline).toBeVisible();
+    await page.clock.resume();
+    // A reload sends its goodbye at once: no second entry for the same person.
+    await guest.reload();
+    await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect(chip(page)).toHaveAttribute("data-peers", "1");
+    await expect.poll(() => page.getByTestId("room-chip").getAttribute("data-present")).toBe("1");
+    // Leaving: their outline goes, and the room says so quietly.
+    await guest.getByTestId("node-orders").click();
+    await expect(outline).toBeVisible();
+    await roomAction(guest, "room-leave");
+    await expect(outline).toHaveCount(0);
+    await expect(page.getByTestId("room-announce")).toContainText("left.");
+    expectNoErrors(consoleErrors);
+  } finally {
+    await other.close();
+  }
+});
+
+test("a joiner retrying from the chip keeps the keyboard on its wait; the alert stays below the bar, on the diagram only", async ({
+  browser,
+  page,
+}) => {
+  test.slow();
+  // No tracker for either side: nothing connects.
+  const other = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    await page.clock.install();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("./?view=canvas&example=kafka-order-pipeline");
+    await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+    const link = await startRoom(page);
+    await pauseClock(page);
+    await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+    const alert = page.getByTestId("room-alert");
+    await expect(alert).toBeVisible();
+    const bar = await page.getByTestId("topbar").boundingBox();
+    const at = await alert.boundingBox();
+    expect(bar && at && at.y >= bar.y + bar.height).toBe(true);
+    await page.clock.resume();
+    // On Stencils its actions would have nothing to act on: it isn't shown there.
+    await page.getByTestId("view-gallery").click();
+    await expect(alert).toHaveCount(0);
+    // A joiner whose attempt failed retries from the chip's menu: the wait (not the page) keeps the keyboard.
+    const guest = await other.newPage();
+    await guest.clock.install();
+    await guest.goto(link);
+    await guest.getByTestId("room-join-accept").click();
+    await expect(guest.getByTestId("room-connecting")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect(chip(guest)).toHaveAttribute("data-state", "connecting");
+    await pauseClock(guest);
+    await guest.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+    await expect(chip(guest)).toHaveAttribute("data-state", "failed");
+    await roomAction(guest, "room-retry");
+    await expect(guest.getByTestId("room-connecting")).toBeFocused();
+  } finally {
+    await other.close();
+  }
 });
