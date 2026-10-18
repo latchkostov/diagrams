@@ -53,40 +53,40 @@ export function PresenceLayer({ presence, onChange }: { presence: RoomPresence; 
   const placed = useStore((s: ReactFlowState) => boxes(s, peers), sameBoxes);
   const zoom = useStore((s: ReactFlowState) => s.transform[2]);
   if (!peers.length) return null;
-  const tagged = new Set<string>();
   return (
     <ViewportPortal>
       <div className="presence-layer" data-testid="presence-layer" aria-hidden>
-        {peers.flatMap((p) =>
-          p.selection.flatMap((id, i) => {
-            const b = placed.get(id);
-            if (!b) return [];
-            // The name on each person's first drawn item only.
-            const tag = i === p.selection.findIndex((x) => placed.has(x)) && !tagged.has(p.sender);
-            if (tag) tagged.add(p.sender);
-            return [
-              <div
-                key={`${p.sender}:${id}`}
-                className="presence-outline"
-                data-testid={`presence-outline-${id}`}
-                data-peer={p.alias}
-                style={{
-                  // 4 px clear of the item, all round.
-                  transform: `translate(${b.x - 4}px, ${b.y - 4}px)`,
-                  width: b.w + 8,
-                  height: b.h + 8,
-                  ["--peer" as string]: p.colour,
-                }}
-              >
-                {tag && (
-                  <span className="presence-tag" style={{ transform: `scale(${1 / zoom})` }}>
-                    {p.alias}
-                  </span>
-                )}
-              </div>,
-            ];
-          }),
-        )}
+        {[...placed.values()].map((b) => {
+          // Everyone who selected it: a ring each (one outside the other) and their names side by side.
+          const who = peers.filter((p) => p.selection.includes(b.id));
+          const named = who.filter((p) => p.selection.find((x) => placed.has(x)) === b.id);
+          return (
+            <div
+              key={b.id}
+              className="presence-item"
+              data-testid={`presence-outline-${b.id}`}
+              data-peer={who.map((p) => p.alias).join(", ")}
+              style={{ transform: `translate(${b.x}px, ${b.y}px)`, width: b.w, height: b.h }}
+            >
+              {who.map((p, i) => (
+                <div
+                  key={p.sender}
+                  className="presence-outline"
+                  style={{ inset: -(4 + 3 * i), ["--peer" as string]: p.colour }}
+                />
+              ))}
+              {named.length > 0 && (
+                <div className="presence-tags" style={{ transform: `scale(${1 / zoom})` }}>
+                  {named.map((p) => (
+                    <span key={p.sender} className="presence-tag" style={{ ["--peer" as string]: p.colour }}>
+                      {p.alias}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {peers.map(
           (p) =>
             p.cursor &&

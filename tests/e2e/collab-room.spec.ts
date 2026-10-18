@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import type { BrowserContext, Page, WebSocketRoute } from "@playwright/test";
 import {
@@ -1090,6 +1091,38 @@ test("a joiner retrying from the chip keeps the keyboard on its wait; the alert 
     await expect(chip(guest)).toHaveAttribute("data-state", "failed");
     await roomAction(guest, "room-retry");
     await expect(guest.getByTestId("room-connecting")).toBeFocused();
+  } finally {
+    await other.close();
+  }
+});
+
+test("an image export leaves out others' outlines, pointers and names", async ({ browser, context, page }) => {
+  test.slow();
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await guest.getByTestId("node-orders").click();
+    const box = await guest.getByTestId("canvas-wrap").boundingBox();
+    if (!box) throw new Error("no canvas");
+    await guest.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
+    const outline = page.getByTestId("presence-outline-orders");
+    await expect(outline).toBeVisible();
+    await expect(page.getByTestId("presence-cursor")).toBeVisible();
+    const alias = (await outline.getAttribute("data-peer")) ?? "";
+    expect(alias).not.toBe("");
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-image").click();
+    await page.getByTestId("image-options-toggle").click();
+    await page.getByTestId("image-format-svg").click();
+    const downloading = page.waitForEvent("download");
+    await page.getByTestId("image-export").click();
+    const path = await (await downloading).path();
+    if (!path) throw new Error("SVG download failed");
+    const svg = await readFile(path, "utf8");
+    expect(svg).toContain("Order service");
+    expect(svg).not.toContain(alias);
+    expect(svg).not.toContain("presence-");
   } finally {
     await other.close();
   }

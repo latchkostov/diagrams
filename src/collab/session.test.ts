@@ -840,14 +840,70 @@ describe("presence", () => {
   });
 
   it("drops a sender's presence flood past its own bound, and counts it", async () => {
-    const { net, a, settle } = await room3();
+    // A small bound (restored after): two ends and a few frames show the same thing as hundreds.
+    const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+    const saved = limits.presenceFramesPerWindow;
+    limits.presenceFramesPerWindow = 10;
+    onTestFinished(() => void (limits.presenceFramesPerWindow = saved));
+    const net = new MemoryNetwork();
+    const clock = new FakeClock();
+    const a = await openClient("a", net.connect(), room, clock, 31, { initial: canaryDiagram() });
+    onTestFinished(() => a.session.leave());
     const evil = await rogue(net);
-    const state = textToBytes(JSON.stringify({ alias: "Flood", colour: 1, status: "active" }));
-    for (let i = 0; i < COLLAB_LIMITS.presenceFramesPerWindow + 50; i++)
-      await evil.send("presence", frame(PRESENCE.state, state));
+    const state = (n: number) => textToBytes(JSON.stringify({ alias: `Flood ${n}`, colour: 1, status: "active" }));
+    for (let i = 1; i <= 15; i++) await evil.send("presence", frame(PRESENCE.state, state(i)));
+    await net.settle(() => a.session.idle());
+    expect(a.session.stats.rejected["presence-throttled"]).toBe(5);
+    // What was accepted stands: the tenth frame's state.
+    expect(a.session.peers().map((p) => p.alias)).toEqual(["Flood 10"]);
+  });
+
+  it("a joiner whose failure recovers by itself waits for an answer afresh", async () => {
+    const clock = new FakeClock(),
+      net = new MemoryNetwork();
+    let state: Connectivity = "trackers-unreachable";
+    let handlers: TransportHandlers | undefined;
+    const session = await CollabSession.open({
+      room: roomFor(908),
+      clock,
+      privacy: {},
+      transport: {
+        ...net.connect(),
+        connectivity: () => state,
+        subscribe(h) {
+          handlers = h;
+          return () => (handlers = undefined);
+        },
+      },
+    });
+    onTestFinished(() => session.leave());
+    clock.advance(CONNECTION_WAIT_MS);
+    expect(session.connectionFailed).toBe(true);
+    expect(session.noAnswer).toBe(false);
+    // Matchmaking comes back on its own, and nobody is there.
+    state = "waiting";
+    handlers!.connectivity?.();
+    expect(session.connectionFailed).toBe(false);
+    clock.advance(COLLAB_LIMITS.noAnswerMs - 1);
+    expect(session.noAnswer).toBe(false);
+    clock.advance(1);
+    expect(session.noAnswer).toBe(true);
+  });
+
+  it("the goodbye sealed ahead stays inside receivers' replay windows however much is sent", async () => {
+    const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+    const saved = limits.replayWindow;
+    limits.replayWindow = 64;
+    onTestFinished(() => void (limits.replayWindow = saved));
+    const { a, b, settle } = await room3();
+    // Many more document frames than a window, between two heartbeats.
+    for (let i = 0; i < 3 * 64; i++) b.edit((d) => ({ ...d, title: `Title ${i}` }));
     await settle();
-    expect(a.session.stats.rejected["presence-throttled"]).toBe(50);
-    expect(a.session.peers().map((p) => p.alias)).toContain("Flood");
+    expect(a.session.peers().map((p) => p.alias)).toContain("b");
+    b.session.goodbyeNow();
+    b.session.transport.close();
+    await settle();
+    expect(a.session.peers().map((p) => p.alias)).not.toContain("b");
   });
 
   it("refuses an oversized selection, a nonsense cursor and unknown keys", () => {

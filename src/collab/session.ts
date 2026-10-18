@@ -124,6 +124,8 @@ export class CollabSession {
   /** A goodbye sealed ahead of time, so a page going away can send it at once (sealing is asynchronous). */
   private bye?: Uint8Array;
   private byeJob: Promise<void> = Promise.resolve();
+  /** Document frames sealed since the goodbye was: past half a replay window, it is sealed again. */
+  private framesSinceBye = 0;
   private cursorTimer?: () => void;
   private cursorSentAt = -Infinity;
   private connectionWait?: () => void;
@@ -299,6 +301,7 @@ export class CollabSession {
     this.byeJob = this.byeJob
       .then(async () => {
         if (this.status === "left" || this.leaving) return;
+        this.framesSinceBye = 0;
         this.bye = await this.sealer.seal("doc", frame(DOC.bye));
       })
       .catch(() => {});
@@ -418,9 +421,12 @@ export class CollabSession {
     this.updateStatus();
   }
 
+  /**
+   * The session's connection state, in one place and in order: connectivity and its failure flag first, then the
+   * no-answer deadline (which reads that flag), then one notification.
+   */
   private updateStatus(): void {
     if (this.status === "left") return;
-    this.updateNoAnswer();
     const next: SessionStatus = this.transport.peers().length ? "connected" : "waiting";
     const connectivity = next === "connected" ? "connected" : (this.transport.connectivity?.() ?? "waiting");
     const failed = ["trackers-unreachable", "no-answer", "ice-failed"].includes(connectivity);
@@ -438,10 +444,12 @@ export class CollabSession {
         this.emit();
       });
     }
+    const answered = this.noAnswer;
+    this.updateNoAnswer();
     if (next !== this.status) {
       this.status = next;
       this.emit();
-    } else if (changed) this.emit();
+    } else if (changed || answered !== this.noAnswer) this.emit();
   }
 
   /** A joiner without a document and without a failure waits COLLAB_LIMITS.noAnswerMs, once per attempt. */
@@ -504,6 +512,8 @@ export class CollabSession {
     this.outbox = this.outbox.then(async () => {
       try {
         const sealed = await this.sealer.seal(channel, plaintext);
+        // Every receiver keeps a window of a sender's counters: the cached goodbye stays well inside it.
+        if (channel === "doc" && ++this.framesSinceBye >= COLLAB_LIMITS.replayWindow / 2) this.prepareBye();
         if (this.status === "left") return;
         this.transport.send(sealed, to);
         this.stats.framesSent++;

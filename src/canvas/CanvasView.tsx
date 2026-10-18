@@ -109,6 +109,9 @@ import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
 import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
 import { PresenceLayer } from "./PresenceLayer";
+
+/** A room's cursor is sent at most this often (src/collab/limits.ts, cursorIntervalMs; the canvas doesn't import it). */
+const COLLAB_CURSOR_MS = 67;
 import { t as tr, useLocale } from "../i18n";
 import { CopyNotice } from "./CopyNotice";
 import {
@@ -858,18 +861,33 @@ function CanvasInner({
     live,
     presenting,
   });
-  useSelectionEvents(interaction, nodes, edges);
+  const selectionKey = useSelectionEvents(interaction, nodes, edges);
   // In a room, the others see what this person selects (outlines in their colour; never their own selection).
   const presence = room?.presence;
-  const selectionKey = useMemo(
-    () =>
-      JSON.stringify([
-        ...nodes.filter((n) => n.selected).map((n) => n.id),
-        ...edges.filter((e) => e.selected).map((e) => e.id),
-      ]),
-    [nodes, edges],
-  );
   useEffect(() => presence?.setSelection(JSON.parse(selectionKey) as string[]), [presence, selectionKey]);
+  // The pointer, for the others: the latest position, converted (one geometry read) at the cursor's own pace and
+  // never snapped to the grid.
+  const cursorScreen = useRef<{ x: number; y: number } | null>(null);
+  const cursorTimer = useRef<number | undefined>(undefined);
+  const sendCursor = useCallback(
+    (at: { x: number; y: number } | null) => {
+      if (!presence) return;
+      cursorScreen.current = at;
+      if (!at) {
+        window.clearTimeout(cursorTimer.current);
+        cursorTimer.current = undefined;
+        return presence.setCursor(undefined);
+      }
+      if (cursorTimer.current !== undefined) return;
+      cursorTimer.current = window.setTimeout(() => {
+        cursorTimer.current = undefined;
+        const latest = cursorScreen.current;
+        if (latest) presence.setCursor(screenToFlowPosition(latest, { snapToGrid: false }));
+      }, COLLAB_CURSOR_MS);
+    },
+    [presence, screenToFlowPosition],
+  );
+  useEffect(() => () => window.clearTimeout(cursorTimer.current), []);
   // A peer's presence never moves the view: the camera hears it and decides nothing (C1).
   const presenceChanged = useCallback(
     () => controller.dispatch({ type: "remote.changed", kind: "presence" }),
@@ -969,7 +987,7 @@ function CanvasInner({
               }}
               onPointerMove={(e) => {
                 pointer.current = { x: e.clientX, y: e.clientY };
-                presence?.setCursor(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+                sendCursor({ x: e.clientX, y: e.clientY });
                 const target =
                   e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
                 if (controller.fitting && target) {
@@ -991,7 +1009,7 @@ function CanvasInner({
               }}
               onPointerLeave={() => {
                 pointer.current = null;
-                presence?.setCursor(undefined);
+                sendCursor(null);
               }}
               onDragOver={(e) => {
                 if (

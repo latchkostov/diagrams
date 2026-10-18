@@ -40,3 +40,18 @@ Collaboration plan slice E5, behind the collaboration switch (development and e2
   201 of 201.
 - Output parity: `node/i18n/catalogs.json` changed on purpose (two new English-only messages, "{alias} joined." and
   "{alias} left.", and Share's corrected description); no other golden changed.
+
+## Review fixes (PR #183)
+
+- **Never in what leaves the screen.** Others' outlines, pointers and names are left out of image exports (PNG and
+  SVG share one filter), hidden while recording, while presenting and in print. Interactive HTML is built from the
+  diagram, not the screen. An e2e exports SVG with a peer selecting and pointing: no alias, no presence markup.
+- **No-answer after a failure that recovers by itself.** The session settles its connection state in one order
+  (connectivity and failure first, then the no-answer deadline, then one notification), so a joiner whose
+  matchmaking comes back with nobody there gets a fresh 30 s wait (it waited forever before).
+- **The cached goodbye follows the counter.** It is sealed again after half a replay window of document frames, so
+  a busy session's goodbye is never refused as stale (a test sends three windows' worth between heartbeats).
+- Name tags are readable on every peer colour (white on the colour darkened, 4.5:1 or better); several people on
+  one item get a ring each, one outside the other, and their names side by side; the cursor's screen position is
+  converted at the cursor's own pace and never snapped to the grid; the selection key is computed once; the
+  presence-flood test runs on two ends and a small bound.

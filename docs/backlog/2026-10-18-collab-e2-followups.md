@@ -23,3 +23,7 @@
 - **A creator whose checkpoint is gone waits for a peer after a reload.** With the encrypted checkpoint unavailable
   (site data cleared, IndexedDB blocked), a reload can't reseed the room from the plain copy (that would revert
   others). It shows "Connecting to the room…" with Leave; leaving keeps the copy. E4 should say why in that state.
+- **Presence coordinates across different viewports (PR #183 review).** An e2e that gives the two pages different
+  pans and zooms, points at a known diagram point and checks the receiver's cursor and outline bounds against it
+  (and again after the receiver pans). Today's e2e checks visibility and names; conversion is
+  `screenToFlowPosition` without grid snapping, drawn in flow space.

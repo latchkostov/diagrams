@@ -97,6 +97,8 @@ export function useSelectionEvents<P>(
     return { key: JSON.stringify(ids), empty: ids.length === 0 };
   }, [nodes, edges]);
   useLayoutEffect(() => controller.selectionCommitted(key, empty));
+  /** The same selection, as a key (a room's presence reuses it). */
+  return key;
 }
 
 /** Input, commits and the lifetime of a controller (the canvas's, or the Lab Inspector's own). */
