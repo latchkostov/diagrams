@@ -1,13 +1,14 @@
 import { LIVE_BAR_SPACE } from "../../live/layout";
 import type { CameraOwnership } from "../cameraOwnership";
 import type { Viewport } from "../geometry/fit";
-import { decide, initialPolicy, pendingPhase } from "./panePolicy";
+import { decide, initialPolicy, isPaneCause, pendingPhase } from "./panePolicy";
 import type {
   CameraCommand,
   CameraEvent,
   CameraMode,
   CameraPhase,
   FitReason,
+  LiveFitReason,
   PaneCause,
   PolicyState,
   RevealCause,
@@ -40,11 +41,24 @@ export interface CameraScheduler {
   frame(run: () => void): () => void;
 }
 
+/**
+ * Where a move stands in d3's schedule: `waiting` to start (on d3's next frame), `starting` (its start event is
+ * being reported now), `running`, or `ended` (landed, interrupted by another move, or cancelled before it started).
+ * `unknown` when the port can't read the schedule.
+ */
+export type MoveStatus = "waiting" | "starting" | "running" | "ended" | "unknown";
+
+/** A move the port issued: `done` resolves when it lands (never, when another move stops it). */
+export interface MoveHandle {
+  done: Promise<unknown>;
+  status(): MoveStatus;
+}
+
 /** React Flow and the DOM, as the controller sees them. Only the port touches the viewport. */
 export interface CameraPort {
   viewport(): Viewport;
-  /** Moves the view; resolves when the transition ends (input may interrupt it, leaving it unresolved). */
-  move(target: Viewport, o: { duration: number; linear: boolean }): Promise<unknown>;
+  /** Moves the view; `done` resolves when the transition ends (another move may stop it, leaving it unresolved). */
+  move(target: Viewport, o: { duration: number; linear: boolean }): MoveHandle;
   /** The overlay-aware fit's viewport, or null while the pane has no size. */
   fitTarget(request: FitRequest): Viewport | null;
   /** The smallest overlay-aware pan revealing `scope` from `base`, or null when it's in view and uncovered. */
@@ -55,9 +69,14 @@ export interface CameraPort {
   goToTarget(base: Viewport, id: string): Viewport | null;
   /** 100% zoom about the pane's centre. */
   zoomTarget(base: Viewport, zoom: number): Viewport | null;
+  /** Live's whole-diagram fit for its room (geometry.ts liveFitViewport), or null with nothing to fit. */
+  liveFitTarget(room: { panel: boolean; card: boolean }): Viewport | null;
+  /** A note's focus in view for Live's room (geometry.ts noteFitViewport). */
+  noteFitTarget(focus: readonly string[], room: { panel: boolean; card: boolean }): Viewport | null;
   /**
-   * The pane and the selection as React Flow has measured them, as a sample to compare across frames; null
-   * while React Flow's pane size lags the host's or something selected is unmeasured.
+   * The pane, the nodes and the selection as React Flow has measured them, as a sample to compare across frames;
+   * null while React Flow's pane size lags the host's or something selected is unmeasured. A node just added
+   * changes it until it's measured.
    */
   paneSample(): string | null;
   /** Whether everything selected (and visible) has been measured. */
@@ -68,7 +87,10 @@ export interface CameraPort {
   interruptMeasured(): void;
   /** React Flow's own bootstrap fit, still waiting for its first measurements. */
   cancelBootstrapFit(): void;
-  /** Readiness: `data-camera-state`, and `data-pane-pending` while pane work is armed. */
+  /**
+   * Readiness: `data-camera-state`, and `data-pane-pending` while the canvas's pane work (a pane change, a
+   * selection) is armed. Live's own work waiting for the pane (a note, its panel) reads `pending` in the former only.
+   */
   publish(phase: CameraPhase, panePending: boolean): void;
   /** The first fit ran, or input stopped it (the title card may show its warnings). */
   fitted(): void;
@@ -78,11 +100,22 @@ export interface CameraPort {
 export interface JournalEntry {
   seq: number;
   command: CameraCommand["type"] | "anchor" | "nudge" | "stop";
-  cause?: RevealCause | FitReason | PaneCause | "user" | "quickAdd";
+  cause?: RevealCause | FitReason | PaneCause | LiveFitReason | "user" | "quickAdd";
   /** Whether the view moved (a reveal that's already satisfied doesn't). */
   moved: boolean;
   from: Viewport;
   to?: Viewport;
+}
+
+/** Slow motion's camera geometry: the controller asks it when its policy says the take needs a view. */
+export interface SlowmoCamera {
+  /** The take's planned view (a fit of its path, or its first node at a readable zoom), or null. */
+  plan(): Viewport | null;
+  /**
+   * The pane changed under the replay: `hold` stops a follow pan where it is (a paused replay keeps its view), a
+   * view replans a playing, fitted take, null leaves it. `following`: slow motion still owns the view.
+   */
+  pane(following: boolean): Viewport | "hold" | null;
 }
 
 export interface CameraOptions {
@@ -93,6 +126,12 @@ export interface CameraOptions {
 
 /** Durations (ms) and interpolation of each move. Pans are linear, so the zoom holds while they run. */
 const MOVES = {
+  /** Live's fits (as its React Flow fitView calls were), a note's close-up, slow motion's plan, pans and return. */
+  liveFit: 700,
+  note: 900,
+  slowmoPlan: 900,
+  follow: 700,
+  restore: 900,
   reveal: 200,
   paneReveal: 250,
   checks: 250,
@@ -125,11 +164,11 @@ export function createCameraController(
   let interrupts = 0;
   /** Re-applies the latest fit to newly committed geometry until its measured refinement runs. */
   let early: (() => void) | null = null;
-  let inFlight: { id: number; kind: "fit" | "pan"; target: Viewport } | null = null;
+  let inFlight: { id: number; kind: "fit" | "pan"; target: Viewport; status: () => MoveStatus } | null = null;
   let moves = 0;
   /**
-   * Our moves whose start React Flow hasn't reported yet: a start with no event is then ours. A move that hasn't
-   * started two frames after it was issued never will (d3 pre-empted it): it is forgotten.
+   * Only when the port can't read d3's schedule: our moves whose start React Flow hasn't reported yet, so a start
+   * with no event is taken for ours. A move that hasn't started two frames after it was issued never will.
    */
   const awaitingStart: number[] = [];
   /** A move with no duration starts (and ends) inside port.move. */
@@ -152,6 +191,8 @@ export function createCameraController(
   const measuring = new Set<() => void>();
   /** Reveal targets measured for the latest pane.settled, reused when its command runs. */
   let settledReveal: { withEdges: boolean; target: Viewport | null } | null = null;
+  /** Slow motion's geometry while a live session has it mounted. */
+  let slowmo: SlowmoCamera | null = null;
 
   const journal = (entry: Omit<JournalEntry, "seq">) => options.journal?.({ seq: ++seq, ...entry });
   /** Where the view is going: the move in flight's target, else the view now. */
@@ -162,38 +203,49 @@ export function createCameraController(
     return pendingPhase(policy) ?? (refinement || waiters > 0 ? "pending" : inFlight ? "animating" : "idle");
   }
   function publish() {
-    port.publish(currentPhase(), pendingPhase(policy) === "pending");
+    port.publish(currentPhase(), pendingPhase(policy) === "pending" && isPaneCause(policy.pending!.cause));
     for (const l of listeners) l();
   }
 
   function move(target: Viewport, duration: number, o: { linear: boolean; kind: "fit" | "pan" }): Promise<unknown> {
     const id = ++moves;
     const ms = motion(duration);
-    inFlight = ms > 0 ? { id, kind: o.kind, target } : null;
-    if (ms > 0) {
-      awaitingStart.push(id);
-      scheduler.frame(() =>
-        scheduler.frame(() => {
-          const i = awaitingStart.indexOf(id);
-          if (i < 0) return;
-          awaitingStart.splice(i, 1);
-          if (inFlight?.id === id) inFlight = null;
-          publish();
-        }),
-      );
-    }
     issuing = true;
-    let done: Promise<unknown>;
+    let handle: MoveHandle;
     try {
-      done = port.move(target, { duration: ms, linear: o.linear });
+      handle = port.move(target, { duration: ms, linear: o.linear });
     } finally {
       issuing = false;
     }
-    void Promise.resolve(done).then(() => {
+    inFlight = ms > 0 ? { id, kind: o.kind, target, status: handle.status } : null;
+    if (ms > 0) watch(id);
+    void Promise.resolve(handle.done).then(() => {
       if (inFlight?.id === id) inFlight = null;
       publish();
     });
-    return done;
+    return handle.done;
+  }
+
+  /**
+   * Follows the move in flight on rendered frames until it ends: one another writer stopped (its promise never
+   * resolves) leaves nothing in flight. Without the schedule, a move that hasn't started two frames after it was
+   * issued never will.
+   */
+  function watch(id: number) {
+    let frames = 0;
+    const known = inFlight?.status() !== "unknown";
+    if (!known) awaitingStart.push(id);
+    const step = () => {
+      if (inFlight?.id !== id) return;
+      frames++;
+      if (known ? inFlight.status() !== "ended" : frames < 2) return void scheduler.frame(step);
+      const i = awaitingStart.indexOf(id);
+      if (!known && i < 0) return;
+      if (i >= 0) awaitingStart.splice(i, 1);
+      inFlight = null;
+      publish();
+    };
+    scheduler.frame(step);
   }
 
   const same = (a: Viewport, b: Viewport) =>
@@ -317,6 +369,31 @@ export function createCameraController(
       }
       case "center":
         return pan(port.centerTarget(base()), MOVES.center, false, { command: "center" });
+      // Live's moves, like its React Flow fitView calls: zoom interpolation, finishing through input.
+      case "liveFit":
+        return pan(port.liveFitTarget(command), MOVES.liveFit, false, { command: "liveFit", cause: command.reason });
+      case "noteFit": {
+        const duration = command.reason === "narration" ? MOVES.note : MOVES.liveFit;
+        const target = port.noteFitTarget(command.focus, command);
+        return pan(target, duration, false, { command: "noteFit", cause: command.reason });
+      }
+      case "slowmoPlan":
+        return pan(slowmo?.plan() ?? null, MOVES.slowmoPlan, false, { command: "slowmoPlan" });
+      case "slowmoPane": {
+        const answer = slowmo?.pane(command.following) ?? null;
+        if (answer !== "hold") return pan(answer, MOVES.slowmoPlan, false, { command: "slowmoPane" });
+        // A follow pan may still be easing from before Pause: stop it where it is.
+        const here = port.viewport();
+        journal({ command: "stop", moved: false, from: here });
+        generation++;
+        early = null;
+        return void move(here, 0, { linear: false, kind: "pan" });
+      }
+      // One move at a time: a follow pan waits for the plan's fit or the last pan to land.
+      case "follow":
+        return inFlight ? undefined : pan(command.view, MOVES.follow, false, { command: "follow" });
+      case "restore":
+        return pan(command.view, MOVES.restore, false, { command: "restore" });
     }
   }
 
@@ -354,9 +431,16 @@ export function createCameraController(
       const from = base();
       const work = policy.pending!;
       const facts = { selection: false, covered: false, coveredWithEdges: false, centreOff: false };
-      // Measure only what the policy will ask about: a fitted view refits, Shift+2 holds still.
-      const refit = work.cause === "panel" && ownership.owner === "fit";
-      if (!refit && !policy.zoomPriority) {
+      // Measure only what the policy will ask about: a fitted (or narrated) view refits, Shift+2 holds still,
+      // Live's own work and slow motion need no reveal.
+      const owner = ownership.owner;
+      const edit = policy.mode === "edit";
+      const reveals =
+        isPaneCause(work.cause) &&
+        !policy.zoomPriority &&
+        !policy.slowmo &&
+        (work.cause !== "panel" || owner === "manual" || (edit && owner === "narration"));
+      if (reveals) {
         const reveal = (withEdges: boolean) => {
           const target = port.revealTarget(from, { kind: "selection", withEdges, roomBelow: 0 });
           settledReveal = { withEdges, target };
@@ -366,7 +450,7 @@ export function createCameraController(
         else {
           facts.selection = port.hasSelection();
           if (facts.selection) facts.coveredWithEdges = reveal(true);
-          else facts.centreOff = port.centerTarget(from) !== null;
+          else if (edit) facts.centreOff = port.centerTarget(from) !== null;
         }
       }
       dispatch({ type: "pane.settled", ...facts });
@@ -396,7 +480,7 @@ export function createCameraController(
 
   return {
     dispatch,
-    /** The pane policy's state (Live reads the latest pane change's cause). */
+    /** The pane policy's state (slow motion reads who owns the view). */
     get state(): Readonly<PolicyState> {
       return policy;
     },
@@ -422,6 +506,17 @@ export function createCameraController(
       interrupt();
       publish();
     },
+    /** A move is in flight (slow motion's follow pans wait for it before measuring the next one). */
+    get moving() {
+      return inFlight !== null;
+    },
+    /** Slow motion's geometry, while its session is mounted; returns the unmount. */
+    slowmo(camera: SlowmoCamera) {
+      slowmo = camera;
+      return () => {
+        if (slowmo === camera) slowmo = null;
+      };
+    },
     /** A fit is still re-applying itself to new geometry (hover over a node then stops it). */
     get fitting() {
       return early !== null;
@@ -434,12 +529,17 @@ export function createCameraController(
     moveStarted(user: boolean) {
       if (user) return userMoved();
       if (issuing) return;
-      if (awaitingStart.length) {
+      const status = inFlight?.status();
+      // Ours, starting now. Or someone else's animated move that started before ours did: ours replaces it when
+      // it starts on this frame (d3 runs the newest transition).
+      if (status === "starting" || status === "waiting") return;
+      if (status === "unknown" && awaitingStart.length) {
         awaitingStart.shift();
         return;
       }
-      // Someone else's programmatic move (Live, slow motion, the minimap, the zoom buttons) took the view over.
-      // d3 interrupted our transition and React Flow never resolves its promise: forget it, without moving.
+      // Someone else's programmatic move (the minimap, the zoom buttons) took the view over. d3 interrupted our
+      // transition, or cancelled it before it started, and React Flow never resolves its promise: forget it,
+      // without moving.
       takenOver();
       // It stops our fits too, except React Flow's own opening fit before anything has run.
       if (firstFit || interrupts > 0) interrupt();
@@ -456,7 +556,7 @@ export function createCameraController(
       live = next.live;
       presenting = next.presenting;
       const mode: CameraMode = presenting ? "present" : live ? "live" : "edit";
-      dispatch({ type: "mode.changed", mode });
+      dispatch({ type: "mode.changed", mode, live: next.live });
     },
     /** Holds the camera's readiness for work about to arrive (a pointer-up's Inspector change); returns its release. */
     hold() {

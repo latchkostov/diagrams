@@ -11,6 +11,7 @@ import {
   viewportTransform,
   emptyCanvasPoint,
   STORAGE_KEYS,
+  cameraJournal,
   cameraJournalMark,
   cameraMoves,
   waitForCameraIdle,
@@ -35,9 +36,7 @@ async function open(page: Page, live = false, simulation = false, spread = 1) {
       `./?view=canvas&example=kafka-order-pipeline&live=1&${simulation ? "sim=inspector-note" : "paused=1"}`,
     );
   else await gotoCanvas(page, "kafka-order-pipeline");
-  // Live's own panel and narration fits aren't the canvas camera's yet (docs/backlog/2026-10-17-camera-live-slowmo.md).
-  if (live) await waitForStableViewport(page);
-  else await waitForCameraIdle(page);
+  await waitForCameraIdle(page);
 }
 async function inPane(page: Page, nodes = ids) {
   const pane = await boxOf(page.getByTestId("canvas-wrap"));
@@ -52,35 +51,44 @@ async function inPane(page: Page, nodes = ids) {
   );
 }
 const zoom = async (page: Page) => Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]);
+/** The fits that moved the view since `mark`: the canvas's, Live's whole-diagram fit and a note's close-up. */
+const fits = async (page: Page, mark: number) =>
+  (await cameraMoves(page, mark)).filter((m) => /^(fit|liveFit|noteFit)/.test(m));
 
 test("Edit zoom then entering Live gives the automatic fit ownership of Inspector changes", async ({ page }) => {
   await open(page, false, false, 2);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   expect(await zoom(page)).toBe(1);
   await page.getByTestId("live-toggle").click();
   await expect(page.getByTestId("live-controls")).toBeVisible();
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   await pauseClock(page);
+  const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-toggle").click();
   await page.clock.runFor(1500);
   expect(await inPane(page)).toBe(true);
+  // Entering Live took the view back for the fit: the Inspector's pane change refits it (panePolicy L5).
+  expect(await fits(page, mark)).toEqual(["liveFit:pane"]);
 });
 
 test("Inspector resize preserves keyboard-only Live zoom", async ({ page }) => {
   await open(page, true);
   await page.getByTestId("inspector-toggle").click();
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   expect(await zoom(page)).toBe(1);
   await pauseClock(page);
+  const mark = await cameraJournalMark(page);
   // Keyboard only, including the resize: no wheel or pointer input can claim the camera.
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
   expect(await zoom(page)).toBe(1);
+  // Shift+0 made the view manual: the pane change only reveals (panePolicy L7), it never refits.
+  expect(await fits(page, mark)).toEqual([]);
 });
 
 test("narration takes ownership after a manual pan and yields to later keyboard zoom", async ({ page }) => {
@@ -90,15 +98,20 @@ test("narration takes ownership after a manual pan and yields to later keyboard 
   await page.mouse.move(pane.x + point.x, pane.y + point.y);
   await page.mouse.wheel(300, 80);
   await waitForStableViewport(page);
+  const mark = await cameraJournalMark(page);
   await page.getByTestId("live-sim-picker").selectOption("inspector-note");
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   await page.getByTestId("inspector-toggle").click();
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   await pauseClock(page);
+  const resized = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
   expect(await inPane(page, ["kong", "orders"])).toBe(true);
+  // The note took the view from the pan by hand (L1); each pane change refits to its focus (L6).
+  expect((await fits(page, mark)).slice(0, 2)).toEqual(["noteFit:narration", "noteFit:pane"]);
+  expect(await fits(page, resized)).toEqual(["noteFit:pane"]);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
   await page.clock.runFor(1500);
@@ -137,8 +150,7 @@ for (const live of [false, true]) {
   test(`opening and closing the Inspector refits a fitted ${live ? "Live" : "edit"} view`, async ({ page }) => {
     await open(page, live);
     await page.getByTestId("fit-view-button").click();
-    if (live) await waitForStableViewport(page);
-    else await waitForCameraIdle(page);
+    await waitForCameraIdle(page);
     await pauseClock(page);
     const mark = await cameraJournalMark(page);
     await page.getByTestId("inspector-toggle").click();
@@ -150,9 +162,8 @@ for (const live of [false, true]) {
     await page.clock.runFor(1500);
     expect(await inPane(page)).toBe(true);
     expect(await zoom(page)).toBeGreaterThan(narrowZoom);
-    // A panel cause refits a fitted view (panePolicy R1): once per toggle. Live refits its own panels (P2).
-    const fits = (await cameraMoves(page, mark)).filter((m) => m.startsWith("fit"));
-    expect(fits).toEqual(live ? [] : ["fit:pane", "fit:pane"]);
+    // A panel cause refits a fitted view once per toggle: the canvas's fit (panePolicy R1), Live's in live view (L5).
+    expect(await fits(page, mark)).toEqual(live ? ["liveFit:pane", "liveFit:pane"] : ["fit:pane", "fit:pane"]);
   });
 }
 
@@ -391,10 +402,10 @@ for (const live of [false, true])
   }) => {
     await open(page, live);
     await page.getByTestId("node-search").dblclick();
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
     await page.getByTestId("canvas-wrap").focus();
     await page.keyboard.press("Shift+Digit0");
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
     const pane = await boxOf(page.getByTestId("canvas-wrap"));
     const selected = await boxOf(page.getByTestId("node-search"));
     const point = await emptyCanvasPoint(page);
@@ -410,8 +421,8 @@ for (const live of [false, true])
     await page.clock.runFor(1500);
     expect(await zoom(page)).toBe(before);
     expect(await inPane(page, ["search"])).toBe(true);
-    // A manual view's pane change only reveals (panePolicy R5): the canvas camera never refits it.
-    expect((await cameraMoves(page, mark)).filter((m) => m.startsWith("fit"))).toEqual([]);
+    // A manual view's pane change only reveals (panePolicy R5, L7): the camera never refits it.
+    expect(await fits(page, mark)).toEqual([]);
   });
 
 test("Inspector resize retains narration focus", async ({ page }) => {
@@ -419,13 +430,15 @@ test("Inspector resize retains narration focus", async ({ page }) => {
   await open(page, true, true);
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
   await page.getByTestId("inspector-toggle").click();
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   await pauseClock(page);
   await page.clock.runFor(1500);
+  const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
   expect(await inPane(page, ["kong", "orders"])).toBe(true);
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  expect(await fits(page, mark)).toEqual(["noteFit:pane"]);
   // The explicit focus remains closer than fitting the entire boundary and its source.
   const focusedZoom = await zoom(page);
   await page.getByTestId("fit-view-button").click();
@@ -436,7 +449,7 @@ test("Inspector resize retains narration focus", async ({ page }) => {
 async function slowMotion(page: Page, spread = 1) {
   await open(page, true, false, spread);
   await page.getByTestId("node-kong").dblclick();
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   await page.getByTestId("node-app").click({ button: "right" });
   await page.getByTestId("context-menu-item-sim.slowmo-from").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
@@ -456,9 +469,13 @@ for (const spread of [1, 4])
     );
     const before = await viewportTransform(page);
     const position = await page.getByTestId("slowmo-timeline-input").inputValue();
+    const mark = await cameraJournalMark(page);
     await page.getByTestId("inspector-resize").press("End");
     await page.clock.runFor(1500);
     expect(await viewportTransform(page)).toBe(before);
+    // Slow motion holds a paused replay (panePolicy W5): a stop where it stands, nothing moved.
+    expect((await cameraJournal(page, mark)).map((e) => e.command)).toEqual(["stop"]);
+    expect(await cameraMoves(page, mark)).toEqual([]);
     await expect(page.getByTestId("slowmo-timeline-input")).toHaveValue(position);
     await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "paused");
   });
@@ -469,9 +486,12 @@ test("a fitted slow-motion camera replans after resize without restarting replay
   await page.getByTestId("slowmo-timeline-input").fill("250");
   await page.getByTestId("live-play").click();
   const before = await viewportTransform(page);
+  const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(400);
   expect(await viewportTransform(page)).not.toBe(before);
+  // A playing, fitted take replans for the new pane (panePolicy W5).
+  expect(await cameraMoves(page, mark)).toEqual(["slowmoPane"]);
   expect(Number(await page.getByTestId("slowmo-timeline-input").inputValue())).toBeGreaterThanOrEqual(250);
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
 });

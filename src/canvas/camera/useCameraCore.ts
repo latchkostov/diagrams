@@ -6,12 +6,21 @@ import { createCameraOwnership, type CameraOwnership } from "../cameraOwnership"
 import { useRoutingOptions, type RouteOptions } from "../edges/useEdgeRoute";
 import { useMeasuredTask } from "../useMeasuredTask";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { createCameraController, type CameraController, type CameraPort } from "./controller";
+import {
+  createCameraController,
+  type CameraController,
+  type CameraPort,
+  type MoveHandle,
+  type MoveStatus,
+} from "./controller";
+import type { Viewport } from "../geometry/fit";
 import {
   centerViewport,
   focusBoxes,
   goToViewport,
+  liveFitViewport,
   nodeBoxes,
+  noteFitViewport,
   overlayFitViewport,
   revealPan,
   selectionBoxes,
@@ -118,7 +127,7 @@ function createCanvasCamera(
   let ownPending = false;
   const port: CameraPort = {
     viewport: transform,
-    move: (target, o) => setViewport(target, { duration: o.duration, interpolate: o.linear ? "linear" : undefined }),
+    move: (target, o) => canvasMove(store, setViewport, target, o),
     fitTarget: (request) => (root && routing ? overlayFitViewport(root, store.getState(), routing, request) : null),
     revealTarget(base, scope) {
       const el = root;
@@ -139,18 +148,14 @@ function createCanvasCamera(
     },
     centerTarget: (base) => (root ? centerViewport(root, store.getState(), base) : null),
     goToTarget: (base, id) => (root ? goToViewport(root, store.getState(), base, id) : null),
+    liveFitTarget: (room) => liveFitViewport(store.getState(), room),
+    noteFitTarget: (focus, room) => noteFitViewport(store.getState(), focus, room),
     zoomTarget(base, zoom) {
       const { minZoom, maxZoom } = store.getState();
       const k = Math.min(maxZoom, Math.max(minZoom, zoom));
       return root ? zoomAboutCentre(root, base, k) : null;
     },
-    paneSample() {
-      const el = root;
-      const s = store.getState();
-      // A held/late ResizeObserver must not let pane work consume the old pane.
-      if (!el || !s.width || s.width !== el.clientWidth || s.height !== el.clientHeight) return null;
-      return selectionMeasured() ? `${s.width}x${s.height}` : null;
-    },
+    paneSample: () => (root ? paneSample(store.getState(), root, selectionMeasured) : null),
     selectionMeasured,
     hasSelection: () => {
       const s = store.getState();
@@ -208,4 +213,75 @@ function createCanvasCamera(
       routing = options;
     },
   };
+}
+
+/** d3-transition's schedule for one transition (d3-transition/src/transition/schedule.js). */
+interface D3Schedule {
+  state: number;
+}
+
+/**
+ * The newest d3 transition on React Flow's zoom pane. React Flow never says when d3 stops a transition (another
+ * move interrupts it, or cancels it before it starts): its promise just never resolves. d3 keeps each element's
+ * transitions in `__transition`, by increasing id, until they end.
+ */
+function newestTransition(root: HTMLElement | null | undefined): D3Schedule | null {
+  const pane = root?.querySelector(".react-flow__renderer") as
+    (Element & { __transition?: Record<string, D3Schedule> }) | null;
+  const schedules = pane?.__transition;
+  if (!schedules) return null;
+  let newest: number | null = null;
+  for (const id of Object.keys(schedules)) if (newest === null || Number(id) > newest) newest = Number(id);
+  return newest === null ? null : schedules[newest];
+}
+
+/** d3's states: CREATED 0, SCHEDULED 1, STARTING 2, STARTED 3, RUNNING 4, ENDING 5, ENDED 6. */
+function transitionStatus(schedule: D3Schedule): MoveStatus {
+  if (schedule.state <= 1) return "waiting";
+  if (schedule.state === 2) return "starting";
+  return schedule.state >= 6 ? "ended" : "running";
+}
+
+/**
+ * The pane and nodes as React Flow has measured them (CameraPort.paneSample), for the element React Flow fills:
+ * null until every visible node is measured (a node just added, by Live say), then a fingerprint of the pane and
+ * every node's position and size, so work runs only once two frames agree on complete geometry.
+ */
+export function paneSample(
+  s: Pick<ReturnType<Store["getState"]>, "width" | "height" | "nodeLookup">,
+  el: Pick<HTMLElement, "clientWidth" | "clientHeight">,
+  selectionMeasured: () => boolean,
+) {
+  // A held/late ResizeObserver must not let pane work consume the old pane.
+  if (!s.width || s.width !== el.clientWidth || s.height !== el.clientHeight) return null;
+  if (!selectionMeasured()) return null;
+  let hash = 0;
+  const mix = (v: number) => (hash = (Math.imul(hash, 31) + Math.round(v * 16)) | 0);
+  for (const n of s.nodeLookup.values()) {
+    if (n.hidden) continue;
+    // React Flow never measures a boundary with an empty axis (as the measured gate allows): it has no area.
+    if (!n.measured?.width || !n.measured.height) {
+      if (n.type === "boundary" && (!n.width || !n.height)) continue;
+      return null;
+    }
+    mix(n.internals.positionAbsolute.x);
+    mix(n.internals.positionAbsolute.y);
+    mix(n.measured.width);
+    mix(n.measured.height);
+  }
+  return `${s.width}x${s.height}:${s.nodeLookup.size}:${hash}`;
+}
+
+/** Moves React Flow's view (CameraPort.move), with the d3 schedule's status of the move. */
+export function canvasMove(
+  store: Store,
+  setViewport: ReturnType<typeof useReactFlow<FlowNode, DiagramFlowEdge>>["setViewport"],
+  target: Viewport,
+  o: { duration: number; linear: boolean },
+): MoveHandle {
+  const done = setViewport(target, { duration: o.duration, interpolate: o.linear ? "linear" : undefined });
+  if (o.duration <= 0) return { done, status: () => "ended" };
+  // setViewport schedules its d3 transition synchronously: the newest on the zoom pane is this move.
+  const schedule = newestTransition(store.getState().domNode);
+  return { done, status: () => (schedule ? transitionStatus(schedule) : "unknown") };
 }

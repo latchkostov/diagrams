@@ -51,7 +51,8 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
         }
       }
       if (animating) return null;
-      const targets = [el, ...el.querySelectorAll<HTMLElement>(`[data-testid^="rf__node-"],${OVERLAY_SELECTOR}`)];
+      // React Flow's node wrappers by their id (not a test id: Live's hover borrows the wrapper's).
+      const targets = [el, ...el.querySelectorAll<HTMLElement>(`.react-flow__node[data-id],${OVERLAY_SELECTOR}`)];
       const wanted = new Set<Element>(targets);
       for (const old of observed.keys()) {
         if (!wanted.has(old)) {
@@ -62,8 +63,8 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
       let ready = true;
       const nodeElements = new Map<string, HTMLElement>();
       for (const target of targets) {
-        if (target.dataset.testid?.startsWith("rf__node-"))
-          nodeElements.set(target.dataset.testid.slice("rf__node-".length), target);
+        if (target.classList.contains("react-flow__node") && target.dataset.id)
+          nodeElements.set(target.dataset.id, target);
         if (!observed.has(target)) {
           observed.set(target, "");
           observer.observe(target, { box: "border-box" });

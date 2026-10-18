@@ -11,7 +11,8 @@ import {
   pageLoadTimeout,
   gotoLive,
   pauseClock,
-  waitForStableViewport,
+  waitForCameraIdle,
+  cameraMoves,
 } from "./fixtures";
 
 // Live view: the toggle, injection from the context menu, saved simulations, narration, the storm
@@ -42,7 +43,9 @@ for (const presenting of [false, true]) {
       await page.getByTestId("present-toggle").click();
       await expect(page.getByTestId("present-exit")).toBeVisible();
     }
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
+    // The waiting note's focus has the view (panePolicy L1); presenting fitted the whole diagram after it (F1).
+    expect((await cameraMoves(page)).at(-1)).toBe(presenting ? "fit:mode" : "noteFit:narration");
     await page.clock.install();
     await pauseClock(page);
     const node = page.getByTestId("node-payments");
@@ -73,7 +76,7 @@ const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item
 async function openNodeMenu(page: Page, nodeId: string, actionId?: string, click = true) {
   if (actionId?.startsWith("sim."))
     await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
   await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
   await expect(page.getByTestId("context-menu")).toBeVisible();
   if (!actionId) return;

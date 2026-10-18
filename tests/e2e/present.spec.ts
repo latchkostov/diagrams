@@ -8,6 +8,9 @@ import {
   pauseClock,
   viewportTransform,
   waitForStableViewport,
+  waitForCameraIdle,
+  cameraJournalMark,
+  cameraMoves,
 } from "./fixtures";
 
 // Presenting, full screen: the button beside Exit presentation, F, the browser's own exit, and Esc's order.
@@ -167,7 +170,7 @@ test.describe("presenting full screen", () => {
   }) => {
     // Slow motion's Esc listener was added before the presentation's.
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
     await page.getByTestId("node-shopper").click({ button: "right" });
     await page.getByTestId("context-menu-item-sim.slowmo-from").click();
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
@@ -221,6 +224,35 @@ test.describe("presenting full screen", () => {
     await expect.poll(layerEsc).toBe(1);
   });
 
+  test("leaving live view during a presented replay fits the whole diagram, and full screen refits it", async ({
+    page,
+  }) => {
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
+    await waitForCameraIdle(page);
+    await page.getByTestId("node-shopper").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+    await page.getByTestId("present-toggle").click();
+    await expect(page.getByTestId("present-exit")).toBeVisible();
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", /.+/);
+    const mark = await cameraJournalMark(page);
+    // L leaves live view mid-replay; the presentation stays.
+    await page.keyboard.press("l");
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await expect(page.getByTestId("present-exit")).toBeVisible();
+    await waitForCameraIdle(page);
+    // The normal fit for the mode (panePolicy F4), not slow motion's close-up.
+    expect(await cameraMoves(page, mark)).toContain("fit:mode");
+    await expect.poll(() => clipped(page)).toEqual([]);
+    const left = await cameraJournalMark(page);
+    await page.keyboard.press("f");
+    await expect.poll(() => fullscreen(page)).toBe(true);
+    await waitForCameraIdle(page);
+    // Slow motion gave the view back: full screen refits the fitted presentation (F2).
+    const fits = (await cameraMoves(page, left)).filter((m) => m.startsWith("fit") || m.startsWith("slowmo"));
+    expect(fits).toEqual(["fit:fullscreen"]);
+  });
+
   test("going full screen and back refits a diagram shown whole to the pane", async ({ page }) => {
     // Headless Chromium keeps the window's size full screen (and won't resize a full-screen window), so the pane
     // is made smaller by hand, as full screen's opposite would: the refit on each change must fit it again.
@@ -229,8 +261,9 @@ test.describe("presenting full screen", () => {
         content: `[data-testid="canvas-view"] { width: ${size} !important; height: ${size} !important; }`,
       });
     await present(page);
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
     expect(await clipped(page)).toEqual([]);
+    const mark = await cameraJournalMark(page);
     await squeeze("70%");
     await expect.poll(() => clipped(page)).not.toEqual([]);
     await page.keyboard.press("f");
@@ -242,12 +275,15 @@ test.describe("presenting full screen", () => {
     await page.keyboard.press("f");
     await expect.poll(() => fullscreen(page)).toBe(false);
     await expect.poll(() => clipped(page)).toEqual([]);
+    // Each change refit the fitted presentation (panePolicy F2).
+    const refits = (await cameraMoves(page, mark)).filter((m) => m === "fit:fullscreen");
+    expect(refits).toEqual(["fit:fullscreen", "fit:fullscreen"]);
   });
 
   test("going full screen and back keeps a view the presenter zoomed", async ({ page }) => {
     await page.clock.install();
     await present(page);
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
     const box = await page.getByTestId("canvas-wrap").boundingBox();
     if (!box) throw new Error("No canvas");
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -257,6 +293,7 @@ test.describe("presenting full screen", () => {
     await page.keyboard.up("Control");
     await waitForStableViewport(page);
     const zoomed = await viewportTransform(page);
+    const mark = await cameraJournalMark(page);
 
     // Time stands still from here, then runs well past the refit's delay and its animation.
     await pauseClock(page);
@@ -268,6 +305,8 @@ test.describe("presenting full screen", () => {
     await expect.poll(() => fullscreen(page)).toBe(false);
     await page.clock.runFor(2000);
     expect(await viewportTransform(page)).toBe(zoomed);
+    // The presenter zoomed by hand: full screen never refits it (panePolicy F2).
+    expect(await cameraMoves(page, mark)).toEqual([]);
   });
 
   for (const theme of ["light", "dark"] as const)

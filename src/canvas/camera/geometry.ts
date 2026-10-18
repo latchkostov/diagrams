@@ -1,4 +1,6 @@
-import type { ReactFlowState } from "@xyflow/react";
+import { getViewportForBounds, type ReactFlowState } from "@xyflow/react";
+import { LIVE_BAR_SPACE } from "../../live/layout";
+import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../../live/traceCardLayout";
 import { selectRoutes, type RouteOptions } from "../edges/useEdgeRoute";
 import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } from "../geometry/fit";
 import { intersects, union, type Rect } from "../geometry/rect";
@@ -234,4 +236,90 @@ export function goToViewport(root: HTMLElement, s: State, viewport: Viewport, id
   const fx = n.position.x + width / 2;
   const fy = n.position.y + height / 2;
   return { x: root.clientWidth / 2 - fx * zoom, y: root.clientHeight / 2 - fy * zoom, zoom };
+}
+
+// ---------------------------------------------------------------- Live view
+
+type Insets = { top: number; right: number; bottom: number; left: number };
+
+/** Live's whole-diagram fit: clear of the title (top) and the live bar (bottom). */
+export const LIVE_FIT = { insets: { top: 110, right: 48, bottom: 48 + LIVE_BAR_SPACE, left: 48 }, maxZoom: 1.25 };
+/** A note's close-up: room for the note callout below its focus. */
+export const NOTE_FIT = { insets: { top: 170, right: 80, bottom: 230, left: 80 }, maxZoom: 1 };
+/** The right edge Live keeps clear: the side panel's column, else the trace card's. */
+const PANEL_RIGHT = 440;
+const CARD_RIGHT = 400;
+
+/**
+ * React Flow's fitView({ nodes, padding, maxZoom }): the measured, visible nodes (`only`: these) centred in the
+ * pane inside px paddings, through React Flow's own getViewportForBounds. Null when none is measured.
+ */
+export function fitNodesViewport(s: State, only: ReadonlySet<string> | null, insets: Insets, maxZoom: number) {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const n of s.nodeLookup.values()) {
+    const w = n.measured.width;
+    const h = n.measured.height;
+    if (!w || !h || n.hidden || (only && !only.has(n.id))) continue;
+    const { x, y } = n.internals.positionAbsolute;
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x + w);
+    y1 = Math.max(y1, y + h);
+  }
+  if (!Number.isFinite(x0) || !s.width || !s.height) return null;
+  const px = (v: number) => `${v}px` as const;
+  const padding = { top: px(insets.top), right: px(insets.right), bottom: px(insets.bottom), left: px(insets.left) };
+  const bounds = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+  return getViewportForBounds(bounds, s.width, s.height, s.minZoom, maxZoom, padding);
+}
+
+/**
+ * A fit of every node that leaves the trace card's footprint (its first rows, top right) clear: beside it, below
+ * it, or untouched when nothing sits there anyway (see geometry/fit.ts). Null when there's nothing to fit.
+ */
+function fitBesideCard(s: State): Viewport | null {
+  const items: Rect[] = [];
+  for (const n of s.nodeLookup.values()) {
+    const width = n.measured?.width ?? 0;
+    const height = n.measured?.height ?? 0;
+    if (n.hidden || !width || !height) continue;
+    items.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width, height });
+  }
+  const pane = s.domNode?.getBoundingClientRect();
+  const el = s.domNode?.querySelector<HTMLElement>('[data-testid="trace-card"]')?.getBoundingClientRect();
+  const width = el?.width || 352;
+  const x = el && pane ? el.left - pane.left : s.width - 16 - width;
+  return fitAvoiding(
+    items,
+    { width: s.width, height: s.height },
+    [{ x, y: TRACE_CARD_TOP, width, height: TRACE_CARD_FOOTPRINT }],
+    { margin: 0, gap: 16, maxZoom: LIVE_FIT.maxZoom, insets: LIVE_FIT.insets },
+  );
+}
+
+/**
+ * Live's whole diagram in view. With the trace card open (and no side panel) it keeps clear of the card's footprint
+ * only: a wide diagram moves down a little instead of shrinking to the left of a full-height column, so tracing
+ * costs no zoom. With the side panel open, it fits into what the panel leaves.
+ */
+export function liveFitViewport(s: State, room: { panel: boolean; card: boolean }): Viewport | null {
+  if (room.card && !room.panel) {
+    const beside = fitBesideCard(s);
+    if (beside) return beside;
+  }
+  const right = room.panel ? PANEL_RIGHT : room.card ? CARD_RIGHT : LIVE_FIT.insets.right;
+  return fitNodesViewport(s, null, { ...LIVE_FIT.insets, right }, LIVE_FIT.maxZoom);
+}
+
+/** A note's focus in view, clear of the side panel or the trace card's column. */
+export function noteFitViewport(
+  s: State,
+  focus: readonly string[],
+  room: { panel: boolean; card: boolean },
+): Viewport | null {
+  const right = room.panel ? PANEL_RIGHT : room.card ? CARD_RIGHT : NOTE_FIT.insets.right;
+  return fitNodesViewport(s, new Set(focus), { ...NOTE_FIT.insets, right }, NOTE_FIT.maxZoom);
 }

@@ -607,6 +607,48 @@ test.describe("renaming in the inspector", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("live double-click on an edge label over a passing message renames it and traces nothing", async ({
+    page,
+    consoleErrors,
+  }) => {
+    // The label pill sits above the particle layer: its clicks are the label's, never a particle's behind it (the
+    // trace card that opened intercepted the next right-click).
+    await page.clock.install();
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+    await waitForStableViewport(page);
+    const pill = page.getByTestId("edge-label-ab");
+    // Hold the frame still with a message's dot behind the pill.
+    let at: { x: number; y: number } | null = null;
+    for (let step = 0; step < 300 && !at; step++) {
+      await pauseClock(page);
+      const box = await pill.boundingBox();
+      if (!box) throw new Error("edge-label-ab has no box");
+      at = await page.evaluate(async (rect) => {
+        const probe = window.__liveProbe;
+        if (!probe) return null;
+        // A dot behind a pill is drawn dimmed on the overlay, above it: its brightest pixel is its centre.
+        const px = await probe("over", rect);
+        let best = -1;
+        let alpha = 0;
+        for (let i = 3; i < px.data.length; i += 4)
+          if (px.data[i] > alpha) {
+            alpha = px.data[i];
+            best = (i - 3) / 4;
+          }
+        if (best < 0) return null;
+        const x = px.x + (best % px.width) / px.scale;
+        const y = px.y + Math.floor(best / px.width) / px.scale;
+        return document.elementFromPoint(x, y)?.closest('[data-testid="edge-label-ab"]') ? { x, y } : null;
+      }, box);
+      if (!at) await page.clock.runFor(40);
+    }
+    if (!at) throw new Error("no message passed under the edge label");
+    await page.mouse.dblclick(at.x, at.y);
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    await expect(page.getByTestId("trace-card")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
   test("presenting live and read-only embeds open no editor on a double-click", async ({ page }) => {
     test.slow(); // Seeded canvas, live session and a second cold embed navigation.
     await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);

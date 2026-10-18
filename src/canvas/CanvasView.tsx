@@ -383,7 +383,6 @@ function CanvasInner({
   const {
     whenReady,
     openingFitDone,
-    camera,
     controller,
     interruptFit,
     fit,
@@ -795,7 +794,7 @@ function CanvasInner({
     livePanelOpen ||
     !prefs.inspector ||
     ((live || (narrow && settledEmpty) || (cramped && aiDockOpen)) && !openedByHand.inspector);
-  const { checksMounted, readPaneChange, onManualPaneChange } = usePaneCamera(controller, {
+  const { checksMounted } = usePaneCamera(controller, {
     paletteHidden,
     aiDock,
     inspectorHidden,
@@ -1022,11 +1021,6 @@ function CanvasInner({
               {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
               {(nodeCount > 0 || live) && (
                 <LiveView
-                  paneRevision={`${paletteHidden}:${inspectorHidden}:${sheetResize}`}
-                  paneChange={readPaneChange}
-                  paneMenuOpen={!!menu}
-                  onManualPaneChange={onManualPaneChange}
-                  camera={camera}
                   readOnly={readOnly}
                   initial={viewer?.live}
                   onHandle={receiveLiveHandle}

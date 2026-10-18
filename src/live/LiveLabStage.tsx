@@ -20,6 +20,8 @@ import { DiagramNode } from "../canvas/nodes/DiagramNode";
 import { GroupNode } from "../canvas/nodes/GroupNode";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
+import { CameraContext } from "../canvas/camera";
+import { useStandaloneCamera } from "../canvas/camera/useStandaloneCamera";
 import { LiveView, type LiveViewProps } from "./LiveView";
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
@@ -54,6 +56,8 @@ function Stage({ diagram, initial, presenting = false, alwaysOn = true }: LiveLa
   const showDependencies = useShowDependencies();
   const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
   const base = useContext(DiagramContext);
+  // Live's camera moves go through a controller here too (no canvas camera in the Lab).
+  const camera = useStandaloneCamera();
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const ui = useMemo(
     () => ({ ...base, theme, direction: flow.meta.direction ?? "LR", editing, setEditing }) as Ui,
@@ -69,6 +73,7 @@ function Stage({ diagram, initial, presenting = false, alwaysOn = true }: LiveLa
           edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onMoveStart={camera.onMoveStart}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           colorMode={theme}
@@ -85,7 +90,9 @@ function Stage({ diagram, initial, presenting = false, alwaysOn = true }: LiveLa
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />
           <Controls showInteractive={false} position="bottom-left" />
-          <LiveView diagram={diagram} presenting={presenting} initial={initial} alwaysOn={alwaysOn} />
+          <CameraContext.Provider value={camera.controller}>
+            <LiveView diagram={diagram} presenting={presenting} initial={initial} alwaysOn={alwaysOn} />
+          </CameraContext.Provider>
         </ReactFlow>
       </div>
     </DiagramContext.Provider>
