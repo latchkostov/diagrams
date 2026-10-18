@@ -477,7 +477,7 @@ export function createCameraController(
 
   return {
     dispatch,
-    /** The pane policy's state (Live reads the latest pane change's cause). */
+    /** The pane policy's state (slow motion reads who owns the view). */
     get state(): Readonly<PolicyState> {
       return policy;
     },

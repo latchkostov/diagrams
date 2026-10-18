@@ -1,16 +1,9 @@
-import { createCameraOwnership } from "../canvas/cameraOwnership";
+import { useCameraController } from "../canvas/camera";
 import { useLocale } from "../i18n";
 import { edgeSemanticSignature } from "../model/relations";
 import { planningHost } from "../planning/host";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
-import {
-  ViewportPortal,
-  useReactFlow,
-  useStore,
-  useStoreApi,
-  type FitViewOptions,
-  type ReactFlowState,
-} from "@xyflow/react";
+import { ViewportPortal, useReactFlow, useStore, useStoreApi } from "@xyflow/react";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { MessageTrace, NodeStatus } from "../sim/types";
 import type { EditorApi } from "../editor/types";
@@ -56,7 +49,6 @@ import {
 import { capacitySaveCandidate, capacitySaveError } from "./capacityPersistence";
 import { notify } from "../interop/ui/toast";
 import { stencilRole } from "../stencils/roles";
-import { motionMs } from "../lib/motion";
 import { placeNextTo } from "../canvas/placement";
 import { Recorder } from "./record/Recorder";
 import { initialRecordState, isCapturing, recordReducer } from "./record/recordModel";
@@ -67,12 +59,11 @@ import { SlowCaption } from "./slowmo/SlowBar";
 import type { SlowSource } from "./slowmo/session";
 import { PACING } from "./slowmo/script";
 import { formatDuration as formatSpan } from "../trace/journey";
-import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP, roomUnderCard } from "./traceCardLayout";
-import { fitAvoiding, type Viewport } from "../canvas/geometry/fit";
+import { roomUnderCard } from "./traceCardLayout";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
 import { buildJourney } from "../trace/journey";
-import { aiDock, collapseDock, useAiDock } from "../ai/ui/dock";
+import { aiDock, collapseDock } from "../ai/ui/dock";
 
 import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 
@@ -91,46 +82,8 @@ const ESC_OWNERS = [
 ].join(",");
 /** A selection is cleared before Esc backs out of a trace or live view. */
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
-/**
- * A fit of every node that leaves the trace card's footprint (its first rows, top right) clear:
- * beside it, below it, or untouched when nothing sits there anyway (see geometry/fit.ts).
- */
-function fitBesideCard(s: ReactFlowState<FlowNode, DiagramFlowEdge>): Viewport | null {
-  const items: Rect[] = [];
-  for (const n of s.nodeLookup.values()) {
-    const width = n.measured?.width ?? 0;
-    const height = n.measured?.height ?? 0;
-    if (n.hidden || !width || !height) continue;
-    items.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width, height });
-  }
-  const pane = s.domNode?.getBoundingClientRect();
-  const el = s.domNode?.querySelector<HTMLElement>('[data-testid="trace-card"]')?.getBoundingClientRect();
-  const width = el?.width || 352;
-  const x = el && pane ? el.left - pane.left : s.width - 16 - width;
-  const pad = FULL_FIT.padding as Record<"top" | "right" | "bottom" | "left", string>;
-  const px = (v: string) => parseFloat(v);
-  return fitAvoiding(
-    items,
-    { width: s.width, height: s.height },
-    [{ x, y: TRACE_CARD_TOP, width, height: TRACE_CARD_FOOTPRINT }],
-    {
-      margin: 0,
-      gap: 16,
-      maxZoom: FULL_FIT.maxZoom,
-      insets: { top: px(pad.top), right: px(pad.right), bottom: px(pad.bottom), left: px(pad.left) },
-    },
-  );
-}
-
 const LOOK_AHEAD_LABEL = "30 s";
 const DEAD_LETTER_WAIT = "Nothing has dead-lettered yet: the next message that does will be traced.";
-const NOTE_PADDING = { top: "170px", right: "80px", bottom: "230px", left: "80px" } as const;
-const NOTE_FIT: FitViewOptions = { padding: NOTE_PADDING, maxZoom: 1, duration: 900 };
-const FULL_FIT: FitViewOptions = {
-  padding: { top: "110px", right: "48px", bottom: `${48 + LIVE_BAR_SPACE}px`, left: "48px" },
-  maxZoom: 1.25,
-  duration: 700,
-};
 
 /**
  * The live view: a "Live" toggle on the canvas, and while it's on, the simulation session
@@ -156,16 +109,13 @@ export function LiveSession({
   onSession,
   privateDiagram,
   paneRevision = 0,
-  paneChange,
-  paneMenuOpen,
-  onManualPaneChange,
-  camera: sharedCamera,
 }: SessionProps) {
-  const [localCamera] = useState(createCameraOwnership);
-  const camera = sharedCamera ?? localCamera;
+  // Every move of the view goes through the canvas camera (src/canvas/camera): Live only says what changed.
+  const camera = useCameraController();
+  if (!camera) throw new Error("LiveSession needs a camera (CameraContext)");
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
-  const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
+  const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
   const getDiagram = useCallback((): DiagramFile => (editor ? editor.getDiagram() : diagram!), [editor, diagram]);
   const simulations = useMemo(() => simsProp ?? diagram?.simulations ?? [], [simsProp, diagram]);
@@ -312,120 +262,23 @@ export function LiveSession({
     spotlightRef.current = spotlight;
   }, [spotlight]);
 
-  const panelOpenRef = useRef(false);
-  useLayoutEffect(() => {
-    panelOpenRef.current = panel.open;
-  }, [panel.open]);
-  // The trace card sits at the top right. A note's close-up leaves the card its column; the whole
-  // diagram only keeps clear of the card's first rows (see fitAll), and the card grows down to it.
-  const cardOpen = !!state.trace;
-  const cardOpenRef = useRef(false);
-  useLayoutEffect(() => {
-    cardOpenRef.current = cardOpen;
-  }, [cardOpen]);
-  const fitPadding = useCallback((base: typeof NOTE_PADDING, panelOpen = panelOpenRef.current) => {
-    if (panelOpen) return { ...base, right: "440px" as const };
-    return cardOpenRef.current ? { ...base, right: "400px" as const } : base;
-  }, []);
-  const FULL_PADDING = FULL_FIT.padding as typeof NOTE_PADDING;
-  /**
-   * The whole diagram in view. With the trace card open (and no side panel) it keeps clear of the
-   * card's footprint only: a wide diagram moves down a little instead of shrinking to the left of a
-   * full-height column, so tracing costs no zoom.
-   */
-  const fitAll = useCallback(
-    (duration: number, panelOpen = panelOpenRef.current) => {
-      if (cardOpenRef.current && !panelOpen) {
-        const v = fitBesideCard(store.getState());
-        if (v) {
-          void setViewport(v, { duration });
-          return;
-        }
-      }
-      void fitView({ ...FULL_FIT, padding: fitPadding(FULL_PADDING, panelOpen), duration });
-    },
-    [store, setViewport, fitView, fitPadding, FULL_PADDING],
-  );
-
-  // Pan / zoom to a note's focus, and back out to the whole diagram when the story moves on.
-  const zoomedForNote = useRef(false);
+  // The camera (src/canvas/camera, panePolicy rows L1–L9): Live says what changed in its room, and the policy
+  // decides once the pane settles. A note's focus takes the view, and the whole diagram comes back when the
+  // story moves on. The side panel and the trace card cover the right of the pane: a fitted view refits into
+  // what they leave (a narrated one to the note's focus), a view moved by hand stays put.
   const reducedMotion = useReducedMotion();
   useEffect(() => {
-    const focus = noteFocus;
-    if (!focus.length && !zoomedForNote.current) return;
-    zoomedForNote.current = focus.length > 0;
-    const claim = camera.claim(focus.length ? "narration" : "fit");
-    // Wait out the canvas's own refit (presentation mode toggles refit after ~80 ms).
-    const t = window.setTimeout(
-      () => {
-        if (!camera.isCurrent(claim)) return;
-        if (focus.length) {
-          const padding = fitPadding(NOTE_PADDING);
-          void fitView({
-            ...NOTE_FIT,
-            padding,
-            nodes: focus.map((id) => ({ id })),
-            duration: reducedMotion ? 0 : NOTE_FIT.duration,
-          });
-        } else {
-          fitAll(reducedMotion ? 0 : (FULL_FIT.duration ?? 0));
-        }
-      },
-      panelOpenRef.current ? 320 : 160,
-    );
-    return () => window.clearTimeout(t);
-  }, [noteKey, noteFocus, fitView, reducedMotion, fitPadding, fitAll, camera]);
-
-  // The authoring panel covers the right of the pane: fit the diagram into what's left (unless a
-  // note is steering the camera).
-  // A panel opened during a note refits to the note's focus, so the focused nodes never sit under it.
-  const noteFocusRef = useRef(noteFocus);
-  useLayoutEffect(() => {
-    noteFocusRef.current = noteFocus;
-  }, [noteFocus]);
-  const panelFitted = useRef(false);
+    camera.dispatch({ type: "narration", focus: noteFocus });
+  }, [camera, noteKey, noteFocus]);
   useEffect(() => {
-    if (panel.open === panelFitted.current) return;
-    panelFitted.current = panel.open;
-    const t = window.setTimeout(() => {
-      if (camera.owner === "manual") return;
-      const duration = reducedMotion ? 0 : FULL_FIT.duration;
-      if (camera.owner === "narration") {
-        const focus = noteFocusRef.current;
-        if (!focus.length) return;
-        const padding = fitPadding(NOTE_PADDING, panel.open);
-        void fitView({ ...NOTE_FIT, padding, nodes: focus.map((id) => ({ id })), duration });
-        return;
-      }
-      fitAll(duration ?? 0, panel.open);
-    }, 320);
-    return () => window.clearTimeout(t);
-  }, [panel.open, fitView, reducedMotion, fitPadding, fitAll, camera]);
-
-  // Opening or closing the trace card refits, so it never covers the diagram.
-  const cardFitted = useRef(false);
+    camera.dispatch({ type: "live.panel", open: panel.open });
+  }, [camera, panel.open]);
+  const cardOpen = !!state.trace;
   useEffect(() => {
-    if (cardOpen === cardFitted.current || panelOpenRef.current) return;
-    cardFitted.current = cardOpen;
-    if (slowRef.current?.session.active) return;
-    const t = window.setTimeout(() => {
-      if (camera.owner === "manual") return;
-      const duration = reducedMotion ? 0 : FULL_FIT.duration;
-      const focus = noteFocusRef.current;
-      if (camera.owner === "narration" && focus.length)
-        void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
-      else fitAll(duration ?? 0);
-    }, 120);
-    return () => window.clearTimeout(t);
-  }, [cardOpen, fitView, reducedMotion, fitPadding, fitAll, camera]);
+    camera.dispatch({ type: "live.card", open: cardOpen });
+  }, [camera, cardOpen]);
 
-  // The AI panel opened, closed or was resized: the pane changed width at its right edge. Refit the
-  // same way, or half the diagram stayed past the pane's edge (slow motion keeps its own camera).
-  const dock = useAiDock();
-  const manualPaneChange = useRef(onManualPaneChange);
-  useLayoutEffect(() => {
-    manualPaneChange.current = onManualPaneChange;
-  }, [onManualPaneChange]);
+  // On a phone the side panel and the AI panel share one slot.
   useEffect(() => {
     if (!panel.open) return;
     const phone = window.matchMedia("(max-width: 640px)");
@@ -450,34 +303,6 @@ export function LiveSession({
       }),
     [],
   );
-  const dockKey = `${dock.open}:${dock.open ? Math.round(dock.width / 40) : 0}:${paneRevision}`;
-  const dockFitted = useRef(dockKey);
-  useEffect(() => {
-    if (dockKey === dockFitted.current) return;
-    if (paneMenuOpen) return;
-    if (presenting || paneChange?.() === "selection") {
-      dockFitted.current = dockKey;
-      return;
-    }
-    // After React Flow's ResizeObserver has the new pane size.
-    const host = store.getState().domNode?.closest('[data-testid="canvas-wrap"]');
-    host?.setAttribute("data-pane-pending", "true");
-    const t = window.setTimeout(() => {
-      dockFitted.current = dockKey;
-      host?.removeAttribute("data-pane-pending");
-      if (slowRef.current?.session.active) return;
-      if (camera.owner === "manual") return manualPaneChange.current?.();
-      const duration = reducedMotion ? 0 : FULL_FIT.duration;
-      const focus = noteFocusRef.current;
-      if (camera.owner === "narration" && focus.length)
-        void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
-      else fitAll(duration ?? 0);
-    }, 200);
-    return () => {
-      window.clearTimeout(t);
-      host?.removeAttribute("data-pane-pending");
-    };
-  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll, camera, store, paneChange, paneMenuOpen]);
 
   // ---------------------------------------------------------------- the frame loop
 
@@ -820,6 +645,11 @@ export function LiveSession({
   useLayoutEffect(() => {
     slowRef.current = slow;
   });
+  // Slow motion keeps its own camera while it records or replays (panePolicy W1, W7).
+  const slowActive = slow.state.status === "on" || slow.state.status === "capturing";
+  useEffect(() => {
+    camera.dispatch({ type: "slowmo", on: slowActive });
+  }, [camera, slowActive]);
   if (slowPath !== slow.path) setSlowPath(slow.path);
   const startSlow = slow.start;
   /** The trace card's "Slow motion" (and the palette's): this message's journey, paced. */
@@ -975,14 +805,10 @@ export function LiveSession({
   );
 
   /** A node added one gap downstream may land past the view's edge: bring it in, clear of an open panel (as addEntry). */
-  const revealAdded = useCallback(() => {
-    window.setTimeout(() => {
-      const padding = capacityOpen
-        ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
-        : undefined;
-      void fitView({ ...FULL_FIT, ...(padding ? { padding } : {}), duration: motionMs(FULL_FIT.duration ?? 0) });
-    }, 260);
-  }, [capacityOpen, fitView]);
+  const revealAdded = useCallback(
+    () => camera.dispatch({ type: "live.added", panel: capacityOpen }),
+    [camera, capacityOpen],
+  );
 
   /** "Nobody reads X" › Add a consumer: a service reading it, one undoable edit (the run restarts with it). */
   const addReader = useCallback(
@@ -1084,11 +910,8 @@ export function LiveSession({
       editor.updateNode(id, { label: "Incoming traffic", sublabel: undefined });
       editor.connect(id, targetId);
       flash(`Added an entry point into ${target.label || target.id}. Set its rate in msg/s.`);
-      // Bring the new node into view beside the panel.
-      window.setTimeout(() => {
-        const padding = { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const };
-        void fitView({ ...FULL_FIT, padding, duration: motionMs(FULL_FIT.duration ?? 0) });
-      }, 260);
+      // Bring the new node into view beside the panel, once it's measured.
+      camera.dispatch({ type: "live.added", panel: true });
       // The panel lists it once the session picks up the edit; then the rate field takes the cursor.
       const started = performance.now();
       const focusRate = () => {
@@ -1100,7 +923,7 @@ export function LiveSession({
       };
       requestAnimationFrame(focusRate);
     },
-    [editor, store, flash, fitView],
+    [editor, store, flash, camera],
   );
 
   // While live, the Simulation section leads every context menu.

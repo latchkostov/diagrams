@@ -531,13 +531,6 @@ describe("panePolicy: the agreed rules, row by row", () => {
       expect(out.state.owner).toBe("fit");
     }
   });
-
-  it("records the latest pane change's cause for Live", () => {
-    expect(run(state({ mode: "live" }), [{ type: "pane.changed", cause: "selection" }]).state.lastCause).toBe(
-      "selection",
-    );
-    expect(run(state({ mode: "live" }), [{ type: "pane.changed", cause: "panel" }]).state.lastCause).toBe("panel");
-  });
 });
 
 // ---------------------------------------------------------------- the invariant cross-product

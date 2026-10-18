@@ -6,7 +6,14 @@ import { createCameraOwnership, type CameraOwnership } from "../cameraOwnership"
 import { useRoutingOptions, type RouteOptions } from "../edges/useEdgeRoute";
 import { useMeasuredTask } from "../useMeasuredTask";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { createCameraController, type CameraController, type CameraPort, type MoveStatus } from "./controller";
+import {
+  createCameraController,
+  type CameraController,
+  type CameraPort,
+  type MoveHandle,
+  type MoveStatus,
+} from "./controller";
+import type { Viewport } from "../geometry/fit";
 import {
   centerViewport,
   focusBoxes,
@@ -120,13 +127,7 @@ function createCanvasCamera(
   let ownPending = false;
   const port: CameraPort = {
     viewport: transform,
-    move(target, o) {
-      const done = setViewport(target, { duration: o.duration, interpolate: o.linear ? "linear" : undefined });
-      if (o.duration <= 0) return { done, status: () => "ended" };
-      // setViewport schedules its d3 transition synchronously: the newest on the zoom pane is this move.
-      const schedule = newestTransition(store.getState().domNode);
-      return { done, status: () => (schedule ? transitionStatus(schedule) : "unknown") };
-    },
+    move: (target, o) => canvasMove(store, setViewport, target, o),
     fitTarget: (request) => (root && routing ? overlayFitViewport(root, store.getState(), routing, request) : null),
     revealTarget(base, scope) {
       const el = root;
@@ -154,13 +155,7 @@ function createCanvasCamera(
       const k = Math.min(maxZoom, Math.max(minZoom, zoom));
       return root ? zoomAboutCentre(root, base, k) : null;
     },
-    paneSample() {
-      const el = root;
-      const s = store.getState();
-      // A held/late ResizeObserver must not let pane work consume the old pane.
-      if (!el || !s.width || s.width !== el.clientWidth || s.height !== el.clientHeight) return null;
-      return selectionMeasured() ? `${s.width}x${s.height}:${measuredNodes(s.nodeLookup)}` : null;
-    },
+    paneSample: () => (root ? paneSample(store.getState(), root, selectionMeasured) : null),
     selectionMeasured,
     hasSelection: () => {
       const s = store.getState();
@@ -247,9 +242,27 @@ function transitionStatus(schedule: D3Schedule): MoveStatus {
   return schedule.state >= 6 ? "ended" : "running";
 }
 
-/** How many nodes there are and how many are measured: a node just added (by Live, say) changes it until measured. */
-function measuredNodes(lookup: ReadonlyMap<string, { measured: { width?: number } }>) {
+/** The pane and nodes as React Flow has measured them (CameraPort.paneSample), for the element React Flow fills. */
+export function paneSample(s: ReturnType<Store["getState"]>, el: HTMLElement, selectionMeasured: () => boolean) {
+  // A held/late ResizeObserver must not let pane work consume the old pane.
+  if (!s.width || s.width !== el.clientWidth || s.height !== el.clientHeight) return null;
+  if (!selectionMeasured()) return null;
+  // How many nodes there are and how many are measured: a node just added (by Live, say) changes it until measured.
   let measured = 0;
-  for (const n of lookup.values()) if (n.measured.width) measured++;
-  return `${lookup.size}/${measured}`;
+  for (const n of s.nodeLookup.values()) if (n.measured.width) measured++;
+  return `${s.width}x${s.height}:${s.nodeLookup.size}/${measured}`;
+}
+
+/** Moves React Flow's view (CameraPort.move), with the d3 schedule's status of the move. */
+export function canvasMove(
+  store: Store,
+  setViewport: ReturnType<typeof useReactFlow<FlowNode, DiagramFlowEdge>>["setViewport"],
+  target: Viewport,
+  o: { duration: number; linear: boolean },
+): MoveHandle {
+  const done = setViewport(target, { duration: o.duration, interpolate: o.linear ? "linear" : undefined });
+  if (o.duration <= 0) return { done, status: () => "ended" };
+  // setViewport schedules its d3 transition synchronously: the newest on the zoom pane is this move.
+  const schedule = newestTransition(store.getState().domNode);
+  return { done, status: () => (schedule ? transitionStatus(schedule) : "unknown") };
 }

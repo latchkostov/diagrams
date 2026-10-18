@@ -67,11 +67,10 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
   });
   switch (event.type) {
     case "pane.changed": {
-      const lastCause = event.cause;
-      if (state.mode === "present") return next({ lastCause });
+      if (state.mode === "present") return next({});
       // A take waiting for the pane plans for the new one too.
-      if (event.cause === "panel" && state.pending?.cause === "slowmo.take") return next({ lastCause });
-      return next({ lastCause, pending: { cause: event.cause } });
+      if (event.cause === "panel" && state.pending?.cause === "slowmo.take") return next({});
+      return next({ pending: { cause: event.cause } });
     }
     case "selection.changed":
       if (!state.pending || !isPaneCause(state.pending.cause)) return next({});
@@ -217,7 +216,6 @@ export function initialPolicy(mode: CameraMode = "edit"): PolicyState {
     menu: null,
     pending: null,
     zoomPriority: false,
-    lastCause: "panel",
     live: CLEAR,
     slowmo: false,
     resume: "fit",

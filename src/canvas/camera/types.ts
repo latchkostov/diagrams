@@ -50,8 +50,6 @@ export interface PolicyState {
   pending: PaneWork | null;
   /** Zoom to selection owns the view until the next input: reveals queued before it give way. */
   zoomPriority: boolean;
-  /** The cause of the latest pane change (Live reads it for its own panel refits). */
-  lastCause: PaneCause;
   /** Live view's room (all clear outside it). */
   live: LiveRoom;
   /** Slow motion is recording or replaying a journey: it keeps its own camera. */
