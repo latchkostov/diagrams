@@ -10,3 +10,6 @@ Imported Markdown has bounded work, combined nesting and table expansion. Budget
 literal text and its line breaks visible. External image sources become descriptive links under
 the production CSP; the offline viewer also falls back for same-origin resources. PNG/SVG headers
 use the same Markdown component and measure the rendered header. No CSP relaxation or new endpoint.
+
+The node inspector keeps Label → Subtitle → Connection in native tab order. Documentation follows
+Connection, so keyboard quick-add and naming keep their existing shortcuts.

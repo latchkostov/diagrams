@@ -110,27 +110,31 @@ describe("untrusted Markdown", () => {
       }
     });
   });
-  it("arbitrary strings through the 50,000-character schema limit never throw or exceed work; literal text round trips", async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.oneof(
-          fc.string({ maxLength: 50_000 }),
-          fc
-            .array(fc.constantFrom("[", "]", "*", "-", ">", "\r", "\u2028", "x"), {
-              minLength: 49_000,
-              maxLength: 50_000,
-            })
-            .map((chars) => chars.join("")),
+  it(
+    "arbitrary strings through the 50,000-character schema limit never throw or exceed work; literal text round trips",
+    async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.oneof(
+            fc.string({ maxLength: 50_000 }),
+            fc
+              .array(fc.constantFrom("[", "]", "*", "-", ">", "\r", "\u2028", "x"), {
+                minLength: 49_000,
+                maxLength: 50_000,
+              })
+              .map((chars) => chars.join("")),
+          ),
+          async (source) => {
+            const normalized = source.replace(/\r\n|[\r\u2028\u2029]/g, "\n");
+            const fence = "`".repeat(source.length + 3);
+            const [{ work }, { ast }] = await parseInWorker([source, fence + "\n" + normalized + "\n" + fence]);
+            expect(work).toBeLessThanOrEqual(Math.max(1, source.length) * MARKDOWN_LIMITS.workPerChar);
+            expect(ast).toEqual([{ type: "code", lang: "", code: normalized }]);
+          },
         ),
-        async (source) => {
-          const normalized = source.replace(/\r\n|[\r\u2028\u2029]/g, "\n");
-          const fence = "`".repeat(source.length + 3);
-          const [{ work }, { ast }] = await parseInWorker([source, fence + "\n" + normalized + "\n" + fence]);
-          expect(work).toBeLessThanOrEqual(Math.max(1, source.length) * MARKDOWN_LIMITS.workPerChar);
-          expect(ast).toEqual([{ type: "code", lang: "", code: normalized }]);
-        },
-      ),
-      { numRuns: propertyRuns(30) },
-    );
-  }, 30_000);
+        { numRuns: propertyRuns(30) },
+      );
+    },
+    30_000 * propertyRuns(1),
+  );
 });

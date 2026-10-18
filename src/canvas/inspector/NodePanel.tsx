@@ -225,6 +225,19 @@ export function NodeIdentity({
           data-testid="inspector-field-sublabel"
         />
       </Field>
+      {connection && (
+        <Field label={t("inspector.connection")}>
+          <input
+            className="insp-input"
+            value={connection.label}
+            placeholder={t("inspector.eGReserveStock")}
+            onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
+            {...nameKeys}
+            name="connection"
+            data-testid="inspector-field-connection"
+          />
+        </Field>
+      )}
       <Field label={t("inspector.description")} group>
         <MarkdownEditor
           value={node.data.description ?? ""}
@@ -241,19 +254,6 @@ export function NodeIdentity({
           testId="inspector-field-node-description"
         />
       </Field>
-      {connection && (
-        <Field label={t("inspector.connection")}>
-          <input
-            className="insp-input"
-            value={connection.label}
-            placeholder={t("inspector.eGReserveStock")}
-            onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
-            {...nameKeys}
-            name="connection"
-            data-testid="inspector-field-connection"
-          />
-        </Field>
-      )}
       <Field label={t("inspector.boundary")}>
         <select
           className="insp-input"

@@ -19,3 +19,6 @@ Thirteen goldens intentionally change. For each of `kafka-order-pipeline`,
 the corresponding `.svg.json` adds two DOM elements. Sizes, geometry and all PNG goldens stay
 unchanged. `node/i18n/catalogs.json` records the new documentation-button label in the source
 catalog and English fallback counts in the other languages. No simulation or layout golden changes.
+
+The node inspector keeps Label → Subtitle → Connection in native tab order. Documentation follows
+Connection, so keyboard quick-add and naming keep their existing shortcuts.

@@ -795,7 +795,7 @@ test("keyboard editing preserves navigation, selection and focus", async ({ page
   await field.selectText();
   await page.keyboard.press("ControlOrMeta+]");
   await expect(field).toHaveValue("  - alpha\n  - beta");
-  expect(await field.evaluate((el: HTMLTextAreaElement) => el.selectionEnd - el.selectionStart)).toBe(16);
+  await expect.poll(() => field.evaluate((el: HTMLTextAreaElement) => el.selectionEnd - el.selectionStart)).toBe(16);
   await page.keyboard.press("ControlOrMeta+[");
   await expect(field).toHaveValue("- alpha\n- beta");
   await page.keyboard.press("Shift+Tab");
