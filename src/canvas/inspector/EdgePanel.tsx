@@ -2,23 +2,20 @@ import { Dropdown } from "../../components/Dropdown";
 import { Icon } from "../../components/Icon";
 import { RELATION_CHOICES, applyChoice, choiceOf } from "../../editor/relationActions";
 import { t } from "../../i18n";
-import { SIM_LIMITS } from "../../interop/native";
 import { brokerSpec } from "../../model/brokers";
 import { relationNote, relationOf } from "../../model/relations";
 import { EdgeRouteFields } from "../../planning/lazy";
-import { DEFAULT_TRAVEL_MS } from "../../sim/topology";
 import { groupLabel } from "../../stencils/brokerVocabulary";
 import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
 import { edgeSimFields } from "../simFieldRules";
 import type { DiagramFlowEdge } from "../types";
-import { Field, InertNote, Section, Segmented, SideSelect } from "./controls";
+import { Field, InertNote, Section, Segmented } from "./controls";
 import { Disclosure } from "./Disclosure";
+import { EdgeAdvanced } from "./EdgeAdvanced";
 import { isFanOut, relationDropdownItems } from "./helpers";
-import { PropsEditor } from "./PropsEditor";
 import { RelationHint } from "./RelationHint";
 import { SettingsEditor } from "./SettingsEditor";
-import { EDGE_KEYS, RULE_KEYS } from "./simFields";
 import { SimInput } from "./SimInput";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
@@ -189,72 +186,7 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
           />
         </Disclosure>
       )}
-      <Disclosure id="edge-advanced" title={t("inspector.advanced")}>
-        <div className="insp-row2">
-          <Field label={t("inspector.fromSide")}>
-            <SideSelect
-              testId="inspector-field-sourceSide"
-              value={data.sourceSide}
-              onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })}
-            />
-          </Field>
-          <Field label={t("inspector.toSide")}>
-            <SideSelect
-              testId="inspector-field-targetSide"
-              value={data.targetSide}
-              onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })}
-            />
-          </Field>
-        </div>
-        {flow && (
-          <>
-            <SimInput
-              name="travelMs"
-              field={{
-                label: t("inspector.travelTime"),
-                unit: "ms",
-                kind: "number",
-                min: 0,
-                max: SIM_LIMITS.timeMs,
-                step: 50,
-                placeholder: String(DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"]),
-                hint: t("inspector.timeAMessageSpendsOnThisEdgeAt1x"),
-              }}
-              value={props.travelMs}
-              onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
-            />
-            <SimInput
-              name="filter"
-              field={{
-                label: t("inspector.filter"),
-                kind: "list",
-                placeholder: t("inspector.allMessageTypes"),
-                hint: t("inspector.onlyTheseMessageTypesTravelThisEdgeTrailingWildcard"),
-              }}
-              value={props.filter}
-              onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
-            />
-            <SimInput
-              name="emits"
-              field={{
-                label: t("inspector.renameTo"),
-                kind: "text",
-                placeholder: t("inspector.unchanged"),
-                hint: t("inspector.renameMessagesAsTheyLeaveAlongThisEdge"),
-              }}
-              value={props.emits}
-              onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
-            />
-          </>
-        )}
-        <span className="insp-label">{t("inspector.customProperties")}</span>
-        <PropsEditor
-          props={props}
-          hidden={rule ? RULE_KEYS : EDGE_KEYS}
-          onSet={(patch) => editor.setEdgeProps(edge.id, patch)}
-          onSetMerged={(patch, key) => editor.setEdgeProps(edge.id, patch, merge(`prop:${key}`))}
-        />
-      </Disclosure>
+      <EdgeAdvanced edge={edge} editor={editor} data={data} props={props} flow={flow} rule={rule} merge={merge} />
     </>
   );
 }
