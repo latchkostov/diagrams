@@ -1,9 +1,8 @@
 // Prove the concept split against the ordered rule fingerprints of the original stylesheet.
 // No rule/declaration/condition may change. Reorders must commute on the app's element class sets.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
 import console from "node:console";
@@ -97,13 +96,16 @@ const values = (node) => {
     ),
   );
 };
-const files = execFileSync(
-  "git",
-  ["ls-files", "--", "src/**/*.tsx", ":(exclude)src/examples/**", ":(exclude)src/**/*.test.*"],
-  { encoding: "utf8" },
-)
-  .trim()
-  .split(/\r?\n/);
+// Also works in the Linux gate's git archive, which deliberately has no .git directory.
+function sourceFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = resolve(dir, entry.name);
+    // No examples participate in the class graph. Do not traverse that directory.
+    if (entry.isDirectory()) return entry.name === "examples" ? [] : sourceFiles(path);
+    return entry.name.endsWith(".tsx") && !entry.name.includes(".test.") ? [path] : [];
+  });
+}
+const files = sourceFiles(resolve("src"));
 const forwarded = new Set();
 const sources = files.map((file) =>
   ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),

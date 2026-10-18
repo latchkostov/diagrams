@@ -19,6 +19,7 @@ function check(css?: string) {
     return execFileSync(process.execPath, ["scripts/check-canvas-css.mjs", ...(css === undefined ? [] : [file])], {
       encoding: "utf8",
       stdio: "pipe",
+      env: { ...process.env, GIT_DIR: join(dir, "no-repository") },
     });
   } finally {
     rmSync(dir, { recursive: true });
