@@ -48,7 +48,10 @@ export const room = new RoomLifecycle({
       hasLibraryEntry(slug) && writeAutosave(slug, diagram, getDiagramIdentity(slug), { quiet }),
     read: (slug) => (hasLibraryEntry(slug) ? getCurrent(slug) : undefined),
     privacy: (slug) => getPrivacyFlags(slug),
-    markPrivate: (slug) => void setDiagramPrivate(slug, true),
+    // Not recorded (no entry to mark) is a failure too: nothing is then written as an ordinary copy.
+    markPrivate: (slug) => {
+      if (!setDiagramPrivate(slug, true)) throw new Error("private-not-recorded");
+    },
     // Your diagrams' changes here, and another tab's (diagramIO turns its storage events into this one too).
     watch: (fn) => {
       window.addEventListener(DIAGRAMS_CHANGED, fn);

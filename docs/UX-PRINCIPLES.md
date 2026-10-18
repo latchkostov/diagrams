@@ -243,6 +243,19 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - A **Private** diagram lists only rows 1 to 3, and one line: **Links and public embeds are off for a private
     diagram. Make it not private…** (the Private diagram dialog, Keep private its default). A copy built without
     share links (docs/SELF-HOSTING.md) has rows 1 to 3 and nothing else; the gates in `src/lib/localOnly.ts` decide.
+  - **Edit together…** (rooms; development and e2e builds until they ship) follows Link with password behind its own
+    rule: anyone with its link can _edit_ while someone is in the room, so it is never the first row or what Enter
+    first does. Ctrl+K finds it as "collaborate", "room" and "edit together". Never "live room", "session" or
+    "collaboration mode" ("Live" is the simulation view). A **Private** diagram has no such row; its line reads
+    **Links, rooms and public embeds are off for a private diagram.**, and Ctrl+K's Edit together… opens the same
+    explanation, never a disabled row.
+  - **Edit together** asks first, every time: starting or joining a room names who sees your IP address (everyone in
+    the room, two public matchmaking services, never the diagram or the link) and the services by host, and asks for
+    your name in the room (names aren't verified). Nothing is contacted before Start room or Join; **Don't join** is
+    the join dialog's default. While a room is open, the room chip takes the save-status slot ("3 here ▾": who is here,
+    **Copy room link**, **Leave room**); there is **Leave room** only (no "End for everyone"), it needs no
+    confirmation, and your copy stays in Your diagrams. Waiting for others is never an error; a failure always
+    offers Retry and a file copy, and says why in plain words.
   - **Link with password…** comes before the plain link wherever links are listed. Its password is at least 8
     characters with a strength hint, and the dialog always says: send the password separately; anyone with the link
     and the password can open it.

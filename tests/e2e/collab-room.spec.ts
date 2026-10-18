@@ -904,3 +904,70 @@ async function expectAxeClean(page: Page, scope: string) {
     .analyze();
   expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
 }
+
+test("a Private paste whose Private mark fails reaches neither the peer nor the stored copy; its file copy is Private", async ({
+  browser,
+  context,
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  const other = await browser.newContext();
+  try {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    const guest = await twoInARoom(page, context, other);
+    // The entry's Private flag can't be written (storage full).
+    await page.evaluate(() => {
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
+        if (key.startsWith("diagrams.library-entry.v1:")) throw new DOMException("full", "QuotaExceededError");
+        setItem.call(this, key, value);
+      };
+      return navigator.clipboard.writeText(
+        JSON.stringify({
+          format: "diagrams/clip-v1",
+          private: true,
+          groups: [],
+          edges: [],
+          nodes: [{ id: "private-input", stencil: "service.go", label: "Device-only draft", x: 0, y: 0 }],
+        }),
+      );
+    });
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(page.getByTestId("room-unsaved-dialog")).toBeVisible();
+    await expect(page.getByTestId(/^node-private-input/)).toContainText("Device-only draft");
+    const downloading = page.waitForEvent("download");
+    await page.getByTestId("room-unsaved-file").click();
+    const chunks: Buffer[] = [];
+    for await (const chunk of await (await downloading).createReadStream()) chunks.push(Buffer.from(chunk));
+    const file = Buffer.concat(chunks).toString();
+    expect(file).toContain("Device-only draft");
+    expect(file).toContain('"private": true');
+    await expect(guest.getByTestId(/^node-private-input/)).toHaveCount(0);
+    expect(
+      await page.evaluate(() =>
+        Object.keys(localStorage).some((key) => localStorage.getItem(key)?.includes("Device-only draft")),
+      ),
+    ).toBe(false);
+    expectNoErrors(consoleErrors);
+  } finally {
+    await other.close();
+  }
+});
+
+test("on a phone the room chip and its menu fit the screen", async ({ context, page }) => {
+  await emulateTracker([context]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await startRoom(page);
+  await expect(chip(page)).toBeVisible();
+  await chip(page).click();
+  for (const item of ["room-copy-link", "room-leave"] as const) {
+    const box = await page.getByTestId(item).boundingBox();
+    expect(box && box.x >= 0 && box.x + box.width <= 390).toBe(true);
+  }
+  await page.getByTestId("room-leave").click();
+  await expect(chip(page)).toHaveCount(0);
+});

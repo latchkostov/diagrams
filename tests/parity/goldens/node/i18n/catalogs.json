@@ -1,7 +1,7 @@
 {
   "ar": {
-    "messages": 2300,
-    "fallback": 283,
+    "messages": 2315,
+    "fallback": 299,
     "areas": {
       "admission": "1585747777b2",
       "ai": "271de21ad5b1",
@@ -11,7 +11,7 @@
       "chrome": "8e07f737faff",
       "clear": "7052f081d17e",
       "cloud": "b72847aa935a",
-      "collab": "440e03af199c",
+      "collab": "d3a649b7b172",
       "command": "d9e70c4a50a6",
       "common": "a8b324af96d5",
       "edit": "eee884842e49",
@@ -47,7 +47,7 @@
       "privacy": "31e1025258a5",
       "privateDialog": "a0d98567a0a1",
       "routing": "d21e82365182",
-      "share": "47ddbadc6069",
+      "share": "a9d8f93af9b0",
       "shared": "7ca88e2e381b",
       "shortcuts": "4d9da073c0b2",
       "start": "bafde34c13ba",
@@ -62,8 +62,8 @@
     }
   },
   "bg": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "339cd5287f25",
       "ai": "be21a15fe0c2",
@@ -73,7 +73,7 @@
       "chrome": "faeb004300d3",
       "clear": "4aceb49f616a",
       "cloud": "90ffa94ecac4",
-      "collab": "078ddb01d115",
+      "collab": "8e7483fd3727",
       "command": "95f61b1c0646",
       "common": "4696fc5758aa",
       "edit": "22a10d944881",
@@ -109,7 +109,7 @@
       "privacy": "edcbcf263c6a",
       "privateDialog": "f0142441734e",
       "routing": "4e9f0aa111c8",
-      "share": "c5e70a0849c7",
+      "share": "730b6525e15a",
       "shared": "01a4beabc6c9",
       "shortcuts": "810929e4ae0b",
       "start": "a95fdae506e3",
@@ -124,8 +124,8 @@
     }
   },
   "cs": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "c8683cb1d947",
       "ai": "cdac78f5eabc",
@@ -135,7 +135,7 @@
       "chrome": "6788b2936556",
       "clear": "afc0d46e8d96",
       "cloud": "400a0a1bc313",
-      "collab": "e720d783fce8",
+      "collab": "b27ff5fdcc81",
       "command": "4a0221d5103c",
       "common": "c306d6683eac",
       "edit": "fca5fe9c8601",
@@ -171,7 +171,7 @@
       "privacy": "cfbbc22bbe3d",
       "privateDialog": "3b7aa92b839c",
       "routing": "8ac82a36c9b3",
-      "share": "e7684bc26328",
+      "share": "7f62cf30bd24",
       "shared": "da1af02cf29e",
       "shortcuts": "d817114b1786",
       "start": "bd89df67345a",
@@ -186,8 +186,8 @@
     }
   },
   "da": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "2309322c7e25",
       "ai": "30c366fbcaa3",
@@ -197,7 +197,7 @@
       "chrome": "f5a18566a59c",
       "clear": "505424a1a99a",
       "cloud": "1d1ce85c77ec",
-      "collab": "d165d8be4a09",
+      "collab": "cd4c15a67a0f",
       "command": "e997c2ce1052",
       "common": "8d5a570947eb",
       "edit": "b4947e0f8b64",
@@ -233,7 +233,7 @@
       "privacy": "58bdb376eaca",
       "privateDialog": "9523e0eb018e",
       "routing": "9123ff47389c",
-      "share": "43def69bfde8",
+      "share": "432f5f86c4be",
       "shared": "056f73396882",
       "shortcuts": "55fa4826e59c",
       "start": "a7481b35022c",
@@ -248,8 +248,8 @@
     }
   },
   "de": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "866ad98895eb",
       "ai": "857638035ad7",
@@ -259,7 +259,7 @@
       "chrome": "85d0245a1dac",
       "clear": "bced4ab6f102",
       "cloud": "c119367a1c80",
-      "collab": "8be39d4995dc",
+      "collab": "55a06fb6e24c",
       "command": "19f789d85fcf",
       "common": "5a10542e7a33",
       "edit": "602ab66ca82b",
@@ -295,7 +295,7 @@
       "privacy": "4b5a68920132",
       "privateDialog": "8fd96bedffcd",
       "routing": "4eb180a9ad45",
-      "share": "2352692765b8",
+      "share": "bcaafc10ef37",
       "shared": "9963e3991b9e",
       "shortcuts": "0a358f899c69",
       "start": "a16af5061c12",
@@ -310,8 +310,8 @@
     }
   },
   "el": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "c85e9b1328ba",
       "ai": "c7556c1b9ccf",
@@ -321,7 +321,7 @@
       "chrome": "41fc0f38ba6d",
       "clear": "3409a67358e5",
       "cloud": "578df76008d3",
-      "collab": "a63cdbdec0a2",
+      "collab": "622d131194fe",
       "command": "fefd72c418f5",
       "common": "8c84d1c52584",
       "edit": "7eb69b10a118",
@@ -357,7 +357,7 @@
       "privacy": "71954363b5b2",
       "privateDialog": "0331c95b30df",
       "routing": "9d605d58a57d",
-      "share": "99f4b48cdb0f",
+      "share": "7dd1c5ca85b8",
       "shared": "6d9d17a39ec8",
       "shortcuts": "98366649bfea",
       "start": "c29222d914df",
@@ -372,7 +372,7 @@
     }
   },
   "en-XA": {
-    "messages": 2300,
+    "messages": 2315,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
@@ -383,7 +383,7 @@
       "chrome": "771bd1db57ec",
       "clear": "59b65d650ed0",
       "cloud": "855529070b7d",
-      "collab": "884d211ddd2d",
+      "collab": "23fd3f5233d9",
       "command": "bd91d128902d",
       "common": "2db005be6c5e",
       "edit": "07ba8504292b",
@@ -419,7 +419,7 @@
       "privacy": "2a4114f3f519",
       "privateDialog": "afd4833caf48",
       "routing": "4c7fb57d0faf",
-      "share": "119bfe59194c",
+      "share": "5dbed001c52b",
       "shared": "f3f01c37f820",
       "shortcuts": "d50a2c0f43ed",
       "start": "47af8707e23b",
@@ -434,8 +434,8 @@
     }
   },
   "es": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "8275061ad675",
       "ai": "5f18f254b452",
@@ -445,7 +445,7 @@
       "chrome": "fe32b51451b8",
       "clear": "67f0ef80c72d",
       "cloud": "7015496d4b04",
-      "collab": "5f5360afddcb",
+      "collab": "620d6a7ef284",
       "command": "ce81625ed334",
       "common": "3ed7a4b82ee0",
       "edit": "be0d6fff5d05",
@@ -481,7 +481,7 @@
       "privacy": "c892b2d48b3d",
       "privateDialog": "d40318dca761",
       "routing": "64b5284b8fb2",
-      "share": "ad8e7b4c4399",
+      "share": "6b64bf458dc3",
       "shared": "3c383423d363",
       "shortcuts": "cfd8a17e2e53",
       "start": "dd5410530ac7",
@@ -496,8 +496,8 @@
     }
   },
   "et": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "bcda9d352f6d",
       "ai": "d66d3769adc9",
@@ -507,7 +507,7 @@
       "chrome": "07a1081231f5",
       "clear": "e1fa436a6cc9",
       "cloud": "1eb248749157",
-      "collab": "80537a9c7576",
+      "collab": "23a40b6b429c",
       "command": "81a336c9a92c",
       "common": "497e9c12db62",
       "edit": "f8923a3e37cf",
@@ -543,7 +543,7 @@
       "privacy": "33301a450779",
       "privateDialog": "c60fb3b61fb2",
       "routing": "6ee6934decae",
-      "share": "00248607da2c",
+      "share": "b451ee364001",
       "shared": "7e5576b49172",
       "shortcuts": "49de7e3b0414",
       "start": "417dcfdbcb5c",
@@ -558,8 +558,8 @@
     }
   },
   "fi": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "639abadda530",
       "ai": "e9b23cd51b4e",
@@ -569,7 +569,7 @@
       "chrome": "2ad5463c7a19",
       "clear": "0307a74980c6",
       "cloud": "64c9aeac535b",
-      "collab": "aaf1103a665e",
+      "collab": "39e980a1e55b",
       "command": "e891d045ddcd",
       "common": "7ccd4afe74af",
       "edit": "ef7b39e38ebb",
@@ -605,7 +605,7 @@
       "privacy": "8d4d6cf4538c",
       "privateDialog": "9d87e9dd313a",
       "routing": "85c5ffcfe4a8",
-      "share": "09a6566cca3a",
+      "share": "75b6a1a6f058",
       "shared": "61ff5e1072ad",
       "shortcuts": "9368274db6f4",
       "start": "767b2d837bfc",
@@ -620,8 +620,8 @@
     }
   },
   "fr": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "c0da5634d917",
       "ai": "8372266af473",
@@ -631,7 +631,7 @@
       "chrome": "cddd8d1b1923",
       "clear": "ebfa4fbb7765",
       "cloud": "c127f9334062",
-      "collab": "5932bb00ea66",
+      "collab": "f8d859a26c09",
       "command": "aab509812f5e",
       "common": "c5512be0aff4",
       "edit": "898dc2b36709",
@@ -667,7 +667,7 @@
       "privacy": "4ed64debdbb8",
       "privateDialog": "892a96ae5d8d",
       "routing": "d09ce14046a6",
-      "share": "ff7480b6d915",
+      "share": "d850d32eae29",
       "shared": "925fbd5ac936",
       "shortcuts": "7f089d9e5f80",
       "start": "4d88c45cd640",
@@ -682,8 +682,8 @@
     }
   },
   "he": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "60a5b99830c3",
       "ai": "1c4de3ee24a5",
@@ -693,7 +693,7 @@
       "chrome": "570cdeb63723",
       "clear": "7634e787d609",
       "cloud": "0b1b322a8e49",
-      "collab": "fdb054972009",
+      "collab": "e033ddab55f8",
       "command": "484e53b86629",
       "common": "de9a37028a53",
       "edit": "4da5a7cb68fb",
@@ -729,7 +729,7 @@
       "privacy": "0f024ce126b0",
       "privateDialog": "344bad5b5407",
       "routing": "e5920f8559be",
-      "share": "a90d41cbc2f3",
+      "share": "86b6ba604331",
       "shared": "9ae8447ea11e",
       "shortcuts": "dd1ba67a5517",
       "start": "9779160d3636",
@@ -744,8 +744,8 @@
     }
   },
   "hi": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "81b5998e2d74",
       "ai": "c2134710abdb",
@@ -755,7 +755,7 @@
       "chrome": "5ce5d564b088",
       "clear": "9d29df0462a5",
       "cloud": "003e89f05fca",
-      "collab": "466822795112",
+      "collab": "eb86a275463a",
       "command": "577de78c824c",
       "common": "162b95253170",
       "edit": "4101ad8a5193",
@@ -791,7 +791,7 @@
       "privacy": "03d63e7c1f7d",
       "privateDialog": "4e368e516b9e",
       "routing": "48793cb4e380",
-      "share": "460833b07077",
+      "share": "7b037e4171f0",
       "shared": "ab9fee0b76d6",
       "shortcuts": "57d4025a8822",
       "start": "7a638b7439f7",
@@ -806,8 +806,8 @@
     }
   },
   "hr": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "250278672ecf",
       "ai": "41b8c5bd02f8",
@@ -817,7 +817,7 @@
       "chrome": "7a31dcc54ee9",
       "clear": "46b0abc5a335",
       "cloud": "d886cf868b9f",
-      "collab": "a6cece5e5adf",
+      "collab": "1ea59a512190",
       "command": "f9e44e430822",
       "common": "a939122ae984",
       "edit": "d0b475451abc",
@@ -853,7 +853,7 @@
       "privacy": "ebc8640fffb7",
       "privateDialog": "8d40e2884cef",
       "routing": "c301b70831b8",
-      "share": "7824cf4b7e8e",
+      "share": "983721433f27",
       "shared": "3eac7f1432c8",
       "shortcuts": "a51ddce29ad1",
       "start": "c88e710908f4",
@@ -868,8 +868,8 @@
     }
   },
   "hu": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "a173caaa787a",
       "ai": "999015b453fc",
@@ -879,7 +879,7 @@
       "chrome": "dd2e05640945",
       "clear": "9f0815298681",
       "cloud": "8c992a64fcb6",
-      "collab": "d16db9b07690",
+      "collab": "cd6a5a930d5b",
       "command": "c3aaee02ca33",
       "common": "e2394342bdb6",
       "edit": "2a3ea807594c",
@@ -915,7 +915,7 @@
       "privacy": "11e14be93683",
       "privateDialog": "1583c2764b38",
       "routing": "fcd3986930d6",
-      "share": "8d3fcb964fb0",
+      "share": "7bd6b2489769",
       "shared": "76c577440c1b",
       "shortcuts": "77e895921e7f",
       "start": "14abc2361406",
@@ -930,8 +930,8 @@
     }
   },
   "id": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "93080e86188c",
       "ai": "7508253d3643",
@@ -941,7 +941,7 @@
       "chrome": "727c8b8c9e14",
       "clear": "6a490e267875",
       "cloud": "9485b3763d56",
-      "collab": "d0388a9f88aa",
+      "collab": "3eecfc732ba3",
       "command": "a702a3ee9161",
       "common": "ff2fa6084d51",
       "edit": "8b71e01f7520",
@@ -977,7 +977,7 @@
       "privacy": "c2368c2b933b",
       "privateDialog": "9834b93348a4",
       "routing": "88f2d2167e8c",
-      "share": "2b73d9251236",
+      "share": "43e2e4089d14",
       "shared": "4e448003cad4",
       "shortcuts": "1422ba581483",
       "start": "aaf1676445bb",
@@ -992,8 +992,8 @@
     }
   },
   "it": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "9016b7c98d05",
       "ai": "b1bdb1b943f2",
@@ -1003,7 +1003,7 @@
       "chrome": "f498b3334257",
       "clear": "4d5fe344f73b",
       "cloud": "e7cc1b2a2b8d",
-      "collab": "871dbcad8a76",
+      "collab": "d306d56bd7d0",
       "command": "c66bce68f758",
       "common": "47a559d011ac",
       "edit": "5d648413b124",
@@ -1039,7 +1039,7 @@
       "privacy": "62b1d2551919",
       "privateDialog": "6b4cf209e4b9",
       "routing": "e1521b25670b",
-      "share": "c90c958b68e4",
+      "share": "e0bdf7af37a5",
       "shared": "a4a277800b4a",
       "shortcuts": "bff02b4c80ef",
       "start": "e02fb64ef456",
@@ -1054,8 +1054,8 @@
     }
   },
   "ja": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "03ac6ff46fda",
       "ai": "16916e4a6466",
@@ -1065,7 +1065,7 @@
       "chrome": "e1ee64604c6f",
       "clear": "b75cf3e662c8",
       "cloud": "e01dd1aab509",
-      "collab": "b47317fe3197",
+      "collab": "6a25b6e41f98",
       "command": "89bd6767d2c7",
       "common": "7e5176112087",
       "edit": "503243c9da97",
@@ -1101,7 +1101,7 @@
       "privacy": "00e7d81ed14d",
       "privateDialog": "8aa3a33f6046",
       "routing": "fd8ab59625b6",
-      "share": "6e4741f600d5",
+      "share": "997b8363b5da",
       "shared": "1780707682bb",
       "shortcuts": "a9747f6e6c86",
       "start": "cb1ce883509a",
@@ -1116,8 +1116,8 @@
     }
   },
   "ko": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "9668a36595b4",
       "ai": "b9713b0ebc36",
@@ -1127,7 +1127,7 @@
       "chrome": "ded6f1709661",
       "clear": "1972f875cc48",
       "cloud": "48d32f11c18d",
-      "collab": "d97d92abfbb8",
+      "collab": "a6e451f71ba0",
       "command": "b885494e8428",
       "common": "0a38dc66e6b9",
       "edit": "d527609872b1",
@@ -1163,7 +1163,7 @@
       "privacy": "d8963ae5d21d",
       "privateDialog": "fad117a7be0a",
       "routing": "e4c6c4a596cc",
-      "share": "fed183ed6323",
+      "share": "ff7e1ed6d0c2",
       "shared": "2d5e138a480f",
       "shortcuts": "1f50fa3f0e72",
       "start": "5d4ab6060191",
@@ -1178,8 +1178,8 @@
     }
   },
   "lt": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "d340551a2a22",
       "ai": "a60d18c72aca",
@@ -1189,7 +1189,7 @@
       "chrome": "2f8f3f9b19d2",
       "clear": "17da608d5eb5",
       "cloud": "1bc90b3fd9ad",
-      "collab": "bb0dd3e3d12b",
+      "collab": "c2b4f1a49348",
       "command": "ec865440485d",
       "common": "35250f8f8248",
       "edit": "2ae6e8598c7e",
@@ -1225,7 +1225,7 @@
       "privacy": "b86db1a0402d",
       "privateDialog": "bead71bd7154",
       "routing": "9297524a2eb4",
-      "share": "67f2fb9747a8",
+      "share": "65aaab10b428",
       "shared": "51a1a5e2e89d",
       "shortcuts": "aefa0bcd8330",
       "start": "9631f0122bdd",
@@ -1240,8 +1240,8 @@
     }
   },
   "lv": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "78e387261dc3",
       "ai": "7abcc8e0fca5",
@@ -1251,7 +1251,7 @@
       "chrome": "45d1aa25b746",
       "clear": "84c32082ea93",
       "cloud": "72ff4208950e",
-      "collab": "63e3e7ed63dd",
+      "collab": "0ec2cca1d5a9",
       "command": "96172b6ab7a0",
       "common": "758fb7647e78",
       "edit": "e088d77027bc",
@@ -1287,7 +1287,7 @@
       "privacy": "def37cecef2a",
       "privateDialog": "c85277e4d177",
       "routing": "5915a1041fb7",
-      "share": "16253f765ce5",
+      "share": "63c2dfd9aaee",
       "shared": "7914ba59646c",
       "shortcuts": "28af1188c70e",
       "start": "725f0071861f",
@@ -1302,8 +1302,8 @@
     }
   },
   "nb": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "4c2373a03104",
       "ai": "1f5a7dd90494",
@@ -1313,7 +1313,7 @@
       "chrome": "a9a41654eabb",
       "clear": "b8ba44f0f64d",
       "cloud": "b05356c26c45",
-      "collab": "dc6dd6121a1c",
+      "collab": "25c508a1b209",
       "command": "838de747dc57",
       "common": "64ada6e3677b",
       "edit": "8436ca0363e5",
@@ -1349,7 +1349,7 @@
       "privacy": "eba58ab988d6",
       "privateDialog": "8fe0924c025f",
       "routing": "a8a4c4e60ace",
-      "share": "c7e38276d6c6",
+      "share": "da870671976d",
       "shared": "5dc900e889ed",
       "shortcuts": "f15732687cca",
       "start": "e7a5c59400ae",
@@ -1364,8 +1364,8 @@
     }
   },
   "nl": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "9dca014cc22e",
       "ai": "9c887bebfb5c",
@@ -1375,7 +1375,7 @@
       "chrome": "9da856b81b22",
       "clear": "af4958252cad",
       "cloud": "f3ec5f3295c8",
-      "collab": "105cf9e78475",
+      "collab": "468a52607ac9",
       "command": "bb702d1d104b",
       "common": "e5d6c6576b9b",
       "edit": "291eca8ab366",
@@ -1411,7 +1411,7 @@
       "privacy": "c15528cf26d0",
       "privateDialog": "5d46dfa227a7",
       "routing": "714e48795bbe",
-      "share": "e66267a5dbc3",
+      "share": "df3cd64d284e",
       "shared": "680da57af225",
       "shortcuts": "a003e5254a8a",
       "start": "677b407e6ea4",
@@ -1426,8 +1426,8 @@
     }
   },
   "pl": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "570713cc3f9c",
       "ai": "0076fec882b3",
@@ -1437,7 +1437,7 @@
       "chrome": "9bbad062ca76",
       "clear": "b3cf507fd0fd",
       "cloud": "300bfbfc5d70",
-      "collab": "3dba56409607",
+      "collab": "9806cb1a9ec5",
       "command": "ac343e886da6",
       "common": "94dc62551dbb",
       "edit": "e3974c8235ac",
@@ -1473,7 +1473,7 @@
       "privacy": "3d0631c6e30d",
       "privateDialog": "7b707d705bdc",
       "routing": "93c18100df30",
-      "share": "a0bde5420e8f",
+      "share": "f1fd837052fc",
       "shared": "50b91eaf8dce",
       "shortcuts": "713ab4b4e952",
       "start": "a58cf3952ace",
@@ -1488,8 +1488,8 @@
     }
   },
   "pt-BR": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "b1b3aa0fdcce",
       "ai": "a599e0c7104c",
@@ -1499,7 +1499,7 @@
       "chrome": "107211b339fd",
       "clear": "3021ec2aa8da",
       "cloud": "f9923e928a37",
-      "collab": "54506dddcd71",
+      "collab": "34220160ca83",
       "command": "f7ff5ed827a4",
       "common": "72425e8f67cc",
       "edit": "3b01d00007ad",
@@ -1535,7 +1535,7 @@
       "privacy": "a7707ed47408",
       "privateDialog": "7140a0411411",
       "routing": "e72cebd0862a",
-      "share": "7d789fe5deef",
+      "share": "40e4f54ecaaa",
       "shared": "a343e85d9c7a",
       "shortcuts": "65eaedc11a8b",
       "start": "c7fba6052c7b",
@@ -1550,8 +1550,8 @@
     }
   },
   "pt-PT": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "269f381da119",
       "ai": "da44ea732c3a",
@@ -1561,7 +1561,7 @@
       "chrome": "0da3cabef78a",
       "clear": "e211bdefdac6",
       "cloud": "654726331cce",
-      "collab": "ae4073a3bbaa",
+      "collab": "776fd2595f92",
       "command": "57b0cb1db168",
       "common": "fe229ad69364",
       "edit": "47ab29c95aee",
@@ -1597,7 +1597,7 @@
       "privacy": "b5a0f1e5f722",
       "privateDialog": "807ced27a39f",
       "routing": "7aef741ed808",
-      "share": "fa0bebfeec7a",
+      "share": "fa8e9e416d72",
       "shared": "51c1c9523d3b",
       "shortcuts": "d33802139e1b",
       "start": "fea336983cfd",
@@ -1612,8 +1612,8 @@
     }
   },
   "ro": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "2fc367bfb234",
       "ai": "690dd0af944f",
@@ -1623,7 +1623,7 @@
       "chrome": "ce4d3d06f5c6",
       "clear": "b4c4e12e940b",
       "cloud": "7fcb9f8e7e56",
-      "collab": "5030cd809bb5",
+      "collab": "9b7436f782e5",
       "command": "c9bb88c90eec",
       "common": "2585bc40713b",
       "edit": "18e81df6e1d6",
@@ -1659,7 +1659,7 @@
       "privacy": "5764a710f480",
       "privateDialog": "98afeef7c9bb",
       "routing": "bd91c48c24bf",
-      "share": "764b85c7cdc5",
+      "share": "85bb92746538",
       "shared": "9b0f1100455c",
       "shortcuts": "7e2cfd00b4b1",
       "start": "98bb5984eab0",
@@ -1674,8 +1674,8 @@
     }
   },
   "ru": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "dd2155d35792",
       "ai": "419829673723",
@@ -1685,7 +1685,7 @@
       "chrome": "8dbb54b845f3",
       "clear": "9153e0dd2c1f",
       "cloud": "40c4bc75d269",
-      "collab": "244e0ebe61b5",
+      "collab": "52eb4ac0adf5",
       "command": "f2580a7b95d0",
       "common": "8c0c75d63e3e",
       "edit": "dcd29c6926d9",
@@ -1721,7 +1721,7 @@
       "privacy": "5e42a1dc03e0",
       "privateDialog": "c231593539bf",
       "routing": "802b8b3d6b26",
-      "share": "d2238812eca2",
+      "share": "0a2ca18c688b",
       "shared": "ec0a72d36007",
       "shortcuts": "fd92c9523642",
       "start": "8b9fabd362f5",
@@ -1736,8 +1736,8 @@
     }
   },
   "sk": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "de282cafe657",
       "ai": "b584a1750e62",
@@ -1747,7 +1747,7 @@
       "chrome": "e8a4bb80dd95",
       "clear": "07edd87e9908",
       "cloud": "b178788d3ab0",
-      "collab": "6a94b005caa9",
+      "collab": "29e97add0be9",
       "command": "26984a4d038a",
       "common": "5c3ee70b58da",
       "edit": "90694d2b190f",
@@ -1783,7 +1783,7 @@
       "privacy": "4d7dc6be5744",
       "privateDialog": "3f1ea74de458",
       "routing": "bca3b05a5832",
-      "share": "5928ce4a87de",
+      "share": "c8f4e449ad78",
       "shared": "34611e2b459f",
       "shortcuts": "13e0aaf26e24",
       "start": "6ccea06f2c13",
@@ -1798,8 +1798,8 @@
     }
   },
   "sl": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "46736cefd0aa",
       "ai": "844c5fe53eda",
@@ -1809,7 +1809,7 @@
       "chrome": "c67ddef1a67d",
       "clear": "4565356e2b6a",
       "cloud": "b856a5103588",
-      "collab": "180a9e764855",
+      "collab": "3ac4d8a0854f",
       "command": "73fdfa8dfa09",
       "common": "6d718aa4d204",
       "edit": "7ab6be0f631f",
@@ -1845,7 +1845,7 @@
       "privacy": "2ca45cb63bf1",
       "privateDialog": "90be98638d02",
       "routing": "1f37e5f4d2dd",
-      "share": "a3afb33160ea",
+      "share": "4c74b1499626",
       "shared": "8fbbc71b448b",
       "shortcuts": "06be791e3cd6",
       "start": "811dfd5b429f",
@@ -1860,8 +1860,8 @@
     }
   },
   "sr-Latn": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "b1f254245925",
       "ai": "571bcb1e2693",
@@ -1871,7 +1871,7 @@
       "chrome": "6619ae699a55",
       "clear": "ad6a6230ed98",
       "cloud": "746f09644e3f",
-      "collab": "7a0b99534e81",
+      "collab": "1c896f91b435",
       "command": "848fece13eb8",
       "common": "bb7debb269a7",
       "edit": "d9d071553a23",
@@ -1907,7 +1907,7 @@
       "privacy": "12e4dc2d911b",
       "privateDialog": "96cf497dab7f",
       "routing": "ad14b9de6598",
-      "share": "ebfe0de1500b",
+      "share": "a3b863f8537c",
       "shared": "f5910bfcbb11",
       "shortcuts": "50fed797a871",
       "start": "ef59c7af8511",
@@ -1922,8 +1922,8 @@
     }
   },
   "sv": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "a1faad44500b",
       "ai": "488379e2ee77",
@@ -1933,7 +1933,7 @@
       "chrome": "b0a40182f183",
       "clear": "49b8d2a2ba71",
       "cloud": "294ff7d73ef6",
-      "collab": "47c1bdd9b4c8",
+      "collab": "b60880afe015",
       "command": "c52fbace6954",
       "common": "a9982697b406",
       "edit": "fcccb954757c",
@@ -1969,7 +1969,7 @@
       "privacy": "212012b3d147",
       "privateDialog": "f33adc0afed2",
       "routing": "f3274251bf90",
-      "share": "a0f55ff921a0",
+      "share": "3b4ee6781608",
       "shared": "db98309dc7cf",
       "shortcuts": "3f38f9e96958",
       "start": "130af05b5553",
@@ -1984,8 +1984,8 @@
     }
   },
   "th": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "4c7152546e6f",
       "ai": "25e5a5758e0a",
@@ -1995,7 +1995,7 @@
       "chrome": "8dd51bf64c1a",
       "clear": "9500fccd1a35",
       "cloud": "a8be55aceebb",
-      "collab": "d6b4d4d34ca8",
+      "collab": "25d0d2d9934b",
       "command": "46d7b85301b8",
       "common": "0d49a4dd12dd",
       "edit": "74b53d762bda",
@@ -2031,7 +2031,7 @@
       "privacy": "68c15f4cebd2",
       "privateDialog": "9d3fee36e3f5",
       "routing": "7c7f3b434586",
-      "share": "570705af73f3",
+      "share": "608b59054bdb",
       "shared": "00158260b688",
       "shortcuts": "230bff430354",
       "start": "20c78fea4cc6",
@@ -2046,8 +2046,8 @@
     }
   },
   "tr": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "c9ba84e9fc81",
       "ai": "2c45c177a3eb",
@@ -2057,7 +2057,7 @@
       "chrome": "815c1609dabd",
       "clear": "7b073b22d41e",
       "cloud": "b16bc41d84ce",
-      "collab": "dec6488dc49d",
+      "collab": "155ade6874ad",
       "command": "94593399657a",
       "common": "9ea30617a151",
       "edit": "160da402b6f7",
@@ -2093,7 +2093,7 @@
       "privacy": "c41f2e7cfaa7",
       "privateDialog": "6bceb4d2542a",
       "routing": "44ef25ae04bc",
-      "share": "2fd0e3fbebe2",
+      "share": "fca9628cf191",
       "shared": "ab0751d284a7",
       "shortcuts": "0c930adc7f87",
       "start": "b4a0f6da89e8",
@@ -2108,8 +2108,8 @@
     }
   },
   "uk": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "01c3b2a9ea61",
       "ai": "00c91ebd48c1",
@@ -2119,7 +2119,7 @@
       "chrome": "2055e4f65ceb",
       "clear": "dbc3753ea6c4",
       "cloud": "c7db739efffb",
-      "collab": "6fd992c0bb47",
+      "collab": "c90b5072c2ec",
       "command": "44a85e8429df",
       "common": "0192aaa888b5",
       "edit": "5591705787b7",
@@ -2155,7 +2155,7 @@
       "privacy": "8f47427c927a",
       "privateDialog": "41d5d1755b63",
       "routing": "f0dddb864ad8",
-      "share": "31b1824c1550",
+      "share": "c6ba8ddd1147",
       "shared": "af0186a5a33c",
       "shortcuts": "6180eee293e7",
       "start": "39f67462a910",
@@ -2170,8 +2170,8 @@
     }
   },
   "vi": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "e4040b83feb7",
       "ai": "88456409d7c5",
@@ -2181,7 +2181,7 @@
       "chrome": "389b1f55ad43",
       "clear": "1715cc54fae9",
       "cloud": "c0051b59c72c",
-      "collab": "e5f61bd76b79",
+      "collab": "67314f4d2be5",
       "command": "cf28afb4529b",
       "common": "0702cf38f108",
       "edit": "30fa0e95de83",
@@ -2217,7 +2217,7 @@
       "privacy": "b7dfca8d5bcb",
       "privateDialog": "e583a12d5828",
       "routing": "bca3f4651d74",
-      "share": "874d9dc2f0ec",
+      "share": "a6a2dae67182",
       "shared": "0d4248202931",
       "shortcuts": "d8ccc3116df6",
       "start": "52f25410e99e",
@@ -2232,8 +2232,8 @@
     }
   },
   "zh-CN": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "320934d4f256",
       "ai": "3ef50488a156",
@@ -2243,7 +2243,7 @@
       "chrome": "c3c08743294b",
       "clear": "c27c0626e770",
       "cloud": "b7a9a10f5f64",
-      "collab": "e37929aa0d96",
+      "collab": "800f1dbd1764",
       "command": "339b00c3b683",
       "common": "ecf0aff0cf9e",
       "edit": "e9c60d8883ea",
@@ -2279,7 +2279,7 @@
       "privacy": "3869fbe7355c",
       "privateDialog": "3ea3ef3da3e0",
       "routing": "6a280a5435b0",
-      "share": "da9a93eeb476",
+      "share": "e2d7a703590f",
       "shared": "ccd1ca225041",
       "shortcuts": "6e28bcaf1929",
       "start": "f5a12feb680b",
@@ -2294,8 +2294,8 @@
     }
   },
   "zh-TW": {
-    "messages": 2300,
-    "fallback": 354,
+    "messages": 2315,
+    "fallback": 370,
     "areas": {
       "admission": "b8f5dc48650d",
       "ai": "aa167b14e4aa",
@@ -2305,7 +2305,7 @@
       "chrome": "9f0a1135818d",
       "clear": "104c0850cf58",
       "cloud": "eab3c52670c3",
-      "collab": "3c0175f7993f",
+      "collab": "3e858dd8d9f9",
       "command": "6f70f747dcc9",
       "common": "98853983ef15",
       "edit": "f1c885f6397c",
@@ -2341,7 +2341,7 @@
       "privacy": "56d33c920781",
       "privateDialog": "b495d627fd6b",
       "routing": "b3e91807a08a",
-      "share": "4efb73101ad8",
+      "share": "3e4653e64aa5",
       "shared": "a1cccd5c657e",
       "shortcuts": "d15809218052",
       "start": "a1a72f4c5bcc",
