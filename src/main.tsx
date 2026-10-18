@@ -32,7 +32,7 @@ registerScenarioPlanner((d) => import("./canvas/checks/runner").then((m) => m.pl
 startStorageLifecycle();
 // Inside the storage lifecycle, so a device clear in another tab can't be undone by a late recovery: edits saved
 // under a retired example's slug become one of your diagrams.
-adoptRetiredExampleEdits();
+void adoptRetiredExampleEdits();
 
 const render = () =>
   createRoot(document.getElementById("root")!).render(

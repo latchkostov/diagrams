@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import type { SaveTarget } from "./diagramIO";
 import type { FileHandle } from "../interop/files";
@@ -1017,36 +1017,68 @@ it("example-session cleanup leaves a pending promoted draft save alone", () => {
 });
 
 describe("retired examples", () => {
-  it("edits saved under a retired example's slug become one of your diagrams, once", () => {
-    storage.setItem("diagrams.autosave.v1:aws-fanout", JSON.stringify({ ...good, title: "My fan-out edits" }));
-    storage.setItem("diagrams.autosave.v1:kafka-order-pipeline", JSON.stringify(good));
-    const [slug, ...more] = io.adoptRetiredExampleEdits();
+  const AUTOSAVE = "diagrams.autosave.v1:";
+  const ENTRY = "diagrams.library-entry.v1:";
+  /** Web Locks as browsers give them: one holder at a time, in request order. */
+  const serialLocks = () => {
+    let tail: Promise<unknown> = Promise.resolve();
+    return {
+      request: (_name: string, run: () => unknown) => {
+        const next = tail.then(run);
+        tail = next.catch(() => undefined);
+        return next;
+      },
+    };
+  };
+  beforeEach(() => {
+    vi.stubGlobal("navigator", { locks: serialLocks() });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  const failEntries = (key: string) => {
+    if (key.startsWith(ENTRY)) throw new DOMException("full", "QuotaExceededError");
+  };
+  /** An earlier start wrote the copy's document and stopped before publishing it; the source is still there. */
+  const unpublish = (slug: string) => {
+    for (let i = storage.length - 1; i >= 0; i--) {
+      const key = storage.key(i);
+      if (key && (key === `${ENTRY}${slug}` || key.startsWith("diagrams.library.v"))) storage.removeItem(key);
+    }
+  };
+
+  it("edits saved under a retired example's slug become one of your diagrams, once", async () => {
+    storage.setItem(`${AUTOSAVE}aws-fanout`, JSON.stringify({ ...good, title: "My fan-out edits" }));
+    storage.setItem(`${AUTOSAVE}kafka-order-pipeline`, JSON.stringify(good));
+    const [slug, ...more] = await io.adoptRetiredExampleEdits();
     expect(more).toEqual([]);
     expect(io.listLibrary().map((e) => [e.slug, e.title])).toEqual([[slug, "My fan-out edits"]]);
     expect(io.getCurrent(slug)?.nodes.map((n) => n.id)).toEqual(["a"]);
-    expect(storage.getItem("diagrams.autosave.v1:aws-fanout")).toBeNull();
+    expect(storage.getItem(`${AUTOSAVE}aws-fanout`)).toBeNull();
     // A current example's legacy autosave keeps working as before.
-    expect(storage.getItem("diagrams.autosave.v1:kafka-order-pipeline")).not.toBeNull();
-    expect(io.adoptRetiredExampleEdits()).toEqual([]);
+    expect(storage.getItem(`${AUTOSAVE}kafka-order-pipeline`)).not.toBeNull();
+    expect(await io.adoptRetiredExampleEdits()).toEqual([]);
   });
 
-  it("keeps the edits under the old slug when Your diagrams can't store them", () => {
-    storage.setItem("diagrams.autosave.v1:iot-telemetry", JSON.stringify(good));
-    storage.quotaBytes = 10;
-    expect(io.adoptRetiredExampleEdits()).toEqual([]);
-    expect(storage.getItem("diagrams.autosave.v1:iot-telemetry")).not.toBeNull();
+  it("without Web Locks the copy is made but the source is always kept", async () => {
+    vi.stubGlobal("navigator", {});
+    storage.setItem(`${AUTOSAVE}aws-fanout`, JSON.stringify(good));
+    const [slug] = await io.adoptRetiredExampleEdits();
+    expect(io.listLibrary().map((e) => e.slug)).toEqual([slug]);
+    expect(storage.getItem(`${AUTOSAVE}aws-fanout`)).not.toBeNull();
+    // Again: the same copy, never a second one.
+    expect(await io.adoptRetiredExampleEdits()).toEqual([slug]);
+    expect(io.listLibrary().map((e) => e.slug)).toEqual([slug]);
   });
 
   it("retired edits remain recoverable when adoption hits quota", async () => {
     const edits = { ...good, title: "My plant telemetry", nodes: [{ ...good.nodes[0], id: "kept", label: "Kept" }] };
-    storage.setItem("diagrams.autosave.v1:iot-telemetry", JSON.stringify(edits));
-    // Every write the migration attempts is refused: the library entry and its document alike.
-    storage.beforeWrite = (key) => {
-      if (key.startsWith("diagrams.doc.") || key.startsWith("diagrams.entry."))
-        throw new DOMException("full", "QuotaExceededError");
-    };
-    expect(io.adoptRetiredExampleEdits()).toEqual([]);
+    storage.setItem(`${AUTOSAVE}iot-telemetry`, JSON.stringify(edits));
+    // The library entry can't be written: the document written before it is rolled back.
+    storage.beforeWrite = failEntries;
+    expect(await io.adoptRetiredExampleEdits()).toEqual([]);
     expect(io.listLibrary()).toEqual([]);
+    expect(storage.getItem(`${AUTOSAVE}iot-telemetry`)).not.toBeNull();
     // The notice says why, and offers the edits as a file.
     const notice = toast.toast.current;
     expect(notice?.kind).toBe("error");
@@ -1060,39 +1092,83 @@ describe("retired examples", () => {
     expect(JSON.parse(text)).toMatchObject({ title: "My plant telemetry", nodes: [{ id: "kept", label: "Kept" }] });
     expect(name).toBe("My plant telemetry.diagram.json");
     expect(mime).toBe("application/json");
-    // And they stay under the old key, so the next start tries again once there's room.
+    // Once there's room, the next start adopts them.
     storage.beforeWrite = undefined;
-    const [slug] = io.adoptRetiredExampleEdits();
+    const [slug] = await io.adoptRetiredExampleEdits();
     expect(io.getCurrent(slug)?.title).toBe("My plant telemetry");
+    expect(storage.getItem(`${AUTOSAVE}iot-telemetry`)).toBeNull();
   });
 
-  it("two tabs adopting the same edits at once keep one copy", async () => {
-    storage.setItem("diagrams.autosave.v1:aws-fanout", JSON.stringify(good));
+  it("several failed migrations share one notice that downloads them all", async () => {
+    storage.setItem(`${AUTOSAVE}iot-telemetry`, JSON.stringify({ ...good, title: "Plant" }));
+    storage.setItem(`${AUTOSAVE}aws-fanout`, JSON.stringify({ ...good, title: "Fan-out" }));
+    storage.beforeWrite = failEntries;
+    expect(await io.adoptRetiredExampleEdits()).toEqual([]);
+    expect(toast.toast.current?.text).toMatch(/Your edits to 2 examples/);
+    toast.toast.current?.action?.run();
+    const files = await import("../interop/files");
+    await vi.waitFor(() => expect(files.downloadText).toHaveBeenCalledTimes(2));
+    expect(
+      vi
+        .mocked(files.downloadText)
+        .mock.calls.map((c) => c[1])
+        .sort(),
+    ).toEqual(["Fan-out.diagram.json", "Plant.diagram.json"]);
+  });
+
+  it("adoption repairs a document whose library publication was interrupted", async () => {
+    storage.setItem(`${AUTOSAVE}keda-render-workers`, JSON.stringify(good));
+    const [slug] = await io.adoptRetiredExampleEdits();
+    unpublish(slug);
+    storage.setItem(`${AUTOSAVE}keda-render-workers`, JSON.stringify(good));
+    expect(io.listLibrary()).toEqual([]);
+    expect(await io.adoptRetiredExampleEdits()).toEqual([slug]);
+    expect(io.listLibrary().map((e) => e.slug)).toEqual([slug]);
+    expect(io.getCurrent(slug)?.nodes.map((n) => n.id)).toEqual(["a"]);
+    expect(storage.getItem(`${AUTOSAVE}keda-render-workers`)).toBeNull();
+  });
+
+  it("a half-written document is never rolled back, and the source stays when publishing fails", async () => {
+    storage.setItem(`${AUTOSAVE}keda-render-workers`, JSON.stringify(good));
+    const [slug] = await io.adoptRetiredExampleEdits();
+    unpublish(slug);
+    storage.setItem(`${AUTOSAVE}keda-render-workers`, JSON.stringify(good));
+    storage.beforeWrite = failEntries;
+    expect(await io.adoptRetiredExampleEdits()).toEqual([]);
+    expect(io.getOriginal(slug)?.nodes.map((n) => n.id)).toEqual(["a"]);
+    expect(storage.getItem(`${AUTOSAVE}keda-render-workers`)).not.toBeNull();
+  });
+
+  it("failed concurrent adoption preserves the peer's committed copy", async () => {
+    storage.setItem(`${AUTOSAVE}aws-fanout`, JSON.stringify(good));
     vi.resetModules();
-    const other = await import("./diagramIO");
-    let second: string[] = [];
-    // The other tab starts while this one is still writing: both have read the edits.
-    storage.beforeWrite = (key) => {
-      if (!key.startsWith("diagrams.doc.") || second.length) return;
-      storage.beforeWrite = undefined;
-      second = other.adoptRetiredExampleEdits();
-    };
-    const first = io.adoptRetiredExampleEdits();
-    expect(second).toEqual(first);
-    expect(io.listLibrary().map((e) => e.slug)).toEqual(first);
+    const peer = await import("./diagramIO");
+    // Both tabs start at once. The lock lets the peer finish first; then this tab's entry writes fail.
+    const peerRun = peer.adoptRetiredExampleEdits().then((slugs) => {
+      storage.beforeWrite = failEntries;
+      return slugs;
+    });
+    const ownRun = io.adoptRetiredExampleEdits();
+    const peerSlugs = await peerRun;
+    expect(peerSlugs).toHaveLength(1);
+    await ownRun;
+    storage.beforeWrite = undefined;
+    expect(io.listLibrary().map((e) => e.slug)).toEqual(peerSlugs);
+    expect(io.getCurrent(peerSlugs[0])?.nodes.map((n) => n.id)).toEqual(["a"]);
+    expect(storage.getItem(`${AUTOSAVE}aws-fanout`)).toBeNull();
   });
 
-  it("a retry after an interrupted cleanup reuses the copy", () => {
-    storage.setItem("diagrams.autosave.v1:keda-render-workers", JSON.stringify(good));
-    // The copy is stored, but removing the old key fails (the tab closes, or storage refuses).
+  it("a retry after an interrupted cleanup reuses the copy", async () => {
+    storage.setItem(`${AUTOSAVE}keda-render-workers`, JSON.stringify(good));
+    // The copy is stored and listed, but removing the old key fails (the tab closes, or storage refuses).
     const remove = vi.spyOn(storage, "removeItem").mockImplementationOnce(() => {
       throw new Error("interrupted");
     });
-    const [slug] = io.adoptRetiredExampleEdits();
+    const [slug] = await io.adoptRetiredExampleEdits();
     remove.mockRestore();
-    expect(storage.getItem("diagrams.autosave.v1:keda-render-workers")).not.toBeNull();
-    expect(io.adoptRetiredExampleEdits()).toEqual([slug]);
+    expect(storage.getItem(`${AUTOSAVE}keda-render-workers`)).not.toBeNull();
+    expect(await io.adoptRetiredExampleEdits()).toEqual([slug]);
     expect(io.listLibrary().map((e) => e.slug)).toEqual([slug]);
-    expect(storage.getItem("diagrams.autosave.v1:keda-render-workers")).toBeNull();
+    expect(storage.getItem(`${AUTOSAVE}keda-render-workers`)).toBeNull();
   });
 });

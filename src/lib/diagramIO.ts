@@ -932,11 +932,11 @@ function retiredCopySlug(slug: string, raw: string): string {
   return LIBRARY_SLUG_PREFIX + (a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0")).slice(0, 12);
 }
 
-/** When Your diagrams can't take them, the edits stay where they are and the person can download them now. */
-function offerRetiredEdits(edited: DiagramFile): void {
-  const title = edited.title.trim() || UNTITLED;
+/** When Your diagrams can't take them, the edits stay where they are and one notice offers them all as downloads. */
+function offerRetiredEdits(failed: readonly DiagramFile[]): void {
+  const titles = failed.map((d) => d.title.trim() || UNTITLED);
   notify(
-    `Your edits to "${title}", an example that has been replaced, couldn't be moved to Your diagrams: this browser's storage is full. Download them now, or free up space (File → Your diagrams…) and reload.`,
+    `${failed.length === 1 ? `Your edits to "${titles[0]}", an example that has been replaced,` : `Your edits to ${failed.length} examples that have been replaced`} couldn't be moved to Your diagrams: this browser's storage is full. Download them now, or free up space (File → Your diagrams…) and reload.`,
     {
       kind: "error",
       duration: 60_000,
@@ -945,39 +945,75 @@ function offerRetiredEdits(edited: DiagramFile): void {
         testId: "retired-edits-download",
         run: () =>
           void import("../interop/files").then(({ downloadText }) =>
-            downloadText(JSON.stringify(edited, null, 2), `${title}.diagram.json`, "application/json"),
+            failed.forEach((d, i) =>
+              downloadText(JSON.stringify(d, null, 2), `${titles[i]}.diagram.json`, "application/json"),
+            ),
           ),
       },
     },
   );
 }
 
+/** The adopted copy holds exactly these edits and Your diagrams lists it: only then may the source go. */
+function adoptionVerified(copy: string, edited: DiagramFile): boolean {
+  if (!hasLibraryEntry(copy)) return false;
+  const stored = getCurrent(copy);
+  return !!stored && JSON.stringify(stored) === JSON.stringify(withPrivacyField(edited, false));
+}
+
 /**
- * Edits saved under a retired example's slug (an example autosave from before copies existed) become one of your
- * diagrams, so retiring an example never loses them; the old key is removed once the copy is stored. The copy's slug
- * is derived from the edits, so tabs starting together, or a retry after an interrupted cleanup, find the same entry
- * instead of adding another. When storage is full, the edits stay put and a notice offers them as a download.
- * Returns the entries' slugs. Runs once at startup, after the storage lifecycle (src/main.tsx).
+ * Makes sure the copy exists and is listed. A document whose library entry was never published (an interrupted start)
+ * gets its entry; a copy that's already complete is left as it is. Only a document this run creates can be rolled
+ * back, so a peer's committed copy is never removed. False when storage refuses.
  */
-export function adoptRetiredExampleEdits(): string[] {
+function ensureAdopted(copy: string, edited: DiagramFile): boolean {
+  const document = getOriginal(copy);
+  if (document && hasLibraryEntry(copy)) return true;
+  try {
+    if (document)
+      commitWrites([[entryKey(copy), JSON.stringify(summarize(copy, document, Date.now(), undefined, {}))]]);
+    else createLibraryEntry(edited, undefined, undefined, {}, undefined, copy);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function adoptRetired(exclusive: boolean): string[] {
   const adopted: string[] = [];
+  const failed: DiagramFile[] = [];
   for (const slug of Object.keys(RETIRED_EXAMPLES)) {
     const key = AUTOSAVE_PREFIX + slug;
     const raw = safeStorage.getItem(key);
     const edited = raw === null ? undefined : readDiagram(key);
     if (raw === null || !edited) continue;
     const copy = retiredCopySlug(slug, raw);
-    if (safeStorage.getItem(slotKey(copy)!) === null) {
-      try {
-        createLibraryEntry(edited, undefined, undefined, {}, undefined, copy);
-      } catch {
-        offerRetiredEdits(edited);
-        continue;
-      }
+    if (!ensureAdopted(copy, edited)) {
+      failed.push(edited);
+      continue;
     }
-    safeStorage.removeItem(key);
     adopted.push(copy);
+    // Without the cross-tab lock another tab may still be writing: keep the source, the copy is found again next time.
+    if (exclusive && adoptionVerified(copy, edited)) safeStorage.removeItem(key);
   }
+  if (failed.length) offerRetiredEdits(failed);
   if (adopted.length) changed();
   return adopted;
+}
+
+/** One tab at a time adopts (Web Locks); see adoptRetiredExampleEdits. */
+export const ADOPT_RETIRED_LOCK = "livediagrams-adopt-retired";
+
+/**
+ * Edits saved under a retired example's slug (an example autosave from before copies existed) become one of your
+ * diagrams, so retiring an example never loses them. The copy's slug is derived from the edits, so a retry finds the
+ * same entry instead of adding another. Tabs adopt one at a time under a Web Lock, and the old key is removed only
+ * once Your diagrams lists the copy and it reads back the same edits; where Web Locks are missing, the old key is
+ * always kept. When storage is full, the edits stay put and a notice offers them as downloads. Resolves to the copies'
+ * slugs. Runs at startup, after the storage lifecycle (src/main.tsx).
+ */
+export async function adoptRetiredExampleEdits(): Promise<string[]> {
+  const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+  if (!locks?.request) return adoptRetired(false);
+  return locks.request(ADOPT_RETIRED_LOCK, () => adoptRetired(true));
 }
