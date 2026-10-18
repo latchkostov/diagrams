@@ -1,3 +1,6 @@
+import { CanvasControls, CanvasMinimap, DotGrid, ZoomVar } from "./chrome/CanvasControls";
+import { CanvasOverlays } from "./chrome/CanvasOverlays";
+import { useChromeHint, useChromeOverlays } from "./chrome/useCanvasChrome";
 import {
   useAutosave,
   useDocumentHandle,
@@ -25,22 +28,15 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type Ref,
-  type RefObject,
 } from "react";
 import {
-  Background,
-  BackgroundVariant,
   ConnectionLineType,
   ConnectionMode,
-  ControlButton,
-  Controls,
-  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
   useReactFlow,
-  useStore,
   useStoreApi,
   type Connection,
   type EdgeChange,
@@ -55,19 +51,11 @@ import {
   type IsValidConnection,
   type ReactFlowState,
 } from "@xyflow/react";
-import { getStencil } from "../stencils/registry";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
-import {
-  DRAFT_SLUG,
-  getDiagramIdentity,
-  isLibrarySlug,
-  setDiagramPrivate,
-  setOnDeviceAllowed,
-  UNTITLED,
-} from "../lib/diagramIO";
+import { DRAFT_SLUG, getDiagramIdentity, isLibrarySlug, setDiagramPrivate, setOnDeviceAllowed } from "../lib/diagramIO";
 import { privacyOf } from "../lib/localOnly";
-import { PRIVACY_REQUEST, usePrivacyFlags } from "../lib/usePrivacy";
+import { usePrivacyFlags } from "../lib/usePrivacy";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
 import { memberBoxes } from "./memberBoxes";
 import { expandGroupIds } from "../model/groupHierarchy";
@@ -84,7 +72,6 @@ import {
 import { previewMembership, type GroupRect, type MemberBox } from "./membership";
 import { nearestInDirection, readingOrder, stepInOrder, tabOrder, type NavBox } from "./keyboardNav";
 import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } from "./DiagramContext";
-import { useCovered, useOverlayTestIds } from "./useOverlayFit";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import {
   ANNOTATION_DND_MIME,
@@ -93,11 +80,9 @@ import {
   annotationTitle,
   parseAnnotationDrag,
 } from "./annotations";
-import { resolveGroupTone } from "./groupTones";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
-import { Icon } from "../components/Icon";
 import { ContextMenu } from "../components/ContextMenu";
 import { ShortcutsDialog } from "../components/ShortcutsDialog";
 import { actionRegistry, type ActionContext, type MenuNode } from "../editor/actions";
@@ -107,18 +92,17 @@ import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
 import type { FlowSelection } from "../editor/historySelection";
 import { useEditor } from "../editor/useEditor";
 import { inCanvas, useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
-import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
+import { isEditableTarget } from "../editor/shortcuts";
 import type { NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { flushSync } from "react-dom";
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
 import { CanvasFitContext } from "./canvasFit";
 import { safeStorage } from "../lib/storage";
-import { StartCard, type StartOptions } from "./StartCard";
+import type { StartOptions } from "./StartCard";
 import { useAiDock } from "../ai/ui/dock";
 import { NodeTipLayer } from "./NodeTooltip";
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
-import { FirstRunHint } from "./FirstRunHint";
 import { notify, toast } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
 import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
@@ -137,9 +121,7 @@ import { isConnectable } from "./annotations";
 import { railAnchor } from "./railAnchor";
 import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
-import { ChecksCardView, ChecksMarkersView, DiagramCardMeta, SelectionFindings } from "./checks/ChecksViews";
-import { useBelow } from "./checks/useBelow";
-import { PresentFullscreen } from "./PresentFullscreen";
+import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
 import { t as tr, useLocale } from "../i18n";
 import { CopyNotice } from "./CopyNotice";
 import {
@@ -170,41 +152,6 @@ const PAN_MIDDLE = [1];
  * wrapper: everything handed to <ReactFlow> keeps its identity across the canvas's renders.
  */
 const SNAP_GRID: [number, number] = [10, 10];
-/** The minimap draws every node again when one of these changes identity (see SNAP_GRID). */
-const MINIMAP_STYLE = { width: 168, height: 112 };
-const minimapFill = (n: FlowNode) =>
-  n.type === "boundary"
-    ? "transparent"
-    : n.type === "annotation"
-      ? annotationMinimapFill(n as AnnotationFlowNode)
-      : getStencil((n as DiagramFlowNode).data.stencil).accent;
-const minimapStroke = (n: FlowNode) =>
-  n.type === "boundary"
-    ? resolveGroupTone((n as GroupFlowNode).data.tone)
-    : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
-      ? resolveAnnotationColor((n as AnnotationFlowNode).data.color, (n as AnnotationFlowNode).data.kind).hex
-      : "transparent";
-
-/**
- * The view's zoom as a CSS variable on the canvas (`--rf-zoom`), for sizes that must hold on screen at
- * any zoom (the handles' hit areas, the inline editors). Rounded down to a step, so what's scaled by
- * 1/zoom is never short of its size. Re-renders only itself, and only when the zoom moves a step.
- */
-function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
-  const zoom = useStore((s: ReactFlowState) => Math.max(0.02, Math.floor(s.transform[2] * 50 + 1e-6) / 50));
-  useLayoutEffect(() => void host.current?.style.setProperty("--rf-zoom", String(zoom)), [host, zoom]);
-  return null;
-}
-
-/**
- * The dot grid: a dot every 10 px from 100% zoom up and every 20 px below, so the dots and the snap agree
- * where they can be told apart. Re-renders only when the zoom crosses 100%.
- */
-function DotGrid() {
-  const fine = useStore((s: ReactFlowState) => s.transform[2] >= 1);
-  return <Background variant={BackgroundVariant.Dots} gap={fine ? 10 : 20} size={1.3} color="var(--dot)" />;
-}
-
 /** Ids whose selected flag inside React Flow disagrees with the box's pick. */
 function staleBoxFlags(
   s: Pick<ReactFlowState<FlowNode, DiagramFlowEdge>, "nodeLookup">,
@@ -216,7 +163,6 @@ function staleBoxFlags(
 }
 
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
-const HINT_KEY = "diagrams.firstRunHint.v1";
 /** Below this width the inspector waits for a selection: two open side panels leave too little canvas. */
 const ROOMY = 1680;
 const CRAMPED = 1280;
@@ -259,11 +205,6 @@ export interface CanvasViewerOptions {
   controls?: ReactNode;
   /** Told how to drive live view from outside (the host-supplied embed's play, pause, speed and simulation). */
   onLive?: (handle: LiveHandle) => void;
-}
-
-/** Minimap: notes show their tint; zones, text and shapes are outlines. */
-function annotationMinimapFill(n: AnnotationFlowNode): string {
-  return n.data.kind === "note" ? resolveAnnotationColor(n.data.color, n.data.kind).hex : "transparent";
 }
 
 export function CanvasView(props: Props) {
@@ -396,12 +337,7 @@ function CanvasInner({
   const [naming, setNaming] = useState<{ node: string; edge: string } | null>(null);
   /** Names a node, connection or boundary in the inspector (set below, once the editor exists). */
   const rename = useRef<(t: RenameTarget) => void>(() => {});
-  const [startDismissed, setStartDismissed] = useState(false);
-  const [hintSeen, setHintSeen] = useState(() => readOnly || safeStorage.getItem(HINT_KEY) === "1");
-  const dismissHint = useCallback(() => {
-    setHintSeen(true);
-    safeStorage.setItem(HINT_KEY, "1");
-  }, []);
+  const { startDismissed, setStartDismissed, hintSeen, dismissHint } = useChromeHint(readOnly);
   // Going live counts as having found the live view (so the first-run hint retires).
   const onLiveChange = useCallback(
     (on: boolean) => {
@@ -693,11 +629,7 @@ function CanvasInner({
   }, [presenting]);
 
   useModeFit(controller, presenting, live);
-  // The title card folds to a chip while nodes sit under it, so it never hides the diagram.
-  const card = useRef<HTMLDivElement>(null);
-  const cardCovers = useCovered(card, wrapper);
-  const checksTop = useBelow(card, checksOn && checksCard);
-  useOverlayTestIds(wrapper);
+  const { card, cardCovers, checksTop } = useChromeOverlays(wrapper, checksOn && checksCard);
 
   // Your own diagrams have no "original" worth going back to: the edits are the diagram (and undo
   // covers mistakes). Examples and shared diagrams keep "Edited, reset".
@@ -2111,8 +2043,6 @@ function CanvasInner({
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
   const contentCount = nodeCount + annotationNodes.length;
-  const undoTitle = tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) });
-  const redoTitle = tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) });
   const diagramColor = meta.color ? resolveAnnotationColor(meta.color).hex : undefined;
 
   return (
@@ -2264,62 +2194,14 @@ function CanvasInner({
               {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
               {editGestures && <LandingOutline />}
               {!hideChrome && (
-                <Controls
-                  showInteractive={false}
-                  showFitView={false}
-                  position="bottom-left"
-                  onZoomIn={zoomedByButton}
-                  onZoomOut={zoomedByButton}
-                >
-                  {/* Our fit keeps content clear of the title card, minimap and live bar. */}
-                  <ControlButton
-                    onClick={fit}
-                    title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
-                    aria-label={tr("menu.fitView")}
-                    data-testid="fit-view-button"
-                  >
-                    <Icon name="fit" size={14} />
-                  </ControlButton>
-                  <ControlButton
-                    onClick={editor.undo}
-                    disabled={!editor.canUndo()}
-                    title={undoTitle}
-                    aria-label={tr("ai.undo")}
-                    data-testid="undo-button"
-                  >
-                    <Icon name="undo" size={14} />
-                  </ControlButton>
-                  <ControlButton
-                    onClick={editor.redo}
-                    disabled={!editor.canRedo()}
-                    title={redoTitle}
-                    aria-label={tr("shortcuts.redo")}
-                    data-testid="redo-button"
-                  >
-                    <Icon name="redo" size={14} />
-                  </ControlButton>
-                  <ControlButton
-                    onClick={() => setShortcutsOpen(true)}
-                    title={tr("canvas.keyboardShortcuts")}
-                    aria-label={tr("shortcuts.title")}
-                    data-testid="shortcuts-button"
-                  >
-                    <Icon name="keyboard" size={14} />
-                  </ControlButton>
-                </Controls>
-              )}
-              {!hideChrome && prefs.minimap && contentCount > 0 && (
-                <MiniMap
-                  position="bottom-right"
-                  style={MINIMAP_STYLE}
-                  pannable
-                  zoomable
-                  nodeBorderRadius={6}
-                  nodeStrokeWidth={2}
-                  nodeColor={minimapFill}
-                  nodeStrokeColor={minimapStroke}
+                <CanvasControls
+                  editor={editor}
+                  fit={fit}
+                  zoomedByButton={zoomedByButton}
+                  onShortcuts={() => setShortcutsOpen(true)}
                 />
               )}
+              {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
               {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
               {(nodeCount > 0 || live) && (
                 <LiveView
@@ -2353,97 +2235,44 @@ function CanvasInner({
               {checksOn && checksCard && <ChecksMarkersView store={checks} />}
             </ReactFlow>
 
-            <div
-              ref={card}
-              className={`diagram-card${presenting ? " is-large" : ""}${cardCovers ? " is-compact" : ""}${privacy && !hideChrome ? " has-badge" : ""}`}
-              data-testid="diagram-card"
-              data-canvas-overlay
-              data-collapsed={cardCovers ? "1" : undefined}
-              // A blank, untitled diagram is already named in the picker: the card waits for the first node
-              // (a private one shows at once, so its lock does).
-              hidden={
-                nodeCount === 0 &&
-                !presenting &&
-                (meta.title || UNTITLED) === UNTITLED &&
-                !meta.description &&
-                !(privacy && !hideChrome)
-              }
-            >
-              {/* The person's own words: their direction is their own, whatever the language around them (dir="auto"). */}
-              <h1 data-testid="diagram-title" dir="auto">
-                {meta.title}
-              </h1>
-              {privacy && !hideChrome && <PrivateBadge kind={privacy} />}
-              {meta.description && <p dir="auto">{meta.description}</p>}
-              {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
-              {!hideChrome && (
-                <DiagramCardMeta
-                  store={checks}
-                  open={checksCard}
-                  showWarnings={openingFitDone}
-                  reset={
-                    modified &&
-                    !ownDiagram && (
-                      <button
-                        className="link-btn"
-                        onClick={reset}
-                        data-testid="reset-diagram"
-                        title={tr("canvas.discardYourEditsToThisDiagramUndoable")}
-                      >
-                        <Icon name="reset" size={13} />
-                        {tr("canvas.editedReset")}
-                      </button>
-                    )
-                  }
-                />
-              )}
-            </div>
-
-            {checksOn && checksCard && (
-              <ChecksCardView store={checks} host={checksHost} top={checksTop} onMount={checksMounted} />
-            )}
-
-            {presenting && (
-              <div className="present-bar">
-                <PresentFullscreen />
-                <button className="present-exit" onClick={onExitPresent} data-testid="present-exit">
-                  <Icon name="close" size={14} /> {tr("present.exit")} <kbd>{tr("keys.escape")}</kbd>
-                </button>
-              </div>
-            )}
-
-            {contentCount === 0 && !hideChrome && !live && start && !startDismissed ? (
-              <StartCard
-                start={start}
-                onBlank={() => {
-                  setStartDismissed(true);
-                  // A blank canvas starts from the stencil list: open it and put the cursor in its search.
-                  setPaletteCollapsed(false);
-                  setOpenedByHand((o) => ({ ...o, palette: true }));
-                  requestAnimationFrame(() =>
-                    wrapper.current?.parentElement
-                      ?.querySelector<HTMLInputElement>('[data-testid="palette-search"]')
-                      ?.focus(),
-                  );
-                }}
-              />
-            ) : (
-              contentCount === 0 &&
-              !hideChrome && (
-                <div className="canvas-empty" data-testid="canvas-empty">
-                  <strong>{tr("canvas.thisDiagramIsEmpty")}</strong>
-                  <span>
-                    {paletteHidden
-                      ? tr("chrome.doubleClickTheCanvasToAddANodeOrOpen")
-                      : tr("chrome.dragAStencilFromTheLeftOrDoubleClickThe")}
-                  </span>
-                </div>
-              )
-            )}
-
-            {nodeCount > 0 && !hideChrome && !live && !hintSeen && (
-              <FirstRunHint simulations={meta.simulations?.length ?? 0} onDismiss={dismissHint} />
-            )}
+            <CanvasOverlays
+              card={card}
+              cardCovers={cardCovers}
+              presenting={presenting}
+              privacy={privacy}
+              hideChrome={hideChrome}
+              nodeCount={nodeCount}
+              meta={meta}
+              checks={checks}
+              checksCard={checksCard}
+              openingFitDone={openingFitDone}
+              modified={modified}
+              ownDiagram={ownDiagram}
+              reset={reset}
+              checksOn={checksOn}
+              checksHost={checksHost}
+              checksTop={checksTop}
+              checksMounted={checksMounted}
+              onExitPresent={onExitPresent}
+              contentCount={contentCount}
+              live={live}
+              start={start}
+              startDismissed={startDismissed}
+              onBlank={() => {
+                setStartDismissed(true);
+                // A blank canvas starts from the stencil list: open it and put the cursor in its search.
+                setPaletteCollapsed(false);
+                setOpenedByHand((o) => ({ ...o, palette: true }));
+                requestAnimationFrame(() =>
+                  wrapper.current?.parentElement
+                    ?.querySelector<HTMLInputElement>('[data-testid="palette-search"]')
+                    ?.focus(),
+                );
+              }}
+              paletteHidden={paletteHidden}
+              hintSeen={hintSeen}
+              dismissHint={dismissHint}
+            />
           </div>
           {!hideChrome && (
             <Inspector
@@ -2504,33 +2333,5 @@ function CanvasInner({
         <NodeTipLayer tips={nodeTips} enabled={tipsEnabled} covered={!!menu} root={wrapper} />
       </DiagramContext.Provider>
     </CameraContext.Provider>
-  );
-}
-
-/**
- * The lock beside the title of a private diagram. A click explains what Private means and offers to turn it
- * off (one confirmation). A local-only example's lock only says it's always private.
- */
-function PrivateBadge({ kind }: { kind: "local-only" | "private" }) {
-  const always = kind === "local-only";
-  return (
-    <button
-      type="button"
-      className="private-badge"
-      data-testid="private-badge"
-      data-kind={kind}
-      aria-label={
-        always ? tr("chrome.privateAlwaysItComesFromALocalOnlyExample") : tr("chrome.privateDiagramWhatThisMeans")
-      }
-      title={
-        always ? tr("chrome.alwaysPrivateNoShareLinksCloudSavesOrAI") : tr("chrome.privateNoShareLinksCloudSavesOrAI")
-      }
-      aria-disabled={always || undefined}
-      onClick={() => {
-        if (!always) window.dispatchEvent(new Event(PRIVACY_REQUEST));
-      }}
-    >
-      <Icon name="lock" size={12} /> {tr("ai.private")}
-    </button>
   );
 }
