@@ -1,0 +1,24 @@
+## Live Diagram: no macro body; output HTML.
+## Replace diagrams.example.com with your self-hosted viewer, including its directory prefix.
+## @param source:title=Diagram source|type=string|required=true|desc=Same-origin attachment URL or inline Diagram file JSON. Never a public share link.
+## @param height:title=Height|type=string|default=480|desc=Height in pixels (120 to 1600).
+## @param clickToPlay:title=Click to play|type=boolean|default=true|desc=Show a Play diagram button. Never starts automatically.
+#set($height = "480")
+#if($paramheight)
+  #set($height = $paramheight)
+#end
+#set($clickToPlay = "true")
+#if($paramclickToPlay == "false")
+  #set($clickToPlay = "false")
+#end
+<script type="module" src="https://diagrams.example.com/embed/confluence-dc.js"></script>
+<confluence-live-diagram
+  data-testid="confluence-diagram"
+  data-source="$htmlUtil.htmlEncode($paramsource)"
+  data-height="$htmlUtil.htmlEncode($height)"
+  data-click-to-play="$clickToPlay"
+>
+  <live-diagram data-testid="confluence-viewer" title="Live Diagram"></live-diagram>
+  <button type="button" data-testid="confluence-play" disabled="disabled" hidden="hidden">Play diagram</button>
+  <p data-testid="confluence-error" role="alert" hidden="hidden"></p>
+</confluence-live-diagram>

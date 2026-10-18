@@ -95,6 +95,45 @@ editor and embeds receive the app's provider resource permissions; the viewer st
 Meta-CSP does **not** enforce `frame-ancestors`;
 use a host with HTTP security headers for sensitive deployments.
 
+## Confluence Data Center
+
+Install the [user-macro recipe](../deploy/self-host/confluence-dc/README.md) to render an attachment or
+inline Diagram file JSON using your self-hosted `<live-diagram>` component. The Confluence page supplies
+the data with its own session and permissions; the viewer holds it only in memory. No public diagram URL
+is created. The macro always starts still and offers click-to-play, even for files saved to play on open.
+
+Generate and deploy your viewer's HTTP headers with the Confluence **origin**, without its context path:
+
+```sh
+pnpm headers:self-host --frame-ancestors "https://wiki.example.com"
+# For a viewer served under /tools/diagrams/:
+pnpm headers:self-host --base /tools/diagrams/ --frame-ancestors "https://wiki.example.com"
+```
+
+Install the generated policy for your chosen host (see above); running the command alone does not change
+your server. Keep the embed-script CORS headers for both `embed/live-diagram.js` and the recipe's
+`embed/confluence-dc.js`. Query-aware policies allow the wiki to frame `?embed=1&host=1`, while the editor
+remains same-origin-only. Query-blind hosts allow the listed origin to frame the whole site. Check that
+an upstream proxy does not add a conflicting CSP or `X-Frame-Options: SAMEORIGIN`/`DENY` to embeds.
+
+Serve the viewer shell, its assets and both embed modules outside SSO, while protecting the editor and
+Confluence attachments. These are static code, without diagram data. A frame behind cross-site SSO may
+fail when third-party cookies are blocked or a login page refuses framing. A same-site viewer such as
+`https://diagrams.example.com` beside `https://wiki.example.com` can help with cookie restrictions;
+test your actual authentication policy. The robust option is an ungated viewer with gated attachments.
+
+In Confluence's existing CSP, add the viewer origin to **both `script-src` and `frame-src`** (and
+`script-src-elem` if explicitly present). For example, extend each applicable source list with
+`https://diagrams.example.com`, retaining the existing sources. The recipe uses external module scripts;
+it needs neither inline scripts nor `eval`. Attachment fetching uses Confluence's own origin, so keep
+`connect-src 'self'`. Keep the viewer's policy separate from the wiki's policy: `frame-ancestors` says
+who may embed the viewer; the wiki's `frame-src` says which viewer it may load.
+
+Data Center gets a user macro rather than a Java plugin: it reuses the existing viewer and avoids a
+separate plugin release cycle for a product approaching
+[Atlassian's announced end of life on March 28, 2029](https://www.atlassian.com/licensing/data-center-end-of-life).
+This recipe covers Data Center only; Cloud integration and embed-destination UI are separate work.
+
 ## Docker and Compose
 
 ```sh
