@@ -34,6 +34,7 @@ export function useInteractionCore<P>(
     /** The diagram as last committed: a node React Flow's store hasn't caught up with yet isn't gone. */
     let committed = { nodes: [] as FlowNode[], edges: [] as DiagramFlowEdge[] };
     let ids: { nodes: Set<string>; edges: Set<string> } | null = null;
+    let version = 0;
     const known = () =>
       (ids ??= {
         nodes: new Set(committed.nodes.filter((n) => !n.hidden).map((n) => n.id)),
@@ -46,6 +47,7 @@ export function useInteractionCore<P>(
         return (!!n && !n.hidden) || known().nodes.has(id);
       },
       hasEdge: (id) => store.getState().edgeLookup.has(id) || known().edges.has(id),
+      version: () => version,
       publish: (phase) => {
         if (wrapper.current) wrapper.current.dataset.interactionState = phase;
       },
@@ -57,6 +59,7 @@ export function useInteractionCore<P>(
         if (next.nodes === committed.nodes && next.edges === committed.edges) return;
         committed = next;
         ids = null;
+        version++;
       },
       controller: createInteractionController<P>(createDomPort(canvas), domScheduler, { journal: interactionJournal }),
     };

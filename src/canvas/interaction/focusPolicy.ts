@@ -74,7 +74,11 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         return { state, command: { type: "roving", target: selection, when: "frame" } };
       }
       if (cause === "palette" && target)
-        return move({ target: { kind: target.kind, id: target.id }, when: event.placed ? "measured" : "now" });
+        return move(
+          event.placed
+            ? { target: { kind: target.kind, id: target.id }, when: "measured", fresh: true }
+            : { target: { kind: target.kind, id: target.id }, when: "now" },
+        );
       return keep();
     }
     case "naming.done":

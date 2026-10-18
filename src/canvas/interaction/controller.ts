@@ -44,6 +44,8 @@ export interface InteractionPort {
   focus(el: ElementHandle, select?: "all" | "end"): boolean;
   /** Whether an element is still in the document. */
   connected(el: ElementHandle): boolean;
+  /** Counts changes of the diagram as committed (a fresh target is gone only once the diagram changed without it). */
+  version?(): number;
   /** Readiness: `data-interaction-state` (and the journal, in e2e builds). */
   publish(phase: InteractionPhase): void;
 }
@@ -108,6 +110,8 @@ export function createInteractionController<P = unknown>(
   let current: { move: FocusMove; then?: Done } | null = null;
   /** The pending move has been tried at least once (a `measured` move waits for its first frame). */
   let begun = false;
+  /** The diagram's version when the pending move was decided. */
+  let issuedAt = 0;
   /** A move running inside port.focus (the focusin it causes reads it). */
   let running: FocusMove | null = null;
   let disposed = false;
@@ -167,6 +171,7 @@ export function createInteractionController<P = unknown>(
       parked = false;
       begun = false;
       current = { move: command, then };
+      issuedAt = port.version?.() ?? 0;
       schedule(command);
     } else {
       if (focus.pending !== before && before) {
@@ -239,8 +244,11 @@ export function createInteractionController<P = unknown>(
         return decide({ type: "focus.ran" });
       }
     }
+    // A fresh target the diagram hasn't committed yet is on its way, not gone.
+    const arriving = found.state === "gone" && move.fresh && (port.version?.() ?? 0) === issuedAt;
     const waits =
-      (move.when === "ready" || move.when === "measured") && (found.state === "waiting" || found.state === "parked");
+      (move.when === "ready" || move.when === "measured") &&
+      (found.state === "waiting" || found.state === "parked" || arriving);
     if (waits) {
       const wasParked = parked;
       parked = found.state === "parked";

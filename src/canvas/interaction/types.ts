@@ -117,6 +117,11 @@ export interface FocusMove {
   /** This is that second attempt: it doesn't count as pending, and input stands it down. */
   retry?: boolean;
   /**
+   * The target is new: it isn't in the diagram yet, and arrives with a later commit (the palette's add may commit
+   * after the next frame). Missing, it waits until the diagram has changed without it, rather than counting as gone.
+   */
+  fresh?: boolean;
+  /**
    * The caller brings the target into view itself (keyboard navigation, Undo): the focus doesn't also ask the
    * camera for a focus reveal.
    */

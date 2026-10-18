@@ -38,6 +38,7 @@ function harness() {
     /** The Inspector: folded, or showing these fields (name → owner). */
     inspector: { open: true, fields: new Map<string, string | undefined>() },
     order: (ids: readonly string[]) => [...ids].sort(),
+    version: 0,
   };
   /** Focus calls on elements that had left the document (must stay empty). */
   const removedFocus: string[] = [];
@@ -95,6 +96,7 @@ function harness() {
       return true;
     },
     connected: (h) => (h as El).connected,
+    version: () => env.version,
     publish: (p) => phases.push(p),
   };
   const controller = createInteractionController<string>(
@@ -306,6 +308,40 @@ describe("interaction controller: Undo", () => {
     h.drain();
     expect(h.focused).toEqual([]);
     expect(h.controller.state.roving).toBe("a");
+  });
+});
+
+describe("interaction controller: the palette's new node", () => {
+  it("waits for a node the diagram hasn't committed yet, and gives up once the diagram changed without it", () => {
+    const h = harness();
+    h.controller.dispatch({
+      type: "selection.changed",
+      cause: "palette",
+      target: { kind: "node", id: "new" },
+      placed: true,
+    });
+    // Its add commits a few frames late (a busy machine): still pending, not gone.
+    h.frame();
+    h.frame();
+    expect(h.controller.phase).toBe("focus-pending");
+    h.env.version++;
+    h.env.nodes.set("new", { drawn: false });
+    h.frame();
+    h.env.nodes.set("new", { drawn: true });
+    h.frame();
+    expect(h.focused).toEqual(["node:new"]);
+
+    h.controller.dispatch({
+      type: "selection.changed",
+      cause: "palette",
+      target: { kind: "node", id: "x" },
+      placed: true,
+    });
+    h.frame();
+    h.env.version++;
+    h.frame();
+    expect(h.focused).toEqual(["node:new"]);
+    expect(h.controller.phase).toBe("idle");
   });
 });
 

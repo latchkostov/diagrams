@@ -17,6 +17,8 @@ export interface DomCanvas {
   hasEdge?(id: string): boolean;
   /** These node ids in Tab's order (the canvas's reading order), visible ones only. */
   order?(ids: readonly string[]): string[];
+  /** Counts the diagram's committed changes. */
+  version?(): number;
   publish?(phase: InteractionPhase): void;
 }
 
@@ -95,6 +97,7 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       return document.activeElement === el;
     },
     connected: (handle) => (handle as Node).isConnected,
+    version: () => canvas.version?.() ?? 0,
     publish: (phase) => canvas.publish?.(phase),
   };
 }
