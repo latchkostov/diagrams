@@ -14,9 +14,9 @@
       { "atMs": 0, "kind": "note", "label": "All three rankers, and the weekly batch scorer, read features from one shared feature server." },
       { "atMs": 0, "kind": "traffic", "label": "TVs and web" },
       { "atMs": 0, "kind": "traffic", "label": "App" },
-      { "atMs": 4000, "kind": "fault", "label": "Slow dependency: feature-server" },
+      { "atMs": 4000, "kind": "fault", "label": "Slow dependency: Feature server" },
       { "atMs": 4000, "kind": "note", "label": "Slow dependency drill: feature lookups take ten times as long. The feature server's slots fill and rankings queue." },
-      { "atMs": 14000, "kind": "fault", "label": "Slow dependency: feature-server" },
+      { "atMs": 14000, "kind": "fault", "label": "Slow dependency: Feature server" },
       { "atMs": 14000, "kind": "note", "label": "The slowdown clears. The queue drains in a few seconds; nothing was dropped, but every queued home page waited." },
       { "atMs": 20000, "kind": "traffic", "label": "TVs and web ends" },
       { "atMs": 20000, "kind": "traffic", "label": "App ends" }

@@ -1,4 +1,5 @@
-import { nodeFaultLabel } from "../model/faultWords";
+import { nodeFaultLabels } from "../model/faultWords";
+import { useInteraction } from "../canvas/interaction";
 import { compileTopology } from "../sim/topology";
 import { brokerAssignments } from "../sim/brokerAssignments";
 import { resolveMultiplier } from "../sim/units";
@@ -55,6 +56,9 @@ export function NodeBadges({
   capacity?: CapacityView | null;
 }) {
   const ui = useLive();
+  useLocale();
+  const faults = state.snapshot.faults;
+  const labels = nodeFaultLabels(faults);
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
   const topology = useMemo(() => compileTopology(diagram), [diagram]);
@@ -109,7 +113,7 @@ export function NodeBadges({
             diagram={diagram}
             s={s}
             showOutageLoss={boundaryFault}
-            fault={nodeFaultLabel(n.id, state.snapshot.faults)}
+            fault={labels.get(n.id) ?? ""}
             properties={ui.canEdit && !presenting}
             peak={peak}
             hovered={hovered === n.id}
@@ -140,36 +144,70 @@ export function NodeBadges({
  * Whichever moved last wins: a node focused after its label edit doesn't hide the one hovered next.
  */
 function useHoveredNode(): string | null {
+  const interaction = useInteraction();
   const domNode = useStore((s) => s.domNode);
   const [id, setId] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [pointerLast, setPointerLast] = useState(false);
   useEffect(() => {
     if (!domNode) return;
+    const nodeAt = (target: Element | null) => {
+      const detail = target?.closest<HTMLElement>("[data-live-node-detail]");
+      return (
+        detail?.dataset.liveNodeDetail ??
+        target?.closest<HTMLElement>(".react-flow__node-diagram[data-id]")?.dataset.id ??
+        null
+      );
+    };
     const over = (e: PointerEvent) => {
-      const el =
-        e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
-      setId(el?.dataset.id ?? null);
+      const node = nodeAt(e.target instanceof Element ? e.target : null);
+      // Latency details stay open across the gap to their scrollable surface.
+      if (node || !domNode.querySelector("[data-live-node-detail].is-summary")) setId(node);
       setPointerLast(true);
     };
     const leave = () => setId(null);
     const focus = () => {
-      const el = document.activeElement?.closest<HTMLElement>(".react-flow__node-diagram[data-id]");
-      setFocused(el?.dataset.id ?? null);
+      setFocused(nodeAt(document.activeElement));
       setPointerLast(false);
+    };
+    const down = (e: PointerEvent) => {
+      if (!nodeAt(e.target instanceof Element ? e.target : null)) setId(null);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const active = document.activeElement;
+      if (e.shiftKey && active?.hasAttribute("data-live-node-detail")) {
+        const card = domNode.querySelector<HTMLElement>(`[data-testid="node-${CSS.escape(nodeAt(active)!)}"]`);
+        const target = card?.parentElement;
+        if (target?.hasAttribute("tabindex")) {
+          e.preventDefault();
+          interaction?.dispatch({ type: "node.details", target });
+        }
+        return;
+      }
+      if (e.shiftKey) return;
+      if (!active?.matches(".react-flow__node-diagram[data-id]")) return;
+      const detail = document.getElementById(`live-node-detail-${encodeURIComponent(nodeAt(active)!)}`);
+      if (!detail?.hasAttribute("data-live-node-detail")) return;
+      e.preventDefault();
+      interaction?.dispatch({ type: "node.details", target: detail });
     };
     focus();
     domNode.addEventListener("pointerover", over);
     domNode.addEventListener("pointerleave", leave);
+    domNode.addEventListener("pointerdown", down);
+    domNode.addEventListener("keydown", key);
     domNode.addEventListener("focusin", focus);
     domNode.addEventListener("focusout", focus);
     return () => {
       domNode.removeEventListener("pointerover", over);
       domNode.removeEventListener("pointerleave", leave);
+      domNode.removeEventListener("pointerdown", down);
+      domNode.removeEventListener("keydown", key);
       domNode.removeEventListener("focusin", focus);
       domNode.removeEventListener("focusout", focus);
     };
-  }, [domNode]);
+  }, [domNode, interaction]);
   return pointerLast ? (id ?? focused) : (focused ?? id);
 }
 
@@ -233,6 +271,7 @@ const NodeBadge = memo(function NodeBadge({
     const card = domNode.querySelector<HTMLElement>(`[data-testid="node-${CSS.escape(node.id)}"]`);
     if (!tooltip || !card) return;
     const place = () => {
+      const scrollTop = tooltip.scrollTop;
       const bounds = domNode.getBoundingClientRect();
       const overlays = document.querySelectorAll<HTMLElement>(
         '[data-testid="live-controls"], [data-testid="live-note"]',
@@ -270,6 +309,8 @@ const NodeBadge = memo(function NodeBadge({
       tooltip.style.top = `${top >= box.bottom ? Math.ceil(offset) : Math.floor(offset)}px`;
       const left = Math.max(pane.left + 12, Math.min(detail.left, pane.right - 12 - detail.width));
       tooltip.style.left = `${(left - detail.left) / zoom}px`;
+      // Measuring at natural height temporarily removes overflow. Keep the user's scroll position.
+      tooltip.scrollTop = scrollTop;
     };
     place();
     const observer = new ResizeObserver(place);
@@ -442,9 +483,17 @@ const NodeBadge = memo(function NodeBadge({
       {hovered && (
         <div
           id={tooltipId}
-          className={`lv-detail${hasLatency ? " has-latency" : ""}`}
-          role="tooltip"
+          className={`lv-detail${hasLatency ? " has-latency nowheel nopan" : ""}`}
+          role={hasLatency ? "region" : "tooltip"}
+          aria-label={hasLatency ? t("latency.heading") : undefined}
+          tabIndex={hasLatency ? 0 : undefined}
+          data-live-node-detail={hasLatency ? node.id : undefined}
           data-testid={`node-detail-${node.id}`}
+          onKeyDown={(event) => {
+            if (!hasLatency || (event.key !== "Home" && event.key !== "End")) return;
+            event.preventDefault();
+            event.currentTarget.scrollTop = event.key === "Home" ? 0 : event.currentTarget.scrollHeight;
+          }}
         >
           {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
           {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}

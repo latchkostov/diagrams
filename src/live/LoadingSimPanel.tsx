@@ -4,9 +4,15 @@ import { t, useLocale } from "../i18n";
 import type { LoadStatus } from "../lib/lazyLoad";
 import { LiveIcon } from "./icons";
 import { usePanelEscape } from "./usePanelEscape";
-export function LoadingPanel({ onClose, failed, retry }: LoadStatus & { onClose(): void }) {
+import type { ElementHandle } from "../canvas/interaction/types";
+export function LoadingPanel({
+  onClose,
+  failed,
+  retry,
+  opener,
+}: LoadStatus & { onClose(): void; opener?: ElementHandle | null }) {
   useLocale();
-  usePanelEscape(onClose);
+  usePanelEscape(onClose, undefined, opener);
   const interaction = useInteraction();
   useLayoutEffect(() => {
     interaction?.dispatch({

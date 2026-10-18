@@ -33,3 +33,15 @@ it("names the drill fault window in its one compact scope line without restart o
   expect(html).not.toContain("since restart");
   expect(html).not.toContain("zone-b");
 });
+
+it("excludes animation time only from the compact breakdown denominator", () => {
+  const recorder = createLatencyRecorder();
+  recordLatency(recorder, "Order", 0, 100, 900);
+  const latency = latencyMetrics(recorder);
+  expect(renderToStaticMarkup(<LatencyReadout id="sink" latency={latency} compact />)).toContain(
+    "Waiting 0% · work 100%",
+  );
+  expect(renderToStaticMarkup(<LatencyReadout id="sink" latency={latency} />)).toContain(
+    "Waiting 0% · work 10% · travel 90%",
+  );
+});

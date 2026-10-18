@@ -144,7 +144,8 @@ export function faultTimelineProblem(diagram: DiagramFile, simulation: Simulatio
     if (active.get(key) === value) continue;
     if (value) active.set(key, value);
     else active.delete(key);
-    work += range ? range.end - range.start : 1;
+    // Drill fault changes also reset every node's latency recorder.
+    work += topology.nodes.size + (range ? range.end - range.start : 1);
     if (work > MAX_FAULT_WORK) return t("fault.workBudget");
   }
 }
@@ -182,10 +183,67 @@ export const faultSchema: JsonSchema = {
   ],
 };
 
+type Boundary = NonNullable<DiagramFile["groups"]>[number];
+const outageIndexes = new WeakMap<
+  DiagramFile,
+  {
+    topology: ReturnType<typeof faultTopology>;
+    groups: Map<string, Boundary>;
+    key?: string;
+    members: ReadonlyMap<string, Boundary>;
+    faults?: readonly Fault[];
+  }
+>();
+const NO_FAULTS: readonly Fault[] = [];
+
+/** First active outage wins for overlapping boundaries, just as in the engine's fault order. */
+export function outageMembership(
+  diagram: DiagramFile,
+  faults: readonly Fault[] = NO_FAULTS,
+): ReadonlyMap<string, Boundary> {
+  let index = outageIndexes.get(diagram);
+  if (!index) {
+    index = {
+      topology: faultTopology(diagram),
+      groups: new Map(diagram.groups?.map((g) => [g.id, g])),
+      members: new Map(),
+    };
+    outageIndexes.set(diagram, index);
+  }
+  if (index.faults === faults) return index.members;
+  const outages = faults.filter((f): f is Extract<Fault, { kind: "boundary" }> => f.kind === "boundary" && f.down);
+  const key = JSON.stringify(outages.map((f) => f.boundary));
+  index.faults = faults;
+  if (index.key === key) return index.members;
+  index.key = key;
+  const members = new Map<string, Boundary>();
+  const topology = index.topology;
+  // Skip assigned descendants so overlapping outages never re-walk the same nodes.
+  const next = Array.from({ length: topology.members.length + 1 }, (_, i) => i);
+  const unassigned = (start: number): number => {
+    let i = start;
+    while (next[i] !== i) i = next[i];
+    while (next[start] !== start) {
+      const parent = next[start];
+      next[start] = i;
+      start = parent;
+    }
+    return i;
+  };
+  for (const fault of outages) {
+    const range = topology.ranges.get(fault.boundary),
+      boundary = index.groups.get(fault.boundary);
+    if (!range || !boundary) continue;
+    for (let i = unassigned(range.start); i < range.end; i = unassigned(i)) {
+      members.set(topology.members[i], boundary);
+      next[i] = unassigned(i + 1);
+    }
+  }
+  index.members = members;
+  return members;
+}
+
 /** The enclosing outage that must be restored before a member can be revived. */
-export function boundaryOutage(diagram: DiagramFile, nodeId: string, faults: readonly Fault[] = []) {
-  if (!faults.some((f) => f.kind === "boundary" && f.down)) return undefined;
-  const membership = boundaryAncestors(boundaryParents(diagram), diagram.nodes.find((n) => n.id === nodeId)?.group);
-  const outage = faults.find((f) => f.kind === "boundary" && f.down && membership.includes(f.boundary));
-  return outage?.kind === "boundary" ? diagram.groups?.find((g) => g.id === outage.boundary) : undefined;
+export function boundaryOutage(diagram: DiagramFile, nodeId: string, faults?: readonly Fault[]) {
+  return outageMembership(diagram, faults).get(nodeId);
 }

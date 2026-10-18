@@ -14,9 +14,9 @@
     "markers": [
       { "atMs": 0, "kind": "note", "label": "The Leicester router sends the branch's tunnels over fibre and a 4G backup, and health-checks both." },
       { "atMs": 0, "kind": "traffic", "label": "Leicester branch" },
-      { "atMs": 4000, "kind": "fault", "label": "Region connectivity: leicester-fibre" },
+      { "atMs": 4000, "kind": "fault", "label": "Region connectivity: Fibre underlay" },
       { "atMs": 4000, "kind": "note", "label": "Region connectivity drill: the fibre is cut. Requests already on it are lost; the router sends every new one over LTE." },
-      { "atMs": 14000, "kind": "fault", "label": "Region connectivity: leicester-fibre" },
+      { "atMs": 14000, "kind": "fault", "label": "Region connectivity: Fibre underlay" },
       { "atMs": 14000, "kind": "note", "label": "The fibre is back and shares the load again. Staff never noticed." },
       { "atMs": 20000, "kind": "traffic", "label": "Leicester branch ends" }
     ]

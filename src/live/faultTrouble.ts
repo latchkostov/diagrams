@@ -1,5 +1,5 @@
 import type { DiagramFile } from "../model/types";
-import { boundaryOutage, type Fault } from "../model/faults";
+import { outageMembership, type Fault } from "../model/faults";
 import { nodeFaultLabel } from "../model/faultWords";
 import { t } from "../i18n";
 import type { Trouble } from "./observedTrouble";
@@ -11,12 +11,14 @@ export function faultTrouble(
   nodes: Record<string, { dropped: number }> = {},
 ): Trouble | undefined {
   if (!trouble) return;
-  const boundary = trouble.kind === "down" ? boundaryOutage(diagram, trouble.node, faults) : undefined;
+  const members = trouble.kind === "down" ? outageMembership(diagram, faults) : undefined;
+  const boundary = members?.get(trouble.node);
   if (boundary) {
     const label = boundary.label || boundary.id;
-    const dropped = diagram.nodes
-      .filter((n) => boundaryOutage(diagram, n.id, faults)?.id === boundary.id)
-      .reduce((sum, n) => sum + (nodes[n.id]?.dropped ?? 0), 0);
+    let dropped = 0;
+    for (const [id, outage] of members!) {
+      if (outage.id === boundary.id) dropped += nodes[id]?.dropped ?? 0;
+    }
     return {
       ...trouble,
       headline: t("fault.boundaryDown", { label }),
@@ -24,6 +26,7 @@ export function faultTrouble(
       action: { kind: "restore-boundary", boundary: boundary.id, label },
     };
   }
+  if (trouble.kind === "down") return trouble;
   const node = [trouble.node, ...(trouble.related ?? [])].find((id) => nodeFaultLabel(id, faults));
   if (!node) return trouble;
   const label = diagram.nodes.find((n) => n.id === node)?.label || node;

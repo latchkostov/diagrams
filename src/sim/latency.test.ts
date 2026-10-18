@@ -376,6 +376,10 @@ it("drills reset aggregate and per-type percentiles on effective fault changes, 
   e.setFault({ factor: 5, node: "worker", kind: "slow" }); // Key order does not make an effective change.
   expect(e.snapshot().nodes.sink.latency).toEqual(faulted);
   const faultCheckpoint = run.checkpoint();
+  expect(Object.isFrozen(faulted.sinceFault)).toBe(true);
+  expect(Object.isFrozen(faulted.sinceFault!.fault)).toBe(true);
+  expect(() => Object.assign(faulted.sinceFault!, { atMs: -1 })).toThrow(TypeError);
+  expect(() => Object.assign(faulted.sinceFault!.fault, { factor: 10 })).toThrow(TypeError);
   e.setFault({ ...slow, factor: 1 });
   expect(e.snapshot().nodes.sink.latency).toBeUndefined();
   e.inject("source", 1, { type: "Order" });

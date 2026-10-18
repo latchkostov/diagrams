@@ -25,8 +25,10 @@ import { Sparkline } from "./Sparkline";
 import { LiveIcon } from "./icons";
 import { formatSeconds } from "./format";
 import { usePanelEscape } from "./usePanelEscape";
+import type { ElementHandle } from "../canvas/interaction/types";
 
 interface Props {
+  opener?: ElementHandle | null;
   /** Simulation to open for editing; null shows the list. */
   initial: Simulation | null;
   state: LiveState;
@@ -84,13 +86,10 @@ const num = (v: string) => (v.trim() === "" ? 0 : Number(v));
  * Right-side drawer to create and edit the diagram's saved simulations. Edits a working copy;
  * Save writes it through the editor (one undo step) and Run plays it immediately, saved or not.
  */
-export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen, onDraftChange }: Props) {
+export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen, onDraftChange, opener }: Props) {
   useLocale();
   const ui = useLive();
   const interaction = useInteraction();
-  useLayoutEffect(() => {
-    interaction?.dispatch({ type: "panel.field", panel: "sim-panel", field: "sim-panel-heading" });
-  }, [interaction]);
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
   useLayoutEffect(() => onDraftChange?.(sim), [sim, onDraftChange]);
@@ -106,11 +105,18 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
 
   usePickNode(picker, () => setPicker(null));
   // Esc cancels a node pick first, then closes the panel.
-  usePanelEscape(onClose, () => {
-    if (!picker) return false;
-    setPicker(null);
-    return true;
-  });
+  usePanelEscape(
+    onClose,
+    () => {
+      if (!picker) return false;
+      setPicker(null);
+      return true;
+    },
+    opener,
+  );
+  useLayoutEffect(() => {
+    interaction?.dispatch({ type: "panel.field", panel: "sim-panel", field: "sim-panel-heading" });
+  }, [interaction]);
 
   const edit = (fn: (draft: Simulation) => void) =>
     setSim((s) => {

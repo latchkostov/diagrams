@@ -1,4 +1,4 @@
-import { t } from "../i18n/core";
+import { getLocale, t } from "../i18n/core";
 import type { DiagramFile } from "./types";
 import { boundaryOutage, faultTarget, type DrillPreset, type Fault } from "./faults";
 
@@ -54,16 +54,36 @@ export function boundaryRestoreHint(diagram: DiagramFile, node: string, faults?:
   return outage ? t("fault.restoreBoundaryFirst", { boundary: outage.label || outage.id }) : undefined;
 }
 
-export function nodeFaultLabel(node: string, faults: readonly Fault[] = []): string {
-  return faults
-    .flatMap((fault) =>
-      fault.kind === "slow" && fault.node === node && fault.factor !== 1
-        ? [t("fault.slowerBadge", { factor: fault.factor })]
-        : fault.kind === "fail" && fault.node === node && fault.rate !== 0
-          ? [t("fault.failureBadge", { rate: fault.rate * 100 })]
-          : [],
-    )
-    .join(" · ");
+const faultLabels = new WeakMap<readonly Fault[], { locale: string; labels: ReadonlyMap<string, string> }>();
+const NO_FAULTS: readonly Fault[] = [];
+
+export function nodeFaultLabels(faults: readonly Fault[] = NO_FAULTS): ReadonlyMap<string, string> {
+  const locale = getLocale();
+  const cached = faultLabels.get(faults);
+  if (cached?.locale === locale) return cached.labels;
+  const parts = new Map<string, string[]>();
+  for (const fault of faults) {
+    if (fault.kind !== "slow" && fault.kind !== "fail") continue;
+    const label =
+      fault.kind === "slow"
+        ? fault.factor !== 1
+          ? t("fault.slowerBadge", { factor: fault.factor })
+          : ""
+        : fault.rate !== 0
+          ? t("fault.failureBadge", { rate: fault.rate * 100 })
+          : "";
+    if (!label) continue;
+    const values = parts.get(fault.node) ?? [];
+    values.push(label);
+    parts.set(fault.node, values);
+  }
+  const labels = new Map([...parts].map(([node, values]) => [node, values.join(" · ")]));
+  faultLabels.set(faults, { locale, labels });
+  return labels;
+}
+
+export function nodeFaultLabel(node: string, faults?: readonly Fault[]): string {
+  return nodeFaultLabels(faults).get(node) ?? "";
 }
 
 /** One translated clause for the hover's single scope line. */

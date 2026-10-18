@@ -105,7 +105,7 @@ export interface LatencySummary {
 /** Immutable value view, shared between frames until the next successful sample. */
 export interface LatencyMetrics extends LatencySummary {
   /** Drill samples completed since this actual fault change. */
-  readonly sinceFault?: { atMs: number; fault: import("../model/faults").Fault };
+  readonly sinceFault?: { readonly atMs: number; readonly fault: Readonly<import("../model/faults").Fault> };
   readonly byType: Readonly<Record<string, LatencySummary>>;
   /** Additional types contribute only to the total after the node or run recording limit. */
   readonly typesLimited?: true;

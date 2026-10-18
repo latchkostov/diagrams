@@ -8,7 +8,8 @@ export function runEndResult(state: LiveState, diagram: DiagramFile): string | u
   const largest = diagram.nodes.reduce<{ count: number; label: string }>(
     (loss, node) => {
       const sample = state.snapshot.nodes[node.id];
-      const count = sample ? sample.dropped + sample.deadLettered : 0;
+      // Match expectations and Checks' dropped evidence. Dead-letter transfers are retained traffic.
+      const count = sample?.dropped ?? 0;
       return count > loss.count ? { count, label: node.label || t("fault.unnamedTarget") } : loss;
     },
     { count: 0, label: "" },

@@ -2501,7 +2501,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (previous && magnitude(previous) === magnitude(fault)) return;
       if (latencySinceFault) {
         latencyBudget = createLatencyBudget();
-        sinceFault = { atMs: time, fault: structuredClone(fault) };
+        sinceFault = Object.freeze({ atMs: time, fault: Object.freeze(structuredClone(fault)) });
         for (const node of nodes.values()) node.latency = undefined;
       }
       if (faultActive(fault)) faults.set(faultKey(fault), structuredClone(fault));

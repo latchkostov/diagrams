@@ -17,7 +17,7 @@ export function LatencyReadout({
   compact?: boolean;
   diagram?: DiagramFile;
 }) {
-  const total = latency.waitMs + latency.workMs + latency.travelMs;
+  const total = latency.waitMs + latency.workMs + (compact ? 0 : latency.travelMs);
   const share = (ms: number) => formatPercent(total > 0 ? ms / total : 0);
   return (
     <div className="lv-latency" data-testid={`node-latency-detail-${id}`}>

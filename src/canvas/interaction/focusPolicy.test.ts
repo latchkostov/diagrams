@@ -353,6 +353,13 @@ describe("focusPolicy: the rules, row by row", () => {
     expect((d.command as FocusMove).fallback).toEqual({ kind: "canvas" });
   });
 
+  it("D7 Tab from a live node enters its scrollable details", () => {
+    expect(focusPolicy(state(), { type: "node.details", target: opener }).command).toMatchObject({
+      target: { kind: "element", handle: opener },
+      when: "now",
+    });
+  });
+
   it("W1 W2 the joiner's wait and then the room's canvas take only focus that was lost", () => {
     const wait = focusPolicy(state(), { type: "room.waiting", region: node }).command as FocusMove;
     expect(wait).toMatchObject({ target: { kind: "element", handle: node }, when: "now", onlyIfLost: true });

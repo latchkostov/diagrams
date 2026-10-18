@@ -37,6 +37,25 @@ const make = (d = diagram) => {
 };
 
 describe("fault overlays", () => {
+  it("charges global latency resets to the fault-work budget for node and link changes", () => {
+    const d = {
+      ...diagram,
+      nodes: Array.from({ length: 5000 }, (_, i) => ({ ...diagram.nodes[1], id: i ? `n${i}` : "worker" })),
+    };
+    d.nodes.push(diagram.nodes[0]);
+    const timeline: NonNullable<Simulation["timeline"]> = Array.from({ length: 10_000 }, (_, i) => ({
+      atMs: 0,
+      action: { do: "fault", fault: { kind: "fail", node: "worker", rate: i % 2 ? 0 : 0.5 } },
+    }));
+    const sim = { id: "s", title: "Dense failures", traffic: [], timeline };
+    expect(faultTimelineProblem(d, sim)).toMatch(/too many nodes/);
+    expect(() => createSimulationRun(d, sim)).toThrow(/too many nodes/);
+    sim.timeline = timeline.map((step, i) => ({
+      ...step,
+      action: { do: "fault", fault: { kind: "link", edge: "ab", cut: i % 2 === 0 } },
+    }));
+    expect(faultTimelineProblem(d, sim)).toMatch(/too many nodes/);
+  });
   it("reports the actual connection and resolved fault cause for each loss", () => {
     const losses: import("./types").LossProvenance[] = [];
     const d = structuredClone(diagram);

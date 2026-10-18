@@ -1,5 +1,5 @@
 import { pseudoText } from "../../src/i18n/pseudo";
-import { test, expect, gotoLive, waitForCameraIdle, expectNoErrors } from "./fixtures";
+import { test, expect, gotoLive, waitForCameraIdle, waitForStableViewport, expectNoErrors } from "./fixtures";
 
 for (const locale of ["en-XA", "ar"]) {
   test(`latency hover fits the canvas in ${locale}`, async ({ page }) => {
@@ -109,7 +109,7 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   await expect(detail).toContainText(/From \d+ finished messages since restart/);
   await expect(detail).toContainText("Animation time not counted");
   await expect(page.getByTestId("node-latency-percentiles-billing")).toContainText(/p50 .*p95 3\.9 s.*p99 /);
-  await expect(page.getByTestId("node-latency-breakdown-billing")).toHaveText("Waiting 78% · work 21%");
+  await expect(page.getByTestId("node-latency-breakdown-billing")).toHaveText("Waiting 79% · work 21%");
   const before = await detail.textContent();
   if (before === null) throw new Error("Missing latency detail");
   await seek(350);
@@ -155,6 +155,51 @@ for (const surface of ["embed", "presentation"]) {
         return !!box && !!bar && box.y + box.height <= bar.y;
       })
       .toBe(true);
+  });
+}
+
+for (const surface of ["embed", "presentation"]) {
+  test(`overflowing latency details support pointer and keyboard scrolling in ${surface}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 400 });
+    await page.addInitScript(() => localStorage.setItem("diagrams.locale", "en-XA"));
+    await gotoLive(
+      page,
+      `./?${surface === "embed" ? "embed=1" : "view=canvas"}&example=where-the-time-goes&sim=billing-spike&live=1&paused=1`,
+    );
+    if (surface === "presentation") await page.getByTestId("present-toggle").click();
+    const input = page.getByTestId("live-timeline-input");
+    await input.fill("1000");
+    await input.press("ArrowRight");
+    await waitForCameraIdle(page);
+    const node = page.getByTestId("node-billing");
+    await node.hover();
+    // A fitted, zoomed-out diagram leaves the whole card tiny. Inspect at a readable zoom.
+    await page.keyboard.down("Control");
+    await page.mouse.wheel(0, -1600);
+    await page.keyboard.up("Control");
+    await waitForStableViewport(page);
+    await node.hover();
+    const detail = page.getByTestId("node-detail-billing");
+    await expect(detail).toBeVisible();
+    await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await detail.hover();
+    await expect(detail).toBeVisible();
+    await page.mouse.wheel(0, 300);
+    await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    if (surface === "presentation") await detail.click();
+    else {
+      await node.evaluate((el) => el.parentElement?.focus());
+      await page.keyboard.press("Tab");
+    }
+    await expect(detail).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
+    await page.keyboard.press("End");
+    await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
+    await page.keyboard.press("Shift+Tab");
+    if (surface === "embed")
+      await expect.poll(() => node.evaluate((el) => document.activeElement?.contains(el))).toBe(true);
+    else await expect(detail).not.toBeFocused();
   });
 }
 

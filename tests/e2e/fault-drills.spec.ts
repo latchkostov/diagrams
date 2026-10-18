@@ -57,6 +57,7 @@ for (const cancel of ["close", "escape"] as const) {
       if (cancel === "close") await page.getByTestId("sim-panel-close").click();
       else await page.keyboard.press("Escape");
       await expect(page.getByTestId("sim-panel-loading")).toHaveCount(0);
+      if (cancel === "escape") await expect(page.getByTestId("live-more")).toBeFocused();
       const downloaded = page.waitForResponse((response) => editor.test(response.url()));
       release();
       await (await downloaded).finished();
@@ -65,11 +66,40 @@ for (const cancel of ["close", "escape"] as const) {
       await page.getByTestId("live-more").click();
       await page.getByTestId("live-edit-sims").click();
       await expect(page.getByTestId("sim-panel-new")).toBeVisible();
+      await expect(page.getByTestId("sim-panel-heading")).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("sim-panel")).toHaveCount(0);
+      await expect(page.getByTestId("live-more")).toBeFocused();
     } finally {
       release();
     }
   });
 }
+
+test("the loaded simulations panel retains its opener through the lazy loading handoff", async ({ page }) => {
+  const editor = /\/assets\/SimPanel-[A-Za-z0-9_-]+\.js(?:\?.*)?$/;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(editor, async (route) => {
+    await held;
+    await route.continue();
+  });
+  try {
+    await seed(page);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await expect(page.getByTestId("sim-panel-loading")).toBeVisible();
+    await expect(page.getByTestId("sim-panel-heading")).toBeFocused();
+    release();
+    await expect(page.getByTestId("sim-panel-new")).toBeVisible();
+    await expect(page.getByTestId("sim-panel-heading")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("sim-panel")).toHaveCount(0);
+    await expect(page.getByTestId("live-more")).toBeFocused();
+  } finally {
+    release();
+  }
+});
 
 test("boundary Fault takes every member down, greys the boundary, restores it and clears on leaving Live", async ({
   page,

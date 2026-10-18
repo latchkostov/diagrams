@@ -150,14 +150,14 @@ test.describe("live view", () => {
     await page.getByTestId("live-toggle").click();
     await waitForLiveSession(page);
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
-    // Free play starts playing with gentle source traffic.
+    // Public examples start their first saved simulation; Free play remains in the picker.
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
     // The less common controls live behind "⋯".
     await expect(page.getByTestId("live-traffic")).toHaveCount(0);
     await page.getByTestId("live-more").click();
-    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "false");
     await page.getByTestId("live-more").click();
-    await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
     await expect(page).toHaveURL(/live=1/);
 
     await page.keyboard.press("l");
