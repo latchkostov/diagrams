@@ -31,6 +31,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | D1  | dialog.closed(checks)               |                                 | focus its opener now (else the canvas)                 |
  * | D2  | dialog.closed(livePanel)            |                                 | focus its opener now (else the Live bar's opener)      |
  * | D3  | dialog.closed(inject)               |                                 | focus its opener now (else the node it injects at)     |
+ * | D4  | dialog.opened                      |                                 | focus its first field now, selecting its text         |
+ * | D5  | dialog.tab                         | Tab crossed the modal's boundary | focus the other end now                              |
  * | E1  | escape                              | from a node or a connection     | two frames later, back on it if focus was lost         |
  * | C1  | canvas.requested (the gallery)      |                                 | focus the canvas next frame                            |
  * | C2  | presenting                          |                                 | focus the canvas now if focus was lost                 |
@@ -110,6 +112,10 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       );
     case "inspector.toggled":
       return keep();
+    case "dialog.opened":
+      return move({ target: { kind: "element", handle: event.first }, when: "now", select: "all" });
+    case "dialog.tab":
+      return move({ target: { kind: "element", handle: event.target }, when: "now" });
     case "dialog.closed": {
       const back: FocusTarget =
         event.dialog === "livePanel"

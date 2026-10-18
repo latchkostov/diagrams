@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import process from "node:process";
 import console from "node:console";
@@ -54,6 +54,8 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
       }
     }
     const innerConfig = { ...config, linux: false };
+    const input = join(directory, "config.json");
+    writeFileSync(input, JSON.stringify({ config: innerConfig, changed, directory: innerDir }));
     const args = [
       "run",
       "--name",
@@ -72,6 +74,8 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
       `type=volume,source=${reports},target=${innerDir},volume-nocopy`,
       "--mount",
       `type=volume,source=${profiles},target=/work/tests/.output/tmp,volume-nocopy`,
+      "-v",
+      `${input}:/gate-config.json:ro`,
       "-w",
       "/work",
       "-e",
@@ -90,7 +94,7 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
       image,
       "node",
       "scripts/gate/container.mjs",
-      JSON.stringify({ config: innerConfig, changed, directory: innerDir }),
+      "/gate-config.json",
     ];
     // No shell on either side: Docker receives literal POSIX paths even under MSYS.
     const result = await execute.command("docker", args, {

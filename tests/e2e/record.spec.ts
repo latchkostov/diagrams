@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
+import { recordFor } from "./recording-clock";
 
 // Record video: the live view's "⋯ › Record video…" and canvas right-click. Real share prompts can't
 // be automated, so getDisplayMedia is stubbed with a canvas stream (captureStream) and, in most
@@ -383,11 +384,13 @@ test.describe("record video", () => {
   });
 
   test("the browser's real recorder writes a WebM that players can measure", async ({ page }) => {
+    await page.clock.install();
     await stubCapture(page, { realRecorder: true });
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
-    await page.getByTestId("record-start").click();
-    await expect(page.getByTestId("record-elapsed")).toHaveText("0:02", { timeout: 8_000 });
+    await recordFor(page, 2);
+    await expect(page.getByTestId("record-elapsed")).toHaveText("0:02");
+    const stoppedAt = await page.evaluate(() => performance.now());
     await page.getByTestId("record-stop").click();
     await expect(page.getByTestId("record-meta")).toContainText(/0:02 · \d+ KB · WebM/);
     // MediaRecorder leaves the length out; the review writes it in, so the preview knows it.
@@ -401,5 +404,9 @@ test.describe("record video", () => {
     expect(Number.isFinite(duration)).toBe(true);
     expect(duration).toBeGreaterThan(1.5);
     expect(duration).toBeLessThan(4);
+    expect(
+      await page.evaluate(() => performance.now()),
+      "encoder and review work leave the controlled clock paused",
+    ).toBe(stoppedAt);
   });
 });

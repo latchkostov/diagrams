@@ -123,6 +123,7 @@ it.each(["", "bind"])(
     mkdirSync("tests/.output", { recursive: true });
     const dir = mkdtempSync(resolve("tests/.output/gate-copy-"));
     const calls: string[][] = [];
+    const changed = Array.from({ length: 500 }, (_, i) => `src/path ${i}/${"x".repeat(80)}.ts`);
     vi.stubEnv("GATE_LINUX_SOURCE", source);
     const execute = async (bin: string, args: string[]) => {
       calls.push([bin, ...args]);
@@ -140,7 +141,7 @@ it.each(["", "bind"])(
       const result = await linuxRun(
         process.cwd(),
         config(["--linux", "--workers", "2", "--cpus", "3", "--memory", "7g", "--max-wait", "1"]),
-        [],
+        changed,
         dir,
         "test-head",
         {
@@ -151,10 +152,14 @@ it.each(["", "bind"])(
       expect(result.failures).toBe(0);
       const run = calls.find((c) => c[0] === "docker" && c[1] === "run");
       if (!run) throw new Error("No container run");
+      expect(run.join(" ").length).toBeLessThan(2500);
+      expect(run.at(-1)).toBe("/gate-config.json");
+      expect(JSON.parse(readFileSync(join(dir, "config.json"), "utf8")).changed).toEqual(changed);
       expect(run.slice(run.indexOf("--cpus"), run.indexOf("--cpus") + 2)).toEqual(["--cpus", "3"]);
       expect(run.slice(run.indexOf("--memory"), run.indexOf("--memory") + 2)).toEqual(["--memory", "7g"]);
       const name = `ld-gate-${process.pid}-${basename(dir)}`;
       const mounts = run.filter((_, i) => ["-v", "--mount"].includes(run[i - 1]));
+      expect(mounts).toContain(`${join(dir, "config.json")}:/gate-config.json:ro`);
       expect(mounts).toContain(
         `type=volume,source=${name}-reports,target=/work/tests/.output/g/${basename(dir)},volume-nocopy`,
       );
@@ -478,7 +483,7 @@ it("plans all CI builds together without shards or retries", () => {
 it("quick selects only changed or explicit specs", () => {
   const changed = ["src/model/types.ts", "tests/e2e/example.spec.ts", "docs/QUALITY.md"];
   const steps = plan(options(["quick"]), changed).flat();
-  expect(steps.find((s: { name: string }) => s.name === "unit")?.args).toContain("related");
+  expect(steps.find((s: { name: string }) => s.name === "unit")?.related).toEqual(changed);
   const e2e = steps.find((s: { name: string }) => s.name === "e2e-1");
   expect(e2e?.args).toContain(changed[1]);
   expect(e2e?.args).not.toContain(changed[0]);
@@ -492,6 +497,37 @@ it("quick selects only changed or explicit specs", () => {
       .flat()
       .at(-1)?.args,
   ).toContain("tests/e2e/explicit.spec.ts");
+});
+
+it("passes 500 related paths by file without expanding the command line", async () => {
+  mkdirSync("tests/.output", { recursive: true });
+  const dir = mkdtempSync(resolve("tests/.output/gate-related-"));
+  const changed = Array.from({ length: 500 }, (_, i) => `src/a long directory ${i}/مثال ${"x".repeat(80)}.ts`);
+  changed.push("dir/line\nbreak.ts", "tests/parity/golden/output.json");
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    const result = await runSteps(
+      process.cwd(),
+      options(["quick", "--only", "unit"]),
+      changed,
+      dir,
+      {},
+      async (args) => {
+        expect(args.join(" ").length).toBeLessThan(1000);
+        expect(args.slice(0, 3)).toEqual(["exec", "node", "scripts/gate/related.mjs"]);
+        expect(JSON.parse(readFileSync(args[3], "utf8"))).toEqual(changed);
+        writeFileSync(
+          join(dir, "unit/results.json"),
+          JSON.stringify({ success: true, numPassedTests: 1, numFailedTests: 0, numPendingTests: 0 }),
+        );
+        return { code: 0, text: "" };
+      },
+    );
+    expect(result.failures).toBe(0);
+  } finally {
+    log.mockRestore();
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
 });
 
 it("subsets include dependencies, no-docker keeps Node parity and cannot stamp", () => {

@@ -1,6 +1,7 @@
 import { waitForCameraIdle } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
+import { installCaptureReady } from "./capture-ready";
 
 // Record video captures the tab, so whatever the compositor shows is in the video, worker canvases
 // included. A real tab capture, accepted automatically (full Chromium's headless mode supports it).
@@ -26,6 +27,7 @@ const count = async (page: Page, name: string) => Number(await canvas(page).getA
 test.use({ channel: "chromium", launchOptions: { args: ["--auto-accept-this-tab-capture"] } });
 
 async function goLive(page: Page, renderer: "worker" | "main") {
+  await page.addInitScript(installCaptureReady);
   // Keep the stream the recorder gets, to look at its frames.
   await page.addInitScript(() => {
     const get = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
@@ -133,7 +135,12 @@ async function layerInVideo(
       const covered = (p: { x: number; y: number }) =>
         layer !== "over" &&
         boxes.some((b) => p.x >= b.left - 2 && p.x <= b.right + 2 && p.y >= b.top - 2 && p.y <= b.bottom + 2);
-      const open = layer === "glow" ? spots : spots.filter((p) => !covered(p));
+      // The readiness marker changes on every frame; neither it nor its scaled 3x3 fringe belongs to the sample.
+      const open = spots.filter(
+        (p) =>
+          (layer === "glow" || !covered(p)) &&
+          !(p.x >= wrap.left + 4 && p.x <= wrap.left + 28 && p.y >= wrap.top + 4 && p.y <= wrap.top + 28),
+      );
       const step = Math.max(1, Math.floor(open.length / 400));
       const sample = open.filter((_, i) => i % step === 0);
 
@@ -141,6 +148,12 @@ async function layerInVideo(
       video.muted = true;
       video.srcObject = stream;
       await video.play();
+      const marker = document.createElement("div");
+      marker.dataset.testid = "capture-ready-marker";
+      marker.style.cssText = "position:fixed;width:16px;height:16px;z-index:2147483647;pointer-events:none";
+      marker.style.left = `${wrap.left + 8}px`;
+      marker.style.top = `${wrap.top + 8}px`;
+      document.querySelector('[data-testid="canvas-wrap"]')?.appendChild(marker);
       type Frame = { data: Uint8ClampedArray; width: number; height: number };
       const grab = (): Frame => {
         const c = document.createElement("canvas");
@@ -183,48 +196,54 @@ async function layerInVideo(
           const i = (c.y * f.width + c.x) * 4;
           return f.data[i] + f.data[i + 1] * 256 + f.data[i + 2] * 65536;
         });
-      /**
-       * The latest frame, once the capture has caught up with the page: frames keep arriving until the
-       * sample's colours hold for three in a row (a still tab may send none for a while: a short
-       * timeout stands for "no change"), and never sooner than 300 ms after the change. `fresh`: the
-       * page just changed, so that many frames captured after the change must arrive first (frames
-       * captured before it can still be on their way: capture runs behind).
-       */
-      const settled = async (fresh: number): Promise<Frame> => {
-        const since = performance.now();
-        let frame = grab();
+      // A marker inside the captured area acknowledges each page change in the actual video pixels.
+      // Changing it also requests a new frame on a still tab. Silence and repeated stale frames prove nothing.
+      let green = false;
+      const fresh = async (): Promise<Frame> => {
+        green = !green;
+        const rgb: [number, number, number] = green ? [24, 205, 57] : [216, 35, 194];
+        marker.style.backgroundColor = `rgb(${rgb.join(",")})`;
+        return window.__captureReady(
+          (callback) => video.requestVideoFrameCallback(callback),
+          grab,
+          (frame) => {
+            const p = toFrame(frame, { x: wrap.left + 16, y: wrap.top + 16 });
+            const i = (p.y * frame.width + p.x) * 4;
+            return window.__captureMarker([frame.data[i], frame.data[i + 1], frame.data[i + 2]], green);
+          },
+        );
+      };
+      const settled = async (): Promise<Frame> => {
+        let frame = await fresh();
         let last = signature(frame).join();
         let same = 0;
-        let arrived = 0;
-        while (performance.now() - since < 8000) {
-          await new Promise<void>((resolve) => {
-            const t = setTimeout(resolve, 250);
-            video.requestVideoFrameCallback((_now, meta) => {
-              clearTimeout(t);
-              // When the frame was captured (tab capture reports it; else when it's presented, later).
-              const at = (meta as VideoFrameCallbackMetadata & { captureTime?: number }).captureTime;
-              if ((at ?? meta.presentationTime - 100) > since + 16) arrived++;
-              resolve();
-            });
-          });
-          frame = grab();
+        while (same < 3) {
+          frame = await fresh();
           const now = signature(frame).join();
           same = now === last && frame.width > 0 ? same + 1 : 0;
           last = now;
-          if (same >= 3 && arrived >= fresh && performance.now() - since >= 300) break;
         }
         return frame;
       };
 
       // The first frames can be empty: wait for real ones.
-      while (video.videoWidth === 0) await new Promise((r) => setTimeout(r, 50));
-      for (const u of upper) u.style.visibility = "hidden";
-      const before = await settled(upper.length ? 2 : 0);
-      el.style.visibility = "hidden";
-      const after = await settled(2);
-      el.style.visibility = "";
-      for (const u of upper) u.style.visibility = "";
-      video.srcObject = null;
+      let before: Frame;
+      let after: Frame;
+      const visibility = el.style.visibility;
+      const upperVisibility = upper.map((u) => u.style.visibility);
+      try {
+        for (const u of upper) u.style.visibility = "hidden";
+        before = await settled();
+        el.style.visibility = "hidden";
+        after = await settled();
+      } finally {
+        el.style.visibility = visibility;
+        upper.forEach((u, i) => {
+          u.style.visibility = upperVisibility[i];
+        });
+        video.srcObject = null;
+        marker.remove();
+      }
 
       let shown = 0;
       let lost = 0;

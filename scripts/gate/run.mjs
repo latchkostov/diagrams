@@ -97,6 +97,11 @@ async function executeSteps(root, config, changed, directory, extraEnv, execute)
         const stepDir = join(directory, e2e ? `e${step.name.slice(4)}` : step.name);
         mkdirSync(stepDir, { recursive: true });
         const args = [...step.args];
+        if (step.related) {
+          const files = resolve(stepDir, "related.json");
+          writeFileSync(files, JSON.stringify(step.related));
+          args.splice(3, 0, files);
+        }
         const stepEnv = { ...env, ...step.env };
         if (e2e) {
           Object.assign(stepEnv, { TMPDIR: temp, TMP: temp, TEMP: temp });

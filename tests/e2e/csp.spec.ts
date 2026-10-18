@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Page, Response } from "@playwright/test";
 import { test, expect, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
 import { installFakeSpeech, openAdvanced } from "./ai-helpers";
+import { recordFor } from "./recording-clock";
 
 // The Content-Security-Policy and the other security headers (scripts/security-headers.ts), on the production
 // build: `vite preview` sends exactly what vercel.json does. Each test walks part of the app and expects zero
@@ -127,6 +128,7 @@ test.describe("Content-Security-Policy", () => {
 
   test("live view on the particle worker, slow motion, and a recorded video", async ({ page }) => {
     test.slow();
+    await page.clock.install();
     const csp = await watch(page);
     const res = await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
     expectPolicy(res);
@@ -149,8 +151,8 @@ test.describe("Content-Security-Policy", () => {
     // Record a couple of seconds (real tab capture and MediaRecorder), then play it back from a blob: URL.
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-record").click();
-    await page.getByTestId("record-start").click();
-    await expect(page.getByTestId("record-elapsed")).toHaveText("0:01", { timeout: 10_000 });
+    await recordFor(page, 1);
+    await expect(page.getByTestId("record-elapsed")).toHaveText("0:01");
     await page.getByTestId("record-stop").click();
     const preview = page.getByTestId("record-preview");
     await expect(preview).toBeVisible();

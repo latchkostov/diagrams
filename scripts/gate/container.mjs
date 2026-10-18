@@ -1,11 +1,11 @@
 // Docker entry point. The host owns locking, preflight, unchanged-HEAD checks and stamps.
 import process from "node:process";
-import { readdirSync, lchownSync } from "node:fs";
+import { readdirSync, lchownSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { required } from "./commands.mjs";
 import { runSteps } from "./run.mjs";
 
-const { config, changed, directory } = JSON.parse(process.argv[2]);
+const { config, changed, directory } = JSON.parse(readFileSync(process.argv[2], "utf8"));
 // Playwright's webServer commands invoke pnpm directly, as CI does.
 await required("corepack", ["enable"], { cwd: "/work" });
 await required("corepack", ["pnpm", "install", "--frozen-lockfile", "--prefer-offline"], { cwd: "/work" });

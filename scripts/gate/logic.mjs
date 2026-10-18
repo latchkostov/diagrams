@@ -172,11 +172,14 @@ export function plan(config, changed = [], root) {
   ])
     if (wanted.has(name)) groups.push([step(name, [script, ...(name === "i18n" ? ["check"] : [])])]);
   if (wanted.has("unit")) {
-    const args =
-      config.command === "quick"
-        ? ["exec", "vitest", "related", "--run", "--passWithNoTests", ...changed]
-        : ["test:coverage"];
-    if (config.command !== "quick" || changed.length) groups.push([step("unit", [...args, "--allowOnly=false"])]);
+    const args = config.command === "quick" ? ["exec", "node", "scripts/gate/related.mjs"] : ["test:coverage"];
+    if (config.command !== "quick" || changed.length)
+      groups.push([
+        {
+          ...step("unit", [...args, "--allowOnly=false"]),
+          ...(config.command === "quick" ? { related: changed } : {}),
+        },
+      ]);
   }
   if (wanted.has("build") || wanted.has("size")) groups.push([step("build", ["build"])]);
   if (wanted.has("size")) groups.push([step("size", ["size"])]);

@@ -1,15 +1,56 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TestType } from "@playwright/test";
 import { parse } from "yaml";
 import {
   installSlowmoTeardownProbe,
   slowmoDiagnosticEnabled,
   SLOWMO_DIAGNOSTIC_GREP,
   SLOWMO_DIAGNOSTIC_TITLES,
+  withSlowmoDiagnostic,
 } from "../../tests/e2e/slowmo-diagnostic";
 
 describe("Nightly slow-motion diagnostics", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("lifts only the four exact Nightly slowmo quarantines", () => {
+    const reason = "Nightly native teardown: docs/backlog/2026-10-18-nightly-native-load.md";
+    const info = { file: "/repo/tests/e2e/slowmo.spec.ts", title: "", annotations: [] as { type: string }[] };
+    const fixme = vi.fn();
+    const original = Object.assign(() => {}, { info: () => info, fixme }) as unknown as TestType<object, object>;
+    vi.stubGlobal("process", {
+      ...process,
+      platform: "win32",
+      env: { ...process.env, CI: "true", GITHUB_WORKFLOW: "Nightly", NIGHTLY_SLOWMO_DIAGNOSTIC: "1" },
+    });
+    const diagnostic = withSlowmoDiagnostic(original);
+    for (const title of SLOWMO_DIAGNOSTIC_TITLES) {
+      info.title = title;
+      diagnostic.fixme(true, reason);
+    }
+    expect(fixme).not.toHaveBeenCalled();
+    expect(info.annotations).toHaveLength(4);
+    expect(info.annotations.every((a) => a.type === "diagnostic")).toBe(true);
+    for (const [file, title, why, condition] of [
+      ["/repo/tests/e2e/live.spec.ts", SLOWMO_DIAGNOSTIC_TITLES[0], reason, true],
+      ["/repo/tests/e2e/not-slowmo.spec.ts", SLOWMO_DIAGNOSTIC_TITLES[0], reason, true],
+      [info.file, "unrelated slow motion", reason, true],
+      [info.file, SLOWMO_DIAGNOSTIC_TITLES[0], reason + " changed", true],
+      [info.file, SLOWMO_DIAGNOSTIC_TITLES[0], reason, false],
+    ] as const) {
+      Object.assign(info, { file, title });
+      diagnostic.fixme(condition, why);
+      expect(fixme).toHaveBeenLastCalledWith(condition, why);
+    }
+    expect(fixme).toHaveBeenCalledTimes(5);
+    expect(info.annotations).toHaveLength(4);
+    vi.stubGlobal("process", { ...process, env: { ...process.env, NIGHTLY_SLOWMO_DIAGNOSTIC: undefined } });
+    const ordinary = withSlowmoDiagnostic(original);
+    expect(ordinary).toBe(original);
+    ordinary.fixme(true, reason);
+    expect(fixme).toHaveBeenCalledTimes(6);
+  });
+
   it("requires the dedicated Nightly Windows opt-in", () => {
     const env = { CI: "true", GITHUB_WORKFLOW: "Nightly", NIGHTLY_SLOWMO_DIAGNOSTIC: "1" };
     expect(slowmoDiagnosticEnabled(env, "win32")).toBe(true);

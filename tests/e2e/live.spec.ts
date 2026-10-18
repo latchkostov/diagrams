@@ -478,10 +478,27 @@ test.describe("live view", () => {
     await expect(dialog).toHaveAttribute("aria-modal", "true");
     await expect(dialog).toHaveAccessibleName(/Inject at Inventory/);
     await expect(page.getByTestId("live-inject-count")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("live-inject-type")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("live-inject-spread")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByTestId("live-inject-type")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByTestId("live-inject-count")).toBeFocused();
+    const tabs = await interactionJournalMark(page);
     await page.keyboard.press("Shift+Tab");
     await expect(page.getByTestId("live-inject-submit")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("live-inject-count")).toBeFocused();
+    expect(await interactionLog(page, tabs)).toEqual([
+      "dialog.tab -> focus:element@now",
+      "focused: focus:element@now",
+      "focus.ran -> keep",
+      "dialog.tab -> focus:element@now",
+      "focused: focus:element@now",
+      "focus.ran -> keep",
+    ]);
     expect(await page.getByTestId("live-play").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
     const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
@@ -490,7 +507,7 @@ test.describe("live view", () => {
       await page.getByTestId("node-inventory").evaluate((el) => el.closest("[data-id]") === document.activeElement),
     ).toBe(true);
     // The dialog's field takes Esc (liveKeys row X3); the dialog closes with its reason and gives focus back by row
-    // D3: nothing had focus as it opened (its menu item had gone), so to the node it injects at.
+    // D3: the node action returns to the node it injects at, independently of menu-cleanup timing.
     expect(await interactionLog(page, mark)).toEqual([
       "live.key:escape:editor -> keep",
       "dialog.closed:inject:escape -> focus:node:inventory@now",
@@ -506,6 +523,24 @@ test.describe("live view", () => {
       await page.getByTestId("node-inventory").evaluate((el) => el.closest("[data-id]") === document.activeElement),
     ).toBe(true);
   });
+
+  for (const close of ["submit", "outside"] as const)
+    test(`custom injection restores focus and the background after ${close}`, async ({ page }) => {
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+      await openNodeMenu(page, "inventory", "sim.inject");
+      await menuItem(page, "sim.inject:custom").click();
+      const dialog = page.getByTestId("live-inject-dialog");
+      await expect(page.getByTestId("live-inject-count")).toBeFocused();
+      if (close === "submit") await page.getByTestId("live-inject-submit").click();
+      else await page.getByTestId("live-inject-backdrop").click({ position: { x: 1, y: 1 } });
+      await expect(dialog).toHaveCount(0);
+      await expect
+        .poll(() =>
+          page.getByTestId("node-inventory").evaluate((el) => el.closest("[data-id]") === document.activeElement),
+        )
+        .toBe(true);
+      expect(await page.getByTestId("live-play").evaluate((el) => !!el.closest("[inert]"))).toBe(false);
+    });
 
   test("scrubbing previews without replaying until pointer or keyboard release", async ({ page }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=black-friday&paused=1`);

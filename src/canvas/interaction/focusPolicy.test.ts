@@ -303,6 +303,14 @@ describe("focusPolicy: the rules, row by row", () => {
     expect(inject.fallback).toEqual({ kind: "node", id: "n" });
   });
 
+  it("D4 and D5 focus a modal's first field and wrap its Tab through the controller", () => {
+    const opened = focusPolicy(state(), { type: "dialog.opened", first: opener }).command as FocusMove;
+    expect(opened).toMatchObject({ target: { kind: "element", handle: opener }, when: "now", select: "all" });
+    const tab = focusPolicy(state(), { type: "dialog.tab", target: invoker }).command as FocusMove;
+    expect(tab).toMatchObject({ target: { kind: "element", handle: invoker }, when: "now" });
+    expect(tab.select).toBeUndefined();
+  });
+
   it("L3 yields to a move someone else made; L4 selects the field's text and doesn't go again", () => {
     const callout = focusPolicy(state(), { type: "callout.closed", hadFocus: true }).command as FocusMove;
     const field = focusPolicy(state(), { type: "panel.field", panel: "p", field: "f" }).command as FocusMove;
