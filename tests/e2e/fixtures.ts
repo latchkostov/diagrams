@@ -465,6 +465,27 @@ export async function gotoLive(page: Page, url: string) {
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
+/** Wait for the requested session's download and mount before asserting its controls.
+ * Module loading uses the whole-test hang backstop; the UI assertions keep their normal timeout.
+ */
+export async function waitForLiveSession(page: Page) {
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("live-toggle").evaluate(
+    (button) =>
+      new Promise<void>((resolve) => {
+        const ready = () => {
+          if (button.getAttribute("aria-busy") !== "false") return;
+          observer.disconnect();
+          resolve();
+        };
+        const observer = new MutationObserver(ready);
+        observer.observe(button, { attributes: true, attributeFilter: ["aria-busy"] });
+        ready();
+      }),
+  );
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+}
+
 export type LabControls = Record<string, string | number | boolean>;
 
 /**

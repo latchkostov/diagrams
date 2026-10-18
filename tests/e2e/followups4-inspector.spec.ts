@@ -5,6 +5,7 @@ import {
   expect,
   gotoCanvas,
   gotoLive,
+  waitForLiveSession,
   pauseClock,
   waitForStableViewport,
   waitForStableBox,
@@ -56,14 +57,13 @@ const fits = async (page: Page, mark: number) =>
   (await cameraMoves(page, mark)).filter((m) => /^(fit|liveFit|noteFit)/.test(m));
 
 test("Edit zoom then entering Live gives the automatic fit ownership of Inspector changes", async ({ page }) => {
-  test.fixme(process.platform === "win32", "Nightly cold module load: docs/backlog/2026-10-18-nightly-native-load.md");
   await open(page, false, false, 2);
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("Shift+Digit0");
   await waitForCameraIdle(page);
   expect(await zoom(page)).toBe(1);
   await page.getByTestId("live-toggle").click();
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await waitForLiveSession(page);
   await waitForCameraIdle(page);
   await pauseClock(page);
   const mark = await cameraJournalMark(page);

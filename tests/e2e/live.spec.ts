@@ -10,6 +10,7 @@ import {
   expectNoErrors,
   pageLoadTimeout,
   gotoLive,
+  waitForLiveSession,
   pauseClock,
   waitForCameraIdle,
   cameraMoves,
@@ -123,15 +124,11 @@ const processed = async (page: Page, nodeId: string) =>
 
 test.describe("live view", () => {
   test("the Live toggle (and L) shows and hides the controls", async ({ page, consoleErrors }) => {
-    test.fixme(
-      process.platform === "win32",
-      "Nightly cold module load: docs/backlog/2026-10-18-nightly-native-load.md",
-    );
     await page.clock.install();
     await gotoCanvas(page, KAFKA);
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
     await page.getByTestId("live-toggle").click();
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await waitForLiveSession(page);
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
     // Free play starts playing with gentle source traffic.
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
@@ -170,10 +167,6 @@ test.describe("live view", () => {
     page,
     consoleErrors,
   }) => {
-    test.fixme(
-      process.platform === "win32",
-      "Nightly cold module load: docs/backlog/2026-10-18-nightly-native-load.md",
-    );
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
     await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
 
@@ -186,6 +179,21 @@ test.describe("live view", () => {
     // One primary metric per node; the breakdown appears on hover.
     await expect(page.getByTestId("node-metric-inventory")).toBeVisible();
     await page.getByTestId("node-inventory").hover();
+    // The hover opens before the planning chunk arrives. Wait for its own ready marker;
+    // the following content assertion still has the normal UI timeout.
+    await page.getByTestId("node-detail-inventory").evaluate(
+      (detail) =>
+        new Promise<void>((resolve) => {
+          const ready = () => {
+            if (!detail.querySelector('[data-testid="planning-observed"]')) return;
+            observer.disconnect();
+            resolve();
+          };
+          const observer = new MutationObserver(ready);
+          observer.observe(detail, { childList: true, subtree: true });
+          ready();
+        }),
+    );
     await expect(page.getByTestId("node-detail-inventory")).toContainText("Processed");
     await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
 

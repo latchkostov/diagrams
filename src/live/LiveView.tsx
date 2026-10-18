@@ -176,6 +176,7 @@ export function LiveView(props: LiveViewProps) {
           onPointerEnter={LiveSession.preload}
           onFocus={LiveSession.preload}
           aria-pressed={live}
+          aria-busy={live && session === null}
           aria-keyshortcuts="L"
           title={
             live
