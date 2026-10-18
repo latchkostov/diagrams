@@ -154,6 +154,10 @@ const BY_THEME: Record<string, string[]> = {
     "payments-ledger",
     "delivery-dispatch",
     "ev-charging-network",
+    "recommendations-feature-store",
+    "video-on-demand-pipeline",
+    "observability-pipeline",
+    "hybrid-enterprise-network",
   ],
   streaming: [
     "where-the-time-goes",

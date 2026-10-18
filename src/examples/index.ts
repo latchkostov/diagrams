@@ -76,6 +76,26 @@ const publicExamples: PublicExample[] = (
       summary: "Depot firewalls, Event Hubs, twins, firmware waves",
     },
     {
+      slug: "recommendations-feature-store",
+      theme: "systems",
+      summary: "Feature store, canary and shadow rankers, KEDA scorer",
+    },
+    {
+      slug: "video-on-demand-pipeline",
+      theme: "systems",
+      summary: "Encode ladders on KEDA, DRM, CDN, encode latency",
+    },
+    {
+      slug: "observability-pipeline",
+      theme: "systems",
+      summary: "OTel gateways, Kafka buffer, Loki outage drill",
+    },
+    {
+      slug: "hybrid-enterprise-network",
+      theme: "systems",
+      summary: "HQ, SD-WAN branches, spine and leaf, a fibre-cut drill",
+    },
+    {
       slug: "where-the-time-goes",
       theme: "streaming",
       summary: msg("examples.latencySummary"),

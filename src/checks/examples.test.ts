@@ -24,6 +24,10 @@ const bySlug = Object.fromEntries(
 const EXPECTED: Record<string, string[]> = {
   "where-the-time-goes": [],
   "zone-outage-drill": [],
+  "recommendations-feature-store": [],
+  "video-on-demand-pipeline": [],
+  "observability-pipeline": [],
+  "hybrid-enterprise-network": [],
   // The KEDA pipeline sleeps at zero in free play (no rate), so nothing is offered to it until a story sends work.
   "autoscaling-basics": [],
   "aks-app-config-key-vault": [],
@@ -121,6 +125,10 @@ const PLANNED: Record<string, string[]> = {
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
   // Poison invoices quarantines its 30 commands for an operator to replay (the file's ignore says why no reader).
   "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
+  // The canary's failed rankings are the story; the router's weight change ends them.
+  "recommendations-feature-store": ["10 dropped ranker-v8 in The canary misbehaves (fails)"],
+  // The fibre cut loses only the requests already on the wire; new sessions go over LTE.
+  "hybrid-enterprise-network": ["2 dropped hub in Drill: the Leicester fibre is cut (down)"],
   // A dark region drops what was already on its way there; a bad canary build fails requests in its own cell only.
   "cell-based-bookings": [
     "20 dropped east-alb in us-east-1 goes dark (down)",

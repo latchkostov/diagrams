@@ -16,6 +16,10 @@ const LARGE = [
   "payments-ledger",
   "delivery-dispatch",
   "ev-charging-network",
+  "recommendations-feature-store",
+  "video-on-demand-pipeline",
+  "observability-pipeline",
+  "hybrid-enterprise-network",
 ] as const;
 const diagram = (slug: string) => files[`./${slug}.json`];
 const simulation = (slug: string, id: string): Simulation => {
@@ -251,6 +255,112 @@ describe("large showcases", () => {
     s = run.snapshot();
     expect(s.nodes["cmd-q"].deadLettered).toBeGreaterThan(0);
     expect(s.nodes.firmware.processed).toBeGreaterThan(1);
+  });
+
+  it("Recommendations: HPA adds rankers for the peak, and the canary's weight goes to zero", () => {
+    const peak = play("recommendations-feature-store", "friday-night");
+    expect(most(between(peak.samples, 0, 2000), "ranker-v7", "replicas")).toBe(4);
+    expect(most(between(peak.samples, 4000, 14_000), "ranker-v7", "replicas")).toBeGreaterThan(4);
+    expect(peak.end.nodes["feature-server"].dropped).toBe(0);
+    // The shadow scores its mirror but answers no one: it never writes a ranking back to the home API.
+    expect(peak.end.nodes["ranker-v9"].processed).toBeGreaterThan(0);
+    const canary = play("recommendations-feature-store", "canary-rollback");
+    const v8 = (s: SimSnapshot) => s.nodes["ranker-v8"].processed + s.nodes["ranker-v8"].failed;
+    const at = (t: number) => canary.samples.find((x) => x.time >= t)!.snap;
+    expect(at(7500).nodes["ranker-v8"].failed).toBeGreaterThan(0);
+    // After the 8 s weight change, v8 gets nothing new (calls already in flight finish).
+    expect(v8(canary.end)).toBe(v8(at(8500)));
+    expect(canary.end.nodes["ranker-v7"].failed).toBe(0);
+  });
+
+  it("Recommendations: the slow-dependency drill queues rankings at the feature server, then drains", () => {
+    const { end, samples } = play("recommendations-feature-store", "slow-features");
+    const backlog = (from: number, to: number) =>
+      Math.max(...between(samples, from, to).map((s) => s.nodes["feature-server"].backlog));
+    expect(backlog(0, 4000)).toBeLessThan(10);
+    expect(backlog(6000, 14_000)).toBeGreaterThan(50);
+    expect(end.nodes["feature-server"].backlog).toBe(0);
+    expect(end.nodes["feature-server"].dropped).toBe(0);
+  });
+
+  it("Recommendations: KEDA wakes the batch scorer from zero, no further than the partitions", () => {
+    const { samples } = play("recommendations-feature-store", "sunday-picks");
+    expect(most(between(samples, 0, 1000), "batch-scorer", "replicas")).toBe(0);
+    const busy = most(
+      samples.map((s) => s.snap),
+      "batch-scorer",
+      "replicas",
+    );
+    expect(busy).toBeGreaterThan(4);
+    expect(busy).toBeLessThanOrEqual(16);
+  });
+
+  it("Video: the premiere spike doubles the 4K encoders' p95, and the growth is waiting", () => {
+    const d = diagram("video-on-demand-pipeline");
+    const run = createSimulationRun(d, simulation("video-on-demand-pipeline", "premiere-uploads"));
+    run.step(6000);
+    const before = run.engine.frame().nodes["uhd-enc"].latency!;
+    expect(before.p95).toBeLessThan(3000);
+    run.step(6500);
+    const during = run.engine.frame().nodes["uhd-enc"].latency!;
+    expect(during.p95).toBeGreaterThanOrEqual(2 * before.p95 - 500);
+    expect(during.waitMs / (during.waitMs + during.workMs + during.travelMs)).toBeGreaterThan(0.25);
+    expect(run.engine.frame().nodes["uhd-enc"].replicas).toBeGreaterThan(4);
+    const { end } = play("video-on-demand-pipeline", "premiere-uploads");
+    expect(end.nodes["encode-dlq"].processed).toBe(0);
+    expect(end.nodes.packager.processed).toBe(3 * end.nodes.workflow.processed);
+  });
+
+  it("Video: corrupt 4K sources dead-letter to triage while HD and audio carry on", () => {
+    const { end } = play("video-on-demand-pipeline", "corrupt-source");
+    expect(end.nodes["uhd-q"].deadLettered).toBeGreaterThan(0);
+    expect(end.nodes["encode-dlq"].processed).toBe(end.nodes["uhd-q"].deadLettered);
+    expect(end.nodes.triage.processed).toBe(end.nodes["uhd-q"].deadLettered);
+    for (const id of ["hd-enc", "audio-enc"]) expect(end.nodes[id].failed, id).toBe(0);
+    const night = play("video-on-demand-pipeline", "premiere-night").end;
+    // The CDN's route table: 97% of segments to the edge cache, the rest to the origin bucket.
+    const segments = night.nodes["edge-cache"].processed + night.nodes.streaming.processed;
+    expect(night.nodes["edge-cache"].processed / segments).toBeGreaterThan(0.9);
+    expect(night.nodes.streaming.processed).toBeGreaterThan(0);
+  });
+
+  it("Observability: Kafka absorbs a log storm; traces and metrics never fall behind", () => {
+    const { end, samples } = play("observability-pipeline", "log-storm");
+    const lag = (snaps: SimSnapshot[], node: string, group: string) =>
+      Math.max(...snaps.map((s) => s.nodes[node].lag?.[group] ?? 0));
+    const storm = between(samples, 3000, 20_000);
+    expect(lag(storm, "logs", "loki")).toBeGreaterThan(20);
+    expect(lag(storm, "spans", "tempo")).toBeLessThan(10);
+    expect(most(storm, "gateways", "replicas")).toBeGreaterThan(3);
+    expect(end.nodes.ingesters.dropped).toBe(0);
+  });
+
+  it("Observability: the Loki outage drill holds logs in Kafka and loses none", () => {
+    const { end, samples } = play("observability-pipeline", "loki-outage");
+    const ingested = (t: number) => samples.find((s) => s.time >= t)!.snap.nodes["loki-store"].processed;
+    // Nothing reaches Loki while its write path is down; ClickHouse and the archive carry on.
+    expect(ingested(13_000)).toBe(ingested(5000));
+    const sink = (t: number) => samples.find((s) => s.time >= t)!.snap.nodes["ch-sink"].processed;
+    expect(sink(13_000)).toBeGreaterThan(sink(5000));
+    expect(end.nodes["loki-store"].processed).toBe(end.nodes["ch-sink"].processed);
+    expect(end.nodes.ingesters.dropped).toBe(0);
+  });
+
+  it("Network: the fibre-cut drill moves Leicester to LTE; the firewall pair fails over; the deny rule blocks guests", () => {
+    const cut = play("hybrid-enterprise-network", "leicester-fibre-cut");
+    const lte = (t: number) => cut.samples.find((s) => s.time >= t)!.snap.nodes.lte.processed;
+    // Before the cut the router shares both underlays; while it lasts, every new tunnel goes over LTE.
+    expect(lte(4000)).toBeGreaterThan(0);
+    const during = lte(14_000) - lte(4500);
+    const sent = (t: number) => cut.samples.find((s) => s.time >= t)!.snap.nodes["leicester-router"].processed;
+    expect(during).toBeGreaterThanOrEqual(sent(14_000) - sent(4500) - 2);
+    expect(cut.end.nodes["leicester-router"].dropped).toBe(0);
+    const failover = play("hybrid-enterprise-network", "dc-firewall-failover").end;
+    expect(failover.nodes["dc-fw"].dropped).toBe(0);
+    expect(failover.nodes.erp.dropped).toBe(0);
+    const guest = play("hybrid-enterprise-network", "guest-to-erp").end;
+    expect(guest.nodes["hq-fw"].blocked).toBeGreaterThan(0);
+    expect(guest.nodes.breakout.processed).toBeGreaterThan(0);
   });
 
   it("Dispatch: the partition story differs from the dinner rush at eight seconds", () => {
