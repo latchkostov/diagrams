@@ -247,3 +247,28 @@ export function handleMarkdownKeyDown(
 
   return false;
 }
+
+// Indent every selected line without replacing the selected contents.
+export function indentMarkdown(value: string, start: number, end: number, unindent: boolean) {
+  const first = start === 0 ? 0 : value.lastIndexOf("\n", start - 1) + 1;
+  const last = end > start && value[end - 1] === "\n" ? end - 1 : end;
+  const stop = value.indexOf("\n", last);
+  const limit = stop < 0 ? value.length : stop;
+  let delta = 0;
+  let firstDelta = 0;
+  const lines = value
+    .slice(first, limit)
+    .split("\n")
+    .map((line, i) => {
+      const removed = unindent ? (line.startsWith("\t") ? 1 : Math.min(2, line.length - line.trimStart().length)) : 0;
+      const change = unindent ? -removed : 2;
+      delta += change;
+      if (i === 0) firstDelta = change;
+      return unindent ? line.slice(removed) : "  " + line;
+    });
+  return {
+    value: value.slice(0, first) + lines.join("\n") + value.slice(limit),
+    start: Math.max(first, start + firstDelta),
+    end: Math.max(first, end + delta),
+  };
+}

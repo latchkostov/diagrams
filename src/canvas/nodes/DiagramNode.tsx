@@ -1,6 +1,6 @@
 import { memo, type CSSProperties } from "react";
 import { Icon } from "../../components/Icon";
-import { useLocale } from "../../i18n";
+import { t, useLocale } from "../../i18n";
 import { stencilLabel } from "../../i18n/stencils";
 import { Handle, useStore, type NodeProps, type ReactFlowState } from "@xyflow/react";
 import { FALLBACK_STENCIL, getStencil } from "../../stencils/registry";
@@ -76,21 +76,26 @@ function DiagramNodeImpl({
         selected={selected && !presenting}
         unknown={unknown}
       />
-      {hasDoc && (
-        <span
-          className="dn-doc-badge"
-          data-testid={`doc-badge-${id}`}
-          aria-hidden
-          onClick={(e) => {
-            if (!openDoc) return;
-            e.stopPropagation();
-            openDoc(id);
-          }}
-          onDoubleClick={(e) => e.stopPropagation()}
-        >
-          <Icon name="note" size={11} />
-        </span>
-      )}
+      {hasDoc &&
+        (openDoc ? (
+          <button
+            type="button"
+            className="dn-doc-badge nodrag nopan"
+            data-testid={`doc-badge-${id}`}
+            aria-label={t("node.openDocumentation")}
+            onClick={(e) => {
+              e.stopPropagation();
+              openDoc(id);
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            <Icon name="note" size={11} />
+          </button>
+        ) : (
+          <span className="dn-doc-badge" data-testid={`doc-badge-${id}`} aria-hidden>
+            <Icon name="note" size={11} />
+          </span>
+        ))}
       {SIDES.map((side) => (
         <Handle
           key={side}

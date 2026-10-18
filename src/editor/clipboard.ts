@@ -145,6 +145,12 @@ export function parsePayload(text: string): ClipboardPayload | null {
     (n): n is DiagramNode =>
       isObj(n) && typeof n.id === "string" && typeof n.stencil === "string" && isCoordinate(n.x) && isCoordinate(n.y),
   );
+  if (
+    nodes.some(
+      (n) => n.description !== undefined && (typeof n.description !== "string" || n.description.length > 50_000),
+    )
+  )
+    return null;
   if (nodes.some((n) => n.props !== undefined && (unsupportedPreset(n.props) || propsProblem(n.props)))) return null;
   if (
     createResourceValidator({ fragment: true })({

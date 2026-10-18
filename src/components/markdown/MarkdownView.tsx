@@ -1,5 +1,7 @@
-import { Fragment, memo, useMemo, type ReactNode } from "react";
-import { parseMarkdown, type BlockToken, type InlineToken } from "./markdownParser";
+import { MarkdownOfflineContext } from "./MarkdownImageContext";
+import { useContext, Fragment, memo, useMemo, type ReactNode } from "react";
+import { markdownImageSource } from "./imagePolicy";
+import { parseMarkdown, sanitizeUrl, type BlockToken, type InlineToken } from "./markdownParser";
 
 export interface MarkdownViewProps {
   text: string;
@@ -8,6 +10,7 @@ export interface MarkdownViewProps {
 }
 
 function InlineContent({ tokens }: { tokens: InlineToken[] }): ReactNode {
+  const offline = useContext(MarkdownOfflineContext);
   return (
     <>
       {tokens.map((token, i) => {
@@ -79,10 +82,36 @@ function InlineContent({ tokens }: { tokens: InlineToken[] }): ReactNode {
                 <InlineContent tokens={token.children} />
               </a>
             );
-          case "image":
-            return (
-              <img key={i} src={token.src} alt={token.alt} title={token.title} className="md-img" loading="lazy" />
+          case "image": {
+            const src = markdownImageSource(
+              token.src,
+              offline,
+              typeof window === "undefined" ? undefined : window.location.origin,
             );
+            return src ? (
+              <img
+                key={i}
+                src={src}
+                alt={token.alt}
+                title={token.title}
+                className="md-img"
+                data-testid="markdown-image"
+              />
+            ) : (
+              <a
+                key={i}
+                href={sanitizeUrl(token.src)}
+                title={token.title}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="md-link"
+                data-testid="markdown-image-fallback"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {token.alt || token.src}
+              </a>
+            );
+          }
           case "br":
             return (
               <Fragment key={i}>
@@ -108,7 +137,15 @@ function BlockNode({ block, index }: { block: BlockToken; index: number }): Reac
     }
     case "paragraph":
       return (
-        <p key={index} className="md-p">
+        <p
+          key={index}
+          className="md-p"
+          style={
+            block.tokens.some((token) => token.type === "text" && token.text.includes("\n"))
+              ? { whiteSpace: "pre-wrap" }
+              : undefined
+          }
+        >
           <InlineContent tokens={block.tokens} />
         </p>
       );

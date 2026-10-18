@@ -175,7 +175,9 @@ svg width=1116 height=1639 viewBox=0 0 1116 1639
 == export-header
       div #export-header .export-header width:1020px height:82.6875px left:340px top:-111px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
         h1 width:1020px height:31.1875px color:rgb(19, 25, 38) font-size:25.9px font-weight:700 border-top-color:rgb(19, 25, 38) "Branch office to data centre"
-        p width:1020px height:43.5px color:rgb(86, 96, 116) font-size:14.9px font-weight:400 border-top-color:rgb(86, 96, 116) "A branch and internet customers reach a data centre through edge routers, an active-standby firewall pair, a spine and leaf fabric and a load balancer pair. The firewall's rules allow web traffic and deny the branch any path to the payments zone."
+        div width:1020px height:43.5px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+          div #export-header-description .md-view width:1020px height:43.5px color:rgb(86, 96, 116) font-size:14.9px font-weight:400 border-top-color:rgb(86, 96, 116)
+            p .md-p width:1020px height:43.5px color:rgb(86, 96, 116) font-size:14.9px font-weight:400 border-top-color:rgb(86, 96, 116) "A branch and internet customers reach a data centre through edge routers, an active-standby firewall pair, a spine and leaf fabric and a load balancer pair. The firewall's rules allow web traffic and deny the branch any path to the payments zone."
 == group-branch
           div #group-branch .grp width:340px height:312px color:rgb(19, 25, 38) background-color:oklab(0.554385 -0.00884587 -0.0397272 / 0.05) font-size:13.9px font-weight:400 border-top-color:oklab(0.554385 -0.00884587 -0.0397272 / 0.32) border-top-width:1px border-radius:20px
             svg #group-outline-branch .grp-outline width=100% height=100% width:338px height:310px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)

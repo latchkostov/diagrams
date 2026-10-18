@@ -41,6 +41,45 @@ export type BlockToken =
   | { type: "hr" }
   | { type: "paragraph"; tokens: InlineToken[] };
 
+// Shared by block, list and inline parsing, including their combined AST depth.
+export const MARKDOWN_LIMITS = { depth: 24, columns: 32, cells: 1024, workPerChar: 128 } as const;
+export interface MarkdownWork {
+  work: number;
+}
+interface Budget {
+  left: number;
+  cells: number;
+  stats?: MarkdownWork;
+}
+class BudgetExceeded extends Error {}
+function spend(budget: Budget, work: number) {
+  if (work > budget.left) throw new BudgetExceeded();
+  budget.left -= work;
+  if (budget.stats) budget.stats.work += work;
+}
+function budgetFor(text: string, stats?: MarkdownWork): Budget {
+  if (stats) stats.work = 0;
+  return { left: Math.max(1, text.length) * MARKDOWN_LIMITS.workPerChar, cells: 0, stats };
+}
+function literal(text: string): BlockToken[] {
+  return [{ type: "paragraph", tokens: [{ type: "text", text }] }];
+}
+function isThematicBreak(line: string): boolean {
+  let count = 0;
+  for (const c of line) {
+    if (c === "-" || c === "*" || c === "_") count++;
+    else if (!/\s/.test(c)) return false;
+  }
+  return count >= 3;
+}
+const LIST_LINE = /^([ \t]*)(\d+\.|[-*+])[ \t]+(.*)$/;
+const HEADING_LINE = /^(#{1,6})[ \t]+(.*)$/;
+function startsBlock(line: string): boolean {
+  return (
+    HEADING_LINE.test(line) || /^[ \t]*(`{3,}|~{3,}|>)/.test(line) || LIST_LINE.test(line) || isThematicBreak(line)
+  );
+}
+
 /** Sanitizes a URL to ensure it uses a safe protocol for strict CSP environments. */
 export function sanitizeUrl(url: string): string {
   const trimmed = url.trim();
@@ -67,58 +106,38 @@ function parseUrlAndTitle(raw: string): { href: string; title?: string } {
 }
 
 /** Matches a markdown link [label](url "title") or image ![alt](url "title") supporting balanced parentheses. */
-function matchLink(
-  str: string,
-  isImage = false,
-): { label: string; href: string; title?: string; length: number } | null {
-  const prefix = isImage ? "![" : "[";
-  if (!str.startsWith(prefix)) return null;
-
-  const startIdx = prefix.length;
-  let bracketDepth = 1;
-  let labelEnd = -1;
-
-  for (let i = startIdx; i < str.length; i++) {
-    if (str[i] === "\\") {
+function delimiterPairs(text: string, budget: Budget): Map<number, number> {
+  spend(budget, text.length);
+  const pairs = new Map<number, number>();
+  const brackets: number[] = [];
+  const parens: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "\\") {
       i++;
       continue;
     }
-    if (str[i] === "[") bracketDepth++;
-    else if (str[i] === "]") {
-      bracketDepth--;
-      if (bracketDepth === 0) {
-        labelEnd = i;
-        break;
-      }
+    const stack = c === "[" || c === "]" ? brackets : parens;
+    if (c === "[" || c === "(") stack.push(i);
+    else if (c === "]" || c === ")") {
+      const open = stack.pop();
+      if (open !== undefined) pairs.set(open, i);
     }
   }
-
-  if (labelEnd === -1 || labelEnd + 1 >= str.length || str[labelEnd + 1] !== "(") return null;
-
-  let parenDepth = 0;
-  let urlEnd = -1;
-  for (let i = labelEnd + 1; i < str.length; i++) {
-    if (str[i] === "\\") {
-      i++;
-      continue;
-    }
-    if (str[i] === "(") parenDepth++;
-    else if (str[i] === ")") {
-      parenDepth--;
-      if (parenDepth === 0) {
-        urlEnd = i;
-        break;
-      }
-    }
-  }
-
-  if (urlEnd === -1) return null;
-
-  const label = str.slice(startIdx, labelEnd);
-  const rawUrl = str.slice(labelEnd + 2, urlEnd);
-  const { href, title } = parseUrlAndTitle(rawUrl);
-
-  return { label, href, title, length: urlEnd + 1 };
+  return pairs;
+}
+function matchLink(text: string, start: number, pairs: Map<number, number>, isImage = false) {
+  const open = start + (isImage ? 1 : 0);
+  if ((isImage && text[start] !== "!") || text[open] !== "[") return null;
+  const end = pairs.get(open);
+  if (end === undefined || text[end + 1] !== "(") return null;
+  const urlEnd = pairs.get(end + 1);
+  if (urlEnd === undefined) return null;
+  return {
+    label: text.slice(open + 1, end),
+    ...parseUrlAndTitle(text.slice(end + 2, urlEnd)),
+    length: urlEnd + 1 - start,
+  };
 }
 
 /** Common emoji shortcodes and ASCII emoticon shortcuts. */
@@ -197,11 +216,21 @@ export function replaceEmojis(text: string): string {
 }
 
 /** Parses inline markdown elements into tokens. */
-export function parseInline(text: string): InlineToken[] {
+export function parseInline(text: string, stats?: MarkdownWork): InlineToken[] {
+  try {
+    return inline(text, budgetFor(text, stats), 0);
+  } catch (error) {
+    if (!(error instanceof BudgetExceeded)) throw error;
+    return [{ type: "text", text }];
+  }
+}
+function inline(text: string, budget: Budget, depth: number): InlineToken[] {
+  if (depth >= MARKDOWN_LIMITS.depth) return [{ type: "text", text }];
   if (!text) return [];
 
   const tokens: InlineToken[] = [];
   let remaining = text;
+  const pairs = delimiterPairs(text, budget);
 
   const pushText = (str: string) => {
     if (!str) return;
@@ -214,6 +243,7 @@ export function parseInline(text: string): InlineToken[] {
   };
 
   while (remaining.length > 0) {
+    spend(budget, remaining.length);
     // 0. Hard line break via backslash + newline: \\\n
     if (remaining.startsWith("\\\n")) {
       tokens.push({ type: "br" });
@@ -242,7 +272,7 @@ export function parseInline(text: string): InlineToken[] {
     // 2. Bold + Italic: ***text*** or ___text___
     const boldItalicMatch = remaining.match(/^(\*\*\*|___)(.+?)\1/);
     if (boldItalicMatch) {
-      tokens.push({ type: "boldItalic", children: parseInline(boldItalicMatch[2]) });
+      tokens.push({ type: "boldItalic", children: inline(boldItalicMatch[2], budget, depth + 1) });
       remaining = remaining.slice(boldItalicMatch[0].length);
       continue;
     }
@@ -250,7 +280,7 @@ export function parseInline(text: string): InlineToken[] {
     // 3. Bold: **text** or __text__
     const boldMatch = remaining.match(/^(\*\*|__)(.+?)\1/);
     if (boldMatch) {
-      tokens.push({ type: "bold", children: parseInline(boldMatch[2]) });
+      tokens.push({ type: "bold", children: inline(boldMatch[2], budget, depth + 1) });
       remaining = remaining.slice(boldMatch[0].length);
       continue;
     }
@@ -258,7 +288,7 @@ export function parseInline(text: string): InlineToken[] {
     // 4. Strikethrough: ~~text~~
     const strikeMatch = remaining.match(/^~~(.+?)~~/);
     if (strikeMatch) {
-      tokens.push({ type: "strike", children: parseInline(strikeMatch[1]) });
+      tokens.push({ type: "strike", children: inline(strikeMatch[1], budget, depth + 1) });
       remaining = remaining.slice(strikeMatch[0].length);
       continue;
     }
@@ -266,7 +296,7 @@ export function parseInline(text: string): InlineToken[] {
     // 4b. Subscript: ~text~ (checked after strikethrough ~~)
     const subMatch = remaining.match(/^~([^~\s]+)~/);
     if (subMatch) {
-      tokens.push({ type: "subscript", children: parseInline(subMatch[1]) });
+      tokens.push({ type: "subscript", children: inline(subMatch[1], budget, depth + 1) });
       remaining = remaining.slice(subMatch[0].length);
       continue;
     }
@@ -274,7 +304,7 @@ export function parseInline(text: string): InlineToken[] {
     // 4c. Superscript: ^text^
     const supMatch = remaining.match(/^\^([^^\s]+)\^/);
     if (supMatch) {
-      tokens.push({ type: "superscript", children: parseInline(supMatch[1]) });
+      tokens.push({ type: "superscript", children: inline(supMatch[1], budget, depth + 1) });
       remaining = remaining.slice(supMatch[0].length);
       continue;
     }
@@ -282,7 +312,7 @@ export function parseInline(text: string): InlineToken[] {
     // 4d. Highlight: ==text==
     const highlightMatch = remaining.match(/^==(.+?)==/);
     if (highlightMatch) {
-      tokens.push({ type: "highlight", children: parseInline(highlightMatch[1]) });
+      tokens.push({ type: "highlight", children: inline(highlightMatch[1], budget, depth + 1) });
       remaining = remaining.slice(highlightMatch[0].length);
       continue;
     }
@@ -290,17 +320,17 @@ export function parseInline(text: string): InlineToken[] {
     // 5. Italic: *text* or _text_
     const italicMatch = remaining.match(/^(\*|_)([^*_]+?)\1/);
     if (italicMatch) {
-      tokens.push({ type: "italic", children: parseInline(italicMatch[2]) });
+      tokens.push({ type: "italic", children: inline(italicMatch[2], budget, depth + 1) });
       remaining = remaining.slice(italicMatch[0].length);
       continue;
     }
 
     // 6. Image: ![alt](url "title")
-    const imgMatch = matchLink(remaining, true);
+    const imgMatch = matchLink(text, text.length - remaining.length, pairs, true);
     if (imgMatch) {
       tokens.push({
         type: "image",
-        src: sanitizeUrl(imgMatch.href),
+        src: imgMatch.href,
         alt: imgMatch.label,
         title: imgMatch.title,
       });
@@ -309,13 +339,13 @@ export function parseInline(text: string): InlineToken[] {
     }
 
     // 7. Link: [label](url "title") with balanced parentheses
-    const linkMatch = matchLink(remaining, false);
+    const linkMatch = matchLink(text, text.length - remaining.length, pairs, false);
     if (linkMatch) {
       tokens.push({
         type: "link",
         href: sanitizeUrl(linkMatch.href),
         title: linkMatch.title,
-        children: parseInline(linkMatch.label),
+        children: inline(linkMatch.label, budget, depth + 1),
       });
       remaining = remaining.slice(linkMatch.length);
       continue;
@@ -372,6 +402,12 @@ function splitTableRow(line: string): string[] {
   let trimmed = line.trim();
   if (trimmed.startsWith("|")) trimmed = trimmed.slice(1);
   if (trimmed.endsWith("|")) trimmed = trimmed.slice(0, -1);
+  // Reject expansion before allocating even the split-cell array.
+  let columns = 1;
+  for (let i = 0; i < trimmed.length; i++) {
+    if (trimmed[i] === "\\" && trimmed[i + 1] === "|") i++;
+    else if (trimmed[i] === "|" && ++columns > MARKDOWN_LIMITS.columns) throw new BudgetExceeded();
+  }
   const cells: string[] = [];
   let current = "";
   for (let i = 0; i < trimmed.length; i++) {
@@ -410,9 +446,11 @@ function parseListBlock(
   lines: string[],
   startIndex: number,
   currentIndent: number,
+  budget: Budget,
+  depth: number,
 ): { list: ListBlock; nextIndex: number } {
   let i = startIndex;
-  const firstMatch = lines[i].match(/^(\s*)(\d+\.|[-*+])\s+(.*)$/);
+  const firstMatch = lines[i].match(LIST_LINE);
   const firstOrdered = Boolean(firstMatch && /^\d+\./.test(firstMatch[2]));
   const startNum = firstOrdered && firstMatch ? parseInt(firstMatch[2], 10) : undefined;
   const items: ListItem[] = [];
@@ -434,7 +472,7 @@ function parseListBlock(
       break;
     }
 
-    const match = line.match(/^(\s*)(\d+\.|[-*+])\s+(.*)$/);
+    const match = line.match(LIST_LINE);
     if (!match) break;
 
     const indent = match[1].length;
@@ -444,7 +482,13 @@ function parseListBlock(
 
     if (indent > currentIndent) {
       if (items.length > 0) {
-        const subResult = parseListBlock(lines, i, indent);
+        if (depth + 1 >= MARKDOWN_LIMITS.depth) {
+          const raw = lines.slice(i).join("\n");
+          items.push({ text: raw, tokens: [{ type: "text", text: raw }] });
+          i = lines.length;
+          break;
+        }
+        const subResult = parseListBlock(lines, i, indent, budget, depth + 1);
         items[items.length - 1].subList = subResult.list;
         i = subResult.nextIndex;
         continue;
@@ -462,7 +506,7 @@ function parseListBlock(
 
     items.push({
       text: content,
-      tokens: parseInline(content),
+      tokens: inline(content, budget, depth + 1),
       checked,
     });
     i++;
@@ -480,10 +524,21 @@ function parseListBlock(
 }
 
 /** Parses markdown source into block tokens. */
-export function parseMarkdown(src: string): BlockToken[] {
+export function parseMarkdown(src: string, stats?: MarkdownWork): BlockToken[] {
+  const normalized = src.replace(/\r\n|[\r\u2028\u2029]/g, "\n");
+  try {
+    return markdown(normalized, budgetFor(normalized, stats), 0);
+  } catch (error) {
+    if (!(error instanceof BudgetExceeded)) throw error;
+    return literal(normalized);
+  }
+}
+function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
+  if (depth >= MARKDOWN_LIMITS.depth) return literal(src);
+  spend(budget, src.length);
   if (!src) return [];
 
-  const lines = src.replace(/\r\n/g, "\n").split("\n");
+  const lines = src.split("\n");
   const blocks: BlockToken[] = [];
   let i = 0;
 
@@ -517,16 +572,24 @@ export function parseMarkdown(src: string): BlockToken[] {
     }
 
     // 2. Heading (ATX): # through ###### with optional {#id}
-    const headingMatch = line.match(/^(#{1,6})\s+(.*?)(?:\s+\{#([a-zA-Z0-9_-]+)\})?$/);
+    const headingMatch = line.match(HEADING_LINE);
     if (headingMatch) {
       const level = headingMatch[1].length as 1 | 2 | 3 | 4 | 5 | 6;
-      const rawText = headingMatch[2].trim();
-      const id = headingMatch[3];
+      let rawText = headingMatch[2].trim();
+      let id: string | undefined;
+      const idStart = rawText.lastIndexOf(" {#");
+      if (idStart >= 0 && rawText.endsWith("}")) {
+        const candidate = rawText.slice(idStart + 3, -1);
+        if (/^[a-zA-Z0-9_-]+$/.test(candidate)) {
+          id = candidate;
+          rawText = rawText.slice(0, idStart).trim();
+        }
+      }
       blocks.push({
         type: "heading",
         level,
         id,
-        tokens: parseInline(rawText),
+        tokens: inline(rawText, budget, depth + 1),
       });
       i++;
       continue;
@@ -549,7 +612,7 @@ export function parseMarkdown(src: string): BlockToken[] {
         blocks.push({
           type: "heading",
           level: 1,
-          tokens: parseInline(trimmed),
+          tokens: inline(trimmed, budget, depth + 1),
         });
         i += 2;
         continue;
@@ -558,7 +621,7 @@ export function parseMarkdown(src: string): BlockToken[] {
         blocks.push({
           type: "heading",
           level: 2,
-          tokens: parseInline(trimmed),
+          tokens: inline(trimmed, budget, depth + 1),
         });
         i += 2;
         continue;
@@ -566,7 +629,7 @@ export function parseMarkdown(src: string): BlockToken[] {
     }
 
     // 4. Thematic break (horizontal rule): ---, ***, ___
-    if (/^(\s*[-*_]\s*){3,}$/.test(trimmed)) {
+    if (isThematicBreak(trimmed)) {
       blocks.push({ type: "hr" });
       i++;
       continue;
@@ -577,20 +640,32 @@ export function parseMarkdown(src: string): BlockToken[] {
       const aligns = parseAlignments(lines[i + 1]);
       if (aligns) {
         const headerCells = splitTableRow(line);
-        const headers = headerCells.map((h) => ({ text: h, tokens: parseInline(h) }));
-        const rows: { text: string; tokens: InlineToken[] }[][] = [];
-        i += 2; // skip header and delimiter
-
-        while (i < lines.length && lines[i].trim() && lines[i].includes("|")) {
-          const cells = splitTableRow(lines[i]);
-          const rowCells = headers.map((_, colIdx) => {
-            const raw = cells[colIdx] ?? "";
-            return { text: raw, tokens: parseInline(raw) };
-          });
-          rows.push(rowCells);
-          i++;
+        let end = i + 2;
+        while (end < lines.length && lines[end].trim() && lines[end].includes("|")) end++;
+        const cellsNeeded = headerCells.length * (end - i - 1);
+        if (
+          headerCells.length !== aligns.length ||
+          headerCells.length > MARKDOWN_LIMITS.columns ||
+          cellsNeeded > MARKDOWN_LIMITS.cells - budget.cells
+        ) {
+          blocks.push(...literal(lines.slice(i, end).join("\n")));
+          i = end;
+          continue;
         }
-
+        budget.cells += cellsNeeded;
+        const headers = headerCells.map((h) => ({ text: h, tokens: inline(h, budget, depth + 1) }));
+        const rows: { text: string; tokens: InlineToken[] }[][] = [];
+        i += 2;
+        while (i < end) {
+          const cells = splitTableRow(lines[i++]);
+          if (cells.length > headers.length) throw new BudgetExceeded();
+          rows.push(
+            headers.map((_, col) => {
+              const raw = cells[col] ?? "";
+              return { text: raw, tokens: inline(raw, budget, depth + 1) };
+            }),
+          );
+        }
         blocks.push({ type: "table", headers, aligns, rows });
         continue;
       }
@@ -612,17 +687,17 @@ export function parseMarkdown(src: string): BlockToken[] {
       }
       blocks.push({
         type: "blockquote",
-        children: parseMarkdown(quoteLines.join("\n")),
+        children: markdown(quoteLines.join("\n"), budget, depth + 1),
       });
       continue;
     }
 
     // 7. Lists: unordered or ordered (supports nested sublists)
-    const listMatch = line.match(/^(\s*)(\d+\.|[-*+])\s+/);
+    const listMatch = line.match(LIST_LINE);
     if (listMatch) {
-      const { list, nextIndex } = parseListBlock(lines, i, listMatch[1].length);
+      const { list, nextIndex } = parseListBlock(lines, i, listMatch[1].length, budget, depth + 1);
       blocks.push(list);
-      i = nextIndex;
+      i = Math.max(i + 1, nextIndex);
       continue;
     }
 
@@ -631,17 +706,18 @@ export function parseMarkdown(src: string): BlockToken[] {
     while (
       i < lines.length &&
       lines[i].trim() &&
-      !lines[i].match(/^(#{1,6}\s+|```|~~~|(\s*[-*_]\s*){3,}$|\s*>|\s*[-*+]\s+|\s*\d+\.\s+)/) &&
+      !startsBlock(lines[i]) &&
       !(paraLines.length > 0 && lines[i].includes("|") && i + 1 < lines.length && parseAlignments(lines[i + 1]))
     ) {
       paraLines.push(lines[i].trim());
       i++;
     }
 
+    if (!paraLines.length) paraLines.push(lines[i++]);
     if (paraLines.length) {
       blocks.push({
         type: "paragraph",
-        tokens: parseInline(paraLines.join("\n")),
+        tokens: inline(paraLines.join("\n"), budget, depth + 1),
       });
     }
   }

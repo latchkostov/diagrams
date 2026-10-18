@@ -121,7 +121,7 @@
   pointer-events: none;
 }
 
-.export-header h1 {
+.export-header > h1 {
   margin: 0;
   font-size: 26px;
   font-weight: 700;
@@ -130,7 +130,7 @@
   line-height: 1.2;
 }
 
-.export-header p {
+.export-header .md-view {
   margin: 8px 0 0;
   font-size: 15px;
   line-height: 1.45;

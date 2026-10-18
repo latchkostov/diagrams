@@ -240,7 +240,7 @@ test.describe("annotations", () => {
     await expect.poll(focused).toBe(true);
     await page.keyboard.press("F2");
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
-    await page.getByTestId("inspector-field-text").click();
+    await page.getByTestId("inspector-field-text-rendered").click();
     await expect(page.getByTestId("inspector-field-text")).toBeFocused();
     await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
     await annotation(page, "note-1").click();
@@ -271,7 +271,9 @@ test.describe("annotations", () => {
     const field = page.getByTestId("inspector-field-text");
     await field.fill("x".repeat(10050));
     await expect.poll(async () => (await field.inputValue()).length).toBe(10000);
-    await page.waitForTimeout(700);
+    await expect
+      .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === "note-1")?.text.length)
+      .toBe(10000);
     await page.reload();
     await expect(annotation(page, "note-1")).toBeVisible();
     await expect.poll(async () => (await size()).height).toBe("20000px");
@@ -310,7 +312,7 @@ test.describe("annotations", () => {
     await page.keyboard.press(`${MOD}+Shift+z`);
     await clear();
     await expect.poll(top).toBe("node-service");
-    await page.waitForTimeout(700);
+    await expect.poll(async () => (await savedDiagram(page)).layerOrder?.at(-1)).toBe("service");
     await page.reload();
     await expect(page.getByTestId("node-service")).toBeVisible();
     await expect.poll(top).toBe("node-service");
@@ -689,7 +691,7 @@ test.describe("annotations", () => {
     await page.getByTestId("inspector-toggle").click();
     await expect(page.getByTestId("inspector-field-description-rendered")).toBeVisible();
     const descField = page.getByTestId("inspector-field-description");
-    await descField.click();
+    await page.getByTestId("inspector-field-description-rendered").click();
     await expect(page.getByTestId("inspector-field-description-rendered")).toHaveCount(0);
     await descField.fill("https://example.com/docs");
     await descField.selectText();
@@ -751,4 +753,84 @@ test.describe("annotations", () => {
 
     expectNoErrors(consoleErrors);
   });
+});
+
+async function documentedNode(page: Page, source = "- alpha\n- beta") {
+  await seed(page, {
+    format: "diagrams/v1",
+    title: "Documentation",
+    nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 220, description: source }],
+    edges: [],
+  });
+  await gotoCanvas(page, SLUG);
+}
+
+test("documentation badge supports native keyboard activation", async ({ page }) => {
+  await documentedNode(page);
+  const badge = page.getByTestId("doc-badge-api");
+  await expect(badge).toHaveAttribute("aria-label", "Open documentation");
+  expect(await badge.evaluate((el) => el.tagName)).toBe("BUTTON");
+  await badge.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-node-description-rendered")).toBeVisible();
+});
+
+test("Markdown previews scroll over rendered text", async ({ page }) => {
+  await documentedNode(page, Array.from({ length: 80 }, (_, i) => "- Item " + i).join("\n"));
+  await page.getByTestId("node-api").click();
+  const preview = page.getByTestId("inspector-field-node-description-rendered");
+  await expect(preview).toBeVisible();
+  await preview.hover();
+  await page.mouse.wheel(0, 500);
+  await expect.poll(() => preview.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});
+
+test("keyboard editing preserves navigation, selection and focus", async ({ page }) => {
+  await documentedNode(page);
+  await page.getByTestId("node-api").click();
+  const preview = page.getByTestId("inspector-field-node-description-rendered");
+  await page.getByTestId("inspector-field-node-description-tab-edit").click();
+  const field = page.getByTestId("inspector-field-node-description");
+  await field.fill("- alpha\n- beta");
+  await field.selectText();
+  await page.keyboard.press("ControlOrMeta+]");
+  await expect(field).toHaveValue("  - alpha\n  - beta");
+  expect(await field.evaluate((el: HTMLTextAreaElement) => el.selectionEnd - el.selectionStart)).toBe(16);
+  await page.keyboard.press("ControlOrMeta+[");
+  await expect(field).toHaveValue("- alpha\n- beta");
+  await page.keyboard.press("Shift+Tab");
+  await expect(field).not.toBeFocused();
+  await expect(field).toHaveValue("- alpha\n- beta");
+  await field.focus();
+  await page.keyboard.press("Tab");
+  await expect(field).not.toBeFocused();
+  await expect(field).toHaveValue("- alpha\n- beta");
+  await field.focus();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("inspector-field-node-description-tab-preview")).toBeFocused();
+  await expect(preview).toBeVisible();
+});
+
+test("image exports render Markdown descriptions before measuring the header", async ({ page }) => {
+  await seed(page, {
+    format: "diagrams/v1",
+    title: "Runbook",
+    description: "**Orders** via `gRPC`",
+    nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 220 }],
+    edges: [],
+  });
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-options-toggle").click();
+  await page.getByTestId("image-format-svg").click();
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("image-export").click()]);
+  const path = await download.path();
+  if (!path) throw new Error("SVG download did not complete");
+  const svg = readFileSync(path, "utf8");
+  expect(svg).toContain('data-testid="export-header-description"');
+  expect(svg).toMatch(/<strong[^>]*>Orders<\/strong>/);
+  expect(svg).not.toContain("**Orders**");
+  await expect(page.getByTestId("export-header")).toHaveCount(0);
 });

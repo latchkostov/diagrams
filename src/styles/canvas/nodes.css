@@ -160,6 +160,9 @@
 
 /* Documentation badge: subtle top-right note icon when a node has a description. */
 .dn-doc-badge {
+  padding: 0;
+  border: 0;
+  background: transparent;
   position: absolute;
   top: 6px;
   right: 7px;
@@ -331,4 +334,10 @@
 /* Keep handles measured for routing while presentation hides editing affordances. */
 .is-presenting .dn .dn-handle {
   visibility: hidden;
+}
+
+button.dn-doc-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  opacity: 1;
 }

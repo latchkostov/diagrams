@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MarkdownView } from "./MarkdownView";
-import { handleMarkdownKeyDown } from "./markdownKeys";
+import { handleMarkdownKeyDown, indentMarkdown } from "./markdownKeys";
 
 export interface MarkdownEditorProps {
   value: string;
@@ -34,6 +34,7 @@ export function MarkdownEditor({
 }: MarkdownEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [explicitPreview, setExplicitPreview] = useState(false);
+  const previewRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasContent = value.trim().length > 0;
@@ -72,41 +73,24 @@ export function MarkdownEditor({
         e.preventDefault();
         e.stopPropagation();
         setIsEditing(false);
-        el.blur();
+        setExplicitPreview(true);
+        previewRef.current?.focus();
         return;
       }
 
-      // Tab / Shift+Tab inserts or removes 2-space indentation
-      if (e.key === "Tab") {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "]" || e.key === "[")) {
         e.preventDefault();
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-
-        if (!e.shiftKey) {
-          const next = value.slice(0, start) + "  " + value.slice(end);
-          onChange(next);
-          requestAnimationFrame(() => {
-            el.focus();
-            el.setSelectionRange(start + 2, start + 2);
-          });
-        } else {
-          const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-          if (value.slice(lineStart, lineStart + 2) === "  ") {
-            const next = value.slice(0, lineStart) + value.slice(lineStart + 2);
-            onChange(next);
-            const pos = Math.max(lineStart, start - 2);
-            requestAnimationFrame(() => {
-              el.focus();
-              el.setSelectionRange(pos, pos);
-            });
-          }
-        }
+        e.stopPropagation();
+        const next = indentMarkdown(value, el.selectionStart, el.selectionEnd, e.key === "[");
+        if (maxLength !== undefined && next.value.length > maxLength) return;
+        onChange(next.value);
+        requestAnimationFrame(() => el.setSelectionRange(next.start, next.end));
         return;
       }
 
       handleMarkdownKeyDown(e, el, value, onChange);
     },
-    [value, onChange],
+    [value, onChange, maxLength],
   );
 
   return (
@@ -117,6 +101,7 @@ export function MarkdownEditor({
       <div className="md-editor-header">
         <div className="md-editor-tabs">
           <button
+            ref={previewRef}
             type="button"
             className={`md-editor-tab ${showPreview ? "active" : ""}`}
             aria-pressed={showPreview}
@@ -167,7 +152,25 @@ export function MarkdownEditor({
           data-testid={testId}
         />
         {showPreview && (
-          <div className="md-editor-rendered" data-testid={testId ? `${testId}-rendered` : undefined}>
+          // Scroll regions need a tab stop for keyboard scrolling; Enter and the Edit tab open editing.
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+          <div
+            className="md-editor-rendered"
+            role="region"
+            aria-label={ariaLabel}
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && event.target === event.currentTarget) {
+                event.preventDefault();
+                switchToEdit();
+              }
+            }}
+            onClick={(event) => {
+              if (!(event.target instanceof Element) || !event.target.closest("a")) switchToEdit();
+            }}
+            data-testid={testId ? `${testId}-rendered` : undefined}
+          >
             {hasContent ? (
               <MarkdownView text={value} />
             ) : (

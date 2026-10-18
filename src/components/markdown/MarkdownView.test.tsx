@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { MarkdownView } from "./MarkdownView";
+import { MarkdownOfflineContext } from "./MarkdownImageContext";
 
 describe("MarkdownView component", () => {
   it("renders headings, tables, code blocks, lists, and links", () => {
@@ -39,10 +40,10 @@ describe("MarkdownView component", () => {
   });
 
   it("renders images and link titles", () => {
-    const src = '![Diagram](https://example.com/arch.png "Architecture") and [Home](https://example.com "Homepage")';
+    const src = '![Diagram](data:image/png;base64,AA== "Architecture") and [Home](https://example.com "Homepage")';
     const html = renderToString(<MarkdownView text={src} />);
 
-    expect(html).toContain('src="https://example.com/arch.png"');
+    expect(html).toContain('src="data:image/png;base64,AA=="');
     expect(html).toContain('alt="Diagram"');
     expect(html).toContain('title="Architecture"');
     expect(html).toContain('class="md-img"');
@@ -102,4 +103,25 @@ describe("MarkdownEditor component", () => {
     expect(html).toContain("<strong>orders</strong>");
     expect(html).toContain('<code class="md-inline-code">gRPC</code>');
   });
+});
+
+it("uses descriptive links for external images in the app and same-origin images in the offline viewer", () => {
+  const html = renderToString(<MarkdownView text="![Architecture](https://example.com/arch.png)" />);
+  expect(html).not.toContain("<img");
+  expect(html).toContain('href="https://example.com/arch.png"');
+  expect(html).toContain("Architecture</a>");
+  const offline = renderToString(
+    <MarkdownOfflineContext value={true}>
+      <MarkdownView text="![Local](/arch.png)" />
+    </MarkdownOfflineContext>,
+  );
+  expect(offline).not.toContain("<img");
+  expect(offline).toContain("Local</a>");
+});
+
+it("preserves newlines when a work-budget fallback renders literal text", () => {
+  const source = "x\n".repeat(1300);
+  const html = renderToString(<MarkdownView text={source} />);
+  expect(html).toContain("white-space:pre-wrap");
+  expect(html).toContain(source);
 });

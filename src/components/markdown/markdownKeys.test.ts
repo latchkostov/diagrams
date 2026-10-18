@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { KeyboardEvent } from "react";
 import {
+  indentMarkdown,
   applyMarkdownCode,
   applyMarkdownLink,
   applyMarkdownWrap,
@@ -135,4 +136,12 @@ describe("markdownKeys", () => {
     );
     expect(val).toBe("==service==");
   });
+});
+
+it("indents and unindents every selected line while retaining the selection and contents", () => {
+  const original = "- alpha\n- beta\nlast";
+  const indented = indentMarkdown(original, 0, 15, false);
+  expect(indented).toEqual({ value: "  - alpha\n  - beta\nlast", start: 2, end: 19 });
+  expect(indentMarkdown(indented.value, 0, 19, true)).toEqual({ value: original, start: 0, end: 15 });
+  expect(indentMarkdown("a\nb", 0, 2, false).value).toBe("  a\nb");
 });

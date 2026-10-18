@@ -2,7 +2,7 @@ import { waitForStableViewport } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page, Response } from "@playwright/test";
-import { test, expect, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
+import { test, expect, STORAGE_KEYS, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
 import { installFakeSpeech, openAdvanced } from "./ai-helpers";
 import { recordFor } from "./recording-clock";
 
@@ -313,4 +313,35 @@ test.describe("Content-Security-Policy", () => {
     const found = (await csp.violations()).join("\n");
     expect(found).toMatch(/connect-src blocked https:\/\/example\.com/);
   });
+});
+
+test("Markdown images respect production CSP", async ({ page }) => {
+  const csp = await watch(page);
+  await page.addInitScript(
+    ([key, diagram]) => localStorage.setItem(key, diagram),
+    [
+      STORAGE_KEYS.autosavePrefix + KAFKA,
+      JSON.stringify({
+        format: "diagrams/v1",
+        title: "Image policy",
+        description:
+          "![Local](/favicon.svg) ![Embedded](data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='8'%20height='8'%3E%3C/svg%3E) ![External](https://example.com/architecture.png)",
+        nodes: [{ id: "api", stencil: "service.go", label: "API", x: 0, y: 200 }],
+        edges: [],
+      }),
+    ],
+  );
+  expectPolicy(await page.goto(`./?view=canvas&example=${KAFKA}`));
+  const images = page.getByTestId("diagram-description").getByTestId("markdown-image");
+  await expect(images).toHaveCount(2);
+  const image = images.nth(0);
+  await expect(image).toHaveAttribute("alt", "Local");
+  await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  await expect
+    .poll(() => images.nth(1).evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0))
+    .toBe(true);
+  const fallback = page.getByTestId("diagram-description").getByTestId("markdown-image-fallback");
+  await expect(fallback).toHaveText("External");
+  await expect(fallback).toHaveAttribute("href", "https://example.com/architecture.png");
+  expect(await csp.violations()).toEqual([]);
 });

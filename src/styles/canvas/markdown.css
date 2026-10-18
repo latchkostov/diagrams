@@ -354,7 +354,7 @@ textarea.insp-input.md-editor-textarea.is-preview-hidden {
   line-height: 1.55;
   color: var(--text);
   background: var(--surface-2);
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 2;
 }
 
