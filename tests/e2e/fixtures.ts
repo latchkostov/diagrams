@@ -460,6 +460,10 @@ export async function openMissingDlq(page: Page) {
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Invoice intake without a ledger DLQ");
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  // Dismiss the import's own notice, so the page starts as an opened example does: with no toast.
+  await expect(page.getByTestId("toast")).toContainText("Imported “Invoice intake without a ledger DLQ”.");
+  await page.getByTestId("toast-dismiss").click();
+  await expect(page.getByTestId("toast")).toHaveCount(0);
 }
 
 /** File ▸ Share…: every way out, safest first. Waits for the chooser (its code loads on first use). */
