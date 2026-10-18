@@ -1,0 +1,575 @@
+{
+  "file": { "sha256": "99ee8e2b15ec9b36084dd005820e0b5dd4269eb34441f54804d207584dc94c76", "bytes": 44539 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": { "revision": "p3-a1" },
+      "title": "Hybrid enterprise network",
+      "description": "An invented retailer, Northwind Traders. Staff at the Manchester head office and four branches reach the ERP in the Leeds data centre over SD-WAN, through firewall pairs and a spine-and-leaf server farm. Customers reach the web shop through a DMZ, and a site-to-site VPN carries the nightly export to an AWS warehouse.",
+      "direction": "LR",
+      "groups": [
+        { "id": "hq", "label": "HQ campus · Manchester", "tone": "onprem", "x": 400, "y": 146, "width": 1634, "height": 346 },
+        { "id": "wan", "label": "SD-WAN branches", "tone": "neutral", "x": 400, "y": 636, "width": 339, "height": 596 },
+        { "id": "carrier", "label": "Mobile carrier", "tone": "neutral", "x": 840, "y": 1056, "width": 300, "height": 176 },
+        { "id": "dc", "label": "Data centre · Leeds", "tone": "onprem", "x": 2160, "y": -248, "width": 2980, "height": 1300 },
+        { "id": "dmz", "label": "DMZ", "tone": "neutral", "group": "dc", "x": 3040, "y": -184, "width": 1180, "height": 176 },
+        { "id": "servers", "label": "Server farm · spine and leaf", "tone": "neutral", "group": "dc", "x": 3040, "y": 256, "width": 2060, "height": 316 },
+        { "id": "mgmt", "label": "Identity and monitoring", "tone": "neutral", "group": "dc", "x": 3040, "y": 836, "width": 1622, "height": 176 },
+        { "id": "aws", "label": "AWS eu-west-2 · analytics", "tone": "aws", "x": 5360, "y": 316, "width": 1180, "height": 176 }
+      ],
+      "nodes": [
+        {
+          "id": "hq-staff",
+          "stencil": "client.team",
+          "label": "HQ staff",
+          "sublabel": "ERP all day",
+          "props": { "ratePerSec": 300, "messageType": "ERP" },
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "hq-intranet",
+          "stencil": "client.team",
+          "label": "HQ intranet",
+          "sublabel": "news, HR, wiki",
+          "props": { "ratePerSec": 120, "messageType": "Intranet" },
+          "x": 0,
+          "y": 140
+        },
+        {
+          "id": "hq-files",
+          "stencil": "client.team",
+          "label": "HQ file shares",
+          "sublabel": "mapped drives",
+          "props": { "ratePerSec": 80, "messageType": "Files" },
+          "x": 0,
+          "y": 280
+        },
+        {
+          "id": "guests",
+          "stencil": "client.mobile",
+          "label": "Guest Wi-Fi",
+          "sublabel": "visitor devices",
+          "props": { "ratePerSec": 60, "messageType": "GuestWeb" },
+          "x": 0,
+          "y": 420
+        },
+        {
+          "id": "customers",
+          "stencil": "client.browser",
+          "label": "Online customers",
+          "sublabel": "the web shop",
+          "props": { "ratePerSec": 200, "messageType": "Web" },
+          "x": 1760,
+          "y": -360
+        },
+        {
+          "id": "remote",
+          "stencil": "client.mobile",
+          "label": "Remote staff",
+          "sublabel": "laptops on VPN",
+          "props": { "ratePerSec": 40, "messageType": "ERP" },
+          "x": 1760,
+          "y": -220
+        },
+        {
+          "id": "access",
+          "stencil": "cisco.catalyst",
+          "label": "Access switches",
+          "sublabel": "stacked, PoE, 802.1X",
+          "group": "hq",
+          "props": { "size": "campus", "ha": "active-active", "replicas": 4 },
+          "x": 440,
+          "y": 210
+        },
+        {
+          "id": "core",
+          "stencil": "cisco.catalyst",
+          "label": "Core switch pair",
+          "sublabel": "L3, staff and guest VRFs",
+          "group": "hq",
+          "props": { "size": "campus", "ha": "active-active", "replicas": 2 },
+          "x": 880,
+          "y": 210
+        },
+        {
+          "id": "hq-fw",
+          "stencil": "paloalto.ngfw",
+          "label": "HQ firewall pair",
+          "sublabel": "zones: staff, guest",
+          "group": "hq",
+          "props": { "size": "campus", "ha": "active-standby", "replicas": 2, "failoverMs": 3000 },
+          "x": 1320,
+          "y": 210
+        },
+        {
+          "id": "hq-wan",
+          "stencil": "cisco.isr",
+          "label": "HQ SD-WAN edge",
+          "sublabel": "dual fibre",
+          "group": "hq",
+          "props": { "size": "campus", "ha": "active-active", "replicas": 2 },
+          "x": 1760,
+          "y": 210
+        },
+        {
+          "id": "breakout",
+          "stencil": "generic.router",
+          "label": "Guest breakout",
+          "sublabel": "straight to the internet",
+          "group": "hq",
+          "props": { "latencyMs": 0 },
+          "x": 1760,
+          "y": 380
+        },
+        {
+          "id": "york-staff",
+          "stencil": "client.team",
+          "label": "York branch",
+          "sublabel": "40 staff, ERP and files",
+          "props": { "ratePerSec": 20, "messageType": "ERP" },
+          "x": 0,
+          "y": 700
+        },
+        {
+          "id": "york-router",
+          "stencil": "cisco.isr",
+          "label": "York router",
+          "sublabel": "SD-WAN over fibre",
+          "group": "wan",
+          "props": { "size": "branch" },
+          "x": 440,
+          "y": 700
+        },
+        {
+          "id": "hull-staff",
+          "stencil": "client.team",
+          "label": "Hull branch",
+          "sublabel": "40 staff, ERP and files",
+          "props": { "ratePerSec": 20, "messageType": "ERP" },
+          "x": 0,
+          "y": 840
+        },
+        {
+          "id": "hull-router",
+          "stencil": "cisco.isr",
+          "label": "Hull router",
+          "sublabel": "SD-WAN over fibre",
+          "group": "wan",
+          "props": { "size": "branch" },
+          "x": 440,
+          "y": 840
+        },
+        {
+          "id": "derby-staff",
+          "stencil": "client.team",
+          "label": "Derby branch",
+          "sublabel": "40 staff, ERP and files",
+          "props": { "ratePerSec": 20, "messageType": "ERP" },
+          "x": 0,
+          "y": 980
+        },
+        {
+          "id": "derby-router",
+          "stencil": "cisco.isr",
+          "label": "Derby router",
+          "sublabel": "SD-WAN over fibre",
+          "group": "wan",
+          "props": { "size": "branch" },
+          "x": 440,
+          "y": 980
+        },
+        {
+          "id": "leicester-staff",
+          "stencil": "client.team",
+          "label": "Leicester branch",
+          "sublabel": "40 staff, ERP and files",
+          "props": { "ratePerSec": 20, "messageType": "ERP" },
+          "x": 0,
+          "y": 1120
+        },
+        {
+          "id": "leicester-router",
+          "stencil": "cisco.isr",
+          "label": "Leicester router",
+          "sublabel": "fibre and LTE, health checks",
+          "group": "wan",
+          "props": { "size": "branch", "healthChecks": true },
+          "x": 440,
+          "y": 1120
+        },
+        {
+          "id": "lte",
+          "stencil": "generic.router",
+          "label": "4G carrier",
+          "sublabel": "LTE underlay",
+          "group": "carrier",
+          "props": { "latencyMs": 30 },
+          "x": 880,
+          "y": 1120
+        },
+        {
+          "id": "dc-edge",
+          "stencil": "juniper.mx",
+          "label": "DC edge routers",
+          "sublabel": "BGP, two ISPs",
+          "group": "dc",
+          "props": { "size": "datacentre", "ha": "active-active", "replicas": 2 },
+          "x": 2200,
+          "y": 0
+        },
+        {
+          "id": "hub",
+          "stencil": "juniper.srx",
+          "label": "SD-WAN hub",
+          "sublabel": "overlay head-end",
+          "group": "dc",
+          "props": { "size": "datacentre", "ha": "active-active", "replicas": 2 },
+          "x": 2200,
+          "y": 910
+        },
+        {
+          "id": "dc-fw",
+          "stencil": "paloalto.ngfw",
+          "label": "DC firewall pair",
+          "sublabel": "inside, DMZ, VPN zones",
+          "group": "dc",
+          "props": { "size": "datacentre", "ha": "active-standby", "replicas": 2, "failoverMs": 3000 },
+          "x": 2640,
+          "y": 420
+        },
+        {
+          "id": "dmz-switch",
+          "stencil": "cisco.nexus",
+          "label": "DMZ switch",
+          "group": "dmz",
+          "props": { "size": "datacentre" },
+          "x": 3080,
+          "y": -120
+        },
+        {
+          "id": "waf",
+          "stencil": "f5.bigip",
+          "label": "WAF and load balancer",
+          "sublabel": "TLS, bot rules",
+          "group": "dmz",
+          "props": { "size": "datacentre", "ha": "active-standby", "replicas": 2 },
+          "x": 3520,
+          "y": -120
+        },
+        {
+          "id": "shop",
+          "stencil": "service.node",
+          "label": "Web shop",
+          "sublabel": "two web servers",
+          "group": "dmz",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 3960,
+          "y": -120
+        },
+        {
+          "id": "spine-1",
+          "stencil": "arista.switch",
+          "label": "Spine 1",
+          "sublabel": "100G",
+          "group": "servers",
+          "props": { "size": "datacentre" },
+          "x": 3080,
+          "y": 320
+        },
+        {
+          "id": "spine-2",
+          "stencil": "arista.switch",
+          "label": "Spine 2",
+          "sublabel": "100G",
+          "group": "servers",
+          "props": { "size": "datacentre" },
+          "x": 3080,
+          "y": 460
+        },
+        {
+          "id": "leaf",
+          "stencil": "cisco.nexus",
+          "label": "Server leaf pair",
+          "sublabel": "vPC",
+          "group": "servers",
+          "props": { "size": "datacentre", "ha": "active-active", "replicas": 2 },
+          "x": 3520,
+          "y": 390
+        },
+        {
+          "id": "adc",
+          "stencil": "f5.bigip",
+          "label": "ADC pair",
+          "sublabel": "TLS, health checks",
+          "group": "servers",
+          "props": { "size": "datacentre", "ha": "active-standby", "replicas": 2 },
+          "x": 3960,
+          "y": 320
+        },
+        {
+          "id": "erp",
+          "stencil": "service.java",
+          "label": "ERP",
+          "sublabel": "orders, stock, finance",
+          "group": "servers",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 60, "jitter": 0.1, "failureRate": 0 },
+          "x": 4400,
+          "y": 320
+        },
+        {
+          "id": "intranet",
+          "stencil": "service.node",
+          "label": "Intranet",
+          "sublabel": "HR, news, wiki",
+          "group": "servers",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+          "x": 4400,
+          "y": 460
+        },
+        {
+          "id": "files",
+          "stencil": "generic.service",
+          "label": "File servers",
+          "sublabel": "DFS shares",
+          "group": "servers",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 3960,
+          "y": 460
+        },
+        {
+          "id": "erp-db",
+          "stencil": "sqlserver",
+          "label": "ERP database",
+          "sublabel": "Always On",
+          "group": "servers",
+          "props": { "latencyMs": 0 },
+          "x": 4840,
+          "y": 390
+        },
+        { "id": "ad", "stencil": "generic.identity-provider", "label": "Active Directory", "sublabel": "staff sign-in", "group": "mgmt", "x": 3520, "y": 900 },
+        { "id": "nac", "stencil": "generic.identity-provider", "label": "Network access control", "sublabel": "802.1X", "group": "mgmt", "x": 3080, "y": 900 },
+        { "id": "dns", "stencil": "generic.dns", "label": "Internal DNS", "sublabel": "split horizon", "group": "mgmt", "x": 3960, "y": 900 },
+        { "id": "siem", "stencil": "splunk", "label": "SIEM", "sublabel": "firewall and flow logs", "group": "mgmt", "x": 4400, "y": 900 },
+        {
+          "id": "vpn",
+          "stencil": "generic.router",
+          "label": "Site-to-site VPN",
+          "sublabel": "IPsec, two tunnels",
+          "group": "aws",
+          "props": { "latencyMs": 0 },
+          "x": 5400,
+          "y": 380
+        },
+        {
+          "id": "transit",
+          "stencil": "generic.router",
+          "label": "Transit gateway",
+          "sublabel": "attachments per VPC",
+          "group": "aws",
+          "props": { "latencyMs": 0 },
+          "x": 5840,
+          "y": 380
+        },
+        {
+          "id": "warehouse",
+          "stencil": "aws.redshift",
+          "label": "Sales warehouse",
+          "sublabel": "Redshift",
+          "group": "aws",
+          "props": { "latencyMs": 0 },
+          "x": 6280,
+          "y": 380
+        }
+      ],
+      "edges": [
+        { "id": "hq-staff--access", "from": "hq-staff", "to": "access", "kind": "sync" },
+        { "id": "hq-intranet--access", "from": "hq-intranet", "to": "access", "kind": "sync" },
+        { "id": "hq-files--access", "from": "hq-files", "to": "access", "kind": "sync" },
+        { "id": "guests--access", "from": "guests", "to": "access", "kind": "sync", "label": "Guest SSID" },
+        { "id": "access--core", "from": "access", "to": "core", "kind": "sync" },
+        { "id": "core--hq-fw", "from": "core", "to": "hq-fw", "kind": "sync" },
+        {
+          "id": "hq-fw--hq-wan",
+          "from": "hq-fw",
+          "to": "hq-wan",
+          "kind": "sync",
+          "label": "Allow: staff to DC",
+          "props": { "filter": ["ERP", "Intranet", "Files"] }
+        },
+        {
+          "id": "hq-fw--breakout",
+          "from": "hq-fw",
+          "to": "breakout",
+          "kind": "sync",
+          "label": "Allow: guest web",
+          "props": { "filter": ["GuestWeb"] }
+        },
+        {
+          "id": "deny-guest-to-dc",
+          "from": "hq-fw",
+          "to": "dc-edge",
+          "kind": "sync",
+          "label": "Deny: guest to DC",
+          "props": { "filter": ["GuestERP"], "deny": true }
+        },
+        { "id": "hq-wan--dc-edge", "from": "hq-wan", "to": "dc-edge", "kind": "sync", "label": "SD-WAN overlay" },
+        { "id": "york-staff--york-router", "from": "york-staff", "to": "york-router", "kind": "sync" },
+        { "id": "york-fibre", "from": "york-router", "to": "hub", "kind": "sync", "label": "Tunnel" },
+        { "id": "hull-staff--hull-router", "from": "hull-staff", "to": "hull-router", "kind": "sync" },
+        { "id": "hull-fibre", "from": "hull-router", "to": "hub", "kind": "sync", "label": "Tunnel" },
+        { "id": "derby-staff--derby-router", "from": "derby-staff", "to": "derby-router", "kind": "sync" },
+        { "id": "derby-fibre", "from": "derby-router", "to": "hub", "kind": "sync", "label": "Tunnel" },
+        { "id": "leicester-staff--leicester-router", "from": "leicester-staff", "to": "leicester-router", "kind": "sync" },
+        { "id": "leicester-fibre", "from": "leicester-router", "to": "hub", "kind": "sync", "label": "Fibre underlay" },
+        { "id": "leicester-router--lte", "from": "leicester-router", "to": "lte", "kind": "sync", "label": "LTE underlay" },
+        { "id": "lte--hub", "from": "lte", "to": "hub", "kind": "sync", "label": "Tunnel" },
+        { "id": "hub--dc-fw", "from": "hub", "to": "dc-fw", "kind": "sync", "label": "Branch traffic" },
+        { "id": "customers--dc-edge", "from": "customers", "to": "dc-edge", "kind": "sync", "label": "HTTPS" },
+        { "id": "remote--dc-edge", "from": "remote", "to": "dc-edge", "kind": "sync", "label": "GlobalProtect" },
+        { "id": "dc-edge--dc-fw", "from": "dc-edge", "to": "dc-fw", "kind": "sync" },
+        {
+          "id": "dc-fw--spine-1",
+          "from": "dc-fw",
+          "to": "spine-1",
+          "kind": "sync",
+          "label": "Allow: inside apps",
+          "props": { "filter": ["ERP", "Intranet", "Files"] }
+        },
+        {
+          "id": "dc-fw--spine-2",
+          "from": "dc-fw",
+          "to": "spine-2",
+          "kind": "sync",
+          "props": { "filter": ["ERP", "Intranet", "Files"] }
+        },
+        {
+          "id": "dc-fw--dmz-switch",
+          "from": "dc-fw",
+          "to": "dmz-switch",
+          "kind": "sync",
+          "label": "Allow: web",
+          "props": { "filter": ["Web"] }
+        },
+        { "id": "spine-1--leaf", "from": "spine-1", "to": "leaf", "kind": "sync" },
+        { "id": "spine-2--leaf", "from": "spine-2", "to": "leaf", "kind": "sync" },
+        { "id": "leaf--adc", "from": "leaf", "to": "adc", "kind": "sync", "props": { "filter": ["ERP", "Intranet"] } },
+        {
+          "id": "leaf--files",
+          "from": "leaf",
+          "to": "files",
+          "kind": "sync",
+          "label": "SMB",
+          "props": { "filter": ["Files"] }
+        },
+        { "id": "adc--erp", "from": "adc", "to": "erp", "kind": "sync", "props": { "filter": ["ERP"] } },
+        { "id": "adc--intranet", "from": "adc", "to": "intranet", "kind": "sync", "props": { "filter": ["Intranet"] } },
+        { "id": "erp--erp-db", "from": "erp", "to": "erp-db", "kind": "sync", "label": "SQL" },
+        { "id": "dmz-switch--waf", "from": "dmz-switch", "to": "waf", "kind": "sync" },
+        { "id": "waf--shop", "from": "waf", "to": "shop", "kind": "sync" },
+        { "id": "shop--erp", "from": "shop", "to": "erp", "kind": "sync", "label": "Orders API" },
+        {
+          "id": "erp--vpn",
+          "from": "erp",
+          "to": "vpn",
+          "kind": "sync",
+          "label": "Nightly export",
+          "props": { "share": 0.01, "emits": "Export" }
+        },
+        { "id": "vpn--transit", "from": "vpn", "to": "transit", "kind": "sync" },
+        { "id": "transit--warehouse", "from": "transit", "to": "warehouse", "kind": "sync", "label": "COPY" },
+        { "id": "access--nac", "from": "access", "to": "nac", "kind": "async", "label": "802.1X", "relation": "identity" },
+        { "id": "erp--ad", "from": "erp", "to": "ad", "kind": "async", "label": "Kerberos", "relation": "identity" },
+        { "id": "files--ad", "from": "files", "to": "ad", "kind": "async", "relation": "identity" },
+        { "id": "intranet--ad", "from": "intranet", "to": "ad", "kind": "async", "relation": "identity" },
+        { "id": "erp--dns", "from": "erp", "to": "dns", "kind": "async", "label": "Name lookups", "relation": "depends" },
+        { "id": "dc-fw--siem", "from": "dc-fw", "to": "siem", "kind": "async", "label": "Logs", "relation": "telemetry" },
+        { "id": "hq-fw--siem", "from": "hq-fw", "to": "siem", "kind": "async", "relation": "telemetry" }
+      ],
+      "simulations": [
+        {
+          "id": "guest-to-erp",
+          "title": "A guest device probes the ERP",
+          "description": "A visitor's laptop on guest Wi-Fi scans for the ERP. The HQ firewall's guest zone allows web traffic out to the internet only; its deny rule blocks every attempt to reach the data centre, while staff traffic carries on.",
+          "seed": 93,
+          "scale": 10,
+          "durationMs": 16000,
+          "traffic": [
+            {
+              "id": "hq",
+              "node": "hq-staff",
+              "label": "HQ staff",
+              "messageType": "ERP",
+              "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 14000 }
+            },
+            {
+              "id": "guests",
+              "node": "guests",
+              "label": "Guest web",
+              "messageType": "GuestWeb",
+              "shape": { "kind": "constant", "ratePerSec": 60, "durationMs": 14000 }
+            },
+            {
+              "id": "probe",
+              "node": "guests",
+              "label": "Probe for the ERP",
+              "messageType": "GuestERP",
+              "shape": { "kind": "constant", "ratePerSec": 50, "fromMs": 3000, "durationMs": 8000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "Staff and guests share the access switches, but the core keeps them in separate VRFs up to the firewall.", "focus": ["access", "core", "hq-fw"] }
+            },
+            {
+              "atMs": 3000,
+              "action": { "do": "note", "text": "A guest device starts probing for the ERP. The guest zone's deny rule blocks it at the HQ firewall.", "focus": ["hq-fw", "hq-wan", "breakout"] }
+            },
+            {
+              "atMs": 8000,
+              "action": { "do": "note", "text": "Blocked attempts are counted, not dropped as failures; staff traffic to the data centre carries on.", "focus": ["hq-fw", "hq-wan"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "blocked",
+              "label": "The firewall blocks the probe",
+              "metric": { "node": "hq-fw", "field": "blocked" },
+              "op": ">",
+              "value": 300,
+              "when": "end"
+            },
+            {
+              "id": "staff-ok",
+              "label": "Staff traffic is never dropped",
+              "metric": { "node": "hq-fw", "field": "dropped" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ]
+        }
+      ]
+    },
+    "icons": {
+      "aws-redshift": { "sha256": "dd7dfe3323b638c5957612f9fd17f14212f3242117e2be51743666f0f3b18dca", "bytes": 3969 },
+      "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+      "client-mobile": { "sha256": "b59f9659c6a761a2d7413154aa557fbddef653dd248cfc9ac6a240556c09625b", "bytes": 419 },
+      "client-team": { "sha256": "97188e1a712bb021aee225d34dbc0d8fead61fa2097a3f38c83a20b9f97a024e", "bytes": 552 },
+      "generic-dns": { "sha256": "318352cd22c3e3644f73e4acf9487df9e2549b9b26691055160d829fc6943f45", "bytes": 626 },
+      "generic-identity-provider": { "sha256": "0676c452dd144f732465c06edb4613a3a1778edea71ea777d753b9dc9db8b60c", "bytes": 656 },
+      "generic-service": { "sha256": "3fe5e72fd8c35eb0ef93e590677e2e7ffb6b3d31449533176a4e82fe9b6d0add", "bytes": 579 },
+      "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+      "net-adc": { "sha256": "c0113ed779060904d62aec369b769ece0ca195e15615a122c7cc8ffcb8244538", "bytes": 741 },
+      "net-firewall": { "sha256": "e74432f5ddeb079dd3a07076c0222d2f8190a0baa18072af0876ca8dfa919a14", "bytes": 780 },
+      "net-router": { "sha256": "446818b3b3767d4dd39c01decbf16d0ec749defd0f66335e729862e7e9855d46", "bytes": 693 },
+      "net-switch": { "sha256": "23de7dbb72699dcf30420accfa5876b36b3931d3649b3015558e5ccc871c12c6", "bytes": 561 },
+      "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+      "splunk": { "sha256": "924179f1213242883bf659a7b6d9c8c48c466f97eafd6560f04b82b9bd0ab885", "bytes": 3734 },
+      "sqlserver": { "sha256": "7d834ff581c31728bc4f2bb63bdc15d4e7d14f777bccbdad2fa41e289bf5aeea", "bytes": 5086 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

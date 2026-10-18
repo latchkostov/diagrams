@@ -1,0 +1,24 @@
+---
+title: "ScoreMember #1 · 4.31 s end to end · 2 copies"
+---
+sequenceDiagram
+  participant picks_schedule as Picks schedule
+  participant pick_requests as Members to score
+  participant batch_scorer as Batch scorer
+  participant feature_server as Feature server
+  participant picks_db as Weekly picks
+  participant picks_mailer as Picks mailer
+  participant online_store as Online features
+  participant esp as Email provider
+  picks_schedule-)pick_requests: ScoreMember (+0.00 s)<br/>One per member
+  Note over picks_schedule,esp: ⏱ 2.70 s waiting in Members to score
+  pick_requests-)batch_scorer: ScoreMember (+3.00 s)
+  batch_scorer->>feature_server: PicksReady (+3.52 s)<br/>Features
+  batch_scorer->>picks_db: PicksReady (+3.52 s)<br/>Write picks
+  batch_scorer-)picks_mailer: PicksReady (+3.52 s)
+  picks_db-->>batch_scorer: reply (+3.73 s)
+  feature_server-->>batch_scorer: reply (+3.74 s)
+  feature_server->>online_store: PicksReady (+3.74 s)
+  picks_mailer->>esp: PicksReady (+3.88 s)<br/>Send
+  online_store-->>feature_server: reply (+3.95 s)
+  esp-->>picks_mailer: reply (+4.31 s)

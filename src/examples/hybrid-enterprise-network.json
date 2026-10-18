@@ -1085,7 +1085,7 @@
       "title": "The DC firewall fails over",
       "description": "The active unit of the data centre's firewall pair dies. For three seconds, while the standby takes over its sessions, traffic for the ERP and the shop waits at the pair; nothing is dropped.",
       "seed": 92,
-      "scale": 10,
+      "scale": 50,
       "durationMs": 18000,
       "traffic": [
         {

@@ -1,0 +1,1088 @@
+{
+  "withIcons": {
+    "sha256": "deb7ed878bdc43650c0d9313aee11b13090c9c137341068daa9b5377e6098de5",
+    "bytes": 353869,
+    "inlined": {
+      "airflow": "airflow bb347b1c98e3b7d4",
+      "argocd": "argo f05272f641716862",
+      "aws.iam-role": "aws-iam-role bd4cb5cfaa081156",
+      "cassandra": "cassandra 80930638fefc124c",
+      "client.browser": "client-browser 0022934839e05a07",
+      "client.mobile": "client-mobile d67b2ae30eb449e3",
+      "databricks": "databricks e12c620773a11ca3",
+      "envoy": "envoy c09b4f87160491c1",
+      "flink": "flink c8f2d493877447b7",
+      "generic.batch-job": "generic-batch-job b4b740a6bd33435a",
+      "generic.config-store": "generic-config-store ef55f06431b5c98f",
+      "generic.email": "generic-email ce10423898f3e51d",
+      "generic.scheduler": "generic-scheduler e9060d1f29acbbe0",
+      "generic.vector-db": "generic-vector-db f37bfd154a12a073",
+      "grafana": "grafana 6d9cdbf24a7433ad",
+      "kafka.connect": "kafka 81e432d1da74c5fe",
+      "kafka.topic": "kafka 81e432d1da74c5fe",
+      "redis.cache": "redis a2b5f283f87eccc0",
+      "service.go": "go 6f494b4da5a84f2a",
+      "service.java": "java a7012363e0756258",
+      "service.node": "nodejs ad81b1a87b698cc5",
+      "service.python": "python a10eacac248223c9",
+      "slack": "slack 1134b9dd8b5c1937"
+    }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": {
+          "revision": "p3-a1",
+          "requestRoutes": [
+            {
+              "id": "home",
+              "label": "Home page",
+              "address": { "method": "GET", "path": "/v1/home" },
+              "appearance": { "paletteSlot": 0, "marker": "circle" }
+            },
+            {
+              "id": "play-event",
+              "label": "Playback event",
+              "address": { "method": "POST", "path": "/v1/events/play" },
+              "appearance": { "paletteSlot": 2, "marker": "square" }
+            }
+          ]
+        },
+        "title": "Recommendations with a feature store",
+        "description": "An invented streaming service, Meridian Media. Home pages get candidates from an embedding index and rankings from a model that reads an online feature store, kept fresh by streaming jobs and nightly bulk loads from an offline store. A canary takes 5% of rankings and a shadow model scores a 10% mirror; a drift monitor reads every prediction.",
+        "direction": "LR",
+        "groups": [
+          { "id": "aws", "label": "AWS us-east-1 · production", "tone": "aws", "x": 400, "y": 32, "width": 4459, "height": 1840 },
+          { "id": "serving", "label": "EKS · home page serving", "tone": "k8s", "x": 860, "y": 96, "width": 1660, "height": 1016, "group": "aws" },
+          { "id": "features", "label": "Feature store", "tone": "neutral", "x": 2640, "y": 96, "width": 302, "height": 876, "group": "aws" },
+          { "id": "streaming", "label": "Streaming features", "tone": "neutral", "x": 860, "y": 1236, "width": 1220, "height": 596, "group": "aws" },
+          { "id": "batch", "label": "Batch features and training", "tone": "neutral", "x": 3160, "y": 96, "width": 1620, "height": 456, "group": "aws" },
+          { "id": "monitoring", "label": "Model monitoring", "tone": "neutral", "x": 2200, "y": 1516, "width": 740, "height": 316, "group": "aws" },
+          { "id": "platform", "label": "Platform", "tone": "neutral", "x": 3160, "y": 756, "width": 1180, "height": 316, "group": "aws" },
+          { "id": "picks", "label": "Weekly picks · EKS batch", "tone": "k8s", "x": 3160, "y": 1236, "width": 1659, "height": 316, "group": "aws" }
+        ],
+        "nodes": [
+          {
+            "id": "tv",
+            "stencil": "client.browser",
+            "label": "TVs and web",
+            "sublabel": "home page loads",
+            "x": 0,
+            "y": 420,
+            "props": {
+              "ratePerSec": 300,
+              "trafficMix": {
+                "mode": "shares",
+                "entries": [{ "routeId": "home", "share": 0.6 }, { "routeId": "play-event", "share": 0.4 }]
+              }
+            }
+          },
+          {
+            "id": "phones",
+            "stencil": "client.mobile",
+            "label": "Meridian app",
+            "sublabel": "iOS and Android",
+            "x": 0,
+            "y": 640,
+            "props": {
+              "ratePerSec": 200,
+              "trafficMix": {
+                "mode": "shares",
+                "entries": [{ "routeId": "home", "share": 0.5 }, { "routeId": "play-event", "share": 0.5 }]
+              }
+            }
+          },
+          {
+            "id": "gateway",
+            "stencil": "aws.api-gateway",
+            "label": "API gateway",
+            "sublabel": "route table",
+            "x": 440,
+            "y": 520,
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "routeTable": {
+                "rules": [
+                  {
+                    "id": "home",
+                    "label": "Home rows",
+                    "match": { "methods": ["GET"], "path": { "kind": "exact", "value": "/v1/home" } },
+                    "targets": [{ "edgeId": "gateway--home-api", "weight": 1 }]
+                  },
+                  {
+                    "id": "events",
+                    "label": "Playback events",
+                    "match": { "methods": ["POST"], "path": { "kind": "prefix", "value": "/v1/events" } },
+                    "targets": [{ "edgeId": "gateway--collector", "weight": 1 }]
+                  }
+                ]
+              }
+            },
+            "group": "aws"
+          },
+          {
+            "id": "home-api",
+            "stencil": "service.node",
+            "label": "Home API",
+            "sublabel": "builds the rows",
+            "x": 900,
+            "y": 440,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 6, "concurrency": 64, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "candidates",
+            "stencil": "service.go",
+            "label": "Candidate generation",
+            "sublabel": "500 titles per member",
+            "x": 1340,
+            "y": 580,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "profiles",
+            "stencil": "service.java",
+            "label": "Member profiles",
+            "sublabel": "taste, language, devices",
+            "x": 1340,
+            "y": 160,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "metadata",
+            "stencil": "service.go",
+            "label": "Title metadata",
+            "sublabel": "rights, maturity, art",
+            "x": 1340,
+            "y": 300,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "bookmarks",
+            "stencil": "service.java",
+            "label": "Continue watching",
+            "sublabel": "resume points",
+            "x": 1340,
+            "y": 440,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "artwork",
+            "stencil": "service.python",
+            "label": "Artwork chooser",
+            "sublabel": "bandit per member",
+            "x": 1340,
+            "y": 720,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 15, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "ranking-router",
+            "stencil": "envoy",
+            "label": "Ranking router",
+            "sublabel": "95% v7, 5% v8 canary",
+            "x": 1340,
+            "y": 860,
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "routeTable": {
+                "rules": [],
+                "default": {
+                  "targets": [
+                    { "edgeId": "ranking-router--ranker-v7", "weight": 95 },
+                    { "edgeId": "ranking-router--ranker-v8", "weight": 5 }
+                  ]
+                }
+              }
+            },
+            "group": "serving"
+          },
+          {
+            "id": "ranker-v7",
+            "stencil": "service.python",
+            "label": "Ranker v7",
+            "sublabel": "PyTorch · HPA on CPU",
+            "x": 1780,
+            "y": 860,
+            "props": {
+              "preset": "processor-lesson",
+              "presetRevision": "1",
+              "replicas": 4,
+              "concurrency": 8,
+              "latencyMs": 40,
+              "jitter": 0.1,
+              "failureRate": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 8,
+                "baselineMemoryMiB": 192,
+                "memoryMiBPerMessage": 1,
+                "cpuRequestMilli": 1000,
+                "cpuLimitMilli": 2000,
+                "memoryRequestMiB": 2048,
+                "memoryLimitMiB": 4096,
+                "startup": { "delayMs": 3000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a1",
+                "preset": "hpa-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "hpa",
+                  "minReplicas": 4,
+                  "maxReplicas": 16,
+                  "initialReplicas": 4,
+                  "settings": {
+                    "syncMs": 1000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 0,
+                    "cpuInitializationPeriodMs": 0,
+                    "metrics": [
+                      {
+                        "source": { "kind": "resource", "resource": "cpu" },
+                        "target": { "kind": "utilization", "percentOfRequest": 70 },
+                        "windowMs": 1000,
+                        "metricDelayMs": 0
+                      }
+                    ],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 15000 },
+                        { "type": "Percent", "value": 100, "periodMs": 15000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 30000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            },
+            "group": "serving"
+          },
+          {
+            "id": "ranker-v8",
+            "stencil": "service.python",
+            "label": "Ranker v8 canary",
+            "sublabel": "new watch-time features",
+            "x": 1780,
+            "y": 1000,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 8, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "ranker-v9",
+            "stencil": "service.python",
+            "label": "Ranker v9 shadow",
+            "sublabel": "mirrored, answers discarded",
+            "x": 1340,
+            "y": 1000,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 8, "latencyMs": 50, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "feature-server",
+            "stencil": "service.go",
+            "label": "Feature server",
+            "sublabel": "joins member and title features",
+            "x": 2220,
+            "y": 860,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 8, "latencyMs": 8, "jitter": 0.1, "failureRate": 0 },
+            "group": "serving"
+          },
+          {
+            "id": "online-store",
+            "stencil": "redis.cache",
+            "label": "Online features",
+            "sublabel": "latest value per key",
+            "x": 2680,
+            "y": 720,
+            "props": { "latencyMs": 0 },
+            "group": "features"
+          },
+          {
+            "id": "profiles-db",
+            "stencil": "aws.dynamodb",
+            "label": "Profiles",
+            "sublabel": "DynamoDB",
+            "x": 2680,
+            "y": 160,
+            "props": { "latencyMs": 0 },
+            "group": "features"
+          },
+          {
+            "id": "bookmarks-db",
+            "stencil": "cassandra",
+            "label": "Resume points",
+            "sublabel": "Cassandra",
+            "x": 2680,
+            "y": 440,
+            "props": { "latencyMs": 0 },
+            "group": "features"
+          },
+          {
+            "id": "title-cache",
+            "stencil": "redis.cache",
+            "label": "Title cache",
+            "sublabel": "metadata, 5-min TTL",
+            "x": 2680,
+            "y": 300,
+            "props": { "latencyMs": 0 },
+            "group": "features"
+          },
+          {
+            "id": "ann-index",
+            "stencil": "generic.vector-db",
+            "label": "Embedding index",
+            "sublabel": "title embeddings",
+            "x": 2680,
+            "y": 580,
+            "props": { "latencyMs": 0 },
+            "group": "features"
+          },
+          {
+            "id": "offline-store",
+            "stencil": "aws.s3",
+            "label": "Offline features",
+            "sublabel": "Iceberg, point in time",
+            "x": 2680,
+            "y": 860,
+            "props": { "latencyMs": 0 },
+            "group": "features"
+          },
+          {
+            "id": "collector",
+            "stencil": "service.go",
+            "label": "Event collector",
+            "sublabel": "plays, pauses, skips",
+            "x": 900,
+            "y": 1300,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 128, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "group": "streaming"
+          },
+          {
+            "id": "play-events",
+            "stencil": "kafka.topic",
+            "label": "Playback events",
+            "sublabel": "play-events.v2 · 48 partitions",
+            "x": 1340,
+            "y": 1300,
+            "props": { "partitions": 48 },
+            "group": "streaming"
+          },
+          {
+            "id": "sessionizer",
+            "stencil": "flink",
+            "label": "Session features",
+            "sublabel": "last 30 minutes per member",
+            "x": 1780,
+            "y": 1300,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 8, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "streaming"
+          },
+          {
+            "id": "bookmarks-writer",
+            "stencil": "service.java",
+            "label": "Resume writer",
+            "sublabel": "last position per title",
+            "x": 1780,
+            "y": 1580,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "group": "streaming"
+          },
+          {
+            "id": "trending",
+            "stencil": "flink",
+            "label": "Trending now",
+            "sublabel": "plays per title, 5-min windows",
+            "x": 1780,
+            "y": 1440,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "streaming"
+          },
+          {
+            "id": "lake-sink",
+            "stencil": "kafka.connect",
+            "label": "Lake sink",
+            "sublabel": "Iceberg sink",
+            "x": 1780,
+            "y": 1720,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 128, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "streaming"
+          },
+          {
+            "id": "predictions",
+            "stencil": "kafka.topic",
+            "label": "Prediction log",
+            "sublabel": "predictions.v1 · 24 partitions",
+            "x": 1340,
+            "y": 1440,
+            "props": { "partitions": 24 },
+            "group": "streaming"
+          },
+          {
+            "id": "dags",
+            "stencil": "airflow",
+            "label": "Feature DAGs",
+            "sublabel": "hourly and nightly",
+            "x": 3200,
+            "y": 160,
+            "props": { "ratePerSec": 0.05, "messageType": "DagRun" },
+            "group": "batch"
+          },
+          {
+            "id": "backfill",
+            "stencil": "databricks",
+            "label": "Feature backfill",
+            "sublabel": "Spark, point-in-time joins",
+            "x": 3640,
+            "y": 160,
+            "props": { "latencyMs": 0 },
+            "group": "batch"
+          },
+          {
+            "id": "materialize",
+            "stencil": "generic.batch-job",
+            "label": "Materialize",
+            "sublabel": "offline to online",
+            "x": 3640,
+            "y": 300,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 4, "latencyMs": 500, "jitter": 0.1, "failureRate": 0 },
+            "group": "batch"
+          },
+          {
+            "id": "train",
+            "stencil": "generic.batch-job",
+            "label": "Ranker training",
+            "sublabel": "nightly, GPU",
+            "x": 3640,
+            "y": 440,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 1, "latencyMs": 3000, "jitter": 0.1, "failureRate": 0 },
+            "group": "batch"
+          },
+          {
+            "id": "eval",
+            "stencil": "generic.batch-job",
+            "label": "Offline evaluation",
+            "sublabel": "replay last week's sessions",
+            "x": 4080,
+            "y": 440,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 1, "latencyMs": 2000, "jitter": 0.1, "failureRate": 0 },
+            "group": "batch"
+          },
+          {
+            "id": "registry",
+            "stencil": "aws.s3",
+            "label": "Model registry",
+            "sublabel": "versions and metrics",
+            "x": 4520,
+            "y": 440,
+            "props": { "latencyMs": 0 },
+            "group": "batch"
+          },
+          {
+            "id": "picks-schedule",
+            "stencil": "generic.scheduler",
+            "label": "Picks schedule",
+            "sublabel": "Sundays 06:00",
+            "x": 3200,
+            "y": 1300,
+            "props": { "ratePerSec": 0, "messageType": "ScoreMember" },
+            "group": "picks"
+          },
+          {
+            "id": "pick-requests",
+            "stencil": "kafka.topic",
+            "label": "Members to score",
+            "sublabel": "picks.requests · 16 partitions",
+            "x": 3640,
+            "y": 1300,
+            "props": { "partitions": 16 },
+            "group": "picks"
+          },
+          {
+            "id": "batch-scorer",
+            "stencil": "service.python",
+            "label": "Batch scorer",
+            "sublabel": "KEDA on lag, sleeps at zero",
+            "x": 4080,
+            "y": 1300,
+            "props": {
+              "preset": "processor-lesson",
+              "presetRevision": "1",
+              "replicas": 0,
+              "concurrency": 8,
+              "latencyMs": 200,
+              "jitter": 0.1,
+              "failureRate": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 40,
+                "baselineMemoryMiB": 192,
+                "memoryMiBPerMessage": 1,
+                "cpuRequestMilli": 1000,
+                "cpuLimitMilli": 2000,
+                "memoryRequestMiB": 2048,
+                "memoryLimitMiB": 4096,
+                "startup": { "delayMs": 2000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a2",
+                "preset": "keda-kafka",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "keda",
+                  "minReplicas": 0,
+                  "maxReplicas": 16,
+                  "initialReplicas": 0,
+                  "pollingMs": 1000,
+                  "cooldownMs": 5000,
+                  "initialCooldownMs": 0,
+                  "triggers": [
+                    {
+                      "type": "kafka",
+                      "source": { "node": "pick-requests", "group": "scorer" },
+                      "target": 500,
+                      "activation": 0,
+                      "useCachedMetrics": false,
+                      "allowIdleConsumers": false
+                    }
+                  ],
+                  "settings": {
+                    "syncMs": 1000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 0,
+                    "cpuInitializationPeriodMs": 0,
+                    "metrics": [],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 3000 },
+                        { "type": "Percent", "value": 100, "periodMs": 3000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 300000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              },
+              "emits": "PicksReady"
+            },
+            "group": "picks"
+          },
+          {
+            "id": "picks-db",
+            "stencil": "aws.dynamodb",
+            "label": "Weekly picks",
+            "sublabel": "DynamoDB, one row per member",
+            "x": 4520,
+            "y": 1300,
+            "props": { "latencyMs": 0 },
+            "group": "picks"
+          },
+          {
+            "id": "picks-mailer",
+            "stencil": "service.node",
+            "label": "Picks mailer",
+            "sublabel": "renders the email",
+            "x": 4520,
+            "y": 1440,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "group": "picks"
+          },
+          { "id": "esp", "stencil": "generic.email", "label": "Email provider", "sublabel": "transactional email", "x": 5000, "y": 1440 },
+          {
+            "id": "drift",
+            "stencil": "service.python",
+            "label": "Drift monitor",
+            "sublabel": "feature and score drift",
+            "x": 2240,
+            "y": 1580,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+            "group": "monitoring"
+          },
+          { "id": "alerts", "stencil": "aws.sns", "label": "Drift alerts", "sublabel": "SNS", "x": 2680, "y": 1580, "group": "monitoring" },
+          { "id": "slack", "stencil": "slack", "label": "Slack", "sublabel": "#recs-oncall", "x": 5000, "y": 1580 },
+          { "id": "quality", "stencil": "grafana", "label": "Model quality", "sublabel": "CTR, coverage, drift", "x": 2680, "y": 1720, "group": "monitoring" },
+          { "id": "argocd", "stencil": "argocd", "label": "Argo CD", "sublabel": "model rollouts", "x": 3200, "y": 820, "group": "platform" },
+          { "id": "roles", "stencil": "aws.iam-role", "label": "Workload roles", "sublabel": "IRSA", "x": 3640, "y": 820, "group": "platform" },
+          { "id": "secrets", "stencil": "aws.secrets-manager", "label": "Secrets Manager", "x": 4080, "y": 820, "group": "platform" },
+          { "id": "experiments", "stencil": "generic.config-store", "label": "Experiments", "sublabel": "A/B assignment", "x": 3200, "y": 960, "group": "platform" },
+          { "id": "feature-registry", "stencil": "generic.config-store", "label": "Feature registry", "sublabel": "one definition per feature", "x": 3640, "y": 960, "group": "platform" }
+        ],
+        "edges": [
+          { "id": "tv--gateway", "from": "tv", "to": "gateway", "label": "HTTPS", "kind": "sync" },
+          { "id": "phones--gateway", "from": "phones", "to": "gateway", "label": "HTTPS", "kind": "sync" },
+          { "id": "gateway--home-api", "from": "gateway", "to": "home-api", "label": "Home", "kind": "sync" },
+          { "id": "gateway--collector", "from": "gateway", "to": "collector", "label": "Events", "kind": "sync" },
+          { "id": "home-api--profiles", "from": "home-api", "to": "profiles", "label": "Profile", "kind": "sync" },
+          { "id": "profiles--profiles-db", "from": "profiles", "to": "profiles-db", "kind": "sync" },
+          { "id": "home-api--metadata", "from": "home-api", "to": "metadata", "label": "Titles", "kind": "sync" },
+          { "id": "metadata--title-cache", "from": "metadata", "to": "title-cache", "kind": "sync" },
+          { "id": "home-api--artwork", "from": "home-api", "to": "artwork", "label": "Artwork", "kind": "sync" },
+          { "id": "home-api--bookmarks", "from": "home-api", "to": "bookmarks", "label": "Resume row", "kind": "sync" },
+          { "id": "bookmarks--bookmarks-db", "from": "bookmarks", "to": "bookmarks-db", "kind": "sync" },
+          {
+            "id": "play-events--bookmarks-writer",
+            "from": "play-events",
+            "to": "bookmarks-writer",
+            "kind": "async",
+            "props": { "group": "bookmarks" }
+          },
+          { "id": "bookmarks-writer--bookmarks-db", "from": "bookmarks-writer", "to": "bookmarks-db", "label": "Resume point", "kind": "sync" },
+          { "id": "artwork--online-store", "from": "artwork", "to": "online-store", "label": "Arm stats", "kind": "sync" },
+          { "id": "home-api--candidates", "from": "home-api", "to": "candidates", "label": "Candidates", "kind": "sync" },
+          { "id": "candidates--ann-index", "from": "candidates", "to": "ann-index", "label": "Nearest titles", "kind": "sync" },
+          { "id": "home-api--ranking-router", "from": "home-api", "to": "ranking-router", "label": "Rank", "kind": "sync" },
+          {
+            "id": "home-api--ranker-v9",
+            "from": "home-api",
+            "to": "ranker-v9",
+            "label": "Mirror 10%",
+            "kind": "sync",
+            "props": { "share": 0.1 }
+          },
+          { "id": "ranking-router--ranker-v7", "from": "ranking-router", "to": "ranker-v7", "kind": "sync" },
+          { "id": "ranking-router--ranker-v8", "from": "ranking-router", "to": "ranker-v8", "kind": "sync" },
+          { "id": "ranker-v7--feature-server", "from": "ranker-v7", "to": "feature-server", "label": "Features", "kind": "sync" },
+          { "id": "ranker-v8--feature-server", "from": "ranker-v8", "to": "feature-server", "label": "Features", "kind": "sync" },
+          { "id": "ranker-v9--feature-server", "from": "ranker-v9", "to": "feature-server", "label": "Features", "kind": "sync" },
+          { "id": "feature-server--online-store", "from": "feature-server", "to": "online-store", "kind": "sync" },
+          {
+            "id": "ranker-v7--predictions",
+            "from": "ranker-v7",
+            "to": "predictions",
+            "label": "Scored rows",
+            "kind": "async",
+            "props": { "emits": "Prediction" }
+          },
+          {
+            "id": "ranker-v8--predictions",
+            "from": "ranker-v8",
+            "to": "predictions",
+            "label": "Scored rows",
+            "kind": "async",
+            "props": { "emits": "Prediction" }
+          },
+          {
+            "id": "ranker-v9--predictions",
+            "from": "ranker-v9",
+            "to": "predictions",
+            "label": "Shadow scores",
+            "kind": "async",
+            "props": { "emits": "ShadowPrediction" }
+          },
+          {
+            "id": "collector--play-events",
+            "from": "collector",
+            "to": "play-events",
+            "label": "PlayEvent",
+            "kind": "async",
+            "props": { "emits": "PlayEvent" }
+          },
+          {
+            "id": "play-events--sessionizer",
+            "from": "play-events",
+            "to": "sessionizer",
+            "kind": "async",
+            "props": { "group": "sessions" }
+          },
+          {
+            "id": "play-events--trending",
+            "from": "play-events",
+            "to": "trending",
+            "kind": "async",
+            "props": { "group": "trending" }
+          },
+          {
+            "id": "play-events--lake-sink",
+            "from": "play-events",
+            "to": "lake-sink",
+            "kind": "async",
+            "props": { "group": "lake" }
+          },
+          { "id": "sessionizer--online-store", "from": "sessionizer", "to": "online-store", "label": "Update", "kind": "sync" },
+          { "id": "trending--online-store", "from": "trending", "to": "online-store", "label": "Update", "kind": "sync" },
+          { "id": "lake-sink--offline-store", "from": "lake-sink", "to": "offline-store", "label": "Append", "kind": "sync" },
+          {
+            "id": "predictions--drift",
+            "from": "predictions",
+            "to": "drift",
+            "kind": "async",
+            "props": { "group": "drift" }
+          },
+          {
+            "id": "predictions--lake-sink",
+            "from": "predictions",
+            "to": "lake-sink",
+            "kind": "async",
+            "props": { "group": "lake" }
+          },
+          { "id": "drift--quality", "from": "drift", "to": "quality", "label": "Metrics", "kind": "sync" },
+          {
+            "id": "drift--alerts",
+            "from": "drift",
+            "to": "alerts",
+            "label": "DriftDetected",
+            "kind": "async",
+            "props": { "emits": "DriftDetected", "share": 0.01 }
+          },
+          { "id": "alerts--slack", "from": "alerts", "to": "slack", "label": "Page", "kind": "async" },
+          { "id": "picks-schedule--pick-requests", "from": "picks-schedule", "to": "pick-requests", "label": "One per member", "kind": "async" },
+          {
+            "id": "pick-requests--batch-scorer",
+            "from": "pick-requests",
+            "to": "batch-scorer",
+            "kind": "async",
+            "props": { "group": "scorer" }
+          },
+          { "id": "batch-scorer--feature-server", "from": "batch-scorer", "to": "feature-server", "label": "Features", "kind": "sync" },
+          { "id": "batch-scorer--picks-db", "from": "batch-scorer", "to": "picks-db", "label": "Write picks", "kind": "sync" },
+          { "id": "batch-scorer--picks-mailer", "from": "batch-scorer", "to": "picks-mailer", "label": "PicksReady", "kind": "async" },
+          { "id": "picks-mailer--esp", "from": "picks-mailer", "to": "esp", "label": "Send", "kind": "sync" },
+          { "id": "dags--backfill", "from": "dags", "to": "backfill", "label": "Run", "kind": "async" },
+          { "id": "backfill--offline-store", "from": "backfill", "to": "offline-store", "label": "Write features", "kind": "sync" },
+          { "id": "dags--materialize", "from": "dags", "to": "materialize", "label": "Run", "kind": "async" },
+          { "id": "materialize--online-store", "from": "materialize", "to": "online-store", "label": "Bulk load", "kind": "sync" },
+          { "id": "dags--train", "from": "dags", "to": "train", "label": "Nightly", "kind": "async" },
+          { "id": "train--eval", "from": "train", "to": "eval", "label": "Candidate model", "kind": "sync" },
+          { "id": "eval--registry", "from": "eval", "to": "registry", "label": "Publish if better", "kind": "sync" },
+          { "id": "train--offline-store", "from": "train", "to": "offline-store", "label": "Training sets", "kind": "async", "relation": "depends" },
+          { "id": "materialize--offline-store", "from": "materialize", "to": "offline-store", "label": "Reads", "kind": "async", "relation": "depends" },
+          { "id": "ranker-v7--registry", "from": "ranker-v7", "to": "registry", "label": "Loads v7", "kind": "async", "relation": "depends" },
+          { "id": "ranker-v8--registry", "from": "ranker-v8", "to": "registry", "label": "Loads v8", "kind": "async", "relation": "depends" },
+          { "id": "argocd--ranker-v8", "from": "argocd", "to": "ranker-v8", "label": "Canary", "kind": "async", "relation": "deploy" },
+          { "id": "feature-server--roles", "from": "feature-server", "to": "roles", "kind": "async", "relation": "identity" },
+          { "id": "home-api--experiments", "from": "home-api", "to": "experiments", "label": "Variant", "kind": "async", "relation": "config" },
+          { "id": "feature-server--feature-registry", "from": "feature-server", "to": "feature-registry", "label": "Definitions", "kind": "async", "relation": "config", "sourceSide": "bottom" },
+          { "id": "sessionizer--feature-registry", "from": "sessionizer", "to": "feature-registry", "kind": "async", "relation": "config" },
+          { "id": "backfill--feature-registry", "from": "backfill", "to": "feature-registry", "kind": "async", "relation": "config" },
+          { "id": "collector--secrets", "from": "collector", "to": "secrets", "label": "Signing key", "kind": "async", "relation": "secret" },
+          { "id": "collector--roles", "from": "collector", "to": "roles", "kind": "async", "relation": "identity" },
+          { "id": "batch-scorer--registry", "from": "batch-scorer", "to": "registry", "label": "Loads v7", "kind": "async", "relation": "depends" },
+          { "id": "picks-mailer--secrets", "from": "picks-mailer", "to": "secrets", "label": "Provider key", "kind": "async", "relation": "secret" },
+          { "id": "picks-mailer--roles", "from": "picks-mailer", "to": "roles", "kind": "async", "relation": "identity" }
+        ],
+        "simulations": [
+          {
+            "id": "friday-night",
+            "title": "Friday night peak",
+            "description": "Home-page loads climb fourfold in a few seconds. Ranker v7 scales on CPU while the feature server and online store keep up; the shadow model keeps scoring its mirrored 10% without answering anyone.",
+            "seed": 61,
+            "scale": 20,
+            "durationMs": 30000,
+            "traffic": [
+              {
+                "id": "tv",
+                "node": "tv",
+                "label": "TVs and web",
+                "shape": {
+                  "kind": "ramp",
+                  "fromMs": 0,
+                  "startRate": 300,
+                  "stages": [
+                    { "durationMs": 4000, "targetRate": 1200 },
+                    { "durationMs": 16000, "targetRate": 1200 },
+                    { "durationMs": 4000, "targetRate": 300 }
+                  ]
+                }
+              },
+              {
+                "id": "phones",
+                "node": "phones",
+                "label": "App",
+                "shape": {
+                  "kind": "ramp",
+                  "fromMs": 0,
+                  "startRate": 200,
+                  "stages": [
+                    { "durationMs": 4000, "targetRate": 800 },
+                    { "durationMs": 16000, "targetRate": 800 },
+                    { "durationMs": 4000, "targetRate": 200 }
+                  ]
+                }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Each home page asks for candidates, then ranks them: 95% on Ranker v7, 5% on the v8 canary, and 10% mirrored to the v9 shadow.", "focus": ["home-api", "candidates", "ranking-router", "ranker-v7", "ranker-v8"] }
+              },
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "Friday night: four times the home loads. Ranker v7 passes 70% CPU and its HPA adds pods.", "focus": ["ranking-router", "ranker-v7"] }
+              },
+              {
+                "atMs": 9000,
+                "action": { "do": "note", "text": "Every ranker reads the same online features, kept fresh by streaming jobs and bulk loads.", "focus": ["feature-server", "online-store", "ann-index"] }
+              },
+              {
+                "atMs": 14000,
+                "action": { "do": "note", "text": "Predictions go to a log: the drift monitor watches them, and the lake keeps them for training.", "focus": ["predictions", "drift", "lake-sink"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "scored",
+                "label": "Ranker v7 scores the peak",
+                "metric": { "node": "ranker-v7", "field": "processed" },
+                "op": ">",
+                "value": 10000,
+                "when": "end"
+              },
+              {
+                "id": "no-loss",
+                "label": "Nothing is dropped",
+                "metric": { "node": "feature-server", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              },
+              {
+                "id": "drained",
+                "label": "Prediction lag drains",
+                "metric": { "node": "predictions", "field": "lag", "group": "drift" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "canary-rollback",
+            "title": "The canary misbehaves",
+            "description": "Argo CD rolls Ranker v8 out to 5% of home pages. Its new feature join times out on half its requests; the router keeps sending it 5% until the on-call engineer sets its weight to zero.",
+            "seed": 62,
+            "scale": 10,
+            "durationMs": 22000,
+            "traffic": [
+              {
+                "id": "tv",
+                "node": "tv",
+                "label": "TVs and web",
+                "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 18000 }
+              },
+              {
+                "id": "phones",
+                "node": "phones",
+                "label": "App",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 18000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Argo CD has rolled Ranker v8 out as a canary: the router sends it 5% of rankings.", "focus": ["ranking-router", "ranker-v7", "ranker-v8"] }
+              },
+              { "atMs": 3000, "action": { "do": "props", "node": "ranker-v8", "props": { "failureRate": 0.5 } } },
+              {
+                "atMs": 3000,
+                "action": { "do": "note", "text": "v8's new feature join times out on half its requests. Those members get a fallback row.", "focus": ["ranking-router", "ranker-v8", "feature-server"] }
+              },
+              {
+                "atMs": 8000,
+                "action": {
+                  "do": "props",
+                  "node": "ranking-router",
+                  "props": {
+                    "routeTable": {
+                      "rules": [],
+                      "default": {
+                        "targets": [
+                          { "edgeId": "ranking-router--ranker-v7", "weight": 100 },
+                          { "edgeId": "ranking-router--ranker-v8", "weight": 0 }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "note", "text": "The quality dashboard shows the dip. On-call sets v8's weight to zero, and v7 takes every ranking again.", "focus": ["ranking-router", "ranker-v7", "ranker-v8"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "canary-failed",
+                "label": "The canary fails rankings",
+                "metric": { "node": "ranker-v8", "field": "failed" },
+                "op": ">",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "v7-clean",
+                "label": "Ranker v7 never fails",
+                "metric": { "node": "ranker-v7", "field": "failed" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "slow-features",
+            "title": "Drill: the feature server slows down",
+            "description": "A drill: a bad client upgrade makes every feature lookup ten times slower for ten seconds. Rankings queue at the feature server, which every ranker shares, then drain once the slowdown clears.",
+            "seed": 63,
+            "scale": 10,
+            "durationMs": 26000,
+            "traffic": [
+              {
+                "id": "tv",
+                "node": "tv",
+                "label": "TVs and web",
+                "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 20000 }
+              },
+              {
+                "id": "phones",
+                "node": "phones",
+                "label": "App",
+                "shape": { "kind": "constant", "ratePerSec": 200, "durationMs": 20000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "All three rankers, and the weekly batch scorer, read features from one shared feature server.", "focus": ["ranker-v7", "ranker-v8", "ranker-v9", "feature-server"] }
+              },
+              {
+                "atMs": 4000,
+                "action": {
+                  "do": "fault",
+                  "drill": "slow-dependency",
+                  "fault": { "kind": "slow", "node": "feature-server", "factor": 10 }
+                }
+              },
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "Slow dependency drill: feature lookups take ten times as long. The feature server's slots fill and rankings queue.", "focus": ["feature-server", "online-store"] }
+              },
+              {
+                "atMs": 14000,
+                "action": {
+                  "do": "fault",
+                  "drill": "slow-dependency",
+                  "fault": { "kind": "slow", "node": "feature-server", "factor": 1 }
+                }
+              },
+              {
+                "atMs": 14000,
+                "action": { "do": "note", "text": "The slowdown clears. The queue drains in a few seconds; nothing was dropped, but every queued home page waited.", "focus": ["feature-server", "ranker-v7"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "queued",
+                "label": "Rankings queue at the feature server",
+                "metric": { "node": "feature-server", "field": "backlog" },
+                "op": ">",
+                "value": 100,
+                "when": "eventually"
+              },
+              {
+                "id": "drained",
+                "label": "The queue drains",
+                "metric": { "node": "feature-server", "field": "backlog" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "no-loss",
+                "label": "Nothing is dropped",
+                "metric": { "node": "feature-server", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "sunday-picks",
+            "title": "Sunday picks wake the batch scorer",
+            "description": "At six on Sunday the schedule queues 6,000 members for their weekly email. KEDA wakes the batch scorer from zero on topic lag, scales it out to the partition count, then lets it sleep again.",
+            "seed": 64,
+            "scale": 10,
+            "durationMs": 40000,
+            "traffic": [
+              {
+                "id": "members",
+                "node": "picks-schedule",
+                "label": "6,000 members",
+                "messageType": "ScoreMember",
+                "shape": { "kind": "burst", "count": 6000, "atMs": 1000, "spreadMs": 4000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "The batch scorer has no pods: it sleeps until members to score arrive.", "focus": ["picks-schedule", "pick-requests", "batch-scorer"] }
+              },
+              {
+                "atMs": 3000,
+                "action": { "do": "note", "text": "6,000 members queue in the topic. KEDA sees the lag and wakes the scorer, then adds pods, up to one per partition.", "focus": ["pick-requests", "batch-scorer"] }
+              },
+              {
+                "atMs": 14000,
+                "action": { "do": "note", "text": "Each scored member's picks are stored and mailed. The scorer shares the feature server with live home pages.", "focus": ["batch-scorer", "feature-server", "picks-db", "picks-mailer"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "scored",
+                "label": "Every member is scored",
+                "metric": { "node": "batch-scorer", "field": "processed" },
+                "op": "==",
+                "value": 6000,
+                "when": "end"
+              },
+              {
+                "id": "mailed",
+                "label": "Every member gets an email",
+                "metric": { "node": "picks-mailer", "field": "processed" },
+                "op": "==",
+                "value": 6000,
+                "when": "end"
+              },
+              {
+                "id": "drained",
+                "label": "The topic drains",
+                "metric": { "node": "pick-requests", "field": "lag", "group": "scorer" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          { "id": "note-skew", "kind": "note", "text": "Training and serving read the same feature definitions: offline for point-in-time training sets, online for the latest value.", "x": 0, "y": 900, "width": 320, "height": 150 }
+        ]
+      }
+    }
+  ]
+}

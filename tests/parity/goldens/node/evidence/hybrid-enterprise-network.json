@@ -1,0 +1,28 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "leicester-fibre-cut", "title": "Drill: the Leicester fibre is cut", "playedMs": 24000, "capped": false },
+      { "id": "dc-firewall-failover", "title": "The DC firewall fails over", "playedMs": 18000, "capped": false },
+      { "id": "guest-to-erp", "title": "A guest device probes the ERP", "playedMs": 16000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      {
+        "simulation": "Drill: the Leicester fibre is cut",
+        "node": "hub",
+        "broker": false,
+        "what": "dropped",
+        "count": 2,
+        "onPurpose": { "count": 2, "why": "down" }
+      }
+    ],
+    "dropped": []
+  },
+  "planned": [
+    { "node": "hub", "simulation": "Drill: the Leicester fibre is cut", "what": "dropped", "count": 2, "why": "down" }
+  ],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 3 saved simulations (at most 60 s each). On purpose, not findings: 2 dropped at hub in “Drill: the Leicester fibre is cut”." }
+}

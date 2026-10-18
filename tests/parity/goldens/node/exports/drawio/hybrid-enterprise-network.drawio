@@ -1,0 +1,492 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-1oauomg" name="Hybrid enterprise network">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_description="An invented retailer, Northwind Traders. Staff at the Manchester head office and four branches reach the ERP in the Leeds data centre over SD-WAN, through firewall pairs and a spine-and-leaf server farm. Customers reach the web shop through a DMZ, and a site-to-site VPN carries the nightly export to an AWS warehouse." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;leicester-fibre-cut&quot;,&quot;title&quot;:&quot;Drill: the Leicester fibre is cut&quot;,&quot;description&quot;:&quot;A digger cuts the Leicester branch's fibre. Its SD-WAN router health-checks both underlays, so every new session moves to the LTE tunnel; only requests already on the fibre are lost. The fibre comes back ten seconds later.&quot;,&quot;seed&quot;:91,&quot;scale&quot;:1,&quot;durationMs&quot;:24000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;leicester&quot;,&quot;node&quot;:&quot;leicester-staff&quot;,&quot;label&quot;:&quot;Leicester branch&quot;,&quot;messageType&quot;:&quot;ERP&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:20,&quot;durationMs&quot;:20000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The Leicester router sends the branch's tunnels over fibre and a 4G backup, and health-checks both.&quot;,&quot;focus&quot;:[&quot;leicester-router&quot;,&quot;lte&quot;,&quot;hub&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;fault&quot;,&quot;drill&quot;:&quot;region-connectivity&quot;,&quot;fault&quot;:{&quot;kind&quot;:&quot;link&quot;,&quot;edge&quot;:&quot;leicester-fibre&quot;,&quot;cut&quot;:true}}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Region connectivity drill: the fibre is cut. Requests already on it are lost; the router sends every new one over LTE.&quot;,&quot;focus&quot;:[&quot;leicester-router&quot;,&quot;lte&quot;,&quot;hub&quot;]}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;fault&quot;,&quot;drill&quot;:&quot;region-connectivity&quot;,&quot;fault&quot;:{&quot;kind&quot;:&quot;link&quot;,&quot;edge&quot;:&quot;leicester-fibre&quot;,&quot;cut&quot;:false}}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The fibre is back and shares the load again. Staff never noticed.&quot;,&quot;focus&quot;:[&quot;leicester-router&quot;,&quot;hub&quot;,&quot;dc-fw&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;on-lte&quot;,&quot;label&quot;:&quot;Sessions move to LTE&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;lte&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:150,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-drops&quot;,&quot;label&quot;:&quot;The router never drops a session&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;leicester-router&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;},{&quot;id&quot;:&quot;on-the-wire&quot;,&quot;label&quot;:&quot;Only requests on the wire are lost&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;hub&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;&lt;=&quot;,&quot;value&quot;:5,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;erp&quot;,&quot;label&quot;:&quot;Every request reaches the ERP&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;erp&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;dc-firewall-failover&quot;,&quot;title&quot;:&quot;The DC firewall fails over&quot;,&quot;description&quot;:&quot;The active unit of the data centre's firewall pair dies. For three seconds, while the standby takes over its sessions, traffic for the ERP and the shop waits at the pair; nothing is dropped.&quot;,&quot;seed&quot;:92,&quot;scale&quot;:50,&quot;durationMs&quot;:18000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;hq&quot;,&quot;node&quot;:&quot;hq-staff&quot;,&quot;label&quot;:&quot;HQ staff&quot;,&quot;messageType&quot;:&quot;ERP&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:300,&quot;durationMs&quot;:14000}},{&quot;id&quot;:&quot;intranet&quot;,&quot;node&quot;:&quot;hq-intranet&quot;,&quot;label&quot;:&quot;HQ intranet&quot;,&quot;messageType&quot;:&quot;Intranet&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:120,&quot;durationMs&quot;:14000}},{&quot;id&quot;:&quot;leicester&quot;,&quot;node&quot;:&quot;leicester-staff&quot;,&quot;label&quot;:&quot;Leicester branch&quot;,&quot;messageType&quot;:&quot;ERP&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:20,&quot;durationMs&quot;:14000}},{&quot;id&quot;:&quot;shop&quot;,&quot;node&quot;:&quot;customers&quot;,&quot;label&quot;:&quot;Online customers&quot;,&quot;messageType&quot;:&quot;Web&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:200,&quot;durationMs&quot;:14000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Every flow into the data centre passes the firewall pair: one unit carries it, the other stands by.&quot;,&quot;focus&quot;:[&quot;dc-edge&quot;,&quot;hub&quot;,&quot;dc-fw&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;dc-fw&quot;,&quot;props&quot;:{&quot;replicas&quot;:1}}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The active unit fails. Sessions wait at the pair while the standby takes over.&quot;,&quot;focus&quot;:[&quot;dc-fw&quot;,&quot;spine-1&quot;,&quot;dmz-switch&quot;]}},{&quot;atMs&quot;:9000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The standby carries everything and the backlog drains. The pair has no spare until the unit is replaced.&quot;,&quot;focus&quot;:[&quot;dc-fw&quot;,&quot;spine-1&quot;,&quot;spine-2&quot;,&quot;leaf&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;waits&quot;,&quot;label&quot;:&quot;Traffic waits during the failover&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;dc-fw&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:500,&quot;when&quot;:&quot;eventually&quot;},{&quot;id&quot;:&quot;no-drops&quot;,&quot;label&quot;:&quot;The firewall never drops a session&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;dc-fw&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;guest-to-erp&quot;,&quot;title&quot;:&quot;A guest device probes the ERP&quot;,&quot;description&quot;:&quot;A visitor's laptop on guest Wi-Fi scans for the ERP. The HQ firewall's guest zone allows web traffic out to the internet only; its deny rule blocks every attempt to reach the data centre, while staff traffic carries on.&quot;,&quot;seed&quot;:93,&quot;scale&quot;:10,&quot;durationMs&quot;:16000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;hq&quot;,&quot;node&quot;:&quot;hq-staff&quot;,&quot;label&quot;:&quot;HQ staff&quot;,&quot;messageType&quot;:&quot;ERP&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:300,&quot;durationMs&quot;:14000}},{&quot;id&quot;:&quot;guests&quot;,&quot;node&quot;:&quot;guests&quot;,&quot;label&quot;:&quot;Guest web&quot;,&quot;messageType&quot;:&quot;GuestWeb&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:60,&quot;durationMs&quot;:14000}},{&quot;id&quot;:&quot;probe&quot;,&quot;node&quot;:&quot;guests&quot;,&quot;label&quot;:&quot;Probe for the ERP&quot;,&quot;messageType&quot;:&quot;GuestERP&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:50,&quot;fromMs&quot;:3000,&quot;durationMs&quot;:8000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Staff and guests share the access switches, but the core keeps them in separate VRFs up to the firewall.&quot;,&quot;focus&quot;:[&quot;access&quot;,&quot;core&quot;,&quot;hq-fw&quot;]}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A guest device starts probing for the ERP. The guest zone's deny rule blocks it at the HQ firewall.&quot;,&quot;focus&quot;:[&quot;hq-fw&quot;,&quot;hq-wan&quot;,&quot;breakout&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Blocked attempts are counted, not dropped as failures; staff traffic to the data centre carries on.&quot;,&quot;focus&quot;:[&quot;hq-fw&quot;,&quot;hq-wan&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;blocked&quot;,&quot;label&quot;:&quot;The firewall blocks the probe&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;hq-fw&quot;,&quot;field&quot;:&quot;blocked&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:300,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;staff-ok&quot;,&quot;label&quot;:&quot;Staff traffic is never dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;hq-fw&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]}]" dg_planning="{&quot;revision&quot;:&quot;p3-a1&quot;}">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-hq" label="HQ campus · Manchester" dg_id="hq" dg_tone="onprem">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#64748B;strokeColor=#64748B;" vertex="1" parent="1">
+            <mxGeometry x="400" y="146" width="1634" height="346" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-wan" label="SD-WAN branches" dg_id="wan" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="400" y="636" width="339" height="596" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-carrier" label="Mobile carrier" dg_id="carrier" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="840" y="1056" width="300" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-dc" label="Data centre · Leeds" dg_id="dc" dg_tone="onprem">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#64748B;strokeColor=#64748B;" vertex="1" parent="1">
+            <mxGeometry x="2160" y="-248" width="2980" height="1300" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-dmz" label="DMZ" dg_id="dmz" dg_tone="neutral" dg_group="dc">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3040" y="-184" width="1180" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-servers" label="Server farm · spine and leaf" dg_id="servers" dg_tone="neutral" dg_group="dc">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3040" y="256" width="2060" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-mgmt" label="Identity and monitoring" dg_id="mgmt" dg_tone="neutral" dg_group="dc">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3040" y="836" width="1622" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-aws" label="AWS eu-west-2 · analytics" dg_id="aws" dg_tone="aws">
+          <mxCell style="points=[];outlineConnect=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;spacingLeft=30;dashed=0;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#232F3E;strokeColor=#232F3E;" vertex="1" parent="1">
+            <mxGeometry x="5360" y="316" width="1180" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hq-staff" label="HQ staff&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;ERP all day&lt;/span&gt;" dg_id="hq-staff" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:300,&quot;messageType&quot;:&quot;ERP&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="6" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hq-intranet" label="HQ intranet&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;news, HR, wiki&lt;/span&gt;" dg_id="hq-intranet" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:120,&quot;messageType&quot;:&quot;Intranet&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="146" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hq-files" label="HQ file shares&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;mapped drives&lt;/span&gt;" dg_id="hq-files" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:80,&quot;messageType&quot;:&quot;Files&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="286" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-guests" label="Guest Wi-Fi&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;visitor devices&lt;/span&gt;" dg_id="guests" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:60,&quot;messageType&quot;:&quot;GuestWeb&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="426" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-customers" label="Online customers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;the web shop&lt;/span&gt;" dg_id="customers" dg_stencil="client.browser" dg_props="{&quot;ratePerSec&quot;:200,&quot;messageType&quot;:&quot;Web&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1780" y="-354" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-remote" label="Remote staff&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;laptops on VPN&lt;/span&gt;" dg_id="remote" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:40,&quot;messageType&quot;:&quot;ERP&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1780" y="-214" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-access" label="Access switches&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;stacked, PoE, 802.1X&lt;/span&gt;" dg_id="access" dg_stencil="cisco.catalyst" dg_props="{&quot;size&quot;:&quot;campus&quot;,&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:4}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-hq">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-core" label="Core switch pair&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;L3, staff and guest VRFs&lt;/span&gt;" dg_id="core" dg_stencil="cisco.catalyst" dg_props="{&quot;size&quot;:&quot;campus&quot;,&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-hq">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hq-fw" label="HQ firewall pair&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;zones: staff, guest&lt;/span&gt;" dg_id="hq-fw" dg_stencil="paloalto.ngfw" dg_props="{&quot;size&quot;:&quot;campus&quot;,&quot;ha&quot;:&quot;active-standby&quot;,&quot;replicas&quot;:2,&quot;failoverMs&quot;:3000}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FA582D1A;strokeColor=#FA582D;fontSize=12;" vertex="1" parent="dg-g-hq">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hq-wan" label="HQ SD-WAN edge&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;dual fibre&lt;/span&gt;" dg_id="hq-wan" dg_stencil="cisco.isr" dg_props="{&quot;size&quot;:&quot;campus&quot;,&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-hq">
+            <mxGeometry x="1380" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-breakout" label="Guest breakout&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;straight to the internet&lt;/span&gt;" dg_id="breakout" dg_stencil="generic.router" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0E74901A;strokeColor=#0E7490;fontSize=12;" vertex="1" parent="dg-g-hq">
+            <mxGeometry x="1380" y="240" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-york-staff" label="York branch&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;40 staff, ERP and files&lt;/span&gt;" dg_id="york-staff" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:20,&quot;messageType&quot;:&quot;ERP&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="706" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-york-router" label="York router&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;SD-WAN over fibre&lt;/span&gt;" dg_id="york-router" dg_stencil="cisco.isr" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-wan">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hull-staff" label="Hull branch&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;40 staff, ERP and files&lt;/span&gt;" dg_id="hull-staff" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:20,&quot;messageType&quot;:&quot;ERP&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="846" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hull-router" label="Hull router&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;SD-WAN over fibre&lt;/span&gt;" dg_id="hull-router" dg_stencil="cisco.isr" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-wan">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-derby-staff" label="Derby branch&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;40 staff, ERP and files&lt;/span&gt;" dg_id="derby-staff" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:20,&quot;messageType&quot;:&quot;ERP&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="986" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-derby-router" label="Derby router&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;SD-WAN over fibre&lt;/span&gt;" dg_id="derby-router" dg_stencil="cisco.isr" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-wan">
+            <mxGeometry x="60" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-leicester-staff" label="Leicester branch&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;40 staff, ERP and files&lt;/span&gt;" dg_id="leicester-staff" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:20,&quot;messageType&quot;:&quot;ERP&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="1126" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-leicester-router" label="Leicester router&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;fibre and LTE, health checks&lt;/span&gt;" dg_id="leicester-router" dg_stencil="cisco.isr" dg_props="{&quot;size&quot;:&quot;branch&quot;,&quot;healthChecks&quot;:true}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-wan">
+            <mxGeometry x="60" y="490" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-lte" label="4G carrier&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;LTE underlay&lt;/span&gt;" dg_id="lte" dg_stencil="generic.router" dg_props="{&quot;latencyMs&quot;:30}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0E74901A;strokeColor=#0E7490;fontSize=12;" vertex="1" parent="dg-g-carrier">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dc-edge" label="DC edge routers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;BGP, two ISPs&lt;/span&gt;" dg_id="dc-edge" dg_stencil="juniper.mx" dg_props="{&quot;size&quot;:&quot;datacentre&quot;,&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5E8C1F1A;strokeColor=#5E8C1F;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="60" y="254" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-hub" label="SD-WAN hub&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;overlay head-end&lt;/span&gt;" dg_id="hub" dg_stencil="juniper.srx" dg_props="{&quot;size&quot;:&quot;datacentre&quot;,&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5E8C1F1A;strokeColor=#5E8C1F;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="60" y="1164" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dc-fw" label="DC firewall pair&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;inside, DMZ, VPN zones&lt;/span&gt;" dg_id="dc-fw" dg_stencil="paloalto.ngfw" dg_props="{&quot;size&quot;:&quot;datacentre&quot;,&quot;ha&quot;:&quot;active-standby&quot;,&quot;replicas&quot;:2,&quot;failoverMs&quot;:3000}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FA582D1A;strokeColor=#FA582D;fontSize=12;" vertex="1" parent="dg-g-dc">
+            <mxGeometry x="500" y="674" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dmz-switch" label="DMZ switch" dg_id="dmz-switch" dg_stencil="cisco.nexus" dg_props="{&quot;size&quot;:&quot;datacentre&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-dmz">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-waf" label="WAF and load balancer&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;TLS, bot rules&lt;/span&gt;" dg_id="waf" dg_stencil="f5.bigip" dg_props="{&quot;size&quot;:&quot;datacentre&quot;,&quot;ha&quot;:&quot;active-standby&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E4002B1A;strokeColor=#E4002B;fontSize=12;" vertex="1" parent="dg-g-dmz">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-shop" label="Web shop&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;two web servers&lt;/span&gt;" dg_id="shop" dg_stencil="service.node" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="dg-g-dmz">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-spine-1" label="Spine 1&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;100G&lt;/span&gt;" dg_id="spine-1" dg_stencil="arista.switch" dg_props="{&quot;size&quot;:&quot;datacentre&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#1F5DA81A;strokeColor=#1F5DA8;fontSize=12;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-spine-2" label="Spine 2&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;100G&lt;/span&gt;" dg_id="spine-2" dg_stencil="arista.switch" dg_props="{&quot;size&quot;:&quot;datacentre&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#1F5DA81A;strokeColor=#1F5DA8;fontSize=12;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-leaf" label="Server leaf pair&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;vPC&lt;/span&gt;" dg_id="leaf" dg_stencil="cisco.nexus" dg_props="{&quot;size&quot;:&quot;datacentre&quot;,&quot;ha&quot;:&quot;active-active&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="500" y="140" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-adc" label="ADC pair&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;TLS, health checks&lt;/span&gt;" dg_id="adc" dg_stencil="f5.bigip" dg_props="{&quot;size&quot;:&quot;datacentre&quot;,&quot;ha&quot;:&quot;active-standby&quot;,&quot;replicas&quot;:2}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E4002B1A;strokeColor=#E4002B;fontSize=12;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-erp" label="ERP&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;orders, stock, finance&lt;/span&gt;" dg_id="erp" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:60,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="1380" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-intranet" label="Intranet&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;HR, news, wiki&lt;/span&gt;" dg_id="intranet" dg_stencil="service.node" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:30,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="1380" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-files" label="File servers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;DFS shares&lt;/span&gt;" dg_id="files" dg_stencil="generic.service" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="940" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-erp-db" label="ERP database&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Always On&lt;/span&gt;" dg_id="erp-db" dg_stencil="sqlserver" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/databases/SQL_Server.svg;" vertex="1" parent="dg-g-servers">
+            <mxGeometry x="1882" y="142" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ad" label="Active Directory&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;staff sign-in&lt;/span&gt;" dg_id="ad" dg_stencil="generic.identity-provider">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4F46E51A;strokeColor=#4F46E5;fontSize=12;" vertex="1" parent="dg-g-mgmt">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-nac" label="Network access control&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;802.1X&lt;/span&gt;" dg_id="nac" dg_stencil="generic.identity-provider">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#4F46E51A;strokeColor=#4F46E5;fontSize=12;" vertex="1" parent="dg-g-mgmt">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dns" label="Internal DNS&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;split horizon&lt;/span&gt;" dg_id="dns" dg_stencil="generic.dns">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0284C71A;strokeColor=#0284C7;fontSize=12;" vertex="1" parent="dg-g-mgmt">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-siem" label="SIEM&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;firewall and flow logs&lt;/span&gt;" dg_id="siem" dg_stencil="splunk">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ED00801A;strokeColor=#ED0080;fontSize=12;" vertex="1" parent="dg-g-mgmt">
+            <mxGeometry x="1380" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vpn" label="Site-to-site VPN&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;IPsec, two tunnels&lt;/span&gt;" dg_id="vpn" dg_stencil="generic.router" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0E74901A;strokeColor=#0E7490;fontSize=12;" vertex="1" parent="dg-g-aws">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-transit" label="Transit gateway&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;attachments per VPC&lt;/span&gt;" dg_id="transit" dg_stencil="generic.router" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0E74901A;strokeColor=#0E7490;fontSize=12;" vertex="1" parent="dg-g-aws">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-warehouse" label="Sales warehouse&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Redshift&lt;/span&gt;" dg_id="warehouse" dg_stencil="aws.redshift" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#8C4FFF1A;strokeColor=#8C4FFF;fontSize=12;" vertex="1" parent="dg-g-aws">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hq-staff--access" label="" dg_id="hq-staff--access" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hq-staff" target="dg-n-access">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hq-intranet--access" label="" dg_id="hq-intranet--access" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hq-intranet" target="dg-n-access">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hq-files--access" label="" dg_id="hq-files--access" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hq-files" target="dg-n-access">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-guests--access" label="Guest SSID" dg_id="guests--access" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-guests" target="dg-n-access">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-access--core" label="" dg_id="access--core" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-access" target="dg-n-core">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-core--hq-fw" label="" dg_id="core--hq-fw" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-core" target="dg-n-hq-fw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hq-fw--hq-wan" label="Allow: staff to DC" dg_id="hq-fw--hq-wan" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;ERP&quot;,&quot;Intranet&quot;,&quot;Files&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hq-fw" target="dg-n-hq-wan">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hq-fw--breakout" label="Allow: guest web" dg_id="hq-fw--breakout" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;GuestWeb&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hq-fw" target="dg-n-breakout">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-deny-guest-to-dc" label="Deny: guest to DC" dg_id="deny-guest-to-dc" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;GuestERP&quot;],&quot;deny&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hq-fw" target="dg-n-dc-edge">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hq-wan--dc-edge" label="SD-WAN overlay" dg_id="hq-wan--dc-edge" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hq-wan" target="dg-n-dc-edge">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-york-staff--york-router" label="" dg_id="york-staff--york-router" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-york-staff" target="dg-n-york-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-york-fibre" label="Tunnel" dg_id="york-fibre" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-york-router" target="dg-n-hub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hull-staff--hull-router" label="" dg_id="hull-staff--hull-router" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hull-staff" target="dg-n-hull-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hull-fibre" label="Tunnel" dg_id="hull-fibre" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hull-router" target="dg-n-hub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-derby-staff--derby-router" label="" dg_id="derby-staff--derby-router" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-derby-staff" target="dg-n-derby-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-derby-fibre" label="Tunnel" dg_id="derby-fibre" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-derby-router" target="dg-n-hub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-leicester-staff--leicester-router" label="" dg_id="leicester-staff--leicester-router" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-leicester-staff" target="dg-n-leicester-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-leicester-fibre" label="Fibre underlay" dg_id="leicester-fibre" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-leicester-router" target="dg-n-hub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-leicester-router--lte" label="LTE underlay" dg_id="leicester-router--lte" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-leicester-router" target="dg-n-lte">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-lte--hub" label="Tunnel" dg_id="lte--hub" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-lte" target="dg-n-hub">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hub--dc-fw" label="Branch traffic" dg_id="hub--dc-fw" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-hub" target="dg-n-dc-fw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-customers--dc-edge" label="HTTPS" dg_id="customers--dc-edge" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-customers" target="dg-n-dc-edge">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-remote--dc-edge" label="GlobalProtect" dg_id="remote--dc-edge" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-remote" target="dg-n-dc-edge">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dc-edge--dc-fw" label="" dg_id="dc-edge--dc-fw" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-dc-edge" target="dg-n-dc-fw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dc-fw--spine-1" label="Allow: inside apps" dg_id="dc-fw--spine-1" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;ERP&quot;,&quot;Intranet&quot;,&quot;Files&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-dc-fw" target="dg-n-spine-1">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dc-fw--spine-2" label="" dg_id="dc-fw--spine-2" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;ERP&quot;,&quot;Intranet&quot;,&quot;Files&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-dc-fw" target="dg-n-spine-2">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dc-fw--dmz-switch" label="Allow: web" dg_id="dc-fw--dmz-switch" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;Web&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-dc-fw" target="dg-n-dmz-switch">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-spine-1--leaf" label="" dg_id="spine-1--leaf" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-spine-1" target="dg-n-leaf">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-spine-2--leaf" label="" dg_id="spine-2--leaf" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-spine-2" target="dg-n-leaf">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-leaf--adc" label="" dg_id="leaf--adc" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;ERP&quot;,&quot;Intranet&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-leaf" target="dg-n-adc">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-leaf--files" label="SMB" dg_id="leaf--files" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;Files&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-leaf" target="dg-n-files">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-adc--erp" label="" dg_id="adc--erp" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;ERP&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-adc" target="dg-n-erp">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-adc--intranet" label="" dg_id="adc--intranet" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;Intranet&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-adc" target="dg-n-intranet">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-erp--erp-db" label="SQL" dg_id="erp--erp-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-erp" target="dg-n-erp-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dmz-switch--waf" label="" dg_id="dmz-switch--waf" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-dmz-switch" target="dg-n-waf">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-waf--shop" label="" dg_id="waf--shop" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-waf" target="dg-n-shop">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-shop--erp" label="Orders API" dg_id="shop--erp" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-shop" target="dg-n-erp">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-erp--vpn" label="Nightly export" dg_id="erp--vpn" dg_kind="sync" dg_props="{&quot;share&quot;:0.01,&quot;emits&quot;:&quot;Export&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-erp" target="dg-n-vpn">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-vpn--transit" label="" dg_id="vpn--transit" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-vpn" target="dg-n-transit">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-transit--warehouse" label="COPY" dg_id="transit--warehouse" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-transit" target="dg-n-warehouse">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-access--nac" label="802.1X" dg_id="access--nac" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-access" target="dg-n-nac">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-erp--ad" label="Kerberos" dg_id="erp--ad" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-erp" target="dg-n-ad">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-files--ad" label="" dg_id="files--ad" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-files" target="dg-n-ad">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-intranet--ad" label="" dg_id="intranet--ad" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-intranet" target="dg-n-ad">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-erp--dns" label="Name lookups" dg_id="erp--dns" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-erp" target="dg-n-dns">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dc-fw--siem" label="Logs" dg_id="dc-fw--siem" dg_kind="async" dg_relation="telemetry">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#7C6D98;dashed=1;dashPattern=1 4;dfRelation=telemetry;" edge="1" parent="1" source="dg-n-dc-fw" target="dg-n-siem">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-hq-fw--siem" label="" dg_id="hq-fw--siem" dg_kind="async" dg_relation="telemetry">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#7C6D98;dashed=1;dashPattern=1 4;dfRelation=telemetry;" edge="1" parent="1" source="dg-n-hq-fw" target="dg-n-siem">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

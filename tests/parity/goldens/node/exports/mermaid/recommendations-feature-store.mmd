@@ -1,0 +1,142 @@
+---
+title: Recommendations with a feature store
+---
+flowchart LR
+  subgraph g_aws ["AWS us-east-1 · production"]
+    gateway["API gateway<br/>route table"]
+  end
+  subgraph g_serving ["EKS · home page serving"]
+    home_api["Home API<br/>builds the rows"]
+    candidates["Candidate generation<br/>500 titles per member"]
+    profiles["Member profiles<br/>taste, language, devices"]
+    metadata["Title metadata<br/>rights, maturity, art"]
+    bookmarks["Continue watching<br/>resume points"]
+    artwork["Artwork chooser<br/>bandit per member"]
+    ranking_router["Ranking router<br/>95% v7, 5% v8 canary"]
+    ranker_v7["Ranker v7<br/>PyTorch · HPA on CPU"]
+    ranker_v8["Ranker v8 canary<br/>new watch-time features"]
+    ranker_v9["Ranker v9 shadow<br/>mirrored, answers discarded"]
+    feature_server["Feature server<br/>joins member and title features"]
+  end
+  subgraph g_features ["Feature store"]
+    online_store[("Online features<br/>latest value per key")]
+    profiles_db[("Profiles<br/>DynamoDB")]
+    bookmarks_db[("Resume points<br/>Cassandra")]
+    title_cache[("Title cache<br/>metadata, 5-min TTL")]
+    ann_index[("Embedding index<br/>title embeddings")]
+    offline_store[("Offline features<br/>Iceberg, point in time")]
+  end
+  subgraph g_streaming ["Streaming features"]
+    collector["Event collector<br/>plays, pauses, skips"]
+    play_events["Playback events<br/>play-events.v2 · 48 partitions"]
+    sessionizer["Session features<br/>last 30 minutes per member"]
+    bookmarks_writer["Resume writer<br/>last position per title"]
+    trending["Trending now<br/>plays per title, 5-min windows"]
+    lake_sink["Lake sink<br/>Iceberg sink"]
+    predictions["Prediction log<br/>predictions.v1 · 24 partitions"]
+  end
+  subgraph g_batch ["Batch features and training"]
+    dags["Feature DAGs<br/>hourly and nightly"]
+    backfill[("Feature backfill<br/>Spark, point-in-time joins")]
+    materialize["Materialize<br/>offline to online"]
+    train["Ranker training<br/>nightly, GPU"]
+    eval["Offline evaluation<br/>replay last week's sessions"]
+    registry[("Model registry<br/>versions and metrics")]
+  end
+  subgraph g_monitoring ["Model monitoring"]
+    drift["Drift monitor<br/>feature and score drift"]
+    alerts["Drift alerts<br/>SNS"]
+    quality["Model quality<br/>CTR, coverage, drift"]
+  end
+  subgraph g_platform ["Platform"]
+    argocd["Argo CD<br/>model rollouts"]
+    roles["Workload roles<br/>IRSA"]
+    secrets["Secrets Manager"]
+    experiments["Experiments<br/>A/B assignment"]
+    feature_registry["Feature registry<br/>one definition per feature"]
+  end
+  subgraph g_picks ["Weekly picks · EKS batch"]
+    picks_schedule["Picks schedule<br/>Sundays 06:00"]
+    pick_requests["Members to score<br/>picks.requests · 16 partitions"]
+    batch_scorer["Batch scorer<br/>KEDA on lag, sleeps at zero"]
+    picks_db[("Weekly picks<br/>DynamoDB, one row per member")]
+    picks_mailer["Picks mailer<br/>renders the email"]
+  end
+  tv(["TVs and web<br/>home page loads"])
+  phones(["Meridian app<br/>iOS and Android"])
+  esp(["Email provider<br/>transactional email"])
+  slack(["Slack<br/>#recs-oncall"])
+  tv -->|"HTTPS"| gateway
+  phones -->|"HTTPS"| gateway
+  gateway -->|"Home"| home_api
+  gateway -->|"Events"| collector
+  home_api -->|"Profile"| profiles
+  profiles --> profiles_db
+  home_api -->|"Titles"| metadata
+  metadata --> title_cache
+  home_api -->|"Artwork"| artwork
+  home_api -->|"Resume row"| bookmarks
+  bookmarks --> bookmarks_db
+  play_events -.-> bookmarks_writer
+  bookmarks_writer -->|"Resume point"| bookmarks_db
+  artwork -->|"Arm stats"| online_store
+  home_api -->|"Candidates"| candidates
+  candidates -->|"Nearest titles"| ann_index
+  home_api -->|"Rank"| ranking_router
+  home_api -->|"Mirror 10%"| ranker_v9
+  ranking_router --> ranker_v7
+  ranking_router --> ranker_v8
+  ranker_v7 -->|"Features"| feature_server
+  ranker_v8 -->|"Features"| feature_server
+  ranker_v9 -->|"Features"| feature_server
+  feature_server --> online_store
+  ranker_v7 -.->|"Scored rows"| predictions
+  ranker_v8 -.->|"Scored rows"| predictions
+  ranker_v9 -.->|"Shadow scores"| predictions
+  collector -.->|"PlayEvent"| play_events
+  play_events -.-> sessionizer
+  play_events -.-> trending
+  play_events -.-> lake_sink
+  sessionizer -->|"Update"| online_store
+  trending -->|"Update"| online_store
+  lake_sink -->|"Append"| offline_store
+  predictions -.-> drift
+  predictions -.-> lake_sink
+  drift -->|"Metrics"| quality
+  drift -.->|"DriftDetected"| alerts
+  alerts -.->|"Page"| slack
+  picks_schedule -.->|"One per member"| pick_requests
+  pick_requests -.-> batch_scorer
+  batch_scorer -->|"Features"| feature_server
+  batch_scorer -->|"Write picks"| picks_db
+  batch_scorer -.->|"PicksReady"| picks_mailer
+  picks_mailer -->|"Send"| esp
+  dags -.->|"Run"| backfill
+  backfill -->|"Write features"| offline_store
+  dags -.->|"Run"| materialize
+  materialize -->|"Bulk load"| online_store
+  dags -.->|"Nightly"| train
+  train -->|"Candidate model"| eval
+  eval -->|"Publish if better"| registry
+  train -.->|"depends on: Training sets"| offline_store
+  materialize -.->|"depends on: Reads"| offline_store
+  ranker_v7 -.->|"depends on: Loads v7"| registry
+  ranker_v8 -.->|"depends on: Loads v8"| registry
+  argocd -.->|"deploys to: Canary"| ranker_v8
+  feature_server -.->|"gets tokens from"| roles
+  home_api -.->|"reads config: Variant"| experiments
+  feature_server -.->|"reads config: Definitions"| feature_registry
+  sessionizer -.->|"reads config"| feature_registry
+  backfill -.->|"reads config"| feature_registry
+  collector -.->|"reads secrets: Signing key"| secrets
+  collector -.->|"gets tokens from"| roles
+  batch_scorer -.->|"depends on: Loads v7"| registry
+  picks_mailer -.->|"reads secrets: Provider key"| secrets
+  picks_mailer -.->|"gets tokens from"| roles
+  linkStyle 11,24,25,26,27,28,29,30,34,35,37,38,39,40,43,45,47,49 stroke-dasharray: 6 4
+  linkStyle 52,53,54,55,64 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 56 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 57,63,66 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 58,59,60,61 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 62,65 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"An invented streaming service, Meridian Media. Home pages get candidates from an embedding index and rankings from a model that reads an online feature store, kept fresh by streaming jobs and nightly bulk loads from an offline store. A canary takes 5% of rankings and a shadow model scores a 10% mirror; a drift monitor reads every prediction.","nodes":{"tv":["tv","client.browser"],"phones":["phones","client.mobile"],"gateway":["gateway","aws.api-gateway"],"home_api":["home-api","service.node"],"candidates":["candidates","service.go"],"profiles":["profiles","service.java"],"metadata":["metadata","service.go"],"bookmarks":["bookmarks","service.java"],"artwork":["artwork","service.python"],"ranking_router":["ranking-router","envoy"],"ranker_v7":["ranker-v7","service.python"],"ranker_v8":["ranker-v8","service.python"],"ranker_v9":["ranker-v9","service.python"],"feature_server":["feature-server","service.go"],"online_store":["online-store","redis.cache"],"profiles_db":["profiles-db","aws.dynamodb"],"bookmarks_db":["bookmarks-db","cassandra"],"title_cache":["title-cache","redis.cache"],"ann_index":["ann-index","generic.vector-db"],"offline_store":["offline-store","aws.s3"],"collector":["collector","service.go"],"play_events":["play-events","kafka.topic"],"sessionizer":["sessionizer","flink"],"bookmarks_writer":["bookmarks-writer","service.java"],"trending":["trending","flink"],"lake_sink":["lake-sink","kafka.connect"],"predictions":["predictions","kafka.topic"],"dags":["dags","airflow"],"backfill":["backfill","databricks"],"materialize":["materialize","generic.batch-job"],"train":["train","generic.batch-job"],"eval":["eval","generic.batch-job"],"registry":["registry","aws.s3"],"picks_schedule":["picks-schedule","generic.scheduler"],"pick_requests":["pick-requests","kafka.topic"],"batch_scorer":["batch-scorer","service.python"],"picks_db":["picks-db","aws.dynamodb"],"picks_mailer":["picks-mailer","service.node"],"esp":["esp","generic.email"],"drift":["drift","service.python"],"alerts":["alerts","aws.sns"],"slack":["slack","slack"],"quality":["quality","grafana"],"argocd":["argocd","argocd"],"roles":["roles","aws.iam-role"],"secrets":["secrets","aws.secrets-manager"],"experiments":["experiments","generic.config-store"],"feature_registry":["feature-registry","generic.config-store"]},"groups":{"g_aws":["aws","aws"],"g_serving":["serving","k8s"],"g_features":["features","neutral"],"g_streaming":["streaming","neutral"],"g_batch":["batch","neutral"],"g_monitoring":["monitoring","neutral"],"g_platform":["platform","neutral"],"g_picks":["picks","k8s"]},"edges":["tv--gateway","phones--gateway","gateway--home-api","gateway--collector","home-api--profiles","profiles--profiles-db","home-api--metadata","metadata--title-cache","home-api--artwork","home-api--bookmarks","bookmarks--bookmarks-db","play-events--bookmarks-writer","bookmarks-writer--bookmarks-db","artwork--online-store","home-api--candidates","candidates--ann-index","home-api--ranking-router","home-api--ranker-v9","ranking-router--ranker-v7","ranking-router--ranker-v8","ranker-v7--feature-server","ranker-v8--feature-server","ranker-v9--feature-server","feature-server--online-store","ranker-v7--predictions","ranker-v8--predictions","ranker-v9--predictions","collector--play-events","play-events--sessionizer","play-events--trending","play-events--lake-sink","sessionizer--online-store","trending--online-store","lake-sink--offline-store","predictions--drift","predictions--lake-sink","drift--quality","drift--alerts","alerts--slack","picks-schedule--pick-requests","pick-requests--batch-scorer","batch-scorer--feature-server","batch-scorer--picks-db","batch-scorer--picks-mailer","picks-mailer--esp","dags--backfill","backfill--offline-store","dags--materialize","materialize--online-store","dags--train","train--eval","eval--registry","train--offline-store","materialize--offline-store","ranker-v7--registry","ranker-v8--registry","argocd--ranker-v8","feature-server--roles","home-api--experiments","feature-server--feature-registry","sessionizer--feature-registry","backfill--feature-registry","collector--secrets","collector--roles","batch-scorer--registry","picks-mailer--secrets","picks-mailer--roles"],"relations":{"52":"depends","53":"depends","54":"depends","55":"depends","56":"deploy","57":"identity","58":"config","59":"config","60":"config","61":"config","62":"secret","63":"identity","64":"depends","65":"secret","66":"identity"}}

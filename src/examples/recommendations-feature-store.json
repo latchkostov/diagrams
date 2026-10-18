@@ -1787,7 +1787,7 @@
     },
     {
       "id": "slow-features",
-      "title": "The feature server slows down",
+      "title": "Drill: the feature server slows down",
       "description": "A drill: a bad client upgrade makes every feature lookup ten times slower for ten seconds. Rankings queue at the feature server, which every ranker shares, then drain once the slowdown clears.",
       "seed": 63,
       "scale": 10,

@@ -1,0 +1,64 @@
+---
+title: "TVs and web #1 · 1.73 s end to end · 7 copies"
+---
+sequenceDiagram
+  participant tv as TVs and web
+  participant gateway as API gateway
+  participant home_api as Home API
+  participant profiles as Member profiles
+  participant metadata as Title metadata
+  participant artwork as Artwork chooser
+  participant bookmarks as Continue watching
+  participant candidates as Candidate generation
+  participant ranking_router as Ranking router
+  participant ranker_v7 as Ranker v7
+  participant title_cache as Title cache
+  participant bookmarks_db as Resume points
+  participant profiles_db as Profiles
+  participant online_store as Online features
+  participant ann_index as Embedding index
+  participant feature_server as Feature server
+  participant predictions as Prediction log
+  participant drift as Drift monitor
+  participant lake_sink as Lake sink
+  participant offline_store as Offline features
+  participant quality as Model quality
+  tv->>gateway: TVs and web (+0.00 s)<br/>HTTPS
+  gateway-->>tv: reply (+0.20 s)
+  gateway->>home_api: TVs and web (+0.20 s)<br/>Home
+  home_api-->>gateway: reply (+0.44 s)
+  home_api->>profiles: TVs and web (+0.44 s)<br/>Profile
+  home_api->>metadata: TVs and web (+0.44 s)<br/>Titles
+  home_api->>artwork: TVs and web (+0.44 s)<br/>Artwork
+  home_api->>bookmarks: TVs and web (+0.44 s)<br/>Resume row
+  home_api->>candidates: TVs and web (+0.44 s)<br/>Candidates
+  home_api->>ranking_router: TVs and web (+0.44 s)<br/>Rank
+  ranking_router-->>home_api: reply (+0.65 s)
+  ranking_router->>ranker_v7: TVs and web (+0.65 s)
+  metadata-->>home_api: reply (+0.66 s)
+  metadata->>title_cache: TVs and web (+0.66 s)
+  bookmarks-->>home_api: reply (+0.66 s)
+  bookmarks->>bookmarks_db: TVs and web (+0.66 s)
+  profiles-->>home_api: reply (+0.67 s)
+  profiles->>profiles_db: TVs and web (+0.67 s)
+  artwork-->>home_api: reply (+0.67 s)
+  artwork->>online_store: TVs and web (+0.67 s)<br/>Arm stats
+  candidates-->>home_api: reply (+0.68 s)
+  candidates->>ann_index: TVs and web (+0.68 s)<br/>Nearest titles
+  bookmarks_db-->>bookmarks: reply (+0.87 s)
+  title_cache-->>metadata: reply (+0.87 s)
+  online_store-->>artwork: reply (+0.88 s)
+  profiles_db-->>profiles: reply (+0.88 s)
+  ranker_v7-->>ranking_router: reply (+0.89 s)
+  ranker_v7->>feature_server: TVs and web (+0.89 s)<br/>Features
+  ranker_v7-)predictions: Prediction (+0.89 s)<br/>Scored rows
+  ann_index-->>candidates: reply (+0.89 s)
+  feature_server-->>ranker_v7: reply (+1.11 s)
+  feature_server->>online_store: TVs and web (+1.11 s)
+  predictions-)drift: Prediction (+1.19 s)
+  predictions-)lake_sink: Prediction (+1.19 s)
+  online_store-->>feature_server: reply (+1.32 s)
+  lake_sink->>offline_store: Prediction (+1.52 s)<br/>Append
+  drift->>quality: Prediction (+1.52 s)<br/>Metrics
+  quality-->>drift: reply (+1.72 s)
+  offline_store-->>lake_sink: reply (+1.73 s)

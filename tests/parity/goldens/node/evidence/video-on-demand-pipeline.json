@@ -1,0 +1,17 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "premiere-uploads", "title": "Premiere day: where the encode time goes", "playedMs": 40000, "capped": false },
+      { "id": "corrupt-source", "title": "A batch of corrupt sources", "playedMs": 50000, "capped": false },
+      { "id": "premiere-night", "title": "Premiere night: the edge cache carries it", "playedMs": 24000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 3 saved simulations (at most 60 s each)." }
+}
