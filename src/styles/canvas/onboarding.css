@@ -1,0 +1,282 @@
+/* ---------- start card (blank diagram / first visit) ---------- */
+
+.start-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Clear of the canvas controls (bottom left) on a narrow pane, as with the AI panel open at 1024. */
+  width: min(468px, calc(100% - 128px));
+  max-height: calc(100% - 48px);
+  overflow: auto;
+  padding: 22px 22px 18px;
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-3);
+  z-index: 6;
+  animation: start-in var(--dur-3) var(--ease-out);
+}
+
+@keyframes start-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 6px));
+  }
+}
+
+.start-card h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  font-stretch: 110%;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.start-lede {
+  margin: 6px 0 14px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.start-examples {
+  list-style: none;
+  margin: 0 -8px;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.start-example {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.start-example:hover {
+  background: var(--hover);
+}
+
+.start-example:active {
+  background: var(--press);
+}
+
+.start-example > svg {
+  flex: none;
+  color: var(--text-4);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.start-example:hover > svg {
+  color: var(--text-3);
+  transform: translateX(2px);
+}
+
+/* A tiny rendering of the diagram (DiagramThumbnail, shared with Your diagrams). */
+.start-thumb {
+  flex: none;
+  width: 64px;
+  height: 40px;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.start-thumb .diagram-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.start-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 12px 0 4px;
+}
+
+.start-heading:first-of-type {
+  margin-top: 0;
+}
+
+.start-heading h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+/* "All examples": the link beside the Examples heading, and the theme sections it opens. */
+.start-all {
+  gap: 2px;
+}
+
+.start-section + .start-section {
+  margin-top: 6px;
+}
+
+/* The full list is long: smaller rows and thumbnails keep it scannable. */
+.start-examples.is-compact .start-example {
+  padding: 5px 8px;
+}
+
+.start-examples.is-compact .start-thumb {
+  width: 52px;
+  height: 32px;
+}
+
+.start-theme {
+  margin: 8px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+}
+
+.start-example-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.start-example-text strong {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.start-example-text span {
+  color: var(--text-3);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.start-note {
+  margin: 8px 0 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.start-paste {
+  display: inline;
+  font-size: inherit;
+}
+
+.start-about {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  margin-top: 12px;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.start-about strong {
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.start-legal a {
+  color: inherit;
+}
+
+.start-legal a:hover {
+  color: var(--text);
+}
+
+/* ---------- first-run hint ---------- */
+
+/* Spans the pane's bottom edge: the query container, so the hint adapts to the canvas, not the window. */
+.first-hint-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 28px;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  container: first-hint / inline-size;
+}
+
+.first-hint {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100% - 260px);
+  padding: 5px 6px 5px 14px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-1);
+  color: var(--text-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+  animation: start-hint-in var(--dur-3) var(--ease-out) 400ms both;
+}
+
+@keyframes start-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.first-hint > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Never a word cut off: a narrow pane keeps the live hint only, and a very narrow one lets it wrap. */
+@container first-hint (max-width: 880px) {
+  .first-hint .first-hint-menu {
+    display: none;
+  }
+}
+
+@container first-hint (max-width: 640px) {
+  .first-hint {
+    white-space: normal;
+    border-radius: 14px;
+  }
+}
+
+.first-hint > span svg {
+  color: var(--text-3);
+}
+
+.first-hint kbd {
+  font-size: 11px;
+}
+
+[dir="rtl"] .start-example > svg:last-child,
+[dir="rtl"] .start-all svg {
+  transform: scaleX(-1);
+}
