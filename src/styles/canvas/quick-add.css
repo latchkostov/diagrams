@@ -12,17 +12,6 @@
   stroke-linecap: round;
 }
 
-.react-flow.connecting .dn-handle.react-flow__handle {
-  opacity: 0.7;
-}
-
-.react-flow__handle.connectingto,
-.react-flow__handle.valid {
-  background: var(--accent);
-  /* `scale`, not `transform`: React Flow positions handles with a translate transform. */
-  scale: 1.35;
-}
-
 /* ---------- quick-add and connected placement ---------- */
 
 /* The "+" on a single selected node: 20 px on screen at any zoom, 16 px off the card. A handle, so a drag

@@ -1,5 +1,5 @@
-/* Import before annotations.css and quick-add.css: annotations override the connect-target outline;
- * stencil drag previews share .dn and override its positioning. */
+/* Import before edges.css: keep the generic settings-card bridge after the specific pip bridge.
+ * Annotations and quick-add follow too: they override the connect-target outline and .dn positioning. */
 /* ---------- diagram node wrapper ---------- */
 
 .dn {
@@ -104,6 +104,17 @@
   outline-offset: 2px;
 }
 
+.react-flow.connecting .dn-handle.react-flow__handle {
+  opacity: 0.7;
+}
+
+.react-flow__handle.connectingto,
+.react-flow__handle.valid {
+  background: var(--accent);
+  /* `scale`, not `transform`: React Flow positions handles with a translate transform. */
+  scale: 1.35;
+}
+
 /* Dependency pips (Show ▸ Dependencies off): a small tab on the card's bottom edge. */
 .dn-pips {
   position: absolute;
@@ -205,6 +216,10 @@
    a card being edited, EDITING_Z); live, an edge's settings card comes above the metric badges. */
 .react-flow__node:has(.dn-pip-card) {
   z-index: 1500 !important;
+}
+
+.react-flow[data-live] .react-flow__edgelabel-renderer:has(.fe-card) {
+  z-index: 4;
 }
 
 /* Under the pips, clear of the node's own title, scaled from that corner (DependencyPips.tsx). */

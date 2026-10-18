@@ -102,14 +102,16 @@ function sourceFiles(dir) {
     const path = resolve(dir, entry.name);
     // No examples participate in the class graph. Do not traverse that directory.
     if (entry.isDirectory()) return entry.name === "examples" ? [] : sourceFiles(path);
-    return entry.name.endsWith(".tsx") && !entry.name.includes(".test.") ? [path] : [];
+    return /\.tsx?$/.test(entry.name) && !entry.name.includes(".test.") ? [path] : [];
   });
 }
 const files = sourceFiles(resolve("src"));
 const forwarded = new Set();
-const sources = files.map((file) =>
-  ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),
-);
+const sources = files
+  .filter((file) => file.endsWith(".tsx"))
+  .map((file) =>
+    ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),
+  );
 for (const source of sources) {
   const visit = (n) => {
     if (ts.isPropertyAssignment(n) && n.name.getText(source) === "className")
@@ -225,9 +227,14 @@ for (const [, tag] of readFileSync("src/interop/image.ts", "utf8").matchAll(/doc
   elements.push({ tag, classes: new Set(), parents: [exportHeader] });
 // These legacy selectors have no authored class producer. Keep the rules, and verify that remains
 // true rather than assuming a namespace can never occur on a future element.
-const inactive = ["insp-meta", "insp-relation", "start-theme"];
+const inactive = ["insp-meta", "insp-relation", "start-theme", "start-section"];
 const produced = new Set(sources.flatMap((source) => [...values(source)]));
-for (const name of inactive) assert(!produced.has(name), "New producer needs a cascade audit: " + name);
+const imperativeSources = files.filter((file) => file.endsWith(".ts")).map((file) => readFileSync(file, "utf8"));
+for (const name of inactive)
+  assert(
+    !produced.has(name) && imperativeSources.every((source) => !source.includes(name)),
+    "New producer needs a cascade audit: " + name,
+  );
 const instances = elements.flatMap((el) => paths(el).map((path) => ({ el, path })));
 
 function split(text, delimiter) {
@@ -312,7 +319,8 @@ function candidates(s) {
 }
 
 function overlap(a, b) {
-  if (a.specificity !== b.specificity) return false;
+  // a is the later-original rule moving earlier: do not cross an equal/higher-specificity conflict.
+  if (a.specificity > b.specificity) return false;
   const inactiveScope = (s) =>
     split(s.selector, /[\s>+~]/).some((p) => subject(p).classes.some((c) => inactive.includes(c)));
   if (inactiveScope(a) || inactiveScope(b)) return false;

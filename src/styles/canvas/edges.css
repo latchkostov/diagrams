@@ -368,10 +368,6 @@
   stroke-dasharray: 0.5 4.5;
 }
 
-.react-flow[data-live] .react-flow__edgelabel-renderer:has(.fe-card) {
-  z-index: 4;
-}
-
 /* Bridge the visual gap so slow pointer travel into a settings card keeps it open. The card is scaled to
    stay readable (useReadableScale); the bridge isn't, so it never reaches over the pill under it. */
 .fe-card::after {

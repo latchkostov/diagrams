@@ -54,3 +54,11 @@ it("recognizes different selectors that share the stencil drag preview", () => {
   const swapped = css.replace(node, "CANVAS_CSS_SWAP").replace(preview, node).replace("CANVAS_CSS_SWAP", preview);
   expect(() => check(swapped)).toThrow();
 }, 30_000);
+
+it("keeps the generic settings-card bridge after the more specific pip bridge", () => {
+  const css = expand(resolve("src/styles/canvas.css"));
+  const base = /^\.fe-card::after \{[^}]+\}/m.exec(css)![0];
+  const pip = /^\.fe-card\.dn-pip-card::after \{[^}]+\}/m.exec(css)![0];
+  const moved = css.replace(base, "").replace(pip, `${base}\n\n${pip}`);
+  expect(() => check(moved)).toThrow();
+}, 30_000);
