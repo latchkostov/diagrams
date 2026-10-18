@@ -1,0 +1,51 @@
+/* Edit together: the room chip (top bar), the name field, and the joiner's wait. Logical properties only. */
+
+.room-chip {
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.room-chip > span:not(.room-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.room-chip[data-state="connecting"] .room-dot,
+.room-chip[data-state="waiting"] .room-dot {
+  opacity: 0.45;
+}
+
+.room-chip[data-state="failed"] {
+  color: var(--danger);
+}
+
+.room-name {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+}
+
+.room-connecting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.room-connecting p {
+  margin: 0;
+  max-inline-size: 42ch;
+}

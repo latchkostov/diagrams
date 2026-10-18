@@ -770,9 +770,9 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
  */
 export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
   useLocale();
-  useLocale();
   // The wipe's code comes with this dialog: confirming clears at once, with nothing left to download (so nothing to
-  // cancel, or to fail, after the click).
+  // cancel, or to fail, after the click). Emptying the room recovery database takes a moment: the button waits.
+  const [clearing, setClearing] = useState(false);
   return (
     <Dialog
       title={t("clear.title")}
@@ -784,7 +784,15 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <span className="ix-grow" />
-          <button className="btn btn-danger" onClick={clearDevice} data-testid="clear-device-confirm">
+          <button
+            className="btn btn-danger"
+            disabled={clearing}
+            onClick={() => {
+              setClearing(true);
+              void clearDevice();
+            }}
+            data-testid="clear-device-confirm"
+          >
             {t("clear.confirm")}
           </button>
           <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">

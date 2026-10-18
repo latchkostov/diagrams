@@ -801,9 +801,8 @@ proof-flood work, generated skill freshness and growing duplicate ids. Duplicate
 covered by the same fixes. Other P2 fixes cover scoped Undo selection/focus/target tags, focused remote
 deletion (including SVG), linear selected-target checks, metadata-only eviction and v1 migration,
 durability-aware navigation tests, status notifications and opening-session disposal. Regression
-proofs remove each fix temporarily. The shared asynchronous device-wipe lifecycle is ticketed in
-[BACKLOG](../backlog/2026-10-16-collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16.md), with the
-current Lab limitation disclosed in the threat model. It must land before production rooms are enabled.
+proofs remove each fix temporarily. The shared asynchronous device-wipe lifecycle, required before production rooms, landed with E2
+(see the threat model's "Device wipe").
 
 UX source/test review found no remaining actionable issue: recovery copying has a labeled selectable
 fallback, room Undo preserves the editor's selection/focus/announcement policy, remote deletion returns

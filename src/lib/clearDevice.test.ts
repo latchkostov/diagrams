@@ -88,7 +88,7 @@ describe("clearDevice", () => {
     session.setItem("diagrams.pendingStencils.v1", "[]");
     session.setItem("other-app.state", "keep");
     const { clearDevice } = await import("./clearDevice");
-    clearDevice();
+    await clearDevice();
     expect([...local.m.keys()].sort()).toEqual(["diagrams.generation", "other-app.token"]);
     expect([...session.m.keys()]).toEqual(["other-app.state"]);
     expect(win.location.replace).toHaveBeenCalledWith("/");
@@ -98,14 +98,29 @@ describe("clearDevice", () => {
     local.setItem("diagrams.doc.v1:a", "x".repeat(200));
     local.quota = local.getItem("diagrams.doc.v1:a")!.length + "diagrams.doc.v1:a".length;
     const { clearDevice } = await import("./clearDevice");
-    clearDevice();
+    await clearDevice();
     expect(local.getItem("diagrams.generation")).not.toBeNull();
+  });
+
+  it("stops an open room's writers first: none of them can write after the wipe has started", async () => {
+    local.setItem("diagrams.doc.v1:a", "Payroll ledger");
+    const { clearDevice, onClearDevice } = await import("./clearDevice");
+    const { safeStorage } = await import("./storage");
+    const seen: string[] = [];
+    onClearDevice(() => {
+      seen.push(local.getItem("diagrams.doc.v1:a") ?? "gone");
+      // A writer that tries anyway, as it stops, is refused.
+      safeStorage.setItem("diagrams.autosave.v1:my-room", "late room edit");
+    });
+    await clearDevice();
+    expect(seen).toEqual(["Payroll ledger"]);
+    expect(local.getItem("diagrams.autosave.v1:my-room")).toBeNull();
   });
 
   it("this tab writes nothing on the way out (its autosave at pagehide)", async () => {
     const { clearDevice } = await import("./clearDevice");
     const { safeStorage } = await import("./storage");
-    clearDevice();
+    await clearDevice();
     safeStorage.setItem("diagrams.autosave.v1:kafka-order-pipeline", "late words");
     expect(local.getItem("diagrams.autosave.v1:kafka-order-pipeline")).toBeNull();
   });

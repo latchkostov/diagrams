@@ -1,0 +1,23 @@
+## Edit together E2: interim room controls (development and e2e builds)
+
+Reviewed at 1366 × 800 (light) and 390 × 844 (dark) in the e2e build: the start dialog, the link after Start room,
+the chip in the save-status slot, the join dialog and the joiner's wait.
+
+**Kept**
+
+- One decision per dialog, with the plan's §2.2 and §2.3 wording. The disclosures are a plain list before the name
+  field; the services line names every host contacted. Join's default focus is Don't join; after Start room the
+  default is Copy, and Enter never starts or joins anything.
+- No new top-bar control: the chip replaces the save status (or the shared chip) only while a room is open.
+- A joiner's own diagram is never replaced: "Connecting to the room…" stands in the canvas's place, with Leave
+  room, until the room's diagram arrives as a new entry in Your diagrams.
+- Nothing moves the camera or focus on a peer's change; a room's canvas mounts once when it opens (a local action).
+
+**Interim, for E4**
+
+- The chip's Copy link and Leave room are inline buttons. On a phone the chip takes its own row and its text
+  truncates ("Room open · waiting for ot…"). E4's chip ("●● 3 here ▾") with the participant popover fixes both and
+  routes the popover through the interaction controller (E3).
+- The private explanation is one line without "Make it not private…"; E4 moves it into the Share chooser.
+- Failure states use the existing "Could not connect" banner wording only; E4 adds §2.6's distinct states.
+- New `collab.*` messages are English only until E4 settles them (backlog: collab E2 follow-ups).

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { workChoices } from "../lib/diagramPicker";
 import { useSettings } from "../harness/settings";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
@@ -37,6 +38,8 @@ interface Props {
   interop: Omit<Interop, "layer">;
   /** Set while a diagram from a share link is open: offers to keep it. */
   shared?: { onKeep: () => void };
+  /** An open room's chip (Edit together): it takes the save-status slot. */
+  room?: ReactNode;
   onPresent: () => void;
   onNewDiagram: () => void;
   /** Opens "Your diagrams". */
@@ -173,8 +176,9 @@ export function TopBar(p: Props) {
         />
       )}
 
-      {canvas && p.shared && <SharedChip {...p.shared} />}
-      {canvas && !p.shared && <SaveStatus binding={p.interop.binding} />}
+      {canvas && p.room}
+      {canvas && !p.room && p.shared && <SharedChip {...p.shared} />}
+      {canvas && !p.room && !p.shared && <SaveStatus binding={p.interop.binding} />}
 
       <div className="topbar-spacer" />
 

@@ -228,10 +228,16 @@ goodbyes, suspension/resume and bounded heartbeat expiry; no public trackers, IC
 Proofs are cached by document revision; authenticated proof/ack input has a separate 128-message/10 s
 count bucket before hashing, alongside the existing byte limits. A new peer always notifies status subscribers.
 
-**Known Lab limitation, blocking production enablement:** the existing “Clear everything on this device”
-flow clears localStorage/sessionStorage but does not yet coordinate IndexedDB deletion and pending room
-writers. Browser site-data clearing removes the Lab database. The asynchronous, generation-safe integration
-is explicitly tracked in [the C1b backlog](../backlog/2026-10-16-collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16.md).
+**Device wipe (resolved in E2, 2026-10-18):** “Clear everything on this device” first stops an open room (its
+writers, timers and connections), then empties the recovery database in one IndexedDB transaction that also
+records the new storage generation. Every recovery write transaction reads that record first and aborts when it
+names another generation, so a tab that hasn't heard about the wipe (a pending encryption, a slow
+BroadcastChannel) can't write an old room back; IndexedDB serializes the transactions across tabs. The wipe waits
+for that transaction before the page starts over (`src/lib/recoveryDb.ts`, `tests/e2e/collab-room.spec.ts`).
+
+**Room key in tab storage (owner decision Q4, E2):** an app room keeps its link value in `sessionStorage` for that
+tab only (`diagrams.collab.room.v1`), so a reload rejoins without the link. It is removed on Leave, when the tab
+closes and by Clear everything; it is never written to localStorage, IndexedDB or any other tab.
 
 Evidence: `editorRoom.test.ts`, `recovery.test.ts`, `lab/bridge.test.ts`, `collab-c1a.spec.ts`; existing
 production bundle/CSP guards remain required. This slice remains Lab-only and adds no Private-diagram permission.
