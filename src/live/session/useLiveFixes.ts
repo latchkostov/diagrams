@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 import type { EditorApi } from "../../editor/types";
@@ -27,11 +28,11 @@ export function useLiveDiagramChanges({
   const edges = useStore((s) => s.edges);
   useEffect(() => {
     if (!editor) return;
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       const result = controller.updateDiagram(getDiagram());
-      if (result === "reloaded") flash("The diagram changed, so the simulation restarted.");
+      if (result === "reloaded") flash(t("liveSession.restarted"));
     }, 200);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timer);
   }, [nodes, edges, editor, controller, getDiagram, flash]);
 
   // A saved simulation edited elsewhere (undo, the panel's Save) replays with the new definition.
@@ -108,7 +109,7 @@ export function useLiveFixes({
       else if (action.kind === "add-consumer") addReader(action.node);
       else if (action.kind === "add-dlq") {
         if (editor && addDeadLetterQueue(editor, action.node)) {
-          flash("Added a dead-letter queue: messages that run out of deliveries go there (undo with Ctrl+Z).");
+          flash(t("liveSession.addedDeadLetter"));
           revealAdded();
         }
       } else if (action.kind === "events") showEvents(action.node);
@@ -157,7 +158,7 @@ export function useLiveFixes({
     for (const [id, props] of Object.entries(candidate.patches)) editor.setNodeProps(id, props, { merge });
     onSaveDiagram?.(candidate.diagram);
     controller.commitInputs(null, candidate.diagram);
-    flash("Saved rates and sizes to the diagram (undo with Ctrl+Z).");
+    flash(t("liveSession.savedRates"));
     // Session-owned refs and setters are stable; preserve the original dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controller, editor, saveSimulation, flash, onSaveDiagram]);
@@ -177,8 +178,7 @@ export function useLiveFixes({
 /** The toast after Add a consumer, with Undo. */
 export function sayConsumerAdded(editor: EditorApi, brokerId: string): void {
   const name = editor.getNode(brokerId)?.label || brokerId;
-  notify(`Added a consumer of ${name}.`, {
-    // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
-    action: { label: "Undo", run: () => editor.undo(), testId: "add-consumer-undo", undoes: true },
+  notify(t("liveSession.addedConsumer", { name }), {
+    action: { label: t("shortcuts.undo"), run: () => editor.undo(), testId: "add-consumer-undo", undoes: true },
   });
 }

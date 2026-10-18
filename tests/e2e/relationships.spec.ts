@@ -273,6 +273,33 @@ test.describe("relationships", () => {
     expectNoErrors(consoleErrors);
   });
 
+  for (const action of ["edit", "delete"] as const)
+    test(`Undo ${action} while Dependencies are hidden finishes focus recovery`, async ({ page, consoleErrors }) => {
+      await page.getByTestId("edge-label-api-to-appcfg").click();
+      if (action === "edit") {
+        await page.getByTestId("inspector-field-label").fill("Configuration lookup");
+        await page.getByTestId("inspector-field-label").press("Enter");
+      } else {
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("Delete");
+        await expect(page.getByTestId("edge-api-to-appcfg")).toHaveCount(0);
+      }
+      await page.getByTestId("view-button").click();
+      await page.getByTestId("dependencies-toggle").click();
+      await expect(page.getByTestId("edge-api-to-appcfg")).toHaveCount(0);
+      const wrap = page.getByTestId("canvas-wrap");
+      await wrap.focus();
+      await page.keyboard.press("ControlOrMeta+z");
+      await expect(wrap).toHaveAttribute("data-interaction-state", "idle");
+      await expect(wrap).toBeFocused();
+      // It is deliberately absent, not a target still awaiting React Flow's measurement.
+      await expect(page.getByTestId("edge-api-to-appcfg")).toHaveCount(0);
+      await page.getByTestId("view-button").click();
+      await page.getByTestId("dependencies-toggle").click();
+      await expect(page.getByTestId("edge-api-to-appcfg")).toBeAttached();
+      expectNoErrors(consoleErrors);
+    });
+
   test("a config edge's settings show on hover and focus, with a lock on secrets", async ({ page, consoleErrors }) => {
     const pill = page.getByTestId("edge-label-api-to-appcfg");
     const card = page.getByTestId("edge-settings-api-to-appcfg");

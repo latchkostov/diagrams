@@ -1,8 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
-import { withSmokeContainer } from "../../scripts/self-host-container";
+import { waitForStableEndpoint, withSmokeContainer } from "../../scripts/self-host-container";
 
 const owned = "a".repeat(64);
 const existing = "b".repeat(64);
+
+it("waits for consecutive endpoint responses before navigation, resetting on errors and HTTP failures", async () => {
+  const responses = [false, true, true, new Error("ERR_NETWORK_CHANGED"), true, false, true, true, true];
+  const probe = vi.fn(async () => {
+    const response = responses.shift();
+    if (response instanceof Error) throw response;
+    return response === true;
+  });
+  const pause = vi.fn(async () => {});
+  await waitForStableEndpoint("http://container/deep/route", probe, pause);
+  expect(probe).toHaveBeenCalledTimes(9);
+  expect(probe).toHaveBeenLastCalledWith("http://container/deep/route");
+  expect(pause).toHaveBeenCalledTimes(8);
+});
+
+it("fails readiness without navigating if the endpoint never stays ready", async () => {
+  const probe = vi.fn(async () => probe.mock.calls.length % 3 !== 0);
+  const pause = vi.fn(async () => {});
+  await expect(waitForStableEndpoint("http://container", probe, pause)).rejects.toThrow("did not answer steadily");
+  expect(probe).toHaveBeenCalledTimes(60);
+  expect(pause).toHaveBeenCalledTimes(59);
+});
 
 describe("self-host smoke container ownership", () => {
   function docker(fail?: "create" | "start") {

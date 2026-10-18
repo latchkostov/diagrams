@@ -48,7 +48,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  *
  * Every row is the same on macOS (Control-click opens a context menu) as elsewhere: the platform is an input the
  * call site gives (menu.opened, menu.closed), never inferred here. At most one move is pending: a newer move
- * replaces it, and "keep" leaves it pending.
+ * replaces it, and "keep" leaves it pending. Conditional peer recovery can run beside it without consuming it.
  */
 export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision {
   const keep = (patch: Partial<FocusState> = {}): FocusDecision => ({
@@ -147,6 +147,13 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return event.focusOnDependency ? move({ target: canvas, when: "now" }) : keep();
     case "document.replaced":
       if (!event.active) return keep();
+      // A user move gets its chance first, but recovery must still run if its focused owner disappears.
+      // A parked request can survive while the canvas takes focus in the meantime.
+      if (state.pending && !state.pending.ifGone)
+        return {
+          state,
+          command: { type: "recover", target: canvas, when: "frame", onlyIfLost: true, ifGone: event.active },
+        };
       return move({ target: canvas, when: "frame", onlyIfLost: true, ifGone: event.active });
     case "focus.entered":
     case "focus.resolved":

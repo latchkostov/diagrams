@@ -5,7 +5,7 @@ import { InteractionContext, useInteractionOrLocal } from "../canvas/interaction
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { actionRegistry } from "../editor/actions";
 import { useSettings } from "../harness/settings";
-import { useLocale } from "../i18n";
+import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
 import { BottleneckCallout, TroubleCallout } from "./CapacityLayer";
 import { CapacityPanel } from "./CapacityPanel";
@@ -257,7 +257,11 @@ export function LiveSession({
         {trace && (
           <div className="lv-trace-chip" data-testid="live-trace">
             <LiveIcon name="target" size={13} /> Highlighting everything downstream of this edge
-            <button onClick={() => setTrace(null)} data-testid="live-trace-clear" aria-label="Clear highlight">
+            <button
+              onClick={() => setTrace(null)}
+              data-testid="live-trace-clear"
+              aria-label={t("liveSession.clearHighlight")}
+            >
               <LiveIcon name="close" size={12} />
             </button>
           </div>
@@ -318,7 +322,13 @@ export function LiveSession({
               onSlowMotion={state.trace.current ? slowMotionTrace : undefined}
               waitingText={
                 slow.state.status === "armed"
-                  ? `${slow.state.armedAt ? `Waiting for the next message at ${controller.currentDiagram.nodes.find((n) => n.id === slow.state.armedAt)?.label ?? slow.state.armedAt}` : "Waiting for the next message"}: slow motion starts when it comes…`
+                  ? slow.state.armedAt
+                    ? t("liveSession.waitingSlowMotionAt", {
+                        name:
+                          controller.currentDiagram.nodes.find((n) => n.id === slow.state.armedAt)?.label ??
+                          slow.state.armedAt,
+                      })
+                    : t("liveSession.waitingSlowMotion")
                   : undefined
               }
             />

@@ -4,12 +4,11 @@ import { spawnSync } from "node:child_process";
 import process from "node:process";
 import console from "node:console";
 import path from "node:path";
-import { setTimeout } from "node:timers/promises";
 import { URL } from "node:url";
 import { chromium, expect } from "@playwright/test";
 
 const fetch = globalThis.fetch;
-const { withSmokeContainer } = (
+const { withSmokeContainer, waitForStableEndpoint } = (
   await runnerImport(path.resolve("scripts/self-host-container.ts"), { configFile: false, logLevel: "error" })
 ).module;
 const invocation = randomUUID();
@@ -55,17 +54,7 @@ for (const [base, tag] of [
     ".",
   ]);
   await withSmokeContainer(run, image, async ({ id, origin }) => {
-    let ready = false;
-    for (let attempt = 0; attempt < 60; attempt++) {
-      try {
-        ready = (await fetch(`${origin}/healthz`)).ok;
-      } catch {
-        /* startup */
-      }
-      if (ready) break;
-      await setTimeout(500);
-    }
-    if (!ready) throw new Error("Container did not become ready");
+    await waitForStableEndpoint(`${origin}/healthz`);
     const user = run("docker", ["exec", id, "id", "-u"], true).trim();
     if (user === "0") throw new Error("Container runs as root");
     run("docker", ["exec", id, "nginx", "-t"]);
@@ -162,7 +151,9 @@ for (const [base, tag] of [
         if (["https:", "http:"].includes(address.protocol) && address.origin !== new URL(url).origin)
           outside.push(request.url());
       });
-      await page.goto(new URL("a/deep/route?view=canvas&example=kafka-order-pipeline", url).href);
+      const destination = new URL("a/deep/route?view=canvas&example=kafka-order-pipeline", url).href;
+      await waitForStableEndpoint(destination);
+      await page.goto(destination);
       await expect(page.getByTestId("canvas-wrap")).toBeVisible();
       await expect(page.getByTestId("brand")).toHaveText("Self-host smoke");
       await expect(page.getByTestId("ai-rail")).toHaveCount(0);

@@ -15,7 +15,7 @@ export function domActive(): ElementHandle | null {
 export interface DomCanvas {
   /** canvas-wrap. */
   root(): HTMLElement | null;
-  /** Whether the diagram still has this node (shown) or connection: one that's gone never takes focus. */
+  /** Whether this node or connection is expected to mount. Deliberately hidden items return false. */
   hasNode?(id: string): boolean;
   hasEdge?(id: string): boolean;
   /** These node ids in Tab's order (the canvas's reading order), visible ones only. */
@@ -44,6 +44,8 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
     return known ? { state: "waiting", node: id } : { state: "gone" };
   };
   const edge = (id: string): Resolution => {
+    // Visibility wins even if React Flow's old wrapper hasn't unmounted yet.
+    if (canvas.hasEdge && !canvas.hasEdge(id)) return { state: "gone" };
     const el = scope().querySelector(edgeSelector(id));
     if (el) return { state: "ready", el };
     const known = canvas.hasEdge ? canvas.hasEdge(id) : false;

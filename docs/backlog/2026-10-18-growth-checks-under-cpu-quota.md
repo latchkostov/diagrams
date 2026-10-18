@@ -33,3 +33,9 @@ SUMMARY: ee61494c7c3f43326aedd928f09e37bcf5adf122 | unit={"passed":10389,"failed
 Follow up by investigating these measurements under CPU quotas and replacing them with operation
 counts where practical. Preserve the eighth-sized comparison input and linear limit of 24;
 do not hide the failures with retries or wider thresholds.
+
+## Resolved in follow-ups seven
+
+The release note `docs/release-notes/2026-10-18-followups-seven.md` records the fix and regression
+coverage. The original clean-master reproduction above is retained as evidence; no threshold or
+assertion was relaxed.

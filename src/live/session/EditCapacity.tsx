@@ -1,7 +1,7 @@
 import { ViewportPortal, useStore } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 import type { EditorApi } from "../../editor/types";
-import { useLocale } from "../../i18n";
+import { t, useLocale } from "../../i18n";
 import { notify } from "../../interop/ui/toast";
 import { edgeSemanticSignature } from "../../model/relations";
 import type { DiagramFile } from "../../model/types";
@@ -43,9 +43,8 @@ export function EditCapacity({
     (fix: CapacityFix) => {
       const merge = "capacity:fix:" + Date.now();
       for (const c of fix.changes) editor.setNodeProps(c.nodeId, { [c.key]: c.to }, { merge });
-      notify("Applied the fix: " + fix.label + ".", {
-        // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
-        action: { label: "Undo", run: () => editor.undo(), testId: "capacity-fix-undo", undoes: true },
+      notify(t("liveSession.appliedFix", { name: fix.label }), {
+        action: { label: t("shortcuts.undo"), run: () => editor.undo(), testId: "capacity-fix-undo", undoes: true },
       });
     },
     [editor],
