@@ -1,0 +1,17 @@
+{
+  "name": "@livediagrams/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/main.js",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.25.0"
+  }
+}

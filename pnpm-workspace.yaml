@@ -1,3 +1,5 @@
+packages:
+  - services/*
 # Only esbuild's install script was permitted before the pnpm 11/12 migration.
 allowBuilds:
   esbuild: true

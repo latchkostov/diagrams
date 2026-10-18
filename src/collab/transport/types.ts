@@ -10,7 +10,15 @@
 /** A transport's id for a connected peer. Opaque and untrusted. */
 export type PeerId = string;
 
-export type Connectivity = "waiting" | "connected" | "trackers-unreachable" | "no-answer" | "ice-failed" | "peer-left";
+export type Connectivity =
+  | "waiting"
+  | "connected"
+  | "trackers-unreachable"
+  | "no-answer"
+  | "ice-failed"
+  | "peer-left"
+  | "server-unreachable"
+  | "room-full";
 
 export interface TransportCapabilities {
   /** What it is, for diagnostics ("memory", "webrtc-tracker"). */
