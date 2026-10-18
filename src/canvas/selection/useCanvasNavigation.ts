@@ -3,7 +3,6 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   type Dispatch,
   type RefObject,
@@ -26,6 +25,7 @@ import { annotationAriaLabel, annotationTitle } from "../annotations";
 import { isAnnotationNode, isDiagramNode, isGroupNode } from "../types";
 import { GROUP_PREFIX, type DiagramFlowEdge, type FlowNode, type GroupFlowNode } from "../types";
 import { useRevealFocused, type useRevealSelection, type CameraController } from "../camera";
+import type { FocusApi } from "../interaction";
 
 export function useSelectionSummary(nodes: FlowNode[], edges: DiagramFlowEdge[]) {
   const diagramNodes = useMemo(() => nodes.filter(isDiagramNode), [nodes]);
@@ -70,9 +70,11 @@ export function useCanvasNavigation({
   revealSelection,
   setEdges,
   navigate: navigateRef,
-  stepping: steppingRef,
   onHistoryStep: onHistoryStepRef,
   setAnnouncement,
+  interaction,
+  roving,
+  setOrder,
 }: {
   nodes: FlowNode[];
   edges: DiagramFlowEdge[];
@@ -88,18 +90,20 @@ export function useCanvasNavigation({
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"];
   setEdges: Dispatch<SetStateAction<DiagramFlowEdge[]>>;
   navigate: RefObject<(step: NavStep, from: EventTarget | null) => boolean>;
-  stepping: RefObject<string | undefined>;
   onHistoryStep: RefObject<(direction: "undo" | "redo", selection: FlowSelection) => void>;
   setAnnouncement: Dispatch<SetStateAction<{ text: string; seq: number }>>;
+  /** The focus controller: it moves focus, and holds the canvas's Tab stop (`roving`). */
+  interaction: FocusApi;
+  roving: string | undefined;
+  setOrder: (order: (ids: readonly string[]) => string[]) => void;
 }) {
   // ---------------------------------------------------------------- keyboard selection between nodes (D14)
   // The canvas is one Tab stop: the node last focused (else the first in reading order) is the one in the page's
   // Tab order. Inside, Tab and Shift+Tab step through nodes in reading order, Ctrl+Alt+arrows go to the nearest
   // node that way, and Ctrl+Alt+] / [ to a node's outgoing and incoming edges. Selection and focus move
-  // together, the view follows, and a polite live region names what's selected.
-  const [focusId, setFocusId] = useState<string | undefined>();
-  /** The node keyboard selection is focusing: it brings it into view itself (revealSelection). */
-  const navFocus = useRef<string | undefined>(undefined);
+  // together, the view follows, and a polite live region names what's selected. The focus controller moves focus
+  // (src/canvas/interaction) and holds the Tab stop: `roving`, the node last focused.
+  const focusId = roving;
   const revealFocusedRef = useRevealFocused(controller);
   useEffect(() => {
     const wrap = wrapper.current;
@@ -107,8 +111,9 @@ export function useCanvasNavigation({
     const onFocus = (e: FocusEvent) => {
       const id = e.target instanceof Element ? e.target.closest(".react-flow__node")?.getAttribute("data-id") : null;
       if (!id) return;
-      setFocusId(id);
-      const own = navFocus.current === id;
+      // Keyboard selection and Undo bring what they focus into view themselves (revealSelection).
+      const own = !!interaction.focusing?.revealed;
+      interaction.dispatch({ type: "focus.entered", id });
       // The node itself, by keyboard (a click is on a node in view; an editor inside it isn't the node).
       const node = e.target instanceof HTMLElement && e.target.classList.contains("react-flow__node");
       if (!own && node && (e.target as HTMLElement).matches(":focus-visible"))
@@ -117,7 +122,7 @@ export function useCanvasNavigation({
     wrap.addEventListener("focusin", onFocus);
     return () => wrap.removeEventListener("focusin", onFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- wrapper is CanvasView's stable lifetime ref; preserve the original dependencies
-  }, [revealFocusedRef]);
+  }, [revealFocusedRef, interaction]);
   const { width: nominalW, height: nominalH } = getNodeVariant(nodeVariant).size;
   const navBox = useCallback(
     (n: FlowNode): NavBox => ({
@@ -158,12 +163,25 @@ export function useCanvasNavigation({
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- setAnnouncement is CanvasView's stable state setter; preserve the original dependencies
   const announce = useCallback((text: string) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })), []);
+  useLayoutEffect(() =>
+    // Undo's target: the first selected node in Tab's order.
+    setOrder((ids) => {
+      const picked = new Set(ids);
+      return navOrder(getNodes().filter((n) => !n.hidden)).filter((id) => picked.has(id));
+    }),
+  );
   useLayoutEffect(() => {
     navigateRef.current = (step, from) => {
       const ns = getNodes().filter((n) => !n.hidden);
       const es = store.getState().edges.filter((e) => !e.hidden);
       const el = from instanceof Element ? from : null;
-      const focusedNode = steppingRef.current ?? el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined;
+      // A step's destination until focus lands there: a second Tab in the same frame (two presses queued behind a
+      // busy moment) goes on from there, not from the node the key event still targets.
+      const pending = interaction.pendingTarget();
+      const focusedNode =
+        (pending?.kind === "node" ? pending.id : undefined) ??
+        el?.closest(".react-flow__node")?.getAttribute("data-id") ??
+        undefined;
       const focusedEdge = el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined;
       const sel = editor.getSelection();
       const selectedFlowIds = [...sel.nodeIds, ...sel.groupIds.map((g) => GROUP_PREFIX + g)];
@@ -182,17 +200,8 @@ export function useCanvasNavigation({
         if (!n) return false;
         if (isGroupNode(n)) editor.select({ groupIds: [n.data.groupId] });
         else editor.select({ nodeIds: [id] });
-        setFocusId(id);
-        steppingRef.current = id;
-        requestAnimationFrame(() => {
-          if (steppingRef.current === id) steppingRef.current = undefined;
-          // Focus events fire inside focus(): the flag covers exactly this one.
-          navFocus.current = id;
-          wrapper.current
-            ?.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
-            ?.focus({ preventScroll: true });
-          navFocus.current = undefined;
-        });
+        // Focus follows on the next frame, and the Tab stop moves now (K1).
+        interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id } });
         revealSelection(undefined, 0, "navigation");
         const at = `${order.indexOf(id) + 1} of ${order.length}`;
         if (isDiagramNode(n)) {
@@ -241,11 +250,7 @@ export function useCanvasNavigation({
         const i = edge ? list.findIndex((e) => e.id === edge.id) : -1;
         const e = list[(i + 1) % list.length];
         editor.select({ edgeIds: [e.id] });
-        requestAnimationFrame(() =>
-          wrapper.current
-            ?.querySelector<SVGElement>(`.react-flow__edge[data-id="${CSS.escape(e.id)}"]`)
-            ?.focus({ preventScroll: true }),
-        );
+        interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "edge", id: e.id } });
         revealSelection(undefined, 0, "navigation");
         const said = edgeAriaLabel(
           labelOf(e.source),
@@ -308,52 +313,43 @@ export function useCanvasNavigation({
         !!active &&
         wrap.contains(active) &&
         (active === wrap || !!active.closest(".react-flow__node, .react-flow__edge"));
-      // After React has drawn the restored canvas.
-      requestAnimationFrame(() => {
-        const ns = getNodes().filter((n) => !n.hidden);
-        const picked = new Set(selection.nodes);
-        const target = navOrder(ns).find((id) => picked.has(id));
-        if (target) setFocusId(target);
-        if (!fromCanvas || !wrap) return;
-        // Once what's selected is measured (React Flow hides a node until then, and a hidden one can't take
-        // focus), and while the view pans to it.
-        revealSelection(
-          () => {
-            const edge = target ? undefined : selection.edges[0];
-            const el = target
-              ? wrap.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(target)}"]`)
-              : edge
-                ? wrap.querySelector<HTMLElement>(`.react-flow__edge[data-id="${CSS.escape(edge)}"]`)
-                : null;
-            navFocus.current = target;
-            el?.focus({ preventScroll: true });
-            // An edge that isn't a Tab stop, or nothing to focus: the canvas, not the page.
-            if (!el || document.activeElement !== el) wrap.focus({ preventScroll: true });
-            navFocus.current = undefined;
-            const count = selection.nodes.length + selection.edges.length;
-            const only = count === 1 && target ? ns.find((n) => n.id === target) : undefined;
-            const name = !only
-              ? undefined
-              : isDiagramNode(only)
-                ? only.data.label || only.id
-                : isAnnotationNode(only)
-                  ? annotationTitle(only.data)
-                  : (only as GroupFlowNode).data.label || tr("chrome.untitledBoundary");
-            const what = !count
-              ? tr("chrome.nothingSelected")
-              : name
-                ? tr("chrome.valueSelected", { name })
-                : tr("ai.selected", { count });
-            announce(
-              direction === "undo"
-                ? tr("chrome.undoneValue", { selection: what })
-                : tr("chrome.redoneValue", { selection: what }),
-            );
-          },
-          0,
-          "navigation",
-        );
-      });
+      // H1 / H2: from the canvas, focus goes to the first selected node in Tab's order (else the first selected
+      // edge, else the canvas) once React has drawn and measured it; from elsewhere only the Tab stop moves.
+      interaction.dispatch(
+        {
+          type: "selection.changed",
+          cause: direction,
+          selection: { nodes: selection.nodes, edges: selection.edges },
+          origin: fromCanvas ? "canvas" : "elsewhere",
+        },
+        () => {
+          if (!fromCanvas) return;
+          const ns = getNodes().filter((n) => !n.hidden);
+          const picked = new Set(selection.nodes);
+          const target = navOrder(ns).find((id) => picked.has(id));
+          const count = selection.nodes.length + selection.edges.length;
+          const only = count === 1 && target ? ns.find((n) => n.id === target) : undefined;
+          const name = !only
+            ? undefined
+            : isDiagramNode(only)
+              ? only.data.label || only.id
+              : isAnnotationNode(only)
+                ? annotationTitle(only.data)
+                : (only as GroupFlowNode).data.label || tr("chrome.untitledBoundary");
+          const what = !count
+            ? tr("chrome.nothingSelected")
+            : name
+              ? tr("chrome.valueSelected", { name })
+              : tr("ai.selected", { count });
+          announce(
+            direction === "undo"
+              ? tr("chrome.undoneValue", { selection: what })
+              : tr("chrome.redoneValue", { selection: what }),
+          );
+        },
+      );
+      // The view pans to it meanwhile, once it's measured.
+      if (fromCanvas) revealSelection(undefined, 0, "navigation");
     };
   });
   const showDependencies = useShowDependencies();
@@ -361,11 +357,13 @@ export function useCanvasNavigation({
     () =>
       dependencyVisibility.subscribe(() => {
         if (dependencyVisibility.get()) return;
-        if (document.activeElement?.closest('[data-dependency="true"]')) wrapper.current?.focus();
+        interaction.dispatch({
+          type: "dependencies.hidden",
+          focusOnDependency: !!document.activeElement?.closest('[data-dependency="true"]'),
+        });
         setEdges((es) => es.map((e) => (e.selected && isDependency(e.data) ? { ...e, selected: false } : e)));
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- wrapper is CanvasView's stable lifetime ref; preserve the original dependencies
-    [setEdges],
+    [setEdges, interaction],
   );
   const ariaEdges = useMemo(
     () =>

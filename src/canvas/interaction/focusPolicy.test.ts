@@ -70,7 +70,7 @@ describe("focusPolicy: the rules, row by row", () => {
       "H1 Undo from the canvas: focus what it selected, once drawn",
       state(),
       [selected("undo", { selection: { nodes: ["a"], edges: [] }, origin: "canvas" })],
-      ["focus:selection@ready"],
+      ["focus:selection@measured"],
     ],
     [
       "H2 Undo from the toolbar: focus stays, the Tab stop moves",
@@ -82,13 +82,13 @@ describe("focusPolicy: the rules, row by row", () => {
       "H1 Redo from the canvas: the same as Undo",
       state(),
       [selected("redo", { selection: { nodes: [], edges: ["e"] }, origin: "canvas" })],
-      ["focus:selection@ready"],
+      ["focus:selection@measured"],
     ],
     [
       "P1 the palette adds a node: focus it once drawn",
       state(),
       [selected("palette", { target: { kind: "node", id: "n" }, placed: true })],
-      ["focus:node:n@ready"],
+      ["focus:node:n@measured"],
     ],
     [
       "P2 the palette goes to a node: focus it now",

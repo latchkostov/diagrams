@@ -1,5 +1,5 @@
 import { useCanvasMenuItems, useCanvasContextMenus, type CanvasSurface } from "./menus/useCanvasMenus";
-import { InteractionContext, useInteractionCore } from "./interaction/useInteraction";
+import { InteractionContext, useInteractionCamera, useInteractionCore } from "./interaction/useInteraction";
 import { useRailPlacement } from "./placement/useRailPlacement";
 import { useDragPlacement } from "./placement/useDragPlacement";
 import { useConnectionPlacement } from "./placement/useConnectionPlacement";
@@ -309,9 +309,26 @@ function CanvasInner({
     hideTip,
   );
 
+  // Menus, dialogs and keyboard focus open and move through one controller (it tells the camera of menus).
+  const {
+    controller: interaction,
+    state: interactionState,
+    setOrder,
+  } = useInteractionCore<CanvasSurface>(wrapper, store, nodes, edges);
+  const surface = interactionState.menu;
+  const menu = surface && surface.kind !== "dialog" ? surface.payload : null;
+  const menuSeq = surface?.seq;
+  const menuItems = useCanvasMenuItems(menu, locale);
+  const shortcutsOpen = surface?.kind === "dialog";
+  const showShortcuts = useCallback(() => void interaction.openMenu("dialog", null), [interaction]);
+  const closeShortcuts = useCallback(() => interaction.closeMenu("escape"), [interaction]);
+  const closeMenu = useCallback(
+    (reason: "pick" | "escape" | "outside" | "scroll" | "blur" | "resize") => interaction.closeMenu(reason, menuSeq),
+    [interaction, menuSeq],
+  );
+  /** A pan by hand closes menus (React Flow's move start with an event). */
+  const closeMenuOnPan = useCallback(() => interaction.closeMenu("scroll"), [interaction]);
   const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
-  const remoteFocusFrame = useRef(0);
-  useEffect(() => () => cancelAnimationFrame(remoteFocusFrame.current), []);
   const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
   const libraryPrivacy = usePrivacyFlags(slug);
   const [roomPrivate, setRoomPrivate] = useState(false);
@@ -336,18 +353,15 @@ function CanvasInner({
             active.closest('[data-testid="inspector"]')?.getAttribute("data-inspector-target") ??
             undefined,
         });
-      if (originatedHere) {
-        cancelAnimationFrame(remoteFocusFrame.current);
-        remoteFocusFrame.current = requestAnimationFrame(() => {
-          if (active.isConnected || (document.activeElement !== document.body && document.activeElement !== null))
-            return;
-          wrapper.current?.focus({ preventScroll: true });
-          setAnnouncement((a) => ({
-            text: removed ? tr("collab.targetRemoved") : tr("collab.controlRemoved"),
-            seq: a.seq + 1,
-          }));
+      // What had focus in this canvas may go with a peer's change: the canvas takes it, and says why (R1).
+      if (originatedHere)
+        interaction.dispatch({ type: "document.replaced", active }, (focused) => {
+          if (focused)
+            setAnnouncement((a) => ({
+              text: removed ? tr("collab.targetRemoved") : tr("collab.controlRemoved"),
+              seq: a.seq + 1,
+            }));
         });
-      }
       if (!remote) setEditing(null);
       else setEditing((current) => (current && !s.nodes.some((n) => n.id === current.id) ? null : current));
       setMeta(s.meta);
@@ -394,21 +408,7 @@ function CanvasInner({
     style: edgeStyle,
     direction: meta.direction ?? "LR",
   });
-  // Menus, dialogs (and keyboard focus) open and move through one controller, which tells the camera of menus.
-  const { controller: interaction, state: interactionState } = useInteractionCore<CanvasSurface>(controller);
-  const surface = interactionState.menu;
-  const menu = surface && surface.kind !== "dialog" ? surface.payload : null;
-  const menuSeq = surface?.seq;
-  const menuItems = useCanvasMenuItems(menu, locale);
-  const shortcutsOpen = surface?.kind === "dialog";
-  const showShortcuts = useCallback(() => void interaction.openMenu("dialog", null), [interaction]);
-  const closeShortcuts = useCallback(() => interaction.closeMenu("escape"), [interaction]);
-  const closeMenu = useCallback(
-    (reason: "pick" | "escape" | "outside" | "scroll" | "blur" | "resize") => interaction.closeMenu(reason, menuSeq),
-    [interaction, menuSeq],
-  );
-  /** A pan by hand closes menus (React Flow's move start with an event). */
-  const closeMenuOnPan = useCallback(() => interaction.closeMenu("scroll"), [interaction]);
+  useInteractionCamera(interaction, controller);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const documentId = getDiagramIdentity(slug);
@@ -481,11 +481,6 @@ function CanvasInner({
   const grow = useRef<(from: string, toward: Toward, clone: boolean) => void>(() => {});
   /** Tab, Shift+Tab, Ctrl+Alt+arrows and Ctrl+Alt+] / [ (set below). */
   const navigate = useRef<(step: NavStep, from: EventTarget | null) => boolean>(() => false);
-  /**
-   * The node a step just went to, until the frame that focuses it: a second Tab in the same frame (two presses
-   * queued behind a busy moment) goes on from there, not from the node the key event still targets.
-   */
-  const stepping = useRef<string | undefined>(undefined);
   /** Stops Run simulations, if it's playing (set once the checks are, below): true if it was. */
   const stopSimulations = useRef<() => boolean>(() => false);
   useCanvasShortcuts(editor, {
@@ -512,6 +507,7 @@ function CanvasInner({
     live,
     onGrow: (from, toward, clone) => grow.current(from, toward, clone),
     onNavigate: (step, from) => navigate.current(step, from),
+    keepFocus: (from) => interaction.dispatch({ type: "escape", from }),
   });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
   const hostRevision = useMemo(() => ({ nodes, edges, meta }), [nodes, edges, meta]);
@@ -544,6 +540,12 @@ function CanvasInner({
     ...privacyFlags,
     ...(import.meta.env.DEV ? { diagram: fromFlow(meta, nodes, edges) } : {}),
   });
+  /** The palette went to a node, or added one (P1, P2). */
+  const focusFromPalette = useCallback(
+    (id: string, placed: boolean) =>
+      interaction.dispatch({ type: "selection.changed", cause: "palette", target: { kind: "node", id }, placed }),
+    [interaction],
+  );
   useCanvasHost(editor, {
     live,
     enabled: !readOnly,
@@ -554,6 +556,7 @@ function CanvasInner({
     documentId,
     revision: hostRevision,
     goTo: controller.goTo,
+    focus: focusFromPalette,
   });
 
   useAutosave({
@@ -570,19 +573,15 @@ function CanvasInner({
   useDocumentHandle({ ref, meta, nodes, edges, flushSave, editor, room, privacy, setModified, onTitleChange });
 
   useEffect(() => {
-    if (focusRequest === undefined) return;
-    // Dialog teardown first restores its opener; move to the destination after that cleanup.
-    const frame = requestAnimationFrame(() => wrapper.current?.focus({ preventScroll: true }));
-    return () => cancelAnimationFrame(frame);
-  }, [focusRequest]);
+    // Dialog teardown first restores its opener; move to the destination after that cleanup (C1).
+    if (focusRequest !== undefined) interaction.dispatch({ type: "canvas.requested" });
+  }, [focusRequest, interaction]);
 
   // Presenting hides the button that started it: focus goes to the canvas, not the page, so the keys (Esc, L,
-  // Space) and the next Tab start from there.
+  // Space) and the next Tab start from there (C2).
   useEffect(() => {
-    if (!presenting) return;
-    const el = document.activeElement;
-    if (!el || el === document.body || !el.isConnected) wrapper.current?.focus({ preventScroll: true });
-  }, [presenting]);
+    if (presenting) interaction.dispatch({ type: "presenting" });
+  }, [presenting, interaction]);
 
   useModeFit(controller, presenting, live);
   const { card, cardCovers, checksTop } = useChromeOverlays(wrapper, checksOn && checksCard);
@@ -646,9 +645,10 @@ function CanvasInner({
       choose: growFromChip,
       hover: checks.setHot,
       open: () => checksPanel.open(),
-      returnFocus: () => (checksPanel.opener() ?? wrapper.current)?.focus(),
+      returnFocus: () =>
+        interaction.dispatch({ type: "dialog.closed", dialog: "checks", opener: checksPanel.opener() }),
     }),
-    [editor, revealIds, growFromChip, checks],
+    [editor, revealIds, growFromChip, checks, interaction],
   );
   useLayoutEffect(() => {
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
@@ -864,9 +864,11 @@ function CanvasInner({
     revealSelection,
     setEdges,
     navigate,
-    stepping,
     onHistoryStep,
     setAnnouncement,
+    interaction,
+    roving: interactionState.roving,
+    setOrder,
   });
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
@@ -1091,11 +1093,7 @@ function CanvasInner({
                   // A blank canvas starts from the stencil list: open it and put the cursor in its search.
                   setPaletteCollapsed(false);
                   setOpenedByHand((o) => ({ ...o, palette: true }));
-                  requestAnimationFrame(() =>
-                    wrapper.current?.parentElement
-                      ?.querySelector<HTMLInputElement>('[data-testid="palette-search"]')
-                      ?.focus(),
-                  );
+                  interaction.dispatch({ type: "start.blank" });
                 }}
                 paletteHidden={paletteHidden}
                 hintSeen={hintSeen}
@@ -1119,6 +1117,7 @@ function CanvasInner({
                 onResize={() => setSheetResize((revision) => revision + 1)}
                 onTextSettled={settleText}
                 onToggle={() => {
+                  interaction.dispatch({ type: "inspector.toggled", cause: "panel" });
                   setPref("inspector", inspectorHidden);
                   setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
                 }}

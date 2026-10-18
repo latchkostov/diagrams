@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent } from "react";
 import type { EditorApi } from "../../editor/types";
+import { useInteraction } from "../interaction/useInteraction";
 
 /**
  * A name field's keys (a node's Label, Subtitle and new Connection, a connection's or a boundary's Label): what's
@@ -14,6 +15,7 @@ export function useNameFields(
   flowId: string,
   onDone?: () => void,
 ) {
+  const interaction = useInteraction();
   const tag = useRef<string | undefined>(undefined);
   const field = useRef<HTMLInputElement | null>(null);
   useLayoutEffect(
@@ -47,8 +49,8 @@ export function useNameFields(
       e.stopPropagation();
       const field = e.currentTarget;
       field.setSelectionRange(field.value.length, field.value.length);
-      const sel = `.react-flow__node[data-id="${CSS.escape(flowId)}"], .react-flow__edge[data-id="${CSS.escape(flowId)}"]`;
-      document.querySelector<HTMLElement | SVGElement>(sel)?.focus({ preventScroll: true });
+      // Focus goes back to the named item on the canvas (focus policy, row N1).
+      interaction?.dispatch({ type: "naming.done", flowId });
       done();
     },
     onBlur: () =>

@@ -1,15 +1,131 @@
-import { createContext, useContext, useState, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from "react";
+import type { useStoreApi } from "@xyflow/react";
+import type { DiagramFlowEdge, FlowNode } from "../types";
 import { createInteractionController, type InteractionCamera, type InteractionController } from "./controller";
-import { domActive } from "./domPort";
+import { createDomPort, domScheduler, type DomCanvas } from "./domPort";
 
 /** The canvas's interaction controller, for what renders inside the canvas (the Inspector, its name fields). */
 export const InteractionContext = createContext<InteractionController | null>(null);
 
-/** The canvas's interaction controller: the single writer of its menus (and, below, of keyboard focus). */
-export function useInteractionCore<P>(camera: InteractionCamera) {
-  const [controller] = useState(() => createInteractionController<P>({ active: domActive }, { camera }));
+type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
+
+/**
+ * The canvas's interaction controller: the single writer of its menus and of keyboard focus in it, with its DOM
+ * port onto canvas-wrap, the diagram as last committed and React Flow's store.
+ */
+export function useInteractionCore<P>(
+  wrapper: RefObject<HTMLDivElement | null>,
+  store: Store,
+  nodes: FlowNode[],
+  edges: DiagramFlowEdge[],
+) {
+  const [{ controller, setOrder, commit }] = useState(() => {
+    /** The diagram as last committed: a node React Flow's store hasn't caught up with yet isn't gone. */
+    let committed = { nodes: [] as FlowNode[], edges: [] as DiagramFlowEdge[] };
+    let ids: { nodes: Set<string>; edges: Set<string> } | null = null;
+    const known = () =>
+      (ids ??= {
+        nodes: new Set(committed.nodes.filter((n) => !n.hidden).map((n) => n.id)),
+        edges: new Set(committed.edges.map((e) => e.id)),
+      });
+    const canvas: DomCanvas = {
+      root: () => wrapper.current,
+      hasNode: (id) => {
+        const n = store.getState().nodeLookup.get(id);
+        return (!!n && !n.hidden) || known().nodes.has(id);
+      },
+      hasEdge: (id) => store.getState().edgeLookup.has(id) || known().edges.has(id),
+    };
+    return {
+      /** Keyboard navigation's Tab order, for Undo's "the first selected node in Tab's order". */
+      setOrder: (order: (ids: readonly string[]) => string[]) => void (canvas.order = order),
+      commit(next: { nodes: FlowNode[]; edges: DiagramFlowEdge[] }) {
+        if (next.nodes === committed.nodes && next.edges === committed.edges) return;
+        committed = next;
+        ids = null;
+      },
+      controller: createInteractionController<P>(createDomPort(canvas), domScheduler),
+    };
+  });
+  useLayoutEffect(() => commit({ nodes, edges }), [commit, nodes, edges]);
+  useInteractionLifecycle(controller);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
-  return { controller, state };
+  return { controller, state, setOrder };
+}
+
+/** The camera hears of menus opening and closing (it holds pane work while one is open). */
+export function useInteractionCamera<P>(controller: InteractionController<P>, camera: InteractionCamera) {
+  useLayoutEffect(() => controller.attachCamera(camera), [controller, camera]);
+}
+
+/**
+ * Each commit's selection, for the one selection.changed event (with the cause its source declared) that the focus
+ * policy and the camera both hear. After usePaneCamera, so a pane change in the same commit reaches the camera first.
+ */
+export function useSelectionEvents<P>(
+  controller: InteractionController<P>,
+  nodes: FlowNode[],
+  edges: DiagramFlowEdge[],
+) {
+  const ids = [
+    ...nodes.filter((n) => n.selected).map((n) => n.id),
+    ...edges.filter((e) => e.selected).map((e) => e.id),
+  ];
+  const key = JSON.stringify(ids);
+  useLayoutEffect(() => controller.selectionCommitted(key, ids.length === 0));
+}
+
+/** Input, commits and the lifetime of a controller (the canvas's, or the Lab Inspector's own). */
+function useInteractionLifecycle<P>(controller: InteractionController<P>) {
+  useEffect(() => controller.connect(), [controller]);
+  useEffect(() => {
+    // Capture input before anything handles it: a move's second attempt stands down.
+    const input = () => controller.input();
+    window.addEventListener("keydown", input, true);
+    window.addEventListener("pointerdown", input, true);
+    return () => {
+      window.removeEventListener("keydown", input, true);
+      window.removeEventListener("pointerdown", input, true);
+    };
+  }, [controller]);
+  // Every commit: a move waiting for it runs, and a target waiting for its panel is tried again.
+  useLayoutEffect(() => controller.rendered());
 }
 
 export const useInteraction = () => useContext(InteractionContext);
+
+/**
+ * The canvas's controller, or (outside a canvas: the Lab's Inspector) one of its own, so the Inspector's fields
+ * take focus the same way everywhere.
+ */
+export function useInteractionOrLocal(): { controller: InteractionController; local: boolean } {
+  const shared = useInteraction();
+  const [own] = useState(() =>
+    shared ? null : createInteractionController(createDomPort({ root: () => null }), domScheduler),
+  );
+  const controller = shared ?? own!;
+  useLocalLifecycle(own);
+  return { controller, local: !shared };
+}
+
+function useLocalLifecycle(own: InteractionController | null) {
+  useEffect(() => own?.connect(), [own]);
+  useEffect(() => {
+    if (!own) return;
+    const input = () => own.input();
+    window.addEventListener("keydown", input, true);
+    window.addEventListener("pointerdown", input, true);
+    return () => {
+      window.removeEventListener("keydown", input, true);
+      window.removeEventListener("pointerdown", input, true);
+    };
+  }, [own]);
+}

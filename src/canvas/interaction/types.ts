@@ -95,9 +95,10 @@ export type FocusTarget =
  * When a focus command runs. `now`: at once. `commit`: once React has committed the change that caused it, after
  * that commit's own focus moves (a menu that closed, an action that ran). `frame`: on the next frame. `frames2`:
  * two frames later (React Flow blurs a node it unselects a frame late). `ready`: as soon as the target is mounted,
- * measured and visible (a node React Flow still hides, a field whose panel hasn't opened), on commits and frames.
+ * measured and visible (a field whose panel hasn't opened), now or on a later commit or frame. `measured`: the same,
+ * from the next frame on (after React has drawn the change that caused it: Undo's restored canvas, a new node).
  */
-export type FocusWhen = "now" | "commit" | "frame" | "frames2" | "ready";
+export type FocusWhen = "now" | "commit" | "frame" | "frames2" | "ready" | "measured";
 
 export interface FocusMove {
   type: "focus";

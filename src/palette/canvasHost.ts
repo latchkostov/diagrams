@@ -24,6 +24,11 @@ export function useCanvasHost(
     revision?: unknown;
     /** The canvas camera's go-to: the node centred at a readable zoom (the view is the user's after it). */
     goTo?: (id: string) => void;
+    /**
+     * The canvas's focus controller: focus goes to the node the palette went to (now), or added (once it's drawn:
+     * React Flow shows a card once it's measured, and a hidden one can't take focus).
+     */
+    focus?: (id: string, placed: boolean) => void;
   },
 ) {
   const rf = useReactFlow();
@@ -31,7 +36,18 @@ export function useCanvasHost(
   useLayoutEffect(() => {
     rfRef.current = rf;
   });
-  const { live, enabled, localOnly, private: isPrivate, onDevice, allowOnDevice, documentId, revision, goTo } = opts;
+  const {
+    live,
+    enabled,
+    localOnly,
+    private: isPrivate,
+    onDevice,
+    allowOnDevice,
+    documentId,
+    revision,
+    goTo,
+    focus,
+  } = opts;
   useEffect(() => {
     if (!enabled) return;
     const boxOf = (id: string): Box | null => {
@@ -57,26 +73,17 @@ export function useCanvasHost(
         editor.select({ nodeIds: [id] });
         if (!box) return;
         goTo?.(id);
-        document
-          .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
-          ?.focus({ preventScroll: true });
+        focus?.(id, false);
       },
       // With one node selected the stencil goes after it, connected (the rail does the same). Keyboard first:
       // the new node takes focus once drawn, so Enter names it and Alt+arrow grows the flow from it.
       addStencil: (stencilId) => {
         const id = editor.addStencil(stencilId);
-        let frames = 30;
-        // React Flow shows a card once it's measured, and a hidden one can't take focus: try each frame.
-        const focus = () => {
-          const el = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`);
-          el?.focus({ preventScroll: true });
-          if ((!el || document.activeElement !== el) && --frames > 0) requestAnimationFrame(focus);
-        };
-        requestAnimationFrame(focus);
+        focus?.(id, true);
         return id;
       },
     });
     paletteHost.activateRun();
     return off;
-  }, [editor, live, enabled, localOnly, isPrivate, onDevice, allowOnDevice, documentId, revision, goTo]);
+  }, [editor, live, enabled, localOnly, isPrivate, onDevice, allowOnDevice, documentId, revision, goTo, focus]);
 }

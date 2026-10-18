@@ -65,6 +65,11 @@ export function useCanvasShortcuts(
      * Tab past the last node then leaves the canvas, as Tab does.
      */
     onNavigate?: (step: NavStep, from: EventTarget | null) => boolean;
+    /**
+     * Esc cleared the selection on `from` (a node or an edge): keep focus on it once React Flow has blurred it.
+     * The canvas's focus controller does this; without one, it's done here.
+     */
+    keepFocus?: (from: HTMLElement | null) => void;
   },
 ) {
   const optsRef = useRef(opts);
@@ -208,11 +213,13 @@ export function useCanvasShortcuts(
             // React Flow blurs the node it unselects a frame later, which left focus on the page: Tab then started
             // from the top. Focus stays on the node (now unselected), the canvas's tab stop.
             const was = e.target instanceof HTMLElement ? e.target : null;
-            requestAnimationFrame(() =>
-              requestAnimationFrame(() => {
-                if (was?.isConnected && document.activeElement === document.body) was.focus({ preventScroll: true });
-              }),
-            );
+            if (optsRef.current.keepFocus) optsRef.current.keepFocus(was);
+            else
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  if (was?.isConnected && document.activeElement === document.body) was.focus({ preventScroll: true });
+                }),
+              );
           }
           break;
         }

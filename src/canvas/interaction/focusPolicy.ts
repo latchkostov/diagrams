@@ -70,11 +70,11 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       if ((cause === "undo" || cause === "redo") && event.selection) {
         const selection: FocusTarget = { kind: "selection", ...event.selection };
         if (event.origin === "canvas")
-          return move({ target: selection, when: "ready", fallback: canvas, revealed: true });
+          return move({ target: selection, when: "measured", fallback: canvas, revealed: true });
         return { state, command: { type: "roving", target: selection, when: "frame" } };
       }
       if (cause === "palette" && target)
-        return move({ target: { kind: target.kind, id: target.id }, when: event.placed ? "ready" : "now" });
+        return move({ target: { kind: target.kind, id: target.id }, when: event.placed ? "measured" : "now" });
       return keep();
     }
     case "naming.done":
