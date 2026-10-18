@@ -87,7 +87,10 @@ export interface CameraPort {
   interruptMeasured(): void;
   /** React Flow's own bootstrap fit, still waiting for its first measurements. */
   cancelBootstrapFit(): void;
-  /** Readiness: `data-camera-state`, and `data-pane-pending` while pane work is armed. */
+  /**
+   * Readiness: `data-camera-state`, and `data-pane-pending` while the canvas's pane work (a pane change, a
+   * selection) is armed. Live's own work waiting for the pane (a note, its panel) reads `pending` in the former only.
+   */
   publish(phase: CameraPhase, panePending: boolean): void;
   /** The first fit ran, or input stopped it (the title card may show its warnings). */
   fitted(): void;
@@ -200,7 +203,7 @@ export function createCameraController(
     return pendingPhase(policy) ?? (refinement || waiters > 0 ? "pending" : inFlight ? "animating" : "idle");
   }
   function publish() {
-    port.publish(currentPhase(), pendingPhase(policy) === "pending");
+    port.publish(currentPhase(), pendingPhase(policy) === "pending" && isPaneCause(policy.pending!.cause));
     for (const l of listeners) l();
   }
 

@@ -27,6 +27,9 @@ events with their cause, and the camera controller (`src/canvas/camera/`) runs t
   `manualPaneChange` and the padding refs. In useSlowMotion: `following` (now the owner `slowmo`), `panUntil`
   (now "a move is in flight") and `fittedPane`. Also gone: the props `paneChange`, `paneMenuOpen`,
   `onManualPaneChange`, `camera` and `paneRevision`, and the policy's `lastCause`.
+- **Readiness.** `data-camera-state` covers Live's and slow motion's work: it reads `pending` while it waits for
+  the pane and `animating` while it moves. `data-pane-pending` still marks only the canvas's pane work (a pane
+  change or a selection), as before.
 - **Lint.** The viewport lint rule has no allowlist. The Lab's live stages get the same controller, through
   `useStandaloneCamera`, with Live's geometry only.
 - **Tests.** There are table rows for every new row. The invariant cross-product now covers slow motion and Live

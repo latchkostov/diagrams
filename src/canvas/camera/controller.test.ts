@@ -472,6 +472,9 @@ describe("camera controller", () => {
   it("a note's focus fits in 900 ms; its later refits for the room take 700 ms", () => {
     const h = harness();
     h.camera.dispatch({ type: "narration", focus: ["a", "b"] });
+    // Waiting for the pane: the camera reads pending, but no pane change is (data-pane-pending is the canvas's).
+    expect(h.camera.phase).toBe("pending");
+    expect(h.env.panePending).toBe(false);
     h.tick(2);
     expect(h.moves.at(-1)).toMatchObject({ target: { x: 40, y: 21, zoom: 1 }, duration: 900 });
     expect(h.ownership.owner).toBe("narration");
@@ -599,7 +602,8 @@ const work = (m: Model, cause: NonNullable<Model["cause"]>) => {
 const check = (m: Model, r: Real) => {
   const phase = r.camera.phase;
   if (m.pending) expect(phase).toBe(deferred(m) ? "deferred" : "pending");
-  expect(r.env.panePending).toBe(m.pending && !deferred(m));
+  // data-pane-pending: the canvas's pane work only (Live's own work shows in data-camera-state).
+  expect(r.env.panePending).toBe(m.pending && m.cause === "canvas" && !deferred(m));
   // The readiness signal tells the truth about our moves: animating while one is scheduled or running (none is
   // forgotten while it runs), never stuck on one that another writer stopped.
   if (phase === "idle") expect(r.ours()).toBeNull();
