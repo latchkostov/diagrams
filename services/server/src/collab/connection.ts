@@ -91,7 +91,8 @@ export function attachConnection(opts: {
     cleanup();
     log("closed", code);
   });
-  socket.on("error", () => {
+  socket.on("error", (error: Error & { code?: string }) => {
+    if (error.code === "WS_ERR_UNSUPPORTED_MESSAGE_LENGTH") opts.onRefusal?.(RELAY_CLOSE.tooBig);
     cleanup();
     log("socket-error");
   });

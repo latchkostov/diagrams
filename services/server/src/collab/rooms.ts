@@ -5,6 +5,7 @@ export interface Room {
 }
 export interface RoomRegistry {
   readonly size: number;
+  sizes(): Iterable<number>;
   get(id: string): Room | undefined;
   join(id: string, peer: string, socket: WebSocket): Room | undefined;
   leave(id: string, peer: string): void;
@@ -18,6 +19,9 @@ export class MemoryRoomRegistry implements RoomRegistry {
   ) {}
   get size(): number {
     return this.rooms.size;
+  }
+  *sizes(): Iterable<number> {
+    for (const room of this.rooms.values()) yield room.peers.size;
   }
   get(id: string): Room | undefined {
     return this.rooms.get(id);

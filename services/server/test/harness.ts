@@ -11,7 +11,7 @@ import type { Clock } from "../../../src/collab/clock";
 export { WebSocket, rawBytes };
 export async function startServer(env: Record<string, string> = {}, clock?: Clock) {
   const logs: string[] = [];
-  const config = readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", ...env });
+  const config = readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC: "off", ...env });
   const relay = createRelayServer({ config, clock, log: createLog((line) => logs.push(line)) });
   const origin = await relay.listen();
   onTestFinished(() => relay.close());

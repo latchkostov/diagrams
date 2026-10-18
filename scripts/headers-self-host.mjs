@@ -21,7 +21,7 @@ const { values } = parseArgs({
     base: { type: "string", default: "/" },
   },
 });
-const { nginxHeaders, headersFile } = (
+const { nginxHeaders, headersFile, selfHostHeaderManifest } = (
   await runnerImport(path.join(root, "scripts/self-host-headers.ts"), { root, configFile: false, logLevel: "error" })
 ).module;
 const { hostingTemplates } = (
@@ -35,7 +35,12 @@ const options = {
 };
 let files;
 try {
-  files = { "nginx.conf": nginxHeaders(options), _headers: headersFile(options), ...hostingTemplates(options) };
+  files = {
+    "nginx.conf": nginxHeaders(options),
+    _headers: headersFile(options),
+    "headers.json": `${JSON.stringify(selfHostHeaderManifest(options), null, 2)}\n`,
+    ...hostingTemplates(options),
+  };
 } catch (err) {
   console.error(`headers:self-host: ${err instanceof Error ? err.message : err}`);
   process.exit(1);

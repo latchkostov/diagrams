@@ -6,7 +6,11 @@ import type { ServerConfig } from "../config";
 export class OutboundBudget {
   private total = 0;
   private sockets = new Map<WebSocket, { bytes: number; closing: boolean }>();
-  constructor(private config: Pick<ServerConfig, "socketBufferBytes" | "totalBufferBytes">) {}
+  constructor(
+    private config: Pick<ServerConfig, "socketBufferBytes" | "totalBufferBytes">,
+    private onBytes?: (n: number) => void,
+    private onRefusal?: () => void,
+  ) {}
 
   get bufferedBytes(): number {
     return this.total;
@@ -31,7 +35,10 @@ export class OutboundBudget {
     socket.close(code); // Admission reserved even an automatic close reply echoing a peer's reason.
   }
   send(socket: WebSocket, data: string | Uint8Array): void {
-    this.enqueue(socket, Buffer.byteLength(data), (done) => socket.send(data, done));
+    this.enqueue(socket, Buffer.byteLength(data), (done) => {
+      socket.send(data, done);
+      this.onBytes?.(Buffer.byteLength(data));
+    });
   }
   ping(socket: WebSocket): void {
     this.enqueue(socket, 0, (done) => socket.ping(undefined, false, done));
@@ -48,6 +55,7 @@ export class OutboundBudget {
         this.config.socketBufferBytes ||
       this.total + bytes > this.config.totalBufferBytes
     ) {
+      this.onRefusal?.();
       this.close(socket, RELAY_CLOSE.rate);
       return;
     }

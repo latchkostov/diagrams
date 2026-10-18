@@ -328,6 +328,12 @@ describe("validated config and clock budgets", () => {
     { LD_MAX_PAYLOAD: String(RELAY_LIMITS.minPayload - 1) },
     { LD_TRUST_PROXY_HOPS: "0" },
     { LD_TRUST_PROXY_HOPS: "1.5" },
+    { LD_STATIC: "false" },
+    { LD_STATIC_DIR: "" },
+    { LD_DRAIN_TIMEOUT_MS: "0" },
+    { LD_DRAIN_TIMEOUT_MS: "2147483648" },
+    { LD_HELLO_TIMEOUT_MS: "2147483648" },
+    { LD_PING_INTERVAL_MS: "2147483648" },
   ])("rejects %j", (env) => {
     expect(() => readConfig(env)).toThrow();
   });
