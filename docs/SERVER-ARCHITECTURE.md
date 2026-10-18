@@ -25,8 +25,18 @@ encrypted. The browser session continues to authenticate envelopes and heal miss
 room creation and immediate empty-room deletion. The connection state machine owns hello,
 byte/frame token buckets, framing, backpressure, ping/pong and idle cleanup. Those seams allow
 later authentication or a shared registry without teaching the relay about document content.
-Close codes are 4000 (protocol/hello timeout), 4003 (Origin), 4008 (room/room-count cap),
-4029 (rate/admission/backpressure), 1009 (size), and 1012 (restart).
+Origin, per-IP and total-socket admission run before WebSocket upgrade. Refusals return plain
+HTTP 403 (Origin), 429 (per-IP), or 503 (capacity/draining), then destroy the connection;
+refused requests never enter the WebSocket client set. Browser clients see a failed connection.
+Close codes after upgrade are 4000 (protocol/hello timeout), 4008 (room/room-count cap),
+4029 (rate/backpressure), 1009 (size), and 1012 (restart). 4003 remains reserved for Origin.
+
+One server-owned outbound budget reserves bytes before every data, membership, ping or pong
+write and releases them on its callback or socket close. Accounting is O(1) per recipient,
+includes WebSocket framing, and reserves 127 bytes per admitted socket for a maximum-size close (including an automatic reply
+echoing a peer's close reason).
+Backpressure evicts the recipient with 4029 using that reserved close; no new sends are queued
+for it. The byte limits must each allow at least that 127-byte reservation.
 
 ## Running and configuration
 
@@ -37,20 +47,27 @@ your SSO or VPN. Origin checks and resource limits do not replace access control
 
 All configuration is read once and validated before listening:
 
-| Environment variable                                                 | Default / meaning                                                                                |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `LD_HOST`, `LD_PORT`, `LD_BASE`                                      | `0.0.0.0`, `8080`, `/`; base starts and ends with `/`; port 0 supports tests                     |
-| `LD_ORIGIN`                                                          | Public HTTP(S) origin behind TLS termination; otherwise request HTTP origin                      |
-| `LD_ALLOWED_ORIGINS`                                                 | Additional exact HTTP(S) origins, comma-separated; missing/null Origin is refused                |
-| `LD_TRUST_PROXY`                                                     | `0`; only `1` trusts the first `X-Forwarded-For` IP; restrict direct access to the trusted proxy |
-| `LD_LOG_IPS`, `LD_METRICS`                                           | `0`; boolean settings accept only `0` or `1`                                                     |
-| `LD_ROOM_CAP`, `LD_MAX_ROOMS`, `LD_MAX_SOCKETS`, `LD_SOCKETS_PER_IP` | `8`, `1000`, `4000`, `64`                                                                        |
-| `LD_MAX_PAYLOAD`                                                     | 1 MiB + 2 KiB; cannot exceed the shared ceiling; advertised envelope bound accounts for framing  |
-| `LD_BYTES_PER_WINDOW`, `LD_WINDOW_MS`                                | 64 MiB per 10000 ms, replenished continuously                                                    |
-| `LD_FRAMES_PER_SECOND`, `LD_FRAME_BURST`                             | `200`, `1000`; hello counts toward both inbound budgets                                          |
-| `LD_SOCKET_BUFFER_BYTES`, `LD_TOTAL_BUFFER_BYTES`                    | 128 MiB per socket, 512 MiB aggregate                                                            |
-| `LD_HELLO_TIMEOUT_MS`                                                | `10000`                                                                                          |
-| `LD_PING_INTERVAL_MS`, `LD_MISSED_PONGS`, `LD_IDLE_TIMEOUT_MS`       | `25000`, `2`, `300000`; ping/pong does not reset data idleness                                   |
+| Environment variable                                                 | Default / meaning                                                                                                                 |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `LD_HOST`, `LD_PORT`, `LD_BASE`                                      | `0.0.0.0`, `8080`, `/`; base starts and ends with `/`; port 0 supports tests                                                      |
+| `LD_ORIGIN`                                                          | Public HTTP(S) origin behind TLS termination; otherwise request HTTP origin                                                       |
+| `LD_ALLOWED_ORIGINS`                                                 | Additional exact HTTP(S) origins, comma-separated; missing/null Origin is refused                                                 |
+| `LD_TRUST_PROXY`                                                     | `0`; only `1` enables trusted proxy resolution; restrict direct access to trusted ingress                                         |
+| `LD_TRUST_PROXY_HOPS`                                                | `1`; positive integer; choose the Nth `X-Forwarded-For` address from the right                                                    |
+| `LD_LOG_IPS`, `LD_METRICS`                                           | `0`; boolean settings accept only `0` or `1`                                                                                      |
+| `LD_ROOM_CAP`, `LD_MAX_ROOMS`, `LD_MAX_SOCKETS`, `LD_SOCKETS_PER_IP` | `8`, `1000`, `4000`, `64`                                                                                                         |
+| `LD_MAX_PAYLOAD`                                                     | 1 MiB + 2 KiB; minimum 1 MiB + 1 KiB + 9 bytes preserves session framing and fragmentation; welcome advertises the envelope bound |
+| `LD_BYTES_PER_WINDOW`, `LD_WINDOW_MS`                                | 64 MiB per 10000 ms, replenished continuously                                                                                     |
+| `LD_FRAMES_PER_SECOND`, `LD_FRAME_BURST`                             | `200`, `1000`; hello counts toward both inbound budgets                                                                           |
+| `LD_SOCKET_BUFFER_BYTES`, `LD_TOTAL_BUFFER_BYTES`                    | 128 MiB per socket, 512 MiB aggregate                                                                                             |
+| `LD_HELLO_TIMEOUT_MS`                                                | `10000`                                                                                                                           |
+| `LD_PING_INTERVAL_MS`, `LD_MISSED_PONGS`, `LD_IDLE_TIMEOUT_MS`       | `25000`, `2`, `300000`; ping/pong does not reset data idleness                                                                    |
+
+When `LD_TRUST_PROXY=1`, each trusted ingress must **append** its observed upstream address
+to `X-Forwarded-For`, rather than pass client values through unchanged. Set `LD_TRUST_PROXY_HOPS`
+to the number of trusted proxy hops. For one proxy, `attacker-prefix, real-client` resolves to
+`real-client`. Missing or invalid selected addresses are refused; untrusted prefixes cannot
+rotate the per-IP admission identity.
 
 `/healthz` returns 200, `/readyz` returns 503 during drain, and `/metrics` is disabled by
 default. S1 metrics report aggregate rooms, sockets, bytes and refusals. `<base>api/` and

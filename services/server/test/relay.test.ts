@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { once } from "node:events";
 import { FakeClock } from "../../../src/collab/clock";
 import { clientFrame, readServerFrame, RELAY_CLOSE, RELAY_LIMITS } from "../../../src/collab/transport/relayProtocol";
-import { barrier, connect, startServer, WebSocket } from "./harness";
+import { barrier, connect, startServer, rejectUpgrade, WebSocket } from "./harness";
 import { readConfig } from "../src/config";
 import { TokenBucket } from "../src/collab/connection";
 
@@ -63,7 +63,7 @@ describe("relay core (real loopback sockets)", () => {
     await Promise.all(clients.map((x) => barrier(x.socket)));
     expect(binary(b)).toHaveLength(1);
     expect(binary(c)).toHaveLength(2);
-    // A recipient in another room (or the sender) gets nothing.
+    // Addressing the sender gets nothing.
     a.socket.send(clientFrame(new Uint8Array([99]), controls(a)[0].self));
     await barrier(a.socket);
     expect(binary(a)).toEqual([]);
@@ -107,18 +107,16 @@ describe("relay core (real loopback sockets)", () => {
     } else c.socket.send(clientFrame(new Uint8Array(128)));
     expect(await c.closed).toBe(RELAY_CLOSE.rate);
   });
-  it.each(["https://other.invalid", "null", ""])("rejects Origin %j with 4003", async (origin) => {
+  it.each(["https://other.invalid", "null", ""])("rejects Origin %j before upgrade with HTTP 403", async (origin) => {
     const s = await startServer();
-    const c = await connect(s, origin);
-    expect(await c.closed).toBe(RELAY_CLOSE.origin);
+    expect(await rejectUpgrade(s, { origin })).toBe(403);
     expect(s.rooms.size).toBe(0);
   });
   it("supports explicitly allowed origins and releases per-IP admission slots", async () => {
     const s = await startServer({ LD_ALLOWED_ORIGINS: "https://allowed.invalid", LD_SOCKETS_PER_IP: "1" });
     const a = await connect(s, "https://allowed.invalid", room);
     await barrier(a.socket);
-    const b = await connect(s);
-    expect(await b.closed).toBe(RELAY_CLOSE.rate);
+    expect(await rejectUpgrade(s)).toBe(429);
     a.socket.close();
     await a.closed;
     const c = await connect(s, s.origin, room);
@@ -143,8 +141,7 @@ describe("relay core (real loopback sockets)", () => {
     expect(await b.closed).toBe(RELAY_CLOSE.full);
     const c = await connect(s, s.origin, room);
     await barrier(c.socket);
-    const d = await connect(s);
-    expect(await d.closed).toBe(RELAY_CLOSE.rate);
+    expect(await rejectUpgrade(s)).toBe(503);
     expect(s.rooms.size).toBe(1);
   });
   it("ignores spoofed forwarding headers unless the proxy is explicitly trusted", async () => {
@@ -152,46 +149,100 @@ describe("relay core (real loopback sockets)", () => {
       const s = await startServer({ LD_SOCKETS_PER_IP: "1", LD_TRUST_PROXY: trust ? "1" : "0" });
       const a = await connect(s, s.origin, room);
       await barrier(a.socket);
-      const b = new WebSocket(s.url, "livediagrams.relay.v1", {
-        origin: s.origin,
-        headers: { "X-Forwarded-For": "192.0.2.1" },
-      });
-      const closed = new Promise<number>((resolve) => b.once("close", resolve));
-      await once(b, "open");
       if (trust) {
-        b.send(JSON.stringify({ t: "hello", v: 1, room }));
-        await barrier(b);
-        expect(b.readyState).toBe(WebSocket.OPEN);
-        b.close();
-      } else expect(await closed).toBe(RELAY_CLOSE.rate);
-      await closed;
+        const b = await connect(s, s.origin, room, { "X-Forwarded-For": "192.0.2.1" });
+        await barrier(b.socket);
+        expect(b.socket.readyState).toBe(WebSocket.OPEN);
+      } else expect(await rejectUpgrade(s, { headers: { "X-Forwarded-For": "192.0.2.1" } })).toBe(429);
     }
   });
-  it("evicts a slow recipient and refuses new sockets or joins while aggregate buffers are full", async () => {
-    const s = await startServer({ LD_SOCKET_BUFFER_BYTES: "512", LD_TOTAL_BUFFER_BYTES: "1024" });
+  it("never exceeds a 1 KiB aggregate outbound cap while forwarding to slow recipients", async () => {
+    const s = await startServer({ LD_TOTAL_BUFFER_BYTES: "1024" });
     const a = await connect(s, s.origin, room);
     const b = await connect(s, s.origin, room);
-    await Promise.all([barrier(a.socket), barrier(b.socket)]);
-    const slow = [...s.wss.clients][1];
-    // Model backpressure directly: no OS buffer-size or network-speed assumptions.
-    Object.defineProperty(slow, "bufferedAmount", { configurable: true, get: () => 513 });
-    a.socket.send(clientFrame(new Uint8Array([1])));
+    const c = await connect(s, s.origin, room);
+    await Promise.all([a, b, c].map((x) => barrier(x.socket)));
+    const held: (() => void)[] = [];
+    const reservations: number[] = [];
+    for (const ws of [...s.wss.clients].slice(1)) {
+      vi.spyOn(ws, "send").mockImplementation((_data, callback) => {
+        reservations.push(s.outbound.bufferedBytes);
+        held.push(callback as () => void);
+      });
+    }
+    a.socket.send(clientFrame(new Uint8Array(250)));
+    await barrier(a.socket);
+    expect(reservations).toHaveLength(2);
+    expect(s.outbound.bufferedBytes).toBeGreaterThan(800);
+    a.socket.send(clientFrame(new Uint8Array(250)));
     expect(await b.closed).toBe(RELAY_CLOSE.rate);
-    const serverA = [...s.wss.clients][0];
-    const waiting = await connect(s);
-    await barrier(waiting.socket);
-    Object.defineProperty(serverA, "bufferedAmount", { configurable: true, get: () => 1025 });
-    const refused = await connect(s);
-    expect(await refused.closed).toBe(RELAY_CLOSE.rate);
-    waiting.socket.send(JSON.stringify({ t: "hello", v: 1, room }));
-    expect(await waiting.closed).toBe(RELAY_CLOSE.rate);
+    expect(await c.closed).toBe(RELAY_CLOSE.rate);
+    expect(reservations.every((n) => n <= 1024)).toBe(true);
+    expect(s.outbound.bufferedBytes).toBe(RELAY_LIMITS.closeFrameBytes);
+    for (const done of held) done(); // Late completion after close must not double-release.
+    expect(s.outbound.bufferedBytes).toBe(RELAY_LIMITS.closeFrameBytes);
+  });
+  it("rejects repeated excess upgrades without growing the WebSocket client set", async () => {
+    for (const kind of ["origin", "ip", "total"] as const) {
+      const s = await startServer(
+        kind === "ip" ? { LD_SOCKETS_PER_IP: "1" } : kind === "total" ? { LD_MAX_SOCKETS: "1" } : {},
+      );
+      const a = await connect(s, s.origin, room);
+      await barrier(a.socket);
+      const upgraded = vi.fn();
+      s.wss.on("connection", upgraded);
+      for (let i = 0; i < 16; i++) {
+        expect(await rejectUpgrade(s, kind === "origin" ? { origin: "https://other.invalid" } : {})).toBe(
+          kind === "origin" ? 403 : kind === "ip" ? 429 : 503,
+        );
+        expect(s.wss.clients.size).toBe(1);
+      }
+      expect(upgraded).not.toHaveBeenCalled();
+    }
+  });
+  it("never routes broadcast or addressed frames across rooms", async () => {
+    const s = await startServer();
+    const a = await connect(s, s.origin, room);
+    const b = await connect(s, s.origin, room);
+    const outsider = await connect(s, s.origin, "B".repeat(43));
+    const all = [a, b, outsider];
+    await Promise.all(all.map((c) => barrier(c.socket)));
+    a.socket.send(clientFrame(new Uint8Array([1])));
+    a.socket.send(clientFrame(new Uint8Array([2]), controls(outsider)[0].self));
+    a.socket.send(clientFrame(new Uint8Array([3]), controls(b)[0].self));
+    await barrier(a.socket);
+    await Promise.all(all.map((c) => barrier(c.socket)));
+    expect(outsider.messages.filter((m) => m.binary)).toEqual([]);
+    expect(a.messages.filter((m) => m.binary)).toEqual([]);
+    expect(b.messages.filter((m) => m.binary).map((m) => [...(readServerFrame(m.bytes)?.envelope ?? [])])).toEqual([
+      [1],
+      [3],
+    ]);
+  });
+  it("keeps responsive sockets alive across missed-pong windows", async () => {
+    const clock = new FakeClock();
+    const s = await startServer({}, clock);
+    const c = await connect(s, s.origin, room);
+    await barrier(c.socket);
+    const ws = [...s.wss.clients][0];
+    for (let i = 0; i < s.config.missedPongs * 3; i++) {
+      const pong = once(ws, "pong");
+      clock.advance(s.config.pingIntervalMs);
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+      await pong;
+      expect(c.socket.readyState).toBe(WebSocket.OPEN);
+    }
   });
   it.each(["idle", "missing-pongs"])("cleans up %s sockets with a fake clock", async (kind) => {
     const clock = new FakeClock();
     const s = await startServer(kind === "idle" ? { LD_IDLE_TIMEOUT_MS: "25000" } : {}, clock);
-    const c = await connect(s, s.origin, room);
+    const c = await connect(s, s.origin, room, {}, { autoPong: false });
     await barrier(c.socket);
-    clock.advance(s.config.pingIntervalMs * (kind === "idle" ? 1 : s.config.missedPongs + 1));
+    if (kind === "missing-pongs") {
+      clock.advance(s.config.pingIntervalMs * s.config.missedPongs);
+      expect(c.socket.readyState).toBe(WebSocket.OPEN);
+    }
+    clock.advance(s.config.pingIntervalMs);
     await c.closed;
     expect(s.rooms.size).toBe(0);
     expect(clock.pending).toBe(0);
@@ -271,6 +322,12 @@ describe("validated config and clock budgets", () => {
     { LD_ALLOWED_ORIGINS: "*" },
     { LD_ORIGIN: "https://example.invalid/path" },
     { LD_MAX_PAYLOAD: "999999999" },
+    { LD_MAX_PAYLOAD: "65536" },
+    { LD_SOCKET_BUFFER_BYTES: String(RELAY_LIMITS.closeFrameBytes - 1) },
+    { LD_TOTAL_BUFFER_BYTES: String(RELAY_LIMITS.closeFrameBytes - 1) },
+    { LD_MAX_PAYLOAD: String(RELAY_LIMITS.minPayload - 1) },
+    { LD_TRUST_PROXY_HOPS: "0" },
+    { LD_TRUST_PROXY_HOPS: "1.5" },
   ])("rejects %j", (env) => {
     expect(() => readConfig(env)).toThrow();
   });

@@ -22,7 +22,7 @@ export function createAdmission(config: ServerConfig): Admission {
       const forwarded = req.headers["x-forwarded-for"];
       const ip =
         config.trustProxy && typeof forwarded === "string"
-          ? forwarded.split(",")[0].trim()
+          ? (forwarded.split(",").at(-config.trustProxyHops)?.trim() ?? "")
           : (req.socket.remoteAddress ?? "");
       const expected = config.origin ?? `http://${req.headers.host}`;
       const origin = req.headers.origin;

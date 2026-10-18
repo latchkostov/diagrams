@@ -6,6 +6,9 @@ export const RELAY_LIMITS = {
   roomCap: 8,
   maxFrameBytes: COLLAB_LIMITS.maxDocFrameBytes + 64,
   maxPayload: COLLAB_LIMITS.maxDocFrameBytes + 1024,
+  // Carry the full session frame contract plus the largest (addressed) relay header.
+  minPayload: COLLAB_LIMITS.maxDocFrameBytes + 9,
+  closeFrameBytes: 127, // Maximum control frame, including an echoed peer close reason.
   bytesPerWindow: COLLAB_LIMITS.senderBytesPerWindow,
   windowMs: COLLAB_LIMITS.senderWindowMs,
   framesPerSecond: 200,

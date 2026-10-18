@@ -7,6 +7,7 @@ export interface ServerConfig {
   origin?: string;
   allowedOrigins: string[];
   trustProxy: boolean;
+  trustProxyHops: number;
   logIps: boolean;
   metrics: boolean;
   roomCap: number;
@@ -54,16 +55,17 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     origin: env.LD_ORIGIN === undefined ? undefined : origin(env.LD_ORIGIN),
     allowedOrigins: env.LD_ALLOWED_ORIGINS ? env.LD_ALLOWED_ORIGINS.split(",").map((s) => origin(s.trim())) : [],
     trustProxy: flag("TRUST_PROXY"),
+    trustProxyHops: integer("TRUST_PROXY_HOPS", 1),
     logIps: flag("LOG_IPS"),
     metrics: flag("METRICS"),
     roomCap: integer("ROOM_CAP", RELAY_LIMITS.roomCap, 1, 64),
-    maxPayload: integer("MAX_PAYLOAD", RELAY_LIMITS.maxPayload, 10, RELAY_LIMITS.maxPayload),
+    maxPayload: integer("MAX_PAYLOAD", RELAY_LIMITS.maxPayload, RELAY_LIMITS.minPayload, RELAY_LIMITS.maxPayload),
     bytesPerWindow: integer("BYTES_PER_WINDOW", RELAY_LIMITS.bytesPerWindow),
     windowMs: integer("WINDOW_MS", RELAY_LIMITS.windowMs),
     framesPerSecond: integer("FRAMES_PER_SECOND", RELAY_LIMITS.framesPerSecond),
     frameBurst: integer("FRAME_BURST", RELAY_LIMITS.frameBurst),
-    socketBufferBytes: integer("SOCKET_BUFFER_BYTES", RELAY_LIMITS.socketBufferBytes),
-    totalBufferBytes: integer("TOTAL_BUFFER_BYTES", RELAY_LIMITS.totalBufferBytes),
+    socketBufferBytes: integer("SOCKET_BUFFER_BYTES", RELAY_LIMITS.socketBufferBytes, RELAY_LIMITS.closeFrameBytes),
+    totalBufferBytes: integer("TOTAL_BUFFER_BYTES", RELAY_LIMITS.totalBufferBytes, RELAY_LIMITS.closeFrameBytes),
     maxRooms: integer("MAX_ROOMS", RELAY_LIMITS.maxRooms),
     maxSockets: integer("MAX_SOCKETS", RELAY_LIMITS.maxSockets),
     socketsPerIp: integer("SOCKETS_PER_IP", RELAY_LIMITS.socketsPerIp),

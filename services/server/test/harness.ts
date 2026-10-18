@@ -20,9 +20,39 @@ export async function startServer(env: Record<string, string> = {}, clock?: Cloc
 export type TestServer = Awaited<ReturnType<typeof startServer>>;
 let nextConnection = 0;
 
-export async function connect(server: TestServer, origin = server.origin, room?: string) {
+export async function rejectUpgrade(
+  server: TestServer,
+  options: { origin?: string; headers?: Record<string, string> } = {},
+) {
+  const socket = new WebSocket(server.url, RELAY_SUBPROTOCOL, { origin: server.origin, ...options });
+  socket.on("error", () => {});
+  onTestFinished(() => socket.terminate());
+  return new Promise<number>((resolve, reject) => {
+    socket.once("unexpected-response", (_req, res) => {
+      res.resume();
+      socket.terminate();
+      resolve(res.statusCode ?? 0);
+    });
+    socket.once("open", () => {
+      socket.terminate();
+      reject(new Error("Refused request was upgraded"));
+    });
+    socket.once("error", reject);
+  });
+}
+export async function connect(
+  server: TestServer,
+  origin = server.origin,
+  room?: string,
+  headers: Record<string, string> = {},
+  options: { autoPong?: boolean } = {},
+) {
   const connection = String(++nextConnection);
-  const socket = new WebSocket(server.url, RELAY_SUBPROTOCOL, { origin, headers: { "X-Test-Connection": connection } });
+  const socket = new WebSocket(server.url, RELAY_SUBPROTOCOL, {
+    origin,
+    headers: { "X-Test-Connection": connection, ...headers },
+    ...options,
+  });
   const messages: { binary: boolean; bytes: Uint8Array }[] = [];
   socket.on("message", (raw, binary) => messages.push({ binary, bytes: rawBytes(raw).slice() }));
   let serverClosed: Promise<unknown> | undefined;

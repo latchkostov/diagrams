@@ -1,4 +1,4 @@
-import { WebSocket, type RawData } from "ws";
+import type { WebSocket, RawData } from "ws";
 import { realClock, type Clock } from "../../../../src/collab/clock";
 import {
   parseHello,
@@ -10,6 +10,7 @@ import {
 import type { ServerConfig } from "../config";
 import type { Logger } from "../log";
 import type { RoomRegistry } from "./rooms";
+import type { OutboundBudget } from "./outbound";
 
 export class TokenBucket {
   private tokens: number;
@@ -41,12 +42,12 @@ export function attachConnection(opts: {
   config: ServerConfig;
   rooms: RoomRegistry;
   log: Logger;
+  outbound: OutboundBudget;
   clock?: Clock;
   onBytes?: (bytes: number) => void;
   onRefusal?: (code: number) => void;
-  canJoin?: () => boolean;
 }): void {
-  const { socket, peer, config, rooms, log } = opts;
+  const { socket, peer, config, rooms, log, outbound } = opts;
   const clock = opts.clock ?? realClock;
   let roomId: string | undefined;
   let done = false;
@@ -54,11 +55,7 @@ export function attachConnection(opts: {
   let missed = 0;
   const bytes = new TokenBucket(config.bytesPerWindow, config.bytesPerWindow / config.windowMs, clock);
   const frames = new TokenBucket(config.frameBurst, config.framesPerSecond / 1000, clock);
-  const send = (target: WebSocket, data: string | Uint8Array) => {
-    if (target.readyState !== WebSocket.OPEN) return;
-    if (target.bufferedAmount + data.length > config.socketBufferBytes) target.close(RELAY_CLOSE.rate);
-    else target.send(data);
-  };
+  const send = (target: WebSocket, data: string | Uint8Array) => outbound.send(target, data);
   const cleanup = () => {
     if (done) return;
     done = true;
@@ -74,7 +71,7 @@ export function attachConnection(opts: {
     if (done) return;
     opts.onRefusal?.(code);
     cleanup();
-    socket.close(code);
+    outbound.close(socket, code);
   };
   const cancelHello = clock.after(config.helloTimeoutMs, () => refuse(RELAY_CLOSE.badFrame));
   const cancelPing = clock.every(config.pingIntervalMs, () => {
@@ -84,8 +81,9 @@ export function attachConnection(opts: {
       return;
     }
     missed++;
-    socket.ping();
+    outbound.ping(socket);
   });
+  socket.on("ping", (data) => outbound.pong(socket, data));
   socket.on("pong", () => {
     missed = 0;
   });
@@ -114,10 +112,6 @@ export function attachConnection(opts: {
       const hello = binary ? undefined : parseHello(Buffer.from(data).toString("utf8"));
       if (!hello) {
         refuse(RELAY_CLOSE.badFrame);
-        return;
-      }
-      if (opts.canJoin && !opts.canJoin()) {
-        refuse(RELAY_CLOSE.rate);
         return;
       }
       const room = rooms.join(hello.room, peer, socket);

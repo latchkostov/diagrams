@@ -156,7 +156,9 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
           .finally(() => {
             if (socket !== ws) return;
             queuedBytes -= envelope.length;
-            peerBytes.set(from, (peerBytes.get(from) ?? 0) - envelope.length);
+            const remaining = (peerBytes.get(from) ?? 0) - envelope.length;
+            if (remaining) peerBytes.set(from, remaining);
+            else peerBytes.delete(from);
             if (queues.get(from) === delivery) queues.delete(from);
           });
         queues.set(from, delivery);
@@ -175,7 +177,13 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   }
   connect();
   return {
-    capabilities: { kind: "wss-relay", durable: false, maxFrameBytes: RELAY_LIMITS.maxFrameBytes },
+    capabilities: {
+      kind: "wss-relay",
+      durable: false,
+      get maxFrameBytes() {
+        return maxFrame;
+      },
+    },
     get self() {
       return self;
     },

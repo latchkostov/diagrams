@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, onTestFinished } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from "vitest";
 import { WebSocket } from "../../../services/server/test/harness";
 import { barrier, browserSockets, rawBytes } from "../../../services/server/test/harness";
 import { createRelayServer } from "../../../services/server/src/http";
@@ -10,7 +10,8 @@ import { seededBytes } from "../random";
 import { describeTransportConformance, roomFor } from "./conformance";
 import { createRelayTransport } from "./relay";
 import { RELAY_LIMITS, parseHello, readClientFrame, RELAY_CLOSE } from "./relayProtocol";
-import type { CollabTransport } from "./types";
+import { FrameTooLargeError, type CollabTransport } from "./types";
+import { startServer } from "../../../services/server/test/harness";
 
 const relay = createRelayServer({
   config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0" }),
@@ -194,7 +195,7 @@ describe("relay reconnect and lifecycle", () => {
     await Promise.all(sockets.map(barrier));
     expect(got).toEqual([1]);
   });
-  it("reconnects with a new peer ID, clears old peers and cancels timers on close", async () => {
+  it("reconnect clears populated membership and announces departures", async () => {
     const clock = new FakeClock();
     const t = createRelayTransport({
       url: `${origin.replace("http:", "ws:")}/collab/v1`,
@@ -206,19 +207,97 @@ describe("relay reconnect and lifecycle", () => {
     transports.push(t);
     await barrier(sockets.at(-1)!);
     const old = t.self;
+    const ownSocket = sockets.at(-1)!;
+    const peer = createRelayTransport({
+      url: `${origin.replace("http:", "ws:")}/collab/v1`,
+      roomId: ids[0],
+      WebSocket: browserSockets(origin, sockets),
+    });
+    transports.push(peer);
+    await barrier(sockets.at(-1)!);
+    await Promise.all(sockets.map(barrier));
+    expect(t.peers()).toEqual([peer.self]);
+    const leave = vi.fn();
+    const frame = vi.fn();
+    t.subscribe({ join() {}, leave, frame });
     expect(old).toMatch(/^[a-f0-9]{16}$/);
     const socket = [...relay.wss.clients][0];
-    const closed = new Promise<void>((resolve) => sockets.at(-1)!.once("close", () => resolve()));
+    const closed = new Promise<void>((resolve) => ownSocket.once("close", () => resolve()));
     socket.close(RELAY_CLOSE.restart);
     await closed;
     expect(t.connectivity?.()).toBe("server-unreachable");
     expect(t.peers()).toEqual([]);
+    expect(leave.mock.calls).toEqual([[peer.self]]);
     clock.advance(clock.nextDue()! - clock.now());
     await barrier(sockets.at(-1)!);
     expect(t.self).not.toBe(old);
     expect(t.connectivity?.()).toBe("connected");
+    expect(t.peers()).toEqual([peer.self]);
+    peer.send(new Uint8Array([42]));
+    await Promise.all(sockets.map(barrier));
+    await Promise.all(sockets.map(barrier));
+    expect(frame).toHaveBeenCalledWith(peer.self, new Uint8Array([42]));
+    expect(leave.mock.calls).toEqual([[peer.self]]);
     t.close();
     expect(clock.pending).toBe(0);
+  });
+  it("advertises and enforces the negotiated frame limit", async () => {
+    const s = await startServer({ LD_MAX_PAYLOAD: String(RELAY_LIMITS.minPayload) });
+    const t = createRelayTransport({ url: s.url, roomId: ids[0], WebSocket: browserSockets(s.origin, sockets) });
+    transports.push(t);
+    await barrier(sockets.at(-1)!);
+    expect(t.capabilities.maxFrameBytes).toBe(RELAY_LIMITS.minPayload - 9);
+    expect(() => t.send(new Uint8Array(t.capabilities.maxFrameBytes + 1))).toThrow(FrameTooLargeError);
+    expect(() => t.send(new Uint8Array(t.capabilities.maxFrameBytes))).not.toThrow();
+    await barrier(sockets.at(-1)!);
+    expect(t.connectivity?.()).toBe("connected");
+  });
+  it("deletes drained peer receive accounting while preserving pending bytes after departure", async () => {
+    const make = () => {
+      const t = createRelayTransport({
+        url: `${origin.replace("http:", "ws:")}/collab/v1`,
+        roomId: ids[0],
+        WebSocket: browserSockets(origin, sockets),
+      });
+      transports.push(t);
+      return t;
+    };
+    const a = make(),
+      b = make();
+    await Promise.all(sockets.map(barrier));
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    onTestFinished(() => release());
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    b.subscribe({
+      join() {},
+      leave() {},
+      async frame() {
+        entered();
+        await held;
+      },
+    });
+    const set = vi.spyOn(Map.prototype, "set");
+    onTestFinished(() => set.mockRestore());
+    a.send(new Uint8Array([1]));
+    await started;
+    const index = set.mock.calls.findIndex(([key, value]) => key === a.self && value === 1);
+    expect(index).toBeGreaterThanOrEqual(0);
+    const accounting = set.mock.contexts[index] as Map<string, number>;
+    const departed = new Promise<void>((resolve) => relay.rooms.get(ids[0])!.peers.get(a.self)!.once("close", resolve));
+    a.close();
+    await departed;
+    await Promise.all(sockets.map(barrier));
+    expect(b.peers()).toEqual([]);
+    expect(accounting.get(a.self)).toBe(1);
+    release();
+    await Promise.all(sockets.map(barrier));
+    expect(accounting.size).toBe(0);
   });
   it("rejects invalid room IDs and credential-bearing URLs before opening a socket", () => {
     expect(() => createRelayTransport({ url: "ws://localhost/collab/v1", roomId: "bad" })).toThrow();
