@@ -137,6 +137,8 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
   page,
   consoleErrors,
 }) => {
+  // Two browsers (three pages), a reload or a wipe and its restart: heavy under CI load.
+  test.slow();
   const other = await browser.newContext();
   try {
     const sockets = await emulateTracker([context, other]);
@@ -396,6 +398,8 @@ test("Clear everything stops the room's writers, an encryption started before it
   page,
   consoleErrors,
 }) => {
+  // Two browsers (three pages), a reload or a wipe and its restart: heavy under CI load.
+  test.slow();
   const other = await browser.newContext();
   try {
     await emulateTracker([context, other]);

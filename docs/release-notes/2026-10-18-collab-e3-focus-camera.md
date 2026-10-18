@@ -27,3 +27,6 @@ interaction controllers as an event with its cause (development and e2e builds; 
   dialog gives focus back to its opener; Retry leaves the room's status focused. The menu and canvas cases fail with
   their dispatch removed. Neighbouring specs (collab Lab, share chooser, annotations, drawing basics, round 4,
   viewport, platform, inspector): 120 passed.
+- Linux container under load (`--repeat 5`, 6 workers): the room spec, the collab Lab and the neighbours above passed
+  539 of 540. The one failure was E2's wipe test running out of its 30 s budget while still working: it and the
+  two-browser test are now marked slow (no assertion changed), and the room spec then passed 50 of 50 (`--repeat 5`).
