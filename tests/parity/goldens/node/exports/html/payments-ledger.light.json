@@ -1,0 +1,893 @@
+{
+  "file": { "sha256": "8e2da95de34fdaa6f690a7e7bfa93defa6efd7140e0fe28675a700d47d9ddab7", "bytes": 100060 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": {
+        "revision": "p3-a1",
+        "requestRoutes": [
+          {
+            "id": "create-payment",
+            "label": "Create payment",
+            "address": { "method": "POST", "path": "/v1/payments" },
+            "appearance": { "paletteSlot": 0, "marker": "circle" }
+          },
+          {
+            "id": "get-payment",
+            "label": "Read payment",
+            "address": { "method": "GET", "path": "/v1/payments/pay_42" },
+            "appearance": { "paletteSlot": 1, "marker": "square" }
+          },
+          {
+            "id": "refund",
+            "label": "Refund",
+            "address": { "method": "POST", "path": "/v1/refunds" },
+            "appearance": { "paletteSlot": 3, "marker": "triangle" }
+          }
+        ]
+      },
+      "title": "Payments platform with a ledger",
+      "description": "An invented payments company, Kestrel Pay. Idempotency keys, a PCI zone for card data, a durable workflow and a weighted PSP router authorize payments; an outbox feeds a double-entry ledger, merchant webhooks and a lake that a nightly job reconciles against PSP settlement files.",
+      "direction": "LR",
+      "groups": [
+        { "id": "edge", "label": "Edge · API", "tone": "neutral", "x": 400, "y": 556, "width": 720, "height": 176 },
+        { "id": "core", "label": "EKS · payments core", "tone": "k8s", "x": 1320, "y": -68, "width": 1200, "height": 960 },
+        { "id": "pci", "label": "PCI DSS zone · card data", "tone": "neutral", "group": "core", "x": 1760, "y": -4, "width": 720, "height": 176 },
+        { "id": "events", "label": "Kafka · payment events", "tone": "neutral", "x": 2740, "y": 756, "width": 753, "height": 296 },
+        { "id": "query", "label": "Query side", "tone": "k8s", "x": 1320, "y": 956, "width": 1180, "height": 176 },
+        { "id": "ledger", "label": "EKS · ledger and payouts", "tone": "k8s", "x": 3660, "y": 436, "width": 1180, "height": 656 },
+        { "id": "inbound", "label": "PSP webhooks", "tone": "aws", "x": 400, "y": 1316, "width": 1560, "height": 306 },
+        { "id": "finance", "label": "Reconciliation and reporting", "tone": "neutral", "x": 2300, "y": 1396, "width": 1140, "height": 296 },
+        { "id": "platform", "label": "Platform", "tone": "neutral", "x": 3660, "y": 1396, "width": 1140, "height": 296 },
+        { "id": "psps", "label": "Payment service providers", "tone": "neutral", "x": 2740, "y": 196, "width": 300, "height": 376 }
+      ],
+      "nodes": [
+        {
+          "id": "merchants",
+          "stencil": "generic.webhook",
+          "label": "Merchant servers",
+          "sublabel": "server-side SDKs",
+          "props": {
+            "ratePerSec": 300,
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [
+                { "routeId": "create-payment", "share": 0.6 },
+                { "routeId": "get-payment", "share": 0.35 },
+                { "routeId": "refund", "share": 0.05 }
+              ]
+            }
+          },
+          "x": 0,
+          "y": 520
+        },
+        {
+          "id": "wallets",
+          "stencil": "client.mobile",
+          "label": "Wallet app",
+          "sublabel": "tap to pay",
+          "props": {
+            "ratePerSec": 120,
+            "trafficMix": {
+              "mode": "shares",
+              "entries": [
+                { "routeId": "create-payment", "share": 0.7 },
+                { "routeId": "get-payment", "share": 0.3 },
+                { "routeId": "refund", "share": 0 }
+              ]
+            }
+          },
+          "x": 0,
+          "y": 720
+        },
+        {
+          "id": "psp-hooks",
+          "stencil": "generic.webhook",
+          "label": "PSP notifications",
+          "sublabel": "Adyen and Stripe",
+          "props": { "ratePerSec": 40, "messageType": "ChargeSucceeded" },
+          "x": 0,
+          "y": 1500
+        },
+        {
+          "id": "edge-cdn",
+          "stencil": "cloudflare",
+          "label": "API edge",
+          "sublabel": "TLS, WAF, bot rules",
+          "group": "edge",
+          "props": { "latencyMs": 0, "jitter": 0 },
+          "x": 440,
+          "y": 620
+        },
+        {
+          "id": "gateway",
+          "stencil": "kong",
+          "label": "API gateway",
+          "sublabel": "keys, route table",
+          "group": "edge",
+          "props": {
+            "latencyMs": 0,
+            "jitter": 0,
+            "routeTable": {
+              "rules": [
+                {
+                  "id": "create",
+                  "label": "Create payment",
+                  "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/v1/payments" } },
+                  "targets": [{ "edgeId": "gateway--payments-api", "weight": 1 }],
+                  "quotas": [
+                    { "id": "create-rps", "unit": "requests", "amount": 400, "windowMs": 1000, "algorithm": "token-bucket" }
+                  ]
+                },
+                {
+                  "id": "read",
+                  "label": "Read payment",
+                  "match": { "methods": ["GET"], "path": { "kind": "template", "value": "/v1/payments/{id}" } },
+                  "targets": [{ "edgeId": "gateway--query-api", "weight": 1 }]
+                },
+                {
+                  "id": "refunds",
+                  "label": "Refunds",
+                  "match": { "methods": ["POST"], "path": { "kind": "exact", "value": "/v1/refunds" } },
+                  "targets": [{ "edgeId": "gateway--refunds-api", "weight": 1 }]
+                }
+              ]
+            }
+          },
+          "x": 860,
+          "y": 620
+        },
+        {
+          "id": "payments-api",
+          "stencil": "service.java",
+          "label": "Payments API",
+          "sublabel": "idempotency keys",
+          "group": "core",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 520
+        },
+        {
+          "id": "query-api",
+          "stencil": "service.go",
+          "label": "Payments query",
+          "sublabel": "read model",
+          "group": "query",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 1020
+        },
+        {
+          "id": "refunds-api",
+          "stencil": "service.java",
+          "label": "Refunds API",
+          "group": "core",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 1360,
+          "y": 780
+        },
+        {
+          "id": "idem",
+          "stencil": "redis.cache",
+          "label": "Idempotency store",
+          "sublabel": "24 h keys",
+          "group": "core",
+          "props": { "latencyMs": 0 },
+          "x": 1800,
+          "y": 390
+        },
+        {
+          "id": "risk",
+          "stencil": "generic.ml-model",
+          "label": "Risk model",
+          "sublabel": "fraud score",
+          "group": "core",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+          "x": 1800,
+          "y": 520
+        },
+        {
+          "id": "features",
+          "stencil": "redis.cache",
+          "label": "Risk features",
+          "sublabel": "online store",
+          "group": "core",
+          "props": { "latencyMs": 0 },
+          "x": 2240,
+          "y": 520
+        },
+        {
+          "id": "saga",
+          "stencil": "temporal",
+          "label": "Payment workflow",
+          "sublabel": "Temporal · authorize, capture",
+          "group": "core",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 30, "jitter": 0.1, "failureRate": 0 },
+          "x": 1800,
+          "y": 650
+        },
+        {
+          "id": "psp-router",
+          "stencil": "envoy",
+          "label": "PSP router",
+          "sublabel": "weighted, per-PSP limits",
+          "group": "core",
+          "props": {
+            "latencyMs": 0,
+            "jitter": 0,
+            "routeTable": {
+              "rules": [],
+              "default": {
+                "targets": [
+                  { "edgeId": "psp-router--adyen", "weight": 70 },
+                  { "edgeId": "psp-router--stripe", "weight": 30 }
+                ]
+              }
+            }
+          },
+          "x": 2240,
+          "y": 650
+        },
+        {
+          "id": "payments-db",
+          "stencil": "postgres",
+          "label": "Payments DB",
+          "sublabel": "payments and outbox",
+          "group": "core",
+          "props": { "latencyMs": 0 },
+          "x": 2240,
+          "y": 780
+        },
+        {
+          "id": "read-model",
+          "stencil": "redis.cache",
+          "label": "Payment status",
+          "sublabel": "read model",
+          "group": "query",
+          "props": { "latencyMs": 0 },
+          "x": 1800,
+          "y": 1020
+        },
+        {
+          "id": "tokenizer",
+          "stencil": "service.go",
+          "label": "Tokenizer",
+          "sublabel": "PAN to token",
+          "group": "pci",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 1800,
+          "y": 60
+        },
+        {
+          "id": "card-vault",
+          "stencil": "postgres",
+          "label": "Card vault",
+          "sublabel": "encrypted PANs",
+          "group": "pci",
+          "props": { "latencyMs": 0 },
+          "x": 2220,
+          "y": 60
+        },
+        {
+          "id": "outbox-relay",
+          "stencil": "kafka.connect",
+          "label": "Outbox relay",
+          "sublabel": "Debezium connector",
+          "group": "events",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 2780,
+          "y": 820
+        },
+        {
+          "id": "payment-events",
+          "stencil": "kafka.topic",
+          "label": "Payment events",
+          "sublabel": "payments.v1 · 32 partitions",
+          "group": "events",
+          "props": { "partitions": 32, "maxDeliveryCount": 3 },
+          "x": 3200,
+          "y": 820
+        },
+        {
+          "id": "events-dlq",
+          "stencil": "kafka.topic",
+          "label": "Payment events DLQ",
+          "sublabel": "payments.dlq",
+          "group": "events",
+          "props": { "partitions": 1 },
+          "x": 3200,
+          "y": 940
+        },
+        {
+          "id": "poster",
+          "stencil": "service.java",
+          "label": "Ledger poster",
+          "sublabel": "double entry, idempotent",
+          "group": "ledger",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 16, "concurrency": 4, "latencyMs": 50, "jitter": 0.1, "failureRate": 0 },
+          "x": 3700,
+          "y": 500
+        },
+        {
+          "id": "ledger-db",
+          "stencil": "postgres",
+          "label": "Ledger",
+          "sublabel": "append-only journal",
+          "group": "ledger",
+          "props": { "latencyMs": 0 },
+          "x": 4140,
+          "y": 500
+        },
+        {
+          "id": "balances",
+          "stencil": "generic.projection",
+          "label": "Balance projector",
+          "sublabel": "merchant balances",
+          "group": "ledger",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 3700,
+          "y": 620
+        },
+        {
+          "id": "balances-db",
+          "stencil": "redis.cache",
+          "label": "Balances",
+          "sublabel": "read model",
+          "group": "ledger",
+          "props": { "latencyMs": 0 },
+          "x": 4140,
+          "y": 620
+        },
+        {
+          "id": "status-proj",
+          "stencil": "generic.projection",
+          "label": "Status projector",
+          "sublabel": "payment status",
+          "group": "query",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 2240,
+          "y": 1020
+        },
+        {
+          "id": "hooks-out",
+          "stencil": "service.node",
+          "label": "Merchant webhooks",
+          "sublabel": "signed, retried",
+          "group": "ledger",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 60, "jitter": 0.1, "failureRate": 0 },
+          "x": 3700,
+          "y": 740
+        },
+        {
+          "id": "hooks-q",
+          "stencil": "aws.sqs",
+          "label": "Webhook retries",
+          "sublabel": "SQS · backoff",
+          "group": "ledger",
+          "props": { "maxDeliveryCount": 5, "retryBackoffMs": 500 },
+          "x": 4140,
+          "y": 740
+        },
+        { "id": "hooks-dlq", "stencil": "aws.sqs", "label": "Webhook DLQ", "sublabel": "SQS", "group": "ledger", "x": 4580, "y": 740 },
+        { "id": "merchant-endpoints", "stencil": "client.partner", "label": "Merchant endpoints", "sublabel": "HTTPS callbacks", "x": 5000, "y": 740 },
+        {
+          "id": "dlq-triage",
+          "stencil": "service.python",
+          "label": "DLQ triage",
+          "sublabel": "replay after fix",
+          "group": "ledger",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 8, "latencyMs": 50, "jitter": 0.1, "failureRate": 0 },
+          "x": 3700,
+          "y": 980
+        },
+        {
+          "id": "hook-ingest",
+          "stencil": "aws.lambda",
+          "label": "Webhook ingest",
+          "sublabel": "verify signature",
+          "group": "inbound",
+          "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 30, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 200 },
+          "x": 440,
+          "y": 1380
+        },
+        {
+          "id": "psp-q",
+          "stencil": "aws.sqs",
+          "label": "PSP events",
+          "sublabel": "SQS",
+          "group": "inbound",
+          "props": { "maxDeliveryCount": 3 },
+          "x": 860,
+          "y": 1380
+        },
+        { "id": "psp-dlq", "stencil": "aws.sqs", "label": "PSP events DLQ", "sublabel": "SQS", "group": "inbound", "x": 860, "y": 1510 },
+        {
+          "id": "psp-events",
+          "stencil": "service.java",
+          "label": "Charge updates",
+          "sublabel": "capture, settle",
+          "group": "inbound",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+          "x": 1280,
+          "y": 1380
+        },
+        {
+          "id": "disputes",
+          "stencil": "service.python",
+          "label": "Disputes",
+          "sublabel": "chargebacks",
+          "group": "inbound",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 8, "latencyMs": 80, "jitter": 0.1, "failureRate": 0 },
+          "x": 1280,
+          "y": 1510
+        },
+        {
+          "id": "psp-redrive",
+          "stencil": "aws.lambda",
+          "label": "DLQ redrive",
+          "sublabel": "manual",
+          "group": "inbound",
+          "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 20, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 20 },
+          "x": 1700,
+          "y": 1510
+        },
+        {
+          "id": "lake-sink",
+          "stencil": "kafka.connect",
+          "label": "Lake sink",
+          "sublabel": "S3 sink",
+          "group": "ledger",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+          "x": 3700,
+          "y": 860
+        },
+        {
+          "id": "lake",
+          "stencil": "aws.s3",
+          "label": "Payments lake",
+          "sublabel": "Parquet",
+          "group": "finance",
+          "props": { "latencyMs": 0 },
+          "x": 2340,
+          "y": 1580
+        },
+        {
+          "id": "settlements",
+          "stencil": "aws.s3",
+          "label": "Settlement files",
+          "sublabel": "daily PSP reports",
+          "group": "finance",
+          "props": { "latencyMs": 0 },
+          "x": 2760,
+          "y": 1580
+        },
+        {
+          "id": "scheduler",
+          "stencil": "airflow",
+          "label": "Nightly DAGs",
+          "sublabel": "02:00 UTC",
+          "group": "finance",
+          "props": { "ratePerSec": 0.05, "messageType": "ReconRun" },
+          "x": 2340,
+          "y": 1460
+        },
+        {
+          "id": "recon",
+          "stencil": "generic.batch-job",
+          "label": "Reconciliation",
+          "sublabel": "ledger vs settlements",
+          "group": "finance",
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 1, "latencyMs": 3000, "jitter": 0.1, "failureRate": 0 },
+          "x": 2760,
+          "y": 1460
+        },
+        {
+          "id": "warehouse",
+          "stencil": "snowflake",
+          "label": "Finance marts",
+          "sublabel": "Snowflake",
+          "group": "finance",
+          "props": { "latencyMs": 0 },
+          "x": 3180,
+          "y": 1460
+        },
+        { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "PSP keys, signing keys", "group": "platform", "x": 3700, "y": 1460 },
+        { "id": "kms", "stencil": "generic.secret-store", "label": "KMS", "sublabel": "card-data keys", "group": "platform", "x": 3700, "y": 1580 },
+        { "id": "idp", "stencil": "keycloak", "label": "Workload identity", "sublabel": "SPIFFE IDs", "group": "platform", "x": 4120, "y": 1460 },
+        { "id": "otel", "stencil": "datadog", "label": "Datadog", "sublabel": "traces, SLOs", "group": "platform", "x": 4120, "y": 1580 },
+        { "id": "argocd", "stencil": "argocd", "label": "Argo CD", "sublabel": "GitOps", "group": "platform", "x": 4540, "y": 1460 },
+        {
+          "id": "adyen",
+          "stencil": "adyen",
+          "label": "Adyen",
+          "sublabel": "70% of cards",
+          "group": "psps",
+          "props": {
+            "preset": "managed-measured",
+            "presetRevision": "2026-10-14",
+            "latencyMs": 220,
+            "jitter": 0.1,
+            "failureRate": 0,
+            "api": {
+              "maxInFlight": 300,
+              "quotas": [
+                { "id": "adyen-rate", "unit": "requests", "amount": 500, "windowMs": 1000, "algorithm": "token-bucket" }
+              ]
+            }
+          },
+          "x": 2780,
+          "y": 260
+        },
+        {
+          "id": "stripe",
+          "stencil": "stripe",
+          "label": "Stripe",
+          "sublabel": "30% of cards",
+          "group": "psps",
+          "props": {
+            "preset": "managed-measured",
+            "presetRevision": "2026-10-14",
+            "latencyMs": 200,
+            "jitter": 0.1,
+            "failureRate": 0,
+            "api": {
+              "maxInFlight": 300,
+              "quotas": [
+                { "id": "stripe-rate", "unit": "requests", "amount": 500, "windowMs": 1000, "algorithm": "token-bucket" }
+              ]
+            }
+          },
+          "x": 2780,
+          "y": 460
+        }
+      ],
+      "edges": [
+        { "id": "merchants--edge-cdn", "from": "merchants", "to": "edge-cdn", "kind": "sync", "label": "HTTPS" },
+        { "id": "wallets--edge-cdn", "from": "wallets", "to": "edge-cdn", "kind": "sync", "label": "HTTPS" },
+        { "id": "edge-cdn--gateway", "from": "edge-cdn", "to": "gateway", "kind": "sync" },
+        { "id": "gateway--payments-api", "from": "gateway", "to": "payments-api", "kind": "sync", "label": "Create" },
+        { "id": "gateway--query-api", "from": "gateway", "to": "query-api", "kind": "sync", "label": "Read" },
+        { "id": "gateway--refunds-api", "from": "gateway", "to": "refunds-api", "kind": "sync", "label": "Refund" },
+        { "id": "payments-api--idem", "from": "payments-api", "to": "idem", "kind": "sync", "label": "Key check" },
+        { "id": "payments-api--tokenizer", "from": "payments-api", "to": "tokenizer", "kind": "sync", "label": "Tokenize" },
+        { "id": "payments-api--risk", "from": "payments-api", "to": "risk", "kind": "sync", "label": "Score" },
+        {
+          "id": "payments-api--saga",
+          "from": "payments-api",
+          "to": "saga",
+          "kind": "sync",
+          "label": "Start",
+          "props": { "emits": "PaymentRequested" }
+        },
+        {
+          "id": "refunds-api--saga",
+          "from": "refunds-api",
+          "to": "saga",
+          "kind": "sync",
+          "label": "Start",
+          "props": { "emits": "RefundRequested" }
+        },
+        { "id": "tokenizer--card-vault", "from": "tokenizer", "to": "card-vault", "kind": "sync" },
+        { "id": "risk--features", "from": "risk", "to": "features", "kind": "sync" },
+        { "id": "query-api--read-model", "from": "query-api", "to": "read-model", "kind": "sync" },
+        {
+          "id": "saga--psp-router",
+          "from": "saga",
+          "to": "psp-router",
+          "kind": "sync",
+          "label": "Authorize",
+          "props": { "filter": ["PaymentRequested", "RefundRequested"] }
+        },
+        { "id": "saga--payments-db", "from": "saga", "to": "payments-db", "kind": "sync", "label": "Record + outbox" },
+        { "id": "psp-router--adyen", "from": "psp-router", "to": "adyen", "kind": "sync" },
+        { "id": "psp-router--stripe", "from": "psp-router", "to": "stripe", "kind": "sync" },
+        { "id": "payments-db--outbox-relay", "from": "payments-db", "to": "outbox-relay", "kind": "async", "label": "CDC" },
+        { "id": "outbox-relay--payment-events", "from": "outbox-relay", "to": "payment-events", "kind": "async", "label": "PaymentEvent" },
+        {
+          "id": "payment-events--poster",
+          "from": "payment-events",
+          "to": "poster",
+          "kind": "async",
+          "props": { "group": "ledger" }
+        },
+        {
+          "id": "payment-events--balances",
+          "from": "payment-events",
+          "to": "balances",
+          "kind": "async",
+          "props": { "group": "balances" }
+        },
+        {
+          "id": "payment-events--status-proj",
+          "from": "payment-events",
+          "to": "status-proj",
+          "kind": "async",
+          "props": { "group": "status" }
+        },
+        {
+          "id": "payment-events--hooks-out",
+          "from": "payment-events",
+          "to": "hooks-out",
+          "kind": "async",
+          "props": { "group": "merchant-webhooks" }
+        },
+        {
+          "id": "payment-events--lake-sink",
+          "from": "payment-events",
+          "to": "lake-sink",
+          "kind": "async",
+          "props": { "group": "lake" }
+        },
+        {
+          "id": "payment-events--events-dlq",
+          "from": "payment-events",
+          "to": "events-dlq",
+          "kind": "async",
+          "label": "After 3 tries",
+          "props": { "dlq": true }
+        },
+        {
+          "id": "events-dlq--dlq-triage",
+          "from": "events-dlq",
+          "to": "dlq-triage",
+          "kind": "async",
+          "props": { "group": "triage" }
+        },
+        { "id": "poster--ledger-db", "from": "poster", "to": "ledger-db", "kind": "sync", "label": "Journal entry" },
+        { "id": "balances--balances-db", "from": "balances", "to": "balances-db", "kind": "sync" },
+        { "id": "status-proj--read-model", "from": "status-proj", "to": "read-model", "kind": "sync", "label": "Upsert" },
+        { "id": "hooks-out--hooks-q", "from": "hooks-out", "to": "hooks-q", "kind": "async", "label": "Deliver" },
+        { "id": "hooks-q--merchant-endpoints", "from": "hooks-q", "to": "merchant-endpoints", "kind": "async", "label": "POST callback" },
+        {
+          "id": "hooks-q--hooks-dlq",
+          "from": "hooks-q",
+          "to": "hooks-dlq",
+          "kind": "async",
+          "label": "After 5 tries",
+          "props": { "dlq": true }
+        },
+        { "id": "hooks-dlq--dlq-triage", "from": "hooks-dlq", "to": "dlq-triage", "kind": "async" },
+        { "id": "psp-hooks--hook-ingest", "from": "psp-hooks", "to": "hook-ingest", "kind": "sync", "label": "Webhook" },
+        { "id": "hook-ingest--psp-q", "from": "hook-ingest", "to": "psp-q", "kind": "async", "label": "Verified" },
+        {
+          "id": "psp-q--psp-events",
+          "from": "psp-q",
+          "to": "psp-events",
+          "kind": "async",
+          "props": { "filter": ["Charge*"] }
+        },
+        {
+          "id": "psp-q--disputes",
+          "from": "psp-q",
+          "to": "disputes",
+          "kind": "async",
+          "props": { "filter": ["Dispute*"] }
+        },
+        {
+          "id": "psp-q--psp-dlq",
+          "from": "psp-q",
+          "to": "psp-dlq",
+          "kind": "async",
+          "label": "After 3 tries",
+          "props": { "dlq": true }
+        },
+        { "id": "psp-dlq--psp-redrive", "from": "psp-dlq", "to": "psp-redrive", "kind": "async" },
+        { "id": "psp-redrive--disputes", "from": "psp-redrive", "to": "disputes", "kind": "sync", "label": "Replay" },
+        {
+          "id": "psp-events--saga",
+          "from": "psp-events",
+          "to": "saga",
+          "kind": "sync",
+          "label": "Signal",
+          "props": { "emits": "CaptureConfirmed" }
+        },
+        { "id": "lake-sink--lake", "from": "lake-sink", "to": "lake", "kind": "sync", "label": "Parquet" },
+        { "id": "scheduler--recon", "from": "scheduler", "to": "recon", "kind": "async", "label": "Run" },
+        { "id": "recon--settlements", "from": "recon", "to": "settlements", "kind": "sync", "label": "Read files" },
+        { "id": "recon--warehouse", "from": "recon", "to": "warehouse", "kind": "sync", "label": "Breaks report" },
+        { "id": "psp-router--vault", "from": "psp-router", "to": "vault", "kind": "async", "label": "PSP keys", "relation": "secret" },
+        { "id": "hooks-out--vault", "from": "hooks-out", "to": "vault", "kind": "async", "label": "Signing key", "relation": "secret" },
+        { "id": "tokenizer--kms", "from": "tokenizer", "to": "kms", "kind": "async", "label": "Data keys", "relation": "secret" },
+        { "id": "payments-api--idp", "from": "payments-api", "to": "idp", "kind": "async", "relation": "identity" },
+        { "id": "saga--otel", "from": "saga", "to": "otel", "kind": "async", "relation": "telemetry" },
+        { "id": "argocd--payments-api", "from": "argocd", "to": "payments-api", "kind": "async", "relation": "deploy" },
+        { "id": "recon--lake", "from": "recon", "to": "lake", "kind": "async", "label": "Reads ledger", "relation": "depends" }
+      ],
+      "annotations": [
+        { "id": "note-pci", "kind": "note", "text": "Only the tokenizer touches card numbers. Everything outside the PCI zone sees tokens.", "x": 2780, "y": 40, "width": 260, "height": 130 }
+      ],
+      "simulations": [
+        {
+          "id": "psp-brownout",
+          "title": "Adyen browns out",
+          "description": "The PSP router sends 70% of card payments to Adyen and 30% to Stripe. Four seconds in, Adyen starts failing most authorizations; weights don't move by themselves. At nine seconds the on-call engineer shifts the router to Stripe, inside Stripe's contracted rate.",
+          "seed": 31,
+          "scale": 5,
+          "durationMs": 22000,
+          "traffic": [
+            {
+              "id": "merchant-traffic",
+              "node": "merchants",
+              "label": "Merchant API",
+              "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 18000 }
+            },
+            {
+              "id": "wallet-traffic",
+              "node": "wallets",
+              "label": "Wallet payments",
+              "shape": { "kind": "constant", "ratePerSec": 120, "durationMs": 18000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "Each payment checks its idempotency key, is tokenized inside the PCI zone, scored, and authorized by a durable workflow.", "focus": ["payments-api", "idem", "tokenizer", "risk", "saga"] }
+            },
+            { "atMs": 4000, "action": { "do": "props", "node": "adyen", "props": { "failureRate": 0.6 } } },
+            {
+              "atMs": 4000,
+              "action": { "do": "note", "text": "Adyen starts failing 60% of authorizations. The router keeps its 70/30 split: weights don't move by themselves.", "focus": ["psp-router", "adyen", "stripe"] }
+            },
+            {
+              "atMs": 9000,
+              "action": {
+                "do": "props",
+                "node": "psp-router",
+                "props": {
+                  "routeTable": {
+                    "rules": [],
+                    "default": {
+                      "targets": [
+                        { "edgeId": "psp-router--adyen", "weight": 0 },
+                        { "edgeId": "psp-router--stripe", "weight": 100 }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "atMs": 9000,
+              "action": { "do": "note", "text": "On-call shifts every card to Stripe. Stripe's contracted 500 requests a second covers the whole load, so failures stop.", "focus": ["psp-router", "stripe"] }
+            },
+            {
+              "atMs": 14000,
+              "action": { "do": "note", "text": "Every authorization, failed or not, is recorded through the outbox: the ledger and merchant webhooks never miss one.", "focus": ["payments-db", "outbox-relay", "payment-events", "poster", "hooks-out"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "adyen-failed",
+              "label": "Adyen fails authorizations",
+              "metric": { "node": "adyen", "field": "failed" },
+              "op": ">",
+              "value": 0,
+              "when": "end"
+            },
+            {
+              "id": "stripe-fits",
+              "label": "Stripe takes over the load",
+              "metric": { "node": "stripe", "field": "processed" },
+              "op": ">",
+              "value": 1500,
+              "when": "end"
+            },
+            {
+              "id": "ledger-complete",
+              "label": "The ledger posts every payment event",
+              "metric": { "node": "payment-events", "field": "lag", "group": "ledger" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ]
+        },
+        {
+          "id": "poison-dispute",
+          "title": "A poison dispute notification",
+          "description": "Adyen starts sending a new dispute format. The Disputes handler can't parse it: each one fails three times and lands in the PSP events DLQ, while charge updates in the same queue keep flowing. After the fix ships, redrive replays the parked disputes.",
+          "seed": 32,
+          "scale": 1,
+          "durationMs": 22000,
+          "setup": { "status": { "psp-redrive": "paused" } },
+          "traffic": [
+            {
+              "id": "charges",
+              "node": "psp-hooks",
+              "label": "Charge notifications",
+              "messageType": "ChargeSucceeded",
+              "shape": { "kind": "constant", "ratePerSec": 20, "durationMs": 16000 }
+            },
+            {
+              "id": "disputes",
+              "node": "psp-hooks",
+              "label": "New-format disputes",
+              "messageType": "DisputeOpened",
+              "shape": { "kind": "burst", "count": 12, "atMs": 3000, "spreadMs": 2000 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 0,
+              "action": { "do": "note", "text": "PSP notifications are verified, queued, and filtered by type: charge updates and disputes have their own consumers.", "focus": ["psp-hooks", "hook-ingest", "psp-q", "psp-events", "disputes"] }
+            },
+            { "atMs": 3000, "action": { "do": "props", "node": "disputes", "props": { "failureRate": 1 } } },
+            {
+              "atMs": 3000,
+              "action": { "do": "note", "text": "Disputes arrive in a new format the handler can't parse.", "focus": ["psp-q", "disputes"] }
+            },
+            {
+              "atMs": 6000,
+              "action": { "do": "note", "text": "Each fails three times and parks in the DLQ. Charge updates keep flowing past them.", "focus": ["psp-q", "psp-dlq", "psp-events"] }
+            },
+            { "atMs": 12000, "action": { "do": "props", "node": "disputes", "props": { "failureRate": 0 } } },
+            { "atMs": 12000, "action": { "do": "status", "node": "psp-redrive", "status": "up" } },
+            {
+              "atMs": 12000,
+              "action": { "do": "note", "text": "The fix ships. Redrive replays the parked disputes and they succeed.", "focus": ["psp-dlq", "psp-redrive", "disputes"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "parked",
+              "label": "Every new-format dispute is dead-lettered",
+              "metric": { "node": "psp-q", "field": "deadLettered" },
+              "op": "==",
+              "value": 12,
+              "when": "end"
+            },
+            {
+              "id": "charges-flow",
+              "label": "Charge updates never fail",
+              "metric": { "node": "psp-events", "field": "failed" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            },
+            {
+              "id": "replayed",
+              "label": "Redrive replays every parked dispute",
+              "metric": { "node": "psp-dlq", "field": "backlog" },
+              "op": "==",
+              "value": 0,
+              "when": "end"
+            }
+          ]
+        }
+      ]
+    },
+    "icons": {
+      "airflow": { "sha256": "37cca726072562fb6fade75fb22591d5dee56c3986da88ef9660f38826d7148f", "bytes": 2248 },
+      "argo": { "sha256": "cdefeeda022d43b02cb0b9c8056c76787a0d0a0da89b8fbb866bafa5a14a739f", "bytes": 12427 },
+      "aws-lambda": { "sha256": "66901bf03fc8e947cfd6633a5cee9bec3d7ee5b68d96a74622779e8e9cf5bcb7", "bytes": 1953 },
+      "aws-s3": { "sha256": "9eb9da8cd09cf6770410a45ab3dacc830aea6752f0d6be88305f249e70f713df", "bytes": 2031 },
+      "aws-sqs": { "sha256": "8c262db53d2142510d9951733380ba5041e572cc26a0bb1751a102d647f05c24", "bytes": 6604 },
+      "client-mobile": { "sha256": "b59f9659c6a761a2d7413154aa557fbddef653dd248cfc9ac6a240556c09625b", "bytes": 419 },
+      "client-partner": { "sha256": "5ef8cf3f65d4860b21565c94b6e4f95ecd65538ab44d3d7a81a4212215b4fa10", "bytes": 645 },
+      "cloudflare": { "sha256": "e4643ab45e6027dca904ae69c08a23830e3cc6b47327e261a28be93e3fc28fd1", "bytes": 1466 },
+      "datadog": { "sha256": "0c44a3791ded363e56a4bcc905d260a6808e7b664e8d64c993ad2b0dc3ed35fd", "bytes": 4230 },
+      "envoy": { "sha256": "0ebd5310d2d7b9a61d6e546860bf6d4fd684c968287ae7fa5b1bb23e0fa59ab5", "bytes": 1648 },
+      "generic-batch-job": { "sha256": "c5e8748f24bb852e0fc782d36cb9a95bf4b4333cc0313a228b980298f041c2ee", "bytes": 732 },
+      "generic-external-api": { "sha256": "d3a95660f5a9fb8dbd298a79af1604cd83926a306583abeee407a7389b130be8", "bytes": 369 },
+      "generic-ml-model": { "sha256": "a5bf688c8fa897b8be4409278db4e52bfefa0eb1728dca80fadaaca006e8a8d3", "bytes": 1168 },
+      "generic-projection": { "sha256": "2bdc02957c456d79e281f22e53c7c6aa6ba6a579890ea671e6a46675830e7236", "bytes": 640 },
+      "generic-secret-store": { "sha256": "bba39b4f11e89282abcea9d4b29bb4a424ac9918ab09e102bedf7f284255cb61", "bytes": 966 },
+      "generic-webhook": { "sha256": "f73d0eda19274f25a80e339ef1119c82f8aed73222085462017cf001b6c0ebed", "bytes": 595 },
+      "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+      "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
+      "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 },
+      "keycloak": { "sha256": "631746c0820c8af511b79d09d4c318880675d6153bca1e13dacb0e7744cfd73a", "bytes": 1898 },
+      "kong": { "sha256": "2cd1ef1fa23dd2249d2100c267a39ad87631328d4cd74930e91aca1a3d148ceb", "bytes": 762 },
+      "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+      "postgresql": { "sha256": "95779d4aab758053d1839595cc9716e1eedb1021a015a00331e54268a5daf5c0", "bytes": 7732 },
+      "python": { "sha256": "24ad742e3267f1dbf1cdd067693d7972380f3982a63e0142dd2f6e2a08bde610", "bytes": 1797 },
+      "redis": { "sha256": "985d03e20de4a6caf7eccc34ba6b73e2a5bab3aa1dc1b0d3e0613b5342a1e30e", "bytes": 3257 },
+      "snowflake": { "sha256": "1c46c348a8d8022f5601aa7862264a8f6b4f61f8574e0d5a2d4e8769352a94f4", "bytes": 3098 },
+      "stripe": { "sha256": "d73033ac5105145a1a5dc226c8c4a9b744369e2c0ae7234e97671c799656fd31", "bytes": 738 },
+      "temporal": { "sha256": "cfe062af6913957c246d2882d877a16a303b78e01a0019a8c269bc524b261b5d", "bytes": 1334 },
+      "vault": { "sha256": "85504d51abd2458c156b7b65ae6590805bc10bf64065272705bb9cdd0f7eb7e5", "bytes": 549 }
+    },
+    "options": { "theme": "light", "startSimulation": "psp-brownout", "exportedOn": "2026-01-01" }
+  }
+}

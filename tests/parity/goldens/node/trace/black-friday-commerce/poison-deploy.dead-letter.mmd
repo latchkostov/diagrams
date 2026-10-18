@@ -1,0 +1,112 @@
+---
+title: "Shoppers on the web #106 · 11.4 s end to end · 11 copies · 2 retries · dead-lettered"
+---
+sequenceDiagram
+  participant web as Shoppers on the web
+  participant cdn as Edge CDN
+  participant gateway as API gateway
+  participant checkout_api as Checkout API
+  participant pricing as Pricing
+  participant tax as Tax API
+  participant inventory as Inventory
+  participant risk as Fraud model
+  participant payments as Payments
+  participant orders_db as Orders DB
+  participant outbox_relay as Outbox relay
+  participant promotions as Promotions
+  participant features as Feature store
+  participant inventory_db as Inventory DB
+  participant stripe as Stripe
+  participant inventory_events as Stock changes
+  participant orders as Order events
+  participant search_indexer as Search indexer
+  participant fulfilment as Fulfilment workers
+  participant loyalty as Loyalty points
+  participant status_projector as Status projector
+  participant notifier as Notification router
+  participant lake_sink as Lake sink
+  participant search_index as Product index
+  participant status_cache as Order status cache
+  participant notify_q as Notifications
+  participant lake as Event lake
+  participant wms as 3PL warehouse API
+  participant shipments as Shipment events
+  participant email as Email sender
+  participant sendgrid as SendGrid
+  participant orders_dlq as Orders DLQ
+  participant dlq_triage as DLQ triage
+  participant loyalty_db as Loyalty ledger
+  web->>cdn: Shoppers on the web (+0.00 s)<br/>HTTPS
+  cdn-->>web: reply (+0.21 s)
+  cdn->>gateway: Shoppers on the web (+0.21 s)<br/>API calls
+  gateway-->>cdn: reply (+0.41 s)
+  gateway->>checkout_api: Shoppers on the web (+0.41 s)<br/>Checkout
+  checkout_api-->>gateway: reply (+0.71 s)
+  checkout_api->>pricing: Shoppers on the web (+0.71 s)<br/>Reprice
+  checkout_api->>tax: Shoppers on the web (+0.71 s)<br/>Tax quote
+  checkout_api->>inventory: Shoppers on the web (+0.71 s)<br/>Reserve
+  checkout_api->>risk: Shoppers on the web (+0.71 s)<br/>Score
+  checkout_api->>payments: Shoppers on the web (+0.71 s)<br/>Authorize
+  checkout_api->>orders_db: Shoppers on the web (+0.71 s)<br/>Order + outbox
+  orders_db-->>checkout_api: reply (+0.92 s)
+  orders_db-)outbox_relay: Shoppers on the web (+0.92 s)<br/>CDC
+  pricing-->>checkout_api: reply (+0.94 s)
+  pricing->>promotions: Shoppers on the web (+0.94 s)
+  risk-->>checkout_api: reply (+0.94 s)
+  risk->>features: Shoppers on the web (+0.94 s)
+  tax-->>checkout_api: reply (+0.96 s)
+  inventory-->>checkout_api: reply (+0.97 s)
+  inventory->>inventory_db: Shoppers on the web (+0.97 s)
+  payments-->>checkout_api: reply (+0.99 s)
+  payments->>stripe: Shoppers on the web (+0.99 s)<br/>PaymentIntent
+  features-->>risk: reply (+1.15 s)
+  promotions-->>pricing: reply (+1.15 s)
+  inventory_db-->>inventory: reply (+1.18 s)
+  inventory_db-)inventory_events: StockChanged (+1.18 s)<br/>CDC
+  outbox_relay-)orders: OrderPlaced (+1.25 s)
+  stripe-->>payments: reply (+1.37 s)
+  inventory_events-)search_indexer: StockChanged (+1.48 s)
+  orders-)fulfilment: OrderPlaced (+1.55 s)
+  orders-)loyalty: OrderPlaced (+1.55 s)
+  orders-)status_projector: OrderPlaced (+1.55 s)
+  orders-)notifier: OrderPlaced (+1.55 s)
+  orders-)lake_sink: OrderPlaced (+1.55 s)
+  search_indexer->>search_index: StockChanged (+1.83 s)<br/>Reindex
+  status_projector->>status_cache: OrderPlaced (+1.88 s)<br/>Upsert
+  notifier-)notify_q: OrderPlaced (+1.88 s)<br/>Notify
+  lake_sink->>lake: OrderPlaced (+1.89 s)<br/>Parquet
+  Note over loyalty: ✕ attempt 1 failed
+  loyalty--)orders: back to the broker after attempt 1 (+1.90 s)
+  search_index-->>search_indexer: reply (+2.04 s)
+  fulfilment->>wms: OrderPlaced (+2.05 s)<br/>Pick request
+  fulfilment-)shipments: ShipmentCreated (+2.05 s)
+  status_cache-->>status_projector: reply (+2.09 s)
+  lake-->>lake_sink: reply (+2.10 s)
+  notify_q-)email: OrderPlaced (+2.18 s)
+  orders-)loyalty: OrderPlaced (+2.20 s)
+  shipments-)notifier: ShipmentCreated (+2.35 s)
+  shipments-)status_projector: ShipmentCreated (+2.35 s)
+  wms-->>fulfilment: reply (+2.37 s)
+  Note over loyalty: ✕ attempt 2 failed
+  loyalty--)orders: back to the broker after attempt 2 (+2.56 s)
+  email->>sendgrid: OrderPlaced (+2.56 s)<br/>Mail send
+  status_projector->>status_cache: ShipmentCreated (+2.67 s)<br/>Upsert
+  notifier-)notify_q: ShipmentCreated (+2.68 s)<br/>Notify
+  orders-)loyalty: OrderPlaced (+2.86 s)
+  status_cache-->>status_projector: reply (+2.88 s)
+  sendgrid-->>email: reply (+2.98 s)
+  notify_q-)email: ShipmentCreated (+2.98 s)
+  Note over loyalty: ✕ attempt 3 failed
+  loyalty--)orders: back to the broker after attempt 3 (+3.22 s)
+  email->>sendgrid: ShipmentCreated (+3.37 s)<br/>Mail send
+  Note over orders: Dead-lettered after 3 deliveries
+  rect rgba(209, 57, 63, 0.14)
+    orders-)orders_dlq: OrderPlaced (dead letter) (+3.52 s)
+  end
+  sendgrid-->>email: reply (+3.79 s)
+  Note over web,loyalty_db: ⏱ 6.52 s waiting in Orders DLQ
+  orders_dlq-)dlq_triage: OrderPlaced (+10.51 s)
+  dlq_triage->>loyalty: OrderPlaced (+10.93 s)<br/>Replay
+  loyalty-->>dlq_triage: reply (+11.18 s)
+  loyalty->>loyalty_db: OrderPlaced (+11.18 s)<br/>Points
+  loyalty_db-->>loyalty: reply (+11.39 s)

@@ -1,0 +1,36 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "region-evacuation", "title": "us-east-1 goes dark", "playedMs": 30000, "capped": false },
+      { "id": "bad-cell-deploy", "title": "A bad deploy stays in one cell", "playedMs": 25000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      {
+        "simulation": "us-east-1 goes dark",
+        "node": "east-alb",
+        "broker": false,
+        "what": "dropped",
+        "count": 20,
+        "onPurpose": { "count": 20, "why": "down" }
+      },
+      {
+        "simulation": "A bad deploy stays in one cell",
+        "node": "east-c1-api",
+        "broker": false,
+        "what": "dropped",
+        "count": 245,
+        "onPurpose": { "count": 245, "why": "fails" }
+      }
+    ],
+    "dropped": []
+  },
+  "planned": [
+    { "node": "east-alb", "simulation": "us-east-1 goes dark", "what": "dropped", "count": 20, "why": "down" },
+    { "node": "east-c1-api", "simulation": "A bad deploy stays in one cell", "what": "dropped", "count": 245, "why": "fails" }
+  ],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 20 dropped at east-alb in “us-east-1 goes dark”; 245 dropped at east-c1-api in “A bad deploy stays in one cell”." }
+}

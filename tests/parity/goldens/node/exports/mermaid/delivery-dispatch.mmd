@@ -1,0 +1,123 @@
+---
+title: Food delivery dispatch
+---
+flowchart LR
+  subgraph g_gcp ["Google Cloud · europe-west1"]
+    glb["Global load balancer<br/>route table"]
+  end
+  subgraph g_orders ["GKE · orders"]
+    order_api["Order API"]
+    restaurant_api["Restaurant API"]
+    order_wf["Order workflow<br/>Temporal · accept to deliver"]
+    menu_api["Menu API"]
+    menu_cache[("Menu cache<br/>Memorystore")]
+    orders_db[("Orders<br/>Cloud Spanner")]
+  end
+  subgraph g_kafka ["Kafka · orders cluster"]
+    orders_topic["Order events<br/>orders.v1 · 12 partitions"]
+    ready_topic["Ready for pickup<br/>order-ready.v1 · 12 partitions"]
+    bq_sink["BigQuery sink<br/>Kafka Connect"]
+  end
+  subgraph g_kafka_loc ["Kafka · telemetry cluster"]
+    locations_topic["Courier locations<br/>locations.v1 · 8 partitions by H3 cell"]
+  end
+  subgraph g_ingest ["Courier gateway"]
+    mqtt["Courier MQTT<br/>EMQX · QoS 1"]
+    loc_ingest["Location ingest<br/>dedupe, snap to road"]
+  end
+  subgraph g_locations ["GKE · courier locations"]
+    geo_indexer["Geo indexer<br/>KEDA on lag"]
+    eta_features["ETA features<br/>speed per H3 cell"]
+    tracking["Live tracking<br/>diner map, websockets"]
+    surge["Surge pricing<br/>demand vs supply per cell"]
+  end
+  subgraph g_dispatch ["GKE · dispatch"]
+    matcher["Dispatch matcher<br/>batch match every 2 s"]
+    eta_model["ETA model<br/>pickup and drop-off"]
+    offers["Offer service<br/>accept within 30 s"]
+  end
+  subgraph g_redis ["Memorystore · Redis"]
+    surge_cache[("Delivery fees<br/>multiplier per H3 cell")]
+    geo_index[("Geo index<br/>couriers by H3 cell")]
+    features[("Feature store<br/>online features")]
+  end
+  subgraph g_notify ["Notifications"]
+    notifications["Notifications<br/>Pub/Sub"]
+    push_sender["Push sender<br/>Cloud Run"]
+  end
+  subgraph g_analytics ["Analytics and ML"]
+    bigquery[("Delivery history<br/>BigQuery")]
+    retrain["Nightly retrain<br/>Cloud Scheduler"]
+    training["ETA training<br/>Vertex AI job"]
+    registry[("Model registry<br/>versioned models")]
+  end
+  subgraph g_platform ["Platform"]
+    secrets["Secret Manager"]
+    sa["Service accounts<br/>Workload Identity"]
+    grafana["Grafana<br/>dispatch SLOs"]
+  end
+  subgraph g_partners ["Partners"]
+    stripe(["Stripe<br/>card payments"])
+    maps(["Maps routing API<br/>road ETAs"])
+  end
+  subgraph g_push_providers ["Push providers"]
+    fcm(["FCM and APNs<br/>push delivery"])
+  end
+  subgraph g_pay ["GKE · courier pay"]
+    earnings["Courier earnings"]
+    earnings_db[("Earnings ledger<br/>Cloud SQL")]
+  end
+  diners(["Diner app<br/>browse and order"])
+  restaurants(["Restaurant tablets<br/>order ready"])
+  couriers(["Courier app<br/>GPS every 4 s"])
+  diners -->|"HTTPS"| glb
+  restaurants -->|"HTTPS"| glb
+  glb -->|"Orders"| order_api
+  glb -->|"Ready"| restaurant_api
+  glb -->|"Menus"| menu_api
+  menu_api --> menu_cache
+  order_api -->|"Delivery fee"| surge_cache
+  locations_topic -.-> surge
+  surge -->|"Update"| surge_cache
+  orders_topic -.-> earnings
+  earnings --> earnings_db
+  order_api -->|"Charge"| stripe
+  order_api -->|"Start"| order_wf
+  order_wf -->|"State"| orders_db
+  order_wf -.->|"OrderAccepted"| orders_topic
+  restaurant_api -.->|"OrderReady"| ready_topic
+  orders_topic -.-> bq_sink
+  ready_topic -.-> matcher
+  couriers -.->|"LocationPing"| mqtt
+  mqtt -.-> loc_ingest
+  loc_ingest -.->|"Snapped ping"| locations_topic
+  locations_topic -.-> geo_indexer
+  locations_topic -.-> eta_features
+  locations_topic -.-> tracking
+  geo_indexer -->|"GEOADD"| geo_index
+  eta_features -->|"Update"| features
+  matcher -->|"Nearby couriers"| geo_index
+  matcher -->|"Score pairs"| eta_model
+  matcher -->|"Road ETA"| maps
+  matcher -->|"Best match"| offers
+  eta_model --> features
+  offers -.->|"CourierOffer"| notifications
+  notifications -.-> push_sender
+  push_sender -->|"Send"| fcm
+  bq_sink -->|"Rows"| bigquery
+  retrain -.->|"Run"| training
+  training -->|"New model"| registry
+  eta_model -.->|"depends on: Loads model"| registry
+  training -.->|"depends on: Reads history"| bigquery
+  order_api -.->|"reads secrets: Stripe key"| secrets
+  matcher -.->|"reads secrets: Maps key"| secrets
+  matcher -.->|"gets tokens from"| sa
+  order_api -.->|"gets tokens from"| sa
+  matcher -.->|"sends telemetry to"| grafana
+  geo_indexer -.->|"sends telemetry to"| grafana
+  linkStyle 7,9,14,15,16,17,18,19,20,21,22,23,31,32,35 stroke-dasharray: 6 4
+  linkStyle 37,38 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 39,40 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 41,42 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 43,44 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"An invented delivery company, Quayside Eats. Courier pings stream through MQTT and Kafka into a geo index by H3 cell; ready orders are matched to nearby couriers every two seconds, scored by an ETA model, and offered by push. KEDA scales the indexer up to the topic's partitions.","nodes":{"diners":["diners","client.mobile"],"restaurants":["restaurants","generic.webhook"],"couriers":["couriers","client.mobile"],"glb":["glb","gcp.cloud-load-balancing"],"mqtt":["mqtt","mqtt.broker"],"order_api":["order-api","service.go"],"restaurant_api":["restaurant-api","service.go"],"order_wf":["order-wf","temporal"],"menu_api":["menu-api","service.node"],"menu_cache":["menu-cache","redis.cache"],"orders_db":["orders-db","gcp.spanner"],"orders_topic":["orders-topic","kafka.topic"],"ready_topic":["ready-topic","kafka.topic"],"locations_topic":["locations-topic","kafka.topic"],"loc_ingest":["loc-ingest","service.go"],"geo_indexer":["geo-indexer","service.go"],"eta_features":["eta-features","flink"],"tracking":["tracking","service.node"],"surge":["surge","flink"],"surge_cache":["surge-cache","redis.cache"],"earnings":["earnings","service.java"],"earnings_db":["earnings-db","gcp.cloud-sql"],"geo_index":["geo-index","redis.cache"],"features":["features","redis.cache"],"matcher":["matcher","service.java"],"eta_model":["eta-model","generic.ml-model"],"offers":["offers","service.node"],"notifications":["notifications","gcp.pubsub"],"push_sender":["push-sender","gcp.cloud-run"],"bq_sink":["bq-sink","kafka.connect"],"bigquery":["bigquery","gcp.bigquery"],"retrain":["retrain","generic.scheduler"],"training":["training","generic.batch-job"],"registry":["registry","gcp.cloud-storage"],"secrets":["secrets","gcp.secret-manager"],"sa":["sa","gcp.service-account"],"grafana":["grafana","grafana"],"stripe":["stripe","stripe"],"maps":["maps","generic.external-api"],"fcm":["fcm","generic.push"]},"groups":{"g_gcp":["gcp","gcp"],"g_orders":["orders","k8s"],"g_kafka":["kafka","neutral"],"g_kafka_loc":["kafka-loc","neutral"],"g_ingest":["ingest","k8s"],"g_locations":["locations","k8s"],"g_dispatch":["dispatch","k8s"],"g_redis":["redis","neutral"],"g_notify":["notify","gcp"],"g_analytics":["analytics","neutral"],"g_platform":["platform","neutral"],"g_partners":["partners","neutral"],"g_push_providers":["push-providers","neutral"],"g_pay":["pay","k8s"]},"edges":["diners--glb","restaurants--glb","glb--order-api","glb--restaurant-api","glb--menu-api","menu-api--menu-cache","order-api--surge-cache","locations-topic--surge","surge--surge-cache","orders-topic--earnings","earnings--earnings-db","order-api--stripe","order-api--order-wf","order-wf--orders-db","order-wf--orders-topic","restaurant-api--ready-topic","orders-topic--bq-sink","ready-topic--matcher","couriers--mqtt","mqtt--loc-ingest","loc-ingest--locations-topic","locations-topic--geo-indexer","locations-topic--eta-features","locations-topic--tracking","geo-indexer--geo-index","eta-features--features","matcher--geo-index","matcher--eta-model","matcher--maps","matcher--offers","eta-model--features","offers--notifications","notifications--push-sender","push-sender--fcm","bq-sink--bigquery","retrain--training","training--registry","eta-model--registry","training--bigquery","order-api--secrets","matcher--secrets","matcher--sa","order-api--sa","matcher--grafana","geo-indexer--grafana"],"relations":{"37":"depends","38":"depends","39":"secret","40":"secret","41":"identity","42":"identity","43":"telemetry","44":"telemetry"}}

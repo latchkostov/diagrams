@@ -1,0 +1,4 @@
+exit 0
+VALID <repo>/src/examples/black-friday-commerce.json: 60 nodes, 73 edges, 11 boundaries, 3 simulations
+  warning: Boundary "aws" has no member nodes (set "group": "aws" on them).
+  warning: 60 nodes: consider a smaller diagram, or split it into several, so it stays readable.

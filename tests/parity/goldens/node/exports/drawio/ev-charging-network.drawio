@@ -1,0 +1,512 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-15vkwor" name="EV charging network">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_description="An invented charge-point operator, Voltaic Charge. Depot chargers reach Azure through a firewall pair and an SD-WAN edge; street chargers come in over LTE. Event Hubs fans charger events out to twins, fault detection, metering and a cold path, while drivers start sessions and firmware rolls out in waves." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;vendor-shell&quot;,&quot;title&quot;:&quot;The depot firewall blocks a vendor shell&quot;,&quot;description&quot;:&quot;Depot chargers report over the SD-WAN edge while the charger vendor tries to open a remote shell on them. The firewall's rule lets OCPP out and denies the shell: blocked on purpose, never counted as lost.&quot;,&quot;seed&quot;:51,&quot;scale&quot;:5,&quot;durationMs&quot;:20000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;depot&quot;,&quot;node&quot;:&quot;depot-chargers&quot;,&quot;label&quot;:&quot;Depot chargers&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:60,&quot;durationMs&quot;:16000}},{&quot;id&quot;:&quot;street&quot;,&quot;node&quot;:&quot;street&quot;,&quot;label&quot;:&quot;Street chargers&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:300,&quot;durationMs&quot;:16000}},{&quot;id&quot;:&quot;shell&quot;,&quot;node&quot;:&quot;vendor&quot;,&quot;label&quot;:&quot;Remote shell attempts&quot;,&quot;messageType&quot;:&quot;VendorRemoteShell&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:10,&quot;fromMs&quot;:3000,&quot;durationMs&quot;:8000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Depot chargers reach the cloud through the switch, a firewall pair and the SD-WAN edge. Street chargers come in over LTE.&quot;,&quot;focus&quot;:[&quot;depot-chargers&quot;,&quot;depot-switch&quot;,&quot;depot-fw&quot;,&quot;depot-router&quot;,&quot;street&quot;]}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The charger vendor tries to open a remote shell into the depot. Its sessions reach the firewall.&quot;,&quot;focus&quot;:[&quot;vendor&quot;,&quot;depot-router&quot;,&quot;depot-fw&quot;]}},{&quot;atMs&quot;:6000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The firewall's deny rule stops every one. Blocked is the rule working, not a loss; vendor support goes through a ticketed jump host instead.&quot;,&quot;focus&quot;:[&quot;depot-fw&quot;,&quot;depot-switch&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;blocked&quot;,&quot;label&quot;:&quot;The firewall blocks the vendor shell&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;depot-fw&quot;,&quot;field&quot;:&quot;blocked&quot;},&quot;op&quot;:&quot;&gt;=&quot;,&quot;value&quot;:50,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-drops&quot;,&quot;label&quot;:&quot;The firewall drops nothing&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;depot-fw&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;},{&quot;id&quot;:&quot;telemetry&quot;,&quot;label&quot;:&quot;Depot telemetry keeps flowing&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ingress&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:5000,&quot;when&quot;:&quot;end&quot;}]},{&quot;id&quot;:&quot;reboot-storm&quot;,&quot;title&quot;:&quot;A firmware wave reboots the street fleet&quot;,&quot;description&quot;:&quot;A firmware wave reboots the street chargers, and every one reconnects with a BootNotification at once. Event Hubs absorbs the burst; each consumer group drains its own lag at its own pace.&quot;,&quot;seed&quot;:52,&quot;scale&quot;:20,&quot;durationMs&quot;:30000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;depot&quot;,&quot;node&quot;:&quot;depot-chargers&quot;,&quot;label&quot;:&quot;Depot chargers&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:60,&quot;durationMs&quot;:24000}},{&quot;id&quot;:&quot;street&quot;,&quot;node&quot;:&quot;street&quot;,&quot;label&quot;:&quot;Street chargers&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:300,&quot;durationMs&quot;:24000}},{&quot;id&quot;:&quot;boots&quot;,&quot;node&quot;:&quot;street&quot;,&quot;label&quot;:&quot;Reconnect burst&quot;,&quot;messageType&quot;:&quot;BootNotification&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:12000,&quot;atMs&quot;:4000,&quot;spreadMs&quot;:3000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Four consumer groups read charger events: twins, fault detection, metering and capture to the lake.&quot;,&quot;focus&quot;:[&quot;events&quot;,&quot;state&quot;,&quot;faults&quot;,&quot;metering&quot;,&quot;raw&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The firmware wave lands: 12,000 reconnect messages in three seconds.&quot;,&quot;focus&quot;:[&quot;street&quot;,&quot;ingress&quot;,&quot;ocpp&quot;,&quot;events&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Event Hubs holds the burst. The twin updater works through its lag; fault detection and metering keep their own pace.&quot;,&quot;focus&quot;:[&quot;events&quot;,&quot;state&quot;,&quot;state-db&quot;]}},{&quot;atMs&quot;:18000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Every group has caught up, and nothing was dropped.&quot;}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;absorbed&quot;,&quot;label&quot;:&quot;The twin updater falls behind for a while&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;events&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;state&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:1000,&quot;when&quot;:&quot;eventually&quot;},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;Every reconnect reaches the twins&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;events&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;state&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;nothing-lost&quot;,&quot;label&quot;:&quot;Nothing is dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ocpp&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;firewall-failover&quot;,&quot;title&quot;:&quot;The depot firewall fails over&quot;,&quot;description&quot;:&quot;The active depot firewall dies. For three seconds, while the standby takes over its sessions, depot telemetry waits at the pair; nothing is dropped.&quot;,&quot;seed&quot;:53,&quot;scale&quot;:1,&quot;durationMs&quot;:16000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;depot&quot;,&quot;node&quot;:&quot;depot-chargers&quot;,&quot;label&quot;:&quot;Depot chargers&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:60,&quot;durationMs&quot;:12000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;One firewall in the pair carries the depot's traffic; the other stands by.&quot;,&quot;focus&quot;:[&quot;depot-fw&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;depot-fw&quot;,&quot;props&quot;:{&quot;replicas&quot;:1}}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The active unit fails. Traffic waits at the pair while the standby takes over.&quot;,&quot;focus&quot;:[&quot;depot-fw&quot;,&quot;depot-switch&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The standby carries everything. Nothing was lost, but the pair has no spare until the failed unit is replaced.&quot;,&quot;focus&quot;:[&quot;depot-fw&quot;,&quot;depot-router&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;waits&quot;,&quot;label&quot;:&quot;Telemetry waits during the failover&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;depot-fw&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:50,&quot;when&quot;:&quot;eventually&quot;},{&quot;id&quot;:&quot;no-drops&quot;,&quot;label&quot;:&quot;The firewall never drops a message&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;depot-fw&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]}]" dg_planning="{&quot;revision&quot;:&quot;p3-a1&quot;}">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-a-zone-ot" label="OT sites · outbound-only" dg_id="zone-ot" dg_annotation="zone" dg_color="green" dg_text="OT sites · outbound-only">
+          <mxCell style="rounded=1;arcSize=6;absoluteArcSize=1;html=1;whiteSpace=wrap;dashed=1;dashPattern=8 6;align=left;verticalAlign=top;spacingLeft=14;spacingTop=6;fontStyle=1;fontSize=14;fillColor=#DCF5E8;fillOpacity=55;strokeColor=#1F9D61;fontColor=#1F9D61;" vertex="1" parent="1">
+            <mxGeometry x="-70" y="86" width="1620" height="576" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-depot" label="Depot · Harbour Road bus garage" dg_id="depot" dg_tone="onprem">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#64748B;strokeColor=#64748B;" vertex="1" parent="1">
+            <mxGeometry x="-40" y="136" width="1560" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-depot2" label="Depot · Quay Street van yard" dg_id="depot2" dg_tone="onprem">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#64748B;strokeColor=#64748B;" vertex="1" parent="1">
+            <mxGeometry x="-40" y="456" width="1560" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-azure" label="Azure · West Europe" dg_id="azure" dg_tone="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#0078D4;strokeColor=#0078D4;" vertex="1" parent="1">
+            <mxGeometry x="1860" y="-68" width="2553" height="1540" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-ingest" label="AKS · charger connectivity" dg_id="ingest" dg_tone="k8s" dg_group="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#326CE5;strokeColor=#326CE5;" vertex="1" parent="1">
+            <mxGeometry x="1900" y="136" width="722" height="456" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-hub" label="Event Hubs · charger events" dg_id="hub" dg_tone="azure" dg_group="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#0078D4;strokeColor=#0078D4;" vertex="1" parent="1">
+            <mxGeometry x="2740" y="136" width="327" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-hot" label="Hot path" dg_id="hot" dg_tone="neutral" dg_group="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3220" y="-4" width="1140" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-sessions" label="AKS · sessions and billing" dg_id="sessions" dg_tone="k8s" dg_group="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#326CE5;strokeColor=#326CE5;" vertex="1" parent="1">
+            <mxGeometry x="1900" y="716" width="1140" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-ota" label="Firmware and commands" dg_id="ota" dg_tone="neutral" dg_group="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="1900" y="1116" width="1140" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-cold" label="Cold path" dg_id="cold" dg_tone="neutral" dg_group="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3220" y="436" width="720" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-platform" label="Platform" dg_id="platform" dg_tone="neutral" dg_group="azure">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3220" y="1116" width="1153" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-partners" label="Partners" dg_id="partners" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="4580" y="576" width="300" height="456" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot-chargers" label="Depot chargers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;60 bus chargers · OCPP&lt;/span&gt;" dg_id="depot-chargers" dg_stencil="client.iot" dg_props="{&quot;ratePerSec&quot;:60,&quot;messageType&quot;:&quot;MeterValues&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#14B8A61A;strokeColor=#14B8A6;fontSize=12;" vertex="1" parent="dg-g-depot">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot-switch" label="Depot switch&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;charger VLAN&lt;/span&gt;" dg_id="depot-switch" dg_stencil="cisco.catalyst" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-depot">
+            <mxGeometry x="480" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot-fw" label="Depot firewall pair&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;active-standby&lt;/span&gt;" dg_id="depot-fw" dg_stencil="paloalto.ngfw" dg_props="{&quot;size&quot;:&quot;branch&quot;,&quot;ha&quot;:&quot;active-standby&quot;,&quot;replicas&quot;:2,&quot;failoverMs&quot;:3000}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FA582D1A;strokeColor=#FA582D;fontSize=12;" vertex="1" parent="dg-g-depot">
+            <mxGeometry x="900" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot-router" label="SD-WAN edge&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;dual LTE and fibre&lt;/span&gt;" dg_id="depot-router" dg_stencil="cisco.isr" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#049FD91A;strokeColor=#049FD9;fontSize=12;" vertex="1" parent="dg-g-depot">
+            <mxGeometry x="1320" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot2-chargers" label="Van chargers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;40 chargers · OCPP&lt;/span&gt;" dg_id="depot2-chargers" dg_stencil="client.iot" dg_props="{&quot;ratePerSec&quot;:40,&quot;messageType&quot;:&quot;MeterValues&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#14B8A61A;strokeColor=#14B8A6;fontSize=12;" vertex="1" parent="dg-g-depot2">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot2-switch" label="Yard switch&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;charger VLAN&lt;/span&gt;" dg_id="depot2-switch" dg_stencil="juniper.ex" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5E8C1F1A;strokeColor=#5E8C1F;fontSize=12;" vertex="1" parent="dg-g-depot2">
+            <mxGeometry x="480" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot2-fw" label="Yard firewall&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;standalone&lt;/span&gt;" dg_id="depot2-fw" dg_stencil="juniper.srx" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5E8C1F1A;strokeColor=#5E8C1F;fontSize=12;" vertex="1" parent="dg-g-depot2">
+            <mxGeometry x="900" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-depot2-router" label="Yard router&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;fibre&lt;/span&gt;" dg_id="depot2-router" dg_stencil="juniper.mx" dg_props="{&quot;size&quot;:&quot;branch&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5E8C1F1A;strokeColor=#5E8C1F;fontSize=12;" vertex="1" parent="dg-g-depot2">
+            <mxGeometry x="1320" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vendor" label="Charger vendor&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;remote support&lt;/span&gt;" dg_id="vendor" dg_stencil="client.team" dg_props="{&quot;ratePerSec&quot;:2,&quot;messageType&quot;:&quot;VendorRemoteShell&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3B82F61A;strokeColor=#3B82F6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1280" y="-54" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-street" label="Street chargers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;1,800 chargers · LTE&lt;/span&gt;" dg_id="street" dg_stencil="client.iot" dg_props="{&quot;ratePerSec&quot;:300,&quot;messageType&quot;:&quot;MeterValues&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#14B8A61A;strokeColor=#14B8A6;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1280" y="786" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-drivers" label="Driver app&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;start, stop, pay&lt;/span&gt;" dg_id="drivers" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:20,&quot;messageType&quot;:&quot;StartSession&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="1280" y="1006" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ingress" label="OCPP ingress&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;mTLS, WAF&lt;/span&gt;" dg_id="ingress" dg_stencil="azure.app-gateway" dg_props="{&quot;latencyMs&quot;:0,&quot;jitter&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/networking/Application_Gateways.svg;" vertex="1" parent="dg-g-ingest">
+            <mxGeometry x="122" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ocpp" label="OCPP gateway&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;websockets per charger&lt;/span&gt;" dg_id="ocpp" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:6,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-ingest">
+            <mxGeometry x="480" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-commands" label="Command dispatcher&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;remote start, firmware&lt;/span&gt;" dg_id="commands" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:20,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-ingest">
+            <mxGeometry x="480" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-registry" label="Device registry&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;certificates, owners&lt;/span&gt;" dg_id="registry" dg_stencil="azure.cosmos-db" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;" vertex="1" parent="dg-g-ingest">
+            <mxGeometry x="542" y="212" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-events" label="Charger events&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;32 partitions · capture on&lt;/span&gt;" dg_id="events" dg_stencil="azure.event-hubs" dg_props="{&quot;partitions&quot;:32}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/analytics/Event_Hubs.svg;" vertex="1" parent="dg-g-hub">
+            <mxGeometry x="122" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-state" label="Twin updater&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;desired vs reported&lt;/span&gt;" dg_id="state" dg_stencil="azure.container-apps" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:16,&quot;latencyMs&quot;:20,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/other/Worker_Container_App.svg;" vertex="1" parent="dg-g-hot">
+            <mxGeometry x="122" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-state-db" label="Charger twins&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Cosmos DB&lt;/span&gt;" dg_id="state-db" dg_stencil="azure.cosmos-db" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;" vertex="1" parent="dg-g-hot">
+            <mxGeometry x="542" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-faults" label="Fault detection&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;windows per charger&lt;/span&gt;" dg_id="faults" dg_stencil="flink" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E6526F1A;strokeColor=#E6526F;fontSize=12;" vertex="1" parent="dg-g-hot">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-alerts" label="Fault alerts&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Event Grid&lt;/span&gt;" dg_id="alerts" dg_stencil="azure.event-grid">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Event_Grid_Topics.svg;" vertex="1" parent="dg-g-hot">
+            <mxGeometry x="542" y="212" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-oncall" label="Field service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;dispatch a technician&lt;/span&gt;" dg_id="oncall" dg_stencil="azure.logic-apps" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:1,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:300,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Logic_Apps.svg;" vertex="1" parent="dg-g-hot">
+            <mxGeometry x="962" y="212" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-apim" label="Driver API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;API Management&lt;/span&gt;" dg_id="apim" dg_stencil="azure.api-management" dg_props="{&quot;latencyMs&quot;:0,&quot;jitter&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/API_Management_Services.svg;" vertex="1" parent="dg-g-sessions">
+            <mxGeometry x="122" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-sessions-api" label="Sessions API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;start, stop, receipts&lt;/span&gt;" dg_id="sessions-api" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:3,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0,&quot;emits&quot;:&quot;RemoteStart&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-sessions">
+            <mxGeometry x="480" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-metering" label="Metering&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;kWh per session&lt;/span&gt;" dg_id="metering" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:20,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-sessions">
+            <mxGeometry x="480" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-sessions-db" label="Sessions&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Azure SQL&lt;/span&gt;" dg_id="sessions-db" dg_stencil="azure.sql" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/databases/SQL_Database.svg;" vertex="1" parent="dg-g-sessions">
+            <mxGeometry x="962" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-billing" label="Billing&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;tariffs, invoices&lt;/span&gt;" dg_id="billing" dg_stencil="service.dotnet" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:16,&quot;latencyMs&quot;:60,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#512BD41A;strokeColor=#512BD4;fontSize=12;" vertex="1" parent="dg-g-sessions">
+            <mxGeometry x="900" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cmd-q" label="Charger commands&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Service Bus&lt;/span&gt;" dg_id="cmd-q" dg_stencil="azure.service-bus.queue" dg_props="{&quot;maxDeliveryCount&quot;:5}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="dg-g-ota">
+            <mxGeometry x="962" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cmd-dlq" label="Commands DLQ&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Service Bus&lt;/span&gt;" dg_id="cmd-dlq" dg_stencil="azure.service-bus.queue">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/integration/Service_Bus.svg;" vertex="1" parent="dg-g-ota">
+            <mxGeometry x="962" y="212" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-rollout" label="Firmware rollout&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;5% waves&lt;/span&gt;" dg_id="rollout" dg_stencil="generic.scheduler" dg_props="{&quot;ratePerSec&quot;:0.2,&quot;messageType&quot;:&quot;FirmwareJob&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#64748B1A;strokeColor=#64748B;fontSize=12;" vertex="1" parent="dg-g-ota">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-firmware" label="Firmware campaigns&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;stage, then notify&lt;/span&gt;" dg_id="firmware" dg_stencil="azure.functions" dg_props="{&quot;preset&quot;:&quot;managed-measured&quot;,&quot;presetRevision&quot;:&quot;2026-10-14&quot;,&quot;latencyMs&quot;:80,&quot;jitter&quot;:0,&quot;failureRate&quot;:0,&quot;scaling&quot;:&quot;auto&quot;,&quot;maxConcurrency&quot;:10}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/compute/Function_Apps.svg;" vertex="1" parent="dg-g-ota">
+            <mxGeometry x="542" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-images" label="Firmware images&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;signed builds&lt;/span&gt;" dg_id="images" dg_stencil="azure.blob-storage" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/storage/Storage_Accounts.svg;" vertex="1" parent="dg-g-ota">
+            <mxGeometry x="542" y="212" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-raw" label="Raw telemetry&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;ADLS · Parquet&lt;/span&gt;" dg_id="raw" dg_stencil="azure.blob-storage" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/storage/Storage_Accounts.svg;" vertex="1" parent="dg-g-cold">
+            <mxGeometry x="122" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-lakehouse" label="Energy analytics&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;daily load curves&lt;/span&gt;" dg_id="lakehouse" dg_stencil="databricks" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FF36211A;strokeColor=#FF3621;fontSize=12;" vertex="1" parent="dg-g-cold">
+            <mxGeometry x="480" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-reports" label="Daily reports&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;02:00&lt;/span&gt;" dg_id="reports" dg_stencil="generic.scheduler" dg_props="{&quot;ratePerSec&quot;:0.05,&quot;messageType&quot;:&quot;ReportRun&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#64748B1A;strokeColor=#64748B;fontSize=12;" vertex="1" parent="dg-g-cold">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-report-job" label="Grid reports&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;per substation&lt;/span&gt;" dg_id="report-job" dg_stencil="generic.batch-job" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:1,&quot;concurrency&quot;:1,&quot;latencyMs&quot;:2000,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#A855F71A;strokeColor=#A855F7;fontSize=12;" vertex="1" parent="dg-g-cold">
+            <mxGeometry x="480" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-kv" label="Key Vault&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;charger certificates&lt;/span&gt;" dg_id="kv" dg_stencil="azure.key-vault">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/security/Key_Vaults.svg;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="122" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-mi" label="Managed identities" dg_id="mi" dg_stencil="azure.managed-identity">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/identity/Managed_Identities.svg;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="542" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-insights" label="Application Insights" dg_id="insights" dg_stencil="azure.app-insights">
+          <mxCell style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/devops/Application_Insights.svg;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="962" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-roaming" label="Roaming hub&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;OCPI · partner CDRs&lt;/span&gt;" dg_id="roaming" dg_stencil="generic.external-api" dg_props="{&quot;preset&quot;:&quot;managed-measured&quot;,&quot;presetRevision&quot;:&quot;2026-10-14&quot;,&quot;latencyMs&quot;:150,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0,&quot;api&quot;:{&quot;maxInFlight&quot;:20,&quot;quotas&quot;:[{&quot;id&quot;:&quot;ocpi-rate&quot;,&quot;unit&quot;:&quot;requests&quot;,&quot;amount&quot;:20,&quot;windowMs&quot;:1000,&quot;algorithm&quot;:&quot;token-bucket&quot;}]}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="dg-g-partners">
+            <mxGeometry x="60" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-stripe" label="Stripe&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;card payments&lt;/span&gt;" dg_id="stripe" dg_stencil="stripe" dg_props="{&quot;preset&quot;:&quot;managed-measured&quot;,&quot;presetRevision&quot;:&quot;2026-10-14&quot;,&quot;latencyMs&quot;:200,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#635BFF1A;strokeColor=#635BFF;fontSize=12;" vertex="1" parent="dg-g-partners">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dso" label="Grid operator&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;load reports&lt;/span&gt;" dg_id="dso" dg_stencil="client.partner">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F973161A;strokeColor=#F97316;fontSize=12;" vertex="1" parent="dg-g-partners">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-note-ocpp" label="OCPP over TLS: chargers hold a websocket to the gateway. Commands and firmware jobs go back down the same socket." dg_id="note-ocpp" dg_annotation="note" dg_text="OCPP over TLS: chargers hold a websocket to the gateway. Commands and firmware jobs go back down the same socket.">
+          <mxCell style="shape=note;html=1;whiteSpace=wrap;backgroundOutline=1;size=14;align=left;verticalAlign=top;spacing=10;fontSize=14;fillColor=#FFF4C2;strokeColor=#E0A800;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="800" width="300" height="150" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot-chargers--depot-switch" label="OCPP" dg_id="depot-chargers--depot-switch" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot-chargers" target="dg-n-depot-switch">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot-switch--depot-fw" label="" dg_id="depot-switch--depot-fw" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;MeterValues&quot;,&quot;StatusNotification&quot;,&quot;BootNotification&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot-switch" target="dg-n-depot-fw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot-fw--depot-router" label="Allow: OCPP out" dg_id="depot-fw--depot-router" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;MeterValues&quot;,&quot;StatusNotification&quot;,&quot;BootNotification&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot-fw" target="dg-n-depot-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot-router--ingress" label="TLS" dg_id="depot-router--ingress" dg_kind="sync" dg_props="{&quot;filter&quot;:[&quot;MeterValues&quot;,&quot;StatusNotification&quot;,&quot;BootNotification&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot-router" target="dg-n-ingress">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-vendor--depot-router" label="Remote shell" dg_id="vendor--depot-router" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-vendor" target="dg-n-depot-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-router-in" label="" dg_id="router-in" dg_kind="async" dg_props="{&quot;filter&quot;:[&quot;VendorRemoteShell&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-depot-router" target="dg-n-depot-fw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-deny-vendor-shell" label="Deny: vendor shell" dg_id="deny-vendor-shell" dg_kind="async" dg_props="{&quot;filter&quot;:[&quot;VendorRemoteShell&quot;],&quot;deny&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-depot-fw" target="dg-n-depot-switch">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-street--ingress" label="TLS" dg_id="street--ingress" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-street" target="dg-n-ingress">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot2-chargers--depot2-switch" label="OCPP" dg_id="depot2-chargers--depot2-switch" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot2-chargers" target="dg-n-depot2-switch">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot2-switch--depot2-fw" label="" dg_id="depot2-switch--depot2-fw" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot2-switch" target="dg-n-depot2-fw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot2-fw--depot2-router" label="Allow: OCPP out" dg_id="depot2-fw--depot2-router" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot2-fw" target="dg-n-depot2-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-depot2-router--ingress" label="TLS" dg_id="depot2-router--ingress" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-depot2-router" target="dg-n-ingress">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ocpp--registry" label="Charger identity" dg_id="ocpp--registry" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-ocpp" target="dg-n-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--ocpp" label="" dg_id="ingress--ocpp" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-ocpp">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ocpp--events" label="Charger events" dg_id="ocpp--events" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ocpp" target="dg-n-events">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-events--state" label="" dg_id="events--state" dg_kind="async" dg_props="{&quot;group&quot;:&quot;state&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-events" target="dg-n-state">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-events--faults" label="" dg_id="events--faults" dg_kind="async" dg_props="{&quot;group&quot;:&quot;faults&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-events" target="dg-n-faults">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-events--metering" label="" dg_id="events--metering" dg_kind="async" dg_props="{&quot;group&quot;:&quot;metering&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-events" target="dg-n-metering">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-events--raw" label="Capture" dg_id="events--raw" dg_kind="async" dg_props="{&quot;group&quot;:&quot;capture&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-events" target="dg-n-raw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-state--state-db" label="Reported" dg_id="state--state-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-state" target="dg-n-state-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-faults--alerts" label="Fault" dg_id="faults--alerts" dg_kind="sync" dg_props="{&quot;emits&quot;:&quot;ChargerFault&quot;,&quot;share&quot;:0.01}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-faults" target="dg-n-alerts">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-alerts--oncall" label="" dg_id="alerts--oncall" dg_kind="async" dg_props="{&quot;group&quot;:&quot;field-service&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-alerts" target="dg-n-oncall">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-drivers--apim" label="HTTPS" dg_id="drivers--apim" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-drivers" target="dg-n-apim">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-apim--sessions-api" label="" dg_id="apim--sessions-api" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-apim" target="dg-n-sessions-api">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-sessions-api--sessions-db" label="Session" dg_id="sessions-api--sessions-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-sessions-api" target="dg-n-sessions-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-sessions-api--cmd-q" label="RemoteStart" dg_id="sessions-api--cmd-q" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-sessions-api" target="dg-n-cmd-q">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-metering--sessions-db" label="kWh" dg_id="metering--sessions-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-metering" target="dg-n-sessions-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-sessions-db--billing" label="Session closed" dg_id="sessions-db--billing" dg_kind="async" dg_props="{&quot;filter&quot;:[&quot;StartSession&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-sessions-db" target="dg-n-billing">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-billing--stripe" label="Charge" dg_id="billing--stripe" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-billing" target="dg-n-stripe">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-billing--roaming" label="CDR" dg_id="billing--roaming" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-billing" target="dg-n-roaming">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-cmd-q--commands" label="" dg_id="cmd-q--commands" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-cmd-q" target="dg-n-commands">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-cmd-q--cmd-dlq" label="After 5 tries" dg_id="cmd-q--cmd-dlq" dg_kind="async" dg_props="{&quot;dlq&quot;:true}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-cmd-q" target="dg-n-cmd-dlq">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-rollout--firmware" label="Wave" dg_id="rollout--firmware" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-rollout" target="dg-n-firmware">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-firmware--images" label="Stage" dg_id="firmware--images" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-firmware" target="dg-n-images">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-firmware--cmd-q" label="UpdateFirmware" dg_id="firmware--cmd-q" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-firmware" target="dg-n-cmd-q">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-cmd-dlq--firmware" label="Retry wave" dg_id="cmd-dlq--firmware" dg_kind="async" dg_props="{&quot;filter&quot;:[&quot;UpdateFirmware&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-cmd-dlq" target="dg-n-firmware">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-reports--report-job" label="Run" dg_id="reports--report-job" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-reports" target="dg-n-report-job">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-report-job--lakehouse" label="Query" dg_id="report-job--lakehouse" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-report-job" target="dg-n-lakehouse">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-report-job--dso" label="Upload" dg_id="report-job--dso" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-report-job" target="dg-n-dso">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-lakehouse--raw" label="Reads" dg_id="lakehouse--raw" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-lakehouse" target="dg-n-raw">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--kv" label="Charger CA" dg_id="ingress--kv" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-kv">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ocpp--mi" label="" dg_id="ocpp--mi" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-ocpp" target="dg-n-mi">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--mi" label="" dg_id="ingress--mi" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-mi">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-commands--mi" label="" dg_id="commands--mi" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-commands" target="dg-n-mi">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ocpp--insights" label="" dg_id="ocpp--insights" dg_kind="async" dg_relation="telemetry">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#7C6D98;dashed=1;dashPattern=1 4;dfRelation=telemetry;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-ocpp" target="dg-n-insights">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-sessions-api--insights" label="" dg_id="sessions-api--insights" dg_kind="async" dg_relation="telemetry">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#7C6D98;dashed=1;dashPattern=1 4;dfRelation=telemetry;" edge="1" parent="1" source="dg-n-sessions-api" target="dg-n-insights">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

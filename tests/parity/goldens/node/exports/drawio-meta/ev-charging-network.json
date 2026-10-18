@@ -1,0 +1,744 @@
+{
+  "withIcons": {
+    "sha256": "ee14a17e1165d02bd5d6e4b8cd5b138538b7a3663535955541aeaab52dec505a",
+    "bytes": 168613,
+    "inlined": {
+      "cisco.catalyst": "net-switch c2f4dc3f7e8bbddd",
+      "cisco.isr": "net-router 470e17f3277c44a1",
+      "client.iot": "client-iot c4957dc688caa786",
+      "client.mobile": "client-mobile d67b2ae30eb449e3",
+      "client.partner": "client-partner ab557544ad77cdc8",
+      "client.team": "client-team 932a5c20d72853c7",
+      "databricks": "databricks e12c620773a11ca3",
+      "flink": "flink c8f2d493877447b7",
+      "generic.batch-job": "generic-batch-job b4b740a6bd33435a",
+      "generic.external-api": "generic-external-api 8115696d1b46c6c6",
+      "generic.scheduler": "generic-scheduler e9060d1f29acbbe0",
+      "juniper.ex": "net-switch c2f4dc3f7e8bbddd",
+      "juniper.mx": "net-router 470e17f3277c44a1",
+      "juniper.srx": "net-firewall 6643d189423b9fb6",
+      "paloalto.ngfw": "net-firewall 6643d189423b9fb6",
+      "service.dotnet": "dotnet 625b7d68f63c47d9",
+      "service.go": "go 6f494b4da5a84f2a",
+      "service.java": "java a7012363e0756258",
+      "stripe": "stripe 2a95514be7dd30ec"
+    }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "EV charging network",
+        "description": "An invented charge-point operator, Voltaic Charge. Depot chargers reach Azure through a firewall pair and an SD-WAN edge; street chargers come in over LTE. Event Hubs fans charger events out to twins, fault detection, metering and a cold path, while drivers start sessions and firmware rolls out in waves.",
+        "direction": "LR",
+        "groups": [
+          { "id": "depot", "label": "Depot · Harbour Road bus garage", "tone": "onprem", "x": -40, "y": 136, "width": 1560, "height": 176 },
+          { "id": "depot2", "label": "Depot · Quay Street van yard", "tone": "onprem", "x": -40, "y": 456, "width": 1560, "height": 176 },
+          { "id": "azure", "label": "Azure · West Europe", "tone": "azure", "x": 1860, "y": -68, "width": 2553, "height": 1540 },
+          { "id": "ingest", "label": "AKS · charger connectivity", "tone": "k8s", "x": 1900, "y": 136, "width": 722, "height": 456, "group": "azure" },
+          { "id": "hub", "label": "Event Hubs · charger events", "tone": "azure", "x": 2740, "y": 136, "width": 327, "height": 176, "group": "azure" },
+          { "id": "hot", "label": "Hot path", "tone": "neutral", "x": 3220, "y": -4, "width": 1140, "height": 316, "group": "azure" },
+          { "id": "sessions", "label": "AKS · sessions and billing", "tone": "k8s", "x": 1900, "y": 716, "width": 1140, "height": 316, "group": "azure" },
+          { "id": "ota", "label": "Firmware and commands", "tone": "neutral", "x": 1900, "y": 1116, "width": 1140, "height": 316, "group": "azure" },
+          { "id": "cold", "label": "Cold path", "tone": "neutral", "x": 3220, "y": 436, "width": 720, "height": 316, "group": "azure" },
+          { "id": "platform", "label": "Platform", "tone": "neutral", "x": 3220, "y": 1116, "width": 1153, "height": 176, "group": "azure" },
+          { "id": "partners", "label": "Partners", "tone": "neutral", "x": 4580, "y": 576, "width": 300, "height": 456 }
+        ],
+        "nodes": [
+          {
+            "id": "depot-chargers",
+            "stencil": "client.iot",
+            "label": "Depot chargers",
+            "sublabel": "60 bus chargers · OCPP",
+            "x": 0,
+            "y": 200,
+            "props": { "ratePerSec": 60, "messageType": "MeterValues" },
+            "group": "depot"
+          },
+          {
+            "id": "depot-switch",
+            "stencil": "cisco.catalyst",
+            "label": "Depot switch",
+            "sublabel": "charger VLAN",
+            "x": 420,
+            "y": 200,
+            "props": { "size": "branch" },
+            "group": "depot"
+          },
+          {
+            "id": "depot-fw",
+            "stencil": "paloalto.ngfw",
+            "label": "Depot firewall pair",
+            "sublabel": "active-standby",
+            "x": 840,
+            "y": 200,
+            "props": { "size": "branch", "ha": "active-standby", "replicas": 2, "failoverMs": 3000 },
+            "group": "depot"
+          },
+          {
+            "id": "depot-router",
+            "stencil": "cisco.isr",
+            "label": "SD-WAN edge",
+            "sublabel": "dual LTE and fibre",
+            "x": 1260,
+            "y": 200,
+            "props": { "size": "branch" },
+            "group": "depot"
+          },
+          {
+            "id": "depot2-chargers",
+            "stencil": "client.iot",
+            "label": "Van chargers",
+            "sublabel": "40 chargers · OCPP",
+            "x": 0,
+            "y": 520,
+            "props": { "ratePerSec": 40, "messageType": "MeterValues" },
+            "group": "depot2"
+          },
+          {
+            "id": "depot2-switch",
+            "stencil": "juniper.ex",
+            "label": "Yard switch",
+            "sublabel": "charger VLAN",
+            "x": 420,
+            "y": 520,
+            "props": { "size": "branch" },
+            "group": "depot2"
+          },
+          {
+            "id": "depot2-fw",
+            "stencil": "juniper.srx",
+            "label": "Yard firewall",
+            "sublabel": "standalone",
+            "x": 840,
+            "y": 520,
+            "props": { "size": "branch" },
+            "group": "depot2"
+          },
+          {
+            "id": "depot2-router",
+            "stencil": "juniper.mx",
+            "label": "Yard router",
+            "sublabel": "fibre",
+            "x": 1260,
+            "y": 520,
+            "props": { "size": "branch" },
+            "group": "depot2"
+          },
+          {
+            "id": "vendor",
+            "stencil": "client.team",
+            "label": "Charger vendor",
+            "sublabel": "remote support",
+            "x": 1260,
+            "y": -60,
+            "props": { "ratePerSec": 2, "messageType": "VendorRemoteShell" }
+          },
+          {
+            "id": "street",
+            "stencil": "client.iot",
+            "label": "Street chargers",
+            "sublabel": "1,800 chargers · LTE",
+            "x": 1260,
+            "y": 780,
+            "props": { "ratePerSec": 300, "messageType": "MeterValues" }
+          },
+          {
+            "id": "drivers",
+            "stencil": "client.mobile",
+            "label": "Driver app",
+            "sublabel": "start, stop, pay",
+            "x": 1260,
+            "y": 1000,
+            "props": { "ratePerSec": 20, "messageType": "StartSession" }
+          },
+          {
+            "id": "ingress",
+            "stencil": "azure.app-gateway",
+            "label": "OCPP ingress",
+            "sublabel": "mTLS, WAF",
+            "x": 1940,
+            "y": 200,
+            "props": { "latencyMs": 0, "jitter": 0 },
+            "group": "ingest"
+          },
+          {
+            "id": "ocpp",
+            "stencil": "service.go",
+            "label": "OCPP gateway",
+            "sublabel": "websockets per charger",
+            "x": 2360,
+            "y": 200,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 6, "concurrency": 128, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "ingest"
+          },
+          {
+            "id": "commands",
+            "stencil": "service.go",
+            "label": "Command dispatcher",
+            "sublabel": "remote start, firmware",
+            "x": 2360,
+            "y": 480,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+            "group": "ingest"
+          },
+          {
+            "id": "registry",
+            "stencil": "azure.cosmos-db",
+            "label": "Device registry",
+            "sublabel": "certificates, owners",
+            "x": 2360,
+            "y": 340,
+            "props": { "latencyMs": 0 },
+            "group": "ingest"
+          },
+          {
+            "id": "events",
+            "stencil": "azure.event-hubs",
+            "label": "Charger events",
+            "sublabel": "32 partitions · capture on",
+            "x": 2780,
+            "y": 200,
+            "props": { "partitions": 32 },
+            "group": "hub"
+          },
+          {
+            "id": "state",
+            "stencil": "azure.container-apps",
+            "label": "Twin updater",
+            "sublabel": "desired vs reported",
+            "x": 3260,
+            "y": 60,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+            "group": "hot"
+          },
+          {
+            "id": "state-db",
+            "stencil": "azure.cosmos-db",
+            "label": "Charger twins",
+            "sublabel": "Cosmos DB",
+            "x": 3680,
+            "y": 60,
+            "props": { "latencyMs": 0 },
+            "group": "hot"
+          },
+          {
+            "id": "faults",
+            "stencil": "flink",
+            "label": "Fault detection",
+            "sublabel": "windows per charger",
+            "x": 3260,
+            "y": 200,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "hot"
+          },
+          { "id": "alerts", "stencil": "azure.event-grid", "label": "Fault alerts", "sublabel": "Event Grid", "x": 3680, "y": 200, "group": "hot" },
+          {
+            "id": "oncall",
+            "stencil": "azure.logic-apps",
+            "label": "Field service",
+            "sublabel": "dispatch a technician",
+            "x": 4100,
+            "y": 200,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 8, "latencyMs": 300, "jitter": 0.1, "failureRate": 0 },
+            "group": "hot"
+          },
+          {
+            "id": "apim",
+            "stencil": "azure.api-management",
+            "label": "Driver API",
+            "sublabel": "API Management",
+            "x": 1940,
+            "y": 780,
+            "props": { "latencyMs": 0, "jitter": 0 },
+            "group": "sessions"
+          },
+          {
+            "id": "sessions-api",
+            "stencil": "service.java",
+            "label": "Sessions API",
+            "sublabel": "start, stop, receipts",
+            "x": 2360,
+            "y": 780,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "emits": "RemoteStart" },
+            "group": "sessions"
+          },
+          {
+            "id": "metering",
+            "stencil": "service.java",
+            "label": "Metering",
+            "sublabel": "kWh per session",
+            "x": 2360,
+            "y": 920,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+            "group": "sessions"
+          },
+          {
+            "id": "sessions-db",
+            "stencil": "azure.sql",
+            "label": "Sessions",
+            "sublabel": "Azure SQL",
+            "x": 2780,
+            "y": 780,
+            "props": { "latencyMs": 0 },
+            "group": "sessions"
+          },
+          {
+            "id": "billing",
+            "stencil": "service.dotnet",
+            "label": "Billing",
+            "sublabel": "tariffs, invoices",
+            "x": 2780,
+            "y": 920,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 60, "jitter": 0.1, "failureRate": 0 },
+            "group": "sessions"
+          },
+          {
+            "id": "cmd-q",
+            "stencil": "azure.service-bus.queue",
+            "label": "Charger commands",
+            "sublabel": "Service Bus",
+            "x": 2780,
+            "y": 1180,
+            "props": { "maxDeliveryCount": 5 },
+            "group": "ota"
+          },
+          { "id": "cmd-dlq", "stencil": "azure.service-bus.queue", "label": "Commands DLQ", "sublabel": "Service Bus", "x": 2780, "y": 1320, "group": "ota" },
+          {
+            "id": "rollout",
+            "stencil": "generic.scheduler",
+            "label": "Firmware rollout",
+            "sublabel": "5% waves",
+            "x": 1940,
+            "y": 1180,
+            "props": { "ratePerSec": 0.2, "messageType": "FirmwareJob" },
+            "group": "ota"
+          },
+          {
+            "id": "firmware",
+            "stencil": "azure.functions",
+            "label": "Firmware campaigns",
+            "sublabel": "stage, then notify",
+            "x": 2360,
+            "y": 1180,
+            "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 80, "jitter": 0, "failureRate": 0, "scaling": "auto", "maxConcurrency": 10 },
+            "group": "ota"
+          },
+          {
+            "id": "images",
+            "stencil": "azure.blob-storage",
+            "label": "Firmware images",
+            "sublabel": "signed builds",
+            "x": 2360,
+            "y": 1320,
+            "props": { "latencyMs": 0 },
+            "group": "ota"
+          },
+          {
+            "id": "raw",
+            "stencil": "azure.blob-storage",
+            "label": "Raw telemetry",
+            "sublabel": "ADLS · Parquet",
+            "x": 3260,
+            "y": 500,
+            "props": { "latencyMs": 0 },
+            "group": "cold"
+          },
+          {
+            "id": "lakehouse",
+            "stencil": "databricks",
+            "label": "Energy analytics",
+            "sublabel": "daily load curves",
+            "x": 3680,
+            "y": 500,
+            "props": { "latencyMs": 0 },
+            "group": "cold"
+          },
+          {
+            "id": "reports",
+            "stencil": "generic.scheduler",
+            "label": "Daily reports",
+            "sublabel": "02:00",
+            "x": 3260,
+            "y": 640,
+            "props": { "ratePerSec": 0.05, "messageType": "ReportRun" },
+            "group": "cold"
+          },
+          {
+            "id": "report-job",
+            "stencil": "generic.batch-job",
+            "label": "Grid reports",
+            "sublabel": "per substation",
+            "x": 3680,
+            "y": 640,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 1, "latencyMs": 2000, "jitter": 0.1, "failureRate": 0 },
+            "group": "cold"
+          },
+          { "id": "kv", "stencil": "azure.key-vault", "label": "Key Vault", "sublabel": "charger certificates", "x": 3260, "y": 1180, "group": "platform" },
+          { "id": "mi", "stencil": "azure.managed-identity", "label": "Managed identities", "x": 3680, "y": 1180, "group": "platform" },
+          { "id": "insights", "stencil": "azure.app-insights", "label": "Application Insights", "x": 4100, "y": 1180, "group": "platform" },
+          {
+            "id": "roaming",
+            "stencil": "generic.external-api",
+            "label": "Roaming hub",
+            "sublabel": "OCPI · partner CDRs",
+            "x": 4620,
+            "y": 920,
+            "props": {
+              "preset": "managed-measured",
+              "presetRevision": "2026-10-14",
+              "latencyMs": 150,
+              "jitter": 0.1,
+              "failureRate": 0,
+              "api": {
+                "maxInFlight": 20,
+                "quotas": [
+                  { "id": "ocpi-rate", "unit": "requests", "amount": 20, "windowMs": 1000, "algorithm": "token-bucket" }
+                ]
+              }
+            },
+            "group": "partners"
+          },
+          {
+            "id": "stripe",
+            "stencil": "stripe",
+            "label": "Stripe",
+            "sublabel": "card payments",
+            "x": 4620,
+            "y": 780,
+            "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 200, "jitter": 0.1, "failureRate": 0 },
+            "group": "partners"
+          },
+          { "id": "dso", "stencil": "client.partner", "label": "Grid operator", "sublabel": "load reports", "x": 4620, "y": 640, "group": "partners" }
+        ],
+        "edges": [
+          { "id": "depot-chargers--depot-switch", "from": "depot-chargers", "to": "depot-switch", "label": "OCPP", "kind": "sync" },
+          {
+            "id": "depot-switch--depot-fw",
+            "from": "depot-switch",
+            "to": "depot-fw",
+            "kind": "sync",
+            "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
+          },
+          {
+            "id": "depot-fw--depot-router",
+            "from": "depot-fw",
+            "to": "depot-router",
+            "label": "Allow: OCPP out",
+            "kind": "sync",
+            "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
+          },
+          {
+            "id": "depot-router--ingress",
+            "from": "depot-router",
+            "to": "ingress",
+            "label": "TLS",
+            "kind": "sync",
+            "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
+          },
+          { "id": "vendor--depot-router", "from": "vendor", "to": "depot-router", "label": "Remote shell", "kind": "sync" },
+          {
+            "id": "router-in",
+            "from": "depot-router",
+            "to": "depot-fw",
+            "kind": "async",
+            "props": { "filter": ["VendorRemoteShell"] }
+          },
+          {
+            "id": "deny-vendor-shell",
+            "from": "depot-fw",
+            "to": "depot-switch",
+            "label": "Deny: vendor shell",
+            "kind": "async",
+            "props": { "filter": ["VendorRemoteShell"], "deny": true }
+          },
+          { "id": "street--ingress", "from": "street", "to": "ingress", "label": "TLS", "kind": "sync" },
+          { "id": "depot2-chargers--depot2-switch", "from": "depot2-chargers", "to": "depot2-switch", "label": "OCPP", "kind": "sync" },
+          { "id": "depot2-switch--depot2-fw", "from": "depot2-switch", "to": "depot2-fw", "kind": "sync" },
+          { "id": "depot2-fw--depot2-router", "from": "depot2-fw", "to": "depot2-router", "label": "Allow: OCPP out", "kind": "sync" },
+          { "id": "depot2-router--ingress", "from": "depot2-router", "to": "ingress", "label": "TLS", "kind": "sync" },
+          { "id": "ocpp--registry", "from": "ocpp", "to": "registry", "label": "Charger identity", "kind": "async", "relation": "depends" },
+          { "id": "ingress--ocpp", "from": "ingress", "to": "ocpp", "kind": "sync" },
+          { "id": "ocpp--events", "from": "ocpp", "to": "events", "label": "Charger events", "kind": "async" },
+          { "id": "events--state", "from": "events", "to": "state", "kind": "async", "props": { "group": "state" } },
+          { "id": "events--faults", "from": "events", "to": "faults", "kind": "async", "props": { "group": "faults" } },
+          {
+            "id": "events--metering",
+            "from": "events",
+            "to": "metering",
+            "kind": "async",
+            "props": { "group": "metering" }
+          },
+          {
+            "id": "events--raw",
+            "from": "events",
+            "to": "raw",
+            "label": "Capture",
+            "kind": "async",
+            "props": { "group": "capture" }
+          },
+          { "id": "state--state-db", "from": "state", "to": "state-db", "label": "Reported", "kind": "sync" },
+          {
+            "id": "faults--alerts",
+            "from": "faults",
+            "to": "alerts",
+            "label": "Fault",
+            "kind": "sync",
+            "props": { "emits": "ChargerFault", "share": 0.01 }
+          },
+          {
+            "id": "alerts--oncall",
+            "from": "alerts",
+            "to": "oncall",
+            "kind": "async",
+            "props": { "group": "field-service" }
+          },
+          { "id": "drivers--apim", "from": "drivers", "to": "apim", "label": "HTTPS", "kind": "sync" },
+          { "id": "apim--sessions-api", "from": "apim", "to": "sessions-api", "kind": "sync" },
+          { "id": "sessions-api--sessions-db", "from": "sessions-api", "to": "sessions-db", "label": "Session", "kind": "sync" },
+          { "id": "sessions-api--cmd-q", "from": "sessions-api", "to": "cmd-q", "label": "RemoteStart", "kind": "async", "targetSide": "top" },
+          { "id": "metering--sessions-db", "from": "metering", "to": "sessions-db", "label": "kWh", "kind": "sync" },
+          {
+            "id": "sessions-db--billing",
+            "from": "sessions-db",
+            "to": "billing",
+            "label": "Session closed",
+            "kind": "async",
+            "props": { "filter": ["StartSession"] }
+          },
+          { "id": "billing--stripe", "from": "billing", "to": "stripe", "label": "Charge", "kind": "sync" },
+          { "id": "billing--roaming", "from": "billing", "to": "roaming", "label": "CDR", "kind": "sync" },
+          { "id": "cmd-q--commands", "from": "cmd-q", "to": "commands", "kind": "async" },
+          {
+            "id": "cmd-q--cmd-dlq",
+            "from": "cmd-q",
+            "to": "cmd-dlq",
+            "label": "After 5 tries",
+            "kind": "async",
+            "props": { "dlq": true }
+          },
+          { "id": "rollout--firmware", "from": "rollout", "to": "firmware", "label": "Wave", "kind": "async" },
+          { "id": "firmware--images", "from": "firmware", "to": "images", "label": "Stage", "kind": "sync" },
+          { "id": "firmware--cmd-q", "from": "firmware", "to": "cmd-q", "label": "UpdateFirmware", "kind": "async" },
+          {
+            "id": "cmd-dlq--firmware",
+            "from": "cmd-dlq",
+            "to": "firmware",
+            "label": "Retry wave",
+            "kind": "async",
+            "props": { "filter": ["UpdateFirmware"] }
+          },
+          { "id": "reports--report-job", "from": "reports", "to": "report-job", "label": "Run", "kind": "async" },
+          { "id": "report-job--lakehouse", "from": "report-job", "to": "lakehouse", "label": "Query", "kind": "sync" },
+          { "id": "report-job--dso", "from": "report-job", "to": "dso", "label": "Upload", "kind": "sync" },
+          { "id": "lakehouse--raw", "from": "lakehouse", "to": "raw", "label": "Reads", "kind": "async", "relation": "depends" },
+          { "id": "ingress--kv", "from": "ingress", "to": "kv", "label": "Charger CA", "kind": "async", "relation": "secret" },
+          { "id": "ocpp--mi", "from": "ocpp", "to": "mi", "kind": "async", "relation": "identity" },
+          { "id": "ingress--mi", "from": "ingress", "to": "mi", "kind": "async", "relation": "identity" },
+          { "id": "commands--mi", "from": "commands", "to": "mi", "kind": "async", "relation": "identity" },
+          { "id": "ocpp--insights", "from": "ocpp", "to": "insights", "kind": "async", "relation": "telemetry", "sourceSide": "top", "targetSide": "top" },
+          { "id": "sessions-api--insights", "from": "sessions-api", "to": "insights", "kind": "async", "relation": "telemetry" }
+        ],
+        "simulations": [
+          {
+            "id": "vendor-shell",
+            "title": "The depot firewall blocks a vendor shell",
+            "description": "Depot chargers report over the SD-WAN edge while the charger vendor tries to open a remote shell on them. The firewall's rule lets OCPP out and denies the shell: blocked on purpose, never counted as lost.",
+            "seed": 51,
+            "scale": 5,
+            "durationMs": 20000,
+            "traffic": [
+              {
+                "id": "depot",
+                "node": "depot-chargers",
+                "label": "Depot chargers",
+                "shape": { "kind": "constant", "ratePerSec": 60, "durationMs": 16000 }
+              },
+              {
+                "id": "street",
+                "node": "street",
+                "label": "Street chargers",
+                "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 16000 }
+              },
+              {
+                "id": "shell",
+                "node": "vendor",
+                "label": "Remote shell attempts",
+                "messageType": "VendorRemoteShell",
+                "shape": { "kind": "constant", "ratePerSec": 10, "fromMs": 3000, "durationMs": 8000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Depot chargers reach the cloud through the switch, a firewall pair and the SD-WAN edge. Street chargers come in over LTE.", "focus": ["depot-chargers", "depot-switch", "depot-fw", "depot-router", "street"] }
+              },
+              {
+                "atMs": 3000,
+                "action": { "do": "note", "text": "The charger vendor tries to open a remote shell into the depot. Its sessions reach the firewall.", "focus": ["vendor", "depot-router", "depot-fw"] }
+              },
+              {
+                "atMs": 6000,
+                "action": { "do": "note", "text": "The firewall's deny rule stops every one. Blocked is the rule working, not a loss; vendor support goes through a ticketed jump host instead.", "focus": ["depot-fw", "depot-switch"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "blocked",
+                "label": "The firewall blocks the vendor shell",
+                "metric": { "node": "depot-fw", "field": "blocked" },
+                "op": ">=",
+                "value": 50,
+                "when": "end"
+              },
+              {
+                "id": "no-drops",
+                "label": "The firewall drops nothing",
+                "metric": { "node": "depot-fw", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              },
+              {
+                "id": "telemetry",
+                "label": "Depot telemetry keeps flowing",
+                "metric": { "node": "ingress", "field": "processed" },
+                "op": ">",
+                "value": 5000,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "reboot-storm",
+            "title": "A firmware wave reboots the street fleet",
+            "description": "A firmware wave reboots the street chargers, and every one reconnects with a BootNotification at once. Event Hubs absorbs the burst; each consumer group drains its own lag at its own pace.",
+            "seed": 52,
+            "scale": 20,
+            "durationMs": 30000,
+            "traffic": [
+              {
+                "id": "depot",
+                "node": "depot-chargers",
+                "label": "Depot chargers",
+                "shape": { "kind": "constant", "ratePerSec": 60, "durationMs": 24000 }
+              },
+              {
+                "id": "street",
+                "node": "street",
+                "label": "Street chargers",
+                "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 24000 }
+              },
+              {
+                "id": "boots",
+                "node": "street",
+                "label": "Reconnect burst",
+                "messageType": "BootNotification",
+                "shape": { "kind": "burst", "count": 12000, "atMs": 4000, "spreadMs": 3000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Four consumer groups read charger events: twins, fault detection, metering and capture to the lake.", "focus": ["events", "state", "faults", "metering", "raw"] }
+              },
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "The firmware wave lands: 12,000 reconnect messages in three seconds.", "focus": ["street", "ingress", "ocpp", "events"] }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "note", "text": "Event Hubs holds the burst. The twin updater works through its lag; fault detection and metering keep their own pace.", "focus": ["events", "state", "state-db"] }
+              },
+              {
+                "atMs": 18000,
+                "action": { "do": "note", "text": "Every group has caught up, and nothing was dropped." }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "absorbed",
+                "label": "The twin updater falls behind for a while",
+                "metric": { "node": "events", "field": "lag", "group": "state" },
+                "op": ">",
+                "value": 1000,
+                "when": "eventually"
+              },
+              {
+                "id": "drained",
+                "label": "Every reconnect reaches the twins",
+                "metric": { "node": "events", "field": "lag", "group": "state" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "nothing-lost",
+                "label": "Nothing is dropped",
+                "metric": { "node": "ocpp", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "firewall-failover",
+            "title": "The depot firewall fails over",
+            "description": "The active depot firewall dies. For three seconds, while the standby takes over its sessions, depot telemetry waits at the pair; nothing is dropped.",
+            "seed": 53,
+            "scale": 1,
+            "durationMs": 16000,
+            "traffic": [
+              {
+                "id": "depot",
+                "node": "depot-chargers",
+                "label": "Depot chargers",
+                "shape": { "kind": "constant", "ratePerSec": 60, "durationMs": 12000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "One firewall in the pair carries the depot's traffic; the other stands by.", "focus": ["depot-fw"] }
+              },
+              { "atMs": 4000, "action": { "do": "props", "node": "depot-fw", "props": { "replicas": 1 } } },
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "The active unit fails. Traffic waits at the pair while the standby takes over.", "focus": ["depot-fw", "depot-switch"] }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "note", "text": "The standby carries everything. Nothing was lost, but the pair has no spare until the failed unit is replaced.", "focus": ["depot-fw", "depot-router"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "waits",
+                "label": "Telemetry waits during the failover",
+                "metric": { "node": "depot-fw", "field": "backlog" },
+                "op": ">",
+                "value": 50,
+                "when": "eventually"
+              },
+              {
+                "id": "no-drops",
+                "label": "The firewall never drops a message",
+                "metric": { "node": "depot-fw", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          { "id": "zone-ot", "kind": "zone", "text": "OT sites · outbound-only", "x": -70, "y": 86, "width": 1620, "height": 576, "color": "green" },
+          { "id": "note-ocpp", "kind": "note", "text": "OCPP over TLS: chargers hold a websocket to the gateway. Commands and firmware jobs go back down the same socket.", "x": 0, "y": 800, "width": 300, "height": 150 }
+        ]
+      }
+    }
+  ]
+}

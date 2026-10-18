@@ -6,12 +6,14 @@ import { exampleTestLabel } from "./exampleLabels";
 
 // Normal reports contain public examples only; local diagrams are never loaded here.
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
+/** Large showcases tell a third story; every other example keeps exactly two. */
+const THREE_SIMULATIONS = new Set(["../examples/black-friday-commerce.json", "../examples/ev-charging-network.json"]);
 
 describe("saved example simulations with the real stencil registry", () => {
   for (const [index, [path, diagram]] of Object.entries(examples).entries()) {
     const label = exampleTestLabel(path, index);
     it(`${label} has the expected number of presentations and valid node references`, () => {
-      expect(diagram.simulations?.length).toBe(2);
+      expect(diagram.simulations?.length).toBe(THREE_SIMULATIONS.has(path) ? 3 : 2);
       const ids = new Set(diagram.nodes.map((node) => node.id));
       for (const node of diagram.nodes) expect(getStencil(node.stencil).id).toBe(node.stencil);
       for (const simulation of diagram.simulations ?? []) {

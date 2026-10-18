@@ -1,0 +1,4 @@
+exit 0
+VALID <repo>/src/examples/ev-charging-network.json: 41 nodes, 46 edges, 11 boundaries, 3 simulations
+  warning: Boundary "azure" has no member nodes (set "group": "azure" on them).
+  warning: 41 nodes: consider a smaller diagram, or split it into several, so it stays readable.

@@ -1,0 +1,30 @@
+---
+title: "DisputeOpened #149 · 9.62 s end to end · 2 retries · dead-lettered"
+---
+sequenceDiagram
+  participant psp_hooks as PSP notifications
+  participant hook_ingest as Webhook ingest
+  participant psp_q as PSP events
+  participant disputes as Disputes
+  participant psp_dlq as PSP events DLQ
+  participant psp_redrive as DLQ redrive
+  psp_hooks->>hook_ingest: DisputeOpened (+0.00 s)<br/>Webhook
+  hook_ingest-->>psp_hooks: reply (+0.22 s)
+  hook_ingest-)psp_q: DisputeOpened (+0.22 s)<br/>Verified
+  psp_q-)disputes: DisputeOpened (+0.52 s)
+  Note over disputes: ✕ attempt 1 failed
+  disputes--)psp_q: back to the broker after attempt 1 (+0.91 s)
+  psp_q-)disputes: DisputeOpened (+1.21 s)
+  Note over disputes: ✕ attempt 2 failed
+  disputes--)psp_q: back to the broker after attempt 2 (+1.60 s)
+  psp_q-)disputes: DisputeOpened (+1.90 s)
+  Note over disputes: ✕ attempt 3 failed
+  disputes--)psp_q: back to the broker after attempt 3 (+2.28 s)
+  Note over psp_q: Dead-lettered after 3 deliveries
+  rect rgba(209, 57, 63, 0.14)
+    psp_q-)psp_dlq: DisputeOpened (dead letter) (+2.58 s)
+  end
+  Note over psp_hooks,psp_redrive: ⏱ 6.13 s waiting in PSP events DLQ
+  psp_dlq-)psp_redrive: DisputeOpened (+9.01 s)
+  psp_redrive->>disputes: DisputeOpened (+9.33 s)<br/>Replay
+  disputes-->>psp_redrive: reply (+9.62 s)

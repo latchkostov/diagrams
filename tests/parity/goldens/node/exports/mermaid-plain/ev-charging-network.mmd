@@ -1,0 +1,118 @@
+---
+title: EV charging network
+---
+flowchart LR
+  subgraph g_depot ["Depot · Harbour Road bus garage"]
+    depot_chargers(["Depot chargers<br/>60 bus chargers · OCPP"])
+    depot_switch["Depot switch<br/>charger VLAN"]
+    depot_fw["Depot firewall pair<br/>active-standby"]
+    depot_router["SD-WAN edge<br/>dual LTE and fibre"]
+  end
+  subgraph g_depot2 ["Depot · Quay Street van yard"]
+    depot2_chargers(["Van chargers<br/>40 chargers · OCPP"])
+    depot2_switch["Yard switch<br/>charger VLAN"]
+    depot2_fw["Yard firewall<br/>standalone"]
+    depot2_router["Yard router<br/>fibre"]
+  end
+  subgraph g_azure ["Azure · West Europe"]
+  end
+  subgraph g_ingest ["AKS · charger connectivity"]
+    ingress["OCPP ingress<br/>mTLS, WAF"]
+    ocpp["OCPP gateway<br/>websockets per charger"]
+    commands["Command dispatcher<br/>remote start, firmware"]
+    registry[("Device registry<br/>certificates, owners")]
+  end
+  subgraph g_hub ["Event Hubs · charger events"]
+    events["Charger events<br/>32 partitions · capture on"]
+  end
+  subgraph g_hot ["Hot path"]
+    state["Twin updater<br/>desired vs reported"]
+    state_db[("Charger twins<br/>Cosmos DB")]
+    faults["Fault detection<br/>windows per charger"]
+    alerts["Fault alerts<br/>Event Grid"]
+    oncall["Field service<br/>dispatch a technician"]
+  end
+  subgraph g_sessions ["AKS · sessions and billing"]
+    apim["Driver API<br/>API Management"]
+    sessions_api["Sessions API<br/>start, stop, receipts"]
+    metering["Metering<br/>kWh per session"]
+    sessions_db[("Sessions<br/>Azure SQL")]
+    billing["Billing<br/>tariffs, invoices"]
+  end
+  subgraph g_ota ["Firmware and commands"]
+    cmd_q["Charger commands<br/>Service Bus"]
+    cmd_dlq["Commands DLQ<br/>Service Bus"]
+    rollout["Firmware rollout<br/>5% waves"]
+    firmware["Firmware campaigns<br/>stage, then notify"]
+    images[("Firmware images<br/>signed builds")]
+  end
+  subgraph g_cold ["Cold path"]
+    raw[("Raw telemetry<br/>ADLS · Parquet")]
+    lakehouse[("Energy analytics<br/>daily load curves")]
+    reports["Daily reports<br/>02:00"]
+    report_job["Grid reports<br/>per substation"]
+  end
+  subgraph g_platform ["Platform"]
+    kv["Key Vault<br/>charger certificates"]
+    mi["Managed identities"]
+    insights["Application Insights"]
+  end
+  subgraph g_partners ["Partners"]
+    roaming(["Roaming hub<br/>OCPI · partner CDRs"])
+    stripe(["Stripe<br/>card payments"])
+    dso(["Grid operator<br/>load reports"])
+  end
+  vendor(["Charger vendor<br/>remote support"])
+  street(["Street chargers<br/>1,800 chargers · LTE"])
+  drivers(["Driver app<br/>start, stop, pay"])
+  depot_chargers -->|"OCPP"| depot_switch
+  depot_switch --> depot_fw
+  depot_fw -->|"Allow: OCPP out"| depot_router
+  depot_router -->|"TLS"| ingress
+  vendor -->|"Remote shell"| depot_router
+  depot_router -.-> depot_fw
+  depot_fw -.->|"Deny: vendor shell"| depot_switch
+  street -->|"TLS"| ingress
+  depot2_chargers -->|"OCPP"| depot2_switch
+  depot2_switch --> depot2_fw
+  depot2_fw -->|"Allow: OCPP out"| depot2_router
+  depot2_router -->|"TLS"| ingress
+  ocpp -.->|"depends on: Charger identity"| registry
+  ingress --> ocpp
+  ocpp -.->|"Charger events"| events
+  events -.-> state
+  events -.-> faults
+  events -.-> metering
+  events -.->|"Capture"| raw
+  state -->|"Reported"| state_db
+  faults -->|"Fault"| alerts
+  alerts -.-> oncall
+  drivers -->|"HTTPS"| apim
+  apim --> sessions_api
+  sessions_api -->|"Session"| sessions_db
+  sessions_api -.->|"RemoteStart"| cmd_q
+  metering -->|"kWh"| sessions_db
+  sessions_db -.->|"Session closed"| billing
+  billing -->|"Charge"| stripe
+  billing -->|"CDR"| roaming
+  cmd_q -.-> commands
+  cmd_q -.->|"After 5 tries"| cmd_dlq
+  rollout -.->|"Wave"| firmware
+  firmware -->|"Stage"| images
+  firmware -.->|"UpdateFirmware"| cmd_q
+  cmd_dlq -.->|"Retry wave"| firmware
+  reports -.->|"Run"| report_job
+  report_job -->|"Query"| lakehouse
+  report_job -->|"Upload"| dso
+  lakehouse -.->|"depends on: Reads"| raw
+  ingress -.->|"reads secrets: Charger CA"| kv
+  ocpp -.->|"gets tokens from"| mi
+  ingress -.->|"gets tokens from"| mi
+  commands -.->|"gets tokens from"| mi
+  ocpp -.->|"sends telemetry to"| insights
+  sessions_api -.->|"sends telemetry to"| insights
+  linkStyle 5,6,14,15,16,17,18,21,25,27,30,31,32,34,35,36 stroke-dasharray: 6 4
+  linkStyle 12,39 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 40 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 41,42,43 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 44,45 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4

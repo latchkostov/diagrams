@@ -155,6 +155,77 @@ for (const theme of ["light", "dark"] as const)
         });
     });
 
+/** The large showcases: each saved story shows its feature within eight seconds of Live, at desktop size. */
+const largeShowcases = [
+  {
+    slug: "black-friday-commerce",
+    sim: "doors-open",
+    signals: [
+      ["gateway", "rejected", 0],
+      ["checkout-api", "desired", 2],
+    ],
+  },
+  {
+    slug: "cell-based-bookings",
+    sim: "region-evacuation",
+    signals: [["west-c1-api", "processed", 0]],
+    down: "east-alb",
+  },
+  {
+    slug: "payments-ledger",
+    sim: "psp-brownout",
+    signals: [
+      ["adyen", "failed", 0],
+      ["stripe", "processed", 0],
+    ],
+  },
+  {
+    slug: "delivery-dispatch",
+    sim: "partition-ceiling",
+    signals: [
+      ["locations-topic", "backlog", 0],
+      ["geo-indexer", "desired", 3],
+    ],
+  },
+  { slug: "ev-charging-network", sim: "vendor-shell", signals: [["depot-fw", "blocked", 0]], zone: "zone-ot" },
+] as const;
+
+for (const theme of ["light", "dark"] as const)
+  test.describe(`large showcases ${theme} 1920`, () => {
+    test.use({ colorScheme: theme, viewport: { width: 1920, height: 1080 } });
+    for (const showcase of largeShowcases)
+      test(`${showcase.slug} tells its story in Live`, async ({ page, consoleErrors }, info) => {
+        test.slow();
+        await page.clock.install();
+        await gotoLive(page, `./?view=canvas&example=${showcase.slug}&live=1&sim=${showcase.sim}`);
+        await pauseClock(page);
+        await page.clock.runFor(1000);
+        await waitForStableViewport(page);
+        await page.getByTestId("live-restart").click();
+        await page.clock.runFor(8000);
+        await expect(page.getByTestId("live-note")).toBeVisible();
+        for (const [node, field, above] of showcase.signals) {
+          const badge = page.getByTestId(`node-badge-${node}`);
+          await expect(badge).toBeAttached();
+          await expect.poll(async () => Number(await badge.getAttribute(`data-${field}`))).toBeGreaterThan(above);
+        }
+        if ("down" in showcase)
+          await expect(page.getByTestId(`node-badge-${showcase.down}`)).toHaveAttribute("data-status", "down");
+        // Nested boundaries sit inside their parents on purpose; the unit suite checks siblings never overlap.
+        const nested = /^rf__node-group:.* \/ rf__node-group:/;
+        // A zone is drawn behind the nodes and labels it encloses, by design.
+        const zone = "zone" in showcase ? `rf__node-${showcase.zone}` : undefined;
+        expect(
+          (await overlaps(page)).filter((hit) => !nested.test(hit) && !(zone && hit.split(" / ").includes(zone))),
+        ).toEqual([]);
+        const filename = `${showcase.slug}-${theme}-1920.png`;
+        await page.mouse.move(0, 0);
+        const body = await page.screenshot({ path: info.outputPath(filename) });
+        await info.attach(filename, { body, contentType: "image/png" });
+        expectNoErrors(consoleErrors);
+      });
+  });
+
 test.describe("mobile title card", () => {
   test.use({ viewport: { width: 390, height: 844 } });
   test("keeps checks and Undo available while folding the description", async ({ page }) => {

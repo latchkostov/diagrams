@@ -1,0 +1,36 @@
+---
+title: "MeterValues #1 · 1.87 s end to end · 3 copies"
+---
+sequenceDiagram
+  participant depot_chargers as Depot chargers
+  participant depot_switch as Depot switch
+  participant depot_fw as Depot firewall pair
+  participant depot_router as SD-WAN edge
+  participant ingress as OCPP ingress
+  participant ocpp as OCPP gateway
+  participant events as Charger events
+  participant state as Twin updater
+  participant faults as Fault detection
+  participant metering as Metering
+  participant raw as Raw telemetry
+  participant state_db as Charger twins
+  participant sessions_db as Sessions
+  depot_chargers->>depot_switch: MeterValues (+0.00 s)<br/>OCPP
+  depot_switch-->>depot_chargers: reply (+0.21 s)
+  depot_switch->>depot_fw: MeterValues (+0.21 s)
+  depot_fw-->>depot_switch: reply (+0.42 s)
+  depot_fw->>depot_router: MeterValues (+0.42 s)<br/>Allow: OCPP out
+  depot_router-->>depot_fw: reply (+0.63 s)
+  depot_router->>ingress: MeterValues (+0.63 s)<br/>TLS
+  ingress-->>depot_router: reply (+0.83 s)
+  ingress->>ocpp: MeterValues (+0.83 s)
+  ocpp-->>ingress: reply (+1.05 s)
+  ocpp-)events: MeterValues (+1.05 s)<br/>Charger events
+  events-)state: MeterValues (+1.35 s)
+  events-)faults: MeterValues (+1.35 s)
+  events-)metering: MeterValues (+1.35 s)
+  events-)raw: MeterValues (+1.35 s)<br/>Capture
+  state->>state_db: MeterValues (+1.67 s)<br/>Reported
+  metering->>sessions_db: MeterValues (+1.67 s)<br/>kWh
+  state_db-->>state: reply (+1.87 s)
+  sessions_db-->>metering: reply (+1.87 s)

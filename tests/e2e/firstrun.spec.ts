@@ -60,9 +60,10 @@ test.describe("first run", () => {
     await page.getByTestId("start-all-examples").click();
     for (const ex of publicExamples) {
       await expect(page.getByTestId(`example-card-${ex.slug}`)).toBeVisible();
+      // A thumbnail draws at most its first 48 nodes (MAX_NODES in src/lib/thumbnail.ts).
       await expect(page.getByTestId(`example-thumb-${ex.slug}`)).toHaveAttribute(
         "data-nodes",
-        String(ex.nodeIds.length),
+        String(Math.min(ex.nodeIds.length, 48)),
       );
     }
     await expect(publicExampleCards(page)).toHaveCount(publicExamples.length);

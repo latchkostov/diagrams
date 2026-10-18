@@ -1,0 +1,14 @@
+---
+title: "Diner app #1 · 650 ms end to end"
+---
+sequenceDiagram
+  participant diners as Diner app
+  participant glb as Global load balancer
+  participant menu_api as Menu API
+  participant menu_cache as Menu cache
+  diners->>glb: Diner app (+0.00 s)<br/>HTTPS
+  glb-->>diners: reply (+0.21 s)
+  glb->>menu_api: Diner app (+0.21 s)<br/>Menus
+  menu_api-->>glb: reply (+0.44 s)
+  menu_api->>menu_cache: Diner app (+0.44 s)
+  menu_cache-->>menu_api: reply (+0.65 s)

@@ -1,0 +1,27 @@
+---
+title: "MeterValues #1 · 1.24 s end to end · 3 copies"
+---
+sequenceDiagram
+  participant street as Street chargers
+  participant ingress as OCPP ingress
+  participant ocpp as OCPP gateway
+  participant events as Charger events
+  participant state as Twin updater
+  participant faults as Fault detection
+  participant metering as Metering
+  participant raw as Raw telemetry
+  participant sessions_db as Sessions
+  participant state_db as Charger twins
+  street->>ingress: MeterValues (+0.00 s)<br/>TLS
+  ingress-->>street: reply (+0.20 s)
+  ingress->>ocpp: MeterValues (+0.20 s)
+  ocpp-->>ingress: reply (+0.41 s)
+  ocpp-)events: MeterValues (+0.41 s)<br/>Charger events
+  events-)state: MeterValues (+0.71 s)
+  events-)faults: MeterValues (+0.71 s)
+  events-)metering: MeterValues (+0.71 s)
+  events-)raw: MeterValues (+0.71 s)<br/>Capture
+  metering->>sessions_db: MeterValues (+1.03 s)<br/>kWh
+  state->>state_db: MeterValues (+1.04 s)<br/>Reported
+  sessions_db-->>metering: reply (+1.23 s)
+  state_db-->>state: reply (+1.24 s)

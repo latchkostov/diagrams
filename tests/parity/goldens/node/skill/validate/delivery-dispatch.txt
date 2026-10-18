@@ -1,0 +1,3 @@
+exit 0
+VALID <repo>/src/examples/delivery-dispatch.json: 40 nodes, 45 edges, 14 boundaries, 2 simulations
+  warning: 40 nodes: consider a smaller diagram, or split it into several, so it stays readable.

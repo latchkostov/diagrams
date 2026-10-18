@@ -1,0 +1,160 @@
+---
+title: Cell-based bookings in three regions
+---
+flowchart LR
+  subgraph g_control ["Control plane · global"]
+    registry["Cell registry<br/>customer → cell map"]
+    pipeline["Release pipeline<br/>one cell at a time"]
+    metrics["CloudWatch<br/>alarms per cell"]
+  end
+  subgraph g_saas ["Email provider"]
+    email(["SendGrid<br/>confirmations"])
+  end
+  subgraph g_east ["AWS us-east-1"]
+    east_alb["Regional ALB<br/>us-east-1"]
+    east_router["Cell router<br/>hash(customer) → cell"]
+    east_bus["Booking events<br/>EventBridge"]
+    east_queue["Confirmations<br/>SQS"]
+    east_dlq["Confirmations DLQ<br/>SQS"]
+    east_mailer["Confirmation mailer<br/>Lambda"]
+    east_redrive["DLQ redrive<br/>after the fix"]
+  end
+  subgraph g_east_c1 ["Cell 1 · us-east-1"]
+    east_c1_api["Booking API<br/>cell 1 · Fargate"]
+    east_c1_avail["Availability<br/>rooms and seats"]
+    east_c1_cache[("Availability cache<br/>ElastiCache")]
+    east_c1_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_east_c2 ["Cell 2 · us-east-1"]
+    east_c2_api["Booking API<br/>cell 2 · Fargate"]
+    east_c2_avail["Availability<br/>rooms and seats"]
+    east_c2_cache[("Availability cache<br/>ElastiCache")]
+    east_c2_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_west ["AWS us-west-2"]
+    west_alb["Regional ALB<br/>us-west-2"]
+    west_router["Cell router<br/>hash(customer) → cell"]
+    west_bus["Booking events<br/>EventBridge"]
+    west_queue["Confirmations<br/>SQS"]
+    west_dlq["Confirmations DLQ<br/>SQS"]
+    west_mailer["Confirmation mailer<br/>Lambda"]
+    west_redrive["DLQ redrive<br/>after the fix"]
+  end
+  subgraph g_west_c1 ["Cell 1 · us-west-2"]
+    west_c1_api["Booking API<br/>cell 1 · Fargate"]
+    west_c1_avail["Availability<br/>rooms and seats"]
+    west_c1_cache[("Availability cache<br/>ElastiCache")]
+    west_c1_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_west_c2 ["Cell 2 · us-west-2"]
+    west_c2_api["Booking API<br/>cell 2 · Fargate"]
+    west_c2_avail["Availability<br/>rooms and seats"]
+    west_c2_cache[("Availability cache<br/>ElastiCache")]
+    west_c2_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_eu ["AWS eu-west-1"]
+    eu_alb["Regional ALB<br/>eu-west-1"]
+    eu_router["Cell router<br/>hash(customer) → cell"]
+    eu_bus["Booking events<br/>EventBridge"]
+    eu_queue["Confirmations<br/>SQS"]
+    eu_dlq["Confirmations DLQ<br/>SQS"]
+    eu_mailer["Confirmation mailer<br/>Lambda"]
+    eu_redrive["DLQ redrive<br/>after the fix"]
+  end
+  subgraph g_eu_c1 ["Cell 1 · eu-west-1"]
+    eu_c1_api["Booking API<br/>cell 1 · Fargate"]
+    eu_c1_avail["Availability<br/>rooms and seats"]
+    eu_c1_cache[("Availability cache<br/>ElastiCache")]
+    eu_c1_db[("Bookings<br/>global table replica")]
+  end
+  subgraph g_eu_c2 ["Cell 2 · eu-west-1"]
+    eu_c2_api["Booking API<br/>cell 2 · Fargate"]
+    eu_c2_avail["Availability<br/>rooms and seats"]
+    eu_c2_cache[("Availability cache<br/>ElastiCache")]
+    eu_c2_db[("Bookings<br/>global table replica")]
+  end
+  travellers(["Travellers<br/>web bookings"])
+  mobile(["Tidewater app<br/>iOS and Android"])
+  agents(["Travel agents<br/>partner API"])
+  dns["Global DNS<br/>latency routing, health checks"]
+  travellers -->|"HTTPS"| dns
+  mobile -->|"HTTPS"| dns
+  agents -->|"HTTPS"| dns
+  dns -->|"us-east-1"| east_alb
+  east_alb --> east_router
+  east_router -->|"Cell 1"| east_c1_api
+  east_c1_api -->|"Hold"| east_c1_avail
+  east_c1_avail --> east_c1_cache
+  east_c1_api -->|"Book"| east_c1_db
+  east_c1_db -.->|"Stream"| east_bus
+  east_router -->|"Cell 2"| east_c2_api
+  east_c2_api -->|"Hold"| east_c2_avail
+  east_c2_avail --> east_c2_cache
+  east_c2_api -->|"Book"| east_c2_db
+  east_c2_db -.->|"Stream"| east_bus
+  east_bus -.->|"Rule"| east_queue
+  east_queue -.-> east_mailer
+  east_queue -.->|"After 3 tries"| east_dlq
+  east_dlq -.-> east_redrive
+  east_redrive -->|"Redrive"| east_mailer
+  east_mailer -->|"Send"| email
+  east_router -.->|"reads config: Cell map"| registry
+  east_alb -.->|"sends telemetry to"| metrics
+  dns -->|"us-west-2"| west_alb
+  west_alb --> west_router
+  west_router -->|"Cell 1"| west_c1_api
+  west_c1_api -->|"Hold"| west_c1_avail
+  west_c1_avail --> west_c1_cache
+  west_c1_api -->|"Book"| west_c1_db
+  west_c1_db -.->|"Stream"| west_bus
+  west_router -->|"Cell 2"| west_c2_api
+  west_c2_api -->|"Hold"| west_c2_avail
+  west_c2_avail --> west_c2_cache
+  west_c2_api -->|"Book"| west_c2_db
+  west_c2_db -.->|"Stream"| west_bus
+  west_bus -.->|"Rule"| west_queue
+  west_queue -.-> west_mailer
+  west_queue -.->|"After 3 tries"| west_dlq
+  west_dlq -.-> west_redrive
+  west_redrive -->|"Redrive"| west_mailer
+  west_mailer -->|"Send"| email
+  west_router -.->|"reads config: Cell map"| registry
+  west_alb -.->|"sends telemetry to"| metrics
+  dns -->|"eu-west-1"| eu_alb
+  eu_alb --> eu_router
+  eu_router -->|"Cell 1"| eu_c1_api
+  eu_c1_api -->|"Hold"| eu_c1_avail
+  eu_c1_avail --> eu_c1_cache
+  eu_c1_api -->|"Book"| eu_c1_db
+  eu_c1_db -.->|"Stream"| eu_bus
+  eu_router -->|"Cell 2"| eu_c2_api
+  eu_c2_api -->|"Hold"| eu_c2_avail
+  eu_c2_avail --> eu_c2_cache
+  eu_c2_api -->|"Book"| eu_c2_db
+  eu_c2_db -.->|"Stream"| eu_bus
+  eu_bus -.->|"Rule"| eu_queue
+  eu_queue -.-> eu_mailer
+  eu_queue -.->|"After 3 tries"| eu_dlq
+  eu_dlq -.-> eu_redrive
+  eu_redrive -->|"Redrive"| eu_mailer
+  eu_mailer -->|"Send"| email
+  eu_router -.->|"reads config: Cell map"| registry
+  eu_alb -.->|"sends telemetry to"| metrics
+  east_c1_db -.->|"Replication"| west_c1_db
+  east_c1_db -.-> eu_c1_db
+  west_c1_db -.-> east_c1_db
+  west_c1_db -.-> eu_c1_db
+  eu_c1_db -.-> east_c1_db
+  eu_c1_db -.-> west_c1_db
+  east_c2_db -.->|"Replication"| west_c2_db
+  east_c2_db -.-> eu_c2_db
+  west_c2_db -.-> east_c2_db
+  west_c2_db -.-> eu_c2_db
+  eu_c2_db -.-> east_c2_db
+  eu_c2_db -.-> west_c2_db
+  pipeline -.->|"deploys to: Canary cell"| east_c1_api
+  linkStyle 9,14,15,16,17,18,29,34,35,36,37,38,49,54,55,56,57,58,63,64,65,66,67,68,69,70,71,72,73,74 stroke-dasharray: 6 4
+  linkStyle 21,41,61 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 22,42,62 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 75 stroke:#3B8752,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"An invented travel company, Tidewater Travel. DNS spreads travellers across three active regions; each region hashes customers to two cells that share nothing on the request path. DynamoDB global tables replicate every booking, so a region can go dark and a bad deploy stays in one cell.","nodes":{"travellers":["travellers","client.browser"],"mobile":["mobile","client.mobile"],"agents":["agents","generic.webhook"],"dns":["dns","aws.route53"],"registry":["registry","generic.config-store"],"pipeline":["pipeline","github-actions"],"metrics":["metrics","aws.cloudwatch"],"email":["email","sendgrid"],"east_alb":["east-alb","aws.elb"],"east_router":["east-router","envoy"],"east_c1_api":["east-c1-api","aws.ecs"],"east_c1_avail":["east-c1-avail","service.go"],"east_c1_cache":["east-c1-cache","redis.cache"],"east_c1_db":["east-c1-db","aws.dynamodb"],"east_c2_api":["east-c2-api","aws.ecs"],"east_c2_avail":["east-c2-avail","service.go"],"east_c2_cache":["east-c2-cache","redis.cache"],"east_c2_db":["east-c2-db","aws.dynamodb"],"east_bus":["east-bus","aws.eventbridge"],"east_queue":["east-queue","aws.sqs"],"east_dlq":["east-dlq","aws.sqs"],"east_mailer":["east-mailer","aws.lambda"],"east_redrive":["east-redrive","aws.lambda"],"west_alb":["west-alb","aws.elb"],"west_router":["west-router","envoy"],"west_c1_api":["west-c1-api","aws.ecs"],"west_c1_avail":["west-c1-avail","service.go"],"west_c1_cache":["west-c1-cache","redis.cache"],"west_c1_db":["west-c1-db","aws.dynamodb"],"west_c2_api":["west-c2-api","aws.ecs"],"west_c2_avail":["west-c2-avail","service.go"],"west_c2_cache":["west-c2-cache","redis.cache"],"west_c2_db":["west-c2-db","aws.dynamodb"],"west_bus":["west-bus","aws.eventbridge"],"west_queue":["west-queue","aws.sqs"],"west_dlq":["west-dlq","aws.sqs"],"west_mailer":["west-mailer","aws.lambda"],"west_redrive":["west-redrive","aws.lambda"],"eu_alb":["eu-alb","aws.elb"],"eu_router":["eu-router","envoy"],"eu_c1_api":["eu-c1-api","aws.ecs"],"eu_c1_avail":["eu-c1-avail","service.go"],"eu_c1_cache":["eu-c1-cache","redis.cache"],"eu_c1_db":["eu-c1-db","aws.dynamodb"],"eu_c2_api":["eu-c2-api","aws.ecs"],"eu_c2_avail":["eu-c2-avail","service.go"],"eu_c2_cache":["eu-c2-cache","redis.cache"],"eu_c2_db":["eu-c2-db","aws.dynamodb"],"eu_bus":["eu-bus","aws.eventbridge"],"eu_queue":["eu-queue","aws.sqs"],"eu_dlq":["eu-dlq","aws.sqs"],"eu_mailer":["eu-mailer","aws.lambda"],"eu_redrive":["eu-redrive","aws.lambda"]},"groups":{"g_control":["control","neutral"],"g_saas":["saas","neutral"],"g_east":["east","aws"],"g_east_c1":["east-c1","neutral"],"g_east_c2":["east-c2","neutral"],"g_west":["west","aws"],"g_west_c1":["west-c1","neutral"],"g_west_c2":["west-c2","neutral"],"g_eu":["eu","aws"],"g_eu_c1":["eu-c1","neutral"],"g_eu_c2":["eu-c2","neutral"]},"edges":["travellers--dns","mobile--dns","agents--dns","dns--east-alb","east-alb--east-router","east-router--east-c1-api","east-c1-api--east-c1-avail","east-c1-avail--east-c1-cache","east-c1-api--east-c1-db","east-c1-db--east-bus","east-router--east-c2-api","east-c2-api--east-c2-avail","east-c2-avail--east-c2-cache","east-c2-api--east-c2-db","east-c2-db--east-bus","east-bus--east-queue","east-queue--east-mailer","east-queue--east-dlq","east-dlq--east-redrive","east-redrive--east-mailer","east-mailer--email","east-router--registry","east-alb--metrics","dns--west-alb","west-alb--west-router","west-router--west-c1-api","west-c1-api--west-c1-avail","west-c1-avail--west-c1-cache","west-c1-api--west-c1-db","west-c1-db--west-bus","west-router--west-c2-api","west-c2-api--west-c2-avail","west-c2-avail--west-c2-cache","west-c2-api--west-c2-db","west-c2-db--west-bus","west-bus--west-queue","west-queue--west-mailer","west-queue--west-dlq","west-dlq--west-redrive","west-redrive--west-mailer","west-mailer--email","west-router--registry","west-alb--metrics","dns--eu-alb","eu-alb--eu-router","eu-router--eu-c1-api","eu-c1-api--eu-c1-avail","eu-c1-avail--eu-c1-cache","eu-c1-api--eu-c1-db","eu-c1-db--eu-bus","eu-router--eu-c2-api","eu-c2-api--eu-c2-avail","eu-c2-avail--eu-c2-cache","eu-c2-api--eu-c2-db","eu-c2-db--eu-bus","eu-bus--eu-queue","eu-queue--eu-mailer","eu-queue--eu-dlq","eu-dlq--eu-redrive","eu-redrive--eu-mailer","eu-mailer--email","eu-router--registry","eu-alb--metrics","east-c1-db--west-c1-db","east-c1-db--eu-c1-db","west-c1-db--east-c1-db","west-c1-db--eu-c1-db","eu-c1-db--east-c1-db","eu-c1-db--west-c1-db","east-c2-db--west-c2-db","east-c2-db--eu-c2-db","west-c2-db--east-c2-db","west-c2-db--eu-c2-db","eu-c2-db--east-c2-db","eu-c2-db--west-c2-db","pipeline--east-c1-api"],"relations":{"21":"config","22":"telemetry","41":"config","42":"telemetry","61":"config","62":"telemetry","75":"deploy"}}

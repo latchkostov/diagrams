@@ -10,7 +10,7 @@ import { upgradePlanning, upgradeAutoscaling } from "../planning/migration";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
-// The regression snapshot over the 23 public examples (top level only). Each finding here
+// The regression snapshot over the public examples (top level only). Each finding here
 // was judged in docs/research/architecture-checks.md ("Batch 1: precision gate", "Batch 3: precision gate",
 // "Batch 4: precision gate"); a change to this list is a change to those tables. The batch 3 rules (sync-chain,
 // shared-database, entry-gateway, single-point) raise nothing on them, by the gate's tightening; of batch 4's,
@@ -59,6 +59,12 @@ const EXPECTED: Record<string, string[]> = {
   "cloud-run-timetable-api": ["warning capacity:worker"],
   // Carrier events reach their service through the route table at 30/s, over its 20/s: on purpose.
   "api-route-table": ["warning capacity:events"],
+  // The large showcases: realistic designs that pass every check.
+  "black-friday-commerce": [],
+  "cell-based-bookings": [],
+  "payments-ledger": [],
+  "delivery-dispatch": [],
+  "ev-charging-network": [],
 };
 
 describe("checks on the public examples", () => {
@@ -92,6 +98,8 @@ describe("checks on the public examples", () => {
 it("P3 precision gate adds no findings to the same materialized P2 public examples", () => {
   for (const d of Object.values(bySlug)) {
     if (d.planning?.revision === "p3") continue; // These examples already require managed admission.
+    // So do the large p3-a1 showcases with managed APIs and functions; the other p3-a1 examples are still compared.
+    if (d.planning?.revision === "p3-a1" && d.nodes.some((n) => n.props?.preset === "managed-measured")) continue;
     const p2 = upgradePlanning(d);
     p2.planning = { revision: "p2" };
     const p3 = upgradePlanning(p2);
@@ -112,6 +120,11 @@ const PLANNED: Record<string, string[]> = {
   "multi-region-active-active": ["96 dropped alb-us in Region outage and failover (down)"],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
+  // A dark region drops what was already on its way there; a bad canary build fails requests in its own cell only.
+  "cell-based-bookings": [
+    "20 dropped east-alb in us-east-1 goes dark (down)",
+    "245 dropped east-c1-api in A bad deploy stays in one cell (fails)",
+  ],
 };
 
 describe("simulation evidence on the public examples", () => {

@@ -148,6 +148,8 @@ test("ordinary autosaves serialize the diagram once and reuse that result", asyn
 /** Every public example's intended theme, in display order (src/examples/themes.ts and index.ts). */
 const BY_THEME: Record<string, string[]> = {
   streaming: [
+    "delivery-dispatch",
+    "ev-charging-network",
     "kafka-order-pipeline",
     "keda-render-workers",
     "autoscaling-image-workers",
@@ -165,14 +167,22 @@ const BY_THEME: Record<string, string[]> = {
     "shared-api-quotas",
   ],
   cloud: [
+    "black-friday-commerce",
     "aws-serverless-orders",
     "aws-fanout",
     "aks-app-config-key-vault",
     "serverless-burst-buffer",
     "cloud-run-timetable-api",
   ],
-  integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
+  integration: [
+    "payments-ledger",
+    "webhook-ingestion",
+    "api-route-table",
+    "notification-fanout",
+    "azure-service-bus-integration",
+  ],
   reliability: [
+    "cell-based-bookings",
     "outbox-saga-checkout",
     "multi-region-active-active",
     "branch-to-datacentre",
@@ -228,7 +238,7 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("rateLimits");
-  await expect(page.getByTestId(/^example-card-/)).toHaveCount(2);
+  await expect(page.getByTestId(/^example-card-/)).toHaveCount(6);
   await expect(page.getByTestId("example-card-shared-api-quotas")).toBeVisible();
   await expect(page.getByTestId("example-card-notification-fanout")).toBeVisible();
   await page.getByTestId("example-run-notification-fanout").click();
@@ -238,13 +248,13 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   expectNoErrors(consoleErrors);
 });
 
-test("Autoscaling filter finds the three autoscaling showcases and runs the HPA one's saved burst", async ({
-  page,
-}) => {
+test("Autoscaling filter finds the five autoscaling showcases and runs the HPA one's saved burst", async ({ page }) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("autoscaling");
-  await expect(publicExampleCards(page)).toHaveCount(3);
+  await expect(publicExampleCards(page)).toHaveCount(5);
+  await expect(page.getByTestId("example-card-delivery-dispatch")).toBeVisible();
+  await expect(page.getByTestId("example-card-black-friday-commerce")).toBeVisible();
   await expect(page.getByTestId("example-card-keda-render-workers")).toBeVisible();
   await expect(page.getByTestId("example-card-autoscaling-image-workers")).toBeVisible();
   await expect(page.getByTestId("example-card-cloud-run-timetable-api")).toBeVisible();
@@ -253,12 +263,13 @@ test("Autoscaling filter finds the three autoscaling showcases and runs the HPA 
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("upload-burst");
 });
 
-test("Routing filter finds the route table showcase and runs its saved afternoon", async ({ page }) => {
+test("Routing filter finds the route table showcases and runs the parcel API's saved afternoon", async ({ page }) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("routing");
-  await expect(publicExampleCards(page)).toHaveCount(1);
-  await expect(page.getByTestId("example-card-api-route-table")).toBeVisible();
+  await expect(publicExampleCards(page)).toHaveCount(4);
+  for (const slug of ["delivery-dispatch", "black-friday-commerce", "payments-ledger", "api-route-table"])
+    await expect(page.getByTestId(`example-card-${slug}`)).toBeVisible();
   await page.getByTestId("example-run-api-route-table").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("busy-afternoon");
