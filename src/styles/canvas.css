@@ -6,6 +6,7 @@
 @import "./canvas/overlays.css";
 @import "./canvas/context-menu.css";
 @import "./canvas/inspector.css";
+@import "./canvas/routing.css";
 @import "./canvas/dialog.css";
 @import "./canvas/annotations.css";
 @import "./canvas/quick-add.css";

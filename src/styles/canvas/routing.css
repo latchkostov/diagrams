@@ -1,0 +1,219 @@
+/* ---------------------------------------------------------------- request routing (src/planning/RoutingFields.tsx) */
+:root {
+  --route-outline: #1f2328;
+}
+[data-theme="dark"] {
+  --route-outline: #ffffff;
+}
+.route-swatch {
+  flex: none;
+  vertical-align: -2px;
+}
+.route-table {
+  display: grid;
+  gap: 2px;
+  margin-block: 6px;
+  font-size: 12px;
+}
+.route-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1.4fr) minmax(0, 1fr) 4.5em;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  padding-block: 5px;
+  padding-inline: 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+}
+.route-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.route-rules-table {
+  grid-template-columns: max-content minmax(0, 1.4fr) minmax(5.5em, 1fr) 4.5em;
+  column-gap: 6px;
+}
+.route-rules-table > div,
+.route-rules-table .route-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+.route-rules-table .route-details,
+.route-rules-table .route-warning {
+  grid-column: 1 / -1;
+}
+.route-rules-table .route-row > span:first-child {
+  min-inline-size: 3.5em;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.route-target-summary {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.route-head > span {
+  overflow-wrap: normal;
+}
+.route-row > .route-cut {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-row > .route-split {
+  white-space: nowrap;
+}
+.route-adder {
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.route-choices {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+.route-choices .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+button.route-row {
+  cursor: pointer;
+}
+button.route-row:hover,
+.route-open > .route-row {
+  border-color: var(--line-strong);
+}
+.route-head {
+  background: none;
+  color: var(--text-3);
+  font-size: 11px;
+  padding-block: 2px;
+}
+.route-default {
+  color: var(--text-2);
+}
+.route-mix-table .route-row {
+  grid-template-columns: minmax(0, 1fr) 6.5em 2em;
+}
+.route-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.route-name .link-btn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-details,
+.route-definition,
+.route-new {
+  display: grid;
+  gap: 6px;
+  margin-block: 4px 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.route-methods,
+.route-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.route-methods legend,
+.route-targets legend {
+  margin-block-end: 4px;
+  padding: 0;
+}
+.route-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.route-target {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5em 3em;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+}
+.route-weight {
+  min-width: 0;
+}
+.route-share {
+  margin: 0;
+  text-align: end;
+}
+.route-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-block: 6px;
+}
+.route-warning {
+  color: var(--warning-ink);
+}
+.route-legend {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.route-legend-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  width: 100%;
+  padding-block: 4px;
+  padding-inline: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: start;
+  cursor: pointer;
+}
+button.route-legend-row:hover {
+  background: var(--surface-2);
+}
+.route-legend-row.is-static {
+  cursor: default;
+}
+.route-legend-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-legend-address {
+  grid-column: 2;
+  color: var(--text-2);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.route-legend-counts {
+  grid-column: 2;
+  color: var(--text-3);
+  font-size: 11px;
+}
