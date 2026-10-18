@@ -410,8 +410,6 @@ for (const viewport of [
         await page.clock.install();
         // The overview first: free play fits the whole diagram, so its cards' width is the zoom to beat.
         await gotoLive(page, `./?view=canvas&example=${n.slug}&live=1`);
-        await pauseClock(page);
-        await page.clock.runFor(1000);
         await waitForStableViewport(page);
         const overview = (await boxOf(page, `rf__node-${n.focus[0]}`)).width;
         await gotoLive(page, `./?view=canvas&example=${n.slug}&live=1&sim=${n.sim}`);
