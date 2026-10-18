@@ -175,14 +175,19 @@ export function useCanvasNavigation({
       const ns = getNodes().filter((n) => !n.hidden);
       const es = store.getState().edges.filter((e) => !e.hidden);
       const el = from instanceof Element ? from : null;
-      // A step's destination until focus lands there: a second Tab in the same frame (two presses queued behind a
-      // busy moment) goes on from there, not from the node the key event still targets.
+      // A step's destination until focus lands there, a node's or an edge's: a second Tab or Ctrl+Alt+] in the same
+      // frame (two presses queued behind a busy moment) goes on from there, not from what the key event still targets.
       const pending = interaction.pendingTarget();
-      const focusedNode =
-        (pending?.kind === "node" ? pending.id : undefined) ??
-        el?.closest(".react-flow__node")?.getAttribute("data-id") ??
-        undefined;
-      const focusedEdge = el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined;
+      const focusedNode = pending
+        ? pending.kind === "node"
+          ? pending.id
+          : undefined
+        : (el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined);
+      const focusedEdge = pending
+        ? pending.kind === "edge"
+          ? pending.id
+          : undefined
+        : (el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined);
       const sel = editor.getSelection();
       const selectedFlowIds = [...sel.nodeIds, ...sel.groupIds.map((g) => GROUP_PREFIX + g)];
       const current = focusedNode ?? (!focusedEdge && selectedFlowIds.length === 1 ? selectedFlowIds[0] : undefined);

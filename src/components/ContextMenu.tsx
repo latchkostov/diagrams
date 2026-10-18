@@ -215,6 +215,8 @@ function MenuList(p: ListProps) {
    * Leaving the menu forgets it, so coming back hovers again.
    */
   const pointerOn = useRef<string | null>(null);
+  /** The row whose hover delay is running (its item's id): a language change starts it again (below). */
+  const hovering = useRef<string | null>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Place once, against the full list, flipping / clamping at the viewport edges.
@@ -276,10 +278,6 @@ function MenuList(p: ListProps) {
     if (text) queueMicrotask(() => setQ(text));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the menu is placed
   }, [placed, take]);
-
-  // A pending hover captures the old direction. After a locale change it would
-  // read the moved row and overwrite the correctly refreshed submenu anchor.
-  useLayoutEffect(() => () => window.clearTimeout(hoverTimer.current), [locale]);
 
   // Search changes derive a fresh highlight before the next paint.
   const [previousShown, setPreviousShown] = useState(shown);
@@ -400,9 +398,12 @@ function MenuList(p: ListProps) {
   const hover = (index: number) => {
     setActive(index);
     window.clearTimeout(hoverTimer.current);
+    hovering.current = null;
     if (open?.index === index) return;
     const item = shown[index];
+    hovering.current = selectable(item) ? item.id : null;
     hoverTimer.current = window.setTimeout(() => {
+      hovering.current = null;
       if (selectable(item) && item.children) openSub(index, false);
       else if (open) closeSub();
     }, HOVER_DELAY);
@@ -422,6 +423,20 @@ function MenuList(p: ListProps) {
   useLayoutEffect(() => {
     handlers.current = { pointerMove, activate, onKeyDown };
   });
+
+  // A pending hover captures the old direction and rows: after a locale change it would read the moved row and
+  // overwrite the refreshed submenu anchor. So it's cancelled, and started again with this render's rows: the pointer
+  // at rest on its row never moves onto it again, so nothing else would (the row would stay closed until it left).
+  useLayoutEffect(() => {
+    const id = hovering.current;
+    if (id) {
+      const i = shown.findIndex((n) => n.type === "item" && n.id === id);
+      if (i >= 0) hover(i);
+      else hovering.current = pointerOn.current = null;
+    }
+    return () => window.clearTimeout(hoverTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per language, with that render's rows and handlers
+  }, [locale]);
   const rowEnter = useCallback((i: number) => handlers.current.pointerMove(i), []);
   const rowClick = useCallback((i: number) => handlers.current.activate(i, false), []);
   const rowKeyDown = useCallback((e: ReactKeyboardEvent) => handlers.current.onKeyDown(e), []);
@@ -463,6 +478,7 @@ function MenuList(p: ListProps) {
         onKeyDown={onKeyDown}
         onMouseLeave={() => {
           window.clearTimeout(hoverTimer.current);
+          hovering.current = null;
           pointerOn.current = null;
           // A search keeps its highlight: it is what Enter picks, and the pointer wandering off mustn't undo the
           // typing (it did, and Enter in quick-add's search did nothing).

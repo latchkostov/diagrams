@@ -527,6 +527,32 @@ test.describe("keyboard selection between nodes (D14)", () => {
     ]);
   });
 
+  test("two Ctrl+Alt+] before the next frame step to the second edge, from where the first one went", async ({
+    page,
+  }) => {
+    await seed(page);
+    await page.getByTestId("node-api").click();
+    await expect.poll(() => focusedNode(page)).toBe("api");
+    // Both presses arrive before the frame that focuses the first edge (docs/backlog keyboard edge cycling).
+    await page.evaluate(() => {
+      const target = document.activeElement ?? document.body;
+      for (let i = 0; i < 2; i++)
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "]",
+            code: "BracketRight",
+            ctrlKey: true,
+            altKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+    });
+    await expect.poll(() => selectedIds(page)).toEqual(["edge-a-c"]);
+    await expect(announced(page)).toContainText("Outgoing 2 of 2");
+    await expect(page.getByTestId("relationship-wrapper-a-c")).toBeFocused();
+  });
+
   test("Tab steps through nodes in reading order, focus and selection together, and it's announced", async ({
     page,
     consoleErrors,
