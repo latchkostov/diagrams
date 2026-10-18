@@ -23,16 +23,9 @@
 // Memory: the JS heap after load with live on, and after a minute of playback (full mode only).
 
 import type { CDPSession, Page } from "@playwright/test";
-import {
-  flipsPer100Edges,
-  layerCount,
-  layerRatio,
-  LIVE_FLIPS_PER_100_EDGES_LIMIT,
-  LIVE_TRANSITIONS_PER_100_LIMIT,
-  per100,
-  slowPhase,
-  steadyTail,
-} from "../../../src/bench/liveMetrics";
+import { layerCount } from "../../../src/bench/liveMetrics";
+import { startTransient, switchTraffic } from "./liveCapture";
+import { recordLiveGates } from "./liveGates";
 import { Bench, loadWorkload, MODE, round, test, uiSizes, uiSuite, type AppHooks } from "./harness";
 
 const s = uiSuite("live");
@@ -56,30 +49,6 @@ async function timesTen(page: Page) {
 
 const decorations = (page: Page): Promise<Hook["decorations"]> =>
   page.evaluate(() => ({ ...(window as unknown as Required<AppHooks>).__liveBench.decorations }));
-
-/** As a person does it: Inputs & capacity, the dot scale pinned, the Traffic slider to its end, then close. */
-async function timesTenInPanel(page: Page): Promise<{ closeMs: number; closeTimedOut: number }> {
-  await page.getByTestId("live-capacity").click();
-  await page.getByTestId("capacity-panel").waitFor();
-  // Pin the dot scale where it is, so more traffic means more dots, not a coarser scale.
-  const scale = await page.getByTestId("scale-indicator").getAttribute("data-scale");
-  await page.getByTestId("scale-override").selectOption(String(scale));
-  const slider = page.getByTestId("capacity-traffic-mult");
-  await slider.focus();
-  await page.keyboard.press("End");
-  await page.waitForFunction(
-    () => document.querySelector('[data-testid="capacity-traffic-mult"]')?.getAttribute("data-value") === "10",
-  );
-  // The click lands at once; the page may take long to answer after it (a starved main thread). Record, don't fail.
-  const t0 = Date.now();
-  try {
-    await page.getByTestId("capacity-close").click({ timeout: CLOSE_CAP_MS });
-    await page.getByTestId("capacity-panel").waitFor({ state: "detached", timeout: CLOSE_CAP_MS });
-    return { closeMs: Date.now() - t0, closeTimedOut: 0 };
-  } catch {
-    return { closeMs: Date.now() - t0, closeTimedOut: 1 };
-  }
-}
 
 /** The compositor's layer count, from the next DevTools LayerTree update (null if none came). */
 async function layers(cdp: CDPSession, timeoutMs = 30_000): Promise<number | null> {
@@ -108,29 +77,6 @@ const transitions = (page: Page) =>
 /** The layers and running transitions right now. */
 async function scene(b: Bench) {
   return { layers: await layers(b.cdp), transitions: await transitions(b.page) };
-}
-
-/**
- * From the switch to x10: frames until they settle (or the cap), sampling layers and transitions on the way; the
- * slow phase is read from the frames afterwards.
- */
-async function transient(b: Bench) {
-  await b.page.evaluate(() => window.__bench.startFrames());
-  const t0 = Date.now();
-  let peakLayers = 0;
-  let peakTransitions = 0;
-  for (;;) {
-    await b.page.waitForTimeout(1_500);
-    const now = await scene(b);
-    peakLayers = Math.max(peakLayers, now.layers ?? 0);
-    peakTransitions = Math.max(peakTransitions, now.transitions);
-    const sofar = await b.page.evaluate(() => window.__bench.frames.slice());
-    if (steadyTail(sofar).stable || Date.now() - t0 > TRANSIENT_CAP_MS) break;
-  }
-  const frames = await b.page.evaluate(() => window.__bench.stopFrames());
-  const steady = steadyTail(frames);
-  const slow = slowPhase(frames, steady.gapMs);
-  return { ...slow, steadyFps: steady.fps, peakLayers, peakTransitions };
 }
 
 /** Five seconds of playback: what the main thread spent, and how smoothly it drew. */
@@ -167,53 +113,6 @@ async function watch(b: Bench, ms = 5_000) {
   };
 }
 
-/**
- * Records the gates for one x10 window, held on a large diagram only: running transitions, layers against x1, edge
- * churn.
- */
-function gates(
-  w: ReturnType<typeof loadWorkload>,
-  detail: string,
-  o: {
-    x1Layers: number | null;
-    x10Layers: number;
-    x10Transitions: number;
-    flips: number;
-    publishes: number;
-    elements: number;
-    large: boolean;
-    /**
-     * Gate the edge churn: only in `live gates`. Per publish it depends on how much simulated time a publish covers,
-     * which grows as frames slow down (5,000 nodes), so elsewhere it's reported only.
-     */
-    gateFlips?: boolean;
-  },
-) {
-  const ratio = round(layerRatio(o.x1Layers ?? 0, o.x10Layers), 2);
-  const churn = round(flipsPer100Edges(o.flips, o.publishes, w.info.edges), 2);
-  const fades = round(per100(o.x10Transitions, o.elements), 2);
-  s.count("layersX1", o.x1Layers ?? NaN, { w: w.info, detail });
-  s.count("layersX10Peak", o.x10Layers, { w: w.info, detail });
-  // Small diagrams keep their fades on purpose (decorations.ts): the gates hold where they're dropped.
-  const limit = (l: number) => (o.large ? { limit: l } : {});
-  s.count("transitionsX10Peak", o.x10Transitions, { w: w.info, detail });
-  s.count("transitionsX10Per100Elements", fades, {
-    w: w.info,
-    detail,
-    ...limit(LIVE_TRANSITIONS_PER_100_LIMIT),
-    why: "CSS transitions running at x10 per 100 nodes and edges: each is animated on its own",
-  });
-  // Report-only: the layers follow how far the simulation has got (each pulsing node is one), and holding the pulses
-  // still cut them by five while making frames twice as slow (docs/BENCHMARKS.md § Live view on large diagrams).
-  s.count("layerRatioX10", ratio, { w: w.info, detail });
-  s.count("edgeFlipsPer100EdgesPerPublish", churn, {
-    w: w.info,
-    detail,
-    ...(o.gateFlips ? limit(LIVE_FLIPS_PER_100_EDGES_LIMIT) : {}),
-    why: "edges changing active/idle per publish: the hold keeps a busy edge lit",
-  });
-}
-
 async function liveCase(
   browser: import("@playwright/test").Browser,
   w: ReturnType<typeof loadWorkload>,
@@ -233,20 +132,33 @@ async function liveCase(
       await page.waitForTimeout(3_000);
       const x1 = await scene(b);
       const d0 = await decorations(page);
-      if (rate === "x10") await timesTen(page);
-      else {
-        const close = await timesTenInPanel(page);
-        s.time("panelCloseMs", [close.closeMs], w.info, detail, "Traffic × 10 set in the panel: the close click");
-        s.count("panelCloseTimedOut", close.closeTimedOut, { w: w.info, detail });
+      let capture: Awaited<ReturnType<typeof startTransient>> | undefined;
+      let t: Awaited<ReturnType<NonNullable<typeof capture>["collect"]>>;
+      try {
+        const close = await switchTraffic(
+          page,
+          rate === "x10heat",
+          async () => {
+            capture = await startTransient(b, rate === "x10heat", TRANSIENT_CAP_MS);
+          },
+          CLOSE_CAP_MS,
+        );
+        if (close) {
+          s.time("panelCloseMs", [close.closeMs], w.info, detail, "Traffic × 10 set in the panel: the close click");
+          s.count("panelCloseTimedOut", close.closeTimedOut, { w: w.info, detail });
+        }
+        if (!capture) throw Error("Transient capture was not armed");
+        t = await capture.collect();
+      } finally {
+        await capture?.dispose();
       }
-      const t = await transient(b);
       const d1 = await decorations(page);
       s.time("slowPhaseMs", [t.slowPhaseMs], w.info, detail, "from x10 until frames stay within 2x the steady frame");
       s.count("slowPhaseSettled", t.settled ? 1 : 0, { w: w.info, detail });
       s.count("slowPhaseFps", round(t.slowPhaseFps, 2), { w: w.info, detail, unit: "frames/s" });
       s.count("steadyFps", round(t.steadyFps, 2), { w: w.info, detail, unit: "frames/s" });
       s.count("transitionsX1", x1.transitions, { w: w.info, detail });
-      gates(w, detail, {
+      recordLiveGates(s, w.info, detail, {
         x1Layers: x1.layers,
         x10Layers: t.peakLayers,
         x10Transitions: t.peakTransitions,
@@ -315,7 +227,7 @@ test(`live gates pipeline@${GATE_N}`, async ({ page }) => {
     fades = Math.max(fades, now.transitions);
   }
   const d1 = await decorations(page);
-  gates(w, "gates", {
+  recordLiveGates(s, w.info, "gates", {
     x1Layers: x1.layers,
     x10Layers: peak,
     x10Transitions: fades,
@@ -325,7 +237,6 @@ test(`live gates pipeline@${GATE_N}`, async ({ page }) => {
     large: d1.large,
     gateFlips: true,
   });
-  s.count("decoratedElements", d1.elements, { w: w.info, detail: "gates" });
 });
 
 test("live memory over a minute", async ({ page }) => {

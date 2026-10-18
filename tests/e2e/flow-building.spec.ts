@@ -702,6 +702,33 @@ test.describe("the stencil rail (D13)", () => {
     await savedWhen(page, (s) => s.nodes.length === 6);
   });
 
+  test("stencil drag preview stays outside palette layout", async ({ page }) => {
+    const item = await railItem(page, "redis cache", "redis.cache");
+    const layout = async () =>
+      Promise.all([
+        item.boundingBox(),
+        page.getByTestId("palette-results").boundingBox(),
+        page.getByTestId("palette-search").boundingBox(),
+        page.getByTestId("canvas-wrap").boundingBox(),
+      ]);
+    const before = await layout();
+    expect(before.every(Boolean)).toBe(true);
+    const dt = await page.evaluateHandle(() => new DataTransfer());
+    try {
+      await item.dispatchEvent("dragstart", { dataTransfer: dt });
+      const preview = page.getByTestId("stencil-drag-preview");
+      await expect(preview).toBeAttached();
+      expect(await preview.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
+      const bounds = await box(preview);
+      expect(bounds.width).toBeGreaterThan(0);
+      expect(bounds.x + bounds.width).toBeLessThan(0);
+      expect(await layout()).toEqual(before);
+    } finally {
+      await item.dispatchEvent("dragend", { dataTransfer: dt });
+    }
+    await expect(page.getByTestId("stencil-drag-preview")).toHaveCount(0);
+  });
+
   test("a stencil held over an edge and dropped goes in between", async ({ page }) => {
     const item = await railItem(page, "redis cache", "redis.cache");
     const dt = await page.evaluateHandle(() => new DataTransfer());

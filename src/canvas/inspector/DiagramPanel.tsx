@@ -6,7 +6,8 @@ import { colorLabel } from "../../i18n/chrome";
 import { PlanningUpgrade, RequestRoutesSection } from "../../planning/lazy";
 import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, resolveAnnotationColor } from "../annotations";
 import { Field, Section, Segmented } from "./fields";
-import { bulkStep, countText } from "./MultiPanel";
+import { bulkStep } from "./editTransactions";
+import { countText } from "./selectionSummary";
 import { type InspectorProps } from "./types";
 
 export function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps) {

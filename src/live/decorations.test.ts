@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { NodeSimState, SimSnapshot } from "../sim/types";
 import { Decorator, EDGE_HOLD, LARGE_LIVE_ELEMENTS } from "./decorations";
+import { LiveController } from "./controller";
 
 /** Just enough of an element for the decorator: attributes, a dataset, and counted attribute writes. */
 class FakeElement {
@@ -65,6 +66,52 @@ function scene(nodeCount: number, edgeCount: number) {
 }
 
 describe("live decorations", () => {
+  it.each([false, true])(
+    "clears held highlights on a forward seek (playing=%s), deriving the destination activity",
+    (playing) => {
+      const { decorator, state } = scene(3, 2);
+      const controller = new LiveController(
+        {
+          format: "diagrams/v1",
+          title: "Seek activity",
+          nodes: [0, 1, 2].map((i) => ({
+            id: `n${i}`,
+            stencil: i ? "generic.database" : "generic.client",
+            label: `Node ${i}`,
+            x: i * 200,
+            y: 0,
+          })),
+          edges: [1, 2].map((i) => ({ id: `e${i - 1}`, from: "n0", to: `n${i}`, props: { travelMs: i * 1000 } })),
+        },
+        { roleOf: (stencil) => (stencil === "generic.client" ? "source" : "store") },
+      );
+      try {
+        controller.selectSimulation({
+          id: "seek",
+          title: "Seek",
+          seed: 1,
+          scale: 1,
+          traffic: [{ id: "burst", node: "n0", messageType: "Event", shape: { kind: "burst", count: 1, spreadMs: 0 } }],
+          timeline: [],
+          expectations: [],
+        });
+        controller.setPlaying(playing);
+        controller.seek(100);
+        const apply = (still = false) => decorator.apply({ snapshot: controller.snapshot(), spotlight: null, still });
+        apply();
+        expect(state(0)).toBe("active");
+        controller.seek(1500);
+        expect(controller.snapshot().edges.e0.active).toBe(0);
+        expect(controller.snapshot().edges.e1.active).toBeGreaterThan(0);
+        apply();
+        for (let i = 0; i < EDGE_HOLD * 3; i++) apply(true);
+        expect(state(0)).toBe("idle");
+        expect(state(1)).toBe("active");
+      } finally {
+        controller.dispose();
+      }
+    },
+  );
   it(`holds an edge active for ${EDGE_HOLD} publishes after its last message, then lets it go idle`, () => {
     const { publish, state } = scene(1, 2);
     publish([]);
