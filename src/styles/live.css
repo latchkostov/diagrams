@@ -499,6 +499,19 @@
     filter 0.35s;
 }
 
+/* A large diagram (decorations.ts, LARGE_LIVE_ELEMENTS) changes state instantly instead: every running fade is
+   animated on its own, and at high traffic hundreds of them run at once among thousands of nodes (the badges' metric
+   pills and depth bars included). */
+.react-flow[data-live][data-live-large] .react-flow__node,
+.react-flow[data-live][data-live-large] .react-flow__node[data-live-heat] .nb,
+.react-flow[data-live][data-live-large] .react-flow__edge .fe-path,
+.react-flow[data-live][data-live-large] .fe-label,
+.react-flow[data-live][data-live-large] .fe-chip,
+.react-flow[data-live][data-live-large] .lv-badges .lv-metric,
+.react-flow[data-live][data-live-large] .lv-badges .lv-depth i {
+  transition: none;
+}
+
 /* Idle edges recede while live; edges carrying messages brighten and march. */
 .react-flow[data-live] .react-flow__edge[data-live-edge="idle"] .fe-path.react-flow__edge-path {
   opacity: 0.4;

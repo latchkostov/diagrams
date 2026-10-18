@@ -13,6 +13,7 @@ pnpm bench:ui         # the browser suites (Playwright on the production e2e bui
 pnpm bench:sim        # the simulation: engine and live view, Node and browser
 pnpm bench:bundle     # the shipped bundle's composition and budgets
 pnpm bench:compare base.json head.json [--md out.md] [--fail-on-regression]
+node scripts/bench/run.mjs --only ui --ui live --grep "live pipeline@5000"   # one browser benchmark by title
 ```
 
 `pnpm bench` builds what it serves, so it runs on a clean checkout. To compare a branch with master, run it on both
@@ -20,7 +21,8 @@ and compare the two `results.json`, or compare against the committed baseline (`
 
 Contents: [Design](#design) · [Workloads](#workloads) · [Metrics](#metrics) · [Method and noise
 control](#method-and-noise-control) · [Gates and report-only](#gates-and-report-only) · [Output](#output) ·
-[CI](#ci) · [Baseline](#baseline) · [Hotspots](#hotspots) · [Proving the gates](#proving-the-gates) ·
+[CI](#ci) · [Baseline](#baseline) · [Hotspots](#hotspots) · [Live view on large diagrams](#live-view-on-large-diagrams) ·
+[Proving the gates](#proving-the-gates) ·
 [Extending](#extending)
 
 ## Design
@@ -112,7 +114,7 @@ with p90 beside them.
 | `load`     | Cold load in a fresh context: `firstNode` (navigation to the first frame with a node: first meaningful render), `settled` (the end of the last long animation frame, once three quiet seconds pass), `checksDone` (the first check run delivered; checks run by themselves up to 1,500 nodes), `firstNodeTimedOut` (nothing on screen in five minutes), main-thread task time and its script, style and layout parts, the longest frame and total blocking time, JS heap after GC, DOM nodes and listeners                                                                                                                                                                                                                                                                           |
 | `interact` | `pan` (a middle-button drag: a left drag draws a selection box) and `zoom` (Control and the wheel: a plain wheel pans), each checked to have moved or scaled the viewport (main-thread ms per step, frame intervals, longest frame, input to next paint); `select` (a click to the frame the inspector shows the node; `select-first` unfolds the inspector); typing a node's name, its secondary line and a number in the inspector at a key every 120 ms (input to next paint per key, Event Timing's longest event per key, main-thread ms per key, check runs and planning analyses caused); `drag`. The pipeline and the mesh at every size they open in (the mesh stops at 1,500: at 5,000 it takes minutes to open and seconds a drag frame), the annotated pipeline at 1,500 |
 | `renders`  | React commits and component renders per key, per click, per pan and drag frame, by component, and per second of live view                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `live`     | Main-thread busy %, ms per frame, frame rate, particle frame rate and dots, with the particles drawn in the worker and on the main thread (`renderer=main`), at x1 and x10, turned on from a settled canvas (live view's frames never go quiet); heap and DOM over a minute of playback                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `live`     | Main-thread busy %, ms per frame, frame rate, particle frame rate and dots, with the particles drawn in the worker and on the main thread (`renderer=main`), at x1, x10 (set through the e2e build's hook, so the scene is the same as x1's) and x10heat (set in Inputs & capacity, which turns the heat map on; the close click's time is recorded, never a failure), turned on from a settled canvas (live view's frames never go quiet). After x10: the transient (`slowPhaseMs`, `slowPhaseFps`, `steadyFps`), peak composited layers and running CSS transitions, edge flips per publish ([Live view on large diagrams](#live-view-on-large-diagrams)); heap and DOM over a minute of playback                                                                                  |
 | `features` | Auto-layout, Tidy up, Run simulations, PNG, SVG and Interactive HTML export, switching the language: input to done, main-thread time, longest frame                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `memory`   | DOM nodes, listeners and heap kept per open and close of the inspector, the command palette, the export dialog and live view                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `profile`  | CPU profiles (DevTools sampling profiler) of the slowest interactions, self time by function: the evidence behind [Hotspots](#hotspots)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -210,17 +212,18 @@ runners are):
 
 A gate fails `pnpm bench:gates` (and the nightly run). Everything else is a trend.
 
-| Gate                                                                                                                                                                                                                                       | Kind                                                                                      | Where       | Why it's robust                                                                                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
-| Complexity of parsing, the canvas conversion, the checks, capacity analysis, the engine (load, frame, snapshot, idle tick), auto-layout, full routing (pipeline, 250 vs 2,000) and a drag frame's routing, every importer and every export | ratio, `growth()` at 500 vs 4,000 nodes (an eighth), under 24 (linear is 8, quadratic 64) | Node suites | Two sizes, same process, interleaved, fastest of five: load slows both alike                                         |
-| Known superlinear work: the capacity check rule                                                                                                                                                                                            | ratio, under 64                                                                           | `checks`    | Held below quadratic until the refactor makes it linear; then it moves to 24                                         |
-| Topology compiled and capacity analysed a fixed number of times per check run                                                                                                                                                              | count (spied calls)                                                                       | `checks`    | Counts                                                                                                               |
-| One planning analysis for twenty selections; one explanation per node                                                                                                                                                                      | count                                                                                     | `planning`  | Counts                                                                                                               |
-| Edges routed per drag frame, how often a drag frame reads each node's box, and the search arrays a full routing pass allocates                                                                                                             | count                                                                                     | `layout`    | Counts                                                                                                               |
-| Same seed, same run                                                                                                                                                                                                                        | count                                                                                     | `sim`       | Counts                                                                                                               |
-| Commits, canvas, inspector, card, node-wrapper and minimap renders per keystroke, per click and per pan frame, node wrappers per drag frame (pipeline, 100 and 500 nodes)                                                                  | count                                                                                     | `renders`   | Counts; budgets in `tests/bench/ui/renders.bench.ts` with room for a stray commit, never for an extra render per key |
-| DOM nodes and listeners kept per open and close (second window)                                                                                                                                                                            | count                                                                                     | `memory`    | Counts after GC                                                                                                      |
-| Entry, startup, canvas first view and live view gzip sizes                                                                                                                                                                                 | bytes                                                                                     | `bundle`    | Bytes                                                                                                                |
+| Gate                                                                                                                                                                                                                                                                     | Kind                                                                                      | Where       | Why it's robust                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| Complexity of parsing, the canvas conversion, the checks, capacity analysis, the engine (load, frame, snapshot, idle tick), auto-layout, full routing (pipeline, 250 vs 2,000) and a drag frame's routing, every importer and every export                               | ratio, `growth()` at 500 vs 4,000 nodes (an eighth), under 24 (linear is 8, quadratic 64) | Node suites | Two sizes, same process, interleaved, fastest of five: load slows both alike                                         |
+| Known superlinear work: the capacity check rule                                                                                                                                                                                                                          | ratio, under 64                                                                           | `checks`    | Held below quadratic until the refactor makes it linear; then it moves to 24                                         |
+| Topology compiled and capacity analysed a fixed number of times per check run                                                                                                                                                                                            | count (spied calls)                                                                       | `checks`    | Counts                                                                                                               |
+| One planning analysis for twenty selections; one explanation per node                                                                                                                                                                                                    | count                                                                                     | `planning`  | Counts                                                                                                               |
+| Edges routed per drag frame, how often a drag frame reads each node's box, and the search arrays a full routing pass allocates                                                                                                                                           | count                                                                                     | `layout`    | Counts                                                                                                               |
+| Same seed, same run                                                                                                                                                                                                                                                      | count                                                                                     | `sim`       | Counts                                                                                                               |
+| Commits, canvas, inspector, card, node-wrapper and minimap renders per keystroke, per click and per pan frame, node wrappers per drag frame (pipeline, 100 and 500 nodes)                                                                                                | count                                                                                     | `renders`   | Counts; budgets in `tests/bench/ui/renders.bench.ts` with room for a stray commit, never for an extra render per key |
+| DOM nodes and listeners kept per open and close (second window)                                                                                                                                                                                                          | count                                                                                     | `memory`    | Counts after GC                                                                                                      |
+| Live view at x10 on a large diagram (pipeline, 1,500 nodes; and every x10 case over 1,000 nodes and edges in full runs): CSS transitions running per 100 nodes and edges under 1, layers within 2× of x1's, edges flipping active/idle per publish under 5 per 100 edges | count                                                                                     | `live`      | Counts on one page, x1 and x10 a few seconds apart; no milliseconds                                                  |
+| Entry, startup, canvas first view and live view gzip sizes                                                                                                                                                                                                               | bytes                                                                                     | `bundle`    | Bytes                                                                                                                |
 
 Not gated, and why:
 
@@ -265,11 +268,19 @@ min, max, mean, cov }, workload?: { family, n, nodes, edges, fingerprint }, gate
 ## Baseline
 
 `tests/bench/baseline/master.json` (and its summary, `master.md`): `pnpm bench` on master `bf806a6` plus this suite,
-2026-10-15. 16 cores, 32 logical CPUs, 68 GB, Windows 11, Node 24.22.0, Chromium 156 (Playwright
-1.64.1), Vite 8.3.4, React 19.3.1, CPU throttle 2×. Calibration: Node 9.7 to 14.9 ms per suite (10.6 median), browser
-26 ms. 2,997 metrics; all 72 gates pass. It ran in parts (`--keep`), each under the two-hour limit of the tool that ran
-it: the Node suites 25 minutes, cold load 45, interactions and features 30, the rest 35 (the profiles once more, after a
+2026-10-15, run natively on a contributor's machine (not on CI), Node 24.22.0, Chromium 156 (Playwright 1.64.1), Vite
+8.3.4, React 19.3.1, CPU throttle 2×. Its machine fields (`meta.env.cpu`, `cores`, `memoryGB`, `os`) are left out on
+purpose: no number in this repository describes a particular machine. Calibration: Node 9.7 to 14.9 ms per suite (10.6
+median), browser 26 ms. 2,997 metrics; all 72 gates pass. It ran in parts (`--keep`), each under the two-hour limit of
+the tool that ran it: the Node suites 25 minutes, cold load 45, interactions and features 30, the rest 35 (the profiles once more, after a
 fix to how they name anonymous functions).
+
+Milliseconds compare only within one machine: base against head on the same machine, in the same mode (natively, or
+in the pinned Playwright Linux container) and at the same `BENCH_CPU` throttle. Against the committed baseline or
+another machine's run, compare normalised times (`cu`), counts and gates, never raw milliseconds. The nightly
+Benchmarks run's artifact (`results.json`, 90 days) is the CI runner's own series. To record a new baseline: on a quiet
+machine, run `pnpm bench` on master, blank the four machine fields in `meta.env` of `results.json` (and the Machine row
+of `summary.md`), and commit them as `master.json` and `master.md`.
 
 The headline numbers (medians, ms unless marked; browser numbers at 2× CPU throttle on the main thread):
 
@@ -524,19 +535,112 @@ gzip, startup 166.6 kB (20 chunks) and canvas first view 355.5 kB;
 all existing budgets pass. The seven Node suites and six browser tests pass, with the same
 201 Node and six browser report-only cases skipped by gates mode.
 
+## Live view on large diagrams
+
+**The problem (before, measured on master 2026-10-17).** The nightly failed `live pipeline@5000`: the click on
+`capacity-close` timed out after 60 s at a 4× CPU throttle. The renderer's main thread was starved. For 30 to 60 s
+after Traffic × 10 at 5,000 nodes, frames took 3.1 to 3.4 s each (0.3 fps), then settled near 2 fps. In a 10 s trace,
+Chrome's Layerize took 8.8 s (up to 3.0 s a frame) against under 1 s for script, style, layout and paint together, and
+composited layers went from 993 at × 1 to 3,700 to 4,900. The trigger: live mode gave every node, edge line and edge
+label an `opacity`/`filter` transition, and at × 10 the decorator flipped hundreds of edges between active and idle on
+every publish (8 Hz), so 130 to 1,300 fades ran at once. And the live tick moved the simulation at most 100 ms a frame,
+so at 3.3 s a frame simulated time ran 33 times slower than the clock, stretching the slow phase in proportion to CPU
+slowness (a fast machine passed, CI's slower runner didn't).
+
+**What changed (perf 5).**
+
+- Above `LARGE_LIVE_ELEMENTS` (1,000 decorated nodes and edges, `src/live/decorations.ts`) the canvas gets
+  `data-live-large` and drops the per-element fades: nodes, edge lines, labels, the heat glow, the badges' metric pills
+  and depth bars; over-capacity rings hold still instead of pulsing. Smaller diagrams look as before.
+- An edge stays active for `EDGE_HOLD` (3) publishes after its last message (presentation only).
+- A frame moves the simulation by up to `CATCH_UP_MS` (1 s) instead of 100 ms, as far as the engine can afford (its
+  work at most half the frame, never less than 100 ms); after the page was hidden it moves nothing. Slow motion and the
+  march keep the 100 ms step. The engine's fixed 10 ms ticks keep any step deterministic (`src/live/frameClock.ts`).
+
+**The threshold.** At 2×, master's x10 transient: the pipeline at 500 nodes (985 decorated elements) settles within
+a second (`slowPhaseMs` 0 to 0.7 s) at 15 to 20 fps; the mesh at 500 (1,351) had a slow phase of 3 to 4 s at 8 to 9 fps
+(31 s in an earlier run); at 1,500 nodes (2,957 elements) 330 to 460 fades ran at once at x10, and at 5,000 (9,882)
+1,500 to 1,600: 10 to 16 per 100 elements. 1,000 sits between the largest workload that measured fine and the smallest
+that didn't; diagrams drawn by hand are far below it.
+
+**The harness.** x1 and x10 measure the same scene: x10 is set through `__liveBench.timesTen()` (e2e builds only),
+because opening Inputs & capacity turns the heat map on for the session. `x10heat` is a person doing it in the panel;
+the close click's time is recorded (`panelCloseMs`, `panelCloseTimedOut`) and never fails the run. After x10 the
+transient is measured on its own: `slowPhaseMs` (until eight frames in a row stay within twice the steady frame, the
+median of the last 5 s; capped at 120 s, `slowPhaseSettled` 0 when it never did), `slowPhaseFps`, `steadyFps`, the peak
+of running CSS transitions and of composited layers (DevTools `LayerTree`), and edges flipping per publish. Then the
+usual five seconds of steady state.
+
+**Gates** (counts; `live gates pipeline@1500` runs in `pnpm bench:gates`, about two minutes; the x10 cases hold the first in
+full runs too, on large diagrams only):
+
+| Gate                                                           | Limit | master (2×) | perf 5 (2×) |
+| -------------------------------------------------------------- | ----- | ----------- | ----------- |
+| `transitionsX10Per100Elements`: CSS transitions running at x10 | ≤ 1   | 10 to 16.5  | 0 to 0.1    |
+| `edgeFlipsPer100EdgesPerPublish` (`live gates` only)           | ≤ 5   | 8.3 to 8.7  | 2.6 to 3.1  |
+
+Edge churn per publish depends on how much simulated time a publish covers, which grows as frames slow down, so it is
+gated only at 1,500 nodes (`gates`) and reported elsewhere. Composited layers are reported, not gated: at 5,000 nodes
+they follow the heat pulses (each pulsing node is a layer), not the fades. Holding the pulses still on large diagrams cut
+x10 layers from about 5,000 to 970 but doubled the steady frame (557 to about 1,000 ms at 2×): fewer layers wasn't
+faster, so that variant was dropped.
+
+**Commands.** Compare base and head on one machine, in one mode, at one throttle, and repeat each at least twice: the
+timings are bimodal (one quiet-machine master run settled in 44 s where another never did within 120 s).
+
+```sh
+# the gates (pipeline@1500), and the large-diagram cases at the default 2× throttle
+node scripts/bench/run.mjs --mode gates --only ui --ui live
+BENCH_SIZES=500,1500,5000 node scripts/bench/run.mjs --only ui --ui live --grep "live (pipeline@(500|1500|5000)|mesh@500)"
+# approximating CI's slower runner on a fast machine: the same at a 4× throttle
+BENCH_CPU=4 BENCH_SIZES=1500,5000 node scripts/bench/run.mjs --only ui --ui live --grep "live pipeline@(1500|5000)"
+# base against head
+pnpm bench:compare base/results.json head/results.json
+```
+
+Before and after (same machine, quiet; one run each, a second base run was discarded for overlapping other work;
+base = master plus this harness, head = perf 5):
+
+| At 2× (5,000 nodes unless noted; each run)          | base        | head        |
+| --------------------------------------------------- | ----------- | ----------- |
+| Panel close click (x10heat, worker)                 | 42,886      | 29,291      |
+| Slow phase after x10 (worker)                       | 44,848      | 122,312     |
+| Slow phase after x10 (main)                         | 44,282      | 0           |
+| Slow phase settled within 120 s (worker / main)     | 1 → 1       | 0 → 1       |
+| Steady fps at x10 (worker)                          | 1.06        | 1.15        |
+| Main-thread ms per frame at x10 (worker)            | 501         | 556         |
+| Main-thread ms per frame at x1 (worker)             | 128         | 600         |
+| Running transitions at x10, peak (worker)           | 1,629       | 9           |
+| Layers x1 → x10 peak (worker)                       | 1911 → 4830 | 3507 → 5069 |
+| Gates: transitions per 100 elements (1,500)         | 11.67       | 0           |
+| Gates: edge flips per publish per 100 edges (1,500) | 8.65        | 2.6         |
+| Steady fps at x10, 1,500 nodes (worker)             | 3.75        | 5           |
+
+At 4×: not measured for this change. The machine stayed busy with other work for the two hours set aside for it; the
+recipe above is the one to run.
+
+How to read them. The fades are gone (the counts) and the panel closes a third sooner; the steady frame at 5,000 nodes is
+unchanged at about 1 fps, because what remains is per-node work the fades never caused (hotspot 6, the heat pulses).
+x1 at 5,000 nodes costs more per frame on head because its simulation is further along after the same wall time: the
+frame clock lets it keep the clock's pace, so the backlogs and the heat pulses that x10 brings (on both) arrive within
+the measured window (3,500 layers at x1 against 600). The slow phase stays bimodal on both: base settled in 44 s in one
+quiet run and not within 120 s in another; head settled at once with the main-thread renderer and not within 120 s
+with the worker in the same run.
+
 ## Proving the gates
 
 Each gate was checked against the regression it exists for, injected on purpose and reverted (`git checkout -- src`)
 on the baseline's commit:
 
-| Regression injected                                                                                                          | Gates run                   | Result                                                                                                                                                                                                 |
-| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| O(n²) in a hot path: `compileTopology` finds each edge's target with `nodes.find` instead of its Map (`src/sim/topology.ts`) | `checks`, `sim`, `planning` | **Caught** by 4 gates: `runChecks-structural` 25.7× (mesh) and 33.6× (pipeline), `engineLoad` 36.7× (mesh) and 31.0× (pipeline), all against 24; before, 9 to 10×                                      |
-| An extra render per keystroke: the inspector bumps a state in an effect on the name                                          | `renders`                   | **Caught**: `type-name/Inspector` 2.08 (100 nodes) and 2.25 (500) per key against 1.75; before, 1.17 to 1.25. The commit count didn't move: React folded the update into a commit it was making anyway |
-| A bigger entry chunk: the YAML parser imported in `src/main.tsx`                                                             | `bundle`, `pnpm size`       | **Caught**: entry 135.0 kB gzip against 123.5 (`pnpm size` fails too), startup 183.7 kB against 177                                                                                                    |
-| Routing without its spatial index (perf/1-editing's gates run on master's router)                                            | `layout`                    | **Caught**: `routeDragFrame-readsPerNode` 11,453 (pipeline at 2,000) against 400 and 42,234 (mesh at 500) against 2,000; with the index, 152 and 874                                                   |
-| Searches allocating their own arrays (perf/2-routing's router without its shared buffers)                                    | `layout`, unit tests        | **Caught**: 340 allocations for a 150-node stress pass against 20 (`perf.test.ts`); the bench gate reads 22 for the mesh at 500 against 40, where master's searches allocated five arrays each (4,255) |
-| Every node's wrapper re-rendered (perf/1-editing's budgets on master: an inline node handler and minimap colours)            | `renders`                   | **Caught**: per key 725 wrappers and 725 minimap rects at 500 nodes against 3; per click 2,050 against 8, 11.2 commits against 10; per drag frame 768 against 4                                        |
+| Regression injected                                                                                                          | Gates run                   | Result                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| O(n²) in a hot path: `compileTopology` finds each edge's target with `nodes.find` instead of its Map (`src/sim/topology.ts`) | `checks`, `sim`, `planning` | **Caught** by 4 gates: `runChecks-structural` 25.7× (mesh) and 33.6× (pipeline), `engineLoad` 36.7× (mesh) and 31.0× (pipeline), all against 24; before, 9 to 10×                                            |
+| An extra render per keystroke: the inspector bumps a state in an effect on the name                                          | `renders`                   | **Caught**: `type-name/Inspector` 2.08 (100 nodes) and 2.25 (500) per key against 1.75; before, 1.17 to 1.25. The commit count didn't move: React folded the update into a commit it was making anyway       |
+| A bigger entry chunk: the YAML parser imported in `src/main.tsx`                                                             | `bundle`, `pnpm size`       | **Caught**: entry 135.0 kB gzip against 123.5 (`pnpm size` fails too), startup 183.7 kB against 177                                                                                                          |
+| Routing without its spatial index (perf/1-editing's gates run on master's router)                                            | `layout`                    | **Caught**: `routeDragFrame-readsPerNode` 11,453 (pipeline at 2,000) against 400 and 42,234 (mesh at 500) against 2,000; with the index, 152 and 874                                                         |
+| Searches allocating their own arrays (perf/2-routing's router without its shared buffers)                                    | `layout`, unit tests        | **Caught**: 340 allocations for a 150-node stress pass against 20 (`perf.test.ts`); the bench gate reads 22 for the mesh at 500 against 40, where master's searches allocated five arrays each (4,255)       |
+| Every node's wrapper re-rendered (perf/1-editing's budgets on master: an inline node handler and minimap colours)            | `renders`                   | **Caught**: per key 725 wrappers and 725 minimap rects at 500 nodes against 3; per click 2,050 against 8, 11.2 commits against 10; per drag frame 768 against 4                                              |
+| Live view's fades on large diagrams and no edge hold (master's live view, with this suite's hook)                            | `live`                      | **Caught**: `transitionsX10Per100Elements` 11.7 to 12.1 at 1,500 nodes against 1 (perf 5: 0), 10 to 16.5 in every large x10 case; `edgeFlipsPer100EdgesPerPublish` 8.4 to 8.7 against 5 (perf 5: 2.6 to 3.1) |
 
 The suite's own checks: three back-to-back `pnpm bench:gates` runs passed every gate every time (see
 [Measured variance](#measured-variance)), and the render hook was checked against React's development profiler.
@@ -583,4 +687,5 @@ settled signals"), `renders/select/commits` went from 10.2 to 11.2 commits per c
 - **A workload family.** A pure function `(n) => DiagramFile` in `src/bench/workloads`, registered in `index.ts`;
   `workloads.test.ts` checks it's valid, the right size and deterministic.
 - **The baseline.** After a change that moves the numbers on purpose, run `pnpm bench` on master on a quiet machine and
-  commit `tests/.output/bench/results.json` as `tests/bench/baseline/master.json` (and `summary.md` as `master.md`).
+  commit `tests/.output/bench/results.json` as `tests/bench/baseline/master.json` (and `summary.md` as `master.md`), with
+  the machine fields blanked ([Baseline](#baseline)).
