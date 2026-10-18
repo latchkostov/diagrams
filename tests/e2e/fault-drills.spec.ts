@@ -114,9 +114,7 @@ test("Cut link fails pushed Requests, retains broker deliveries and restores the
   await expect.poll(() => nodeCount(page, "worker", "processed")).toBe(10);
 });
 
-test("Add step offers all four named drill presets with editable targets and persists the fault timeline", async ({
-  page,
-}) => {
+test("fault step edits survive save and reopen", async ({ page }) => {
   const diagram = faultDrillFixture();
   const worker = diagram.nodes.find((node) => node.id === "worker");
   if (!worker) throw new Error("The fault drill fixture has no worker node");
@@ -134,12 +132,138 @@ test("Add step offers all four named drill presets with editable targets and per
       await expect(page.getByTestId(`sim-panel-step-${i + 1}-fault-target`)).toHaveValue("worker");
   }
   await page.getByTestId("sim-panel-step-1-fault-target").selectOption("zone-b");
+  await page.getByTestId("sim-panel-step-1-fault-value").selectOption("false");
+  await page.getByTestId("sim-panel-step-1-time").fill("1.5");
   await page.getByTestId("sim-panel-step-2-fault-target").selectOption("request");
+  await page.getByTestId("sim-panel-step-2-fault-value").selectOption("false");
+  await page.getByTestId("sim-panel-step-2-time").fill("3.5");
+  await page.getByTestId("sim-panel-step-3-fault-kind").selectOption("fail");
+  await expect(page.getByTestId("sim-panel-step-3-fault-kind")).toHaveValue("fail");
+  await page.getByTestId("sim-panel-step-3-fault-kind").selectOption("slow");
+  await expect(page.getByTestId("sim-panel-step-3-fault-kind")).toHaveValue("slow");
+  await page.getByTestId("sim-panel-step-3-fault-target").selectOption("store");
+  await page.getByTestId("sim-panel-step-3-fault-value").selectOption("10");
+  await page.getByTestId("sim-panel-step-3-time").fill("5.5");
+  await page.getByTestId("sim-panel-step-4-fault-target").selectOption("queue");
+  await page.getByTestId("sim-panel-step-4-fault-value").selectOption("0.1");
+  await page.getByTestId("sim-panel-step-4-time").fill("7.5");
   await page.getByTestId("sim-panel-save").click();
-  await expect
-    .poll(async () => (await savedDiagram(page)).simulations?.at(-1)?.timeline?.map((s) => s.action.do))
-    .toEqual(["note", "fault", "fault", "fault", "fault"]);
+  const timeline = [
+    { atMs: 0, action: { do: "note", text: "100 MemberJoined messages arrive at Worker." } },
+    {
+      atMs: 1500,
+      action: { do: "fault", fault: { kind: "boundary", boundary: "zone-b", down: false }, drill: "zone-outage" },
+    },
+    {
+      atMs: 3500,
+      action: { do: "fault", fault: { kind: "link", edge: "request", cut: false }, drill: "region-connectivity" },
+    },
+    {
+      atMs: 5500,
+      // A kind change makes a custom fault and deliberately clears preset metadata.
+      action: { do: "fault", fault: { kind: "slow", node: "store", factor: 10 } },
+    },
+    { atMs: 7500, action: { do: "fault", fault: { kind: "fail", node: "queue", rate: 0.1 }, drill: "error-spike" } },
+  ];
+  await expect.poll(async () => (await savedDiagram(page)).simulations?.at(-1)?.timeline).toEqual(timeline);
+  await page.getByTestId("sim-panel-back").click();
+  await page.getByTestId("sim-panel-edit-storm-worker").click();
+  await page.getByTestId("sim-panel-section-timeline-toggle").click();
+  for (const [i, target, value, time, kind] of [
+    [1, "zone-b", "false", "1.5", "boundary"],
+    [2, "request", "false", "3.5", "link"],
+    [3, "store", "10", "5.5", "slow"],
+    [4, "queue", "0.1", "7.5", "fail"],
+  ]) {
+    await expect(page.getByTestId(`sim-panel-step-${i}-fault-kind`)).toHaveValue(String(kind));
+    await expect(page.getByTestId(`sim-panel-step-${i}-fault-target`)).toHaveValue(String(target));
+    await expect(page.getByTestId(`sim-panel-step-${i}-fault-value`)).toHaveValue(String(value));
+    await expect(page.getByTestId(`sim-panel-step-${i}-time`)).toHaveValue(String(time));
+  }
 });
+
+for (const layout of ["ungrouped", "same-boundary"] as const) {
+  test(`unavailable fault presets keep playback usable: ${layout}`, async ({ page, consoleErrors }) => {
+    await page.clock.install();
+    const d = faultDrillFixture();
+    if (layout === "ungrouped") {
+      d.groups = [];
+      d.nodes.forEach((n) => {
+        delete n.group;
+      });
+    } else
+      d.nodes.forEach((n) => {
+        n.group = "zone-a";
+      });
+    const simulation = d.simulations?.[0];
+    if (!simulation) throw new Error("The fault fixture needs a saved simulation");
+    simulation.traffic = [{ id: "load", node: "caller", shape: { kind: "burst", count: 10 } }];
+    simulation.timeline = [
+      {
+        atMs: 500,
+        action: {
+          do: "fault",
+          fault:
+            layout === "ungrouped"
+              ? { kind: "boundary", boundary: "missing-zone", down: true }
+              : { kind: "link", edge: "request", cut: true },
+        },
+      },
+    ];
+    await seed(page, d);
+    await pauseClock(page);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await page.getByTestId("sim-panel-edit-drill").click();
+    await page.getByTestId("sim-panel-section-timeline-toggle").click();
+    await expect(page.getByTestId("sim-panel-preset-region-connectivity")).toBeDisabled();
+    if (layout === "ungrouped") await expect(page.getByTestId("sim-panel-preset-zone-outage")).toBeDisabled();
+    await expect(page.getByTestId("sim-panel-unavailable-faults")).toContainText(
+      "connect nodes in different boundaries",
+    );
+    await expect(page.getByTestId("sim-panel-warnings")).toContainText(
+      "Choose an available target or remove this step",
+    );
+    await expect(page.getByTestId("sim-panel-run")).toBeDisabled();
+    await page.getByTestId("sim-panel-step-0-fault-kind").selectOption("slow");
+    await page.getByTestId("sim-panel-step-0-fault-value").selectOption("1");
+    await expect(page.getByTestId("sim-panel-run")).toBeEnabled();
+    await page.getByTestId("sim-panel-run").click();
+    await page.getByTestId("sim-panel-close").click();
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-step").click();
+    await expect.poll(() => nodeCount(page, "worker", "processed")).toBeGreaterThan(0);
+    expectNoErrors(consoleErrors);
+  });
+}
+
+for (const theme of ["light", "dark"]) {
+  test(`cut and restored Request and Message styles are distinct in ${theme}`, async ({ page }) => {
+    await page.addInitScript(({ theme, key }) => localStorage.setItem(key, JSON.stringify({ theme })), {
+      theme,
+      key: STORAGE_KEYS.settings,
+    });
+    await seed(page);
+    const style = (id: string) =>
+      page.getByTestId(`edge-${id}`).evaluate((el) => {
+        const path = [...el.children][1];
+        const computed = getComputedStyle(path);
+        return { stroke: computed.stroke, dash: computed.strokeDasharray, opacity: computed.opacity };
+      });
+    for (const id of ["request", "delivery"]) {
+      await page.getByTestId(`edge-label-${id}`).click();
+      await waitForCameraIdle(page);
+      const restored = await style(id);
+      await faultMenu(page, `edge-label-${id}`);
+      await item(page, "sim.cut-link").click();
+      await expect.poll(() => style(id)).toEqual({ stroke: expect.any(String), dash: "4px, 8px", opacity: "0.55" });
+      expect((await style(id)).stroke).not.toBe(restored.stroke);
+      await faultMenu(page, `edge-label-${id}`);
+      await item(page, "sim.cut-link").click();
+      await expect.poll(() => style(id)).toEqual(restored);
+    }
+  });
+}
 
 test("Zone outage drill shifts traffic by 5 s without loss; the second simulation visibly loses requests", async ({
   page,

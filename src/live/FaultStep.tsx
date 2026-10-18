@@ -33,10 +33,18 @@ export function FaultStep({
         data-testid={`${testId}-fault-kind`}
         onChange={(e) => onChange(defaultFault(e.target.value as Fault["kind"], diagram))}
       >
-        <option value="boundary">{t("fault.boundary")}</option>
-        <option value="link">{t("fault.link")}</option>
-        <option value="slow">{t("fault.slow")}</option>
-        <option value="fail">{t("fault.fail")}</option>
+        <option value="boundary" disabled={!faultTargets(diagram, "boundary").length}>
+          {t("fault.boundary")}
+        </option>
+        <option value="link" disabled={!faultTargets(diagram, "link").length}>
+          {t("fault.link")}
+        </option>
+        <option value="slow" disabled={!faultTargets(diagram, "slow").length}>
+          {t("fault.slow")}
+        </option>
+        <option value="fail" disabled={!faultTargets(diagram, "fail").length}>
+          {t("fault.fail")}
+        </option>
       </select>
       <select
         value={target}

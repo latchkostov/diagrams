@@ -185,6 +185,7 @@ const BY_THEME: Record<string, string[]> = {
   reliability: [
     "cell-based-bookings",
     "outbox-saga-checkout",
+    "zone-outage-drill",
     "multi-region-active-active",
     "branch-to-datacentre",
     "measured-order-capacity",

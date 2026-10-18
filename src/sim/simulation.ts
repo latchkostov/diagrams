@@ -1,4 +1,5 @@
 import { faultLabel } from "../model/faultWords";
+import { faultTimelineProblem, FaultTimelineError } from "../model/faults";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { createRealCountInjector } from "./injection";
@@ -121,6 +122,8 @@ export function createSimulationRun(
   simulation: Simulation,
   opts: SimulationRunOptions = {},
 ): SimulationRun {
+  const problem = faultTimelineProblem(diagram, simulation);
+  if (problem) throw new FaultTimelineError(problem);
   const seed = simulation.seed ?? opts.seed ?? 1;
   const scale = resolveScale(simulation.scale);
   let multipliers = {

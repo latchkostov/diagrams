@@ -1,12 +1,4 @@
-import {
-  boundaryAncestors,
-  boundaryParents,
-  canCutLink,
-  faultActive,
-  faultKey,
-  faultProblem,
-  type Fault,
-} from "../model/faults";
+import { faultTopology, faultActive, faultKey, faultProblem, type Fault } from "../model/faults";
 import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget } from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
@@ -205,7 +197,8 @@ interface Node {
   baseStatus: NodeStatus;
   faultRate?: number;
   slowFactor?: number;
-  boundaries: string[];
+  outages: Set<string>;
+  scriptedFailure?: boolean;
   rawProps: Record<string, unknown>;
   props: ResolvedProps;
   replicas: number;
@@ -327,7 +320,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let configuration: Record<string, Record<string, unknown>> | undefined;
   const edges: Edge[] = [];
   let faults = new Map<string, Fault>();
-  let faultDiagram: DiagramFile;
+  let faultIndex: ReturnType<typeof faultTopology>;
+  const faultEdges = new Map<string, Edge>();
   let trips: Trip[] = [];
   let drawn = 0;
   let drawnTrips = new Map<number, Trip>();
@@ -520,9 +514,32 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return out;
   }
 
-  function drop(node: Node, message: Message, reason: string): void {
+  function drop(node: Node, message: Message, reason: string, via?: Edge): void {
     node.dropped++;
     if (reason === "node down") node.outageDropped++;
+    if (opts.onLoss) {
+      const boundary = node.outages.values().next().value;
+      const fault =
+        reason === "link cut" && via
+          ? { kind: "link" as const, edge: via.id, cut: true }
+          : reason === "node down" && boundary
+            ? { kind: "boundary" as const, boundary, down: true }
+            : reason === "processing failed" && node.faultRate !== undefined
+              ? { kind: "fail" as const, node: node.id, rate: node.faultRate as 0.1 | 0.5 }
+              : undefined;
+      opts.onLoss({
+        node: node.id,
+        connection: via?.id,
+        reason,
+        fault,
+        intentional:
+          reason === "link cut" || reason === "node down"
+            ? "down"
+            : reason === "processing failed" && (node.faultRate !== undefined || node.scriptedFailure)
+              ? "fails"
+              : undefined,
+      });
+    }
     log("drop", node, message, reason);
     gone(node, message, "drop", reason);
   }
@@ -564,7 +581,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function boundaryDown(node: Node): boolean {
-    return node.boundaries.some((boundary) => faults.has(faultKey({ kind: "boundary", boundary, down: true })));
+    return node.outages.size > 0;
   }
 
   function changeStatus(node: Node, status: NodeStatus): void {
@@ -612,7 +629,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       log("fail", edge.to, message, "link cut");
       if (message.family.trace) step(message, "fail", edge.to.id, { edge: edge.id });
     }
-    drop(edge.to, message, "link cut");
+    drop(edge.to, message, "link cut", edge);
   }
 
   function latency(node: Node): number {
@@ -793,6 +810,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         Reflect.deleteProperty(node.rawProps, "resumeAutoscaling");
         configuration = undefined;
       }
+      if ("failureRate" in patch) node.scriptedFailure = typeof patch.failureRate === "number" && patch.failureRate > 0;
       if (
         !(node.fleet && patch.replicas !== undefined) &&
         Object.entries(patch).every(
@@ -1180,7 +1198,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.lease = undefined;
       reply(work);
       if (node.props.admission && node.status !== "down") gone(node, work.message, "end", "processing failed");
-      else drop(node, work.message, node.status === "down" ? "node down" : "processing failed");
+      else drop(node, work.message, node.status === "down" ? "node down" : "processing failed", work.via);
     }
   }
 
@@ -1190,7 +1208,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       else {
         acknowledge(work);
         reply(work);
-        drop(node, work.message, "node down");
+        drop(node, work.message, "node down", work.via);
       }
       return;
     }
@@ -2150,6 +2168,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         indexGroups();
         edges.splice(0, edges.length, ...copy.edges);
+        faultEdges.clear();
+        for (const edge of edges) faultEdges.set(edge.id, edge);
         trips = copy.trips;
         drawnTrips = copy.drawnTrips;
         injections.splice(0, injections.length, ...copy.injections);
@@ -2230,15 +2250,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     },
     load(diagram: DiagramFile): void {
       if (resourceBudgetExceeded(diagram)) throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
-      faultDiagram = diagram;
+      faultIndex = faultTopology(diagram);
       faults = new Map();
+      faultEdges.clear();
       planning = diagram.planning;
       configuration = undefined;
       topology++;
       nodes.clear();
       edges.length = 0;
       compiled = compileTopology(diagram, roleOf);
-      const parents = boundaryParents(diagram);
       for (const input of diagram.nodes) {
         const role = roleOf(input.stencil);
         const rawProps = { ...input.props };
@@ -2250,7 +2270,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           role,
           status,
           baseStatus: status,
-          boundaries: boundaryAncestors(parents, input.group),
+          outages: new Set(),
           rawProps,
           props: resolveProps(role, input.label, rawProps, input.stencil, planning),
           replicas: 1,
@@ -2304,6 +2324,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (filter) edge.requestFilter = filter;
         }
         edges.push(edge);
+        faultEdges.set(edge.id, edge);
         edgeById.set(edge.id, edge);
         // The route the dead-letter check reads as effective (deadLetterRoutes, topology.ts).
         if (deadLetter.get(from.id) === input) from.dlq = edge;
@@ -2450,21 +2471,31 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (problem) throw new Error(problem);
       if (
         fault.kind === "boundary"
-          ? !faultDiagram.groups?.some((g) => g.id === fault.boundary)
+          ? !faultIndex.ranges.has(fault.boundary)
           : fault.kind === "link"
-            ? !canCutLink(faultDiagram, fault.edge)
+            ? !faultIndex.links.has(fault.edge)
             : !nodes.has(fault.node)
       )
         return;
+      const key = faultKey(fault);
+      const previous = faults.get(key);
+      if (!previous && !faultActive(fault)) return;
+      if (previous && JSON.stringify(previous) === JSON.stringify(fault)) return;
       if (faultActive(fault)) faults.set(faultKey(fault), structuredClone(fault));
       else faults.delete(faultKey(fault));
       if (fault.kind === "link") {
-        const edge = edges.find((e) => e.id === fault.edge)!;
+        const edge = faultEdges.get(fault.edge)!;
         edge.cut = fault.cut;
       } else if (fault.kind === "fail") {
         nodes.get(fault.node)!.faultRate = fault.rate || undefined;
       } else if (fault.kind === "boundary") {
-        for (const node of nodes.values()) changeStatus(node, boundaryDown(node) ? "down" : node.baseStatus);
+        const range = faultIndex.ranges.get(fault.boundary)!;
+        for (let i = range.start; i < range.end; i++) {
+          const node = nodes.get(faultIndex.members[i])!;
+          if (fault.down) node.outages.add(fault.boundary);
+          else node.outages.delete(fault.boundary);
+          changeStatus(node, boundaryDown(node) ? "down" : node.baseStatus);
+        }
       } else if (fault.kind === "slow") {
         const node = nodes.get(fault.node)!;
         node.slowFactor = fault.factor;

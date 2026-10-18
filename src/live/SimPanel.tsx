@@ -1,6 +1,7 @@
-import { DRILL_PRESETS, type DrillPreset } from "../model/faults";
+import { DRILL_PRESETS, faultTimelineProblem, type DrillPreset } from "../model/faults";
+import { simulationProblem } from "../interop/native";
 import { FaultStep } from "./FaultStep";
-import { defaultFault, drillFault, drillName } from "./faults";
+import { defaultFault, drillFault, drillKind, drillName, faultTargets } from "./faults";
 import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -93,6 +94,10 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
   const dirty = !!sim && (!saved || JSON.stringify(saved) !== JSON.stringify(sim));
   const warnings = useMemo(() => (sim ? simulationWarnings(sim, diagram) : []), [sim, diagram]);
   const types = useMemo(() => knownMessageTypes(diagram), [diagram]);
+  const invalid = useMemo(
+    () => (sim ? (simulationProblem(sim) ?? faultTimelineProblem(diagram, sim)) : undefined),
+    [sim, diagram],
+  );
 
   usePickNode(picker, () => setPicker(null));
   // Esc cancels a node pick first, then closes the panel.
@@ -237,6 +242,7 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
               onChange={(event) => {
                 const preset = event.target.value;
                 if (!preset) return;
+                if (preset !== "note" && !faultTargets(diagram, drillKind(preset as DrillPreset)).length) return;
                 edit((d) => {
                   const last = d.timeline?.at(-1)?.atMs ?? -2000;
                   const action: TimelineAction =
@@ -256,12 +262,22 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
               <option value="note">{translate("fault.note")}</option>
               <optgroup label={translate("fault.presets")}>
                 {DRILL_PRESETS.map((preset) => (
-                  <option key={preset} value={preset}>
+                  <option
+                    key={preset}
+                    value={preset}
+                    disabled={!faultTargets(diagram, drillKind(preset)).length}
+                    data-testid={`sim-panel-preset-${preset}`}
+                  >
                     {drillName(preset)}
                   </option>
                 ))}
               </optgroup>
             </select>
+            {DRILL_PRESETS.some((preset) => !faultTargets(diagram, drillKind(preset)).length) && (
+              <p className="lv-warning" data-testid="sim-panel-unavailable-faults">
+                {translate("fault.unavailablePresets")}
+              </p>
+            )}
           </Disclosure>
 
           <Disclosure
@@ -358,6 +374,11 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
             )}
           </Disclosure>
 
+          {invalid && (
+            <p className="lv-warnings" data-testid="sim-panel-invalid">
+              {invalid}
+            </p>
+          )}
           {warnings.length > 0 && (
             <ul className="lv-warnings" data-testid="sim-panel-warnings">
               {warnings.map((w, i) => (
@@ -389,6 +410,7 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
           <button
             className="btn"
             onClick={() => onRun(sim)}
+            disabled={!!invalid}
             data-testid="sim-panel-run"
             title={running ? "Restart this simulation" : "Play this simulation now"}
           >
@@ -397,7 +419,7 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
           <button
             className="btn btn-primary"
             onClick={() => onSave(sim)}
-            disabled={!dirty || !sim.title.trim() || !sim.id}
+            disabled={!dirty || !sim.title.trim() || !sim.id || !!invalid}
             data-testid="sim-panel-save"
           >
             <LiveIcon name="save" size={13} /> Save

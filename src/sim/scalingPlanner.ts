@@ -4,6 +4,7 @@ import { replicaRange } from "../model/autoscaling";
 import { stencilRole } from "../stencils/roles";
 import { brokerRole } from "../model/brokerRoutes";
 import { createSimulationRun, estimateTotalMs } from "./simulation";
+import { FaultTimelineError } from "../model/faults";
 import { resolveMultiplier, resolveScale } from "./units";
 import { resolveNodeProps } from "./defaults";
 import type { ScalingDecision } from "./autoscaling";
@@ -441,7 +442,12 @@ function planSimulation(d: DiagramFile, sim: Simulation, counter: Counter): Scal
   try {
     return planBounded(d, sim, counter);
   } catch (error) {
-    if (error instanceof WorkBudgetError || error instanceof LifecycleBudgetError) return unavailable(sim, "budget");
+    if (
+      error instanceof WorkBudgetError ||
+      error instanceof LifecycleBudgetError ||
+      error instanceof FaultTimelineError
+    )
+      return unavailable(sim, "budget");
     throw error;
   }
 }

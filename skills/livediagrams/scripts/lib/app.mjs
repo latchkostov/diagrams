@@ -44,6 +44,21 @@ function looksLikeCredential(key) {
 	return /(?:^|[;:])\s*(?:Server|Data Source|AccountKey|SharedAccessKey|Password|User Id)\s*=[^;]+(?:;|$)/i.test(key) || /(?:^|[:/])(?:Bearer\s+|eyJ[\w-]+\.[\w-]+\.[\w-]+|(?:sk|ghp|github_pat|AKIA)[_-]?[\w-]{16,})/i.test(key.trim()) || /^[A-Za-z0-9+/_=-]{40,}$/.test(key.trim()) && /[A-Z]/.test(key) && /[a-z]/.test(key) && /\d/.test(key) || /:\/\/[^\s/]+:[^\s/]+@/.test(key);
 }
 //#endregion
+//#region src/i18n/core.ts
+/**
+* The runtime's state. One object, so ./load.ts (lazy) can switch the language without the entry carrying the
+* code that does: `l` the language, `c` its catalog (none for English), `f` what re-renders when they change, `a`
+* relative times.
+*/
+var state = {
+	l: "en",
+	f: /* @__PURE__ */ new Set()
+};
+function t(key, english, values) {
+	const m = typeof key == "object" ? state.c?.[key[0]] ?? key[0] : state.c?.[key] ?? english;
+	return typeof m == "function" ? m(values) : m;
+}
+//#endregion
 //#region src/model/faults.ts
 var DRILL_PRESETS = [
 	"zone-outage",
@@ -51,7 +66,7 @@ var DRILL_PRESETS = [
 	"slow-dependency",
 	"error-spike"
 ];
-var faultTarget = (fault) => "boundary" in fault ? fault.boundary : "edge" in fault ? fault.edge : fault.node;
+var faultTarget = (fault) => fault.kind === "boundary" ? fault.boundary : fault.kind === "link" ? fault.edge : fault.node;
 /** Partitions apply only to flows crossing two distinct, declared boundaries. */
 function canCutLink(diagram, id) {
 	const edge = diagram.edges.find((e) => e.id === id);
@@ -64,6 +79,24 @@ function canCutLink(diagram, id) {
 function faultProblem(value) {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return "a fault needs a kind and target";
 	const f = value;
+	const fields = f.kind === "boundary" ? [
+		"kind",
+		"boundary",
+		"down"
+	] : f.kind === "link" ? [
+		"kind",
+		"edge",
+		"cut"
+	] : f.kind === "slow" ? [
+		"kind",
+		"node",
+		"factor"
+	] : [
+		"kind",
+		"node",
+		"rate"
+	];
+	if (Object.keys(f).some((key) => !fields.includes(key))) return "unexpected fault property";
 	const target = f.kind === "boundary" ? f.boundary : f.kind === "link" ? f.edge : f.node;
 	if (typeof target !== "string" || !target.length) return "a fault needs a target id";
 	if (f.kind === "boundary" && typeof f.down === "boolean") return;
@@ -724,21 +757,6 @@ function resourceBudgetExceeded(d, capacityMultiplier = 4) {
 		if (total > 1e5) return true;
 	}
 	return false;
-}
-//#endregion
-//#region src/i18n/core.ts
-/**
-* The runtime's state. One object, so ./load.ts (lazy) can switch the language without the entry carrying the
-* code that does: `l` the language, `c` its catalog (none for English), `f` what re-renders when they change, `a`
-* relative times.
-*/
-var state = {
-	l: "en",
-	f: /* @__PURE__ */ new Set()
-};
-function t(key, english, values) {
-	const m = typeof key == "object" ? state.c?.[key[0]] ?? key[0] : state.c?.[key] ?? english;
-	return typeof m == "function" ? m(values) : m;
 }
 //#endregion
 //#region src/model/brokerRoutes.ts
@@ -4373,13 +4391,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1561, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1567, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1561, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1567, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -4482,7 +4500,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1561, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1567, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -4582,7 +4600,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1506, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1512, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})

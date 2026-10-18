@@ -2596,7 +2596,7 @@ details[open] > summary .lv-disclosure-chevron {
   font-weight: 700;
 }
 
-[data-live-cut="1"] .react-flow__edge-path {
+.react-flow[data-live] .react-flow__edge[data-live-cut="1"] .fe-path.react-flow__edge-path {
   stroke: var(--status-down);
   stroke-dasharray: 4 8;
   opacity: 0.55;

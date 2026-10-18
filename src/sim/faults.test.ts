@@ -4,7 +4,7 @@ import type { Fault } from "../model/faults";
 import { createEngine } from "./engine";
 import { createSimulationRun } from "./simulation";
 import { LiveController } from "../live/controller";
-import { canCutLink } from "../model/faults";
+import { canCutLink, faultTimelineProblem, MAX_FAULT_WORK } from "../model/faults";
 import { resourceLesson } from "../model/autoscaling";
 
 export const diagram: DiagramFile = {
@@ -37,6 +37,88 @@ const make = (d = diagram) => {
 };
 
 describe("fault overlays", () => {
+  it("reports the actual connection and resolved fault cause for each loss", () => {
+    const losses: import("./types").LossProvenance[] = [];
+    const d = structuredClone(diagram);
+    d.nodes.push({ ...d.nodes[0], id: "healthy" });
+    d.edges.push({ ...d.edges[0], id: "healthy-input", from: "healthy" });
+    d.nodes[1].props!.failureRate = 1;
+    const e = createEngine({ seed: 7, roleOf, onLoss: (loss) => losses.push(loss) });
+    e.load(d);
+    e.setFault({ kind: "link", edge: "ab", cut: true });
+    e.inject("source", 1);
+    e.inject("healthy", 1);
+    e.step(1000);
+    expect(losses).toEqual([
+      expect.objectContaining({
+        node: "worker",
+        connection: "ab",
+        intentional: "down",
+        fault: { kind: "link", edge: "ab", cut: true },
+      }),
+      expect.objectContaining({
+        node: "worker",
+        connection: "healthy-input",
+        intentional: undefined,
+        fault: undefined,
+      }),
+    ]);
+  });
+  it("bounds unchanged restoration work on a large, deeply nested adversarial diagram", () => {
+    const d: DiagramFile = {
+      ...diagram,
+      groups: Array.from({ length: 1000 }, (_, i) => ({
+        id: `g${i}`,
+        label: "Zone",
+        group: i ? `g${i - 1}` : undefined,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+      })),
+      nodes: Array.from({ length: 5000 }, (_, i) => ({
+        id: `n${i}`,
+        stencil: "processor",
+        label: "Worker",
+        group: "g999",
+        x: 0,
+        y: 0,
+      })),
+      edges: [],
+    };
+    const e = make(d);
+    const stringify = JSON.stringify;
+    let operations = 0;
+    JSON.stringify = ((...args: Parameters<typeof stringify>) => {
+      operations++;
+      return stringify(...args);
+    }) as typeof stringify;
+    try {
+      for (let i = 0; i < 10_000; i++) {
+        const before = operations;
+        e.setFault({ kind: "boundary", boundary: "g0", down: false });
+        // Check each step so the old interpreter fails before replaying the hostile timeline.
+        expect(operations - before).toBeLessThanOrEqual(2);
+      }
+      e.setFault({ kind: "boundary", boundary: "g999", down: true });
+      const before = operations;
+      e.setFault({ kind: "boundary", boundary: "g999", down: true });
+      expect(operations - before).toBeLessThanOrEqual(3);
+    } finally {
+      JSON.stringify = stringify;
+    }
+    expect(e.snapshot().nodes.n0.status).toBe("down");
+    const timeline: NonNullable<Simulation["timeline"]> = Array.from({ length: 10_000 }, () => ({
+      atMs: 0,
+      action: { do: "fault", fault: { kind: "boundary", boundary: "g0", down: false } },
+    }));
+    expect(faultTimelineProblem(d, { id: "s", title: "Restores", traffic: [], timeline })).toBeUndefined();
+    for (let i = 0; i <= MAX_FAULT_WORK / d.nodes.length; i++)
+      timeline[i].action = { do: "fault", fault: { kind: "boundary", boundary: "g0", down: i % 2 === 0 } };
+    const sim = { id: "s", title: "Repeated outage", traffic: [], timeline };
+    expect(faultTimelineProblem(d, sim)).toMatch(/too many nodes/);
+    expect(() => createSimulationRun(d, sim)).toThrow(/too many nodes/);
+  });
   it("indexes boundary parents once per load rather than scanning all boundaries for every node", () => {
     let reads = 0;
     const groups = Array.from({ length: 500 }, (_, i) => ({

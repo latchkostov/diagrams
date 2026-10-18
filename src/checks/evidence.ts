@@ -1,4 +1,4 @@
-import { boundaryAncestors, boundaryParents, faultActive, faultKey, type Fault } from "../model/faults";
+import { faultTimelineProblem } from "../model/faults";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { createSimulationRun } from "../sim/simulation";
 import { SIM_TICK_MS } from "../sim/scheduler";
@@ -86,9 +86,6 @@ export interface EvidenceOptions {
   startWork?: number;
 }
 
-const positive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
-const stopped = (s: unknown) => s === "down" || s === "paused";
-
 /** Whether an expectation counts on a positive value (`> 0`, `>= 5`, `== 30`): the loss is the story. */
 const expectsSome = (e: Expectation) =>
   (e.op === ">" && e.value >= 0) || ((e.op === ">=" || e.op === "==") && e.value > 0);
@@ -138,41 +135,6 @@ export function startWork(sim: Simulation, ctx: CheckContext): number {
   return Number.isFinite(sampled) ? sampled * widest : Infinity;
 }
 
-/** What the simulation does to a node it breaks, as its timeline plays: the state each tick's losses happened in. */
-interface Breakage {
-  down: boolean;
-  fails: boolean;
-}
-
-function affected(diagram: DiagramFile, fault: Fault): string[] {
-  if (fault.kind === "boundary") {
-    const parents = boundaryParents(diagram);
-    return diagram.nodes.filter((n) => boundaryAncestors(parents, n.group).includes(fault.boundary)).map((n) => n.id);
-  }
-  if (fault.kind === "link") return diagram.edges.filter((e) => e.id === fault.edge).map((e) => e.to);
-  return [fault.node];
-}
-
-/** The nodes `sim` takes down or makes fail (or that the diagram has down), with their state at time 0. */
-function breakable(diagram: DiagramFile, sim: Simulation): Map<string, Breakage> {
-  const out = new Map<string, Breakage>();
-  const at = (id: string) => {
-    let b = out.get(id);
-    if (!b) out.set(id, (b = { down: false, fails: false }));
-    return b;
-  };
-  for (const n of diagram.nodes) if (stopped(n.props?.status)) at(n.id).down = true;
-  for (const [id, status] of Object.entries(sim.setup?.status ?? {})) at(id).down = stopped(status);
-  for (const [id, props] of Object.entries(sim.setup?.props ?? {}))
-    if (positive(props?.failureRate)) at(id).fails = true;
-  for (const { action: a } of sim.timeline ?? []) {
-    if (a.do === "fault") for (const id of affected(diagram, a.fault)) at(id);
-    if (a.do === "status") at(a.node);
-    if (a.do === "props" && "failureRate" in a.props) at(a.node);
-  }
-  return out;
-}
-
 interface Counts {
   sim: Simulation;
   played: PlayedSimulation;
@@ -195,64 +157,31 @@ function* play(
   watch: readonly string[],
   clock: Clock,
 ): Generator<EvidenceStep, Counts | undefined, void> {
-  const run = createSimulationRun(diagram, sim);
+  const lost = new Map<string, { down: number; fails: number }>();
+  const run = createSimulationRun(diagram, sim, {
+    onLoss: (loss) => {
+      if (!loss.intentional) return;
+      const counts = lost.get(loss.node) ?? { down: 0, fails: 0 };
+      counts[loss.intentional]++;
+      lost.set(loss.node, counts);
+    },
+  });
   run.setTraceActions(false);
   if (clock.now() > clock.deadline) return undefined;
   const cap = EVIDENCE_LIMITS.simulatedMs;
-  // The simulation's own breakage, replayed alongside: which of each tick's losses it meant (only actions it played).
-  const breaks = breakable(diagram, sim);
-  const timeline = [...(sim.timeline ?? [])].sort((a, b) => a.atMs - b.atMs);
-  let cursor = 0;
-  const baseBreaks = new Map([...breaks].map(([id, b]) => [id, { ...b }]));
-  const faults = new Map<string, Fault>();
-  const apply = (time: number) => {
-    for (; cursor < timeline.length && timeline[cursor].atMs <= time; cursor++) {
-      const a = timeline[cursor].action;
-      if (a.do === "fault") {
-        if (faultActive(a.fault)) faults.set(faultKey(a.fault), a.fault);
-        else faults.delete(faultKey(a.fault));
-      }
-      const b = a.do === "status" || a.do === "props" ? baseBreaks.get(a.node) : undefined;
-      if (!b && a.do !== "fault") continue;
-      if (b && a.do === "status") b.down = stopped(a.status);
-      else if (b && a.do === "props" && "failureRate" in a.props) b.fails = positive(a.props.failureRate);
-      if (!faults.size && a.do !== "fault") {
-        if (b && (a.do === "status" || a.do === "props")) Object.assign(breaks.get(a.node)!, b);
-        continue;
-      }
-      for (const [id, state] of breaks) Object.assign(state, baseBreaks.get(id));
-      for (const f of faults.values())
-        for (const id of affected(diagram, f)) {
-          const state = breaks.get(id);
-          if (state && (f.kind === "boundary" || f.kind === "link")) state.down = true;
-          else if (state && f.kind === "fail") state.fails = true;
-        }
-    }
-  };
-  apply(0);
-  const lost = new Map<string, { last: number; down: number; fails: number }>();
-  for (const id of breaks.keys()) lost.set(id, { last: 0, down: 0, fails: 0 });
   // Pausing notes are resumed at once; each is passed once, so the run always moves on.
-  const maxTicks = Math.ceil(cap / SIM_TICK_MS) + timeline.length + 1;
+  const maxTicks = Math.ceil(cap / SIM_TICK_MS) + (sim.timeline?.length ?? 0) + 1;
   let state = run.state();
   for (let ticks = 0; !state.done && state.time < cap && ticks < maxTicks;) {
     if (state.waiting) run.resume();
     else {
       run.step(SIM_TICK_MS);
-      for (const [id, l] of lost) {
-        const now = run.engine.measure({ node: id, field: "dropped" }) ?? 0;
-        const b = breaks.get(id)!;
-        if (now > l.last && b.down) l.down += now - l.last;
-        else if (now > l.last && b.fails) l.fails += now - l.last;
-        l.last = now;
-      }
       if (++ticks % clock.sliceTicks === 0) {
         if (clock.now() > clock.deadline) return undefined;
         yield { kind: "slice" };
       }
     }
     state = run.state();
-    apply(state.time);
   }
   if (clock.now() > clock.deadline) return undefined;
   const scale = state.scale ?? 1;
@@ -310,7 +239,7 @@ export function* gatherEvidence(diagram: DiagramFile, opts: EvidenceOptions = {}
       continue;
     }
     yield { kind: "simulation", index: i + 1, total: sims.length, title: sim.title };
-    if (startWork(sim, ctx) > limit) {
+    if (startWork(sim, ctx) > limit || faultTimelineProblem(diagram, sim)) {
       tooBig.push(sim.title);
       continue;
     }
@@ -331,7 +260,7 @@ export function* gatherEvidence(diagram: DiagramFile, opts: EvidenceOptions = {}
       const broker = isBroker(ctx, node);
       const expects = expectations(sim, node, ["dropped"]);
       const purpose = d.down
-        ? { count: d.down, why: "down" as const }
+        ? { count: d.down + d.fails, why: "down" as const }
         : d.fails
           ? { count: d.fails, why: "fails" as const }
           : undefined;

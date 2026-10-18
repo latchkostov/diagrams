@@ -6,6 +6,15 @@ import type { DiagramFile, Expectation, SimRole } from "../model/types";
 
 export type NodeStatus = "up" | "paused" | "down";
 
+/** Emitted at the loss, using the engine's resolved overlays and the actual incoming connection. */
+export interface LossProvenance {
+  node: string;
+  connection?: string;
+  reason: string;
+  fault?: import("../model/faults").Fault;
+  intentional?: "down" | "fails";
+}
+
 /** Why a particle is travelling along an edge. Drives its colour / style in the UI. */
 export type ParticleKind =
   | "message" // a message (or request) moving downstream
@@ -432,6 +441,7 @@ export interface SimEngine {
 }
 
 export interface EngineOptions {
+  onLoss?: (loss: LossProvenance) => void;
   /** Optional per-step diagnostic; excluded from ordinary playback. */
   verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
   /** PRNG seed for deterministic runs (tests). Default random. */

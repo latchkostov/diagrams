@@ -42,7 +42,7 @@ export function simulationWarnings(sim: Simulation, diagram: DiagramFile): SimWa
           : f.kind === "link"
             ? canCutLink(diagram, f.edge)
             : nodes.has(f.node);
-      if (!valid) out.push({ where: `timeline:${i}`, text: t("fault.invalidTarget", { target: faultTarget(f) }) });
+      if (!valid) out.push({ where: `timeline:${i}`, text: t("fault.chooseTarget", { target: faultTarget(f) }) });
     } else missing(`timeline:${i}`, a.node, "Target");
     if (!(step.atMs >= 0)) out.push({ where: `timeline:${i}`, text: "Time must be zero or more." });
   });
