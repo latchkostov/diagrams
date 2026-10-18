@@ -23,3 +23,11 @@ export type {
   SelectionCause,
   SurfaceKind,
 } from "./types";
+export {
+  createInteractionController,
+  type InteractionCamera,
+  type InteractionController,
+  type InteractionPort,
+} from "./controller";
+export { cameraMenuKind, initialMenus, menus } from "./menus";
+export { InteractionContext, useInteraction, useInteractionCore } from "./useInteraction";

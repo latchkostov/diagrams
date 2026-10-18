@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type {
   EdgeChange,
   EdgeMouseHandler,
@@ -15,7 +15,7 @@ import { notify } from "../../interop/ui/toast";
 import { t as tr } from "../../i18n";
 import type { RenameTarget } from "../DiagramContext";
 import type { DiagramMeta } from "../convert";
-import type { MenuState } from "../menus/useCanvasMenus";
+import type { CanvasMenus } from "../menus/useCanvasMenus";
 import {
   GROUP_PREFIX,
   isAnnotationNode,
@@ -51,7 +51,7 @@ export function useDragPlacement(
   editor: EditorApi,
   dragStarted: () => void,
   hideTip: () => void,
-  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+  menus: CanvasMenus,
 ) {
   // ---------------------------------------------------------------- Alt-drag duplicates (D9), smart guides (D6)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
@@ -277,7 +277,7 @@ export function useDragPlacement(
       beginGesture();
       dragActive.current = true;
       dragStarted();
-      setMenu(null);
+      menus.closeMenu("gesture");
       hideTip();
       const only = dragged.length === 1 ? dragged[0] : undefined;
       if (editGestures && !e.altKey && only?.type === "diagram") {
@@ -295,8 +295,7 @@ export function useDragPlacement(
       guides.start(e, dragged, altCopies.current);
       if (editGestures) watchMembership(dragged, altCopies.current);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setMenu is stable; preserve CanvasView's original dependencies
-    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, dragStarted, beginGesture],
+    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, dragStarted, beginGesture, menus],
   );
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {

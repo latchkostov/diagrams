@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import type { CameraController } from "./controller";
-import type { MenuKind } from "./types";
 
 /** What changes the canvas pane: its side panels, and the selection that opens the Inspector. */
 export interface PaneInputs {
@@ -20,8 +19,6 @@ export interface PaneInputs {
   /** Counts explicit Inspector opens (double-click, Enter, Properties): each is a selection cause. */
   inspectorRequest: number;
   nothingSelected: boolean;
-  /** The open menu's kind, if any (pane work waits for it to close). */
-  menu: MenuKind | null;
   live: boolean;
   presenting: boolean;
 }
@@ -34,7 +31,7 @@ export interface PaneInputs {
  */
 export function usePaneCamera(controller: CameraController, p: PaneInputs) {
   const { paletteHidden, aiDock, inspectorHidden, sheetResize, nodes, edges, inspectorRequest, nothingSelected } = p;
-  const { menu, live, presenting } = p;
+  const { live, presenting } = p;
   // The Checks card opened over a diagram that was all in view: refit it clear of the card (the card is floating
   // chrome, data-canvas-overlay), once the card has drawn. A view the user panned or zoomed stays put.
   const checksMounted = () => controller.dispatch({ type: "overlay.opened" });
@@ -49,13 +46,6 @@ export function usePaneCamera(controller: CameraController, p: PaneInputs) {
   ]);
   const modeKey = `${live}:${presenting}`;
   const previousPane = useRef({ dockKey, panelKey, selectionKey, inspectorRequest, modeKey });
-  const previousMenu = useRef<MenuKind | null>(null);
-  useLayoutEffect(() => {
-    if (menu === previousMenu.current) return;
-    if (previousMenu.current) controller.dispatch({ type: "menu.closed" });
-    if (menu) controller.dispatch({ type: "menu.opened", kind: menu });
-    previousMenu.current = menu;
-  }, [controller, menu]);
   useLayoutEffect(() => {
     const previous = previousPane.current;
     previousPane.current = { dockKey, panelKey, selectionKey, inspectorRequest, modeKey };

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { OnConnectEnd, OnConnectStart, ReactFlowInstance } from "@xyflow/react";
 import type { EditorApi, NewNode } from "../../editor/types";
 import { quickAddMenu } from "../../editor/builtinActions";
 import { getRecentStencils, pushRecentStencil } from "../../lib/recentStencils";
 import { t as tr } from "../../i18n";
 import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode } from "../types";
-import type { MenuState } from "../menus/useCanvasMenus";
+import { platform, type CanvasMenus } from "../menus/useCanvasMenus";
 import { connectHitAt, connectOver, connectTarget } from "../gestures";
 
 export function useConnectionPlacement(
@@ -17,7 +17,7 @@ export function useConnectionPlacement(
   editor: EditorApi,
   screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
   pickNamed: (make: () => NewNode | null, fallback: string) => void,
-  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+  menus: CanvasMenus,
 ) {
   // ---------------------------------------------------------------- connecting (D1, D2)
   // While a connection is drawn: a crosshair throughout, the node a drop would connect to lit up (a
@@ -42,7 +42,7 @@ export function useConnectionPlacement(
     (_e, { nodeId }) => {
       endConnecting();
       if (!nodeId) return;
-      setMenu(null);
+      menus.closeMenu("gesture");
       hideTip();
       const wrap = wrapper.current;
       wrap?.classList.add("is-connecting");
@@ -68,8 +68,8 @@ export function useConnectionPlacement(
       };
       connecting.current = state;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setter and wrapper are stable; preserve CanvasView's original dependencies
-    [endConnecting, hideTip, annotationKindOf],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- wrapper is stable; preserve CanvasView's original dependencies
+    [endConnecting, hideTip, annotationKindOf, menus],
   );
   const onConnectEnd: OnConnectEnd = useCallback(
     (event, state) => {
@@ -88,26 +88,29 @@ export function useConnectionPlacement(
       if (t.kind !== "canvas" || live) return;
       // Empty canvas: quick-add there; the pick lands on the drop point, connected, ready to name.
       const point = screenToFlowPosition({ x: pt.clientX, y: pt.clientY });
-      setMenu({
-        alignment: "physical-left",
-        x: pt.clientX,
-        y: pt.clientY,
-        get label() {
-          return tr("canvas.addAConnectedNode");
+      menus.openMenu(
+        "quickAdd",
+        {
+          alignment: "physical-left",
+          x: pt.clientX,
+          y: pt.clientY,
+          get label() {
+            return tr("canvas.addAConnectedNode");
+          },
+          testId: "quick-add",
+          get searchable() {
+            return tr("canvas.addANode");
+          },
+          items: () =>
+            quickAddMenu((s) => {
+              pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
+              pushRecentStencil(s.id);
+            }, getRecentStencils()),
         },
-        testId: "quick-add",
-        get searchable() {
-          return tr("canvas.addANode");
-        },
-        items: () =>
-          quickAddMenu((s) => {
-            pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
-            pushRecentStencil(s.id);
-          }, getRecentStencils()),
-      });
+        { via: "pointer", platform: platform() },
+      );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setMenu is stable; preserve CanvasView's original dependencies
-    [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, pickNamed],
+    [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, pickNamed, menus],
   );
   return [annotationKindOf, onConnectStart, onConnectEnd] as const;
 }

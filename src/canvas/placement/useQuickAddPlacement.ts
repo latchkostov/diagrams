@@ -14,7 +14,7 @@ import { t as tr } from "../../i18n";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import type { InlineEdit } from "../DiagramContext";
 import type { DiagramMeta } from "../convert";
-import type { MenuState } from "../menus/useCanvasMenus";
+import { platform, type CanvasMenus, type MenuState } from "../menus/useCanvasMenus";
 import { connectedMenuPlacement } from "../geometry/connectedMenuPlacement";
 import { towardOf, type Toward } from "../placement";
 import { landing } from "../landing";
@@ -37,7 +37,7 @@ export function useQuickAddPlacement(
   controller: CameraController,
   pickNamed: (make: () => NewNode | null, fallback: string) => void,
   menu: MenuState | null,
-  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+  menus: CanvasMenus,
 ) {
   // ---------------------------------------------------------------- the next node (D3)
   // Alt+arrow and the "+" on a selected node: quick-add opens under an outline of where the node will land,
@@ -70,39 +70,42 @@ export function useQuickAddPlacement(
       const next = panForConnectedMenu(controller, connected, view, r);
       const { position } = connectedMenuPlacement(connected, next ?? view, r);
       landing.set(spot);
-      setMenu({
-        connected,
-        alignment: "physical-left",
-        ...position,
-        get label() {
-          return tr("canvas.addAConnectedNode");
+      menus.openMenu(
+        "connected",
+        {
+          connected,
+          alignment: "physical-left",
+          ...position,
+          get label() {
+            return tr("canvas.addAConnectedNode");
+          },
+          testId: "quick-add",
+          get searchable() {
+            return tr("canvas.addANode");
+          },
+          items: () =>
+            quickAddMenu((s) => {
+              pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
+              pushRecentStencil(s.id);
+            }, getRecentStencils()),
         },
-        testId: "quick-add",
-        get searchable() {
-          return tr("canvas.addANode");
-        },
-        items: () =>
-          quickAddMenu((s) => {
-            pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
-            pushRecentStencil(s.id);
-          }, getRecentStencils()),
-      });
+        { platform: platform() },
+      );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setters and wrapper are stable; preserve CanvasView's original dependencies
-    [readOnly, live, presenting, meta.direction, editor, getNode, hideTip, store, controller, pickNamed],
+    [readOnly, live, presenting, meta.direction, editor, getNode, hideTip, store, controller, pickNamed, menus],
   );
   const cloneTo = useCallback(
     (fromId: string, toward: Toward) => {
       if (readOnly || live || presenting) return;
-      setMenu(null);
+      menus.closeMenu("command");
       hideTip();
       pickNamed(
         () => editor.createConnected({ from: fromId, clone: true, toward }),
         editor.getNode(fromId)?.label ?? "",
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setMenu is stable; preserve CanvasView's original dependencies
-    [readOnly, live, presenting, editor, hideTip, pickNamed],
+    [readOnly, live, presenting, editor, hideTip, pickNamed, menus],
   );
   // The outline goes with its menu.
   useEffect(() => {
@@ -116,7 +119,7 @@ export function useQuickAddPlacement(
 export function paneQuickAdd(
   readOnly: boolean,
   screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
-  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+  menus: CanvasMenus,
   pickNamed: (make: () => NewNode | null, fallback: string) => void,
   editor: EditorApi,
 ) {
@@ -125,25 +128,29 @@ export function paneQuickAdd(
     if (readOnly) return;
     if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
     const point = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    setMenu({
-      alignment: "physical-left",
-      x: e.clientX,
-      y: e.clientY,
-      get label() {
-        return tr("canvas.addANodeText");
+    menus.openMenu(
+      "quickAdd",
+      {
+        alignment: "physical-left",
+        x: e.clientX,
+        y: e.clientY,
+        get label() {
+          return tr("canvas.addANodeText");
+        },
+        testId: "quick-add",
+        get searchable() {
+          return tr("canvas.addANode");
+        },
+        // Quick-add opens the new node's name (decision 3), so what's typed next names it instead of reaching the
+        // canvas's one-key shortcuts (T, L, C).
+        items: () =>
+          quickAddMenu((s) => {
+            pickNamed(() => editor.addNamed(s.id, point), s.label);
+            pushRecentStencil(s.id);
+          }, getRecentStencils()),
       },
-      testId: "quick-add",
-      get searchable() {
-        return tr("canvas.addANode");
-      },
-      // Quick-add opens the new node's name (decision 3), so what's typed next names it instead of reaching the
-      // canvas's one-key shortcuts (T, L, C).
-      items: () =>
-        quickAddMenu((s) => {
-          pickNamed(() => editor.addNamed(s.id, point), s.label);
-          pushRecentStencil(s.id);
-        }, getRecentStencils()),
-    });
+      { via: "pointer", platform: platform() },
+    );
   };
   return onPaneDoubleClick;
 }

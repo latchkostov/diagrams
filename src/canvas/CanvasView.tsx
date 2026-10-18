@@ -1,4 +1,5 @@
-import { useCanvasMenuState, useMenuOpen, useCanvasContextMenus } from "./menus/useCanvasMenus";
+import { useCanvasMenuItems, useCanvasContextMenus, type CanvasSurface } from "./menus/useCanvasMenus";
+import { InteractionContext, useInteractionCore } from "./interaction/useInteraction";
 import { useRailPlacement } from "./placement/useRailPlacement";
 import { useDragPlacement } from "./placement/useDragPlacement";
 import { useConnectionPlacement } from "./placement/useConnectionPlacement";
@@ -257,8 +258,6 @@ function CanvasInner({
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
-  const [menu, setMenu, menuItems] = useCanvasMenuState(locale);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [inspectorFocus, setInspectorFocus] = useState<
     { name: string; seq: number; caret?: "end"; target?: string } | undefined
   >();
@@ -395,6 +394,21 @@ function CanvasInner({
     style: edgeStyle,
     direction: meta.direction ?? "LR",
   });
+  // Menus, dialogs (and keyboard focus) open and move through one controller, which tells the camera of menus.
+  const { controller: interaction, state: interactionState } = useInteractionCore<CanvasSurface>(controller);
+  const surface = interactionState.menu;
+  const menu = surface && surface.kind !== "dialog" ? surface.payload : null;
+  const menuSeq = surface?.seq;
+  const menuItems = useCanvasMenuItems(menu, locale);
+  const shortcutsOpen = surface?.kind === "dialog";
+  const showShortcuts = useCallback(() => void interaction.openMenu("dialog", null), [interaction]);
+  const closeShortcuts = useCallback(() => interaction.closeMenu("escape"), [interaction]);
+  const closeMenu = useCallback(
+    (reason: "pick" | "escape" | "outside" | "scroll" | "blur" | "resize") => interaction.closeMenu(reason, menuSeq),
+    [interaction, menuSeq],
+  );
+  /** A pan by hand closes menus (React Flow's move start with an event). */
+  const closeMenuOnPan = useCallback(() => interaction.closeMenu("scroll"), [interaction]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const documentId = getDiagramIdentity(slug);
@@ -442,7 +456,7 @@ function CanvasInner({
     },
     rename: (t) => rename.current(t),
     openInspector,
-    showShortcuts: () => setShortcutsOpen(true),
+    showShortcuts,
     viewCenter: () => {
       const r = wrapper.current?.getBoundingClientRect();
       return r ? screenToFlowPosition({ x: r.left + r.width / 2, y: r.top + r.height / 2 }) : { x: 0, y: 0 };
@@ -485,7 +499,7 @@ function CanvasInner({
       const inCard = !!document.activeElement?.closest('[data-testid="checks-card"]');
       if (
         !inCard &&
-        !menuOpen.current &&
+        !interaction.menu &&
         checksPanel.isOpen() &&
         !sel.nodeIds.length &&
         !sel.edgeIds.length &&
@@ -493,7 +507,7 @@ function CanvasInner({
         !stopSimulations.current()
       )
         checksPanel.close();
-      setMenu(null);
+      interaction.closeMenu("escape");
     },
     live,
     onGrow: (from, toward, clone) => grow.current(from, toward, clone),
@@ -524,7 +538,6 @@ function CanvasInner({
   useEffect(() => {
     stopSimulations.current = checks.stopSimulations;
   }, [checks]);
-  const menuOpen = useMenuOpen(menu);
   const allowOnDevice = useCallback((on: boolean) => void setOnDeviceAllowed(slug, on), [slug]);
   // Only development builds read content for privacy (privacyOf); production reads provenance alone.
   const privacy = privacyOf({
@@ -623,7 +636,7 @@ function CanvasInner({
     controller,
     pickNamed,
     menu,
-    setMenu,
+    interaction,
   );
   const revealIds = useRevealIds(controller, editor);
   const checksHost = useMemo(
@@ -650,7 +663,7 @@ function CanvasInner({
     editor,
     screenToFlowPosition,
     pickNamed,
-    setMenu,
+    interaction,
   );
 
   const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({ editGestures, store, setNodes, setEdges });
@@ -680,7 +693,7 @@ function CanvasInner({
     editor,
     dragStarted,
     hideTip,
-    setMenu,
+    interaction,
   );
 
   const spaceHeld = usePanKeys(wrapper, editGestures);
@@ -695,11 +708,11 @@ function CanvasInner({
       hintSeen,
       dismissHint,
       setEditing,
-      setMenu,
+      interaction,
     );
 
   // The handlers below keep their identity across renders (see SNAP_GRID): a new node handler re-renders every node.
-  const { onMoveStart, onMove } = useMoveHandlers(controller, hideTip, setMenu);
+  const { onMoveStart, onMove } = useMoveHandlers(controller, hideTip, closeMenuOnPan);
   /** The inline edit as of the last render, for the hover handler (which keeps its identity). */
   const editingNow = useRef(editing);
   useLayoutEffect(() => {
@@ -723,7 +736,7 @@ function CanvasInner({
     hideTip();
   }, [hideTip]);
 
-  const onPaneDoubleClick = paneQuickAdd(readOnly, screenToFlowPosition, setMenu, pickNamed, editor);
+  const onPaneDoubleClick = paneQuickAdd(readOnly, screenToFlowPosition, interaction, pickNamed, editor);
 
   const [onRailDragOver, endRailDrop, onDrop] = useRailPlacement(
     editGestures,
@@ -808,7 +821,6 @@ function CanvasInner({
     edges,
     inspectorRequest,
     nothingSelected,
-    menu: menu ? (menu.testId === "quick-add" ? "quickAdd" : "context") : null,
     live,
     presenting,
   });
@@ -863,286 +875,292 @@ function CanvasInner({
 
   return (
     <CameraContext.Provider value={controller}>
-      <DiagramContext.Provider value={ui}>
-        <div
-          className={`canvas-view${presenting ? " is-presenting" : ""}${live ? " is-live" : ""}`}
-          data-testid="canvas-view"
-          onContextMenu={(e) => {
-            // The app owns right-click; text fields keep the native menu (spellcheck, paste).
-            if (!isEditableTarget(e.target)) e.preventDefault();
-          }}
-        >
-          {!hideChrome && (
-            <Palette
-              collapsed={paletteHidden}
-              onToggle={togglePalette}
-              onAdd={addFromPalette}
-              onAnnotate={annotateFromPalette}
-              nodeVariant={nodeVariant}
-            />
-          )}
+      <InteractionContext.Provider value={interaction}>
+        <DiagramContext.Provider value={ui}>
           <div
-            className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
-            data-testid="canvas-wrap"
-            data-toast-area
-            tabIndex={-1}
-            ref={wrapper}
-            style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
-            onFocusCapture={(e) => {
-              if (e.target instanceof Element && e.target.closest('[data-testid^="rf__node-"]')) interruptFit();
+            className={`canvas-view${presenting ? " is-presenting" : ""}${live ? " is-live" : ""}`}
+            data-testid="canvas-view"
+            onContextMenu={(e) => {
+              // The app owns right-click; text fields keep the native menu (spellcheck, paste).
+              if (!isEditableTarget(e.target)) e.preventDefault();
             }}
-            onPointerDownCapture={(e) => {
-              // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
-              const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
-              if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBaseRef.current = null);
-              const { nodes: ns, edges: es } = store.getState();
-              boxBaseRef.current = {
-                nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
-                edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
-              };
-            }}
-            onPointerMove={(e) => {
-              pointer.current = { x: e.clientX, y: e.clientY };
-              const target =
-                e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
-              if (controller.fitting && target) {
-                // Hover is input too: keep the target still and arm its tooltip after
-                // stopping the fit (whose move-start dismisses the previous tooltip).
-                interruptFit();
-                const id = target.dataset.testid?.slice("rf__node-".length);
-                const node = id ? getNode(id) : undefined;
-                if (node?.type === "diagram" && !editing)
-                  showTip(target, {
-                    nodeId: node.id,
-                    label: node.data.label || node.id,
-                    sublabel: node.data.sublabel,
-                    stencil: node.data.stencil,
-                  });
-              }
-              // Ctrl/Cmd during a box selection: only what's wholly inside.
-              containRef.current = e.ctrlKey || e.metaKey;
-            }}
-            onPointerLeave={() => (pointer.current = null)}
-            onDragOver={(e) => {
-              if (
-                e.dataTransfer.types.includes(STENCIL_DND_MIME) ||
-                e.dataTransfer.types.includes(ANNOTATION_DND_MIME)
-              ) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "copy";
-              }
-              if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) onRailDragOver(e);
-            }}
-            onDragLeave={(e) => {
-              if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
-            }}
-            onDrop={onDrop}
           >
-            <EdgeMarkers />
-            {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
-            <ReactFlow<FlowNode, DiagramFlowEdge>
-              nodes={ariaNodes}
-              fitView={bootstrapFit}
-              fitViewOptions={presenting ? FIT_PRESENT : FIT}
-              // Focus brings a node into view clear of the chrome (revealFocused above).
-              autoPanOnNodeFocus={false}
-              edges={ariaEdges}
-              onNodesChange={handleNodesChange}
-              onEdgesChange={handleEdgesChange}
-              onConnect={onConnect}
-              onConnectStart={onConnectStart}
-              onConnectEnd={onConnectEnd}
-              connectionLineComponent={ConnectionLine}
-              isValidConnection={isValidConnection}
-              connectionMode={ConnectionMode.Loose}
-              connectionRadius={28}
-              onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
-              // Every drag, the selection's frame included (see onNodeDragStart).
-              onNodeDragStart={onNodeDragStart}
-              onNodeDragStop={onNodeDragStop}
-              onPaneContextMenu={onPaneContextMenu}
-              onNodeContextMenu={onNodeContextMenu}
-              onEdgeContextMenu={onEdgeContextMenu}
-              onSelectionContextMenu={onSelectionContextMenu}
-              onDoubleClick={onPaneDoubleClick}
-              onMoveStart={onMoveStart}
-              onMove={onMove}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              colorMode={theme}
-              // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
-              attributionPosition="bottom-right"
-              minZoom={0.15}
-              maxZoom={2.5}
-              snapToGrid={prefs.snap}
-              snapGrid={SNAP_GRID}
-              elevateNodesOnSelect={false}
-              // Space held: a drag pans even from a node, so nodes neither drag nor connect meanwhile.
-              nodesDraggable={!readOnly && !spaceHeld}
-              nodesConnectable={!readOnly && !spaceHeld}
-              elementsSelectable={!readOnly}
-              // The wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/Cmd+wheel and pinch zoom
-              // at the pointer. Embedded in a page, the wheel scrolls the page (pinch / Ctrl+wheel zoom).
-              panOnScroll={!readOnly || !!viewer?.wheel}
-              panOnScrollSpeed={1}
-              zoomOnScroll={false}
-              preventScrolling={!readOnly || !!viewer?.wheel}
-              // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
-              // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
-              panOnDrag={editGestures ? PAN_MIDDLE : true}
-              selectionOnDrag={editGestures}
-              selectionKeyCode={editGestures ? null : "Shift"}
-              multiSelectionKeyCode={editGestures ? MULTI_SELECT_KEYS : undefined}
-              zoomOnDoubleClick={false}
-              deleteKeyCode={null}
-              connectionLineType={
-                edgeStyle === "bezier"
-                  ? ConnectionLineType.Bezier
-                  : edgeStyle === "straight"
-                    ? ConnectionLineType.Straight
-                    : ConnectionLineType.SmoothStep
-              }
+            {!hideChrome && (
+              <Palette
+                collapsed={paletteHidden}
+                onToggle={togglePalette}
+                onAdd={addFromPalette}
+                onAnnotate={annotateFromPalette}
+                nodeVariant={nodeVariant}
+              />
+            )}
+            <div
+              className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
+              data-testid="canvas-wrap"
+              data-toast-area
+              tabIndex={-1}
+              ref={wrapper}
+              style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
+              onFocusCapture={(e) => {
+                if (e.target instanceof Element && e.target.closest('[data-testid^="rf__node-"]')) interruptFit();
+              }}
+              onPointerDownCapture={(e) => {
+                // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
+                const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
+                if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBaseRef.current = null);
+                const { nodes: ns, edges: es } = store.getState();
+                boxBaseRef.current = {
+                  nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
+                  edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
+                };
+              }}
+              onPointerMove={(e) => {
+                pointer.current = { x: e.clientX, y: e.clientY };
+                const target =
+                  e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
+                if (controller.fitting && target) {
+                  // Hover is input too: keep the target still and arm its tooltip after
+                  // stopping the fit (whose move-start dismisses the previous tooltip).
+                  interruptFit();
+                  const id = target.dataset.testid?.slice("rf__node-".length);
+                  const node = id ? getNode(id) : undefined;
+                  if (node?.type === "diagram" && !editing)
+                    showTip(target, {
+                      nodeId: node.id,
+                      label: node.data.label || node.id,
+                      sublabel: node.data.sublabel,
+                      stencil: node.data.stencil,
+                    });
+                }
+                // Ctrl/Cmd during a box selection: only what's wholly inside.
+                containRef.current = e.ctrlKey || e.metaKey;
+              }}
+              onPointerLeave={() => (pointer.current = null)}
+              onDragOver={(e) => {
+                if (
+                  e.dataTransfer.types.includes(STENCIL_DND_MIME) ||
+                  e.dataTransfer.types.includes(ANNOTATION_DND_MIME)
+                ) {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "copy";
+                }
+                if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) onRailDragOver(e);
+              }}
+              onDragLeave={(e) => {
+                if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
+              }}
+              onDrop={onDrop}
             >
-              <ZoomVar host={wrapper} />
-              {prefs.grid && <DotGrid />}
-              {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
-              {editGestures && <LandingOutline />}
-              {!hideChrome && (
-                <CanvasControls
-                  editor={editor}
-                  fit={fit}
-                  zoomedByButton={zoomedByButton}
-                  onShortcuts={() => setShortcutsOpen(true)}
-                />
-              )}
-              {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
-              {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
-              {(nodeCount > 0 || live) && (
-                <LiveView
-                  readOnly={readOnly}
-                  initial={viewer?.live}
-                  onHandle={receiveLiveHandle}
-                  editor={readOnly ? undefined : editor}
-                  diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
-                  presenting={presenting}
-                  simulations={meta.simulations}
-                  planning={meta.planning}
-                  privateDiagram={privacy !== null}
-                  onLiveChange={onLiveChange}
-                  onPanelChange={setLivePanelOpen}
-                  onSaveDiagram={
-                    readOnly
-                      ? undefined
-                      : (diagram) => {
-                          const mod = flushSave(diagram);
-                          if (mod !== undefined) setModified(mod);
-                        }
-                  }
-                />
-              )}
-              {viewer?.controls && <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>}
-              {checksOn && checksCard && <ChecksMarkersView store={checks} />}
-            </ReactFlow>
+              <EdgeMarkers />
+              {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
+              <ReactFlow<FlowNode, DiagramFlowEdge>
+                nodes={ariaNodes}
+                fitView={bootstrapFit}
+                fitViewOptions={presenting ? FIT_PRESENT : FIT}
+                // Focus brings a node into view clear of the chrome (revealFocused above).
+                autoPanOnNodeFocus={false}
+                edges={ariaEdges}
+                onNodesChange={handleNodesChange}
+                onEdgesChange={handleEdgesChange}
+                onConnect={onConnect}
+                onConnectStart={onConnectStart}
+                onConnectEnd={onConnectEnd}
+                connectionLineComponent={ConnectionLine}
+                isValidConnection={isValidConnection}
+                connectionMode={ConnectionMode.Loose}
+                connectionRadius={28}
+                onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
+                // Every drag, the selection's frame included (see onNodeDragStart).
+                onNodeDragStart={onNodeDragStart}
+                onNodeDragStop={onNodeDragStop}
+                onPaneContextMenu={onPaneContextMenu}
+                onNodeContextMenu={onNodeContextMenu}
+                onEdgeContextMenu={onEdgeContextMenu}
+                onSelectionContextMenu={onSelectionContextMenu}
+                onDoubleClick={onPaneDoubleClick}
+                onMoveStart={onMoveStart}
+                onMove={onMove}
+                onNodeMouseEnter={onNodeMouseEnter}
+                onNodeMouseLeave={onNodeMouseLeave}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                colorMode={theme}
+                // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
+                attributionPosition="bottom-right"
+                minZoom={0.15}
+                maxZoom={2.5}
+                snapToGrid={prefs.snap}
+                snapGrid={SNAP_GRID}
+                elevateNodesOnSelect={false}
+                // Space held: a drag pans even from a node, so nodes neither drag nor connect meanwhile.
+                nodesDraggable={!readOnly && !spaceHeld}
+                nodesConnectable={!readOnly && !spaceHeld}
+                elementsSelectable={!readOnly}
+                // The wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/Cmd+wheel and pinch zoom
+                // at the pointer. Embedded in a page, the wheel scrolls the page (pinch / Ctrl+wheel zoom).
+                panOnScroll={!readOnly || !!viewer?.wheel}
+                panOnScrollSpeed={1}
+                zoomOnScroll={false}
+                preventScrolling={!readOnly || !!viewer?.wheel}
+                // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
+                // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
+                panOnDrag={editGestures ? PAN_MIDDLE : true}
+                selectionOnDrag={editGestures}
+                selectionKeyCode={editGestures ? null : "Shift"}
+                multiSelectionKeyCode={editGestures ? MULTI_SELECT_KEYS : undefined}
+                zoomOnDoubleClick={false}
+                deleteKeyCode={null}
+                connectionLineType={
+                  edgeStyle === "bezier"
+                    ? ConnectionLineType.Bezier
+                    : edgeStyle === "straight"
+                      ? ConnectionLineType.Straight
+                      : ConnectionLineType.SmoothStep
+                }
+              >
+                <ZoomVar host={wrapper} />
+                {prefs.grid && <DotGrid />}
+                {editGestures && (
+                  <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />
+                )}
+                {editGestures && <LandingOutline />}
+                {!hideChrome && (
+                  <CanvasControls
+                    editor={editor}
+                    fit={fit}
+                    zoomedByButton={zoomedByButton}
+                    onShortcuts={showShortcuts}
+                  />
+                )}
+                {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
+                {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
+                {(nodeCount > 0 || live) && (
+                  <LiveView
+                    readOnly={readOnly}
+                    initial={viewer?.live}
+                    onHandle={receiveLiveHandle}
+                    editor={readOnly ? undefined : editor}
+                    diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
+                    presenting={presenting}
+                    simulations={meta.simulations}
+                    planning={meta.planning}
+                    privateDiagram={privacy !== null}
+                    onLiveChange={onLiveChange}
+                    onPanelChange={setLivePanelOpen}
+                    onSaveDiagram={
+                      readOnly
+                        ? undefined
+                        : (diagram) => {
+                            const mod = flushSave(diagram);
+                            if (mod !== undefined) setModified(mod);
+                          }
+                    }
+                  />
+                )}
+                {viewer?.controls && (
+                  <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>
+                )}
+                {checksOn && checksCard && <ChecksMarkersView store={checks} />}
+              </ReactFlow>
 
-            <CanvasOverlays
-              card={card}
-              cardCovers={cardCovers}
-              presenting={presenting}
-              privacy={privacy}
-              hideChrome={hideChrome}
-              nodeCount={nodeCount}
-              meta={meta}
-              checks={checks}
-              checksCard={checksCard}
-              openingFitDone={openingFitDone}
-              modified={modified}
-              ownDiagram={ownDiagram}
-              reset={reset}
-              checksOn={checksOn}
-              checksHost={checksHost}
-              checksTop={checksTop}
-              checksMounted={checksMounted}
-              onExitPresent={onExitPresent}
-              contentCount={contentCount}
-              live={live}
-              start={start}
-              startDismissed={startDismissed}
-              onBlank={() => {
-                setStartDismissed(true);
-                // A blank canvas starts from the stencil list: open it and put the cursor in its search.
-                setPaletteCollapsed(false);
-                setOpenedByHand((o) => ({ ...o, palette: true }));
-                requestAnimationFrame(() =>
-                  wrapper.current?.parentElement
-                    ?.querySelector<HTMLInputElement>('[data-testid="palette-search"]')
-                    ?.focus(),
-                );
-              }}
-              paletteHidden={paletteHidden}
-              hintSeen={hintSeen}
-              dismissHint={dismissHint}
-            />
+              <CanvasOverlays
+                card={card}
+                cardCovers={cardCovers}
+                presenting={presenting}
+                privacy={privacy}
+                hideChrome={hideChrome}
+                nodeCount={nodeCount}
+                meta={meta}
+                checks={checks}
+                checksCard={checksCard}
+                openingFitDone={openingFitDone}
+                modified={modified}
+                ownDiagram={ownDiagram}
+                reset={reset}
+                checksOn={checksOn}
+                checksHost={checksHost}
+                checksTop={checksTop}
+                checksMounted={checksMounted}
+                onExitPresent={onExitPresent}
+                contentCount={contentCount}
+                live={live}
+                start={start}
+                startDismissed={startDismissed}
+                onBlank={() => {
+                  setStartDismissed(true);
+                  // A blank canvas starts from the stencil list: open it and put the cursor in its search.
+                  setPaletteCollapsed(false);
+                  setOpenedByHand((o) => ({ ...o, palette: true }));
+                  requestAnimationFrame(() =>
+                    wrapper.current?.parentElement
+                      ?.querySelector<HTMLInputElement>('[data-testid="palette-search"]')
+                      ?.focus(),
+                  );
+                }}
+                paletteHidden={paletteHidden}
+                hintSeen={hintSeen}
+                dismissHint={dismissHint}
+              />
+            </div>
+            {!hideChrome && (
+              <Inspector
+                editor={editor}
+                revision={hostRevision}
+                readDiagram={readInspectorDiagram}
+                meta={meta}
+                selectedNodes={selectedNodes}
+                selectedGroups={selectedGroups}
+                selectedEdges={selectedEdges}
+                selectedAnnotations={selectedAnnotations}
+                groups={groupNodes}
+                nodeLabel={(id) => labels.get(id) ?? id}
+                counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
+                collapsed={inspectorHidden}
+                onResize={() => setSheetResize((revision) => revision + 1)}
+                onTextSettled={settleText}
+                onToggle={() => {
+                  setPref("inspector", inspectorHidden);
+                  setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
+                }}
+                focus={inspectorFocus}
+                takeFocus={takeInspectorFocus}
+                connection={
+                  naming && selectedNodes[0]?.id === naming.node
+                    ? { id: naming.edge, label: edges.find((e) => e.id === naming.edge)?.data?.label ?? "" }
+                    : undefined
+                }
+                onNamed={() => setNaming((current) => (current?.node === selectedNodes[0]?.id ? null : current))}
+                findings={inspectorFindings}
+              />
+            )}
           </div>
-          {!hideChrome && (
-            <Inspector
-              editor={editor}
-              revision={hostRevision}
-              readDiagram={readInspectorDiagram}
-              meta={meta}
-              selectedNodes={selectedNodes}
-              selectedGroups={selectedGroups}
-              selectedEdges={selectedEdges}
-              selectedAnnotations={selectedAnnotations}
-              groups={groupNodes}
-              nodeLabel={(id) => labels.get(id) ?? id}
-              counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
-              collapsed={inspectorHidden}
-              onResize={() => setSheetResize((revision) => revision + 1)}
-              onTextSettled={settleText}
-              onToggle={() => {
-                setPref("inspector", inspectorHidden);
-                setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
-              }}
-              focus={inspectorFocus}
-              takeFocus={takeInspectorFocus}
-              connection={
-                naming && selectedNodes[0]?.id === naming.node
-                  ? { id: naming.edge, label: edges.find((e) => e.id === naming.edge)?.data?.label ?? "" }
-                  : undefined
-              }
-              onNamed={() => setNaming((current) => (current?.node === selectedNodes[0]?.id ? null : current))}
-              findings={inspectorFindings}
-            />
+          {menu &&
+            (menu.connected ? (
+              <ConnectedQuickAddMenu
+                {...menu}
+                anchor={menu.connected}
+                root={wrapper}
+                items={menuItems}
+                onClose={closeMenu}
+              />
+            ) : (
+              <ContextMenu {...menu} items={menuItems} onClose={closeMenu} />
+            ))}
+          {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} />}
+          {!readOnly && (
+            <div
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+              data-testid="canvas-announce"
+              data-seq={announcement.seq}
+            >
+              {announcement.text}
+            </div>
           )}
-        </div>
-        {menu &&
-          (menu.connected ? (
-            <ConnectedQuickAddMenu
-              {...menu}
-              anchor={menu.connected}
-              root={wrapper}
-              items={menuItems}
-              onClose={() => setMenu(null)}
-            />
-          ) : (
-            <ContextMenu {...menu} items={menuItems} onClose={() => setMenu(null)} />
-          ))}
-        {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
-        {!readOnly && (
-          <div
-            className="sr-only"
-            role="status"
-            aria-live="polite"
-            data-testid="canvas-announce"
-            data-seq={announcement.seq}
-          >
-            {announcement.text}
-          </div>
-        )}
-        <NodeTipLayer tips={nodeTips} enabled={tipsEnabled} covered={!!menu} root={wrapper} />
-      </DiagramContext.Provider>
+          <NodeTipLayer tips={nodeTips} enabled={tipsEnabled} covered={!!menu} root={wrapper} />
+        </DiagramContext.Provider>
+      </InteractionContext.Provider>
     </CameraContext.Provider>
   );
 }

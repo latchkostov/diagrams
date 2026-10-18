@@ -35,6 +35,9 @@ interface Anchor {
   minWidth?: number;
 }
 
+/** Why a menu closed: an item ran, Esc, a press outside it, the wheel, the window's focus or size changing. */
+export type ContextMenuCloseReason = "pick" | "escape" | "outside" | "scroll" | "blur" | "resize";
+
 const MARGIN = 8;
 const HOVER_DELAY = 110;
 const MAX_RESULTS = 60;
@@ -47,7 +50,7 @@ export interface ContextMenuProps {
   flipX?: number;
   minWidth?: number;
   items: MenuNode[];
-  onClose: () => void;
+  onClose: (reason: ContextMenuCloseReason) => void;
   /** Root-level search box placeholder (quick-add, stencil picker). */
   searchable?: string;
   /** Accessible name. */
@@ -101,18 +104,19 @@ export function ContextMenu({
     const previousFocus = invoker.current;
     const outside = (e: Event) => {
       if (e.type === "pointerdown" && triggerRef?.current?.contains(e.target as Node)) return;
-      if (!layer.current?.contains(e.target as Node)) closeRef.current();
+      if (!layer.current?.contains(e.target as Node)) closeRef.current(e.type === "wheel" ? "scroll" : "outside");
     };
-    const close = () => closeRef.current();
+    const resized = () => closeRef.current("resize");
+    const blurred = () => closeRef.current("blur");
     window.addEventListener("pointerdown", outside, true);
     window.addEventListener("wheel", outside, { capture: true, passive: true });
-    window.addEventListener("resize", close);
-    window.addEventListener("blur", close);
+    window.addEventListener("resize", resized);
+    window.addEventListener("blur", blurred);
     return () => {
       window.removeEventListener("pointerdown", outside, true);
       window.removeEventListener("wheel", outside, true);
-      window.removeEventListener("resize", close);
-      window.removeEventListener("blur", close);
+      window.removeEventListener("resize", resized);
+      window.removeEventListener("blur", blurred);
       // Actions and outside clicks may deliberately focus another control. Let them win.
       queueMicrotask(() => {
         if (document.activeElement === document.body && previousFocus?.isConnected)
@@ -131,8 +135,8 @@ export function ContextMenu({
         takeTypeAhead={takeTypeAhead}
         focusOnMount
         activateFirst={false}
-        onCloseAll={() => closeRef.current()}
-        onBack={() => closeRef.current()}
+        onCloseAll={(reason) => closeRef.current(reason)}
+        onBack={() => closeRef.current("escape")}
         label={label}
         testId={testId}
         menuId={menuId}
@@ -151,7 +155,7 @@ interface ListProps {
   takeTypeAhead?: () => TypeAhead | undefined;
   focusOnMount: boolean;
   activateFirst: boolean;
-  onCloseAll: () => void;
+  onCloseAll: (reason: "pick" | "escape") => void;
   onBack: () => void;
   label: string;
   testId: string;
@@ -258,11 +262,11 @@ function MenuList(p: ListProps) {
     input.current.focus({ preventScroll: true });
     const t = take();
     if (!t) return;
-    if (t.done === "escape") return p.onCloseAll();
+    if (t.done === "escape") return p.onCloseAll("escape");
     if (t.done === "enter") {
       const best = (t.text ? search(p.items, t.text) : p.items).find(selectable);
       if (best && !best.children) {
-        p.onCloseAll();
+        p.onCloseAll("pick");
         best.run?.();
         return;
       }
@@ -321,7 +325,7 @@ function MenuList(p: ListProps) {
       openSub(index, viaKeyboard);
       return;
     }
-    p.onCloseAll();
+    p.onCloseAll("pick");
     item.run?.();
   };
 
@@ -384,7 +388,7 @@ function MenuList(p: ListProps) {
         e.preventDefault();
         if (inInput && q) setQ("");
         else if (p.depth > 0) p.onBack();
-        else p.onCloseAll();
+        else p.onCloseAll("escape");
         break;
       case "Tab":
         e.preventDefault();
