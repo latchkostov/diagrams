@@ -91,6 +91,8 @@ export function useCanvasContextMenus(
       const sel = editor.getSelection();
       const count = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
       if (node.selected && count > 1) return openMenu(e, { target: "selection", selection: sel });
+      // A right-click selects what it's on, as a click does.
+      menus.selecting("click");
       if (isAnnotationNode(node)) {
         editor.select({ nodeIds: [node.id] });
         return openMenu(e, { target: "annotation", nodeId: node.id, selection: { ...EMPTY, nodeIds: [node.id] } });
@@ -103,15 +105,16 @@ export function useCanvasContextMenus(
       editor.select({ nodeIds: [node.id] });
       openMenu(e, { target: "node", nodeId: node.id, selection: { ...EMPTY, nodeIds: [node.id] } });
     },
-    [editor, openMenu],
+    [editor, openMenu, menus],
   );
 
   const openEdgeMenu = useCallback(
     (e: ReactMouseEvent | MouseEvent, edgeId: string) => {
+      menus.selecting("click");
       editor.select({ edgeIds: [edgeId] });
       openMenu(e, { target: "edge", edgeId, selection: { ...EMPTY, edgeIds: [edgeId] } });
     },
-    [editor, openMenu],
+    [editor, openMenu, menus],
   );
   const onEdgeContextMenu: EdgeMouseHandler<DiagramFlowEdge> = useCallback(
     (e, edge) => openEdgeMenu(e, edge.id),

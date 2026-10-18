@@ -74,6 +74,8 @@ export function useDragPlacement(
       }
       let next = changes;
       if (store.getState().userSelectionActive) next = next.filter((c) => c.type !== "select");
+      // React Flow's own selection: a click (or its Enter on a focused node).
+      if (next.some((c) => c.type === "select")) menus.selecting("click");
       const copies = altCopies.current;
       if (copies)
         next = next.map((c) => (c.type === "position" && copies.has(c.id) ? { ...c, id: copies.get(c.id)! } : c));
@@ -81,14 +83,15 @@ export function useDragPlacement(
       next = guides.filter(next);
       if (next.length) onNodesChange(next);
     },
-    [store, onNodesChange, guides, beginGesture, endGesture],
+    [store, onNodesChange, guides, beginGesture, endGesture, menus],
   );
   const handleEdgesChange = useCallback(
     (changes: EdgeChange<DiagramFlowEdge>[]) => {
       const next = store.getState().userSelectionActive ? changes.filter((c) => c.type !== "select") : changes;
+      if (next.some((c) => c.type === "select")) menus.selecting("click");
       if (next.length) onEdgesChange(next);
     },
-    [store, onEdgesChange],
+    [store, onEdgesChange, menus],
   );
 
   const onEdgeDoubleClick: EdgeMouseHandler<DiagramFlowEdge> = useCallback(

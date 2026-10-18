@@ -1,5 +1,10 @@
 import { useCanvasMenuItems, useCanvasContextMenus, type CanvasSurface } from "./menus/useCanvasMenus";
-import { InteractionContext, useInteractionCamera, useInteractionCore } from "./interaction/useInteraction";
+import {
+  InteractionContext,
+  useInteractionCamera,
+  useInteractionCore,
+  useSelectionEvents,
+} from "./interaction/useInteraction";
 import { useRailPlacement } from "./placement/useRailPlacement";
 import { useDragPlacement } from "./placement/useDragPlacement";
 import { useConnectionPlacement } from "./placement/useConnectionPlacement";
@@ -617,7 +622,7 @@ function CanvasInner({
     setNaming,
     rename,
     history,
-    controller,
+    interaction,
     revealSelection,
   );
 
@@ -666,7 +671,13 @@ function CanvasInner({
     interaction,
   );
 
-  const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({ editGestures, store, setNodes, setEdges });
+  const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({
+    editGestures,
+    store,
+    setNodes,
+    setEdges,
+    selecting: interaction.selecting,
+  });
 
   const [
     guideLayer,
@@ -744,7 +755,7 @@ function CanvasInner({
     annotationKindOf,
     screenToFlowPosition,
     nodeVariant,
-    controller,
+    interaction,
     editor,
     revealSelection,
   );
@@ -824,12 +835,13 @@ function CanvasInner({
     live,
     presenting,
   });
+  useSelectionEvents(interaction, nodes, edges);
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
     setPaletteCollapsed(!paletteHidden);
     setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
   }, [paletteHidden]);
-  const addFromPalette = useAddFromPalette(editor, live, controller);
+  const addFromPalette = useAddFromPalette(editor, live, interaction);
   const anchorLabel = useMemo(() => {
     if (selectedNodes.length + selectedAnnotations.length + selectedGroups.length + selectedEdges.length !== 1)
       return undefined;
@@ -840,7 +852,7 @@ function CanvasInner({
   }, [selectedNodes, selectedAnnotations, selectedGroups, selectedEdges]);
   useEffect(() => railAnchor.set(live || hideChrome ? undefined : anchorLabel), [live, hideChrome, anchorLabel]);
   useEffect(() => () => railAnchor.set(undefined), []);
-  const annotateFromPalette = useAnnotateFromPalette(editor, controller);
+  const annotateFromPalette = useAnnotateFromPalette(editor, interaction);
   const labels = useMemo(
     () =>
       new Map([

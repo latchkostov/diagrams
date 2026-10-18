@@ -61,7 +61,7 @@ export function usePaneCamera(controller: CameraController, p: PaneInputs) {
         cause: explicitOpen || selected || panelKey === previous.panelKey ? cause : "panel",
       });
     else if (explicitOpen) controller.dispatch({ type: "pane.changed", cause });
-    else if (selected) controller.dispatch({ type: "selection.changed", cause });
+    // A selection with no pane change reaches the camera as the interaction controller's selection.changed.
   });
   return { checksMounted };
 }

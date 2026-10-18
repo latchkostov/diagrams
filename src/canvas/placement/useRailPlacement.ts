@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type DragEvent } from "react";
+import type { Placing } from "../interaction";
 import type { ReactFlowInstance } from "@xyflow/react";
 import type { AnnotationKind } from "../../model/types";
 import type { EditorApi } from "../../editor/types";
@@ -9,7 +10,7 @@ import { STENCIL_DND_MIME } from "../Palette";
 import { connectHitAt, connectTarget } from "../gestures";
 import { landing } from "../landing";
 import type { EdgeHover } from "../edgeHover";
-import type { CameraController, useRevealSelection } from "../camera";
+import type { useRevealSelection } from "../camera";
 
 export function useRailPlacement(
   editGestures: boolean,
@@ -17,7 +18,7 @@ export function useRailPlacement(
   annotationKindOf: (id: string) => AnnotationKind | undefined,
   screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
   nodeVariant: NodeVariantId,
-  controller: CameraController,
+  controller: Placing,
   editor: EditorApi,
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
 ) {
