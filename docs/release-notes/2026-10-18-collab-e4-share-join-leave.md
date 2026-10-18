@@ -41,3 +41,7 @@ This is the first path from a normal button: **File ▸ Share… ▸ Edit togeth
 - Output parity: `node/i18n/catalogs.json` changed on purpose (15 new English-only messages: the chip's states and
   menu, the failure wording, Share's row and its Private line, Ctrl+K's entry; "Copy room link" replaces "Copy link").
   No other golden changed.
+- Linux container under load (`--repeat 5`, 4 workers): the room spec 95 of 95. An earlier run found two test-only
+  races, now fixed: the second joiner in the toolbar-focus case shared a browser (and so the room's encrypted copy)
+  with the first, and the refused-copy case installed its storage refusal after the edit's debounced copy could land.
+  Share's and the collab Lab's specs passed there too.
