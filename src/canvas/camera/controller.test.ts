@@ -572,12 +572,34 @@ describe("camera controller", () => {
 
 // ---------------------------------------------------------------- interleavings (fast-check model run)
 
-type Model = { pending: boolean; menu: boolean; fits: number; created: number; last: string | null };
+/**
+ * The model: the work waiting for the pane and its cause (the canvas's pane work waits for menus, Live's own
+ * work doesn't), Live's room as far as it decides whether work is created, and slow motion running.
+ */
+type Model = {
+  pending: boolean;
+  cause: "canvas" | "live" | "take" | null;
+  menu: boolean;
+  fits: number;
+  created: number;
+  last: string | null;
+  panel: boolean;
+  focus: boolean;
+  slowmo: boolean;
+};
 type Real = ReturnType<typeof harness>;
+const deferred = (m: Model) => m.pending && m.menu && m.cause === "canvas";
+/** Whether running the pending work leaves a journal entry: slow motion keeps its camera from Live's refits. */
+const journals = (m: Model) => m.pending && !(m.cause === "live" && m.slowmo);
+const work = (m: Model, cause: NonNullable<Model["cause"]>) => {
+  m.pending = true;
+  m.cause = cause;
+  m.created++;
+};
 const check = (m: Model, r: Real) => {
   const phase = r.camera.phase;
-  if (m.pending) expect(phase).toBe(m.menu ? "deferred" : "pending");
-  expect(r.env.panePending).toBe(m.pending && !m.menu);
+  if (m.pending) expect(phase).toBe(deferred(m) ? "deferred" : "pending");
+  expect(r.env.panePending).toBe(m.pending && !deferred(m));
   // The readiness signal tells the truth about our moves: animating while one is scheduled or running (none is
   // forgotten while it runs), never stuck on one that another writer stopped.
   if (phase === "idle") expect(r.ours()).toBeNull();
@@ -600,15 +622,16 @@ const command = (name: string, run: (m: Model, r: Real) => void | Promise<void>,
   }) satisfies Cmd;
 const panel = command("panel", (m, r) => {
   r.camera.dispatch({ type: "pane.changed", cause: "panel" });
-  m.pending = true;
-  m.created++;
+  // A take waiting for the pane plans for the new one too.
+  if (m.pending && m.cause === "take") return;
+  work(m, "canvas");
 });
 const menuOpen = command(
   "menu.open",
   (m, r) => {
     r.camera.dispatch({ type: "menu.opened", kind: "context" });
     m.menu = true;
-    m.last = null;
+    if (m.cause === "canvas") m.last = null;
   },
   (m) => !m.menu,
 );
@@ -625,20 +648,23 @@ const frame = (sample: string | null) =>
     const before = r.journal.length;
     r.env.sample = sample;
     r.tick();
-    const ran = r.journal.slice(before).filter((e) => e.cause === "pane").length;
+    // Every decision the settled pane leads to is in the journal (a refit, a reveal, Live's fits, slow motion's).
+    const ran = r.journal.slice(before).filter((e) => e.command !== "follow").length;
     // The model's own settle rule: armed work runs on the second of two agreeing, present samples.
-    const armed = m.pending && !m.menu;
+    const armed = m.pending && !deferred(m);
     const expected = armed && sample !== null && sample === m.last;
-    expect(ran > 0).toBe(expected);
+    expect(ran > 0).toBe(expected && journals(m));
     m.last = armed && !expected ? sample : null;
-    if (ran) {
+    if (expected) {
       m.pending = false;
+      m.cause = null;
       m.fits++;
     }
   });
 const fit = command("fit", (m, r) => {
   r.camera.dispatch({ type: "fit", reason: "command" });
   m.pending = false;
+  m.cause = null;
   m.last = null;
 });
 const refine = command("refine", (_m, r) => r.refine());
@@ -648,12 +674,48 @@ const reveal = command("reveal", (_m, r) => {
   r.env.covered = true;
   r.camera.dispatch({ type: "reveal.requested", cause: "navigation" });
 });
-/** Live, slow motion, the minimap or the zoom buttons move the view: d3 stops ours (its promise never resolves). */
+/** The minimap or the zoom buttons move the view: d3 stops ours (its promise never resolves). */
 const foreignNow = command("foreign.now", (_m, r) => r.foreignNow());
 const foreignAnimated = command("foreign.animated", (_m, r) => r.foreignAnimated());
+/** Live's side panel opens or closes (a change of the panel's pane work stays: it does the same fits). */
+const livePanel = command("live.panel", (m, r) => {
+  m.panel = !m.panel;
+  r.camera.dispatch({ type: "live.panel", open: m.panel });
+  if (m.slowmo || (m.pending && m.cause === "canvas")) return;
+  work(m, "live");
+});
+/** A note with or without focus: a focus takes the view, and the fit comes back when a focused note ends. */
+const narration = (focus: boolean) =>
+  command(`narration(${focus})`, (m, r) => {
+    r.camera.dispatch({ type: "narration", focus: focus ? ["a"] : [] });
+    const had = m.focus;
+    m.focus = focus;
+    if (!m.slowmo && (focus || had)) work(m, "live");
+  });
+const slowmo = (on: boolean) =>
+  command(`slowmo(${on})`, (m, r) => {
+    r.camera.dispatch({ type: "slowmo", on, restore: on ? undefined : { x: 1, y: 2, zoom: 1 } });
+    if (!on && m.slowmo && m.cause === "take") {
+      m.pending = false;
+      m.cause = null;
+    }
+    m.slowmo = on;
+  });
+const take = command(
+  "slowmo.take",
+  (m, r) => {
+    r.camera.dispatch({ type: "slowmo.take" });
+    work(m, "take");
+  },
+  (m) => m.slowmo,
+);
+/** Slow motion's follow pan: only while it owns the view, nothing waits for the pane and nothing is in flight. */
+const follow = command("slowmo.follow", (_m, r) => {
+  r.camera.dispatch({ type: "slowmo.follow", view: { x: r.view.current.x + 13, y: 0, zoom: r.view.current.zoom } });
+});
 
 describe("camera controller: interleavings", () => {
-  it("keeps its invariants under any order of events, frames, landings and other writers (a slow machine)", async () => {
+  it("keeps its invariants under any order of events, frames, landings, Live's work and other writers", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.commands(
@@ -669,12 +731,40 @@ describe("camera controller: interleavings", () => {
             fc.constant(reveal),
             fc.constant(foreignNow),
             fc.constant(foreignAnimated),
+            fc.constant(livePanel),
+            fc.constantFrom(narration(true), narration(false)),
+            fc.constantFrom(slowmo(true), slowmo(false)),
+            fc.constant(take),
+            fc.constant(follow),
           ],
           { maxCommands: 40 },
         ),
         async (cmds) => {
-          const model: Model = { pending: false, menu: false, fits: 0, created: 0, last: null };
+          const model: Model = {
+            pending: false,
+            cause: null,
+            menu: false,
+            fits: 0,
+            created: 0,
+            last: null,
+            panel: false,
+            focus: false,
+            slowmo: false,
+          };
           const real = harness();
+          let paused = false;
+          real.camera.slowmo({
+            plan: () => ({ x: 30, y: 30, zoom: 0.7 }),
+            pane: () => {
+              paused = !paused;
+              return paused ? "hold" : { x: 31, y: 30, zoom: 0.7 };
+            },
+          });
+          // Live view, its opening fit landed.
+          real.camera.mode({ live: true, presenting: false });
+          await real.refine();
+          await real.finish();
+          real.tick(3);
           await fc.asyncModelRun(() => ({ model, real }), cmds);
           // Drains: whatever the interleaving left, closing the menu, releasing input and letting the pane settle
           // runs the outstanding work exactly once, and every move lands: the camera ends idle.
@@ -684,7 +774,7 @@ describe("camera controller: interleavings", () => {
           real.camera.input("release");
           real.env.sample = "1000x800";
           real.tick(3);
-          const runs = real.journal.slice(start).filter((e) => e.command === "fit" && e.cause === "pane").length;
+          const runs = real.journal.slice(start).filter((e) => e.command !== "follow").length;
           for (let i = 0; i < 4; i++) {
             await real.refine();
             await real.finish();
@@ -693,7 +783,7 @@ describe("camera controller: interleavings", () => {
           expect(real.camera.phase).toBe("idle");
           expect(real.env.panePending).toBe(false);
           expect(real.ours()).toBeNull();
-          expect(runs).toBe(model.pending ? 1 : 0);
+          expect(runs).toBe(journals(model) ? 1 : 0);
           expect(ran).toBeLessThanOrEqual(model.created);
         },
       ),
