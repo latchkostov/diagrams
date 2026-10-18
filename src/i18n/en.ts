@@ -2495,6 +2495,8 @@ const en = {
   "collab.leftNotice": "You left the room. Your copy is in Your diagrams.",
   "collab.leftPrivateNotice": "You left the room because this diagram is now private. Your copy stays on this device.",
   "collab.openFailed": "Could not open the room. Try the link again.",
+  "collab.privateUnsaved":
+    "You left the room because this diagram is now private, but this browser couldn't record that (its storage is full or blocked). Save a file copy: nothing of it is kept here.",
   "collab.storageFull":
     "This browser's storage is full, so the room's diagram can't be kept here. Free some space and try again.",
   "collab.presetTitle": "Collaboration: editor and recovery",

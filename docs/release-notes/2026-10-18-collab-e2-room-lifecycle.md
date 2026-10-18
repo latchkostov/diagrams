@@ -15,7 +15,8 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
   without asking again and never reseeds. Edits the checkpoint hadn't saved when the page went are kept beside the
   record as one CRDT update (everything past the last saved checkpoint's state vector, deletions included) and
   merged back in: a merge only adds those edits, so newer state saved meanwhile by a peer or another tab is never
-  reverted. The plain copy in Your diagrams is never replayed into the room. A room link in the address waits for
+  reverted. The plain copy in Your diagrams is never replayed into the room, and what a reopened room recovered is
+  written back to it (a copy counts as current only once a save of it succeeds). A room link in the address waits for
   its answer before this tab's earlier room resumes.
 - **Leave room** disconnects only you; your copy stays in Your diagrams. A page kept in the back/forward cache
   leaves for the time being and rejoins with the same document when shown again.
@@ -23,7 +24,9 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
   outside the canvas: marking the room's diagram Private (here or in another tab) leaves the room even while
   another diagram is showing. When a room leaves because its content became Private (the switch, or a paste from a
   Private diagram), the entry in Your diagrams is marked Private before the canvas is handed back, so the kept copy
-  never becomes shareable.
+  never becomes shareable. If this device can't record that (storage full or blocked), the room still disconnects
+  and cleans up; the canvas stays as it is, Private in memory only, nothing of it is saved, and the notice says to
+  save a file copy. The watcher reads only the entry's privacy flags, never the whole diagram.
 - **Clear everything on this device** now stops an open room first, then empties the room recovery database in one
   IndexedDB transaction that records the new storage generation, and waits for it. A tab that hasn't heard about
   the wipe can no longer write an old room back: every recovery write checks that record first. This resolves the
@@ -37,13 +40,15 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
 
 ## Verification and network evidence
 
-- Vitest, `src/collab/room/lifecycle.test.ts` on the in-memory network (20 cases): the creator seeds once; a link
+- Vitest, `src/collab/room/lifecycle.test.ts` on the in-memory network (24 cases): the creator seeds once; a link
   never seeds; a second "creator" with an old copy can't revert a peer's edit; consent before any transport;
   Private refused before any transport; a Private paste keeps the copy Private; Private set in another tab leaves
   the room; reload rejoin; unsaved edits merged back after a reload; newer checkpoint state preserved when pending
   edits outlive their write; A's pending title and B's saved description both survive on both peers; an older copy
   never replayed; an invitation waits before resume; the copy written only when the room changed; Leave (also
-  during a reload's rejoin); the room's own link; back/forward cache; wipe. The privacy, merge and invitation cases
+  during a reload's rejoin); Leave after checkpoint recovery, and after another tab advanced it, keeps the recovered
+  copy; a pending deletion survives a reload alongside a peer edit (and a second reload, with matching sync proofs);
+  a failed Private write still disconnects and cleans up; the room's own link; back/forward cache; wipe. The privacy, merge and invitation cases
   fail with their fix removed.
 - Playwright, `tests/e2e/collab-room.spec.ts`: two browser contexts with real WebRTC over host candidates and a
   tracker emulated in the runner: start, consent with zero sockets and zero peer connections before Join, edits
@@ -55,6 +60,6 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
   `tracker.webtorrent.dev` with Cloudflare STUN, two separate Chromium processes on this machine (host candidates,
   so signalling, not NAT traversal). Join to diagram on screen 0.84–3.57 s (median 1.63 s); edits arrived in 1–5 ms
   both ways; every reload rejoined without asking again in 0.87–1.82 s with the latest edits.
-- Output parity: one golden changed on purpose, `node/i18n/catalogs.json`: every language lists 43 more messages
-  (2,202 → 2,245), the new English-only `collab.*` keys count as fallbacks, and the `collab` area hash changes.
+- Output parity: one golden changed on purpose, `node/i18n/catalogs.json`: every language lists 44 more messages
+  (2,202 → 2,246), the new English-only `collab.*` keys count as fallbacks, and the `collab` area hash changes.
   No other golden changed.

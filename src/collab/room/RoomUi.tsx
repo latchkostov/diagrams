@@ -49,6 +49,7 @@ const NOTICES: Record<RoomNotice, () => string> = {
   private: () => t("collab.leftPrivateNotice"),
   failed: () => t("collab.openFailed"),
   "storage-full": () => t("collab.storageFull"),
+  "private-unsaved": () => t("collab.privateUnsaved"),
 };
 
 /**
@@ -333,7 +334,17 @@ function OpenChip({
   useSessionState(open.session);
   const [copied, setCopied] = useState(false);
   const session = open.session;
-  if (!here)
+  if (open.detached)
+    return (
+      <div className="ix-shared room-chip" role="status" data-testid="room-chip" data-state="detached">
+        <span className="room-dot" aria-hidden="true" />
+        <span data-testid="room-chip-text">{t("collab.privateDraft")}</span>
+        <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
+          {t("collab.leave")}
+        </button>
+      </div>
+    );
+  if (!here && open.slug)
     // The room goes on for another diagram: name it, and offer the way back rather than its link.
     return (
       <div className="ix-shared room-chip" role="status" data-testid="room-chip" data-state="elsewhere">

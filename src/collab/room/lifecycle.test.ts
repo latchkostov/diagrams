@@ -516,6 +516,122 @@ describe("leaving and reloading", () => {
     await expect.poll(() => reloaded.room.getSnapshot().open?.role).toBe("creator");
   });
 
+  it("leaving after checkpoint recovery keeps the recovered copy", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 43);
+    const slug = await start(a);
+    edit(a, (d) => ({ ...d, title: "Saved before the page died" }));
+    await settle(net, a);
+    // The page died before the debounced copy: no pagehide, so the copy is the older one.
+    expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
+    const reloaded = browser(net, clock, 44, a);
+    await reloaded.room.resume();
+    await reloaded.room.leave();
+    expect(reloaded.library.read(slug)?.title).toBe("Saved before the page died");
+  });
+
+  it("leaving after resuming a checkpoint another tab advanced keeps that newer copy", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 45);
+    const slug = await start(a);
+    const link = linkOf(a);
+    a.room.pageHidden();
+    await a.room.getSnapshot().open!.session.leave();
+    const other = sibling(net, clock, 46, a);
+    await join(other, link);
+    edit(other, (d) => ({ ...d, title: "Advanced by another tab" }));
+    await settle(net, other);
+    await other.room.leave();
+    const reloaded = browser(net, clock, 47, a);
+    await reloaded.room.resume();
+    await reloaded.room.leave();
+    expect(reloaded.library.read(slug)?.title).toBe("Advanced by another tab");
+  });
+
+  it("pending deletion survives reload alongside a peer edit", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 48);
+    await start(a);
+    const b = sibling(net, clock, 49, a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    net.partition([[...a.transports.map((t) => t.self)], [...b.transports.map((t) => t.self)]]);
+    a.store.hold = new Promise(() => {});
+    edit(a, (d) => ({ ...d, nodes: d.nodes.filter((n) => n.id !== "ledger"), edges: [] }));
+    a.room.pageHidden();
+    edit(b, (d) => ({ ...d, title: "B's saved title" }));
+    await settle(net, b);
+    const reopen = async (from: Browser, seed: number) => {
+      const store = new Store();
+      store.records = a.store.records;
+      const r = browser(net, clock, seed, { ...from, store });
+      await r.room.resume();
+      return r;
+    };
+    net.heal();
+    const reloaded = await reopen(a, 50);
+    await settle(net, reloaded, b);
+    const check = async (peers: Browser[]) => {
+      for (const peer of peers) {
+        const d = session(peer).doc.project().diagram!;
+        expect(d.title).toBe("B's saved title");
+        expect(d.nodes.map((n) => n.id)).toEqual(["intake"]);
+        expect(d.edges).toEqual([]);
+      }
+      const proofs = await Promise.all(peers.map((p) => session(p).doc.syncProof()));
+      expect(proofs[0]).toEqual(proofs[1]);
+    };
+    await check([reloaded, b]);
+    // Once more, from the checkpoint the merge itself saved.
+    reloaded.room.pageHidden();
+    const again = await reopen(reloaded, 51);
+    await settle(net, again, b);
+    await check([again, b]);
+  });
+
+  it("a failed Private write still disconnects and cleans up, keeping the draft in memory only", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 52),
+      b = browser(net, clock, 53);
+    const slug = await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    a.library.markPrivate = () => {
+      throw new DOMException("full", "QuotaExceededError");
+    };
+    const open = a.room.getSnapshot().open!;
+    a.room.configure({ capture: () => ({ ...canaryDiagram(), title: "Private paste", private: true }) });
+    open.editor.refusal = "private";
+    await open.session.leave();
+    expect(a.room.getSnapshot().open).toMatchObject({ detached: true, slug });
+    expect(a.room.getSnapshot().notice).toMatchObject({ kind: "private-unsaved", slug });
+    expect(a.tab.read()).toBeUndefined();
+    // Nothing of the Private draft reached the (non-private) entry.
+    expect(a.library.read(slug)?.title).toBe(canaryDiagram().title);
+    await settle(net, b);
+    expect(session(b).transport.peers()).toHaveLength(0);
+    // The same through the watcher: another tab set Private, and recording it here fails too.
+    const c = browser(net, clock, 54);
+    const cSlug = await start(c);
+    c.library.markPrivate = () => {
+      throw new DOMException("blocked", "SecurityError");
+    };
+    const cSession = c.room.getSnapshot().open!.session;
+    c.library.flags.set(cSlug, { private: true });
+    c.library.changed();
+    await cSession.idle();
+    expect(cSession.status).toBe("left");
+    // Leave keeps working, and a new room starts.
+    await a.room.leave();
+    expect(a.room.getSnapshot().open).toBeUndefined();
+    await start(a);
+    expect(a.room.getSnapshot().open?.detached).toBeUndefined();
+  });
+
   it("writes the copy only when the room changed", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();
@@ -524,6 +640,8 @@ describe("leaving and reloading", () => {
     let saves = 0;
     const save = a.library.save.bind(a.library);
     a.library.save = (slug, d) => (saves++, save(slug, d));
+    a.room.flush();
+    saves = 0;
     edit(a, (d) => ({ ...d, title: "One change" }));
     a.room.flush();
     a.room.flush();
