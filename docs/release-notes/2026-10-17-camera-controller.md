@@ -47,4 +47,8 @@ controller runs its commands one at a time.
 
 ### Output parity
 
-See the PR description for the goldens' result.
+One of 2,196 goldens changed, on purpose, under rule (d): `browser/layout/measured-order-capacity.json`,
+`tidy.viewport` only, y from 29.33 px to -0.67 px at the same x and zoom. Select all opens the Inspector, a
+selection cause. The selection was inside the narrowed pane but under floating chrome, so the overlay-aware reveal
+pans it 30 px clear. The old margin-only reveal left it there. Node coordinates, edge paths, labels, Auto-layout,
+opening fits, simulations and exports are unchanged.
