@@ -210,6 +210,8 @@ export type FocusEvent =
   | { type: "narration.waiting"; resume: ElementHandle }
   /** A floating Live callout went away (dismissed, the trouble over) while focus was inside it. */
   | { type: "callout.closed"; hadFocus: boolean }
+  /** A notice containing keyboard focus is about to disappear; hand it to the surviving status. */
+  | { type: "notice.closed"; status: ElementHandle }
   /** A Live panel's field should take the cursor once the panel lists it (a new entry point's rate). */
   | { type: "panel.field"; panel: string; field: string }
   /** Esc on the canvas, from `from` (a node or an edge), clearing the selection. */

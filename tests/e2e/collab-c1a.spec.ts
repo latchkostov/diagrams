@@ -43,28 +43,19 @@ test("an invalid room link explains the problem and explicitly opens a new room"
   await expect(page.getByTestId("node-api")).toBeVisible();
 });
 
-test("a room that never connects offers Retry and a file copy without losing edits", async ({ context, page }) => {
+test("a creator waiting alone keeps edits without showing a connection failure", async ({ context, page }) => {
   await relay([context], 156);
   await page.clock.install();
   await open(page);
   await name(page, "api", "Keep disconnected edits");
   await pauseClock(page);
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
-  await expect(page.getByTestId("collab-connection-failed")).toContainText("Could not connect to this room");
-  await expect(page.getByTestId("collab-save-copy")).toBeVisible();
-  await page.getByTestId("collab-retry").focus();
-  await page.keyboard.press("Enter");
   await expect(page.getByTestId("collab-connection-failed")).toHaveCount(0);
-  await expect(page.getByTestId("collab-room-status")).toBeFocused();
   await expect(page.getByTestId("node-api")).toContainText("Keep disconnected edits");
-  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
-  await expect(page.getByTestId("collab-connection-failed")).toBeVisible();
-  const downloading = page.waitForEvent("download");
-  await page.getByTestId("collab-save-copy").click();
-  const stream = await (await downloading).createReadStream();
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  expect(Buffer.concat(chunks).toString()).toContain("Keep disconnected edits");
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs * 3);
+  await expect(page.getByTestId("collab-connection-failed")).toHaveCount(0);
+  await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
+  await expect(page.getByTestId("node-api")).toContainText("Keep disconnected edits");
 });
 
 for (const locale of ["ar", "en-XA"]) {
@@ -920,9 +911,15 @@ for (const abortAfter of [1, 2]) {
     consoleErrors,
   }) => {
     await relay([context], 140 + abortAfter);
+    await page.clock.install();
     await open(page);
     await name(page, "api", "Durable before interrupted append");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
+    await page.getByTestId("node-api").dblclick();
+    const field = page.getByTestId("inspector-field-label");
+    await expect(field).toBeFocused();
+    // Automatic retry must stay pending until the old page is gone, even on a loaded runner.
+    await pauseClock(page);
     await page.evaluate((after) => {
       const put = IDBObjectStore.prototype.put;
       let staged = 0;
@@ -936,12 +933,14 @@ for (const abortAfter of [1, 2]) {
         return result;
       };
     }, abortAfter);
-    await name(page, "api", "Interrupted undurable append");
+    await field.fill("Interrupted undurable append");
+    await field.press("Enter");
     await expect(page.getByTestId("collab-recovery-problem")).toContainText("Not saved on this device");
     await expect(page.getByTestId("node-api")).toContainText("Interrupted undurable append");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
     // Do not close the session or flush before reload: lose everything outside IndexedDB.
     await page.reload();
+    await page.clock.resume();
     await expect(page.getByTestId("node-api")).toContainText("Durable before interrupted append");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
     expectNoErrors(consoleErrors);

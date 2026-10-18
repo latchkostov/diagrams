@@ -190,11 +190,13 @@ export class FakePeerConnection {
   readonly id = nextPc++;
   iceGatheringState = "complete";
   connectionState = "new";
+  iceConnectionState = "new";
   localDescription: { type: string; sdp: string } | null = null;
   remote?: FakePeerConnection;
   channel?: FakeDataChannel;
   ondatachannel: ((e: { channel: FakeDataChannel }) => void) | null = null;
   onconnectionstatechange: (() => void) | null = null;
+  oniceconnectionstatechange: (() => void) | null = null;
 
   constructor(private readonly wire: FakeWire) {
     registry.set(this.id, this);

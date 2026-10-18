@@ -6,11 +6,13 @@ import { realClock } from "../clock";
 import { deriveRoomKeys, newRoom } from "../keys";
 import { consumeRoomFragment, parseRoomLink, parseRoomValue, ROOM_PARAM, type RoomLink } from "../link";
 import { bytesToBase64Url } from "../../interop/codec";
-import { createTrackerTransport, SPIKE_STUN, SPIKE_TRACKERS, type TrackerTransport } from "../transport/tracker";
+import { createTrackerTransport, COLLAB_STUN, COLLAB_TRACKERS, type TrackerTransport } from "../transport/tracker";
 import { applyMoves, demoDiagram, endpointList, refusalMessage } from "./demo";
 import { t, useLocale } from "../../i18n";
 import { downloadText } from "../../interop/files";
 import { serializeNative } from "../../interop/native";
+import { useInteractionOrLocal } from "../../canvas/interaction/useInteraction";
+import type { CollabDoc } from "../doc";
 
 // The public-matchmaking spike (C0, Lab only). Nothing connects until "Connect" is pressed: the panel names every
 // public service first. Two tabs (or two browsers) with the same room key find each other through public
@@ -37,15 +39,20 @@ export function SpikePanel() {
     }
   });
   const [create, setCreate] = useState(false);
-  const [trackers, setTrackers] = useState(SPIKE_TRACKERS.join("\n"));
-  const [stun, setStun] = useState(SPIKE_STUN.map((s) => s.urls).join("\n"));
+  const createdRoom = useRef<RoomLink>(undefined);
+  const retained = useRef<{ room: string; doc: CollabDoc }>(undefined);
+  const failureBanner = useRef<HTMLDivElement>(null);
+  const roomStatus = useRef<HTMLParagraphElement>(null);
+  const { controller: interaction } = useInteractionOrLocal();
+  const [trackers, setTrackers] = useState(COLLAB_TRACKERS.join("\n"));
+  const [stun, setStun] = useState(COLLAB_STUN.map((s) => s.urls).join("\n"));
   const [error, setError] = useState("");
   const [events, setEvents] = useState<string[]>([]);
   const [conn, setConn] = useState<{ client: RoomClient; transport: TrackerTransport }>();
   const [, setTick] = useState(0);
   const titleInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => () => void conn?.client.session.leave(), [conn]);
+  useEffect(() => () => void conn?.client.binding.close(), [conn]);
   const attempt = useRef(0);
   const [connecting, setConnecting] = useState(false);
   // Unmounting makes any attempt still in flight stale.
@@ -56,7 +63,16 @@ export function SpikePanel() {
     [],
   );
   useSyncExternalStore(
-    (fn) => conn?.client.session.onChange(fn) ?? (() => {}),
+    (fn) =>
+      conn?.client.session.onChange(() => {
+        if (
+          !conn.client.session.connectionFailed &&
+          failureBanner.current?.contains(document.activeElement) &&
+          roomStatus.current
+        )
+          interaction.dispatch({ type: "notice.closed", status: roomStatus.current });
+        fn();
+      }) ?? (() => {}),
     () => `${conn?.client.session.doc.stats.projections}:${conn?.client.session.connectionFailed}`,
   );
   useEffect(() => {
@@ -74,6 +90,7 @@ export function SpikePanel() {
     let room: RoomLink;
     try {
       room = readRoom(key);
+      if (createdRoom.current && roomValue(room) === roomValue(createdRoom.current)) room = createdRoom.current;
     } catch (err) {
       setError((err as Error).message);
       return;
@@ -98,11 +115,14 @@ export function SpikePanel() {
         room,
         clock: realClock,
         initial: create ? demoDiagram() : undefined,
+        doc: retained.current?.room === roomValue(room) ? retained.current.doc : undefined,
       });
       if (token !== attempt.current) {
         await client.session.leave();
         return;
       }
+      if (retained.current && retained.current.doc !== client.session.doc) retained.current.doc.destroy();
+      retained.current = { room: roomValue(room), doc: client.session.doc };
       setConn({ client, transport });
     } catch (err) {
       transport?.close();
@@ -113,7 +133,7 @@ export function SpikePanel() {
   }
 
   async function disconnect() {
-    await conn?.client.session.leave();
+    await conn?.client.binding.close();
     setConn(undefined);
   }
 
@@ -148,7 +168,8 @@ export function SpikePanel() {
         <button
           className="btn"
           onClick={() => {
-            setKey(roomValue(newRoom()));
+            createdRoom.current = newRoom();
+            setKey(roomValue(createdRoom.current));
             setCreate(true);
           }}
           disabled={!!conn}
@@ -206,18 +227,12 @@ export function SpikePanel() {
           </p>
         )}
         {conn?.client.session.connectionFailed && (
-          <div role="alert" data-testid="collab-spike-connection-failed">
+          <div ref={failureBanner} role="alert" data-testid="collab-spike-connection-failed">
             <p>{t("collab.connectionFailed")}</p>
             <button
               className="btn"
               data-testid="collab-spike-retry"
-              onClick={(e) => {
-                e.currentTarget
-                  .closest("section")
-                  ?.querySelector<HTMLElement>('[data-testid="collab-spike-status"]')
-                  ?.focus();
-                conn.client.session.retryConnection();
-              }}
+              onClick={() => conn.client.session.retryConnection()}
             >
               {t("common.retry")}
             </button>
@@ -239,7 +254,7 @@ export function SpikePanel() {
       </div>
       {conn && client && (
         <div className="collab-spike-session">
-          <p data-testid="collab-spike-status" role="status" tabIndex={-1}>
+          <p ref={roomStatus} data-testid="collab-spike-status" role="status" tabIndex={-1}>
             {client.session.status} · trackers open {diag?.trackersOpen} · peers{" "}
             <span data-testid="collab-spike-peers" data-count={diag?.peers}>
               {diag?.peers}

@@ -5,7 +5,7 @@ import { realClock, type Clock } from "./clock";
 import { CollabDoc, REMOTE } from "./doc";
 import { Opener, Sealer, SENDER_ID_BYTES, type Rejection } from "./envelope";
 import type { GuardProblem } from "./guard";
-import { deriveRoomKeys, type Channel, type RoomKeys } from "./keys";
+import { reserveRoomCreation, deriveRoomKeys, type Channel, type RoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import {
@@ -18,7 +18,7 @@ import {
 } from "./presence";
 import { DOC, frame, fragment, isEmptyUpdate, PRESENCE, Reassembler, unframe } from "./protocol";
 import { secureRandom, type RandomBytes } from "./random";
-import type { CollabTransport, PeerId } from "./transport/types";
+import type { CollabTransport, Connectivity, PeerId } from "./transport/types";
 import { RoomRecovery } from "./recovery";
 import type { RecoveryStore } from "./recoveryStore";
 
@@ -71,7 +71,7 @@ export interface SessionOptions {
   transport: CollabTransport;
   /** The diagram's privacy (the same state the Share gates read). A Private or local-only diagram never joins. */
   privacy: CanvasPrivacyState | null | undefined;
-  /** The creator's diagram: hydrates an empty document. Joiners pass none and wait for a peer. */
+  /** Seeds only a fresh newRoom() on its first open. A link/rejoin always merges the room's CRDT state. */
   initial?: DiagramFile;
   /** A local copy of this room's document (rejoining). */
   doc?: CollabDoc;
@@ -110,6 +110,7 @@ export class CollabSession {
   me: PresenceState;
   status: SessionStatus = "waiting";
   connectionFailed = false;
+  connectivity: Connectivity = "waiting";
   private connectionWait?: () => void;
   recovery?: RoomRecovery;
   private synced = new Set<PeerId>();
@@ -166,20 +167,34 @@ export class CollabSession {
     // The diagram's own flag too: a Private file never joins, whatever state the caller passed.
     if (!canCollaborate(opts.privacy) || opts.initial?.private || opts.privacy?.diagram?.private)
       throw new PrivateDiagramError();
-    const random = opts.random ?? secureRandom;
-    const keys = await deriveRoomKeys(opts.room);
-    const doc = opts.doc ?? new CollabDoc({ clientId: opts.clientId });
-    const recovery = opts.recovery
-      ? new RoomRecovery(opts.recovery, keys, () => session.emit(), Date.now, opts.clock ?? realClock)
-      : undefined;
-    await recovery?.restore(doc);
-    if (opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
-    const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
-    const session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);
-    session.recovery = recovery;
-    session.start();
-    recovery?.watch(doc);
-    return session;
+    const creation = reserveRoomCreation(opts.room);
+    let doc = opts.doc;
+    let session: CollabSession | undefined;
+    try {
+      const random = opts.random ?? secureRandom;
+      const keys = await deriveRoomKeys(opts.room);
+      doc ??= new CollabDoc({ clientId: opts.clientId });
+      const recovery = opts.recovery
+        ? new RoomRecovery(opts.recovery, keys, () => session?.emit(), Date.now, opts.clock ?? realClock)
+        : undefined;
+      await recovery?.restore(doc);
+      if (creation && opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
+      const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
+      session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);
+      session.recovery = recovery;
+      session.start();
+      recovery?.watch(doc);
+      creation?.commit();
+      return session;
+    } catch (error) {
+      try {
+        await session?.leave();
+      } finally {
+        if (!opts.doc) doc?.destroy();
+        creation?.rollback();
+      }
+      throw error;
+    }
   }
 
   get senderId(): string {
@@ -282,6 +297,7 @@ export class CollabSession {
     );
     this.stops.push(
       this.transport.subscribe({
+        connectivity: () => this.updateStatus(),
         frame: (from, bytes) => this.enqueue(from, bytes),
         join: (peer) => {
           this.requestSync(peer);
@@ -313,7 +329,11 @@ export class CollabSession {
   private updateStatus(): void {
     if (this.status === "left") return;
     const next: SessionStatus = this.transport.peers().length ? "connected" : "waiting";
-    if (next === "connected") {
+    const connectivity = next === "connected" ? "connected" : (this.transport.connectivity?.() ?? "waiting");
+    const failed = ["trackers-unreachable", "no-answer", "ice-failed"].includes(connectivity);
+    const changed = connectivity !== this.connectivity;
+    this.connectivity = connectivity;
+    if (!failed) {
       this.connectionWait?.();
       this.connectionWait = undefined;
       this.connectionFailed = false;
@@ -321,13 +341,14 @@ export class CollabSession {
       this.connectionWait = this.clock.after(CONNECTION_WAIT_MS, () => {
         this.connectionWait = undefined;
         this.connectionFailed = true;
+        this.updateStatus();
         this.emit();
       });
     }
     if (next !== this.status) {
       this.status = next;
       this.emit();
-    }
+    } else if (changed) this.emit();
   }
 
   private emit(): void {

@@ -40,6 +40,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | L1  | live.key (Space, Enter, Esc)        | any level (liveKeys.ts)         | keep (Live's levels never move focus themselves)       |
  * | L2  | narration.waiting (presenting)      |                                 | focus the note's Continue now (else the canvas)        |
  * | L3  | callout.closed                      | focus was inside it             | the canvas now, if focus was lost                      |
+ * | L5  | notice.closed                       | focus is inside a removed notice| its surviving status now, before the notice unmounts   |
  * | L4  | panel.field (a Live panel's field)  |                                 | focus it once the panel lists it, all of it selected   |
  * | F1  | focus.entered, focus.resolved       |                                 | keep; Tab stop := that node                            |
  * | F2  | focus.ran                           | the move goes again             | focus it again next frame, if not there already        |
@@ -128,6 +129,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return move({ target: { kind: "element", handle: event.resume }, when: "now", fallback: canvas });
     case "callout.closed":
       return event.hadFocus ? move({ target: canvas, when: "now", onlyIfLost: true }) : keep();
+    case "notice.closed":
+      return move({ target: { kind: "element", handle: event.status }, when: "now" });
     case "panel.field":
       return move({
         target: { kind: "panelField", panel: event.panel, field: event.field },

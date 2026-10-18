@@ -28,7 +28,7 @@ export function EditorDemo() {
       invalid = !(e instanceof RoomLinkError && e.problem === "missing");
     }
     return {
-      key: invitation ?? window.__collabC1?.room ?? newRoom(),
+      key: invitation ?? (window.__collabC1 ? newRoom(() => window.__collabC1!.room.secret.slice()) : newRoom()),
       joining: !!invitation || new URLSearchParams(location.search).has("join"),
       invalid,
     };

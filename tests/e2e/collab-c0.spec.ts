@@ -57,18 +57,21 @@ async function watchNetwork(page: Page) {
 
 const yjsLoaded = (page: Page) => page.evaluate(() => "__ $YJS$ __" in window);
 
-test("an unreachable matchmaking transport offers Retry and a file without losing the Lab edits", async ({ page }) => {
-  await page.clock.install();
+type SpikeSocket = { readyState: number; onopen: (() => void) | null };
+type SpikeWindow = { __spikeSocketAttempts: number; __spikeSockets: SpikeSocket[] };
+
+async function stallTracker(page: Page) {
   await page.addInitScript(() => {
-    const w = window as unknown as { WebSocket: unknown; __spikeSocketAttempts: number };
+    const w = window as unknown as SpikeWindow & { WebSocket: unknown };
     w.__spikeSocketAttempts = 0;
+    w.__spikeSockets = [];
     // Leave Vite's own HMR socket intact: only the matchmaking endpoint is stalled.
     const NativeSocket = window.WebSocket;
     w.WebSocket = new Proxy(NativeSocket, {
       construct(target, args: ConstructorParameters<typeof WebSocket>) {
         if (new URL(args[0]).hostname !== "tracker.invalid") return Reflect.construct(target, args);
         w.__spikeSocketAttempts++;
-        return {
+        const socket = {
           readyState: 0,
           onopen: null,
           onclose: null,
@@ -78,12 +81,19 @@ test("an unreachable matchmaking transport offers Retry and a file without losin
             this.readyState = 3;
           },
           send() {
-            throw new Error("A stalled socket cannot send");
+            if (this.readyState !== 1) throw new Error("A stalled socket cannot send");
           },
         };
+        w.__spikeSockets.push(socket);
+        return socket;
       },
     });
   });
+}
+
+test("an unreachable matchmaking transport offers Retry and a file without losing the Lab edits", async ({ page }) => {
+  await page.clock.install();
+  await stallTracker(page);
   await gotoLab(page, "collab-c0");
   await page.getByTestId("collab-spike-new").click();
   await page.getByTestId("collab-spike-trackers").fill("wss://tracker.invalid");
@@ -111,6 +121,58 @@ test("an unreachable matchmaking transport offers Retry and a file without losin
   expect(Buffer.concat(chunks).toString()).toContain("Keep my disconnected edits");
   await page.getByTestId("collab-spike-disconnect").click();
   await expect(page.getByTestId("collab-spike-status")).toHaveCount(0);
+});
+
+for (const focused of ["retry", "save-copy", "title-input"])
+  test(`automatic matchmaking recovery preserves keyboard focus from ${focused}`, async ({ page, consoleErrors }) => {
+    await page.clock.install();
+    await stallTracker(page);
+    await gotoLab(page, "collab-c0");
+    await page.getByTestId("collab-spike-new").click();
+    await page.getByTestId("collab-spike-trackers").fill("wss://tracker.invalid");
+    await page.getByTestId("collab-spike-stun").fill("");
+    await page.getByTestId("collab-spike-connect").click();
+    await expect(page.getByTestId("collab-spike-status")).toBeVisible();
+    await pauseClock(page);
+    await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+    await expect(page.getByTestId("collab-spike-connection-failed")).toBeVisible();
+    await page.getByTestId(`collab-spike-${focused}`).focus();
+    await page.evaluate(() => {
+      const socket = (window as unknown as SpikeWindow).__spikeSockets.at(-1);
+      if (!socket) throw new Error("Connect did not create a tracker socket");
+      socket.readyState = 1;
+      socket.onopen?.();
+    });
+    await expect(page.getByTestId("collab-spike-connection-failed")).toHaveCount(0);
+    await expect(page.getByTestId(`collab-spike-${focused === "title-input" ? focused : "status"}`)).toBeFocused();
+    await page.getByTestId("collab-spike-disconnect").click();
+    await expect(page.getByTestId("collab-spike-status")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+test("Disconnect and Connect retain this room's edited document without reseeding", async ({ page }) => {
+  await stallTracker(page);
+  await gotoLab(page, "collab-c0");
+  await page.getByTestId("collab-spike-new").click();
+  await page.getByTestId("collab-spike-trackers").fill("wss://tracker.invalid");
+  await page.getByTestId("collab-spike-connect").click();
+  await page.getByTestId("collab-spike-title-input").fill("Keep this room across reconnects");
+  await page.getByTestId("collab-spike-set-title").click();
+  await page.getByTestId("collab-spike-disconnect").click();
+  await page.getByTestId("collab-spike-connect").click();
+  await expect(page.getByTestId("collab-spike-title")).toHaveAttribute(
+    "data-title",
+    "Keep this room across reconnects",
+  );
+  await expect(page.getByTestId("collab-spike-set-title")).toBeEnabled();
+  await page.getByTestId("collab-spike-title-input").fill("Still editable");
+  await page.getByTestId("collab-spike-set-title").click();
+  await expect(page.getByTestId("collab-spike-title")).toHaveAttribute("data-title", "Still editable");
+  await page.getByTestId("collab-spike-disconnect").click();
+  await page.getByTestId("collab-spike-new").click();
+  await page.getByTestId("collab-spike-connect").click();
+  await expect(page.getByTestId("collab-spike-title")).toHaveAttribute("data-title", "Orders pipeline");
+  await page.getByTestId("collab-spike-disconnect").click();
 });
 
 test("local use makes no network requests and never loads the collaboration code", async ({ page, consoleErrors }) => {
