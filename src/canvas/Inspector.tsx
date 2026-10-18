@@ -1,7 +1,3 @@
-import { stencilLabel, vendorLabel } from "../i18n/stencils";
-import { SheetResizeHandle } from "./SheetResizeHandle";
-import { ANNOTATION_LIMITS } from "../model/annotations";
-import { eligibleParentGroupIds } from "../model/groupHierarchy";
 import {
   useEffect,
   useLayoutEffect,
@@ -10,114 +6,117 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
-  type KeyboardEvent,
   type FocusEvent,
+  type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { getStencil } from "../stencils/registry";
-import { galleryRoleMeta as simRoleMeta } from "../i18n/galleryRoles";
-import type { NodeSimProps } from "../sim/types";
-import type { DiagramFile, Side, SimRole } from "../model/types";
+import { ColorPickerModal } from "../components/ColorPickerModal";
+import { ContextMenu } from "../components/ContextMenu";
+import { Dropdown } from "../components/Dropdown";
 import { Icon, type IconName } from "../components/Icon";
 import { StencilIcon } from "../components/StencilIcon";
-import { ContextMenu } from "../components/ContextMenu";
-import { stencilMenu } from "../editor/builtinActions";
-import type { EditorApi } from "../editor/types";
 import type { AlignMode } from "../editor/arrange";
+import { stencilMenu } from "../editor/builtinActions";
 import { parseEmits } from "../editor/emits";
-import type { DiagramMeta } from "./convert";
-import { toneColor, resolveGroupTone, isPresetGroupTone } from "./groupTones";
-import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
-import {
-  ANNOTATION_COLORS,
-  ANNOTATION_COLOR_IDS,
-  ANNOTATION_SHAPES,
-  ANNOTATION_TEXT_SIZES,
-  annotationColor,
-  resolveAnnotationColor,
-  minSize,
-  textSizeLabel,
-} from "./annotations";
-import { ColorPickerModal } from "../components/ColorPickerModal";
-import { Dropdown, type DropdownItem } from "../components/Dropdown";
+import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../editor/relationActions";
+import { routingIntent } from "../editor/routingIntent";
+import type { EditorApi } from "../editor/types";
+import { t, useLocale } from "../i18n";
+import { colorLabel, kindLabel, relationLabel, shapeLabel, toneLabel } from "../i18n/chrome";
+import { galleryRoleMeta as simRoleMeta } from "../i18n/galleryRoles";
+import { formatNumber } from "../i18n/number";
+import { stencilLabel, vendorLabel } from "../i18n/stencils";
+import { SIM_LIMITS } from "../interop/native";
 import { safeStorage } from "../lib/storage";
+import { formatCount } from "../live/format";
+import { managedKind } from "../model/admissionPresets";
+import { ANNOTATION_LIMITS } from "../model/annotations";
+import { brokerSpec, isClusterWrapper } from "../model/brokers";
+import { eligibleParentGroupIds } from "../model/groupHierarchy";
 import {
+  MAX_SETTINGS_TEXT,
   edgeSettings,
   isDependency,
   parseSettings,
   parseSettingsEditor,
-  MAX_SETTINGS_TEXT,
   relationNote,
   relationOf,
   settingsSummary,
   settingsText,
   type ConfigSetting,
 } from "../model/relations";
+import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
+import type { DiagramFile } from "../model/types";
 import {
-  RELATION_CHOICES,
-  applyChoice,
-  choiceOf,
-  relationIcon,
-  type RelationChoiceId,
-} from "../editor/relationActions";
-
-const relationDropdownItems = (): readonly DropdownItem<RelationChoiceId>[] => [
-  {
-    get label() {
-      return t("inspector.flow");
-    },
-    options: RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => ({
-      value: c.id,
-      label: c.label,
-      icon: c.icon,
-      hint: c.kind,
-    })),
-  },
-  {
-    get label() {
-      return t("inspector.dependency");
-    },
-    options: RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => ({
-      value: c.id,
-      label: c.label,
-      icon: c.icon,
-      className: `fe-rel-${c.relation}`,
-    })),
-  },
-];
-import { inferRelation } from "../stencils/relations";
+  AdmissionFields,
+  AutoscalingFields,
+  BulkAdmissionFields,
+  EdgeRouteFields,
+  NodePlanning,
+  PlanningUpgrade,
+  RequestRoutesSection,
+  RouteTableFields,
+  TrafficMixFields,
+} from "../planning/lazy";
+import { DEFAULT_TRAVEL_MS } from "../sim/topology";
+import type { NodeSimProps } from "../sim/types";
+import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
 import {
   DEFAULT_FAILOVER_MS,
   DEFAULT_MESSAGE_KB,
+  HA_LABEL,
+  deviceSpec,
+  isDenyRule,
+  isDeviceHa,
+  isFirewallStencil,
+  messagesPerSec,
   presetOf,
   sizeOf,
   sizesOf,
-  HA_LABEL,
-  deviceSpec,
-  isDeviceHa,
-  isDenyRule,
-  isFirewallStencil,
-  messagesPerSec,
   type DeviceHa,
   type DeviceSize,
   type DeviceSpec,
 } from "../stencils/netDevices";
-import { formatCount } from "../live/format";
-import { DEFAULT_TRAVEL_MS } from "../sim/topology";
-import { managedKind } from "../model/admissionPresets";
-import { AdmissionFields, BulkAdmissionFields, AutoscalingFields } from "../planning/lazy";
-import { RouteTableFields, TrafficMixFields, EdgeRouteFields, RequestRoutesSection } from "../planning/lazy";
-import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
-import { routingIntent } from "../editor/routingIntent";
-import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
-import { SIM_LIMITS } from "../interop/native";
-import { t, useLocale, getLocale } from "../i18n";
-import { colorLabel, kindLabel, shapeLabel, toneLabel, relationLabel } from "../i18n/chrome";
-import { formatNumber } from "../i18n/number";
-import { formatList } from "../i18n/list";
-import { brokerSpec, isClusterWrapper } from "../model/brokers";
-import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
-import { NodePlanning, PlanningUpgrade } from "../planning/lazy";
+import { getStencil } from "../stencils/registry";
+import { inferRelation } from "../stencils/relations";
+import {
+  ANNOTATION_COLORS,
+  ANNOTATION_COLOR_IDS,
+  ANNOTATION_SHAPES,
+  ANNOTATION_TEXT_SIZES,
+  annotationColor,
+  minSize,
+  resolveAnnotationColor,
+  textSizeLabel,
+} from "./annotations";
+import { isPresetGroupTone, resolveGroupTone, toneColor } from "./groupTones";
+import {
+  BulkRow,
+  BulkSwatches,
+  CopyId,
+  Field,
+  InertNote,
+  Section,
+  Segmented,
+  SideSelect,
+  SizeInput,
+} from "./inspector/controls";
+import {
+  MIXED,
+  MIXED_VALUE,
+  bulkStep,
+  countLabel,
+  countText,
+  customCount,
+  formatInert,
+  isFanOut,
+  relationDropdownItems,
+  shared,
+} from "./inspector/helpers";
+import { type InspectorProps } from "./inspector/types";
+import { SheetResizeHandle } from "./SheetResizeHandle";
+import { edgeSimFields, inertNodeProps, nodeSimFields } from "./simFieldRules";
+import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -285,45 +284,6 @@ const DEVICE_KEYS = new Set<string>([...SIM_KEYS, "size", "gbps", "messageKB", "
 const ADC_KEYS = new Set<string>([...DEVICE_KEYS, "healthChecks"]);
 const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings"]);
 const RULE_KEYS = new Set([...EDGE_KEYS, "deny"]);
-const SIDES: Side[] = ["top", "right", "bottom", "left"];
-
-export interface InspectorProps {
-  editor: EditorApi;
-  meta: DiagramMeta;
-  selectedNodes: DiagramFlowNode[];
-  selectedGroups: GroupFlowNode[];
-  selectedEdges: DiagramFlowEdge[];
-  /** Selected texts, notes, zones and shapes. */
-  selectedAnnotations?: AnnotationFlowNode[];
-  groups: GroupFlowNode[];
-  nodeLabel: (id: string) => string;
-  counts: { nodes: number; edges: number; groups: number };
-  collapsed: boolean;
-  onToggle: () => void;
-  /** A completed resize lets the canvas preserve the fitted diagram or selection. */
-  onResize?: () => void;
-  /**
-   * Focus request: `inspector-field-<name>`, its text all selected (`caret: "end"`: the caret after it, for a name
-   * typed before the field could take it); `seq` re-triggers for the same name.
-   */
-  focus?: { name: string; seq: number; caret?: "end"; target?: string };
-  /** Request consumption survives inspector unmounts (presentation). */
-  takeFocus?: (seq: number) => boolean;
-  /**
-   * A node just made connected, while it's being named: its connection's label, one Tab after the Subtitle
-   * (`onNamed`: the naming is done, so the field goes).
-   */
-  connection?: { id: string; label: string };
-  onNamed?: () => void;
-  /** The selection's architecture-check findings. Nodes show them after their configuration. */
-  findings?: ReactNode;
-  /** Canvas revision, read by planning only outside a name edit. */
-  revision?: unknown;
-  /** Reads the canvas's current render, before React Flow's imperative store catches up. */
-  readDiagram?: () => DiagramFile;
-  /** A text's edit is done (see DiagramUi.settleText): it moves clear if it grew over something. */
-  onTextSettled?: (id: string, before: { x: number; y: number; width: number; height: number }) => void;
-}
 
 export function Inspector(p: InspectorProps) {
   useLocale();
@@ -1059,39 +1019,6 @@ function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: D
   );
 }
 
-/** A value kept in the file that can't change the run where it is: said in a muted line, with a way to remove it. */
-function InertNote({ name, text, onRemove }: { name: string; text: string; onRemove: () => void }) {
-  return (
-    <p className="insp-note insp-inert" data-testid={`inspector-inert-${name}`}>
-      {text}{" "}
-      <button
-        type="button"
-        className="insp-link"
-        onClick={(event) => {
-          // Removing the note removes this button too. Keep keyboard focus in its surviving section.
-          if (document.activeElement === event.currentTarget) {
-            const section = event.currentTarget.closest("section");
-            const target =
-              section?.querySelector<HTMLElement>(":scope > h3 > button[aria-expanded]") ??
-              section?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled)");
-            target?.focus();
-          }
-          onRemove();
-        }}
-        data-testid={`inspector-inert-${name}-remove`}
-      >
-        {t("inspector.remove")}
-      </button>
-    </p>
-  );
-}
-
-/** "8", "500 ms", or the JSON of anything else. */
-function formatInert(value: unknown, unit?: string): string {
-  const text = typeof value === "number" || typeof value === "string" ? String(value) : JSON.stringify(value);
-  return unit && typeof value === "number" ? `${text} ${unit}` : text;
-}
-
 /** Flow edges into a typed stencil (Key Vault, an IdP...): offer the dependency they look like. */
 const dismissedHints = new Set<string>();
 function RelationHint({ edge, editor }: { edge: DiagramFlowEdge; editor: EditorApi }) {
@@ -1228,15 +1155,6 @@ function SettingsEditor({ edge, editor }: { edge: DiagramFlowEdge; editor: Edito
       )}
     </Section>
   );
-}
-
-/** Edges whose source copies each message to every route (sources, services, change feeds): they take a share. */
-const FAN_OUT_ROLES: ReadonlySet<SimRole> = new Set(["source", "processor", "none"]);
-function isFanOut(editor: EditorApi, sourceId: string, kind: string | undefined): boolean {
-  const node = editor.getNode(sourceId);
-  if (!node) return false;
-  const role = getStencil(node.stencil).simRole;
-  return FAN_OUT_ROLES.has(role) || (role === "store" && kind !== "sync");
 }
 
 function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFlowNode }) {
@@ -1572,48 +1490,6 @@ function AnnotationPanel({ note, editor, groups, onTextSettled }: InspectorProps
   );
 }
 
-/** A pixel size: free typing, applied on Enter or blur (never below `min`). */
-function SizeInput({
-  label,
-  value,
-  min,
-  testId,
-  onCommit,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  testId: string;
-  onCommit: (v: number) => void;
-}) {
-  const shown = String(Math.round(value));
-  const [draft, setDraft] = useState<string | null>(null);
-  const commit = () => {
-    if (draft === null) return;
-    const v = Math.round(Number(draft));
-    setDraft(null);
-    if (Number.isFinite(v) && v !== Math.round(value))
-      onCommit(Math.max(min, Math.min(ANNOTATION_LIMITS.maxAnnotationSize, v)));
-  };
-  return (
-    <input
-      className="insp-input mono"
-      inputMode="numeric"
-      value={draft ?? shown}
-      aria-label={label}
-      title={label}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") commit();
-        if (e.key === "Escape") setDraft(null);
-      }}
-      name={testId}
-      data-testid={testId}
-    />
-  );
-}
-
 const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
   {
     mode: "left",
@@ -1658,18 +1534,6 @@ const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
     },
   },
 ];
-
-/** What every item of a list shares: the one value, or MIXED when they differ (undefined when the list is empty). */
-const MIXED = Symbol("mixed");
-function shared<T, V>(items: readonly T[], read: (t: T) => V): V | typeof MIXED | undefined {
-  if (!items.length) return undefined;
-  const first = read(items[0]);
-  return items.every((i) => read(i) === first) ? first : MIXED;
-}
-
-/** A fresh undo tag per click: one bulk change is one undo step, and the next click is another. */
-let bulkSeq = 0;
-const bulkStep = (what: string) => ({ merge: `bulk:${what}:${++bulkSeq}` });
 
 function MultiPanel(p: InspectorProps) {
   const { editor, selectedNodes, selectedEdges, selectedGroups, selectedAnnotations = [] } = p;
@@ -2099,72 +1963,6 @@ function BulkAnnotations({
   );
 }
 
-/** The value a select shows while the selection differs (a disabled "Mixed" option). */
-const MIXED_VALUE = "__mixed";
-
-/** A compact label-and-control row, so a mixed selection's panel fits one screen. */
-function BulkRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="insp-bulk-row">
-      <span className="insp-label">{label}</span>
-      {children}
-    </div>
-  );
-}
-
-/** Colour swatches for several things: none ticked, and "Mixed" beside the label, while they differ. */
-function BulkSwatches<T extends string>({
-  options,
-  value,
-  onPick,
-  testId,
-  itemTestId,
-  customButton,
-}: {
-  options: { id: T; colour: string; label: string }[];
-  value: T | typeof MIXED | undefined;
-  onPick: (v: T) => void;
-  testId: string;
-  itemTestId: string;
-  customButton?: ReactNode;
-}) {
-  return (
-    <div className="insp-bulk-row">
-      <span className="insp-label">
-        {t("inspector.colour")}
-        {value === MIXED && (
-          <em className="insp-mixed" data-testid={`${testId}-mixed`}>
-            {t("inspector.mixed")}
-          </em>
-        )}
-      </span>
-      <div
-        className="insp-tones insp-tones-compact"
-        data-testid={testId}
-        role="radiogroup"
-        aria-label={t("inspector.colour")}
-      >
-        {options.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            role="radio"
-            aria-checked={value === o.id}
-            className={`insp-tone${value === o.id ? " is-on" : ""}`}
-            style={{ "--tone": o.colour } as CSSProperties}
-            title={o.label}
-            aria-label={o.label}
-            data-color={o.id}
-            onClick={() => onPick(o.id)}
-            data-testid={`${itemTestId}-${o.id}`}
-          />
-        ))}
-        {customButton}
-      </div>
-    </div>
-  );
-}
-
 function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps) {
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const color = meta.color;
@@ -2284,55 +2082,6 @@ function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps
         </button>
       </Section>
     </>
-  );
-}
-
-// ---------------------------------------------------------------- controls
-
-const countLabel = (count: number, kind: "node" | "edge" | "boundary" | "annotation") =>
-  ({
-    node: () => t("inspector.nodes", { count }),
-    edge: () => t("inspector.edges", { count }),
-    boundary: () => t("inspector.boundaries", { count }),
-    annotation: () => t("inspector.annotations", { count }),
-  })[kind]();
-
-/** "15 nodes, 15 edges, 1 boundary" (zero boundaries and annotations are left out). */
-function countText(nodes: number, edges: number, boundaries: number, annotations = 0): string {
-  const parts = [countLabel(nodes, "node"), countLabel(edges, "edge")]
-    .concat(boundaries ? [countLabel(boundaries, "boundary")] : [])
-    .concat(annotations ? [countLabel(annotations, "annotation")] : []);
-  return getLocale() === "en" ? parts.join(", ") : formatList(parts);
-}
-
-const customCount = (props: Record<string, unknown>, hidden: Set<string>) =>
-  Object.keys(props).filter((k) => !hidden.has(k)).length;
-
-/** The node id as a copy chip: click copies it. */
-function CopyId({ id }: { id: string }) {
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1200);
-    return () => clearTimeout(t);
-  }, [copied]);
-  return (
-    <button
-      type="button"
-      className="copy-chip insp-id"
-      onClick={() =>
-        void navigator.clipboard
-          ?.writeText(id)
-          .then(() => setCopied(true))
-          .catch(() => {})
-      }
-      title={t("inspector.copyId")}
-      aria-label={t("inspector.copyIdValue", { id })}
-      data-testid="inspector-copy-id"
-    >
-      <Icon name={copied ? "check" : "hash"} size={12} />
-      <span className="mono">{copied ? t("inspector.copied") : id}</span>
-    </button>
   );
 }
 
@@ -2575,140 +2324,6 @@ function DeviceFields({
 const formatGbps = (gbps: number) =>
   gbps >= 1000 ? `${Math.round(gbps / 100) / 10} Tbps` : gbps >= 1 ? `${gbps} Gbps` : `${Math.round(gbps * 1000)} Mbps`;
 
-function Section({ title, aside, children }: { title?: string; aside?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="insp-section">
-      {title && (
-        <h3>
-          {title}
-          {aside}
-        </h3>
-      )}
-      {children}
-    </section>
-  );
-}
-
-/** Labelled row. `group` renders a div (for button groups — a <label> would forward clicks). */
-function Field({
-  label,
-  hint,
-  group,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  group?: boolean;
-  children: ReactNode;
-}) {
-  const Tag = group ? "div" : "label";
-  return (
-    <Tag className="insp-field" title={hint}>
-      <span className="insp-label">{label}</span>
-      {children}
-    </Tag>
-  );
-}
-
-/**
- * A radio group drawn as a segmented control: named by `label`, one Tab stop (the checked option), and the arrow keys,
- * Home and End move the choice, as the WAI-ARIA radio group pattern says.
- */
-function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-  testId,
-  label,
-}: {
-  value: T;
-  options: { value: T; label: string; hint?: string }[];
-  onChange: (v: T) => void;
-  testId: string;
-  label: string;
-}) {
-  const current = Math.max(
-    0,
-    options.findIndex((o) => o.value === value),
-  );
-  const move = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const last = options.length - 1;
-    const next =
-      e.key === "ArrowRight" || e.key === "ArrowDown"
-        ? index === last
-          ? 0
-          : index + 1
-        : e.key === "ArrowLeft" || e.key === "ArrowUp"
-          ? index === 0
-            ? last
-            : index - 1
-          : e.key === "Home"
-            ? 0
-            : e.key === "End"
-              ? last
-              : -1;
-    if (next < 0) return;
-    e.preventDefault();
-    onChange(options[next].value);
-    const group = e.currentTarget.parentElement;
-    group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
-  };
-  return (
-    <div className="segmented insp-seg" role="radiogroup" aria-label={label} data-testid={testId}>
-      {options.map((o, i) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          tabIndex={i === current ? 0 : -1}
-          className={value === o.value ? "is-on" : ""}
-          title={o.hint}
-          onClick={() => onChange(o.value)}
-          onKeyDown={(e) => move(e, i)}
-          data-testid={`${testId}-${o.value}`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function SideSelect({
-  value,
-  onChange,
-  testId,
-}: {
-  value?: Side;
-  onChange: (v: Side | undefined) => void;
-  testId: string;
-}) {
-  return (
-    <select
-      className="insp-input"
-      value={value ?? ""}
-      onChange={(e) => onChange((e.target.value || undefined) as Side | undefined)}
-      data-testid={testId}
-      name={testId}
-    >
-      <option value="">{t("inspector.auto")}</option>
-      {SIDES.map((s) => (
-        <option key={s} value={s}>
-          {
-            {
-              top: t("inspector.sideTop"),
-              bottom: t("inspector.sideBottom"),
-              left: t("inspector.sideLeft"),
-              right: t("inspector.sideRight"),
-            }[s]
-          }
-        </option>
-      ))}
-    </select>
-  );
-}
-
 /** Number / text input that keeps a local draft so partially typed numbers ("0.") survive. */
 function showSim(kind: SimField["kind"], value: unknown): string {
   if (value === undefined || value === null) return "";
@@ -2936,3 +2551,5 @@ function AutoscalingWorkload({
     children
   );
 }
+
+export type { InspectorProps } from "./inspector/types";
