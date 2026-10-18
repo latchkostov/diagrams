@@ -33,7 +33,15 @@ jobs:
         run: |
           mapfile -t files < <(git grep -l 'from "fast-check"' -- 'src/**/*.test.ts' 'src/**/*.test.tsx')
           test "${#files[@]}" -gt 0
-          pnpm exec vitest run "${files[@]}"
+          mkdir -p tests/.output
+          pnpm exec vitest run "${files[@]}" --reporter=default --reporter=json --outputFile=tests/.output/property-results.json
+      - name: Upload randomized property failures, seeds and shrink paths
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-properties
+          path: tests/.output/property-results.json
+          retention-days: 14
 
   native-unit:
     name: Native unit (${{ matrix.os }})
@@ -206,11 +214,11 @@ jobs:
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:
     name: Report failure
-    needs: [e2e, native-unit, native-e2e]
+    needs: [e2e, native-unit, native-e2e, properties]
     if: >-
       always() && (needs.e2e.result == 'failure' || needs.native-unit.result == 'failure' ||
       needs.native-e2e.result == 'failure' || needs.native-unit.result == 'cancelled' ||
-      needs.native-e2e.result == 'cancelled')
+      needs.native-e2e.result == 'cancelled' || needs.properties.result == 'failure')
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
@@ -234,6 +242,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           args=()
+          for f in results/nightly-results-properties/property-results.json; do
+            [ -f "$f" ] && args+=("Random property tests: new seeds, 20x runs=$f")
+          done
           for f in results/nightly-results-dev-*/results.json; do
             [ -f "$f" ] && args+=("Dev server: every project, once=$f")
           done
@@ -246,7 +257,7 @@ jobs:
           done
           failures="$(node scripts/e2e-failures.mjs "${args[@]}")"
           {
-            echo "The nightly e2e run failed on ${GITHUB_SHA:0:7}: $RUN_URL"
+            echo "The nightly run failed on ${GITHUB_SHA:0:7}: $RUN_URL"
             echo
             if [ -n "$failures" ]; then
               echo "$failures"
@@ -256,15 +267,16 @@ jobs:
             echo
             echo "Each test ran once on the dev server and three times on the production build, with no retries."
             echo "Native Windows/macOS run unit tests separately and every production E2E project once across 6/8 shards, with auto workers and no retries. Interrupted counts are partial."
+            echo "Random property tests explore new seeds with FC_RUN_MULTIPLIER=20; replay the failing test with its reported FC_SEED and FC_PATH."
             echo "Fix the cause; this issue stays open until someone closes it."
           } > body.md
           # An issue body holds at most 65,536 characters.
           head -c 60000 body.md > issue.md
-          gh label create nightly-failure --color B60205 --description "The nightly e2e run failed" 2> /dev/null || true
+          gh label create nightly-failure --color B60205 --description "A nightly check failed" 2> /dev/null || true
           number="$(gh issue list --label nightly-failure --state open --limit 1 --json number --jq '.[0].number // empty')"
           if [ -n "$number" ]; then
             gh issue edit "$number" --body-file issue.md
             gh issue comment "$number" --body "Failed again: $RUN_URL"
           else
-            gh issue create --title "Nightly e2e run failed" --label nightly-failure --body-file issue.md
+            gh issue create --title "Nightly run failed" --label nightly-failure --body-file issue.md
           fi

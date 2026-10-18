@@ -9,7 +9,7 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import type { ImportReport } from "./graph";
 import { importAsyncApi } from "./pipeline";
 import { createSimulationRun } from "../../sim/simulation";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { Refs } from "./asyncapiRefs";
 import { runChecks } from "../../checks/run";
 import { applyOps } from "../../ai";
@@ -548,24 +548,33 @@ info: { title: Big, version: "1" }
   });
 
   it("lists remote references once each in linear time, and the report caps them", () => {
-    // The scan alone (parsing that much YAML is the library's time, not ours), twice over the same distinct remote
-    // refs: the second pass finds each one listed already. Checking the list for each ref would be quadratic: eight
-    // times the refs would take sixty-four times as long. Compared against an eighth of the refs, not a budget in ms.
+    // Count report calls and list entries inspected on both passes over distinct remote refs.
+    // Scanning the growing list for duplicates costs O(n²); indexed deduplication costs O(n).
     const scanTwice = (n: number) => {
       const schemas: Record<string, unknown> = {};
       for (let i = 0; i < n; i++) schemas[`s${i}`] = { $ref: `https://example.com/s${i}.json` };
       const root = { components: { schemas } };
-      return () => {
-        const refs = new Refs(new Map());
-        refs.scan({ file: "x.yaml", root, v2: false });
-        refs.scan({ file: "x.yaml", root, v2: false });
-        return refs;
-      };
+      const refs = new Refs(new Map());
+      let inspected = 0;
+      const unread = new Proxy(refs.unread, {
+        get(target, key, receiver) {
+          if (typeof key === "string" && /^\d+$/.test(key) && ++inspected > n * LINEAR_LIMIT)
+            throw new Error("Remote-reference list scans exceeded linear work limit");
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      });
+      Object.defineProperty(refs, "unread", { value: unread });
+      const report = vi.spyOn(refs, "report");
+      refs.scan({ file: "x.yaml", root, v2: false });
+      refs.scan({ file: "x.yaml", root, v2: false });
+      const work = report.mock.calls.length + inspected;
+      expect(refs.unread.map(presentReportLine)).toHaveLength(n);
+      return work;
     };
     const small = scanTwice(4_000);
     const large = scanTwice(4_000 * GROWTH_FACTOR);
-    expect(large().unread.map(presentReportLine)).toHaveLength(32_000);
-    expect(growth(small, large, { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+    expect(small).toBeGreaterThan(0);
+    expect(large / small).toBeLessThan(LINEAR_LIMIT);
     // End to end: the report lists 200 and counts the rest.
     const many = Array.from({ length: 1_500 }, (_, i) => `    s${i}: { $ref: "https://example.com/s${i}.json" }`).join(
       "\n",

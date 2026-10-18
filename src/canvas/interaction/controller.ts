@@ -31,7 +31,7 @@ export interface InteractionCamera {
 /**
  * Where a target is now. `ready`: mounted, measured and visible. `waiting`: not yet, but it will be on a coming
  * frame (React Flow measuring a node). `parked`: it waits for something the person does or a commit brings (the
- * Inspector folded, its panel still showing the previous item). `gone`: it isn't there any more.
+ * Inspector folded, its panel still showing the previous item). `gone`: removed or deliberately hidden.
  */
 export type Resolution =
   | { state: "ready"; el: ElementHandle; node?: string }
@@ -109,6 +109,12 @@ export function createInteractionController<P = unknown>(
   let cancelFrame: (() => void) | null = null;
   /** Cancels the frame a Tab-stop move waits on (a newer one replaces it). */
   let cancelRoving: (() => void) | null = null;
+  /** Conditional recovery may wait beside a user move, without replacing its destination or callback. */
+  let recovery: {
+    command: Extract<FocusCommand, { type: "recover" }>;
+    cancel: () => void;
+    then?: Done;
+  } | null = null;
   /** The move whose outcome is still to be told (to the journal and its caller). */
   let current: { move: FocusMove; then?: Done } | null = null;
   /** The pending move has been tried at least once (a `measured` move waits for its first frame). */
@@ -130,7 +136,7 @@ export function createInteractionController<P = unknown>(
 
   function phase(): InteractionPhase {
     if (menuState.open) return "menu-open";
-    if (pendingMove(focus) && !parked) return "focus-pending";
+    if (recovery || (pendingMove(focus) && !parked)) return "focus-pending";
     return "idle";
   }
 
@@ -172,6 +178,7 @@ export function createInteractionController<P = unknown>(
     const command = decision.command;
     if (options.journal) journal({ event: label(event), command: describe(command) });
     if (command.type === "focus") {
+      retireRecovery("superseded");
       // A newer move replaces the pending one (its caller hears it didn't run).
       if (current && current.move === before) settle("superseded");
       cancelFrame?.();
@@ -188,7 +195,8 @@ export function createInteractionController<P = unknown>(
         cancelFrame = null;
         if (current?.move === before) settle("superseded");
       }
-      if (command.type === "roving") roving(command);
+      if (command.type === "recover") recover(command, then);
+      else if (command.type === "roving") roving(command);
       else then?.(false);
     }
     changed();
@@ -201,6 +209,34 @@ export function createInteractionController<P = unknown>(
     if (!c) return;
     if (options.journal) journal({ event: "focus.result", command: describe(c.move), result });
     c.then?.(result === "focused" || result === "fallback");
+  }
+
+  function retireRecovery(result: NonNullable<InteractionEntry["result"]>) {
+    const previous = recovery;
+    recovery = null;
+    if (!previous) return;
+    previous.cancel();
+    if (options.journal) journal({ event: "focus.result", command: describe(previous.command), result });
+    previous.then?.(result === "focused");
+  }
+
+  /** A user move already queued for this frame runs first. Only a remaining loss of focus needs recovery. */
+  function recover(command: Extract<FocusCommand, { type: "recover" }>, then?: Done) {
+    retireRecovery("superseded");
+    const next = { command, then, cancel: () => {} };
+    recovery = next;
+    next.cancel = scheduler.frame(() => {
+      if (disposed || recovery !== next) return;
+      if (port.active() !== null || port.connected(command.ifGone)) {
+        retireRecovery("kept");
+      } else {
+        const found = port.resolve(command.target);
+        const focused = found.state === "ready" && put({ ...command, type: "focus" }, found.el);
+        // Focus listeners can synchronously schedule a newer move.
+        if (recovery === next) retireRecovery(focused ? "focused" : "gone");
+      }
+      changed();
+    });
   }
 
   function schedule(move: FocusMove) {
@@ -447,6 +483,7 @@ export function createInteractionController<P = unknown>(
         cancelFrame = null;
         cancelRoving?.();
         cancelRoving = null;
+        retireRecovery("superseded");
         if (focus.pending) focus = { ...focus, pending: null };
         settle("superseded");
       };

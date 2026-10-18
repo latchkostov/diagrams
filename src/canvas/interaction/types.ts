@@ -151,6 +151,8 @@ export type FocusCommand =
   /** Focus stays where it is. */
   | { type: "keep" }
   | FocusMove
+  /** Conditional peer recovery beside a user move; it never consumes that move. */
+  | { type: "recover"; target: FocusTarget; when: "frame"; onlyIfLost: true; ifGone: ElementHandle }
   /** Only the canvas's Tab stop moves (to the target, once it resolves); focus stays where it is. */
   | { type: "roving"; target: FocusTarget; when: FocusWhen };
 

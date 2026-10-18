@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useStoreApi } from "@xyflow/react";
 import { useEffect } from "react";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
@@ -31,6 +32,7 @@ export function useLiveContextMenu({
   recording: LiveRecording;
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
 }) {
+  const locale = useLocale();
   const { controller, traceRef, setTrace, setInject, getDiagram, flash, panel } = session;
   const { slowRef } = spotlight;
   const { startStorm, showEvents } = commands;
@@ -42,13 +44,12 @@ export function useLiveContextMenu({
   useEffect(() => {
     if (!editor) return;
     const builtin = builtinSections.find((x) => x.id === "simulation");
-    // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
-    const off = actionRegistry.registerSection({ id: "simulation", order: 5, title: "Live" });
+    const off = actionRegistry.registerSection({ id: "simulation", order: 5, title: t("fileDialog.live") });
     return () => {
       off();
       if (builtin) actionRegistry.registerSection(builtin);
     };
-  }, [editor]);
+  }, [editor, locale]);
 
   // This is temporary visibility, not a persisted editor preference.
   useEffect(() => {
@@ -95,7 +96,7 @@ export function useLiveContextMenu({
           if (tweak.status) patch.status = tweak.status === "up" ? undefined : tweak.status;
           editor.setNodeProps(nodeId, patch);
           controller.clearTweaks(nodeId);
-          flash("Saved the live changes to the diagram (undo with Ctrl+Z).");
+          flash(t("liveSession.savedChanges"));
         },
         messageType: (nodeId) => suggestedMessageType(getDiagram(), nodeId),
         openRecord,
@@ -106,8 +107,7 @@ export function useLiveContextMenu({
         targets: ["canvas"],
         modes: ["live"],
         paletteOnly: true,
-        // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
-        label: "Edit Inputs & capacity",
+        label: t("liveSession.editInputs"),
         icon: "sliders",
         ...liveMutationGuard(() => !!slowRef.current?.session.active),
         run: () => openCapacity(),
@@ -118,8 +118,7 @@ export function useLiveContextMenu({
         targets: ["canvas"],
         modes: ["live"],
         paletteOnly: true,
-        // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
-        label: "Apply capacity fix",
+        label: t("planning.apply"),
         icon: "check",
         when: () => !!capacity?.fix,
         ...liveMutationGuard(() => !!slowRef.current?.session.active),
@@ -131,6 +130,7 @@ export function useLiveContextMenu({
     // Session-owned refs and setters are stable; preserve the original dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    locale,
     editor,
     controller,
     store,

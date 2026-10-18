@@ -52,6 +52,7 @@ export function failureSummary(inputs) {
   /** label → test → { runs, failed, error } */
   const sections = new Map();
   const notices = new Map();
+  const unitFailures = new Map();
   const read = (label, report, native = false) => {
     if (report.native) {
       for (const { source, report: child } of report.native) read(`${label} (${source})`, child, true);
@@ -70,13 +71,18 @@ export function failureSummary(inputs) {
     for (const error of report.errors ?? [])
       notes.push(`Runner error: ${strip(error.message ?? String(error)).split("\n")[0]}`);
     if (report.numTotalTests !== undefined) {
+      unitFailures.set(label, (unitFailures.get(label) ?? 0) + report.numFailedTests);
       notes.push(
         `Unit: ${report.numPassedTests} passed, ${report.numFailedTests} failed, ${report.numPendingTests} skipped.`,
       );
       for (const suite of report.testResults ?? [])
         for (const test of suite.assertionResults ?? [])
-          if (test.status === "failed")
-            notes.push(`- ${test.fullName}: ${strip(test.failureMessages?.[0] ?? "failed").split("\n")[0]}`);
+          if (test.status === "failed") {
+            // fast-check's seed and shrink path are below the first line. Keep the reduced reproduction too.
+            const message = strip(test.failureMessages?.join("\n") || "failed").replaceAll("```", "'''");
+            notes.push(`- ${test.fullName}: ${message.split("\n")[0]}`);
+            if (message.includes("\n")) notes.push("", "```text", message, "```", "");
+          }
     }
     const tests = sections.get(label) ?? new Map();
     sections.set(label, tests);
@@ -108,7 +114,7 @@ export function failureSummary(inputs) {
     const failed = [...tests].filter(([, e]) => e.failed > 0).sort((a, b) => a[0].localeCompare(b[0]));
     const notes = notices.get(label) ?? [];
     if (!failed.length && !notes.length) continue;
-    if (label) out.push(`**${label}** (${failed.length} failed):`, "");
+    if (label) out.push(`**${label}** (${failed.length + (unitFailures.get(label) ?? 0)} failed):`, "");
     out.push(...notes);
     for (const [key, e] of failed)
       out.push(`- \`${key}\`: failed ${e.failed} of ${e.runs}${e.error ? `: ${e.error.replaceAll("`", "'")}` : ""}`);

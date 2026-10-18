@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import type { DiagramFile } from "../model/types";
 import { validateDiagram } from "./native";
 import { diagramToDrawio } from "./drawio/write";
@@ -346,23 +347,28 @@ describe("draw.io: repeated ids", () => {
         nodes: [node("a"), node("b", { x: 400 })],
         edges: Array.from({ length: n }, () => ({ id: "e", from: "a", to: "b" })),
       });
-    const small = text(2_000),
-      big = text(16_000);
-    const outcome = await importText(big, "big.drawio");
-    if (outcome.ok !== true) throw new Error(JSON.stringify(outcome));
-    const ids = allIds(outcome.diagram);
-    expect(new Set(ids).size).toBe(16_002);
-    const fastest = async (input: string) => {
-      let best = Infinity;
-      for (let i = 0; i < 3; i++) {
-        const start = performance.now();
-        await importText(input, "page.drawio");
-        best = Math.min(best, performance.now() - start);
+    const probes = async (n: number, budget = n * LINEAR_LIMIT) => {
+      let probes = 0;
+      const original = Set.prototype.has;
+      const has = vi.spyOn(Set.prototype, "has").mockImplementation(function (this: Set<unknown>, value: unknown) {
+        if (++probes > budget) throw new Error("ID collision probes exceeded linear growth limit");
+        return original.call(this, value);
+      });
+      try {
+        const outcome = await importText(text(n), "page.drawio");
+        if (outcome.ok !== true) throw new Error(JSON.stringify(outcome));
+        const work = has.mock.calls.length;
+        const ids = allIds(outcome.diagram);
+        expect(new Set(ids).size).toBe(n + 2);
+        return work;
+      } finally {
+        has.mockRestore();
       }
-      return best;
     };
-    await fastest(small);
-    // 8 times the input: about 8 times the work when linear, 64 times when quadratic.
-    expect((await fastest(big)) / (await fastest(small))).toBeLessThan(24);
+    // Count collision probes, including each suffix tried; a reset suffix counter costs O(n�).
+    const small = await probes(16_000 / GROWTH_FACTOR);
+    const large = await probes(16_000, small * LINEAR_LIMIT);
+    expect(small).toBeGreaterThan(0);
+    expect(large / small).toBeLessThan(LINEAR_LIMIT);
   }, 60_000);
 });

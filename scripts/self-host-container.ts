@@ -1,4 +1,28 @@
 import { randomUUID } from "node:crypto";
+import { setTimeout } from "node:timers/promises";
+
+/** Require consecutive HTTP successes: an isolated ready response can precede Docker network churn. */
+export async function waitForStableEndpoint(
+  url: string,
+  probe = async (address: string) => {
+    const response = await fetch(address, { signal: AbortSignal.timeout(2_000), cache: "no-store" });
+    await response.arrayBuffer();
+    return response.ok;
+  },
+  pause: () => Promise<unknown> = () => setTimeout(500),
+): Promise<void> {
+  let consecutive = 0;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      consecutive = (await probe(url)) ? consecutive + 1 : 0;
+    } catch {
+      consecutive = 0;
+    }
+    if (consecutive === 3) return;
+    if (attempt < 59) await pause();
+  }
+  throw new Error(`Container endpoint did not answer steadily: ${url}`);
+}
 
 type Run = (command: string, args: string[], capture?: boolean) => string;
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { propertyRuns } from "../../test/fastCheck";
 import type { CameraEvent } from "../camera";
 import {
   createInteractionController,
@@ -148,7 +149,31 @@ function harness() {
       frame();
     }
   };
-  return { controller, env, el, canvas, frame, commit, drain, frames, removedFocus, focused, phases, journal, camera };
+  const removeNode = (id: string) => {
+    env.nodes.delete(id);
+    const original = els.get(`node:${id}`);
+    if (original) {
+      original.connected = false;
+      if (env.active === original) env.active = null;
+    }
+  };
+  return {
+    controller,
+    env,
+    el,
+    nodeEl,
+    removeNode,
+    canvas,
+    frame,
+    commit,
+    drain,
+    frames,
+    removedFocus,
+    focused,
+    phases,
+    journal,
+    camera,
+  };
 }
 
 describe("interaction controller: menus", () => {
@@ -648,68 +673,74 @@ const step: fc.Arbitrary<Step> = fc.oneof(
   fc.constant({ kind: "commit" as const }),
 );
 
+function replay(h: ReturnType<typeof harness>, s: Step) {
+  switch (s.kind) {
+    case "open":
+      if (!h.env.nodes.has(`n${s.invoker}`)) break;
+      h.env.active = h.nodeEl(`n${s.invoker}`);
+      h.controller.openMenu("context", "m");
+      break;
+    case "close":
+      h.controller.closeMenu(s.reason);
+      if (h.env.active && !h.env.active.name.startsWith("node:")) h.env.active = null;
+      break;
+    case "nav":
+      h.controller.dispatch({
+        type: "selection.changed",
+        cause: "keyboard",
+        target: s.edge ? { kind: "edge", id: `e${s.id}` } : { kind: "node", id: `n${s.id}` },
+      });
+      break;
+    case "undo":
+      h.controller.dispatch({
+        type: "selection.changed",
+        cause: "undo",
+        selection: { nodes: [`n${s.id}`], edges: [] },
+        origin: s.canvas ? "canvas" : "elsewhere",
+      });
+      break;
+    case "field":
+      h.env.inspector.fields.set("label", `n${s.owner}`);
+      h.controller.dispatch({
+        type: "inspector.field",
+        seq: h.controller.state.fieldSeq + 1,
+        name: "label",
+        owner: `n${s.owner}`,
+      });
+      break;
+    case "remove": {
+      h.removeNode(`n${s.id}`);
+      break;
+    }
+    case "draw":
+      if (h.env.nodes.has(`n${s.id}`)) h.env.nodes.set(`n${s.id}`, { drawn: true });
+      break;
+    case "blur":
+      h.env.active = null;
+      break;
+    case "input":
+      h.controller.input();
+      break;
+    case "frame":
+      h.frame();
+      break;
+    case "commit":
+      h.commit();
+      break;
+  }
+}
+
 describe("interaction controller: arbitrary interleavings", () => {
   it("never focuses a removed element, keeps at most one move pending, and drains to idle", () => {
     fc.assert(
       fc.property(fc.array(step, { maxLength: 50 }), (steps) => {
         const h = harness();
-        let field = 0;
         for (let i = 0; i < 4; i++) {
           h.env.nodes.set(`n${i}`, { drawn: i % 2 === 0 });
           h.env.edges.add(`e${i}`);
         }
         for (const s of steps) {
-          switch (s.kind) {
-            case "open":
-              h.env.active = h.el(`node:n${s.invoker}`);
-              h.controller.openMenu("context", "m");
-              break;
-            case "close":
-              h.controller.closeMenu(s.reason);
-              if (h.env.active && !h.env.active.name.startsWith("node:")) h.env.active = null;
-              break;
-            case "nav":
-              h.controller.dispatch({
-                type: "selection.changed",
-                cause: "keyboard",
-                target: s.edge ? { kind: "edge", id: `e${s.id}` } : { kind: "node", id: `n${s.id}` },
-              });
-              break;
-            case "undo":
-              h.controller.dispatch({
-                type: "selection.changed",
-                cause: "undo",
-                selection: { nodes: [`n${s.id}`], edges: [] },
-                origin: s.canvas ? "canvas" : "elsewhere",
-              });
-              break;
-            case "field":
-              h.env.inspector.fields.set("label", `n${s.owner}`);
-              h.controller.dispatch({ type: "inspector.field", seq: ++field, name: "label", owner: `n${s.owner}` });
-              break;
-            case "remove": {
-              h.env.nodes.delete(`n${s.id}`);
-              const e = h.el(`node:n${s.id}`);
-              e.connected = false;
-              if (h.env.active === e) h.env.active = null;
-              break;
-            }
-            case "draw":
-              if (h.env.nodes.has(`n${s.id}`)) h.env.nodes.set(`n${s.id}`, { drawn: true });
-              break;
-            case "blur":
-              h.env.active = null;
-              break;
-            case "input":
-              h.controller.input();
-              break;
-            case "frame":
-              h.frame();
-              break;
-            case "commit":
-              h.commit();
-              break;
-          }
+          replay(h, s);
           expect(h.removedFocus).toEqual([]);
           expect(h.frames.length).toBeLessThanOrEqual(2);
         }
@@ -721,27 +752,172 @@ describe("interaction controller: arbitrary interleavings", () => {
         expect(h.controller.phase).toBe("idle");
         expect(h.frames.length).toBe(0);
       }),
-      { numRuns: 300 },
+      { numRuns: propertyRuns(300) },
     );
   });
 
-  it("Esc always gives focus back to a connected invoker, unless a later move replaced it", () => {
+  it("Esc restores its invoker unless generated later navigation supersedes it", () => {
+    const afterStep = fc.oneof(
+      id.map((i) => ({ kind: "nav" as const, id: i, edge: false })),
+      fc.constant({ kind: "frame" as const }),
+      fc.constant({ kind: "commit" as const }),
+      fc.constant({ kind: "input" as const }),
+    );
     fc.assert(
-      fc.property(fc.array(step, { maxLength: 30 }), (before) => {
+      fc.property(fc.array(step, { maxLength: 30 }), fc.array(afterStep, { maxLength: 30 }), (before, after) => {
         const h = harness();
         for (let i = 0; i < 4; i++) h.env.nodes.set(`n${i}`, { drawn: true });
-        for (const s of before) if (s.kind === "frame") h.frame();
+        for (const s of before) replay(h, s);
+        h.controller.closeMenu("unmount");
         h.drain();
-        const invoker = h.el("node:n1");
+        // A connected invoker and destinations, after all the preceding interactions have settled.
+        for (let i = 0; i < 4; i++) {
+          h.env.nodes.set(`n${i}`, { drawn: true });
+          h.nodeEl(`n${i}`).connected = true;
+        }
+        const invoker = h.nodeEl("n1");
         h.env.active = invoker;
         h.controller.openMenu("context", "m");
         h.env.active = h.el("menu");
         h.controller.closeMenu("escape");
         h.env.active = null;
+        const mark = h.journal.length;
+        for (const s of after) replay(h, s);
         h.drain();
-        expect(h.env.active).toBe(invoker);
+        const lastNavigation = [...after].reverse().find((s) => s.kind === "nav");
+        expect(h.env.active).toBe(lastNavigation ? h.nodeEl(`n${lastNavigation.id}`) : invoker);
+        // Navigation before the close commits replaces restoration entirely.
+        const firstNav = after.findIndex((s) => s.kind === "nav");
+        if (firstNav >= 0 && after.slice(0, firstNav).every((s) => s.kind === "input"))
+          expect(h.journal.slice(mark).find((e) => e.event === "focus.result")?.result).toBe("superseded");
+        expect(h.removedFocus).toEqual([]);
+        expect(h.controller.phase).toBe("idle");
       }),
-      { numRuns: 100 },
+      { numRuns: propertyRuns(100) },
     );
   });
+});
+
+it("removing a captured menu invoker falls back to canvas through sequence replay", () => {
+  const h = harness();
+  h.env.nodes.set("n1", { drawn: true });
+  replay(h, { kind: "open", invoker: 1 });
+  const original = h.env.active!;
+  replay(h, { kind: "remove", id: 1 });
+  expect(original.connected).toBe(false);
+  expect(h.env.active).toBeNull();
+  replay(h, { kind: "close", reason: "escape" });
+  replay(h, { kind: "commit" });
+  expect(h.focused).toEqual(["canvas"]);
+  expect(h.removedFocus).toEqual([]);
+});
+
+it("later navigation supersedes pending Escape restoration", () => {
+  const h = harness();
+  h.env.nodes.set("n1", { drawn: true }).set("n2", { drawn: true });
+  replay(h, { kind: "open", invoker: 1 });
+  replay(h, { kind: "close", reason: "escape" });
+  replay(h, { kind: "nav", id: 2, edge: false });
+  h.commit();
+  h.drain();
+  expect(h.focused).toEqual(["node:n2"]);
+});
+
+it("an unrelated peer update preserves navigation before its focus frame", () => {
+  const h = harness();
+  h.env.nodes.set("a", { drawn: true }).set("b", { drawn: true }).set("c", { drawn: true });
+  h.env.active = h.nodeEl("a");
+  h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "b" } });
+  h.controller.dispatch({ type: "document.replaced", active: h.env.active });
+  expect(h.controller.pendingTarget()).toEqual({ kind: "node", id: "b" });
+  h.frame();
+  expect(h.env.active).toBe(h.nodeEl("b"));
+  h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "c" } });
+  h.frame();
+  expect(h.focused).toEqual(["node:b", "node:c"]);
+});
+
+it("an unrelated peer update preserves a parked Inspector request", () => {
+  const h = harness();
+  h.env.active = h.nodeEl("a");
+  h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "b" });
+  h.controller.dispatch({ type: "document.replaced", active: h.env.active });
+  h.env.inspector.fields.set("label", "b");
+  h.commit();
+  h.drain();
+  expect(h.focused).toEqual(["field:label"]);
+});
+
+it("a newer peer recovery follows the latest focused element", () => {
+  const h = harness();
+  h.env.nodes.set("a", { drawn: true }).set("b", { drawn: true });
+  h.env.active = h.nodeEl("a");
+  h.controller.dispatch({ type: "document.replaced", active: h.env.active });
+  // A click moves focus before the first recovery frame, then a peer removes that new target.
+  h.env.active = h.nodeEl("b");
+  h.controller.dispatch({ type: "document.replaced", active: h.env.active });
+  h.removeNode("b");
+  h.frame();
+  expect(h.focused).toEqual(["canvas"]);
+  expect(h.controller.phase).toBe("idle");
+});
+
+it("peer removal recovers after an Inspector retry loses its owner", () => {
+  const h = harness();
+  h.env.inspector.fields.set("label", "a");
+  h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a" });
+  const original = h.env.active!;
+  let recovered: boolean | undefined;
+  h.controller.dispatch({ type: "document.replaced", active: original }, (ok) => (recovered = ok));
+  h.env.inspector.fields.delete("label");
+  original.connected = false;
+  h.env.active = null;
+  h.frame();
+  expect(h.focused).toEqual(["field:label", "canvas"]);
+  expect(recovered).toBe(true);
+  expect(h.frames).toHaveLength(0);
+  expect(h.controller.phase).toBe("idle");
+});
+
+it("peer removal recovers without consuming a parked request for another surviving field", () => {
+  const h = harness();
+  const original = h.nodeEl("a");
+  h.env.active = original;
+  h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "b" });
+  const pending = h.controller.state.pending;
+  h.controller.dispatch({ type: "document.replaced", active: original });
+  original.connected = false;
+  h.env.active = null;
+  h.frame();
+  expect(h.focused).toEqual(["canvas"]);
+  expect(h.controller.state.pending).toBe(pending);
+  h.env.inspector.fields.set("label", "b");
+  h.commit();
+  h.drain();
+  expect(h.focused).toEqual(["canvas", "field:label"]);
+  expect(h.controller.phase).toBe("idle");
+});
+
+it("a later navigation supersedes conditional recovery beside an older user move", () => {
+  const h = harness();
+  h.env.nodes.set("a", { drawn: true }).set("b", { drawn: true }).set("c", { drawn: true });
+  const original = h.nodeEl("a");
+  h.env.active = original;
+  h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "b" } });
+  h.controller.dispatch({ type: "document.replaced", active: original });
+  h.removeNode("a");
+  h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "c" } });
+  h.drain();
+  expect(h.focused).toEqual(["node:c"]);
+});
+
+it("unmount cancels conditional recovery beside a parked request", () => {
+  const h = harness();
+  const stop = h.controller.connect();
+  h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "b" });
+  h.controller.dispatch({ type: "document.replaced", active: h.nodeEl("a") });
+  stop();
+  expect(h.frames).toHaveLength(0);
+  h.frame();
+  expect(h.focused).toEqual([]);
 });

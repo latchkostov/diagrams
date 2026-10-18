@@ -148,11 +148,18 @@ test.describe("slow motion", () => {
     const captions = new Set<string>();
     for (let i = 0; i < 40; i++) {
       await page.clock.runFor(150);
-      moving.push(Number(await data(page, "slowmo-dots")));
-      captions.add((await page.getByTestId("slowmo-caption").textContent()) ?? "");
+      // One protocol round trip per sample: the four readings belong to the same frozen frame.
+      const sample = await canvas(page).evaluate((el) => ({
+        dots: Number(el.getAttribute("data-slowmo-dots")),
+        caption: document.querySelector('[data-testid="slowmo-caption"]')?.textContent ?? "",
+        time: el.getAttribute("data-sim-time"),
+        sum: el.getAttribute("data-particle-sum"),
+      }));
+      moving.push(sample.dots);
+      captions.add(sample.caption);
       // Live is frozen: the clock and every background dot stay exactly where they were.
-      expect(await data(page, "sim-time")).toBe(time);
-      expect(await data(page, "particle-sum")).toBe(sum);
+      expect(sample.time).toBe(time);
+      expect(sample.sum).toBe(sum);
     }
     expect(Math.max(...moving)).toBeLessThanOrEqual(4);
     expect(Math.max(...moving)).toBeGreaterThanOrEqual(1);

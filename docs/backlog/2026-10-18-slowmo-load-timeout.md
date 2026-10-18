@@ -40,3 +40,9 @@ three repetitions, with every other case passing.
 ```text
 SUMMARY: ee61494c7c3f43326aedd928f09e37bcf5adf122 | unit="not run" parity="not run" e2e={"passed":204,"failed":3,"flaky":0,"skipped":0} gate_failures=3
 ```
+
+## Resolved in follow-ups seven
+
+The release note `docs/release-notes/2026-10-18-followups-seven.md` records the fix and regression
+coverage. The original clean-master reproduction above is retained as evidence; no threshold or
+assertion was relaxed.

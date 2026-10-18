@@ -1,6 +1,7 @@
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import { runInNewContext } from "node:vm";
 import { once } from "node:events";
 import { pathToFileURL } from "node:url";
 import process from "node:process";
@@ -254,6 +255,50 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
         .every((step: { if: string }) => step.if === "always()"),
     ).toBe(true);
   }
-  expect(jobs.report.needs).toEqual(["e2e", "native-unit", "native-e2e"]);
+  expect(jobs.report.needs).toEqual(["e2e", "native-unit", "native-e2e", "properties"]);
   expect(jobs["native-unit"].strategy.matrix.os).toEqual(["windows-latest", "macos-latest"]);
+});
+
+it("Nightly reports a property-only failure", () => {
+  const { jobs } = parse(readFileSync(".github/workflows/nightly.yml", "utf8"));
+  expect(jobs.report.needs).toContain("properties");
+  const needs = { e2e: "success", "native-unit": "success", "native-e2e": "success", properties: "failure" };
+  const condition = jobs.report.if.replace(/needs\.([a-z0-9-]+)\.result/g, (_: string, job: keyof typeof needs) =>
+    JSON.stringify(needs[job]),
+  );
+  expect(runInNewContext(condition, { always: () => true })).toBe(true);
+  const run = jobs.properties.steps.find((step: { run?: string }) => step.run?.includes("vitest run")).run;
+  expect(run).toContain("--reporter=json --outputFile=tests/.output/property-results.json");
+  const artifact = jobs.properties.steps.find((step: { uses?: string }) =>
+    step.uses?.startsWith("actions/upload-artifact"),
+  );
+  expect(artifact.if).toBe("failure()");
+  expect(artifact.with).toMatchObject({
+    name: "nightly-results-properties",
+    path: "tests/.output/property-results.json",
+  });
+  expect(
+    jobs.report.steps.find(
+      (step: { run?: string }) => step.run?.includes("failureSummary") || step.run?.includes("e2e-failures.mjs"),
+    ).run,
+  ).toContain("results/nightly-results-properties/property-results.json");
+  const message =
+    'Property failed after 8 tests\n{ seed: -673370871, path: "7:2:1", endOnFailure: true }\nCounterexample: [["Escape","Tab"]]';
+  const summary = failureSummary([
+    {
+      label: "Random property tests",
+      report: {
+        numTotalTests: 1,
+        numPassedTests: 0,
+        numFailedTests: 1,
+        numPendingTests: 0,
+        testResults: [
+          { assertionResults: [{ status: "failed", fullName: "focus property", failureMessages: [message] }] },
+        ],
+      },
+    },
+  ]);
+  expect(summary).toContain("focus property");
+  expect(summary).toContain("**Random property tests** (1 failed)");
+  expect(summary).toContain(message);
 });

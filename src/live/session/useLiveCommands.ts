@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { useStoreApi } from "@xyflow/react";
 import { useCallback, useReducer } from "react";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
@@ -99,7 +100,7 @@ export function useLiveCommands({
         setDraft(null);
         draftRef.current = null;
       }
-      flash(`Saved “${sim.title}” to this diagram.`);
+      flash(t("liveSession.savedSimulation", { name: sim.title }));
       return true;
     },
     // Session-owned refs and setters are stable; preserve the original dependencies.

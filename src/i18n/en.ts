@@ -10,6 +10,26 @@
 // stays.
 
 const en = {
+  "liveSession.editInputs": "Edit Inputs & capacity",
+  "liveSession.incomingTraffic": "Incoming traffic",
+  "liveSession.deadLetterWait": "Nothing has dead-lettered yet: the next message that does will be traced.",
+  "liveSession.lookAhead": "30 s",
+  "liveSession.noFinishedMessage": "No message has finished its journey yet. Try again in a moment.",
+  "liveSession.recordedFor": "Recorded for {duration} of simulated time: {summary}.",
+  "liveSession.longReplay": "This slow motion runs {duration}: → skips to the next hop.",
+  "liveSession.restarted": "The diagram changed, so the simulation restarted.",
+  "liveSession.addedDeadLetter":
+    "Added a dead-letter queue: messages that run out of deliveries go there (undo with Ctrl+Z).",
+  "liveSession.savedRates": "Saved rates and sizes to the diagram (undo with Ctrl+Z).",
+  "liveSession.addedConsumer": "Added a consumer of {name}.",
+  "liveSession.appliedFix": "Applied the fix: {name}.",
+  "liveSession.appliedLiveFix": "Applied the fix: {name} (undo with Ctrl+Z).",
+  "liveSession.addedEntry": "Added an entry point into {name}. Set its rate in msg/s.",
+  "liveSession.savedChanges": "Saved the live changes to the diagram (undo with Ctrl+Z).",
+  "liveSession.savedSimulation": "Saved “{name}” to this diagram.",
+  "liveSession.clearHighlight": "Clear highlight",
+  "liveSession.waitingSlowMotion": "Waiting for the next message: slow motion starts when it comes…",
+  "liveSession.waitingSlowMotionAt": "Waiting for the next message at {name}: slow motion starts when it comes…",
   "inspector.resizePreview": "Resizable inspector: longer route paths",
   "inspector.flow": "Flow",
   "inspector.dependency": "Dependency",

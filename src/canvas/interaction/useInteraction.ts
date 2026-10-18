@@ -13,6 +13,8 @@ import type { DiagramFlowEdge, FlowNode } from "../types";
 import { createInteractionController, type InteractionCamera, type InteractionController } from "./controller";
 import { createDomPort, domScheduler, type DomCanvas } from "./domPort";
 import { interactionJournal } from "./journal";
+import { dependencyVisibility } from "../dependencyVisibility";
+import { isDependency } from "../../model/relations";
 
 /** The canvas's interaction controller, for what renders inside the canvas (the Inspector, its name fields). */
 export const InteractionContext = createContext<InteractionController | null>(null);
@@ -33,12 +35,12 @@ export function useInteractionCore<P>(
   const [{ controller, setOrder, commit }] = useState(() => {
     /** The diagram as last committed: a node React Flow's store hasn't caught up with yet isn't gone. */
     let committed = { nodes: [] as FlowNode[], edges: [] as DiagramFlowEdge[] };
-    let ids: { nodes: Set<string>; edges: Set<string> } | null = null;
+    let ids: { nodes: Set<string>; edges: Map<string, DiagramFlowEdge> } | null = null;
     let version = 0;
     const known = () =>
       (ids ??= {
         nodes: new Set(committed.nodes.filter((n) => !n.hidden).map((n) => n.id)),
-        edges: new Set(committed.edges.map((e) => e.id)),
+        edges: new Map(committed.edges.map((e) => [e.id, e])),
       });
     const canvas: DomCanvas = {
       root: () => wrapper.current,
@@ -46,7 +48,10 @@ export function useInteractionCore<P>(
         const n = store.getState().nodeLookup.get(id);
         return (!!n && !n.hidden) || known().nodes.has(id);
       },
-      hasEdge: (id) => store.getState().edgeLookup.has(id) || known().edges.has(id),
+      hasEdge: (id) => {
+        const e = known().edges.get(id) ?? store.getState().edgeLookup.get(id);
+        return !!e && !e.hidden && (dependencyVisibility.get() || !isDependency(e.data));
+      },
       version: () => version,
       publish: (phase) => {
         if (wrapper.current) wrapper.current.dataset.interactionState = phase;

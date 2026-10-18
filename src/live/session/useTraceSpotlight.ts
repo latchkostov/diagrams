@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MessageTrace } from "../../sim/types";
@@ -13,8 +14,8 @@ import { roomUnderCard } from "../traceCardLayout";
 import type { CameraController } from "../../canvas/camera";
 import { useReducedMotion } from "../../lib/useReducedMotion";
 import type { LiveSessionState } from "./useLiveSessionState";
-const LOOK_AHEAD_LABEL = "30 s";
-const DEAD_LETTER_WAIT = "Nothing has dead-lettered yet: the next message that does will be traced.";
+
+const DEAD_LETTER_WAIT = "trace:deadLetterWait";
 
 export function useTraceSpotlight({ session, camera }: { session: LiveSessionState; camera: CameraController }) {
   const { state, controller, trace, panel } = session;
@@ -97,7 +98,7 @@ export function useTraceActions({
       slowRef.current?.end();
       if (which === "next") controller.traceNext();
       else if (which === "slowest") {
-        if (!controller.traceSlowest()) flash("No message has finished its journey yet. Try again in a moment.");
+        if (!controller.traceSlowest()) flash(t("liveSession.noFinishedMessage"));
       } else if (controller.traceDeadLettered() === "waiting") flash(DEAD_LETTER_WAIT);
     },
     // Session-owned refs and setters are stable; preserve the original dependencies.
@@ -108,7 +109,9 @@ export function useTraceActions({
   // a side panel's column, its height is the panel's business (trace.css).
   const cardRoom = useStore((s) => (state.trace && !panel.open ? roomUnderCard(s, presenting ? 392 : 352) : 0));
   // "Nothing has dead-lettered yet" is out of date once one has: the trace card takes over.
-  const shownNotice = state.resourceError ?? (notice === DEAD_LETTER_WAIT && state.trace?.current ? null : notice);
+  const shownNotice =
+    state.resourceError ??
+    (notice === DEAD_LETTER_WAIT ? (state.trace?.current ? null : t("liveSession.deadLetterWait")) : notice);
   const sendOne = useCallback(
     (nodeId: string) => controller.sendOne(nodeId, suggestedMessageType(getDiagram(), nodeId)),
     [controller, getDiagram],
@@ -158,16 +161,26 @@ export function useTraceSlowMotion({
 }
 
 export function useSlowTraceCard(slow: SlowMotionView) {
+  useLocale();
   const slowState = slow.state;
+  const script = slowState.script;
+  const note = script
+    ? [
+        script.unfinished
+          ? t("liveSession.recordedFor", {
+              duration: t("liveSession.lookAhead"),
+              summary: script.summary.toLowerCase(),
+            })
+          : "",
+        script.duration > PACING.longScript
+          ? t("liveSession.longReplay", { duration: formatSpan(script.duration) })
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ") || undefined
+    : undefined;
   const slowCard = useMemo(() => {
-    const script = slowState.script;
     if (slowState.status !== "on" || !script || !slowState.trace) return null;
-    const notes = [
-      script.unfinished ? `Recorded for ${LOOK_AHEAD_LABEL} of simulated time: ${script.summary.toLowerCase()}.` : "",
-      script.duration > PACING.longScript
-        ? `This slow motion runs ${formatSpan(script.duration)}: → skips to the next hop.`
-        : "",
-    ].filter(Boolean);
     return {
       trace: { rootId: slowState.trace.rootId, current: slowState.trace },
       card: {
@@ -178,10 +191,10 @@ export function useSlowTraceCard(slow: SlowMotionView) {
         onSeek: (key: string) => slow.session.seekRow(key),
         onExit: slow.end,
         hiddenCopies: script.hiddenCopies,
-        note: notes.join(" ") || undefined,
+        note,
       },
     };
-  }, [slowState, slow.session, slow.end]);
+  }, [slowState, script, slow.session, slow.end, note]);
   return slowCard;
 }
 

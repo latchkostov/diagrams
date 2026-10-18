@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { annotatedPipeline } from "../bench/workloads/annotated";
 import { serviceMesh } from "../bench/workloads/mesh";
 import type { DiagramFile } from "../model/types";
-import { GROWTH_FACTOR, growth, LINEAR_LIMIT } from "../test/complexity";
+import { GROWTH_FACTOR, countingReads, LINEAR_LIMIT } from "../test/complexity";
 import { validateDiagram } from "../interop/native";
 import { commandsFromDiff } from "./commands";
 import { CollabDoc } from "./doc";
+import * as Y from "yjs";
 import { COLLAB_LIMITS } from "./limits";
 
 // 5,000-node and churn measurements (docs/QUALITY.md § Timing in tests): operation counts, bytes and same-run growth
@@ -108,41 +109,83 @@ describe("collaboration at 5,000 nodes", () => {
 
   it("grows linearly: hydrate, diff + apply, sync, project, bulk delete", () => {
     const ratios: Record<string, number> = {};
-    ratios.hydrate = growth(
-      () => hydrated(mesh.small),
-      () => hydrated(mesh.large),
-      { samples: 2 },
-    );
-    const [as, al] = [hydrated(mesh.small), hydrated(mesh.large)];
-    const [ds, dl] = [ok(as), ok(al)];
-    let i = 0;
-    ratios.diffApply = growth(
-      () => as.apply(commandsFromDiff(ds, relabel(ds, ++i))),
-      () => al.apply(commandsFromDiff(dl, relabel(dl, ++i))),
-      { samples: 2 },
-    );
-    const [us, ul] = [as.encodeDiff(), al.encodeDiff()];
-    ratios.joinSync = growth(
-      () => new CollabDoc().applyRemote(us),
-      () => new CollabDoc().applyRemote(ul),
-      { samples: 2 },
-    );
-    ratios.project = growth(
-      () => {
-        as.apply(commandsFromDiff(ds, relabel(ds, ++i)));
-        return as.project();
-      },
-      () => {
-        al.apply(commandsFromDiff(dl, relabel(dl, ++i)));
-        return al.project();
-      },
-      { samples: 2 },
-    );
-    const deleteAll = (d: DiagramFile) => () => {
-      const doc = hydrated(d);
-      doc.apply(commandsFromDiff(d, { ...d, nodes: [], edges: [] }));
+    // Count source reads, shared-record accesses and order entries visited. This keeps each phase
+    // separate and observes repeated scans as well as lookups, without measuring quota/JIT/GC delays.
+    const work = (run: () => void) => {
+      const orderReads: (() => number)[] = [];
+      const toArray = Y.Array.prototype.toArray;
+      const order = vi.spyOn(Y.Array.prototype, "toArray").mockImplementation(function (this: Y.Array<unknown>) {
+        const counted = countingReads(toArray.call(this));
+        orderReads.push(counted.reads);
+        return new Proxy(counted.items, {
+          get(target, key, receiver) {
+            if (counted.reads() > target.length * LINEAR_LIMIT)
+              throw new Error("Projection order scans exceeded linear work limit");
+            return Reflect.get(target, key, receiver) as unknown;
+          },
+        });
+      });
+      const get = vi.spyOn(Y.Map.prototype, "get");
+      const set = vi.spyOn(Y.Map.prototype, "set");
+      try {
+        run();
+        return orderReads.reduce((sum, reads) => sum + reads(), 0) + get.mock.calls.length + set.mock.calls.length;
+      } finally {
+        order.mockRestore();
+        get.mockRestore();
+        set.mockRestore();
+      }
     };
-    ratios.bulkDelete = growth(deleteAll(mesh.small), deleteAll(mesh.large), { samples: 2 });
+    const measure = (diagram: DiagramFile) => {
+      const nodes = countingReads(diagram.nodes);
+      const edges = countingReads(diagram.edges);
+      const d = { ...diagram, nodes: nodes.items, edges: edges.items };
+      const sourceWork = (run: () => void) => {
+        const before = nodes.reads() + edges.reads();
+        return work(run) + nodes.reads() + edges.reads() - before;
+      };
+      let doc!: CollabDoc;
+      const hydrate = sourceWork(() => {
+        doc = hydrated(d);
+      });
+      try {
+        const base = ok(doc);
+        const diffApply = sourceWork(() => doc.apply(commandsFromDiff(d, relabel(d, 1))));
+        const update = doc.encodeDiff();
+        let bytesRead = 0;
+        const wire = new Proxy(update, {
+          get(target, key) {
+            if (typeof key === "string" && /^\d+$/.test(key)) bytesRead++;
+            const value: unknown = Reflect.get(target, key, target);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+        });
+        const joinSync =
+          work(() => {
+            const peer = new CollabDoc();
+            try {
+              expect(peer.applyRemote(wire)).toEqual({ ok: true });
+            } finally {
+              peer.destroy();
+            }
+          }) + bytesRead;
+        const project = work(() => {
+          doc.apply(commandsFromDiff(base, relabel(base, 2)));
+          expect(ok(doc).nodes).toHaveLength(d.nodes.length);
+        });
+        const bulkDelete = sourceWork(() => doc.apply(commandsFromDiff(d, { ...d, nodes: [], edges: [] })));
+        expect(ok(doc).nodes).toHaveLength(0);
+        return { hydrate, diffApply, joinSync, project, bulkDelete };
+      } finally {
+        doc.destroy();
+      }
+    };
+    const small = measure(mesh.small);
+    const large = measure(mesh.large);
+    for (const what of Object.keys(small) as (keyof typeof small)[]) {
+      expect(small[what], what).toBeGreaterThan(0);
+      ratios[what] = large[what] / small[what];
+    }
     log("growth ratios", ratios);
     for (const [what, r] of Object.entries(ratios)) expect(r, what).toBeLessThan(LINEAR_LIMIT);
   }, 120_000);

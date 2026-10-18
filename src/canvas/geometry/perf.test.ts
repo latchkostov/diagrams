@@ -7,7 +7,7 @@ import { estimateCardSize } from "../nodes/size";
 import { groupHeaderRect, Router, type RouteInput } from "./router";
 import { routeOrthogonal, SearchBuffers, type SoftLine } from "./orthogonal";
 import { nudgeRoutes } from "./nudge";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import type { Point, Rect } from "./rect";
 import { RectIndex } from "./spatial";
 
@@ -77,18 +77,29 @@ it("routes distinct obstacle coordinates without rescanning obstacles per grid c
 });
 
 it("nudges separated pinned routes without an all-pairs pass", () => {
-  // Eight times the routes against an eighth: sorting them is about 8 to 10 times the work, comparing every pair
-  // 64. A ratio, not a budget in ms, so a busy machine doesn't fail it.
-  const small = separatedRoutes(3_750);
-  const large = separatedRoutes(3_750 * GROWTH_FACTOR);
-  expect(nudgeRoutes(large, [])).toEqual(large);
-  expect(
-    growth(
-      () => nudgeRoutes(small, []),
-      () => nudgeRoutes(large, []),
-      { samples: 3 },
-    ),
-  ).toBeLessThan(LINEAR_LIMIT);
+  // Each segment's geometry and each candidate pair use Math.abs. Count those operations so
+  // quota scheduling cannot turn a linear pass into a failing clock ratio; all-pairs still fails.
+  const measure = (n: number, budget = n * LINEAR_LIMIT) => {
+    const routes = separatedRoutes(n);
+    const original = Math.abs;
+    let operations = 0;
+    const abs = vi.spyOn(Math, "abs").mockImplementation((value) => {
+      if (++operations > budget) throw new Error("Pinned-route comparisons exceeded linear work limit");
+      return original(value);
+    });
+    let out;
+    try {
+      out = nudgeRoutes(routes, []);
+    } finally {
+      abs.mockRestore();
+    }
+    expect(out).toEqual(routes);
+    return operations;
+  };
+  const small = measure(3_750);
+  const large = measure(3_750 * GROWTH_FACTOR, small * LINEAR_LIMIT);
+  expect(small).toBeGreaterThan(0);
+  expect(large / small).toBeLessThan(LINEAR_LIMIT);
 });
 
 /** Rects whose coordinate reads are counted (any property read), to count the obstacles a pass looks at. */

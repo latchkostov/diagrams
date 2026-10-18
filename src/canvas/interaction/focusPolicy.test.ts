@@ -446,12 +446,19 @@ describe("focusPolicy: invariants over every state × event", () => {
     for (const [s, e, onMac] of cases) {
       const d = focusPolicy(s, e);
       // Exactly one focus command per event.
-      expect(["keep", "focus", "roving"]).toContain(d.command.type);
+      expect(["keep", "focus", "roving", "recover"]).toContain(d.command.type);
       // The platform is an input that no row reads differently.
       expect(say(focusPolicy(s, onMac).command)).toBe(say(d.command));
       // A move is the one pending move; keep and roving leave pending as it was (unless the event retires it).
       if (d.command.type === "focus") expect(d.state.pending).toBe(d.command);
       else if (!["focus.ran", "focus.done", "input"].includes(e.type)) expect(d.state.pending).toBe(s.pending);
+      if (d.command.type === "recover") {
+        expect(e.type).toBe("document.replaced");
+        expect(s.pending).not.toBeNull();
+        expect(s.pending?.ifGone).toBeUndefined();
+        expect(d.command.onlyIfLost).toBe(true);
+        expect(d.state.pending).toBe(s.pending);
+      }
       // Esc always gives focus back to the invoker (a menu's; a dialog gives it back itself).
       if (e.type === "menu.closed" && e.reason === "escape" && e.invoker && e.kind !== "dialog") {
         const c = d.command as FocusMove;

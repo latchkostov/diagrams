@@ -2,7 +2,7 @@ import { useStoreApi } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { placeNextTo } from "../../canvas/placement";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
-import { useLocale } from "../../i18n";
+import { t, useLocale } from "../../i18n";
 import type { NodeStatus } from "../../sim/types";
 import { stencilRole } from "../../stencils/roles";
 import { capacityView, freePlaySimulation, inputsWithoutFix, withFix, type CapacityFix } from "../capacityModel";
@@ -123,7 +123,7 @@ export function useCapacityInputs({
         for (const c of fix.changes) props[c.nodeId] = { ...props[c.nodeId], [c.key]: c.to };
         controller.setInputs({ ...inputs, props });
       }
-      if (editor) flash("Applied the fix: " + fix.label + " (undo with Ctrl+Z).");
+      if (editor) flash(t("liveSession.appliedLiveFix", { name: fix.label }));
     },
     // Session-owned refs and setters are stable; preserve the original dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,10 +171,9 @@ export function useCapacityEntry({
       // Same tick: the history debounce records the node, its label and its edge as one undo step.
       const stencil = ENTRY_STENCILS.find((x) => stencilRole(x) === "source") ?? ENTRY_STENCILS[0];
       const id = editor.addNode(stencil, at);
-      // eslint-disable-next-line local/no-literal-ui-text -- Existing LiveSession copy, moved verbatim.
-      editor.updateNode(id, { label: "Incoming traffic", sublabel: undefined });
+      editor.updateNode(id, { label: t("liveSession.incomingTraffic"), sublabel: undefined });
       editor.connect(id, targetId);
-      flash(`Added an entry point into ${target.label || target.id}. Set its rate in msg/s.`);
+      flash(t("liveSession.addedEntry", { name: target.label || target.id }));
       // Bring the new node into view beside the panel, once it's measured.
       camera.dispatch({ type: "live.added", panel: true });
       // The panel lists it once the session picks up the edit; then the rate field takes the cursor (row L4).
