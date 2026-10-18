@@ -242,10 +242,14 @@ const NodeBadge = memo(function NodeBadge({
     if (!hovered || !domNode) return;
     const el = domNode.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(node.id)}"]`);
     if (!el) return;
+    const testId = el.dataset.testid;
     el.dataset.testid = `node-live-focus-${node.id}`;
     const previous = el.getAttribute("aria-describedby");
     el.setAttribute("aria-describedby", [previous, tooltipId].filter(Boolean).join(" "));
     return () => {
+      // React Flow's own test id comes back with the hover.
+      if (testId === undefined) delete el.dataset.testid;
+      else el.dataset.testid = testId;
       if (previous === null) el.removeAttribute("aria-describedby");
       else el.setAttribute("aria-describedby", previous);
     };
