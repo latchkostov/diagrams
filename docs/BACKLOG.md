@@ -4,7 +4,6 @@ Review findings and ideas not yet scheduled. Add one `YYYY-MM-DD-short-slug.md` 
 [backlog/](backlog/); edit or remove that file when the item lands. `pnpm notes backlog` prints
 the open entries newest first. Existing entries moved on 2026-10-17:
 
-- [Collaboration C1b prerequisite: device wipe (C1a review, 2026-10-16)](backlog/2026-10-16-collaboration-c1b-prerequisite-device-wipe-c1a-review-2026-10-16.md)
 - [Baseline reliability (toolchain trial, 2026-10-14)](backlog/2026-10-14-baseline-reliability-toolchain-trial-2026-10-14.md)
 - [draw.io planning preservation (showcase review, 2026-10-15)](backlog/2026-10-15-draw-io-planning-preservation-showcase-review-2026-10-15.md)
 - [Managed admission performance (P3 review, 2026-10-14)](backlog/2026-10-14-managed-admission-performance-p3-review-2026-10-14.md)

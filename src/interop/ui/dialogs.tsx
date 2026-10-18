@@ -770,29 +770,62 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
  */
 export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
   useLocale();
-  useLocale();
   // The wipe's code comes with this dialog: confirming clears at once, with nothing left to download (so nothing to
-  // cancel, or to fail, after the click).
+  // cancel, or to fail, after the click). Emptying the room recovery database takes a moment: the button waits.
+  const [clearing, setClearing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const clear = () => {
+    setClearing(true);
+    setFailed(false);
+    clearDevice().catch(() => {
+      setClearing(false);
+      setFailed(true);
+    });
+  };
   return (
     <Dialog
       title={t("clear.title")}
       subtitle={t("clear.subtitle")}
       icon={<Glyph name="alert" />}
+      // Once clearing starts, this page's storage writes have stopped: it can't go back to editing.
       onClose={onClose}
+      closable={!clearing && !failed}
       testId="clear-device-dialog"
       width={480}
       footer={
         <>
           <span className="ix-grow" />
-          <button className="btn btn-danger" onClick={clearDevice} data-testid="clear-device-confirm">
-            {t("clear.confirm")}
+          {failed && (
+            <button
+              className="btn"
+              onClick={() => window.location.replace(window.location.pathname)}
+              data-testid="clear-device-reload"
+            >
+              {t("clear.reload")}
+            </button>
+          )}
+          <button
+            className="btn btn-danger"
+            // Not disabled while clearing: focus stays on it (a disabled button drops focus out of the dialog).
+            aria-disabled={clearing}
+            onClick={clearing ? undefined : clear}
+            data-testid={failed ? "clear-device-retry" : "clear-device-confirm"}
+          >
+            {failed ? t("common.tryAgain") : t("clear.confirm")}
           </button>
-          <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
-            {t("common.cancel")}
-          </button>
+          {!clearing && !failed && (
+            <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
+              {t("common.cancel")}
+            </button>
+          )}
         </>
       }
     >
+      {failed && (
+        <p className="ix-error" role="alert" data-testid="clear-device-error">
+          {t("clear.failed")}
+        </p>
+      )}
       <ul className="ix-privacy-list" data-testid="clear-device-list">
         <li>{t("clear.diagrams")}</li>
         <li>{t("clear.links")}</li>

@@ -71,6 +71,11 @@ export interface SessionOptions {
   transport: CollabTransport;
   /** The diagram's privacy (the same state the Share gates read). A Private or local-only diagram never joins. */
   privacy: CanvasPrivacyState | null | undefined;
+  /**
+   * Asked again after the asynchronous setup (keys, recovery), just before the session sends anything: the
+   * diagram may have become Private meanwhile (in another tab). False throws PrivateDiagramError.
+   */
+  allowed?: () => boolean;
   /** Seeds only a fresh newRoom() on its first open. A link/rejoin always merges the room's CRDT state. */
   initial?: DiagramFile;
   /** A local copy of this room's document (rejoining). */
@@ -178,6 +183,7 @@ export class CollabSession {
         ? new RoomRecovery(opts.recovery, keys, () => session?.emit(), Date.now, opts.clock ?? realClock)
         : undefined;
       await recovery?.restore(doc);
+      if (opts.allowed && !opts.allowed()) throw new PrivateDiagramError();
       if (creation && opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
       const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
       session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);

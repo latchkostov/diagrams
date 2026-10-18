@@ -51,7 +51,8 @@ import { Toaster } from "./interop/ui/Toaster";
 import { loadingDialog, preloadDialogs } from "./interop/ui/lazyDialogs";
 import { CommandPalette } from "./palette/CommandPalette";
 import { paletteHost } from "./palette/host";
-import { lazyComponent, whenIdle } from "./lib/lazyLoad";
+import { lazyComponent, LOAD_FAILED, loadOnce, whenIdle } from "./lib/lazyLoad";
+import { EDIT_TOGETHER, roomEntryPending, roomInAddress, roomTabPending } from "./lib/roomEntry";
 import { AiMount } from "./ai/ui/AiMount";
 import { unseen } from "./ai/ui/unseen";
 import { AI_PANEL } from "./lib/deployment";
@@ -67,6 +68,74 @@ const LabView =
   import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
     ? lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })))
     : () => null;
+/**
+ * Rooms (Edit together; src/collab/room): their code, Yjs included, loads only for a page with a room to open or when
+ * one is asked for. Development and e2e builds only, for now: spelled out so production builds drop it.
+ */
+type RoomsModule = typeof import("./collab/room");
+const loadRooms =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1" ? loadOnce(() => import("./collab/room")) : undefined;
+const noRoomSubscribe = () => () => {};
+const noRoomSnapshot = () => undefined;
+
+/**
+ * The room module once this page needs it, configured with how to show a diagram and read the canvas. `resuming`:
+ * this tab was in a room before a reload, and it isn't open again yet (the canvas waits rather than show the copy).
+ */
+function useRooms(view: View, page: { navigate(slug: string): void; capture(slug: string): DiagramFile | undefined }) {
+  const [rooms, setRooms] = useState<RoomsModule | null>(null);
+  const [resuming, setResuming] = useState(() => !!loadRooms && roomTabPending());
+  const pageRef = useRef(page);
+  useLayoutEffect(() => {
+    pageRef.current = page;
+  });
+  useEffect(() => {
+    if (!loadRooms || view === "lab") return;
+    let active = true;
+    const load = (then: (m: RoomsModule) => unknown) =>
+      loadRooms().then(
+        (m) => {
+          if (!active) return;
+          m.room.configure({
+            navigate: (slug) => pageRef.current.navigate(slug),
+            capture: (slug) => pageRef.current.capture(slug),
+          });
+          setRooms(m);
+          return then(m);
+        },
+        () => {
+          setResuming(false);
+          notify(LOAD_FAILED, { kind: "error" });
+        },
+      );
+    if (roomEntryPending())
+      void load(async (m) => {
+        try {
+          m.room.readAddress();
+          await m.room.resume();
+        } finally {
+          setResuming(false);
+        }
+      });
+    const onAddress = () => {
+      if (roomInAddress()) void load((m) => m.room.readAddress());
+    };
+    const onStart = () => void load((m) => m.room.requestStart());
+    window.addEventListener("hashchange", onAddress);
+    window.addEventListener(EDIT_TOGETHER, onStart);
+    return () => {
+      active = false;
+      window.removeEventListener("hashchange", onAddress);
+      window.removeEventListener(EDIT_TOGETHER, onStart);
+    };
+  }, [view]);
+  const snapshot = useSyncExternalStore(
+    rooms?.room.subscribe ?? noRoomSubscribe,
+    rooms?.room.getSnapshot ?? noRoomSnapshot,
+  );
+  return { rooms, snapshot, resuming };
+}
+
 /** Your diagrams: loads when the app is idle, or when first opened. */
 let libraryMessages: typeof import("./interop/ui/fileMessages");
 const LibraryDialog = lazyComponent(
@@ -302,6 +371,30 @@ function MainApp() {
     setUrl({ view: "canvas", example: DRAFT_SLUG, present: false });
   }, [setUrl]);
 
+  // Rooms: a joiner's new entry opens here; a room that ends keeps what its canvas shows.
+  const shownSlug = useRef(slug);
+  useLayoutEffect(() => {
+    shownSlug.current = slug;
+  });
+  const {
+    rooms,
+    snapshot: roomSnap,
+    resuming,
+  } = useRooms(url.view, {
+    navigate: (example) => setUrl({ view: "canvas", example, present: false }),
+    capture: (target) => (shownSlug.current === target ? canvasRef.current?.getDiagram() : undefined),
+  });
+  const openRoom = roomSnap?.open;
+  const roomHere = openRoom?.slug !== undefined && openRoom.slug === slug ? openRoom : undefined;
+  // Read once per room canvas mount (when its document is ready): later changes reach the canvas through the room.
+  const roomSession = roomHere?.session;
+  const roomReady = !!roomHere?.ready;
+  const roomInitial = useMemo(
+    () => (roomReady ? roomSession?.doc.project().diagram : undefined),
+    [roomSession, roomReady],
+  );
+  const roomBusy = resuming || !!roomSnap?.opening || (!!openRoom && openRoom.slug === undefined);
+
   const interop = useInterop({
     view: url.view,
     slug,
@@ -463,6 +556,15 @@ function MainApp() {
           shared={
             url.view === "canvas" && slug === SHARED_SLUG ? { onKeep: () => void interop.keepSharedCopy() } : undefined
           }
+          room={
+            rooms && openRoom ? (
+              <rooms.RoomChip
+                room={rooms.room}
+                here={!!roomHere}
+                onShow={() => openRoom.slug && setUrl({ view: "canvas", example: openRoom.slug, present: false })}
+              />
+            ) : undefined
+          }
           onPresent={() => setUrl({ present: true })}
           onNewDiagram={newDiagram}
           onLibrary={openLibrary}
@@ -485,9 +587,18 @@ function MainApp() {
                 <LabView onOpen={onLabOpen} />
               ) : displayedSlug === undefined ? (
                 <ViewLoading />
+              ) : roomBusy || (roomHere && (!roomHere.ready || !roomInitial)) ? (
+                rooms ? (
+                  <rooms.RoomConnecting room={rooms.room} />
+                ) : (
+                  <ViewLoading />
+                )
               ) : (
                 <CanvasView
-                  key={canvasMount.key}
+                  // A room's canvas is its own mount: it edits through the room (src/collab/room).
+                  key={roomHere ? `${canvasMount.key}:room${roomHere.mount}` : canvasMount.key}
+                  room={roomHere?.editor}
+                  initial={roomHere ? roomInitial : undefined}
                   ref={canvasCallbackRef}
                   slug={slug}
                   focusRequest={exampleFocus?.slug === slug ? exampleFocus.request : undefined}
@@ -546,6 +657,7 @@ function MainApp() {
         />
       )}
       {interop.layer}
+      {rooms && <rooms.RoomLayer room={rooms.room} slug={slug} canvas={canvasRef} />}
       {libraryOpen && (
         <LibraryDialog
           entries={library.entries.map((e) => (e.slug === slug ? { ...e, title: liveTitle(e.title) } : e))}

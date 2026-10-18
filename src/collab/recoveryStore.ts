@@ -1,3 +1,5 @@
+import { guardWrite, openRecoveryDb, RECOVERY_STORES, RecoveryWipedError } from "../lib/recoveryDb";
+
 /** Ciphertext checkpoints only. No document fields, room links or secret material enter IndexedDB. */
 export interface RecoveryChunk {
   iv: Uint8Array;
@@ -78,43 +80,19 @@ export class IndexedDbRecoveryStore implements RecoveryStore {
   constructor(private readonly factory: IDBFactory = indexedDB) {}
 
   private open(): Promise<IDBDatabase> {
-    return (this.db ??= new Promise((resolve, reject) => {
-      const request = this.factory.open("livediagrams-collab-recovery-v1", 3);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains("rooms")) db.createObjectStore("rooms", { keyPath: "id" });
-        if (!db.objectStoreNames.contains("metadata")) db.createObjectStore("metadata", { keyPath: "id" });
-        db.createObjectStore("updates", { keyPath: ["id", "sequence"] });
-        // One-time migration of existing Lab checkpoints, without decoding content or losing CRDT identity.
-        const upgrade = request.transaction;
-        if (!upgrade) throw new Error("recovery-upgrade");
-        const metadata = upgrade.objectStore("metadata");
-        const cursor = upgrade.objectStore("rooms").openCursor();
-        cursor.onsuccess = () => {
-          const item = cursor.result;
-          if (item) {
-            metadata.put(recoverySummary(item.value as RecoveryRecord));
-            item.continue();
-          }
-        };
-      };
-      request.onerror = () => {
-        this.db = undefined;
-        reject(request.error);
-      };
-      request.onblocked = () => {
-        this.db = undefined;
-        reject(new Error("recovery-blocked"));
-      };
-      request.onsuccess = () => {
-        const db = request.result;
+    return (this.db ??= openRecoveryDb(this.factory, recoverySummary).then(
+      (db) => {
         db.onversionchange = () => {
           db.close();
           this.db = undefined;
         };
-        resolve(db);
-      };
-    }));
+        return db;
+      },
+      (error: unknown) => {
+        this.db = undefined;
+        throw error;
+      },
+    ));
   }
 
   private async transaction<T>(
@@ -123,19 +101,27 @@ export class IndexedDbRecoveryStore implements RecoveryStore {
   ): Promise<T> {
     const db = await this.open();
     return new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(["rooms", "metadata", "updates"], mode);
+      const tx = db.transaction([...RECOVERY_STORES], mode);
       let value: T;
+      let wiped = false;
       tx.oncomplete = () => resolve(value);
-      tx.onerror = () => reject(tx.error ?? new Error("recovery-write"));
-      tx.onabort = () => reject(tx.error ?? new Error("recovery-abort"));
-      run(
-        tx.objectStore("rooms"),
-        (v) => {
-          value = v;
-        },
-        tx.objectStore("metadata"),
-        tx.objectStore("updates"),
-      );
+      tx.onerror = () => reject(wiped ? new RecoveryWipedError() : (tx.error ?? new Error("recovery-write")));
+      tx.onabort = () => reject(wiped ? new RecoveryWipedError() : (tx.error ?? new Error("recovery-abort")));
+      const go = () =>
+        run(
+          tx.objectStore("rooms"),
+          (v) => {
+            value = v;
+          },
+          tx.objectStore("metadata"),
+          tx.objectStore("updates"),
+        );
+      // Every write first checks that this device wasn't cleared since the page loaded (../lib/recoveryDb.ts).
+      if (mode === "readwrite")
+        guardWrite(tx, go, () => {
+          wiped = true;
+        });
+      else go();
     });
   }
 

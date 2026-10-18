@@ -54,6 +54,17 @@ function mayWrite(): boolean {
   return writes;
 }
 
+/** The generation this page loaded with: undefined outside the app's lifecycle (tests, the exported viewer). */
+export const storageGeneration = (): string | null | undefined => born;
+
+/**
+ * Whether this page may still write anything shared between tabs (localStorage, IndexedDB): the same check every
+ * localStorage write makes. A tab that finds the generation changed starts over.
+ */
+export function sharedWritesAllowed(): boolean {
+  return mayWrite();
+}
+
 /** The app's page joins the storage generation it loaded with, and hears when another tab clears everything. */
 export function startStorageLifecycle(): void {
   if (born !== undefined) return;

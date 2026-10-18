@@ -35,6 +35,19 @@ export class RoomRecovery {
   private checkpointRevision?: number;
   private retry?: () => void;
   private retryDelay: number = RECOVERY_RETRY.initialMs;
+  /** The document's state vector when its last checkpoint was captured (undefined before one is known). */
+  private savedVector?: Uint8Array;
+
+  /**
+   * What this document holds beyond its last saved checkpoint, as one CRDT update (it carries the whole delete set,
+   * so deletions are included): merging it into any later checkpoint adds only these edits and reverts nothing.
+   * Undefined when everything is saved.
+   */
+  unsaved(doc: CollabDoc): Uint8Array | undefined {
+    if (this.saved || doc.isEmpty()) return undefined;
+    return doc.encodeDiff(this.savedVector);
+  }
+
   /** Diagnostic bound on retained plaintext deltas (the live CRDT is owned by the session). */
   get pendingBytes(): number {
     return this.queuedBytes;
@@ -145,6 +158,7 @@ export class RoomRecovery {
       if (update) {
         doc.applyCheckpoint(update);
         this.saved = !!record;
+        if (record) this.savedVector = Y.encodeStateVectorFromUpdate(update);
       }
     } catch {
       this.problem = "unavailable";
@@ -208,6 +222,7 @@ export class RoomRecovery {
       const { record, update } = await this.read();
       if (update && !doc.applyCheckpoint(update).ok) throw new RecoveryResourceError();
       const revision = this.revision;
+      const vector = doc.stateVector();
       const updates = this.pending.map((p) => p.update);
       const bytes = updates.reduce((n, p) => n + p.byteLength, 0);
       const compact =
@@ -247,6 +262,7 @@ export class RoomRecovery {
       if (compact && this.checkpointRevision === revision) this.checkpointRequired = false;
       this.checkpointRevision = undefined;
       this.written = revision;
+      this.savedVector = vector;
     }
     this.saved = true;
     this.retryDelay = RECOVERY_RETRY.initialMs;

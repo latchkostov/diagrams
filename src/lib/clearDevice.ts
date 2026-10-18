@@ -1,4 +1,5 @@
 import { APP_PREFIX, GENERATION_KEY, stopStorageWrites } from "./storage";
+import { wipeRecoveryDb } from "./recoveryDb";
 
 // File ▸ Privacy ▸ Clear everything on this device…: every key Live Diagrams keeps in this browser goes (Your
 // diagrams, edits to examples, the shared slot, AI conversations, file destinations, settings), then the app starts
@@ -9,7 +10,19 @@ import { APP_PREFIX, GENERATION_KEY, stopStorageWrites } from "./storage";
 //   3. it writes a new storage generation, and says so on a BroadcastChannel too. Every other tab stops writing as it
 //      hears either, or at its next write at the latest (each write checks the generation), drops its own
 //      sessionStorage keys and reloads. None of them deletes anything shared, so nothing made after the wipe is lost.
-//   4. it drops its own sessionStorage keys, and starts over.
+//   4. it empties the room recovery database (./recoveryDb.ts) in one transaction that also records the new
+//      generation, so a late tab's encrypted write can't bring an old room back, and waits for that to commit (if
+//      it can't, clearDevice rejects without starting over: the dialog says so and offers to try again);
+//   5. it drops its own sessionStorage keys (an open room's tab entry with them), and starts over.
+// Before step 1 the open room (if any) stops: its writers, its timers and its connections (onClearDevice).
+
+const stops = new Set<() => void>();
+
+/** Something that writes outside the synchronous storage (an open room) stops first: it saves nothing more. */
+export function onClearDevice(stop: () => void): () => void {
+  stops.add(stop);
+  return () => stops.delete(stop);
+}
 
 /** Removes the app's keys from one storage, bypassing the write guards (this tab has stopped its own writers). */
 export function removeAppKeys(store: Storage): number {
@@ -29,10 +42,18 @@ export const newGeneration = (): string => `${Date.now().toString(36)}.${Math.ra
 
 /**
  * Clears everything (after the one confirmation) and starts this tab afresh at the app's plain address: what was in
- * memory (undo, the clipboard, sign-ins) goes too.
+ * memory (undo, the clipboard, sign-ins) goes too. Resolves just before the page starts over; rejects when the room
+ * recovery database couldn't be emptied (calling it again retries).
  */
-export function clearDevice(): void {
+export async function clearDevice(): Promise<void> {
   stopStorageWrites();
+  for (const stop of [...stops]) {
+    try {
+      stop();
+    } catch {
+      // A writer that fails to stop is still refused by every store's generation check.
+    }
+  }
   const next = newGeneration();
   try {
     removeAppKeys(localStorage);
@@ -47,10 +68,13 @@ export function clearDevice(): void {
   } catch {
     // No BroadcastChannel: the storage event and the check before every write still reach the other tabs.
   }
+  // This tab's session keys go first (its room among them, which this tab's stopped writes can't clear), so neither
+  // a successful start over nor a Reload page after a failed wipe resumes anything.
   try {
     removeAppKeys(sessionStorage);
   } catch {
     // Blocked: nothing to drop.
   }
+  await wipeRecoveryDb(next);
   window.location.replace(window.location.pathname);
 }

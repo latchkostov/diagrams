@@ -14,6 +14,7 @@ const TRANSLATED = [
   "src/static/*.ts",
   "src/components/ExamplesDialog.tsx",
   "src/components/ColorPickerModal.tsx",
+  "src/collab/room/RoomUi.tsx",
   "src/i18n/stencils.ts",
   "src/lib/stencilDisplaySearch.ts",
   "src/canvas/NodeTooltip.tsx",
