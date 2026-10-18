@@ -1,0 +1,329 @@
+/* ---------- overlays ---------- */
+
+.diagram-card {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  /* Room on the right for the Live toggle when the canvas is narrow (both side panels open). */
+  max-width: min(380px, calc(100% - 156px));
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 86%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: var(--node-shadow);
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.diagram-card h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  font-stretch: 106%;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.diagram-card p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+/* A private diagram: a lock chip on the title line (the description and meta run full width below). */
+.diagram-card.has-badge:not([hidden]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+}
+
+.diagram-card.has-badge > :not(h1, .private-badge) {
+  grid-column: 1 / -1;
+}
+
+.private-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  margin-top: -1px;
+  padding: 0 8px 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.private-badge:hover {
+  color: var(--text);
+  border-color: var(--line-strong, var(--line));
+}
+
+.private-badge[aria-disabled="true"] {
+  cursor: default;
+}
+
+.private-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.diagram-card-meta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.diagram-card.is-large {
+  top: 28px;
+  left: 32px;
+  max-width: min(560px, calc(100% - 340px));
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.diagram-card.is-large h1 {
+  font-size: 30px;
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.03em;
+}
+
+.diagram-card.is-large p {
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+/* The title above an exported image (src/interop/image.ts): the presentation card's type, no chrome.
+   It's in the canvas only for the moment of the shot. */
+.export-header {
+  position: absolute;
+  width: max-content;
+  color: var(--text);
+  font-family: var(--font-ui);
+  pointer-events: none;
+}
+
+.export-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.export-header p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+/* Nodes under the card (zoomed / panned): fold to a title chip; hover shows the rest again. */
+.diagram-card {
+  transition:
+    opacity 0.18s,
+    padding 0.18s;
+}
+
+.diagram-card.is-compact:not(:hover) {
+  padding: 6px 12px;
+  opacity: 0.86;
+}
+
+.diagram-card.is-compact:not(:hover) h1 {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diagram-card.is-compact:not(:hover) > :not(h1, .private-badge) {
+  display: none;
+}
+
+.diagram-card.is-large.is-compact:not(:hover) {
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 86%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.diagram-card.is-large.is-compact:not(:hover) h1 {
+  font-size: 16px;
+}
+
+/* On phones, reserve room for the diagram before the first fit. The full description
+   remains in diagram Properties and the example picker; it must not become a tall column. */
+@media (max-width: 640px) {
+  .diagram-card:not(.is-large) {
+    top: 64px;
+    max-width: calc(100% - 32px);
+    padding: 6px 12px;
+  }
+
+  .diagram-card:not(.is-large) h1 {
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .diagram-card:not(.is-large) > p {
+    display: none;
+  }
+
+  .diagram-card:not(.is-large) > .diagram-card-meta {
+    display: flex;
+  }
+}
+
+/* Presenting: full screen (when the browser allows it), then Exit presentation, in the top-right corner. */
+.present-bar {
+  position: absolute;
+  top: 24px;
+  /* Physical, in every language: the diagram's title card sits top left in presenting, and the diagram doesn't mirror. */
+  right: 24px;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+}
+
+.present-fs {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  /* Quiet, yet readable at rest: the glyph keeps 3:1 and Exit's words 4.5:1 in both themes (present.spec.ts). */
+  opacity: 0.9;
+  transition: opacity 0.15s;
+}
+
+.present-fs:hover,
+.present-fs:focus-visible {
+  opacity: 1;
+}
+
+.present-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding-block: 0;
+  padding-inline: 12px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 550;
+  opacity: 0.9;
+  transition: opacity 0.15s;
+}
+
+.present-exit:hover {
+  opacity: 1;
+}
+
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  pointer-events: none;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.canvas-empty strong {
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---- architecture checks: the count under the title, and the markers while the Checks card is open ---- */
+
+.diagram-card-meta .checks-count {
+  color: var(--warning);
+  font-weight: 550;
+}
+
+.diagram-card-meta .checks-count:hover {
+  text-decoration: underline;
+}
+
+.check-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Above nodes and edge labels, below menus. */
+  z-index: 1001;
+}
+
+.check-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  pointer-events: auto;
+}
+
+/* The mark itself grows when its row is hovered, never the positioned box: scale on it would scale its
+   translate too and fly the marker away from its node. */
+.check-marker svg,
+.check-marker::before {
+  transition: scale var(--dur-1) var(--ease-out);
+}
+
+.check-marker.is-warning svg path:first-child {
+  fill: var(--warning);
+  stroke: var(--surface);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.check-marker-ink {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.check-marker.is-suggestion::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.check-marker.is-hot svg,
+.check-marker.is-hot::before {
+  scale: 1.35;
+}

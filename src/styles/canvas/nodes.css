@@ -1,0 +1,253 @@
+/* Import before edges.css: keep the generic settings-card bridge after the specific pip bridge.
+ * Annotations and quick-add follow too: they override the connect-target outline and .dn positioning. */
+/* ---------- diagram node wrapper ---------- */
+
+.dn {
+  position: relative;
+}
+
+.dn .nb-card:hover,
+.dn .nb-compact:hover {
+  box-shadow: var(--node-shadow-hover);
+}
+
+.dn-handle.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--node-bg);
+  border: 1.5px solid color-mix(in oklab, var(--accent) 75%, var(--node-border));
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+
+.dn:hover .dn-handle,
+.react-flow__node.selected .dn-handle,
+.react-flow.connecting .dn-handle,
+.react-flow__handle.connectingto,
+.react-flow__handle.connectingfrom {
+  opacity: 1;
+}
+
+.dn-handle.react-flow__handle:hover {
+  background: var(--accent);
+}
+
+.dn-iconOnly .dn-handle.react-flow__handle-left,
+.dn-iconOnly .dn-handle.react-flow__handle-right {
+  top: 32px;
+}
+
+/* An invisible hit area of at least 20 px on screen at any zoom (--rf-zoom, set by the canvas), so
+   starting a connection needs no precision. It sits just outside the card, beside the dot, so a press
+   on the card near its edge still moves the node; and only on a hovered or selected node, so it never
+   takes clicks meant for an edge or the canvas next to a node. */
+.dn-handle.react-flow__handle::after {
+  --hit: max(23px, calc(20px / var(--rf-zoom, 1)));
+  content: "";
+  position: absolute;
+  display: none;
+  width: var(--hit);
+  height: var(--hit);
+  border-radius: 6px;
+}
+
+.dn:hover .dn-handle.react-flow__handle::after,
+.ann-shape:hover .dn-handle.react-flow__handle::after,
+.react-flow__node.selected .dn-handle.react-flow__handle::after {
+  display: block;
+}
+
+.dn-handle.react-flow__handle-left::after {
+  right: 50%;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.dn-handle.react-flow__handle-right::after {
+  left: 50%;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.dn-handle.react-flow__handle-top::after {
+  bottom: 50%;
+  left: 50%;
+  translate: -50% 0;
+}
+
+.dn-handle.react-flow__handle-bottom::after {
+  top: 50%;
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* While connecting: the node a drop connects to wears the selection outline. */
+.react-flow__node.is-connect-target .nb.nb-card,
+.react-flow__node.is-connect-target .nb.nb-compact {
+  border-color: color-mix(in oklab, var(--accent) 70%, var(--node-border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--accent) 28%, transparent),
+    var(--node-shadow-hover);
+}
+
+.react-flow__node.is-connect-target .nb.nb-icon .nb-tile {
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    0 0 0 4px color-mix(in oklab, var(--accent) 28%, transparent);
+}
+
+.react-flow__node.is-connect-target .ann {
+  outline: 2px solid color-mix(in oklab, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.react-flow.connecting .dn-handle.react-flow__handle {
+  opacity: 0.7;
+}
+
+.react-flow__handle.connectingto,
+.react-flow__handle.valid {
+  background: var(--accent);
+  /* `scale`, not `transform`: React Flow positions handles with a translate transform. */
+  scale: 1.35;
+}
+
+/* Dependency pips (Show ▸ Dependencies off): a small tab on the card's bottom edge. */
+.dn-pips {
+  position: absolute;
+  right: 12px;
+  bottom: -8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: default;
+}
+
+.dn-pip {
+  display: grid;
+  place-items: center;
+  color: var(--rel);
+}
+
+.dn-unknown {
+  position: absolute;
+  left: 10px;
+  top: -9px;
+  max-width: 200px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--danger);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- node tooltip (replaces the native title) ---------- */
+
+.node-tip {
+  position: fixed;
+  z-index: 60;
+  max-width: 280px;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-m);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  animation: tip-in var(--dur-2) var(--ease-out);
+}
+
+.node-tip.is-above {
+  transform: translate(-50%, -100%);
+}
+
+.node-tip.is-below {
+  transform: translate(-50%, 0);
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.node-tip strong {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.node-tip-sub {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.node-tip-kind {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.node-tip-desc {
+  color: var(--text-3);
+}
+
+/* A hover card inside the viewport shows above everything else there: React Flow paints nodes in order, each its
+   own stacking context, so a node with its dependency list open comes above the others and the edge labels (below
+   a card being edited, EDITING_Z); live, an edge's settings card comes above the metric badges. */
+.react-flow__node:has(.dn-pip-card) {
+  z-index: 1500 !important;
+}
+
+.react-flow[data-live] .react-flow__edgelabel-renderer:has(.fe-card) {
+  z-index: 4;
+}
+
+/* Under the pips, clear of the node's own title, scaled from that corner (DependencyPips.tsx). */
+.dn-pip-card {
+  top: calc(100% + 14px);
+  right: 0;
+  transform-origin: top right;
+  white-space: nowrap;
+}
+
+.fe-card.dn-pip-card::after {
+  top: auto;
+  bottom: 100%;
+  height: calc(16px / var(--fe-card-scale, 1));
+}
+
+.dn-pip-card-glyph {
+  display: grid;
+  place-items: center;
+  color: var(--rel);
+}
+
+.dn-pips:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Keep handles measured for routing while presentation hides editing affordances. */
+.is-presenting .dn .dn-handle {
+  visibility: hidden;
+}

@@ -1,0 +1,118 @@
+/* After nodes.css: .stencil-drag-preview shares .dn and must keep its offscreen positioning. */
+/* Over empty canvas the line ends in a "+": a drop there adds the next node. */
+.connect-add circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.connect-add path {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* ---------- quick-add and connected placement ---------- */
+
+/* The "+" on a single selected node: 20 px on screen at any zoom, 16 px off the card. A handle, so a drag
+   from it connects; a click opens quick-add for the next node. */
+.grow-chip.react-flow__handle {
+  --chip: calc(20px / var(--rf-zoom, 1));
+  --off: calc(16px / var(--rf-zoom, 1));
+  width: var(--chip);
+  height: var(--chip);
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  /* The app's accent, not the stencil's: at least 5:1 on the surface in both themes, whatever the stencil
+     (Azure Functions' amber or Go's cyan would be about 2:1). */
+  border: calc(1.5px / var(--rf-zoom, 1)) solid var(--ui-accent);
+  background: var(--surface);
+  color: var(--ui-accent);
+  box-shadow: 0 calc(1px / var(--rf-zoom, 1)) calc(4px / var(--rf-zoom, 1)) rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  transform: none;
+  z-index: 3;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+
+.grow-chip.react-flow__handle:hover {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+
+.grow-chip svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.grow-chip.react-flow__handle-right {
+  left: calc(100% + var(--off));
+  right: auto;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.grow-chip.react-flow__handle-left {
+  right: calc(100% + var(--off));
+  left: auto;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.grow-chip.react-flow__handle-bottom {
+  top: calc(100% + var(--off));
+  bottom: auto;
+  left: 50%;
+  translate: -50% 0;
+}
+
+.grow-chip.react-flow__handle-top {
+  bottom: calc(100% + var(--off));
+  top: auto;
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* Every side taken (a dense diagram): on the card's own top-right corner, half over the card. */
+.grow-chip.react-flow__handle[data-side="corner"] {
+  top: calc(var(--chip) / -2);
+  bottom: auto;
+  left: calc(100% - var(--chip) / 2);
+  right: auto;
+  translate: none;
+}
+
+.react-flow.connecting .grow-chip,
+.canvas-wrap.is-connecting .grow-chip {
+  visibility: hidden;
+}
+
+/* Where the next node will land: quick-add for it is open, or a stencil is dragged over the canvas. */
+.landing-outline {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: var(--radius-l);
+  border: calc(1.5px / var(--rf-zoom, 1)) dashed color-mix(in oklab, var(--accent) 70%, transparent);
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
+  pointer-events: none;
+}
+
+/* The picture a stencil drag shows: the node card it makes, drawn offscreen for the browser to snapshot. */
+.stencil-drag-preview {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  pointer-events: none;
+}

@@ -1,0 +1,378 @@
+/* Keep the translated header overrides below the base rail rules in this file. */
+/* Translated chrome wraps; diagram geometry always remains left to right.
+ * The shared menu/rail chevron rule stays intact here to preserve its selector list. */
+[dir="rtl"] .cm-chevron,
+[dir="rtl"] .palette-sec.is-closed .palette-sec-head svg {
+  transform: scaleX(-1);
+}
+
+/* ---------- palette ---------- */
+
+.palette {
+  width: 248px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-inline-end: 1px solid var(--line);
+  background: var(--surface);
+  min-height: 0;
+  z-index: 5;
+}
+
+.palette.is-collapsed {
+  width: 52px;
+  align-items: center;
+  padding-top: 10px;
+}
+
+.palette-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.palette-head-row {
+  display: flex;
+  gap: 6px;
+}
+
+.palette-head .field {
+  flex: 1;
+}
+
+.palette-family {
+  width: 100%;
+  height: 28px;
+  border-color: transparent;
+  color: var(--text-2);
+}
+
+.palette-family:hover {
+  border-color: var(--line);
+  background: var(--hover);
+}
+
+.palette-family select {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  padding-inline-start: 8px;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.palette-family-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-inline-start: 9px;
+  margin-inline-end: -2px;
+  border-radius: 50%;
+}
+
+.palette-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 16px;
+}
+
+.palette-list h3 {
+  margin: 10px 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.palette-sec-static,
+.palette-results-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px 4px;
+}
+
+.palette-results-head span {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-4);
+}
+
+/* Category headers fold their section. */
+.palette-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 28px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: start;
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
+}
+
+.palette-sec-head:hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+
+.palette-sec-head:active {
+  background: var(--press);
+}
+
+.palette-sec-head svg {
+  flex: none;
+  rotate: 90deg;
+  transition: rotate var(--dur-1) var(--ease-out);
+}
+
+.palette-sec.is-closed .palette-sec-head svg {
+  rotate: 0deg;
+}
+
+.palette-sec-count {
+  margin-inline-start: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.palette-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-bottom: 4px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: start;
+  font-size: 13px;
+  font-weight: 520;
+  color: var(--text);
+  cursor: grab;
+  transition: background var(--dur-1);
+}
+
+.palette-item:hover {
+  background: var(--surface-3);
+}
+
+.palette-item:active {
+  cursor: grabbing;
+  background: var(--press);
+}
+
+.palette-tile {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
+}
+
+.palette-tile .stencil-icon {
+  width: 22px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.palette-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Hint that a click adds it, without competing with the label. */
+.palette-add {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--text-3);
+  opacity: 0;
+  transition: opacity var(--dur-1);
+}
+
+.palette-item:hover .palette-add,
+.palette-item:focus-visible .palette-add {
+  opacity: 1;
+}
+
+/* Recently used: a row of icon tiles, same drag + click behaviour as the list. */
+.palette-recent {
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.palette-recent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 4px 6px;
+}
+
+.palette-recent-item {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
+  cursor: grab;
+  transition:
+    box-shadow var(--dur-1),
+    translate var(--dur-1) var(--ease-out);
+}
+
+.palette-recent-item .stencil-icon {
+  width: 22px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.palette-recent-item:hover {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent),
+    var(--shadow-1);
+  translate: 0 -1px;
+}
+
+.palette-recent-item:active {
+  cursor: grabbing;
+  translate: 0 0;
+}
+
+.palette-rail-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.palette-empty {
+  color: var(--text-3);
+  font-size: 13px;
+  padding: 8px 4px;
+}
+
+.palette-empty p {
+  margin: 0 0 8px;
+}
+
+.palette-foot {
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+/* ---- the stencil rail's Annotate group: pinned under the list (or among search matches) */
+.palette-annotate.is-results {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.palette-annotate.is-pinned {
+  flex: none;
+  padding: 2px 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.palette-annotate.is-pinned h3 {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.palette-annotate.is-pinned + .palette-foot {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.palette-annotate-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px 2px 6px;
+}
+
+.palette-annotate-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 2px 5px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 520;
+  cursor: grab;
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
+}
+
+.palette-annotate-item span {
+  font-size: 10.5px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.palette-annotate-item:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.palette-annotate-item:active {
+  cursor: grabbing;
+  background: var(--press);
+}
+
+.palette-sec-head {
+  height: auto;
+  min-height: 28px;
+}
+.palette-sec-head > span:first-of-type {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.palette-results-head {
+  flex-wrap: wrap;
+}
