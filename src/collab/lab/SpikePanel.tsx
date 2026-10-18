@@ -6,7 +6,7 @@ import { realClock } from "../clock";
 import { deriveRoomKeys, newRoom } from "../keys";
 import { consumeRoomFragment, parseRoomLink, parseRoomValue, ROOM_PARAM, type RoomLink } from "../link";
 import { bytesToBase64Url } from "../../interop/codec";
-import { createTrackerTransport, SPIKE_STUN, SPIKE_TRACKERS, type TrackerTransport } from "../transport/tracker";
+import { createTrackerTransport, COLLAB_STUN, COLLAB_TRACKERS, type TrackerTransport } from "../transport/tracker";
 import { applyMoves, demoDiagram, endpointList, refusalMessage } from "./demo";
 import { t, useLocale } from "../../i18n";
 import { downloadText } from "../../interop/files";
@@ -37,8 +37,9 @@ export function SpikePanel() {
     }
   });
   const [create, setCreate] = useState(false);
-  const [trackers, setTrackers] = useState(SPIKE_TRACKERS.join("\n"));
-  const [stun, setStun] = useState(SPIKE_STUN.map((s) => s.urls).join("\n"));
+  const createdRoom = useRef<RoomLink>(undefined);
+  const [trackers, setTrackers] = useState(COLLAB_TRACKERS.join("\n"));
+  const [stun, setStun] = useState(COLLAB_STUN.map((s) => s.urls).join("\n"));
   const [error, setError] = useState("");
   const [events, setEvents] = useState<string[]>([]);
   const [conn, setConn] = useState<{ client: RoomClient; transport: TrackerTransport }>();
@@ -74,6 +75,7 @@ export function SpikePanel() {
     let room: RoomLink;
     try {
       room = readRoom(key);
+      if (createdRoom.current && roomValue(room) === roomValue(createdRoom.current)) room = createdRoom.current;
     } catch (err) {
       setError((err as Error).message);
       return;
@@ -148,7 +150,8 @@ export function SpikePanel() {
         <button
           className="btn"
           onClick={() => {
-            setKey(roomValue(newRoom()));
+            createdRoom.current = newRoom();
+            setKey(roomValue(createdRoom.current));
             setCreate(true);
           }}
           disabled={!!conn}

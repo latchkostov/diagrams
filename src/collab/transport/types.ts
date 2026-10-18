@@ -10,6 +10,8 @@
 /** A transport's id for a connected peer. Opaque and untrusted. */
 export type PeerId = string;
 
+export type Connectivity = "waiting" | "connected" | "trackers-unreachable" | "no-answer" | "ice-failed" | "peer-left";
+
 export interface TransportCapabilities {
   /** What it is, for diagnostics ("memory", "webrtc-tracker"). */
   kind: string;
@@ -29,6 +31,8 @@ export interface TransportHandlers {
   join(peer: PeerId): void;
   /** A peer became unreachable (left, partitioned, disconnected). */
   leave(peer: PeerId): void;
+  /** Discovery or handshake state changed, even when no data channel has opened. */
+  connectivity?(): void;
 }
 
 export interface CollabTransport {
@@ -37,6 +41,8 @@ export interface CollabTransport {
   readonly self: PeerId;
   /** Peers reachable now. */
   peers(): readonly PeerId[];
+  /** Optional discovery diagnostics; a transport without discovery can simply wait for peers. */
+  connectivity?(): Connectivity;
   /**
    * Sends a frame to one peer, or to every reachable peer without `to`. Fire-and-forget: frames may be dropped,
    * duplicated or reordered (sessions are built for that). Never delivers to the sender itself. The transport

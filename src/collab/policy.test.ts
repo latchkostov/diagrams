@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { COMMON_HEADERS, cspDirectives } from "../../scripts/security-headers";
 import { formatRoomLink } from "./link";
 import { seededBytes } from "./random";
-import { SPIKE_STUN, SPIKE_TRACKERS } from "./transport/tracker";
+import { COLLAB_STUN, COLLAB_TRACKERS } from "./transport/tracker";
 
 // What keeps a room's key out of other people's logs, and the spike's public services out of production.
 
@@ -36,7 +36,7 @@ describe("production can't reach the spike's public services", () => {
     for (const embed of [false, true]) {
       const connect = cspDirectives({ embed }).find(([name]) => name === "connect-src")![1];
       expect(connect.filter((src) => /^wss?:/.test(src) || src === "*")).toEqual([]);
-      for (const tracker of [...SPIKE_TRACKERS, ...SPIKE_STUN.map((s) => String(s.urls))])
+      for (const tracker of [...COLLAB_TRACKERS, ...COLLAB_STUN.map((s) => String(s.urls))])
         expect(connect.some((src) => tracker.includes(src.replace(/^https?:\/\//, "")))).toBe(false);
     }
   });

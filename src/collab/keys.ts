@@ -48,9 +48,18 @@ const subtle = () => {
   return globalThis.crypto.subtle;
 };
 
+const freshRooms = new WeakSet<RoomLink>();
+
+/** A creation capability is local, unforgeable by parsing a link, and consumed on the first open. */
+export function claimRoomCreation(room: RoomLink): boolean {
+  return freshRooms.delete(room);
+}
+
 /** A new room: 32 random bytes from WebCrypto, epoch 0. */
 export function newRoom(random: RandomBytes = secureRandom): RoomLink {
-  return { epoch: 0, secret: random(ROOM_SECRET_BYTES) };
+  const room = { epoch: 0, secret: random(ROOM_SECRET_BYTES) };
+  freshRooms.add(room);
+  return room;
 }
 
 async function bits(base: CryptoKey, purpose: string, epoch: number, length: number): Promise<Uint8Array> {

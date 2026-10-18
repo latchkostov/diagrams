@@ -12,20 +12,127 @@ import { metaOf } from "./schema";
 import { refusalMessage } from "./lab/demo";
 import { seededBytes } from "./random";
 import { CollabSession, CONNECTION_WAIT_MS, PrivateDiagramError } from "./session";
+import { formatRoomLink, parseRoomLink } from "./link";
 import { canaryDiagram, openClient, roomFor, type TestClient } from "./transport/conformance";
 import { MemoryNetwork } from "./transport/memory";
 import type { CollabTransport } from "./transport/types";
 
 const room = roomFor(1);
 
+it("a second creator rejoining by link merges the room instead of reseeding it", async () => {
+  const clock = new FakeClock(),
+    net = new MemoryNetwork();
+  const created = roomFor(902);
+  const a = await CollabSession.open({
+    room: created,
+    transport: net.connect(),
+    privacy: {},
+    clock,
+    initial: canaryDiagram(),
+    clientId: 1,
+  });
+  const invitation = formatRoomLink("https://example.invalid/", created);
+  const b = await CollabSession.open({
+    room: parseRoomLink(invitation),
+    transport: net.connect(),
+    privacy: {},
+    clock,
+    clientId: 2,
+  });
+  const sessions = [a, b];
+  const settle = () => net.settle(async () => void (await Promise.all(sessions.map((s) => s.idle()))));
+  onTestFinished(async () => {
+    for (const s of sessions) {
+      await s.leave();
+      s.doc.destroy();
+    }
+  });
+  await settle();
+  b.doc.apply([
+    { op: "meta", set: { title: "Edited by B" } },
+    { op: "patch", kind: "nodes", id: "intake", set: { label: "B renamed this", x: 777 } },
+    { op: "remove", kind: "nodes", id: "ledger" },
+  ]);
+  await settle();
+  const expected = b.doc.project();
+  await a.leave();
+  // A new Yjs client with a higher id used to win the concurrent map entries written by hydrate().
+  for (const key of [parseRoomLink(invitation), created]) {
+    const returning = await CollabSession.open({
+      room: key,
+      transport: net.connect(),
+      privacy: {},
+      clock,
+      initial: { ...canaryDiagram(), title: "Stale creator copy" },
+      clientId: 4_000_000_000,
+    });
+    sessions.push(returning);
+    await settle();
+    expect(returning.doc.project()).toEqual(expected);
+    expect(b.doc.project()).toEqual(expected);
+    expect(await returning.doc.syncProof()).toEqual(await b.doc.syncProof());
+    returning.doc.apply([{ op: "meta", set: { title: "Returning creator edit" } }]);
+    await settle();
+    expect(b.doc.project().diagram?.title).toBe("Returning creator edit");
+    b.doc.apply([{ op: "meta", set: { title: "Edited by B" } }]);
+    await settle();
+    await returning.leave();
+  }
+});
+
+it("a reachable empty room and the last remaining member never show a connection failure", async () => {
+  const clock = new FakeClock(),
+    net = new MemoryNetwork();
+  const a = await openClient("creator", net.connect(), roomFor(903), clock, 1, { initial: canaryDiagram() });
+  const b = await openClient("guest", net.connect(), roomFor(903), clock, 2);
+  onTestFinished(async () => {
+    for (const c of [a, b]) {
+      await c.session.leave();
+      c.session.doc.destroy();
+    }
+  });
+  // Before delivery both the creator and joiner are simply waiting.
+  clock.advance(CONNECTION_WAIT_MS * 3);
+  expect([a.session.connectionFailed, b.session.connectionFailed]).toEqual([false, false]);
+  await net.settle(async () => void (await Promise.all([a.session.idle(), b.session.idle()])));
+  await b.session.leave();
+  await net.settle(() => a.session.idle());
+  clock.advance(CONNECTION_WAIT_MS * 3);
+  expect(a.session.connectionFailed).toBe(false);
+});
+
+for (const reason of ["trackers-unreachable", "no-answer", "ice-failed"] as const)
+  it(`only a reported ${reason} starts the failure deadline, and recovery cancels it`, async () => {
+    const clock = new FakeClock(),
+      net = new MemoryNetwork();
+    let state: "waiting" | typeof reason = reason;
+    const session = await CollabSession.open({
+      room: roomFor(904),
+      clock,
+      privacy: {},
+      transport: { ...net.connect(), connectivity: () => state },
+    });
+    onTestFinished(async () => {
+      await session.leave();
+      session.doc.destroy();
+    });
+    clock.advance(CONNECTION_WAIT_MS);
+    expect(session.connectionFailed).toBe(true);
+    expect(session.connectivity).toBe(reason);
+    state = "waiting";
+    session.retryConnection();
+    clock.advance(CONNECTION_WAIT_MS * 2);
+    expect(session.connectionFailed).toBe(false);
+  });
+
 it("bounds a never-connecting transport, retries discovery and keeps edits", async () => {
   const clock = new FakeClock(),
     net = new MemoryNetwork();
   const retry = vi.fn();
   const session = await CollabSession.open({
-    room,
+    room: roomFor(1),
     clock,
-    transport: { ...net.connect(), retry },
+    transport: { ...net.connect(), retry, connectivity: () => "trackers-unreachable" },
     privacy: {},
     initial: canaryDiagram(),
   });
@@ -70,7 +177,8 @@ for (const retry of [false, true])
     async () => {
       const clock = new FakeClock(),
         net = new MemoryNetwork();
-      const a = await openClient("a", net.connect(), room, clock, 21, { initial: canaryDiagram() });
+      const transport = { ...net.connect(), connectivity: () => "trackers-unreachable" as const };
+      const a = await openClient("a", transport, room, clock, 21, { initial: canaryDiagram() });
       onTestFinished(async () => {
         await a.session.leave();
         a.session.doc.destroy();

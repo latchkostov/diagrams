@@ -2,7 +2,13 @@ import { base64UrlToBytes, bytesToBase64Url, bytesToText, textToBytes } from "..
 import { realClock, type Clock } from "../clock";
 import { COLLAB_LIMITS } from "../limits";
 import { secureRandom, type RandomBytes } from "../random";
-import { FrameTooLargeError, type CollabTransport, type PeerId, type TransportHandlers } from "./types";
+import {
+  FrameTooLargeError,
+  type CollabTransport,
+  type Connectivity,
+  type PeerId,
+  type TransportHandlers,
+} from "./types";
 
 // C0 SPIKE, Lab only: WebRTC data channels matched through public BitTorrent WebSocket trackers (the WebTorrent
 // tracker protocol, as Trystero's torrent strategy uses it), written here rather than taken as a dependency so every
@@ -50,6 +56,21 @@ const MAX_PARTIAL_PER_PEER = 4;
 const OFFER_TTL_MS = 30_000;
 const GATHER_TIMEOUT_MS = 5_000;
 const SIGNAL_PREFIX = "ld1.";
+const RECONNECT_MAX_MS = 120_000;
+
+interface Tracker {
+  url: string;
+  ws?: WebSocket;
+  periodicSeconds: number;
+  due: number;
+  quick?: boolean;
+  cancelAnnounce?: () => void;
+  cancelReconnect?: () => void;
+  failures: number;
+  openedAt?: number;
+  lastQuickAnnounce: number;
+  quickFor: Map<PeerId, number>;
+}
 
 const latin1 = (b: Uint8Array) => String.fromCharCode(...b);
 const fromLatin1 = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 0xff);
@@ -121,7 +142,7 @@ interface Peer {
 
 export interface TrackerTransport extends CollabTransport {
   /** Sockets open now, peers connected now. */
-  diagnostics(): { trackersOpen: number; peers: number; pendingOffers: number };
+  diagnostics(): { trackersOpen: number; peers: number; pendingOffers: number; connectivity: Connectivity };
   /** Resolves once no signalling work is in flight (tests drain the offline fake with it). */
   settled(): Promise<void>;
 }
@@ -143,14 +164,30 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
   let closed = false;
   let discoveryAttempt = 0;
   const creatingOffers = new Set<RTCPeerConnection>();
-  const sockets: WebSocket[] = [];
+  const trackers: Tracker[] = [...new Set(opts.trackers)]
+    .filter((url) => /^wss:\/\//.test(url) || /^ws:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url))
+    .map((url) => ({
+      url,
+      periodicSeconds: opts.announceSeconds ?? 30,
+      due: Infinity,
+      failures: 0,
+      lastQuickAnnounce: -Infinity,
+      quickFor: new Map(),
+    }));
+  const sockets = () => trackers.flatMap((t) => (t.ws ? [t.ws] : []));
   const peers = new Map<PeerId, Peer>();
   /** Our outstanding offers by offer id: the connection waiting for an answer. */
   const pending = new Map<string, { pc: RTCPeerConnection; channel: RTCDataChannel; at: number }>();
-  let cancelTimer: (() => void) | undefined;
-  /** Quick re-announces: when one last went out, and when one last answered each greater peer. */
-  let lastQuickAnnounce = -Infinity;
-  const quickFor = new Map<PeerId, number>();
+  let handshakeFailed = false;
+  let peerLeft = false;
+  const connectivity = (): Connectivity => {
+    if ([...peers.values()].some((p) => p.open)) return "connected";
+    if (handshakeFailed) return "ice-failed";
+    if (peers.size) return "no-answer";
+    if (!sockets().some((s) => s.readyState === 1)) return "trackers-unreachable";
+    return peerLeft ? "peer-left" : "waiting";
+  };
+  const changed = () => handlers?.connectivity?.();
   const seenOffers = new Set<string>();
   /** Signalling work in flight (announces, tracker messages). */
   const inflight = new Set<Promise<unknown>>();
@@ -186,8 +223,10 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     channel.onopen = () => {
       if (closed || peer.open || peers.get(peer.id) !== peer) return;
       peer.open = true;
+      handshakeFailed = false;
       event("peer connected");
       handlers?.join(peer.id);
+      changed();
     };
     channel.onclose = () => drop(peer.id, peer);
     channel.onmessage = (e: MessageEvent) => receive(peer, e.data);
@@ -204,9 +243,23 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       /* already closed */
     }
     if (peer.open) {
+      peerLeft = true;
       event("peer left");
       handlers?.leave(id);
     }
+    changed();
+  }
+
+  function watchConnection(peer: Peer) {
+    const update = () => {
+      if (peers.get(peer.id) !== peer) return;
+      if (peer.pc.connectionState === "failed" || peer.pc.iceConnectionState === "failed") {
+        if (!peer.open) handshakeFailed = true;
+        drop(peer.id, peer);
+      } else if (peer.pc.connectionState === "closed") drop(peer.id, peer);
+    };
+    peer.pc.onconnectionstatechange = update;
+    peer.pc.oniceconnectionstatechange = update;
   }
 
   function receive(peer: Peer, data: unknown) {
@@ -279,9 +332,10 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     };
   }
 
-  /** Announces fresh offers to `only` (a tracker that just opened) or to every open tracker. */
-  async function announce(only?: WebSocket) {
-    if (closed) return;
+  /** Each tracker owns its announce schedule, including quick replies to peers it discovered. */
+  async function announce(tracker: Tracker) {
+    const ws = tracker.ws;
+    if (closed || !ws || ws.readyState !== 1) return;
     const attempt = discoveryAttempt;
     for (const [id, o] of pending)
       if (clock.now() - o.at > OFFER_TTL_MS) {
@@ -292,7 +346,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     const n = Math.max(0, Math.min(offersPerAnnounce, room));
     const offers = (await Promise.all(Array.from({ length: n }, () => makeOffer()))).filter((o) => o !== undefined);
     if (closed || attempt !== discoveryAttempt) return;
-    for (const ws of only ? [only] : sockets)
+    if (tracker.ws === ws && ws.readyState === 1)
       send(ws, {
         action: "announce",
         info_hash: infoHash,
@@ -302,38 +356,49 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
         downloaded: 0,
         offers,
       });
-    event(
-      `announce: ${offers.length} encrypted offers to ${sockets.filter((s) => s.readyState === 1).length} trackers`,
-    );
+    event(`announce: ${offers.length} encrypted offers to 1 tracker`);
   }
 
-  function schedule(seconds: number) {
-    cancelTimer?.();
+  function schedule(tracker: Tracker, seconds: number, quick = false) {
+    const due = clock.now() + seconds * 1000;
+    if (closed || tracker.ws?.readyState !== 1 || due >= tracker.due) return;
+    tracker.cancelAnnounce?.();
+    tracker.due = due;
+    tracker.quick = quick;
     const attempt = discoveryAttempt;
-    if (!closed)
-      cancelTimer = clock.after(
-        seconds * 1000,
-        () =>
-          void track(
-            announce().then(() => {
-              if (attempt === discoveryAttempt) schedule(opts.announceSeconds ?? 30);
-            }),
-          ),
+    tracker.cancelAnnounce = clock.after(seconds * 1000, () => {
+      tracker.due = Infinity;
+      tracker.quick = false;
+      tracker.cancelAnnounce = undefined;
+      void track(
+        announce(tracker).then(() => {
+          if (attempt === discoveryAttempt) schedule(tracker, tracker.periodicSeconds);
+        }),
       );
+    });
   }
 
-  async function onTrackerMessage(ws: WebSocket, raw: unknown) {
+  async function onTrackerMessage(tracker: Tracker, ws: WebSocket, raw: unknown) {
     if (closed || typeof raw !== "string" || raw.length > 256 * 1024) return;
     const attempt = discoveryAttempt;
-    const obsolete = () => closed || attempt !== discoveryAttempt;
+    const obsolete = () => closed || attempt !== discoveryAttempt || tracker.ws !== ws || ws.readyState !== 1;
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw) as Record<string, unknown>;
     } catch {
       return;
     }
-    if (msg.info_hash !== infoHash || typeof msg.peer_id !== "string" || msg.peer_id === selfId) {
-      if (typeof msg.interval === "number" && msg.interval >= 10) schedule(Math.min(msg.interval, 120));
+    if (msg.info_hash !== infoHash) return;
+    if (typeof msg.peer_id !== "string" || msg.peer_id === selfId) {
+      if (typeof msg.interval === "number" && Number.isFinite(msg.interval) && msg.interval >= 10) {
+        tracker.periodicSeconds = Math.min(msg.interval, 120);
+        // Periodic interval changes must never postpone a quick reply to a discovered peer.
+        if (!tracker.quick) {
+          tracker.cancelAnnounce?.();
+          tracker.due = Infinity;
+        }
+        schedule(tracker, tracker.periodicSeconds);
+      }
       return;
     }
     const from = hex(msg.peer_id);
@@ -348,13 +413,13 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       // once a second (a newcomer is never left waiting for the slow periodic announce).
       if (self < from) {
         const now = clock.now();
-        if (now - (quickFor.get(from) ?? -Infinity) > 5_000) {
-          if (quickFor.size >= 256) quickFor.clear();
-          quickFor.set(from, now);
+        if (now - (tracker.quickFor.get(from) ?? -Infinity) > 5_000) {
+          if (tracker.quickFor.size >= 256) tracker.quickFor.clear();
+          tracker.quickFor.set(from, now);
           // One already on its way serves this peer too.
-          if (!(lastQuickAnnounce > now)) {
-            lastQuickAnnounce = Math.max(now + 500, lastQuickAnnounce + 1_000);
-            schedule((lastQuickAnnounce - now) / 1000);
+          if (!(tracker.lastQuickAnnounce > now)) {
+            tracker.lastQuickAnnounce = Math.max(now + 500, tracker.lastQuickAnnounce + 1_000);
+            schedule(tracker, (tracker.lastQuickAnnounce - now) / 1000, true);
           }
         }
         return;
@@ -375,11 +440,12 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       const pc = new PC(config());
       const peer: Peer = { id: from, pc, open: false, nextMsg: 1, partial: new Map() };
       peers.set(from, peer);
+      changed();
       pc.ondatachannel = (e) => {
         if (peers.get(from) === peer) attach(peer, e.channel);
         else e.channel.close();
       };
-      pc.onconnectionstatechange = () => ["failed", "closed"].includes(pc.connectionState) && drop(from, peer);
+      watchConnection(peer);
       try {
         await pc.setRemoteDescription({ type: "offer", sdp });
         if (obsolete()) return;
@@ -404,6 +470,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
         });
         event("answered an offer");
       } catch {
+        if (!obsolete()) handshakeFailed = true;
         drop(from, peer);
       }
     } else if (answer) {
@@ -416,61 +483,100 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       pending.delete(offerId);
       const peer: Peer = { id: from, pc: waiting.pc, open: false, nextMsg: 1, partial: new Map() };
       peers.set(from, peer);
+      changed();
       attach(peer, waiting.channel);
-      waiting.pc.onconnectionstatechange = () =>
-        ["failed", "closed"].includes(waiting.pc.connectionState) && drop(from, peer);
+      watchConnection(peer);
       try {
         await waiting.pc.setRemoteDescription({ type: "answer", sdp });
       } catch {
+        if (!obsolete()) handshakeFailed = true;
         drop(from, peer);
       }
     }
   }
 
-  const connectTrackers = () => {
-    for (const url of opts.trackers) {
-      if (!/^wss:\/\//.test(url) && !/^ws:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) continue;
-      const ws = new WS(url);
-      sockets.push(ws);
+  function reconnect(tracker: Tracker) {
+    if (closed || tracker.cancelReconnect) return;
+    const base = Math.min(RECONNECT_MAX_MS, 1_000 * 2 ** Math.min(tracker.failures++, 7));
+    const delay = base * (0.5 + random(1)[0] / 510);
+    tracker.cancelReconnect = clock.after(delay, () => {
+      tracker.cancelReconnect = undefined;
+      connectTracker(tracker);
+    });
+  }
+  function connectTracker(tracker: Tracker) {
+    if (closed) return;
+    try {
+      const ws = new WS(tracker.url);
+      tracker.ws = ws;
       ws.onopen = () => {
+        tracker.openedAt = clock.now();
         event("tracker connected");
-        void track(announce(ws));
+        changed();
+        void track(announce(tracker).then(() => schedule(tracker, tracker.periodicSeconds)));
       };
-      ws.onmessage = (e: MessageEvent) => void track(onTrackerMessage(ws, e.data));
-      ws.onclose = () => event("tracker closed");
+      ws.onmessage = (e: MessageEvent) => void track(onTrackerMessage(tracker, ws, e.data));
+      ws.onclose = () => {
+        // A socket that only opens long enough to answer and close must still back off.
+        if (tracker.openedAt !== undefined && clock.now() - tracker.openedAt >= tracker.periodicSeconds * 1000)
+          tracker.failures = 0;
+        tracker.openedAt = undefined;
+        tracker.cancelAnnounce?.();
+        tracker.cancelAnnounce = undefined;
+        tracker.due = Infinity;
+        ws.onopen = ws.onclose = ws.onerror = ws.onmessage = null;
+        event("tracker closed");
+        changed();
+        reconnect(tracker);
+      };
       ws.onerror = () => event("tracker error");
+    } catch {
+      event("tracker error");
+      changed();
+      reconnect(tracker);
     }
-  };
+  }
   function resetDiscoveryAttempt() {
     discoveryAttempt++;
-    cancelTimer?.();
+    handshakeFailed = false;
+    for (const tracker of trackers) {
+      tracker.cancelAnnounce?.();
+      tracker.cancelReconnect?.();
+      tracker.cancelAnnounce = tracker.cancelReconnect = undefined;
+      tracker.due = Infinity;
+      tracker.quickFor.clear();
+      tracker.lastQuickAnnounce = -Infinity;
+    }
     for (const pc of creatingOffers) pc.close();
     creatingOffers.clear();
     for (const o of pending.values()) o.pc.close();
     pending.clear();
     for (const peer of peers.values()) if (!peer.open) drop(peer.id, peer);
-    quickFor.clear();
-    lastQuickAnnounce = -Infinity;
   }
-  connectTrackers();
-  schedule(opts.announceSeconds ?? 30);
+  trackers.forEach(connectTracker);
 
   return {
     capabilities: { kind: "webrtc-tracker", durable: false, maxFrameBytes },
     self,
     peers: () => [...peers.values()].filter((p) => p.open).map((p) => p.id),
+    connectivity,
     retry() {
       if (closed) return;
       resetDiscoveryAttempt();
-      for (const ws of sockets.splice(0)) {
+      for (const ws of sockets()) {
         ws.onopen = null;
         ws.onmessage = null;
         ws.onclose = null;
         ws.onerror = null;
         ws.close();
       }
-      connectTrackers();
-      schedule(opts.announceSeconds ?? 30);
+      for (const tracker of trackers) {
+        tracker.failures = 0;
+        tracker.openedAt = undefined;
+        tracker.ws = undefined;
+        connectTracker(tracker);
+      }
+      changed();
     },
     send(bytes, to) {
       if (closed) return;
@@ -506,7 +612,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       if (closed) return;
       closed = true;
       resetDiscoveryAttempt();
-      for (const ws of sockets) {
+      for (const ws of sockets()) {
         send(ws, {
           action: "announce",
           info_hash: infoHash,
@@ -524,17 +630,14 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       while (inflight.size) await Promise.all([...inflight]);
     },
     diagnostics: () => ({
-      trackersOpen: sockets.filter((s) => s.readyState === 1).length,
+      trackersOpen: sockets().filter((s) => s.readyState === 1).length,
       peers: [...peers.values()].filter((p) => p.open).length,
       pendingOffers: pending.size,
+      connectivity: connectivity(),
     }),
   };
 }
 
-/** The public trackers the spike offers (as Trystero lists them, checked 2026-10-16). Shown before any use. */
-export const SPIKE_TRACKERS = [
-  "wss://tracker.webtorrent.dev",
-  "wss://tracker.openwebtorrent.com",
-  "wss://tracker.btorrent.xyz",
-];
-export const SPIKE_STUN: RTCIceServer[] = [{ urls: "stun:stun.cloudflare.com:3478" }];
+/** The two approved public matchmaking endpoints. Shown before any use; still Lab only. */
+export const COLLAB_TRACKERS = ["wss://tracker.openwebtorrent.com", "wss://tracker.webtorrent.dev"];
+export const COLLAB_STUN: RTCIceServer[] = [{ urls: "stun:stun.cloudflare.com:3478" }];

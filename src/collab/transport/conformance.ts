@@ -14,6 +14,7 @@ import { openRoomClient, RoomClient } from "../client";
 import { FakeClock } from "../clock";
 import { CollabDoc } from "../doc";
 import { COLLAB_LIMITS } from "../limits";
+import { newRoom } from "../keys";
 import type { RoomLink } from "../link";
 import { seededBytes, seededRandom } from "../random";
 import type { Faults } from "./memory";
@@ -50,7 +51,7 @@ export const canaryDiagram = (): DiagramFile => ({
   edges: [{ id: "flow", from: "intake", to: "ledger" }],
 });
 
-export const roomFor = (seed: number): RoomLink => ({ epoch: 0, secret: seededBytes(seed * 7919 + 1)(32) });
+export const roomFor = (seed: number): RoomLink => newRoom(seededBytes(seed * 7919 + 1));
 
 export { RoomClient as TestClient } from "../client";
 
@@ -65,7 +66,7 @@ export function openClient(
   return openRoomClient({
     name,
     transport,
-    room,
+    room: opts.initial ? newRoom(() => room.secret.slice()) : room,
     clock,
     random: seededBytes(seed),
     clientId: opts.doc ? undefined : seed,

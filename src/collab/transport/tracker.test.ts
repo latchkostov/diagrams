@@ -6,7 +6,7 @@ import { seededBytes } from "../random";
 import { CANARY, canaryDiagram, containsBytes, describeTransportConformance, openClient, roomFor } from "./conformance";
 import { FakeDataChannel, FakePeerConnection, fakeEnvironment, SDP_CANARIES } from "./fakeWebrtc";
 import { endpointList } from "../lab/demo";
-import { createTrackerTransport, openSignal, sealSignal, SPIKE_TRACKERS } from "./tracker";
+import { createTrackerTransport, openSignal, sealSignal, COLLAB_TRACKERS } from "./tracker";
 
 // The public-matchmaking spike's transport, tested offline: a fake tracker, fake WebSockets and fake peer
 // connections (./fakeWebrtc.ts). Nothing here contacts a tracker, STUN or anything else.
@@ -362,7 +362,7 @@ describe("public matchmaking: what a tracker sees (synthetic capture)", () => {
   });
 
   it("reads endpoint lists split on whitespace, keeping every URL whole", () => {
-    expect(endpointList(`${SPIKE_TRACKERS.join("\n")}\n  `)).toEqual(SPIKE_TRACKERS);
+    expect(endpointList(`${COLLAB_TRACKERS.join("\n")}\n  `)).toEqual(COLLAB_TRACKERS);
     expect(endpointList("stun:stun.cloudflare.com:3478 stun:other.example:3478")).toEqual([
       "stun:stun.cloudflare.com:3478",
       "stun:other.example:3478",
@@ -390,7 +390,7 @@ describe("public matchmaking: what a tracker sees (synthetic capture)", () => {
     expect(opened).toEqual(["wss://ok.example", "ws://127.0.0.1:6411/"]);
   });
 
-  it("lists only wss:// public trackers for the spike", () => {
-    expect(SPIKE_TRACKERS.every((u) => u.startsWith("wss://"))).toBe(true);
+  it("lists only wss:// public matchmaking trackers", () => {
+    expect(COLLAB_TRACKERS.every((u) => u.startsWith("wss://"))).toBe(true);
   });
 });
