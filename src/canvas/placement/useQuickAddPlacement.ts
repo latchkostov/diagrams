@@ -14,7 +14,7 @@ import { t as tr } from "../../i18n";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import type { InlineEdit } from "../DiagramContext";
 import type { DiagramMeta } from "../convert";
-import type { MenuState } from "../CanvasView";
+import type { MenuState } from "../menus/useCanvasMenus";
 import { connectedMenuPlacement } from "../geometry/connectedMenuPlacement";
 import { towardOf, type Toward } from "../placement";
 import { landing } from "../landing";

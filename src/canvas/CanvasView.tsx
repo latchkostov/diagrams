@@ -1,3 +1,4 @@
+import { useCanvasMenuState, useMenuOpen, useCanvasContextMenus } from "./menus/useCanvasMenus";
 import { useRailPlacement } from "./placement/useRailPlacement";
 import { useDragPlacement } from "./placement/useDragPlacement";
 import { useConnectionPlacement } from "./placement/useConnectionPlacement";
@@ -8,7 +9,7 @@ import {
   useAddFromPalette,
   useAnnotateFromPalette,
 } from "./placement/useCanvasEditCommands";
-import { isAnnotationNode, isGroupNode } from "./types";
+
 import { useBoxSelection } from "./selection/useBoxSelection";
 import { useCanvasNavigation, useSelectionSummary, usePanKeys } from "./selection/useCanvasNavigation";
 import { useSettledSelection } from "./selection/useSettledSelection";
@@ -23,7 +24,6 @@ import {
 } from "./document/useCanvasDocument";
 import { useCaptionContrast } from "./useCaptionContrast";
 import { ConnectedQuickAddMenu } from "./ConnectedQuickAddMenu";
-import { type ConnectedMenuAnchor } from "./geometry/connectedMenuPlacement";
 
 import { edgeMarks } from "./edgeMarks";
 import {
@@ -34,7 +34,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type Ref,
 } from "react";
@@ -48,7 +47,6 @@ import {
   useReactFlow,
   useStoreApi,
   type Connection,
-  type EdgeMouseHandler,
   type NodeMouseHandler,
   type NodeTypes,
   type EdgeTypes,
@@ -71,7 +69,7 @@ import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
 import { ContextMenu } from "../components/ContextMenu";
 import { ShortcutsDialog } from "../components/ShortcutsDialog";
-import { actionRegistry, type ActionContext, type MenuNode } from "../editor/actions";
+import { actionRegistry } from "../editor/actions";
 import { builtinActions } from "../editor/builtinActions";
 import { useEditorPrefs } from "../editor/prefs";
 import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
@@ -79,7 +77,7 @@ import type { FlowSelection } from "../editor/historySelection";
 import { useEditor } from "../editor/useEditor";
 import { useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
 import { isEditableTarget } from "../editor/shortcuts";
-import type { Selection } from "../editor/types";
+
 import type { DiagramFlowEdge, FlowNode } from "./types";
 
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
@@ -186,20 +184,6 @@ export function CanvasView(props: Props) {
   );
 }
 
-const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
-
-export type MenuState = {
-  connected?: ConnectedMenuAnchor;
-  x: number;
-  y: number;
-  flipX?: number;
-  items: () => MenuNode[];
-  alignment?: "physical-left";
-  label: string;
-  searchable?: string;
-  testId?: string;
-};
-
 // Built-in actions live for the app's lifetime; HMR re-registers them by id.
 actionRegistry.register(builtinActions());
 
@@ -273,9 +257,7 @@ function CanvasInner({
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
-  const [menu, setMenu] = useState<MenuState | null>(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- factories resolve translated metadata from the locale store
-  const menuItems = useMemo(() => menu?.items() ?? [], [menu, locale]);
+  const { menu, setMenu, menuItems } = useCanvasMenuState(locale);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [inspectorFocus, setInspectorFocus] = useState<
     { name: string; seq: number; caret?: "end"; target?: string } | undefined
@@ -543,10 +525,7 @@ function CanvasInner({
   useEffect(() => {
     stopSimulations.current = checks.stopSimulations;
   }, [checks]);
-  const menuOpen = useRef(false);
-  useEffect(() => {
-    menuOpen.current = !!menu;
-  });
+  const menuOpen = useMenuOpen(menu);
   const allowOnDevice = useCallback((on: boolean) => void setOnDeviceAllowed(slug, on), [slug]);
   // Only development builds read content for privacy (privacyOf); production reads provenance alone.
   const privacy = privacyOf({
@@ -707,79 +686,18 @@ function CanvasInner({
 
   const spaceHeld = usePanKeys(wrapper, editGestures);
 
-  // ---------------------------------------------------------------- context menus
-
-  const openMenu = useCallback(
-    (e: ReactMouseEvent | MouseEvent, ctx: Omit<ActionContext, "editor" | "point">) => {
-      e.preventDefault();
-      if (readOnly) return;
-      const full: ActionContext = {
-        ...ctx,
-        editor,
-        mode: live ? "live" : "edit",
-        point: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
-      };
-      const items = actionRegistry.build(full);
-      setEditing(null);
-      hideTip();
-      if (!hintSeen) dismissHint();
-      setMenu(
-        items.length
-          ? {
-              x: e.clientX,
-              y: e.clientY,
-              items: () => actionRegistry.build(full),
-              get label() {
-                return tr("menu.valueNodeValueEdgeValueGroupValueSelectionValueAnnotation", { target: ctx.target });
-              },
-            }
-          : null,
-      );
-    },
-    [editor, screenToFlowPosition, readOnly, live, hideTip, hintSeen, dismissHint],
-  );
-
-  const onPaneContextMenu = useCallback(
-    (e: ReactMouseEvent | MouseEvent) => openMenu(e, { target: "canvas", selection: editor.getSelection() }),
-    [openMenu, editor],
-  );
-
-  const onNodeContextMenu: NodeMouseHandler<FlowNode> = useCallback(
-    (e, node) => {
-      const sel = editor.getSelection();
-      const count = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
-      if (node.selected && count > 1) return openMenu(e, { target: "selection", selection: sel });
-      if (isAnnotationNode(node)) {
-        editor.select({ nodeIds: [node.id] });
-        return openMenu(e, { target: "annotation", nodeId: node.id, selection: { ...EMPTY, nodeIds: [node.id] } });
-      }
-      if (isGroupNode(node)) {
-        const groupIds = [node.data.groupId];
-        editor.select({ groupIds });
-        return openMenu(e, { target: "group", groupId: node.data.groupId, selection: { ...EMPTY, groupIds } });
-      }
-      editor.select({ nodeIds: [node.id] });
-      openMenu(e, { target: "node", nodeId: node.id, selection: { ...EMPTY, nodeIds: [node.id] } });
-    },
-    [editor, openMenu],
-  );
-
-  const openEdgeMenu = useCallback(
-    (e: ReactMouseEvent | MouseEvent, edgeId: string) => {
-      editor.select({ edgeIds: [edgeId] });
-      openMenu(e, { target: "edge", edgeId, selection: { ...EMPTY, edgeIds: [edgeId] } });
-    },
-    [editor, openMenu],
-  );
-  const onEdgeContextMenu: EdgeMouseHandler<DiagramFlowEdge> = useCallback(
-    (e, edge) => openEdgeMenu(e, edge.id),
-    [openEdgeMenu],
-  );
-
-  const onSelectionContextMenu = useCallback(
-    (e: ReactMouseEvent) => openMenu(e, { target: "selection", selection: editor.getSelection() }),
-    [openMenu, editor],
-  );
+  const { onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu } =
+    useCanvasContextMenus({
+      editor,
+      screenToFlowPosition,
+      readOnly,
+      live,
+      hideTip,
+      hintSeen,
+      dismissHint,
+      setEditing,
+      setMenu,
+    });
 
   // The handlers below keep their identity across renders (see SNAP_GRID): a new node handler re-renders every node.
   const { onMoveStart, onMove } = useMoveHandlers(controller, hideTip, setMenu);

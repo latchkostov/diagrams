@@ -15,7 +15,7 @@ import { notify } from "../../interop/ui/toast";
 import { t as tr } from "../../i18n";
 import type { RenameTarget } from "../DiagramContext";
 import type { DiagramMeta } from "../convert";
-import type { MenuState } from "../CanvasView";
+import type { MenuState } from "../menus/useCanvasMenus";
 import {
   GROUP_PREFIX,
   isAnnotationNode,

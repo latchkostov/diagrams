@@ -5,7 +5,7 @@ import { quickAddMenu } from "../../editor/builtinActions";
 import { getRecentStencils, pushRecentStencil } from "../../lib/recentStencils";
 import { t as tr } from "../../i18n";
 import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode } from "../types";
-import type { MenuState } from "../CanvasView";
+import type { MenuState } from "../menus/useCanvasMenus";
 import { connectHitAt, connectOver, connectTarget } from "../gestures";
 
 export function useConnectionPlacement({
