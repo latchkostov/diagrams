@@ -12,6 +12,7 @@ import {
   fitDiagram,
 } from "./fixtures";
 import { typingWork, median } from "./typing-work";
+import type { CheckResponse } from "../../src/checks/worker";
 
 // Architecture checks in the editor: the count under the title, the Checks card (from the count, the canvas
 // right-click, Ctrl+K and the View menu), fixes, Ignore and Turn off (kept in the file), markers while the card
@@ -304,15 +305,51 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
 const LONG = "Node 0.12, renamed to something wider than any card";
 
 /** The page's check-run counts and switch (dev and e2e builds: `window.__checks`, src/canvas/checks/useChecks.ts). */
-type CheckRunStats = { started: number; finished: number; held: boolean; skipped: number };
+type CheckRunStats = { started: number; finished: number; held: boolean; skipped: number; pending(): boolean };
 const runStats = (page: Page) =>
-  page.evaluate(() => ({ ...(window as unknown as { __checks: CheckRunStats }).__checks }));
+  page.evaluate(() => {
+    const stats = (window as unknown as { __checks: CheckRunStats }).__checks;
+    return {
+      started: stats.started,
+      finished: stats.finished,
+      held: stats.held,
+      skipped: stats.skipped,
+      pending: stats.pending(),
+    };
+  });
 const holdChecks = (page: Page, held: boolean) =>
   page.evaluate((h) => void ((window as unknown as { __checks: CheckRunStats }).__checks.held = h), held);
 
 performanceTest("typing a label is as responsive while checks run as with them held", async ({ page }, info) => {
-  test.fixme(true, "Nightly CPU ratio: docs/backlog/2026-10-18-nightly-checks-typing.md");
   test.setTimeout(120_000);
+  // A worker may finish before the sample's two paints, especially under uneven CPU load.
+  // Queue its result until the CPU reading is taken: publishing findings belongs after the sample
+  // in both modes. The real worker still computes, and posting/copying stays inside the sample.
+  await page.addInitScript(() => {
+    const results = {
+      held: false,
+      queued: [] as { worker: Worker; data: unknown }[],
+      release() {
+        this.held = false;
+        for (const { worker, data } of this.queued.splice(0))
+          worker.dispatchEvent(new MessageEvent("message", { data }));
+      },
+    };
+    Object.assign(window, { __checkResults: results });
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        if (options?.name !== "checks") return;
+        this.addEventListener("message", (event: MessageEvent<CheckResponse>) => {
+          // A failed run must reach the real main-thread fallback inside the measurement.
+          if (!results.held || "error" in event.data) return;
+          event.stopImmediatePropagation();
+          results.queued.push({ worker: this, data: event.data });
+        });
+      }
+    };
+  });
   // 1,500 nodes in 100 pipelines, each with a loop of requests: every check runs, and capacity's fixed point
   // runs to its bound (the slowest case), in the worker.
   const nodes: object[] = [];
@@ -389,73 +426,74 @@ performanceTest("typing a label is as responsive while checks run as with them h
     ]).finally(() => clearTimeout(timer));
   };
 
-  /**
-   * Types `text` a key at a time. A key's sample runs from the key to its own check run coming due (the edits paused
-   * for the debounce, and the page went idle) and two frames on: the run starts inside it, its main-thread work
-   * included even if it blocks input, and the worker checks while those frames draw. Not a pause in ms: a busy page
-   * goes idle later, and a key typed before then put the run off again (nightly #78: 3 runs for 10 keys).
-   *
-   * The next key waits for that run's result to land, so a sample holds one run's start and no other run's result.
-   * Keys typed as the last run came due put the last result's rendering (the inspector's fix buttons coming back, a
-   * frame of a 1,500-node canvas: about 40 ms here, a cost of showing findings, not of checking) in every running
-   * sample and in no held one; once typing itself got cheaper (perf/1-editing: about 0.25 s a key to 0.1), that
-   * frame alone read as half a key. Checks run on this thread still read as five keys a key (the engine forced off
-   * its worker: 4.8 times the held median, against 1.5; 1.1 to 1.2 with the worker).
-   */
-  async function phase(held: boolean, text: string) {
-    await holdChecks(page, held);
-    // A run left over from the last phase finishes first.
-    await expect
+  const findings = page.getByTestId("inspector-findings");
+  const painted = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const finished = () =>
+    expect
       .poll(async () => {
         const stats = await runStats(page);
-        return stats.started - stats.finished;
+        return stats.pending;
       })
-      .toBe(0);
-    // Match the baseline's exact input. Appending through all phases made every
-    // running phase later/longer and mixed different text-layout/GC costs.
-    if ((await label.inputValue()) !== LONG) {
+      .toBe(false);
+
+  /** Restore the exact input and fresh findings before either member of a pair. */
+  async function prepare(text: string) {
+    await holdChecks(page, false);
+    if ((await label.inputValue()) !== text) {
       const due = nextDue();
-      await label.fill(LONG);
+      await label.fill(text);
       await label.press(TEXT_END);
       await due;
-      await expect
-        .poll(async () => {
-          const stats = await runStats(page);
-          return stats.started - stats.finished;
-        })
-        .toBe(0);
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     }
-    expect(await label.inputValue(), "each phase starts with identical text").toBe(LONG);
-    const before = await runStats(page);
-    const samples: number[] = [];
-    for (const ch of text) {
-      const due = nextDue();
-      samples.push(await work.key(ch, () => due));
-      await expect
-        .poll(async () => {
-          const stats = await runStats(page);
-          return stats.started - stats.finished;
-        })
-        .toBe(0);
-      // ...and its findings have drawn.
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    }
-    const after = await runStats(page);
-    return { samples, started: after.started - before.started };
+    await finished();
+    await painted();
+    await expect(label).toHaveValue(text);
+    await expect(findings).toHaveAttribute("data-stale", "false");
   }
-  // Three alternating phases of each kind on the same page.
+
+  let publishedInSample = 0;
+  async function sample(held: boolean, ch: string) {
+    // Held blocks used to keep stale findings after their first key, while every
+    // running key began fresh. That compared different inspector rendering work.
+    await expect(findings, "both baselines start with fresh findings").toHaveAttribute("data-stale", "false");
+    await holdChecks(page, held);
+    const before = await runStats(page);
+    const due = nextDue();
+    await page.evaluate(() => {
+      (window as unknown as { __checkResults: { held: boolean } }).__checkResults.held = true;
+    });
+    let cpu: number;
+    try {
+      // The run starts inside the sample, including document reads, copying/posting,
+      // or the entire engine if it regresses onto the main thread. Replies publish afterwards.
+      cpu = await work.key(ch, () => due);
+      publishedInSample += (await runStats(page)).finished - before.finished;
+    } finally {
+      await page.evaluate(() => {
+        (window as unknown as { __checkResults: { release(): void } }).__checkResults.release();
+      });
+    }
+    await finished();
+    await painted();
+    return { cpu, started: (await runStats(page)).started - before.started };
+  }
+
   const held: number[] = [];
   const running: number[] = [];
   let runs = 0;
-  for (const kind of ["h", "r", "h", "r", "h", "r"]) {
-    const p = await phase(kind === "h", " xyz123");
-    if (kind === "h") {
-      expect(p.started, "checks held: none ran").toBe(0);
-      held.push(...p.samples);
-    } else {
-      runs += p.started;
-      running.push(...p.samples);
+  // Twenty-one adjacent pairs, each typing the same key into the same prefix.
+  // The running member leaves fresh findings for the next pair's held member.
+  for (let round = 0; round < 3; round++) {
+    await prepare(LONG);
+    for (const ch of " xyz123") {
+      const prefix = await label.inputValue();
+      const baseline = await sample(true, ch);
+      expect(baseline.started, "checks held: none ran").toBe(0);
+      held.push(baseline.cpu);
+      await prepare(prefix);
+      const checking = await sample(false, ch);
+      running.push(checking.cpu);
+      runs += checking.started;
     }
   }
   await holdChecks(page, false);
@@ -465,11 +503,15 @@ performanceTest("typing a label is as responsive while checks run as with them h
       ...(window as unknown as { __planning: { reads: number; analyses: number; explanations: number } }).__planning,
     })),
   ).toEqual(planningBefore);
-  info.annotations.push({ type: "typing-cpu", description: JSON.stringify({ held, running, runs }) });
+  info.annotations.push({
+    type: "typing-cpu",
+    description: JSON.stringify({ held, running, runs, publishedInSample }),
+  });
   // Checks ran while the second set was typed: one after every key.
   expect(runs).toBeGreaterThanOrEqual(18);
   // They ran in the checks worker, not on this thread.
   expect(page.workers().length, "the checks worker").toBeGreaterThan(0);
   await work.close();
   expect(median(running), JSON.stringify({ held, running })).toBeLessThanOrEqual(median(held) * 1.5);
+  expect(publishedInSample, "worker results publish only after the CPU sample").toBe(0);
 });

@@ -154,6 +154,34 @@ describe("CheckRuns", () => {
   });
   const result = (title: string): CheckResult => ({ findings: [], ignored: [], off: [], ran: [title as never] });
 
+  it("reports pending debounce and idle work before any run starts", async () => {
+    const idle = fakeIdle();
+    let resolve: (r: CheckResult) => void = () => {};
+    const run = vi.fn(() => new Promise<CheckResult>((r) => (resolve = r)));
+    const runs = new CheckRuns(
+      () => {},
+      run,
+      (task) => createCheckScheduler(task, { idle: idle.api }),
+    );
+    runs.setRead(() => diagram(1));
+    expect(runs.pending()).toBe(false);
+    runs.changed();
+    expect(runs.pending()).toBe(true);
+    expect(run).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(FIRST_RUN_DELAY);
+    expect(runs.pending()).toBe(true);
+    expect(run).not.toHaveBeenCalled();
+    idle.flush();
+    expect(run).toHaveBeenCalledOnce();
+    expect(runs.pending()).toBe(true);
+    resolve(result("capacity"));
+    await vi.waitFor(() => expect(runs.pending()).toBe(false));
+    runs.changed();
+    expect(runs.pending()).toBe(true);
+    runs.stop();
+    expect(runs.pending()).toBe(false);
+  });
+
   it("waits longer before the first run, reads the diagram at run time, and drops results after stop()", async () => {
     const idle = fakeIdle();
     const delivered: (CheckResult | null)[] = [];

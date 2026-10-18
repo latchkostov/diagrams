@@ -196,6 +196,14 @@ export function useChecks(opts: {
   const [store] = useState(() => new ChecksStore());
   const [runs] = useState(() => new CheckRuns((r, d) => store.set(r, d)));
   const sims = store.simulations;
+  useEffect(() => {
+    if (!import.meta.env.DEV && import.meta.env.VITE_E2E !== "1") return;
+    const pending = () => runs.pending();
+    checkRunStats.pending = pending;
+    return () => {
+      if (checkRunStats.pending === pending) checkRunStats.pending = () => false;
+    };
+  }, [runs]);
   useEffect(() => runs.setRead(opts.read));
   useEffect(() => sims.setRead(opts.read));
   useEffect(() => sims.setContent(content), [content, sims]);
@@ -234,10 +242,11 @@ export function useChecks(opts: {
 
 /**
  * Counts of the canvas's check runs (started on the main thread, finished with a result, or held: due while the
- * switch held them), and the switch. Development and e2e builds put them on `window.__checks`, so a test can prove
- * checks ran while it measured, and compare the same typing with them held, paced alike (a key once a run is due).
+ * switch held them), the switch and the active scheduler's pending state. Development and e2e builds put them
+ * on `window.__checks`, so a test can prove checks ran while it measured, and compare the same typing with them
+ * held, paced alike (a key once a run is due). Pending includes work that has not started yet.
  */
-export const checkRunStats = { started: 0, finished: 0, held: false, skipped: 0 };
+export const checkRunStats = { started: 0, finished: 0, held: false, skipped: 0, pending: () => false };
 if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typeof window !== "undefined")
   (window as unknown as { __checks: typeof checkRunStats }).__checks = checkRunStats;
 
@@ -283,6 +292,11 @@ export class CheckRuns {
 
   now() {
     this.scheduler.now();
+  }
+
+  /** Includes the debounce and idle queue, when started/finished counts can still be equal. */
+  pending(): boolean {
+    return this.scheduler.busy();
   }
 
   stop() {

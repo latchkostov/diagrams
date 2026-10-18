@@ -258,6 +258,7 @@ test("a simulation chosen while the live session downloads runs once it arrives"
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect.poll(session.requested).toBe(true);
+  await expect(toggle).toHaveAttribute("aria-busy", "true");
   await expect(page.getByTestId("live-hud")).toHaveCount(0);
 
   await page.keyboard.press(`${MOD}+k`);
@@ -269,6 +270,7 @@ test("a simulation chosen while the live session downloads runs once it arrives"
 
   session.release();
   await expect(page.getByTestId("live-hud")).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-busy", "false");
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   expectNoErrors(consoleErrors);

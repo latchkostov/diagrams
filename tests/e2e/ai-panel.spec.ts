@@ -296,6 +296,22 @@ test.describe("AI panel dock", () => {
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
   });
 
+  test("switching diagrams clears an unapplied AI draft", async ({ page }) => {
+    await openAdvanced(page);
+    await page.getByTestId("ai-request").fill("Add a billing worker");
+    await page.getByTestId("ai-reply").fill(ADD_WORKER);
+    await expect(page.getByTestId("ai-apply")).toBeEnabled();
+    const document = await page.evaluateHandle(() => window.document);
+    // Use the picker without reloading: only changing the editor should reset the composer.
+    await openExample(page, "aws-fanout");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "aws-fanout");
+    expect(await document.evaluate((original) => original === window.document)).toBe(true);
+    await document.dispose();
+    await expect(page.getByTestId("ai-request")).toHaveValue("");
+    await expect(page.getByTestId("ai-reply")).toHaveValue("");
+    await expect(page.getByTestId("ai-apply")).toBeDisabled();
+  });
+
   test("saving the first example edit keeps the next AI draft and its focus", async ({ page }) => {
     await openAdvanced(page);
     await page.clock.install();

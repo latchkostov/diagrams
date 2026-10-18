@@ -291,7 +291,14 @@ export function InspectorFindings({
   state: RowState;
 }) {
   return (
-    <div className="insp-findings" role="list" aria-label="Checks" data-testid="inspector-findings" data-check-scope>
+    <div
+      className="insp-findings"
+      role="list"
+      aria-label="Checks"
+      data-testid="inspector-findings"
+      data-stale={state.stale}
+      data-check-scope
+    >
       {findings.map((f) => (
         <FindingRow key={f.id} finding={f} host={host} state={state} compact testPrefix="inspector-check" />
       ))}

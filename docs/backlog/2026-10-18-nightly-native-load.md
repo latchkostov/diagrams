@@ -1,22 +1,47 @@
-## Native Windows loading and teardown failures
+## Windows slow-motion context-close stalls
 
-Nightly 39115946465 on cf252ceb reported seven failures still unresolved after two
-Linux reproduction rounds at 3 CPUs, 7 GB and three workers. The corresponding
-tests passed both rounds. Per the triage velocity rule, these exact cases use
-Windows-only `test.fixme`; Linux and macOS coverage remains enabled.
+Four Windows-only quarantines from Nightly 39115946465 remain. The cold-load
+cases from the same inventory are addressed by the follow-ups nine readiness
+changes; the slow-motion cases have no established causal fix.
 
-| Test at the Nightly revision      | Evidence                                                                                                               | Next investigation                                                                       |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `followups4-inspector.spec.ts:58` | `live-controls` absent; the LiveSession request took 10.17 s and simulation 9.75 s.                                    | Profile the native preview server and competing idle preloads on a small Windows runner. |
-| `live.spec.ts:91`                 | Controls absent while simulation and Live dependencies were downloading.                                               | Same cold-load investigation, retaining the current assertions.                          |
-| `live.spec.ts:129`                | Hover stays at Loading throughput explanation; planning UI request took 6.51 s with other dependencies still arriving. | Separate native filesystem/network serving from module evaluation and planning.          |
-| `slowmo.spec.ts:65`               | Test and context teardown each exceeded their existing 30 s backstop; trace is incomplete.                             | Capture browser process diagnostics before teardown stalls.                              |
-| `slowmo.spec.ts:108`              | Trace reaches the final disabled-control assertions, then context close stalls.                                        | Same teardown investigation; keep every engine-mutation assertion.                       |
-| `slowmo.spec.ts:271`, fitted only | Trace reaches viewport restoration assertions, then context close stalls.                                              | Same teardown investigation; the manually zoomed case stays enabled.                     |
-| `slowmo.spec.ts:297`              | Trace reaches the recording option assertions, then context close stalls.                                              | Same teardown investigation.                                                             |
+| Test at the Nightly revision      | Original evidence                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------- |
+| `slowmo.spec.ts:65`               | Test and context teardown each exceeded their 30 s backstop; its trace is incomplete.  |
+| `slowmo.spec.ts:108`              | Ordinary actions and disabled-control checks finish slowly, then context close stalls. |
+| `slowmo.spec.ts:271`, fitted only | The trace reaches viewport restoration, then context close stalls.                     |
+| `slowmo.spec.ts:297`              | The recording-options path is followed by a context-close stall.                       |
 
-The long requests support a load classification, but do not establish whether
-the cause is native serving, module evaluation or idle preload contention.
-No assertion, timeout or retry count was relaxed. Remove each `fixme` only with a
-native reproduction, a causal fix and repeated small-runner validation. This
-entry does not cover `slowmo.spec.ts:135`, owned by the separate follow-up branch.
+## Native investigation on 2026-10-18
+
+Both investigation rounds run natively on Windows, restricted to four logical
+CPUs (`0xf` affinity), three browser workers and production E2E builds. The first
+uses one competing CPU process and repeats all slow-motion cases with the AI,
+checks and lazy-load neighbours five times (`tests/.output/g/r8XXfet/`: 305 passed,
+zero failed or flaky). The second uses two competing CPU processes, repeats the
+four unskipped cases with the cold-load regressions five times, and records worker
+closure and outstanding requests (`tests/.output/g/rsTrNzD/`).
+That second round passes all 115 cases, with zero failures, flaky cases or skips.
+Each of the four target cases passes ten native repetitions across both rounds.
+
+All 20 target contexts in the second round record every created worker closing
+and no outstanding requests. These four cases never start a MediaRecorder. Source review
+also finds the frame loop cancelling its animation callback and disposing its
+renderer on unmount, and slow-motion look-ahead cancelling its callback on dispose.
+These observations do not establish a cleanup defect behind the original stall.
+
+The four original failures belong to four worker indices. The fitted restoration
+case is its worker's first recorded test; the predecessors of the first two
+failures are routing and axe cases, rather than recording. A preceding recording
+in the same worker therefore does not explain all four failures.
+
+The original downloaded traces show seconds spent in ordinary locator calls and
+module requests, in addition to stalled context teardown. For example, LiveSession
+loads take about ten seconds in two of the slow-motion traces. The trace evidence
+therefore does not isolate product rendering, native serving or trace finalization.
+
+Keep the four `test.fixme` annotations: passing native repetitions without a
+reproduction or causal fix is insufficient to lift them. No timeout, assertion,
+retry count, recording semantics or playback cleanup is changed. The manually
+zoomed restoration case remains enabled. Capture browser-process and preview
+request diagnostics on the original small Windows runner before its context-close
+backstop, separating pending requests from worker shutdown and trace packaging.
