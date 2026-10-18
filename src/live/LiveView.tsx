@@ -38,8 +38,6 @@ export interface LiveHandle {
 }
 
 export interface LiveViewProps {
-  /** Inspector visibility and completed resizes (slow motion replans for them). */
-  paneRevision?: number | string;
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
   editor?: EditorApi;
   presenting: boolean;

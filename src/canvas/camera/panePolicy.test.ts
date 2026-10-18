@@ -431,6 +431,21 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [{ type: "follow", view: V }],
     ],
     [
+      "W6 following waits while the pane settles (a paused replay holds its view first)",
+      state({ mode: "live" }),
+      [
+        { type: "slowmo", on: true },
+        { type: "pane.changed", cause: "panel" },
+        { type: "slowmo.follow", view: V },
+        settled(),
+        { type: "slowmo.follow", view: V },
+      ],
+      [
+        { type: "slowmoPane", following: true },
+        { type: "follow", view: V },
+      ],
+    ],
+    [
       "W6 no following outside slow motion",
       state({ mode: "live", owner: "slowmo" }),
       [{ type: "slowmo.follow", view: V }],
@@ -701,7 +716,10 @@ describe("panePolicy: event sequences", () => {
           // Slow motion owns the view only while it runs; its commands run only then; nothing else refits it.
           if (d.state.owner === "slowmo") expect(d.state.slowmo).toBe(true);
           if (command && SLOWMO.has(command.type)) expect(before.slowmo).toBe(true);
-          if (command?.type === "follow") expect(before.owner).toBe("slowmo");
+          if (command?.type === "follow") {
+            expect(before.owner).toBe("slowmo");
+            expect(before.pending).toBeNull();
+          }
           if (before.slowmo && d.state.slowmo && command) expect(WHILE_SLOWMO.has(command.type)).toBe(true);
           if (command?.type === "fit" && before.slowmo) expect(command.reason).not.toBe("pane");
           // Live's fits only outside the canvas's edit mode or for its own work.

@@ -1,9 +1,12 @@
 // Wires slow motion into the live view: the session (record ahead, then replay), the camera (fit the
 // path once, follow only when it can't be read), the keys (Space, ← →, Esc) and the painter the
 // particle renderer draws over its frozen frame. LiveView calls `frame()` from its animation loop.
+// The canvas camera moves the view (src/canvas/camera, panePolicy rows W1–W7): slow motion owns it while it
+// runs (owner `slowmo`; a pan by hand gives it up) and supplies the geometry, from camera.ts.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { useStoreApi } from "@xyflow/react";
+import type { CameraController } from "../../canvas/camera";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { isEditableTarget } from "../../editor/shortcuts";
 import type { SimSnapshot } from "../../sim/types";
@@ -13,13 +16,12 @@ import type { LiveController } from "../controller";
 import { LIVE_BAR_SPACE } from "../layout";
 import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../traceCardLayout";
 import { isRecordingActive } from "../record/framing";
-import { FIT_MS, PAN_MS, followPan, planCamera, type CameraPlan, type FlowBox, type Insets, type View } from "./camera";
+import { followPan, planCamera, type CameraPlan, type FlowBox, type Insets, type View } from "./camera";
 import { SlowPainter, type PaintedLabel } from "./painter";
 import { buildScript } from "./script";
 import { SlowMotion, type SlowSource, type SlowState } from "./session";
 
 type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
-type SetViewport = (v: View, opts?: { duration?: number }) => unknown;
 
 /** Things that own the keys before slow motion does (menus, dialogs, side panels). */
 const KEY_OWNERS = '[role="menu"], [role="dialog"], [data-testid="sim-panel"], [data-testid="capacity-panel"]';
@@ -46,24 +48,21 @@ export interface SlowMotionView {
 export function useSlowMotion(opts: {
   controller: LiveController;
   store: Store;
-  setViewport: SetViewport;
+  camera: CameraController;
   presenting: boolean;
   reducedMotion: boolean;
   /** A side panel covers the right of the pane. */
   panelOpen: boolean;
   /** A recording is being captured: the trace card is hidden, so the fit can use its room. */
   capturing: boolean;
-  /** Completed Inspector geometry changes, after its drag has settled. */
-  paneRevision?: number | string;
 }): SlowMotionView {
-  const { controller, store, setViewport, presenting, reducedMotion, panelOpen, capturing } = opts;
+  const { controller, store, camera, presenting, reducedMotion, panelOpen, capturing } = opts;
   const live = useRef({ reducedMotion, panelOpen, capturing, presenting });
   useLayoutEffect(() => {
     live.current = { reducedMotion, panelOpen, capturing, presenting };
   }, [reducedMotion, panelOpen, capturing, presenting]);
   const plan = useRef<CameraPlan | null>(null);
-  const following = useRef(true);
-  const panUntil = useRef(0);
+  /** A paused replay whose pane changed holds its view at this time, until play, a seek or a step. */
   const pausedPaneAt = useRef<number | null>(null);
   const before = useRef<View | null>(null);
   const [painter] = useState(() => new SlowPainter());
@@ -160,8 +159,9 @@ export function useSlowMotion(opts: {
     session.end();
     const view = before.current;
     before.current = null;
-    if (view && was === "on") void setViewport(view, { duration: live.current.reducedMotion ? 0 : FIT_MS });
-  }, [session, setViewport]);
+    // Back to the view (and its owner) from before; a replay that never started has nothing to restore.
+    camera.dispatch({ type: "slowmo", on: false, restore: view && was === "on" ? view : null });
+  }, [session, camera]);
 
   // The engine was rebuilt (restart, a structural edit): slow motion's journey no longer applies.
   useEffect(() => {
@@ -175,72 +175,43 @@ export function useSlowMotion(opts: {
     });
   }, [controller, session]);
 
-  // The camera: fit the whole path once per take (and after presentation, a panel or a recording
-  // changes the room), then stay put. Following starts on the first node at a readable zoom.
+  // The camera. Slow motion owns the view while it records or replays (panePolicy W1): Live's own refits and
+  // narration leave it alone, and ending it gives the view back (W2). Each take, and each change of its room
+  // (presenting, a panel, a recording), plans the camera once the pane settles (W3, W4): a fit of the whole path,
+  // then stay put, or following from the first node at a readable zoom. A pane change asks again (W5).
   const on = state.status === "on";
+  const active = on || state.status === "capturing";
   const take = state.take;
   useEffect(() => {
-    if (!on) return;
-    following.current = true;
-    const t = window.setTimeout(() => {
-      const s = session.getState();
-      if (!s.script) return;
-      const nodes = buildJourney(s.trace!, controller.currentDiagram).nodes;
+    camera.dispatch({ type: "slowmo", on: active });
+  }, [camera, active]);
+  useEffect(() => {
+    if (on) camera.dispatch({ type: "slowmo.take" });
+  }, [camera, on, take, presenting, panelOpen, capturing]);
+  useEffect(() => {
+    const planFor = (trace: NonNullable<SlowState["trace"]>) => {
+      const nodes = buildJourney(trace, controller.currentDiagram).nodes;
       const still = live.current.reducedMotion;
-      plan.current = planCamera(boxes(nodes), boxes([s.trace!.origin]), pane(), insets(), overlays(), still);
-      if (plan.current) void setViewport(plan.current.view, { duration: live.current.reducedMotion ? 0 : FIT_MS });
-      panUntil.current = performance.now() + FIT_MS;
-    }, 180);
-    return () => window.clearTimeout(t);
-  }, [on, take, presenting, panelOpen, capturing, session, controller, boxes, pane, insets, overlays, setViewport]);
-
-  // A playing, fitted take can be replanned for the new pane without rebuilding its script or
-  // seeking. Paused replays and a camera moved by hand keep their exact view.
-  const fittedPane = useRef(opts.paneRevision);
-  useEffect(() => {
-    if (fittedPane.current === opts.paneRevision) return;
-    fittedPane.current = opts.paneRevision;
-    if (!on) return;
-    const current = session.getState();
-    pausedPaneAt.current = current.playing ? null : current.t;
-    if (!current.playing) {
-      // A follow pan may still be easing from before Pause. Stop it at the current view,
-      // then hold that view until playback or an explicit seek/step changes the replay.
-      const [x, y, zoom] = store.getState().transform;
-      void setViewport({ x, y, zoom }, { duration: 0 });
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      const s = session.getState();
-      if (!s.playing || !s.trace || !following.current || plan.current?.mode !== "fit") return;
-      const nodes = buildJourney(s.trace, controller.currentDiagram).nodes;
-      plan.current = planCamera(
-        boxes(nodes),
-        boxes([s.trace.origin]),
-        pane(),
-        insets(),
-        overlays(),
-        live.current.reducedMotion,
-      );
-      if (plan.current) void setViewport(plan.current.view, { duration: live.current.reducedMotion ? 0 : FIT_MS });
-      panUntil.current = performance.now() + (live.current.reducedMotion ? 0 : FIT_MS);
-    }, 200);
-    return () => window.clearTimeout(timer);
-  }, [opts.paneRevision, on, session, controller, boxes, pane, insets, overlays, setViewport, store]);
-
-  // Panning or zooming by hand stops following until Replay.
-  useEffect(() => {
-    const root = store.getState().domNode;
-    if (!on || !root) return;
-    const pane = root.querySelector(".react-flow__pane") ?? root;
-    const stop = () => (following.current = false);
-    pane.addEventListener("pointerdown", stop);
-    root.addEventListener("wheel", stop, { passive: true });
-    return () => {
-      pane.removeEventListener("pointerdown", stop);
-      root.removeEventListener("wheel", stop);
+      plan.current = planCamera(boxes(nodes), boxes([trace.origin]), pane(), insets(), overlays(), still);
+      return plan.current?.view ?? null;
     };
-  }, [on, store]);
+    return camera.slowmo({
+      plan() {
+        const s = session.getState();
+        return s.script && s.trace ? planFor(s.trace) : null;
+      },
+      // A playing, fitted take is replanned for the new pane without rebuilding its script or seeking. A paused
+      // replay and a camera moved by hand keep their exact view (a follow pan easing from before Pause stops).
+      pane(following) {
+        const s = session.getState();
+        if (s.status !== "on") return null;
+        pausedPaneAt.current = s.playing ? null : s.t;
+        if (!s.playing) return "hold";
+        if (!s.trace || !following || plan.current?.mode !== "fit") return null;
+        return planFor(s.trace);
+      },
+    });
+  }, [camera, session, controller, boxes, pane, insets, overlays]);
 
   // Keys: Space plays / pauses, ← → step hop by hop, Esc goes back to live. Menus, dialogs, panels,
   // text fields and a recording keep theirs; a selection is cleared before Esc leaves.
@@ -287,19 +258,19 @@ export function useSlowMotion(opts: {
       session.advance(wallMs, speed);
       const f = session.frame();
       painter.show(f, live.current.presenting ? 1.3 : 1);
-      // Following: pan between hops only, never while a dot travels.
+      // Following: pan between hops only, never while a dot travels, one move at a time (the take's fit or the
+      // last pan lands first). A pan by hand gave the view up until the next take.
       const p = plan.current;
       const s = session.getState();
       if (
         f &&
         p?.mode === "follow" &&
-        following.current &&
+        camera.state.owner === "slowmo" &&
         !f.travelling &&
         s.script &&
         (s.playing || pausedPaneAt.current !== s.t)
       ) {
-        const now = performance.now();
-        if (now >= panUntil.current) {
+        if (!camera.moving) {
           const next = new Set(f.frontier);
           // What must never be under the trace card: the node at work now and the next targets.
           const focus = new Set<string>();
@@ -317,16 +288,12 @@ export function useSlowMotion(opts: {
           }
           const [x, y, zoom] = store.getState().transform;
           const pan = followPan(boxes(next), { x, y, zoom }, pane(), insets(), overlays(), undefined, boxes(focus));
-          if (pan) {
-            const reduced = live.current.reducedMotion;
-            void setViewport(pan, { duration: reduced ? 0 : PAN_MS });
-            panUntil.current = now + (reduced ? 0 : PAN_MS);
-          }
+          if (pan) camera.dispatch({ type: "slowmo.follow", view: pan });
         }
       }
       return painter;
     },
-    [session, painter, controller, store, boxes, pane, insets, overlays, setViewport],
+    [session, painter, controller, store, boxes, pane, insets, overlays, camera],
   );
 
   const ui = useCallback(

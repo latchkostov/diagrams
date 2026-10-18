@@ -53,7 +53,7 @@ import type {
  * |     | mode.changed (live, present)  |                                            |                                         |
  * | W4  | pane.settled                  | pending slowmo.take                        | slowmoPlan                              |
  * | W5  | pane.settled                  | pending panel, slow motion on              | slowmoPane (it holds or replans)        |
- * | W6  | slowmo.follow                 | owner slowmo                               | follow                                  |
+ * | W6  | slowmo.follow                 | owner slowmo, no work waits for the pane   | follow                                  |
  * | W7  | narration, live.*             | slow motion on                             | the room only: slow motion's camera     |
  *
  * Pending work is replayed with the owner at replay time (R1, R5, L5–L8), runs exactly once (the settled event
@@ -144,7 +144,9 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (!state.slowmo) return next({});
       return next({ owner: "slowmo", zoomPriority: false, pending: { cause: "slowmo.take" } });
     case "slowmo.follow":
-      return state.slowmo && state.owner === "slowmo" ? next({}, { type: "follow", view: event.view }) : next({});
+      // While the pane settles the frontier is measured against a pane that is still changing: wait for W4, W5.
+      if (!state.slowmo || state.owner !== "slowmo" || state.pending) return next({});
+      return next({}, { type: "follow", view: event.view });
     case "reveal.requested":
       if (state.zoomPriority) return next({});
       return next({}, { type: "reveal", cause: event.cause, withEdges: false });

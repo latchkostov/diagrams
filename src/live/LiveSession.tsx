@@ -3,7 +3,7 @@ import { useLocale } from "../i18n";
 import { edgeSemanticSignature } from "../model/relations";
 import { planningHost } from "../planning/host";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
-import { ViewportPortal, useReactFlow, useStore, useStoreApi } from "@xyflow/react";
+import { ViewportPortal, useStore, useStoreApi } from "@xyflow/react";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { MessageTrace, NodeStatus } from "../sim/types";
 import type { EditorApi } from "../editor/types";
@@ -108,14 +108,12 @@ export function LiveSession({
   onPanelChange,
   onSession,
   privateDiagram,
-  paneRevision = 0,
 }: SessionProps) {
   // Every move of the view goes through the canvas camera (src/canvas/camera): Live only says what changed.
   const camera = useCameraController();
   if (!camera) throw new Error("LiveSession needs a camera (CameraContext)");
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
-  const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
   const getDiagram = useCallback((): DiagramFile => (editor ? editor.getDiagram() : diagram!), [editor, diagram]);
   const simulations = useMemo(() => simsProp ?? diagram?.simulations ?? [], [simsProp, diagram]);
@@ -635,21 +633,15 @@ export function LiveSession({
   const slow = useSlowMotion({
     controller,
     store,
-    setViewport,
+    camera,
     presenting,
     reducedMotion,
     panelOpen: panel.open,
     capturing,
-    paneRevision,
   });
   useLayoutEffect(() => {
     slowRef.current = slow;
   });
-  // Slow motion keeps its own camera while it records or replays (panePolicy W1, W7).
-  const slowActive = slow.state.status === "on" || slow.state.status === "capturing";
-  useEffect(() => {
-    camera.dispatch({ type: "slowmo", on: slowActive });
-  }, [camera, slowActive]);
   if (slowPath !== slow.path) setSlowPath(slow.path);
   const startSlow = slow.start;
   /** The trace card's "Slow motion" (and the palette's): this message's journey, paced. */
