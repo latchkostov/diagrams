@@ -60,7 +60,12 @@ const preview = port("E2E_PREVIEW_PORT", 5193);
 export const PREVIEW_BASE = "/tools/diagrams/";
 const internal = port("E2E_INTERNAL_PORT", preview.port + 1, preview.explicit);
 const locked = port("E2E_LOCKED_PORT", preview.port + 2, preview.explicit);
-const skipPreview = chromiumOnly || process.env.E2E_SKIP_PREVIEW === "1";
+/**
+ * Collaboration's Nightly network smoke (tests/network, report-only): its project exists only with COLLAB_SMOKE=1,
+ * so no pull request ever runs it, and it then runs alone, against the e2e build.
+ */
+const smoke = process.env.COLLAB_SMOKE === "1";
+const skipPreview = smoke || chromiumOnly || process.env.E2E_SKIP_PREVIEW === "1";
 const prebuilt = process.env.E2E_PREBUILT === "1";
 
 /**
@@ -154,43 +159,45 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
     colorScheme: "light",
   },
-  projects: [
-    {
-      name: "chromium",
-      use: { ...desktopChrome, viewport: { width: 1440, height: 900 } },
-      testIgnore: OWN_BUILD,
-      grepInvert: DEV_ONLY,
-    },
-    {
-      name: "dev",
-      use: {
-        ...desktopChrome,
-        viewport: { width: 1440, height: 900 },
-        baseURL: `http://localhost:${devServer.port}`,
-      },
-      testIgnore: OWN_BUILD,
-      grep: DEV_ONLY,
-    },
-    ...(skipPreview
-      ? []
-      : [
-          {
-            name: "subpath",
-            use: {
-              ...desktopChrome,
-              baseURL: `http://localhost:${preview.port}${PREVIEW_BASE}`,
-            },
-            testMatch: /subpath\.spec\.ts/,
+  projects: smoke
+    ? [{ name: "collab-smoke", testDir: "./tests/network", use: { ...desktopChrome, bypassCSP: true } }]
+    : [
+        {
+          name: "chromium",
+          use: { ...desktopChrome, viewport: { width: 1440, height: 900 } },
+          testIgnore: OWN_BUILD,
+          grepInvert: DEV_ONLY,
+        },
+        {
+          name: "dev",
+          use: {
+            ...desktopChrome,
+            viewport: { width: 1440, height: 900 },
+            baseURL: `http://localhost:${devServer.port}`,
           },
-          ...selfHost.map(({ name, at, spec }) => ({
-            name,
-            use: { ...desktopChrome, baseURL: `http://localhost:${at.port}/` },
-            testMatch: spec,
-          })),
-        ]),
-  ].filter((project) => !chromiumOnly || project.name === "chromium"),
+          testIgnore: OWN_BUILD,
+          grep: DEV_ONLY,
+        },
+        ...(skipPreview
+          ? []
+          : [
+              {
+                name: "subpath",
+                use: {
+                  ...desktopChrome,
+                  baseURL: `http://localhost:${preview.port}${PREVIEW_BASE}`,
+                },
+                testMatch: /subpath\.spec\.ts/,
+              },
+              ...selfHost.map(({ name, at, spec }) => ({
+                name,
+                use: { ...desktopChrome, baseURL: `http://localhost:${at.port}/` },
+                testMatch: spec,
+              })),
+            ]),
+      ].filter((project) => !chromiumOnly || project.name === "chromium"),
   webServer: [
-    ...(BUILD && chromiumOnly ? [] : [devWebServer]),
+    ...((BUILD && chromiumOnly) || smoke ? [] : [devWebServer]),
     ...(BUILD
       ? [
           {

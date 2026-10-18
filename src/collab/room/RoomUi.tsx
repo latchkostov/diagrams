@@ -559,6 +559,8 @@ function OpenChip({
     "data-peers": peers,
     "data-present": session.peers().length,
     "data-role": open.role,
+    // For diagnostics (the Nightly network smoke classifies a failure by it): never shown.
+    "data-connectivity": session.connectivity,
   };
   if (state === "connecting" && !elsewhere)
     return (
@@ -740,7 +742,14 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
     if (region.current) roomFocus.dispatch({ type: "room.waiting", region: region.current });
   }, []);
   return (
-    <div ref={region} tabIndex={-1} className="room-connecting" data-testid="room-connecting" role="status">
+    <div
+      ref={region}
+      tabIndex={-1}
+      className="room-connecting"
+      data-testid="room-connecting"
+      data-connectivity={session?.connectivity}
+      role="status"
+    >
       <strong>{t("collab.connectingTitle")}</strong>
       <p className="ix-muted">{t("collab.connectingHint")}</p>
       {session && <ConnectingFailure room={room} session={session} region={region} />}

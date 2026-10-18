@@ -53,13 +53,24 @@ export function PresenceLayer({ presence, onChange }: { presence: RoomPresence; 
   const placed = useStore((s: ReactFlowState) => boxes(s, peers), sameBoxes);
   const zoom = useStore((s: ReactFlowState) => s.transform[2]);
   if (!peers.length) return null;
+  // Who selected each item, and each person's first drawn item (their name goes there): one pass, not one per item.
+  const selectors = new Map<string, RoomPeer[]>();
+  const firstDrawn = new Map<string, string>();
+  for (const p of peers)
+    for (const id of p.selection) {
+      if (!placed.has(id)) continue;
+      const list = selectors.get(id);
+      if (list) list.push(p);
+      else selectors.set(id, [p]);
+      if (!firstDrawn.has(p.sender)) firstDrawn.set(p.sender, id);
+    }
   return (
     <ViewportPortal>
       <div className="presence-layer" data-testid="presence-layer" aria-hidden>
         {[...placed.values()].map((b) => {
           // Everyone who selected it: a ring each (one outside the other) and their names side by side.
-          const who = peers.filter((p) => p.selection.includes(b.id));
-          const named = who.filter((p) => p.selection.find((x) => placed.has(x)) === b.id);
+          const who = selectors.get(b.id) ?? [];
+          const named = who.filter((p) => firstDrawn.get(p.sender) === b.id);
           return (
             <div
               key={b.id}
@@ -72,6 +83,8 @@ export function PresenceLayer({ presence, onChange }: { presence: RoomPresence; 
                 <div
                   key={p.sender}
                   className="presence-outline"
+                  data-testid="presence-ring"
+                  data-peer={p.alias}
                   style={{ inset: -(4 + 3 * i), ["--peer" as string]: p.colour }}
                 />
               ))}
