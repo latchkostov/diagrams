@@ -556,7 +556,7 @@ export function createCameraController(
       live = next.live;
       presenting = next.presenting;
       const mode: CameraMode = presenting ? "present" : live ? "live" : "edit";
-      dispatch({ type: "mode.changed", mode });
+      dispatch({ type: "mode.changed", mode, live: next.live });
     },
     /** Holds the camera's readiness for work about to arrive (a pointer-up's Inspector change); returns its release. */
     hold() {

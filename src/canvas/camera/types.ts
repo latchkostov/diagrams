@@ -87,7 +87,8 @@ export type CameraEvent =
   | { type: "zoom100" }
   /** Shift+2: the selection (or the hovered node) and its connections. */
   | { type: "zoomToSelection"; nodes?: ReadonlySet<string>; edges?: ReadonlySet<string> }
-  | { type: "mode.changed"; mode: CameraMode }
+  /** Editing, live view or presenting; `live`: live view is on (presenting runs with or without it). */
+  | { type: "mode.changed"; mode: CameraMode; live: boolean }
   | { type: "fullscreen.changed" }
   /** The Checks card opened over the diagram (floating chrome). */
   | { type: "overlay.opened" }

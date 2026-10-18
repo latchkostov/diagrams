@@ -185,6 +185,8 @@ export function useSlowMotion(opts: {
   useEffect(() => {
     camera.dispatch({ type: "slowmo", on: active });
   }, [camera, active]);
+  // Live view ending mid-replay (L while presenting, say) gives the view back too: its geometry goes with it.
+  useEffect(() => () => camera.dispatch({ type: "slowmo", on: false }), [camera]);
   useEffect(() => {
     if (on) camera.dispatch({ type: "slowmo.take" });
   }, [camera, on, take, presenting, panelOpen, capturing]);

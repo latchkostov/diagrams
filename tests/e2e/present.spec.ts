@@ -224,6 +224,35 @@ test.describe("presenting full screen", () => {
     await expect.poll(layerEsc).toBe(1);
   });
 
+  test("leaving live view during a presented replay fits the whole diagram, and full screen refits it", async ({
+    page,
+  }) => {
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
+    await waitForCameraIdle(page);
+    await page.getByTestId("node-shopper").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+    await page.getByTestId("present-toggle").click();
+    await expect(page.getByTestId("present-exit")).toBeVisible();
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", /.+/);
+    const mark = await cameraJournalMark(page);
+    // L leaves live view mid-replay; the presentation stays.
+    await page.keyboard.press("l");
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await expect(page.getByTestId("present-exit")).toBeVisible();
+    await waitForCameraIdle(page);
+    // The normal fit for the mode (panePolicy F4), not slow motion's close-up.
+    expect(await cameraMoves(page, mark)).toContain("fit:mode");
+    await expect.poll(() => clipped(page)).toEqual([]);
+    const left = await cameraJournalMark(page);
+    await page.keyboard.press("f");
+    await expect.poll(() => fullscreen(page)).toBe(true);
+    await waitForCameraIdle(page);
+    // Slow motion gave the view back: full screen refits the fitted presentation (F2).
+    const fits = (await cameraMoves(page, left)).filter((m) => m.startsWith("fit") || m.startsWith("slowmo"));
+    expect(fits).toEqual(["fit:fullscreen"]);
+  });
+
   test("going full screen and back refits a diagram shown whole to the pane", async ({ page }) => {
     // Headless Chromium keeps the window's size full screen (and won't resize a full-screen window), so the pane
     // is made smaller by hand, as full screen's opposite would: the refit on each change must fit it again.

@@ -56,6 +56,16 @@ events with their cause, and the camera controller (`src/canvas/camera/`) runs t
   card that opened then intercepted the next right-click, which caused a 1-in-340 flake of `text-fields` under
   load. The label pill now owns its clicks and hover, and a regression test holds a dot behind it.
 
+- **Leaving live view during a presented replay.** If you pressed L during a replay while presenting, slow motion
+  kept the view after its session was gone, and full screen then asked for a plan nobody could give. Now
+  `mode.changed` says whether live view is still on. Leaving live view always ends slow motion and fits the
+  diagram (row F4), and slow motion gives the view back when its session unmounts.
+- **Live's work survives pane changes.** A pane change while slow motion's take or a node Live added is waiting
+  no longer drops it, and a selection's pane change no longer drops a note's fit.
+- **Live's work waits for complete geometry.** The pane sample is null until every visible node is measured. It
+  then fingerprints each node's position and size, so a node Live adds is in its fit even when its measurement
+  arrives late.
+
 ### Output parity
 
 Unchanged: Live's fits use the same numbers, and no golden moved.

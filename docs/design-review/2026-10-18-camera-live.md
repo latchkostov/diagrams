@@ -33,6 +33,11 @@ settled on two rendered frames. That's usually two frames, where before it was 1
 also measured before its fit. Follow pans wait for any camera move in flight (one move at a time) and for pane
 work still waiting, so a paused replay's view holds while its pane settles.
 
+### Leaving live view while presenting (F4)
+
+Pressing L during a presented replay ends slow motion and fits the whole diagram for the presentation. After
+that, full screen refits it as usual. Before this fix round, the replay's close-up stayed.
+
 ### Unchanged on purpose
 
 - A manual Live view whose pane changes keeps the zoom. It pans the selection and its connections into view

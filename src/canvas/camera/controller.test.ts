@@ -497,6 +497,21 @@ describe("camera controller", () => {
     expect(h.journal.map((e) => `${e.command}:${e.cause}`)).toEqual(["liveFit:added"]);
   });
 
+  it("live.added waits through incomplete measurements, then fits once with the node measured", () => {
+    const h = harness();
+    h.camera.dispatch({ type: "live.added", panel: false });
+    // The port's sample is null while a visible node is unmeasured (paneSample.test.ts), for as long as it takes.
+    h.env.sample = null;
+    h.tick(8);
+    expect(h.journal).toHaveLength(0);
+    expect(h.camera.phase).toBe("pending");
+    h.env.sample = "1000x800:3:42";
+    h.tick(2);
+    expect(h.journal.map((e) => `${e.command}:${e.cause}`)).toEqual(["liveFit:added"]);
+    h.tick(5);
+    expect(h.journal).toHaveLength(1);
+  });
+
   it("slow motion: its take plans once the pane settles, follow pans wait for the move in flight, a pan by hand ends following", async () => {
     const h = harness();
     h.camera.mode({ live: true, presenting: false });

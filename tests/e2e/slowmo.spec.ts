@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
-import { cameraJournal, cameraJournalMark, waitForCameraIdle } from "./fixtures";
+import { cameraJournal, cameraJournalMark, viewportTransform, waitForCameraIdle } from "./fixtures";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -12,6 +12,11 @@ const canvas = (page: Page) => page.getByTestId("live-canvas");
 const play = (page: Page) => page.getByTestId("live-play");
 const clockMs = async (page: Page) => Number(await page.getByTestId("live-clock").getAttribute("data-ms"));
 const data = async (page: Page, name: string) => canvas(page).getAttribute(`data-${name}`);
+/** The viewport transform, as numbers. */
+const view = (transform: string) => {
+  const [x, y, zoom] = (transform.match(/-?[\d.]+(?:e-?\d+)?/g) ?? []).map(Number);
+  return { x, y, zoom };
+};
 
 async function openNodeMenu(page: Page, nodeId: string, actionId: string) {
   await waitForCameraIdle(page);
@@ -261,6 +266,33 @@ test.describe("slow motion", () => {
     await expect.poll(async () => Number(await data(page, "sim-time"))).toBeGreaterThan(frozen);
     expectNoErrors(consoleErrors);
   });
+
+  for (const zoomed of [false, true])
+    test(`Esc restores the pre-replay viewport (${zoomed ? "zoomed by hand" : "fitted"})`, async ({
+      page,
+      consoleErrors,
+    }) => {
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
+      await waitForCameraIdle(page);
+      if (zoomed) {
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("Shift+Digit0");
+        await waitForCameraIdle(page);
+      }
+      const before = view(await viewportTransform(page));
+      await openNodeMenu(page, "payments", "sim.slowmo-from");
+      await expect(canvas(page)).toHaveAttribute("data-slowmo", /.+/);
+      // The take's camera has moved the view before we leave.
+      await expect.poll(async () => view(await viewportTransform(page))).not.toEqual(before);
+      await page.keyboard.press("Escape");
+      await expect(canvas(page)).not.toHaveAttribute("data-slowmo", /.*/);
+      await waitForCameraIdle(page);
+      const after = view(await viewportTransform(page));
+      expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
+      expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);
+      expect(Math.abs(after.zoom - before.zoom)).toBeLessThan(0.001);
+      expectNoErrors(consoleErrors);
+    });
 
   test("Trace a message ▸ and the command palette start it; Record video offers this slow motion", async ({
     page,

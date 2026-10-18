@@ -242,15 +242,34 @@ function transitionStatus(schedule: D3Schedule): MoveStatus {
   return schedule.state >= 6 ? "ended" : "running";
 }
 
-/** The pane and nodes as React Flow has measured them (CameraPort.paneSample), for the element React Flow fills. */
-export function paneSample(s: ReturnType<Store["getState"]>, el: HTMLElement, selectionMeasured: () => boolean) {
+/**
+ * The pane and nodes as React Flow has measured them (CameraPort.paneSample), for the element React Flow fills:
+ * null until every visible node is measured (a node just added, by Live say), then a fingerprint of the pane and
+ * every node's position and size, so work runs only once two frames agree on complete geometry.
+ */
+export function paneSample(
+  s: Pick<ReturnType<Store["getState"]>, "width" | "height" | "nodeLookup">,
+  el: Pick<HTMLElement, "clientWidth" | "clientHeight">,
+  selectionMeasured: () => boolean,
+) {
   // A held/late ResizeObserver must not let pane work consume the old pane.
   if (!s.width || s.width !== el.clientWidth || s.height !== el.clientHeight) return null;
   if (!selectionMeasured()) return null;
-  // How many nodes there are and how many are measured: a node just added (by Live, say) changes it until measured.
-  let measured = 0;
-  for (const n of s.nodeLookup.values()) if (n.measured.width) measured++;
-  return `${s.width}x${s.height}:${s.nodeLookup.size}/${measured}`;
+  let hash = 0;
+  const mix = (v: number) => (hash = (Math.imul(hash, 31) + Math.round(v * 16)) | 0);
+  for (const n of s.nodeLookup.values()) {
+    if (n.hidden) continue;
+    // React Flow never measures a boundary with an empty axis (as the measured gate allows): it has no area.
+    if (!n.measured?.width || !n.measured.height) {
+      if (n.type === "boundary" && (!n.width || !n.height)) continue;
+      return null;
+    }
+    mix(n.internals.positionAbsolute.x);
+    mix(n.internals.positionAbsolute.y);
+    mix(n.measured.width);
+    mix(n.measured.height);
+  }
+  return `${s.width}x${s.height}:${s.nodeLookup.size}:${hash}`;
 }
 
 /** Moves React Flow's view (CameraPort.move), with the d3 schedule's status of the move. */

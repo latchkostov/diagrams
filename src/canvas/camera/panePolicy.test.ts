@@ -244,7 +244,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
       state(),
       [
         { type: "pane.changed", cause: "selection" },
-        { type: "mode.changed", mode: "live" },
+        { type: "mode.changed", mode: "live", live: true },
         settled({ covered: true }),
       ],
       [FIT("mode")],
@@ -374,6 +374,29 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [LIVE("added", { panel: true })],
     ],
     [
+      "S1 a pane change (the Inspector opening) doesn't drop slow motion's take",
+      state({ mode: "live" }),
+      [
+        { type: "slowmo", on: true },
+        { type: "slowmo.take" },
+        { type: "pane.changed", cause: "selection" },
+        settled({ selection: true, covered: true }),
+      ],
+      [{ type: "slowmoPlan" }],
+    ],
+    [
+      "P1 a panel change doesn't drop a node Live added (a manual view)",
+      state({ mode: "live", owner: "manual" }),
+      [{ type: "live.added", panel: false }, { type: "pane.changed", cause: "panel" }, settled()],
+      [LIVE("added")],
+    ],
+    [
+      "S1 a selection's pane change doesn't replace a note's fit",
+      state({ mode: "live" }),
+      [{ type: "narration", focus: ["a"] }, { type: "pane.changed", cause: "selection" }, settled({ covered: true })],
+      [NOTE("narration", ["a"])],
+    ],
+    [
       "S2 a selection doesn't replace Live's work",
       state({ mode: "live" }),
       [
@@ -467,7 +490,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
     [
       "W3 presenting during slow motion keeps it and replans",
       state({ mode: "live" }),
-      [{ type: "slowmo", on: true }, { type: "mode.changed", mode: "present" }, settled()],
+      [{ type: "slowmo", on: true }, { type: "mode.changed", mode: "present", live: true }, settled()],
       [{ type: "slowmoPlan" }],
     ],
     [
@@ -500,11 +523,23 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [],
     ],
     [
+      "F4 leaving live view while presenting (L) ends slow motion: the normal fit, then full screen refits",
+      state({ mode: "present", live: { ...ROOM, card: true } }),
+      [
+        { type: "slowmo", on: true },
+        { type: "mode.changed", mode: "present", live: false },
+        { type: "slowmo", on: false },
+        { type: "fullscreen.changed" },
+        settled(),
+      ],
+      [FIT("mode"), FIT("fullscreen")],
+    ],
+    [
       "F1 leaving live view ends slow motion and clears Live's room",
       state({ mode: "live", live: { ...ROOM, panel: true } }),
       [
         { type: "slowmo", on: true },
-        { type: "mode.changed", mode: "edit" },
+        { type: "mode.changed", mode: "edit", live: false },
         { type: "slowmo.follow", view: V },
       ],
       [FIT("mode")],
@@ -654,7 +689,12 @@ const eventArb: fc.Arbitrary<CameraEvent> = fc.oneof(
   fc.constant({ type: "zoom100" } as const),
   fc.constant({ type: "zoomToSelection" } as const),
   fc.constantFrom("command", "reset" as const).map((reason) => ({ type: "fit", reason }) as const),
-  fc.constantFrom(...MODES).map((mode) => ({ type: "mode.changed", mode }) as const),
+  fc
+    .tuple(fc.constantFrom(...MODES), fc.boolean())
+    .map(
+      ([mode, live]) =>
+        ({ type: "mode.changed", mode, live: mode === "live" || (mode === "present" && live) }) as const,
+    ),
   fc.constant({ type: "fullscreen.changed" } as const),
   fc.constant({ type: "overlay.opened" } as const),
   fc.constantFrom([], ["a"], ["a", "b"]).map((focus) => ({ type: "narration", focus }) as const),

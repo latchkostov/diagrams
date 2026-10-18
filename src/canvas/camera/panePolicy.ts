@@ -34,7 +34,8 @@ import type {
  * | Z3  | reveal.requested              | otherwise                                  | reveal (selection)                      |
  * | I1  | input                         |                                            | Zoom to selection's priority ends       |
  * | U1  | user.moved, zoom100           |                                            | owner manual (zoom100: zoom100)         |
- * | F1  | fit, mode.changed             | (not slow motion between Live's modes, W3) | fit; owner fit; pending := none         |
+ * | F1  | fit, mode.changed             | (not slow motion staying live, W3)         | fit; owner fit; pending := none         |
+ * | F4  | mode.changed                  | live view ends (presenting or not)         | Live's room, slow motion end; F1        |
  * | F2  | fullscreen.changed            | presenting, owner fit                      | fit                                     |
  * | F3  | overlay.opened                | edit mode, owner fit                       | fit                                     |
  * | L1  | narration(focus)              |                                            | owner narration; pending := narration   |
@@ -50,7 +51,7 @@ import type {
  * | W2  | slowmo(off)                   |                                            | owner := resume (if still slowmo);      |
  * |     |                               |                                            | restore the view from before            |
  * | W3  | slowmo.take, fullscreen,      | slow motion on                             | owner slowmo (take); pending := take    |
- * |     | mode.changed (live, present)  |                                            |                                         |
+ * |     | mode.changed (still live)     |                                            |                                         |
  * | W4  | pane.settled                  | pending slowmo.take                        | slowmoPlan                              |
  * | W5  | pane.settled                  | pending panel, slow motion on              | slowmoPane (it holds or replans)        |
  * | W6  | slowmo.follow                 | owner slowmo, no work waits for the pane   | follow                                  |
@@ -68,8 +69,10 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
   switch (event.type) {
     case "pane.changed": {
       if (state.mode === "present") return next({});
-      // A take waiting for the pane plans for the new one too.
-      if (event.cause === "panel" && state.pending?.cause === "slowmo.take") return next({});
+      // A take, or a node Live added, waiting for the pane fits for the new one too; and a selection doesn't
+      // replace Live's work (a panel change does: it makes the same refit).
+      const kept = state.pending && !isPaneCause(state.pending.cause);
+      if (kept && (event.cause !== "panel" || KEEPS.has(state.pending!.cause))) return next({});
       return next({ pending: { cause: event.cause } });
     }
     case "selection.changed":
@@ -91,15 +94,16 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       return next({ owner: "fit", pending: null, zoomPriority: false }, { type: "fit", reason: event.reason });
     case "mode.changed":
       // Slow motion between live view and presenting keeps the view and replans its take for the new pane.
-      if (state.slowmo && event.mode !== "edit")
+      if (state.slowmo && event.live)
         return next({ mode: event.mode, pending: { cause: "slowmo.take" }, zoomPriority: false });
+      // Leaving live view, presenting or not, ends Live's room and slow motion with it (F4): the normal fit.
       return next(
         {
           owner: "fit",
           pending: null,
           mode: event.mode,
           zoomPriority: false,
-          ...(event.mode === "edit" ? { live: CLEAR, slowmo: false } : {}),
+          ...(event.live ? {} : { live: CLEAR, slowmo: false }),
         },
         { type: "fit", reason: "mode" },
       );
@@ -177,6 +181,8 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
 type LiveWork = Exclude<PaneWork, { cause: PaneCause }>;
 
 const CLEAR: LiveRoom = { panel: false, card: false, focus: [] };
+/** Live's work a pane change never replaces: it fits for whatever pane settles. */
+const KEEPS = new Set<string>(["slowmo.take", "live.added"]);
 
 export function isPaneCause(cause: PaneCause | LiveCause): cause is PaneCause {
   return cause === "panel" || cause === "selection" || cause === "placement";
