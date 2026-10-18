@@ -131,6 +131,15 @@ async function startRoom(page: Page): Promise<string> {
 
 const chip = (page: Page) => page.getByTestId("room-chip");
 
+/** The top bar's brand ("Live Diagrams") stays on one line: the room chip gives way first. */
+async function expectBrandOnOneLine(page: Page) {
+  const name = page.getByTestId("brand").locator("span");
+  const lineHeight = await name.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+  expect((await name.boundingBox())?.height).toBeLessThan(lineHeight * 1.5);
+  // ...and nothing in the top bar overflows for it.
+  expect(await page.getByTestId("topbar").evaluate((bar) => bar.scrollWidth <= bar.clientWidth)).toBe(true);
+}
+
 test("two browsers start, join, edit both ways, reload and drop over an emulated tracker", async ({
   browser,
   context,
@@ -299,6 +308,10 @@ test("an aborted recovery wipe does not report success, and Retry clears it", as
   await page.getByTestId("privacy-clear-device").click();
   await page.getByTestId("clear-device-confirm").click();
   await expect(page.getByTestId("clear-device-error")).toBeVisible();
+  await expect(page.getByTestId("clear-device-dialog-title")).toHaveText("Couldn't clear everything");
+  await expect(page.getByTestId("clear-device-rest")).toHaveText("Everything else was cleared.");
+  await expect(page.getByTestId("clear-device-list")).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
   // Storage writes have stopped: no way back to editing (no Cancel, no close button, no Escape, no backdrop).
   await expect(page.getByTestId("clear-device-cancel")).toHaveCount(0);
   await expect(page.getByTestId("clear-device-dialog-close")).toHaveCount(0);
@@ -370,6 +383,8 @@ test("a copy that can't be saved holds the room's canvas behind a dialog: file c
   await page.getByTestId("room-leave").click();
   const dialog = page.getByTestId("room-unsaved-dialog");
   await expect(dialog).toBeVisible();
+  // One message: no storage toast pointing at File ▸ Save behind the modal.
+  await expect(page.getByTestId("toast")).toHaveCount(0);
   await expect(page.getByTestId("room-unsaved-retry")).toBeFocused();
   await expect(page.getByTestId("room-unsaved-dialog-close")).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -497,9 +512,15 @@ test("Clear everything stops the room's writers, an encryption started before it
     await guest.close();
 
     // The old link, opened again on this device, finds nothing kept here: it waits for a peer.
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(link);
     await page.getByTestId("room-join-accept").click();
     await expect(page.getByTestId("room-connecting")).toBeVisible({ timeout: pageLoadTimeout() });
+    // While connecting the chip is status only (the wait has Leave room), and it gives way before the brand wraps.
+    await expect(chip(page)).toHaveAttribute("data-state", "connecting");
+    await expect(page.getByTestId("room-copy-link")).toHaveCount(0);
+    await expect(page.getByTestId("room-leave")).toHaveCount(0);
+    await expectBrandOnOneLine(page);
     expect(await recoveryRecords(page)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
     expectNoErrors(consoleErrors);
   } finally {
@@ -589,7 +610,10 @@ test("a room dialog gives focus back to what opened it; Retry hands it to the ro
   await page.getByTestId("room-start-cancel").click();
   await expect(page.getByTestId("file-button")).toBeFocused();
   expect(await interactionLog(page)).toContain("dialog.closed:room -> focus:element@now");
+  await page.setViewportSize({ width: 1280, height: 800 });
   await startRoom(page);
+  await expect(chip(page)).toHaveAttribute("data-state", "waiting");
+  await expectBrandOnOneLine(page);
   await pauseClock(page);
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
   await expect(chip(page)).toHaveAttribute("data-state", "failed");

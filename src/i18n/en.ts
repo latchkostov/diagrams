@@ -948,6 +948,8 @@ const en = {
   "clear.failed":
     "Room copies kept on this device couldn't be cleared (the browser refused). Try again, or clear this site's data in the browser's settings.",
   "clear.reload": "Reload page",
+  "clear.failedTitle": "Couldn't clear everything",
+  "clear.restCleared": "Everything else was cleared.",
   "clear.diagrams": "Every diagram in Your diagrams, private ones included, and your edits to examples",
   "clear.links": "A diagram opened from a link, AI conversations, and where files were saved",
   "clear.settings": "Your settings, the language included",
@@ -2473,8 +2475,6 @@ const en = {
   "collab.joinTitle": "Join a room?",
   "collab.joinLead": "Someone invited you to edit a diagram together.",
   "collab.joinIpPeers": "Everyone in the room will see your IP address.",
-  "collab.joinIpTrackers": "Two public matchmaking services see your IP address, never the diagram.",
-  "collab.joinCopy": "You'll get your own copy, which stays on this device after you leave.",
   "collab.unverified": "Names aren't verified: anyone can type any name.",
   "collab.dontJoin": "Don't join",
   "collab.join": "Join",

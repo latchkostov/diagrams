@@ -38,7 +38,7 @@ export interface RoomLibrary {
   /** A new entry in Your diagrams for a joiner's copy; returns its slug. Throws when storage is full. */
   create(diagram: DiagramFile): string;
   /** Writes the room's diagram as the entry's copy. */
-  save(slug: string, diagram: DiagramFile): boolean;
+  save(slug: string, diagram: DiagramFile, quiet?: boolean): boolean;
   /** The entry's current copy; undefined once the entry is gone. */
   read(slug: string): DiagramFile | undefined;
   privacy(slug: string): CanvasPrivacyState;
@@ -420,7 +420,7 @@ export class RoomLifecycle {
   }
 
   /** Writes the copy; false only when there was something to keep and storage refused it. */
-  private flushMirror(a: Active, diagram?: DiagramFile): boolean {
+  private flushMirror(a: Active, diagram?: DiagramFile, quiet = false): boolean {
     a.mirror?.();
     a.mirror = undefined;
     this.notePending(a);
@@ -429,7 +429,7 @@ export class RoomLifecycle {
     const projected = a.session.doc.project();
     const d = diagram ?? (projected.status === "ok" ? projected.diagram : undefined);
     if (!d) return true;
-    if (!this.deps.library.save(a.slug, withoutPrivate(d))) return false;
+    if (!this.deps.library.save(a.slug, withoutPrivate(d), quiet)) return false;
     a.mirrored = a.changes;
     return true;
   }
@@ -478,7 +478,8 @@ export class RoomLifecycle {
     const diagram = a.slug ? (this.capture?.(a.slug) ?? a.session.doc.project().diagram) : undefined;
     let kept = false;
     try {
-      kept = !a.slug || (kind === "private" ? this.keep(a.slug, diagram, true) : this.flushMirror(a));
+      // Quiet: if it fails, the room's own dialog says so (no second message about File ▸ Save behind it).
+      kept = !a.slug || (kind === "private" ? this.keep(a.slug, diagram, true) : this.flushMirror(a, undefined, true));
     } catch {
       // Not kept: the dialog below.
     }
@@ -511,7 +512,7 @@ export class RoomLifecycle {
         return false;
       }
     }
-    return !diagram || this.deps.library.save(slug, withoutPrivate(diagram));
+    return !diagram || this.deps.library.save(slug, withoutPrivate(diagram), true);
   }
 
   /** The copy that couldn't be saved: what its canvas showed (Save a file copy exports this). */
@@ -590,6 +591,8 @@ export class RoomLifecycle {
   /** Clear everything on this device: stop at once, saving nothing more (every store refuses by then anyway). */
   wipe(): void {
     this.attempt++;
+    // Ended by Clear everything: no "You left the room" about a copy it's erasing.
+    this.set({ notice: undefined, prompt: undefined });
     this.invite = undefined;
     const a = this.active;
     this.active = undefined;

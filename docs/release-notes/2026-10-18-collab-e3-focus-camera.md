@@ -16,6 +16,15 @@ interaction controllers as an event with its cause (development and e2e builds; 
   state is only announced (W4). The shared dialog shell takes an optional `restoreFocus` for this; other dialogs are
   unchanged.
 
+- **UX review fixes for E2's dev-only UI (review 2026-10-18, finding 9).** One message at a time: the copy that
+  couldn't be saved no longer brings a storage toast with it (a room's final save reports through its dialog), and a
+  failed Clear everything says only what its dialog says (no "You left the room" about the copy it's erasing). The
+  failed wipe's dialog is titled "Couldn't clear everything", with the error and "Everything else was cleared." in
+  place of the list. While connecting, the room chip is status only (the wait has Leave room; there's no room to link
+  yet); while a chip shows, the brand stays on one line and the chip and picker truncate instead (1280 px). Join's
+  consent now says the same two lines as Start's (the services never see the diagram or the link; end-to-end
+  encryption and your copy).
+
 ## Verification
 
 - Vitest: the new focus rows (M7, D6, W1–W4) in the invariant cross-product; C1 from every owner, cause and menu;
@@ -30,3 +39,6 @@ interaction controllers as an event with its cause (development and e2e builds; 
 - Linux container under load (`--repeat 5`, 6 workers): the room spec, the collab Lab and the neighbours above passed
   539 of 540. The one failure was E2's wipe test running out of its 30 s budget while still working: it and the
   two-browser test are now marked slow (no assertion changed), and the room spec then passed 50 of 50 (`--repeat 5`).
+- Output parity: `node/i18n/catalogs.json` changed on purpose: two messages added (`clear.failedTitle`,
+  `clear.restCleared`) and two removed (`collab.joinIpTrackers`, `collab.joinCopy`, now Start's lines); the `clear` and
+  `collab` area hashes change. No other golden changed.

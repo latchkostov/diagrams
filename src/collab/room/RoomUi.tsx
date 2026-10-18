@@ -5,7 +5,7 @@ import { appBaseUrl } from "../../interop/share";
 import { copyText } from "../../interop/ui/copyText";
 import { Dialog } from "../../interop/ui/Dialog";
 import { Glyph } from "../../interop/ui/glyphs";
-import { notify } from "../../interop/ui/toast";
+import { notify, toast } from "../../interop/ui/toast";
 import { downloadText } from "../../interop/files";
 import { serializeNative } from "../../interop/native";
 import { createLibraryDiagram, getCurrent, getPrivacyFlags, isLibrarySlug, resolveSlug } from "../../lib/diagramIO";
@@ -148,6 +148,8 @@ export function RoomLayer({
  */
 function UnsavedDialog({ room }: { room: RoomLifecycle }) {
   const [failures, setFailures] = useState(0);
+  // One message at a time: an earlier storage notice would point at File ▸ Save behind this modal.
+  useEffect(() => toast.dismiss(), []);
   return (
     <Dialog
       restoreFocus={dialogClosed}
@@ -378,8 +380,8 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
     >
       <ul className="ix-privacy-list" data-testid="room-join-disclosure">
         <li>{t("collab.joinIpPeers")}</li>
-        <li>{t("collab.joinIpTrackers")}</li>
-        <li>{t("collab.joinCopy")}</li>
+        <li>{t("collab.ipTrackers")}</li>
+        <li>{t("collab.encrypted")}</li>
       </ul>
       <NameField value={alias} onChange={setAlias} testId="room-join-alias" />
       <p className="ix-muted">{t("collab.unverified")}</p>
@@ -453,6 +455,7 @@ function OpenChip({
               ? t("collab.chipConnecting")
               : t("collab.chipWaiting")}
       </span>
+      {/* While connecting, status only: the wait in the canvas's place has Leave room, and there's no room to link yet. */}
       {state === "failed" && (
         <button
           className="ix-shared-keep"
@@ -466,16 +469,20 @@ function OpenChip({
           {t("common.retry")}
         </button>
       )}
-      <button
-        className="ix-shared-keep"
-        onClick={() => void copyText(roomLink(open)).then(setCopied)}
-        data-testid="room-copy-link"
-      >
-        {copied ? t("collab.copied") : t("collab.copyRoomLink")}
-      </button>
-      <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
-        {t("collab.leave")}
-      </button>
+      {state !== "connecting" && (
+        <>
+          <button
+            className="ix-shared-keep"
+            onClick={() => void copyText(roomLink(open)).then(setCopied)}
+            data-testid="room-copy-link"
+          >
+            {copied ? t("collab.copied") : t("collab.copyRoomLink")}
+          </button>
+          <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
+            {t("collab.leave")}
+          </button>
+        </>
+      )}
     </div>
   );
 }

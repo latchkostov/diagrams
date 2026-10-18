@@ -1,8 +1,11 @@
 /* Edit together: the room chip (top bar), the name field, and the joiner's wait. Logical properties only. */
 
+/* The chip gives way first: its status truncates before the brand or the picker wrap (1280 px and narrower). */
 .room-chip {
-  max-inline-size: 100%;
+  flex: 0 100 auto;
+  max-inline-size: 22rem;
   min-inline-size: 0;
+  overflow: hidden;
 }
 
 .room-chip > span:not(.room-dot) {
@@ -49,4 +52,10 @@
 .room-connecting p {
   margin: 0;
   max-inline-size: 42ch;
+}
+
+/* While a room's chip is in the top bar, the brand never wraps: the chip and the picker truncate instead. */
+.topbar:has(.room-chip) .brand {
+  flex-shrink: 0;
+  white-space: nowrap;
 }

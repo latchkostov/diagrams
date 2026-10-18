@@ -777,6 +777,8 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
   const clear = () => {
     setClearing(true);
     setFailed(false);
+    // Nothing else speaks while clearing (a room it ends says nothing either): this dialog has the outcome.
+    toast.dismiss();
     clearDevice().catch(() => {
       setClearing(false);
       setFailed(true);
@@ -784,8 +786,8 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
   };
   return (
     <Dialog
-      title={t("clear.title")}
-      subtitle={t("clear.subtitle")}
+      title={failed ? t("clear.failedTitle") : t("clear.title")}
+      subtitle={failed ? undefined : t("clear.subtitle")}
       icon={<Glyph name="alert" />}
       // Once clearing starts, this page's storage writes have stopped: it can't go back to editing.
       onClose={onClose}
@@ -821,17 +823,23 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
         </>
       }
     >
-      {failed && (
-        <p className="ix-error" role="alert" data-testid="clear-device-error">
-          {t("clear.failed")}
-        </p>
+      {failed ? (
+        <>
+          <p className="ix-error" role="alert" data-testid="clear-device-error">
+            {t("clear.failed")}
+          </p>
+          <p data-testid="clear-device-rest">{t("clear.restCleared")}</p>
+        </>
+      ) : (
+        <>
+          <ul className="ix-privacy-list" data-testid="clear-device-list">
+            <li>{t("clear.diagrams")}</li>
+            <li>{t("clear.links")}</li>
+            <li>{t("clear.settings")}</li>
+          </ul>
+          <p className="ix-muted">{t("clear.stays")}</p>
+        </>
       )}
-      <ul className="ix-privacy-list" data-testid="clear-device-list">
-        <li>{t("clear.diagrams")}</li>
-        <li>{t("clear.links")}</li>
-        <li>{t("clear.settings")}</li>
-      </ul>
-      <p className="ix-muted">{t("clear.stays")}</p>
     </Dialog>
   );
 }
