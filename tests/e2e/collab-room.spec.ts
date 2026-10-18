@@ -1,5 +1,17 @@
 import type { BrowserContext, Page, WebSocketRoute } from "@playwright/test";
-import { test, expect, expectNoErrors, pageLoadTimeout, pauseClock, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  pageLoadTimeout,
+  pauseClock,
+  waitForStableViewport,
+  cameraJournal,
+  cameraJournalMark,
+  interactionLog,
+  interactionJournalMark,
+  viewportTransform,
+} from "./fixtures";
 import { COLLAB_LIMITS } from "../../src/collab/limits";
 
 // Edit together in the app (collaboration plan E2): a room's life between two browsers, with real WebRTC between
@@ -119,12 +131,23 @@ async function startRoom(page: Page): Promise<string> {
 
 const chip = (page: Page) => page.getByTestId("room-chip");
 
+/** The top bar's brand ("Live Diagrams") stays on one line: the room chip gives way first. */
+async function expectBrandOnOneLine(page: Page) {
+  const name = page.getByTestId("brand").locator("span");
+  const lineHeight = await name.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+  expect((await name.boundingBox())?.height).toBeLessThan(lineHeight * 1.5);
+  // ...and nothing in the top bar overflows for it.
+  expect(await page.getByTestId("topbar").evaluate((bar) => bar.scrollWidth <= bar.clientWidth)).toBe(true);
+}
+
 test("two browsers start, join, edit both ways, reload and drop over an emulated tracker", async ({
   browser,
   context,
   page,
   consoleErrors,
 }) => {
+  // Two browsers (three pages), a reload or a wipe and its restart: heavy under CI load.
+  test.slow();
   const other = await browser.newContext();
   try {
     const sockets = await emulateTracker([context, other]);
@@ -285,6 +308,10 @@ test("an aborted recovery wipe does not report success, and Retry clears it", as
   await page.getByTestId("privacy-clear-device").click();
   await page.getByTestId("clear-device-confirm").click();
   await expect(page.getByTestId("clear-device-error")).toBeVisible();
+  await expect(page.getByTestId("clear-device-dialog-title")).toHaveText("Couldn't clear everything");
+  await expect(page.getByTestId("clear-device-rest")).toHaveText("Everything else was cleared.");
+  await expect(page.getByTestId("clear-device-list")).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
   // Storage writes have stopped: no way back to editing (no Cancel, no close button, no Escape, no backdrop).
   await expect(page.getByTestId("clear-device-cancel")).toHaveCount(0);
   await expect(page.getByTestId("clear-device-dialog-close")).toHaveCount(0);
@@ -356,6 +383,8 @@ test("a copy that can't be saved holds the room's canvas behind a dialog: file c
   await page.getByTestId("room-leave").click();
   const dialog = page.getByTestId("room-unsaved-dialog");
   await expect(dialog).toBeVisible();
+  // One message: no storage toast pointing at File ▸ Save behind the modal.
+  await expect(page.getByTestId("toast")).toHaveCount(0);
   await expect(page.getByTestId("room-unsaved-retry")).toBeFocused();
   await expect(page.getByTestId("room-unsaved-dialog-close")).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -384,6 +413,8 @@ test("Clear everything stops the room's writers, an encryption started before it
   page,
   consoleErrors,
 }) => {
+  // Two browsers (three pages), a reload or a wipe and its restart: heavy under CI load.
+  test.slow();
   const other = await browser.newContext();
   try {
     await emulateTracker([context, other]);
@@ -481,12 +512,113 @@ test("Clear everything stops the room's writers, an encryption started before it
     await guest.close();
 
     // The old link, opened again on this device, finds nothing kept here: it waits for a peer.
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(link);
     await page.getByTestId("room-join-accept").click();
     await expect(page.getByTestId("room-connecting")).toBeVisible({ timeout: pageLoadTimeout() });
+    // While connecting the chip is status only (the wait has Leave room), and it gives way before the brand wraps.
+    await expect(chip(page)).toHaveAttribute("data-state", "connecting");
+    await expect(page.getByTestId("room-copy-link")).toHaveCount(0);
+    await expect(page.getByTestId("room-leave")).toHaveCount(0);
+    await expectBrandOnOneLine(page);
     expect(await recoveryRecords(page)).toEqual({ rooms: 0, metadata: 0, updates: 0 });
     expectNoErrors(consoleErrors);
   } finally {
     await other.close();
   }
+});
+
+// ---------------------------------------------------------------- E3: a peer's changes never move your view or focus
+
+/** Two browsers in one room: the creator's page and a guest's, both showing the room's diagram. */
+async function twoInARoom(page: Page, context: BrowserContext, other: BrowserContext) {
+  await emulateTracker([context, other]);
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  const link = await startRoom(page);
+  const guest = await other.newPage();
+  await guest.goto(link);
+  await guest.getByTestId("room-join-accept").click();
+  await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(chip(page)).toHaveAttribute("data-peers", "1");
+  return guest;
+}
+
+test("a peer deleting the right-clicked node closes the menu (remote), the canvas takes the keyboard, the view stays", async ({
+  browser,
+  context,
+  page,
+  consoleErrors,
+}) => {
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await waitForStableViewport(guest);
+    const camera = await cameraJournalMark(guest);
+    const view = await viewportTransform(guest);
+    await guest.getByTestId("node-orders").click({ button: "right" });
+    await expect(guest.getByTestId("context-menu")).toBeVisible();
+    const focus = await interactionJournalMark(guest);
+    await page.bringToFront();
+    await page.getByTestId("node-orders").click();
+    await page.keyboard.press("Delete");
+    await expect(page.getByTestId("node-orders")).toHaveCount(0);
+    await expect(guest.getByTestId("node-orders")).toHaveCount(0);
+    await expect(guest.getByTestId("context-menu")).toHaveCount(0);
+    expect(await interactionLog(guest, focus)).toContain("menu.closed:remote -> focus:canvas@commit");
+    await expect(guest.getByTestId("canvas-wrap")).toBeFocused();
+    // A peer's rename and deletion moved nothing on the guest's side.
+    await rename(page, "gateway", "Renamed by the creator");
+    await expect(guest.getByTestId("node-gateway")).toContainText("Renamed by the creator");
+    expect((await cameraJournal(guest, camera)).filter((e) => e.moved)).toEqual([]);
+    expect(await viewportTransform(guest)).toBe(view);
+    expectNoErrors(consoleErrors);
+  } finally {
+    await other.close();
+  }
+});
+
+test("joining hands the keyboard to the wait, then to the room's canvas, through the interaction controller", async ({
+  browser,
+  context,
+  page,
+}) => {
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await expect(guest.getByTestId("canvas-wrap")).toBeFocused();
+    const log = await interactionLog(guest);
+    expect(log.some((line) => line.startsWith("dialog.closed:room ->"))).toBe(true);
+    expect(log.some((line) => line.startsWith("room.waiting -> focus:element@now"))).toBe(true);
+    expect(log.some((line) => line.startsWith("room.ready -> focus:canvas@frame"))).toBe(true);
+  } finally {
+    await other.close();
+  }
+});
+
+test("a room dialog gives focus back to what opened it; Retry hands it to the room's status", async ({
+  page,
+  consoleErrors,
+}) => {
+  // No tracker at all (the e2e build contacts none without one): the room can't connect.
+  await page.clock.install();
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("file-button").focus();
+  await page.evaluate(() => window.dispatchEvent(new Event("diagrams:edit-together")));
+  await expect(page.getByTestId("room-start-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("room-start-cancel").click();
+  await expect(page.getByTestId("file-button")).toBeFocused();
+  expect(await interactionLog(page)).toContain("dialog.closed:room -> focus:element@now");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await startRoom(page);
+  await expect(chip(page)).toHaveAttribute("data-state", "waiting");
+  await expectBrandOnOneLine(page);
+  await pauseClock(page);
+  await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+  await expect(chip(page)).toHaveAttribute("data-state", "failed");
+  await page.getByTestId("room-retry").click();
+  await expect(chip(page)).not.toHaveAttribute("data-state", "failed");
+  await expect(chip(page)).toBeFocused();
+  expectNoErrors(consoleErrors);
 });

@@ -341,6 +341,8 @@ function CanvasInner({
     () => ({ ...libraryPrivacy, private: libraryPrivacy.private || roomPrivate }),
     [libraryPrivacy, roomPrivate],
   );
+  /** A peer's change arrived: the camera hears of it (set up with the camera, below). */
+  const onRemote = useRef(() => {});
   /** Undo and Redo chose a selection: keyboard focus follows it (set up with the keyboard selection, below). */
   const onHistoryStep = useRef((_direction: "undo" | "redo", _selection: FlowSelection) => {});
   const history = useHistory(
@@ -367,6 +369,14 @@ function CanvasInner({
               seq: a.seq + 1,
             }));
         });
+      if (remote) {
+        onRemote.current();
+        // A context menu on something a peer deleted closes (M7): its commands would act on nothing.
+        const open = interaction.getSnapshot().menu;
+        const targets = open?.kind === "context" ? open.payload?.targets : undefined;
+        if (open && targets?.some((id) => !s.nodes.some((n) => n.id === id) && !s.edges.some((e) => e.id === id)))
+          interaction.closeMenu("remote", open.seq);
+      }
       if (!remote) setEditing(null);
       else setEditing((current) => (current && !s.nodes.some((n) => n.id === current.id) ? null : current));
       setMeta(s.meta);
@@ -414,6 +424,14 @@ function CanvasInner({
     direction: meta.direction ?? "LR",
   });
   useInteractionCamera(interaction, controller);
+  // A peer's change never moves the view: the camera hears it and decides nothing (C1).
+  useLayoutEffect(() => {
+    onRemote.current = () => controller.dispatch({ type: "remote.changed", kind: "doc" });
+  }, [controller]);
+  // The room's canvas replaced a joiner's wait: it takes the keyboard only if that went with the wait (W2).
+  useEffect(() => {
+    if (room) interaction.dispatch({ type: "room.ready" });
+  }, [room, interaction]);
   // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
   const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const documentId = getDiagramIdentity(slug);

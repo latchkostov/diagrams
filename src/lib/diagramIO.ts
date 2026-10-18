@@ -371,7 +371,13 @@ let autosaveWarned = false;
  * `identity` (the document the caller loaded) guards late writes: a canvas flushing on unmount
  * can't write its edits over a document that replaced it.
  */
-export function writeAutosave(slug: string, d: DiagramFile | null, identity?: string): boolean {
+export function writeAutosave(
+  slug: string,
+  d: DiagramFile | null,
+  identity?: string,
+  /** The caller reports a failure itself (a room's "Your copy couldn't be saved"): no storage toast. */
+  opts: { quiet?: boolean } = {},
+): boolean {
   if (slug === DRAFT_SLUG) {
     // Nothing to keep until the first edit; then the draft becomes a library entry in place.
     if (!d) return true;
@@ -397,7 +403,7 @@ export function writeAutosave(slug: string, d: DiagramFile | null, identity?: st
       )
     : safeStorage.removeItem(key);
   if (!ok) {
-    warnAutosave();
+    if (!opts.quiet) warnAutosave();
     return false;
   }
   if (isLibrarySlug(slug)) touchEntry(slug, d ?? getOriginal(slug));

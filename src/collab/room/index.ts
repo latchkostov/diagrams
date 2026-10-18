@@ -44,7 +44,8 @@ export const room = new RoomLifecycle({
   library: {
     // The room's diagram can't be Private (it would leave the room), whatever "New diagrams are private" says.
     create: (diagram) => createLibraryDiagram(diagram, undefined, undefined, { private: false }),
-    save: (slug, diagram) => hasLibraryEntry(slug) && writeAutosave(slug, diagram, getDiagramIdentity(slug)),
+    save: (slug, diagram, quiet) =>
+      hasLibraryEntry(slug) && writeAutosave(slug, diagram, getDiagramIdentity(slug), { quiet }),
     read: (slug) => (hasLibraryEntry(slug) ? getCurrent(slug) : undefined),
     privacy: (slug) => getPrivacyFlags(slug),
     markPrivate: (slug) => void setDiagramPrivate(slug, true),

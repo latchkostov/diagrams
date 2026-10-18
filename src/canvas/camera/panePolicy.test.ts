@@ -739,10 +739,46 @@ const eventArb: fc.Arbitrary<CameraEvent> = fc.oneof(
     .map((cause) => ({ type: "reveal.requested", cause }) as const),
   factsArb.map((f) => ({ type: "pane.settled", ...f }) as const),
 );
+const remoteArb: fc.Arbitrary<CameraEvent> = fc
+  .constantFrom("doc", "presence" as const)
+  .map((kind) => ({ type: "remote.changed", kind }) as const);
 
 /** Commands only slow motion's camera gives, and what may run while slow motion has the view. */
 const SLOWMO = new Set(["slowmoPlan", "slowmoPane", "follow", "stop"]);
 const WHILE_SLOWMO = new Set([...SLOWMO, "restore", "reveal", "fit", "zoom100", "zoomToSelection"]);
+
+describe("panePolicy: a peer's changes (remote.changed)", () => {
+  it("C1 decides nothing from any state, and keeps pending work and its owner", () => {
+    for (const owner of OWNERS)
+      for (const cause of CAUSES)
+        for (const menu of MENUS) {
+          const s = state({ owner, menu, pending: { cause } });
+          for (const kind of ["doc", "presence"] as const) {
+            const d = decide(s, { type: "remote.changed", kind });
+            expect(d.commands).toEqual([]);
+            expect(d.state).toBe(s);
+          }
+        }
+  });
+
+  it("no sequence containing remote.changed decides anything it wouldn't have without them", () => {
+    fc.assert(
+      fc.property(fc.array(fc.tuple(eventArb, fc.array(remoteArb, { maxLength: 3 })), { maxLength: 40 }), (steps) => {
+        const plain = run(
+          initialPolicy(),
+          steps.map(([e]) => e),
+        );
+        const withPeers = run(
+          initialPolicy(),
+          steps.flatMap(([e, remote]) => [...remote, e]),
+        );
+        expect(withPeers.commands).toEqual(plain.commands);
+        expect(withPeers.state).toEqual(plain.state);
+      }),
+      { numRuns: propertyRuns(500) },
+    );
+  });
+});
 
 describe("panePolicy: event sequences", () => {
   it("regression seed -1303150540 path 207:5:6:9:10:10: a panel change while slow motion owns the view runs once", () => {

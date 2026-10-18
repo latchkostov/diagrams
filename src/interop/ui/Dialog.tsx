@@ -15,6 +15,7 @@ export function Dialog({
   testId,
   width = 560,
   closable = true,
+  restoreFocus,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -26,11 +27,13 @@ export function Dialog({
   width?: number;
   /** False: no close button, and Escape and the backdrop do nothing (the footer's choices are the only way out). */
   closable?: boolean;
+  /** Focus goes back through this (an interaction controller's dialog.closed) instead of to the opener directly. */
+  restoreFocus?: (opener: HTMLElement | null) => void;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useDialogInteraction(panel, backdrop, closable ? onClose : () => {});
+  useDialogInteraction(panel, backdrop, closable ? onClose : () => {}, restoreFocus);
 
   return createPortal(
     <div ref={backdrop} className="ix-backdrop" data-editor-overlay>

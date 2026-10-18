@@ -111,6 +111,11 @@ export type CameraEvent =
   | { type: "slowmo.follow"; view: Viewport }
   /** Something was selected or placed and measured: bring it into view (a pan, never a zoom). */
   | { type: "reveal.requested"; cause: RevealCause; scope?: RevealScope }
+  /**
+   * A peer in a room changed the document (`doc`) or who is where (`presence`). Never moves the view, never claims
+   * it, and leaves pending work as it is: a peer's change never moves your view or steals your focus.
+   */
+  | { type: "remote.changed"; kind: "doc" | "presence" }
   /** The pane has its new size and the selection is measured: pending work may run. */
   | ({ type: "pane.settled" } & SettledFacts);
 

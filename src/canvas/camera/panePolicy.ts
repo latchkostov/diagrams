@@ -58,6 +58,7 @@ import type {
  * | W5  | pane.settled                  | pending panel, slow motion on, any mode    | slowmoPane (it holds or replans)        |
  * | W6  | slowmo.follow                 | owner slowmo, no work waits for the pane   | follow                                  |
  * | W7  | narration, live.*             | slow motion on                             | the room only: slow motion's camera     |
+ * | C1  | remote.changed (a peer)       | any state                                  | nothing: no command, state unchanged    |
  *
  * Pending work is replayed with the owner at replay time (R1, R5, L5–L8), runs exactly once (the settled event
  * clears it), and a selection or placement never refits (S1, S2, R3, R4). Live's own work (L1–L4) doesn't wait
@@ -83,6 +84,8 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
     case "selection.changed":
       if (!state.pending || !isPaneCause(state.pending.cause)) return next({});
       return next({ pending: { cause: event.cause } });
+    case "remote.changed":
+      return { state, commands: [] };
     case "menu.opened":
       return next({ menu: event.kind });
     case "menu.closed":

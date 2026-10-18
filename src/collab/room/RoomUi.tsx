@@ -5,7 +5,7 @@ import { appBaseUrl } from "../../interop/share";
 import { copyText } from "../../interop/ui/copyText";
 import { Dialog } from "../../interop/ui/Dialog";
 import { Glyph } from "../../interop/ui/glyphs";
-import { notify } from "../../interop/ui/toast";
+import { notify, toast } from "../../interop/ui/toast";
 import { downloadText } from "../../interop/files";
 import { serializeNative } from "../../interop/native";
 import { createLibraryDiagram, getCurrent, getPrivacyFlags, isLibrarySlug, resolveSlug } from "../../lib/diagramIO";
@@ -14,12 +14,29 @@ import { COLLAB_LIMITS } from "../limits";
 import { formatRoomLink, type RoomLinkProblem } from "../link";
 import type { CollabSession } from "../session";
 import type { OpenRoom, RoomLifecycle, RoomNotice } from "./lifecycle";
+import { createInteractionController } from "../../canvas/interaction/controller";
+import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
+import { interactionJournal } from "../../canvas/interaction/journal";
 import "./room.css";
 
 // The room's controls while the collaboration plan's UI slice (E4) is still to come: the consent dialogs (start and
 // join), what a joiner sees while the room's diagram is on its way, and a status chip in the top bar's save-status
 // slot. Every word is the plan's (§2.2, §2.3, §2.6). E4 adds the Share row, Ctrl+K, the participant popover and the
 // failure states' own wording.
+
+/**
+ * The room's controls live outside the canvas (the dialogs, the chip, the joiner's wait), so they have an
+ * interaction controller of their own (src/canvas/interaction): its canvas is whichever canvas-wrap is on screen.
+ * Every focus handoff of theirs is an event with its cause (dialog.closed, room.waiting, room.status).
+ */
+const roomFocus = createInteractionController(
+  createDomPort({ root: () => document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]') }),
+  domScheduler,
+  { journal: interactionJournal },
+);
+/** A room dialog closed: focus back to what opened it, else the canvas (D6). */
+const dialogClosed = (opener: HTMLElement | null) =>
+  roomFocus.dispatch({ type: "dialog.closed", dialog: "room", opener });
 
 const services = () => ["tracker.openwebtorrent.com", "tracker.webtorrent.dev", "stun.cloudflare.com"].join(", ");
 
@@ -68,6 +85,7 @@ export function RoomLayer({
 }) {
   useLocale();
   const snap = useRoom(room);
+  useEffect(() => roomFocus.connect(), []);
   // Start room keeps its dialog through the opening, then shows the link: "pending", then the room's mount.
   const [started, setStarted] = useState<"pending" | number>();
   const shownNotice = useRef(0);
@@ -98,6 +116,7 @@ export function RoomLayer({
   if (prompt?.kind === "invalid")
     return (
       <Dialog
+        restoreFocus={dialogClosed}
         title={t("collab.linkProblemTitle")}
         icon={<Glyph name="alert" />}
         onClose={() => room.dismiss()}
@@ -129,8 +148,11 @@ export function RoomLayer({
  */
 function UnsavedDialog({ room }: { room: RoomLifecycle }) {
   const [failures, setFailures] = useState(0);
+  // One message at a time: an earlier storage notice would point at File ▸ Save behind this modal.
+  useEffect(() => toast.dismiss(), []);
   return (
     <Dialog
+      restoreFocus={dialogClosed}
       title={t("collab.unsavedTitle")}
       icon={<Glyph name="alert" />}
       onClose={() => {}}
@@ -229,6 +251,7 @@ function StartDialog({
   if (blocked)
     return (
       <Dialog
+        restoreFocus={dialogClosed}
         title={t("collab.startTitle")}
         onClose={() => room.dismiss()}
         testId="room-start-dialog"
@@ -252,6 +275,7 @@ function StartDialog({
     );
   return (
     <Dialog
+      restoreFocus={dialogClosed}
       title={t("collab.startTitle")}
       subtitle={t("collab.startLead")}
       onClose={cancel}
@@ -287,6 +311,7 @@ function StartedDialog({ open, onClose }: { open: OpenRoom; onClose: () => void 
   const link = roomLink(open);
   return (
     <Dialog
+      restoreFocus={dialogClosed}
       title={t("collab.startTitle")}
       onClose={onClose}
       testId="room-started-dialog"
@@ -331,6 +356,7 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
   const [alias, setAlias] = useState(suggested);
   return (
     <Dialog
+      restoreFocus={dialogClosed}
       title={t("collab.joinTitle")}
       subtitle={t("collab.joinLead")}
       onClose={() => room.dismiss()}
@@ -354,8 +380,8 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
     >
       <ul className="ix-privacy-list" data-testid="room-join-disclosure">
         <li>{t("collab.joinIpPeers")}</li>
-        <li>{t("collab.joinIpTrackers")}</li>
-        <li>{t("collab.joinCopy")}</li>
+        <li>{t("collab.ipTrackers")}</li>
+        <li>{t("collab.encrypted")}</li>
       </ul>
       <NameField value={alias} onChange={setAlias} testId="room-join-alias" />
       <p className="ix-muted">{t("collab.unverified")}</p>
@@ -387,6 +413,7 @@ function OpenChip({
 }) {
   useSessionState(open.session);
   const [copied, setCopied] = useState(false);
+  const chip = useRef<HTMLDivElement>(null);
   const session = open.session;
   if (!here && open.slug)
     // The room goes on for another diagram: name it, and offer the way back rather than its link.
@@ -408,6 +435,8 @@ function OpenChip({
   const state = session.connectionFailed ? "failed" : peers ? "here" : !session.hasDocument ? "connecting" : "waiting";
   return (
     <div
+      ref={chip}
+      tabIndex={-1}
       className="ix-shared room-chip"
       role="status"
       data-testid="room-chip"
@@ -426,21 +455,34 @@ function OpenChip({
               ? t("collab.chipConnecting")
               : t("collab.chipWaiting")}
       </span>
+      {/* While connecting, status only: the wait in the canvas's place has Leave room, and there's no room to link yet. */}
       {state === "failed" && (
-        <button className="ix-shared-keep" onClick={() => room.retry()} data-testid="room-retry">
+        <button
+          className="ix-shared-keep"
+          onClick={() => {
+            // Retry goes as the state changes: its status keeps the keyboard (W3).
+            if (chip.current) roomFocus.dispatch({ type: "room.status", state, retry: true, status: chip.current });
+            room.retry();
+          }}
+          data-testid="room-retry"
+        >
           {t("common.retry")}
         </button>
       )}
-      <button
-        className="ix-shared-keep"
-        onClick={() => void copyText(roomLink(open)).then(setCopied)}
-        data-testid="room-copy-link"
-      >
-        {copied ? t("collab.copied") : t("collab.copyRoomLink")}
-      </button>
-      <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
-        {t("collab.leave")}
-      </button>
+      {state !== "connecting" && (
+        <>
+          <button
+            className="ix-shared-keep"
+            onClick={() => void copyText(roomLink(open)).then(setCopied)}
+            data-testid="room-copy-link"
+          >
+            {copied ? t("collab.copied") : t("collab.copyRoomLink")}
+          </button>
+          <button className="ix-shared-keep" onClick={() => void room.leave()} data-testid="room-leave">
+            {t("collab.leave")}
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -451,15 +493,15 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
   const snap = useRoom(room);
   const session = snap.open?.session;
   const region = useRef<HTMLDivElement>(null);
-  // Joining removes the dialog and the canvas together: focus that fell to the page lands here instead.
+  // Joining removes the dialog and the canvas together: focus that fell to the page lands here instead (W1).
   useEffect(() => {
-    if (!document.activeElement || document.activeElement === document.body) region.current?.focus();
+    if (region.current) roomFocus.dispatch({ type: "room.waiting", region: region.current });
   }, []);
   return (
     <div ref={region} tabIndex={-1} className="room-connecting" data-testid="room-connecting" role="status">
       <strong>{t("collab.connectingTitle")}</strong>
       <p className="ix-muted">{t("collab.connectingHint")}</p>
-      {session && <ConnectingFailure room={room} session={session} />}
+      {session && <ConnectingFailure room={room} session={session} region={region} />}
       <button className="btn" onClick={() => void room.leave()} data-testid="room-connecting-leave">
         {t("collab.leave")}
       </button>
@@ -467,13 +509,29 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
   );
 }
 
-function ConnectingFailure({ room, session }: { room: RoomLifecycle; session: CollabSession }) {
+function ConnectingFailure({
+  room,
+  session,
+  region,
+}: {
+  room: RoomLifecycle;
+  session: CollabSession;
+  region: RefObject<HTMLDivElement | null>;
+}) {
   useSessionState(session);
   if (!session.connectionFailed) return null;
   return (
     <div role="alert" data-testid="room-connecting-failed">
       <p>{t("collab.connectionFailed")}</p>
-      <button className="btn" onClick={() => room.retry()} data-testid="room-connecting-retry">
+      <button
+        className="btn"
+        onClick={() => {
+          if (region.current)
+            roomFocus.dispatch({ type: "room.status", state: "failed", retry: true, status: region.current });
+          room.retry();
+        }}
+        data-testid="room-connecting-retry"
+      >
         {t("common.retry")}
       </button>
     </div>
