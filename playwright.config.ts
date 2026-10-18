@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_PROFILES, type E2EProfileName } from "./scripts/e2e-profiles.mjs";
 import { chromiumLaunchArgs } from "./scripts/e2e-chromium";
+import { slowmoDiagnosticEnabled, SLOWMO_DIAGNOSTIC_GREP } from "./tests/e2e/slowmo-diagnostic";
 
 /**
  * E2E config. Five projects:
@@ -50,7 +51,8 @@ function port(name: string, fallback: number, explicitFallback = false): { port:
 const TARGET = process.env.E2E_TARGET ?? (CI ? "build" : "dev");
 if (TARGET !== "build" && TARGET !== "dev") throw new Error(`E2E_TARGET must be "build" or "dev", got "${TARGET}"`);
 const BUILD = TARGET === "build";
-const chromiumOnly = process.env.E2E_CHROMIUM_ONLY === "1";
+const diagnostic = slowmoDiagnosticEnabled();
+const chromiumOnly = diagnostic || process.env.E2E_CHROMIUM_ONLY === "1";
 
 const app = port("E2E_PORT", 5191);
 const devServer = BUILD ? port("E2E_DEV_PORT", app.port + 1, app.explicit) : app;
@@ -123,6 +125,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "./tests/.output/results",
   fullyParallel: true,
+  ...(diagnostic ? { grep: SLOWMO_DIAGNOSTIC_GREP } : {}),
   forbidOnly: GATE || CI,
   retries: 0,
   // GitHub's Linux runners have 4 vCPUs: three browsers plus the preview server.

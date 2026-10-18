@@ -1,5 +1,18 @@
 ## Windows slow-motion context-close stalls
 
+## Runner evidence collection
+
+Nightly's report-only `slowmo-teardown-diagnostic` job now runs these four cases on
+`windows-latest`, unquarantined only under its explicit diagnostic opt-in, three times
+with zero retries. Artifact `nightly-slowmo-teardown-evidence` contains failure traces,
+browser-process logs, gate summaries and per-test `teardown-probe.jsonl` files. The probe
+logs page handle/resource snapshots before context close, pending network requests,
+worker shutdown and context-close begin/end. Main-thread handles are observed; worker
+internal timers are outside the probe. Its local Windows dry run passes all 12 cases;
+wait for original-runner evidence before changing the quarantines.
+
+## Original failures
+
 Four Windows-only quarantines from Nightly 39115946465 remain. The cold-load
 cases from the same inventory are addressed by the follow-ups nine readiness
 changes; the slow-motion cases have no established causal fix.

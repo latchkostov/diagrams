@@ -49,7 +49,7 @@ import type {
  * | L9  | pane.settled                  | live.added                                 | liveFit clear of the panel, any owner   |
  * | W1  | slowmo(on)                    |                                            | owner slowmo; resume := owner           |
  * | W1a | slowmo(on)                    | starting with pending work                 | pending := slowmo.take (fold the work) |
- * | W1b | pane.changed(panel)           | slow motion already on, not presenting     | pending := panel; W5 owns its replay    |
+ * | W1b | pane.changed(panel)           | slow motion already on, not presenting     | stop now; pending := panel; W5 replays  |
  * | W2  | slowmo(off)                   |                                            | owner := resume (if still slowmo);      |
  * |     |                               |                                            | restore the view from before            |
  * | W3  | slowmo.take, fullscreen,      | slow motion on                             | owner slowmo (take); pending := take    |
@@ -75,6 +75,9 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       // replace Live's work (a panel change does: it makes the same refit).
       const kept = state.pending && !isPaneCause(state.pending.cause);
       if (kept && (event.cause !== "panel" || KEEPS.has(state.pending!.cause))) return next({});
+      // A paused follow pan must not advance during the frames needed to measure the new pane.
+      // Playing replays resume/replan through W5; W6 blocks new follow pans until then.
+      if (event.cause === "panel" && state.slowmo) return next({ pending: { cause: event.cause } }, { type: "stop" });
       return next({ pending: { cause: event.cause } });
     }
     case "selection.changed":
