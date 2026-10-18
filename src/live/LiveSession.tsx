@@ -21,14 +21,8 @@ import { liveMutationGuard } from "./liveActions";
 import { Recorder } from "./record/Recorder";
 import { useCapacityEntry, useCapacityError, useCapacityInputs } from "./session/useCapacityInputs";
 import { useFrameLoop } from "./session/useFrameLoop";
-import {
-  useLiveCommands,
-  useLivePanelLayout,
-  useLiveRecording,
-  useLiveRecordingState,
-  useLiveSessionBridge,
-  useLiveSetup,
-} from "./session/useLiveCommands";
+import { useLiveCommands, useLiveRecording, useLiveRecordingState } from "./session/useLiveCommands";
+import { useLivePanelLayout, useLiveSessionBridge, useLiveSessionState } from "./session/useLiveSessionState";
 import { useLiveContextMenu } from "./session/useLiveContextMenu";
 import { useLiveDiagramChanges, useLiveFixes } from "./session/useLiveFixes";
 import { useLiveKeyboard } from "./session/useLiveKeyboard";
@@ -72,7 +66,7 @@ export function LiveSession({
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
-  const setup = useLiveSetup({ editor, diagram, params, simulations: simsProp });
+  const setup = useLiveSessionState({ editor, diagram, params, simulations: simsProp });
   const {
     getDiagram,
     simulations,

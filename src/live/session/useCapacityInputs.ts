@@ -15,7 +15,7 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { CameraController } from "../../canvas/camera";
 import type { SessionProps } from "../LiveSession";
 import type { LiveState } from "../controller";
-import type { LivePanel } from "./useLiveCommands";
+import type { LivePanel } from "./useLiveSessionState";
 /** "Traffic into X": the first of these that starts traffic in the simulation (a source). */
 const ENTRY_STENCILS = ["client.user", "client.browser", "generic.webhook"];
 
