@@ -5,7 +5,7 @@ import { realClock, type Clock } from "./clock";
 import { CollabDoc, REMOTE } from "./doc";
 import { Opener, Sealer, SENDER_ID_BYTES, type Rejection } from "./envelope";
 import type { GuardProblem } from "./guard";
-import { claimRoomCreation, deriveRoomKeys, type Channel, type RoomKeys } from "./keys";
+import { reserveRoomCreation, deriveRoomKeys, type Channel, type RoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import {
@@ -167,21 +167,34 @@ export class CollabSession {
     // The diagram's own flag too: a Private file never joins, whatever state the caller passed.
     if (!canCollaborate(opts.privacy) || opts.initial?.private || opts.privacy?.diagram?.private)
       throw new PrivateDiagramError();
-    const creating = claimRoomCreation(opts.room);
-    const random = opts.random ?? secureRandom;
-    const keys = await deriveRoomKeys(opts.room);
-    const doc = opts.doc ?? new CollabDoc({ clientId: opts.clientId });
-    const recovery = opts.recovery
-      ? new RoomRecovery(opts.recovery, keys, () => session.emit(), Date.now, opts.clock ?? realClock)
-      : undefined;
-    await recovery?.restore(doc);
-    if (creating && opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
-    const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
-    const session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);
-    session.recovery = recovery;
-    session.start();
-    recovery?.watch(doc);
-    return session;
+    const creation = reserveRoomCreation(opts.room);
+    let doc = opts.doc;
+    let session: CollabSession | undefined;
+    try {
+      const random = opts.random ?? secureRandom;
+      const keys = await deriveRoomKeys(opts.room);
+      doc ??= new CollabDoc({ clientId: opts.clientId });
+      const recovery = opts.recovery
+        ? new RoomRecovery(opts.recovery, keys, () => session?.emit(), Date.now, opts.clock ?? realClock)
+        : undefined;
+      await recovery?.restore(doc);
+      if (creation && opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
+      const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
+      session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);
+      session.recovery = recovery;
+      session.start();
+      recovery?.watch(doc);
+      creation?.commit();
+      return session;
+    } catch (error) {
+      try {
+        await session?.leave();
+      } finally {
+        if (!opts.doc) doc?.destroy();
+        creation?.rollback();
+      }
+      throw error;
+    }
   }
 
   get senderId(): string {

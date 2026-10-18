@@ -187,6 +187,92 @@ it("automatic tracker reconnect preserves established channels and lets a new pe
   expect([...c.peers()].sort()).toEqual([a.self, b.self].sort());
 });
 
+for (const stage of ["remote description", "ICE gathering"] as const)
+  it(`tracker loss during an incoming handshake permits automatic recovery (${stage})`, async () => {
+    const env = fakeEnvironment();
+    const sockets: WebSocket[] = [];
+    let markEntered!: () => void;
+    let release!: () => void;
+    const entered = new Promise<void>((resolve) => (markEntered = resolve));
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const unfinished: FakePeerConnection[] = [];
+    let gatheringDone: (() => void) | undefined;
+    const PC = class extends FakePeerConnection {
+      async setRemoteDescription(d: { type: string; sdp: string }) {
+        if (stage === "remote description" && d.type === "offer" && !unfinished.length) {
+          unfinished.push(this);
+          markEntered();
+          await held;
+        }
+        await super.setRemoteDescription(d);
+      }
+      async setLocalDescription(d: { type: string; sdp: string }) {
+        await super.setLocalDescription(d);
+        if (stage === "ICE gathering" && d.type === "answer" && !unfinished.length) {
+          unfinished.push(this);
+          this.iceGatheringState = "gathering";
+        }
+      }
+      addEventListener(...args: unknown[]) {
+        gatheringDone = args[1] as () => void;
+        markEntered();
+      }
+      removeEventListener() {
+        gatheringDone = undefined;
+      }
+    };
+    const connect = (high: boolean) => {
+      const seeded = seededBytes(high ? 78 : 77);
+      let first = true;
+      return env.wire.track(
+        createTrackerTransport({
+          trackers: [COLLAB_TRACKERS[0]],
+          discovery: keys.discovery,
+          signal: keys.signal,
+          WebSocket: class extends env.WebSocket {
+            constructor(url: string) {
+              super(url);
+              sockets.push(this);
+            }
+          },
+          RTCPeerConnection: class extends PC {
+            constructor() {
+              super(env.wire);
+            }
+          } as unknown as new (config: RTCConfiguration) => RTCPeerConnection,
+          clock: env.wire.clock,
+          random: (n) => (first ? ((first = false), new Uint8Array(n).fill(high ? 255 : 0)) : seeded(n)),
+        }),
+      );
+    };
+    const a = connect(false),
+      b = connect(true);
+    onTestFinished(() => {
+      release();
+      a.close();
+      b.close();
+    });
+    const pumping = env.wire.pump();
+    await entered;
+    sockets[1].close();
+    const stateAtLoss = unfinished[0].connectionState;
+    release();
+    if (gatheringDone) {
+      unfinished[0].iceGatheringState = "complete";
+      gatheringDone();
+    }
+    await pumping;
+    // Periodic announcements must rediscover the same participant without manual Retry.
+    for (let i = 0; i < 3 && !a.peers().length; i++) {
+      env.wire.clock.advance(120_000);
+      await env.wire.pump();
+    }
+    expect.soft(stateAtLoss).toBe("closed");
+    expect.soft(unfinished[0].connectionState).toBe("closed");
+    expect(a.peers()).toEqual([b.self]);
+    expect(b.peers()).toEqual([a.self]);
+  });
+
 it("an hour of tracker outages has a bounded reconnect count, including constructor failures", async () => {
   const clock = new FakeClock();
   const attempts: number[] = [];

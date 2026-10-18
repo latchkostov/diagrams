@@ -176,6 +176,8 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     }));
   const sockets = () => trackers.flatMap((t) => (t.ws ? [t.ws] : []));
   const peers = new Map<PeerId, Peer>();
+  /** The signalling socket owns a handshake until its data channel opens. */
+  const handshakes = new Map<Peer, WebSocket>();
   /** Our outstanding offers by offer id: the connection waiting for an answer. */
   const pending = new Map<string, { pc: RTCPeerConnection; channel: RTCDataChannel; at: number }>();
   let handshakeFailed = false;
@@ -223,6 +225,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     channel.onopen = () => {
       if (closed || peer.open || peers.get(peer.id) !== peer) return;
       peer.open = true;
+      handshakes.delete(peer);
       handshakeFailed = false;
       event("peer connected");
       handlers?.join(peer.id);
@@ -236,6 +239,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
     const peer = peers.get(id);
     if (!peer || (expected && peer !== expected)) return;
     peers.delete(id);
+    handshakes.delete(peer);
     try {
       peer.channel?.close();
       peer.pc.close();
@@ -440,23 +444,28 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       const pc = new PC(config());
       const peer: Peer = { id: from, pc, open: false, nextMsg: 1, partial: new Map() };
       peers.set(from, peer);
+      handshakes.set(peer, ws);
       changed();
       pc.ondatachannel = (e) => {
         if (peers.get(from) === peer) attach(peer, e.channel);
         else e.channel.close();
       };
       watchConnection(peer);
+      let answered = false;
+      const abandoned = () => obsolete() || peers.get(from) !== peer;
       try {
         await pc.setRemoteDescription({ type: "offer", sdp });
-        if (obsolete()) return;
-        await pc.setLocalDescription(await pc.createAnswer());
-        if (obsolete()) return;
+        if (abandoned()) return;
+        const answer = await pc.createAnswer();
+        if (abandoned()) return;
+        await pc.setLocalDescription(answer);
+        if (abandoned()) return;
         await gathered(pc);
-        if (obsolete()) return;
+        if (abandoned()) return;
         const local = pc.localDescription?.sdp;
         if (!local) return drop(from, peer);
         const sealed = await sealSignal(opts.signal, opts.discovery, "answer", offerId, selfId, local, random);
-        if (obsolete() || peers.get(from) !== peer) return;
+        if (abandoned()) return;
         send(ws, {
           action: "announce",
           info_hash: infoHash,
@@ -468,10 +477,13 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
             sdp: sealed,
           },
         });
+        answered = true;
         event("answered an offer");
       } catch {
         if (!obsolete()) handshakeFailed = true;
-        drop(from, peer);
+      } finally {
+        // Every abandoned continuation owns only this unfinished peer, never a replacement or an open channel.
+        if (!answered && !peer.open) drop(from, peer);
       }
     } else if (answer) {
       const waiting = pending.get(offerId);
@@ -483,6 +495,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
       pending.delete(offerId);
       const peer: Peer = { id: from, pc: waiting.pc, open: false, nextMsg: 1, partial: new Map() };
       peers.set(from, peer);
+      handshakes.set(peer, ws);
       changed();
       attach(peer, waiting.channel);
       watchConnection(peer);
@@ -490,7 +503,9 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
         await waiting.pc.setRemoteDescription({ type: "answer", sdp });
       } catch {
         if (!obsolete()) handshakeFailed = true;
-        drop(from, peer);
+        if (!peer.open) drop(from, peer);
+      } finally {
+        if (obsolete() && !peer.open) drop(from, peer);
       }
     }
   }
@@ -525,6 +540,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
         tracker.cancelAnnounce = undefined;
         tracker.due = Infinity;
         ws.onopen = ws.onclose = ws.onerror = ws.onmessage = null;
+        for (const [peer, owner] of handshakes) if (owner === ws && !peer.open) drop(peer.id, peer);
         event("tracker closed");
         changed();
         reconnect(tracker);

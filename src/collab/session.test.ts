@@ -15,9 +15,105 @@ import { CollabSession, CONNECTION_WAIT_MS, PrivateDiagramError } from "./sessio
 import { formatRoomLink, parseRoomLink } from "./link";
 import { canaryDiagram, openClient, roomFor, type TestClient } from "./transport/conformance";
 import { MemoryNetwork } from "./transport/memory";
-import type { CollabTransport } from "./transport/types";
+import type { CollabTransport, Connectivity, TransportHandlers } from "./transport/types";
 
 const room = roomFor(1);
+
+it("a rejected initial diagram leaves room creation eligible for a corrected retry", async () => {
+  const clock = new FakeClock(),
+    net = new MemoryNetwork(),
+    room = roomFor(905);
+  const options = { room, clock, privacy: {}, transport: net.connect() };
+  onTestFinished(() => options.transport.close());
+  await expect(
+    CollabSession.open({
+      ...options,
+      initial: { ...canaryDiagram(), title: "x".repeat(COLLAB_LIMITS.maxStringChars + 1) },
+    }),
+  ).rejects.toThrow("beyond what a room can carry");
+  const corrected = await CollabSession.open({ ...options, initial: canaryDiagram() });
+  onTestFinished(async () => {
+    await corrected.leave();
+    corrected.doc.destroy();
+  });
+  expect(corrected.doc.project().diagram).toEqual(canaryDiagram());
+  // Successful activation still consumes the capability, including simultaneous opens.
+  const reopened = await CollabSession.open({ ...options, transport: net.connect(), initial: canaryDiagram() });
+  onTestFinished(async () => {
+    await reopened.leave();
+    reopened.doc.destroy();
+  });
+  expect(reopened.hasDocument).toBe(false);
+});
+
+it("concurrent initialization reserves room creation for only one session", async () => {
+  const clock = new FakeClock(),
+    net = new MemoryNetwork(),
+    room = roomFor(906);
+  const sessions = await Promise.all(
+    [1, 2].map(() =>
+      CollabSession.open({ room, clock, privacy: {}, transport: net.connect(), initial: canaryDiagram() }),
+    ),
+  );
+  onTestFinished(async () => {
+    for (const session of sessions) {
+      await session.leave();
+      session.doc.destroy();
+    }
+  });
+  expect(sessions.map((s) => s.hasDocument)).toEqual([true, false]);
+});
+
+it("connectivity notifications start and cancel failure deadlines without Retry", async () => {
+  const clock = new FakeClock(),
+    net = new MemoryNetwork();
+  let state: Connectivity = "waiting";
+  let handlers: TransportHandlers | undefined;
+  const retry = vi.fn();
+  const session = await CollabSession.open({
+    room: roomFor(907),
+    clock,
+    privacy: {},
+    transport: {
+      ...net.connect(),
+      retry,
+      connectivity: () => state,
+      subscribe(h) {
+        handlers = h;
+        return () => (handlers = undefined);
+      },
+    },
+  });
+  onTestFinished(async () => {
+    await session.leave();
+    session.doc.destroy();
+  });
+  const changed = vi.fn();
+  session.onChange(changed);
+  const notify = (next: Connectivity) => {
+    state = next;
+    handlers!.connectivity?.();
+    expect(session.connectivity).toBe(next);
+    expect(changed).toHaveBeenCalled();
+    changed.mockClear();
+  };
+  clock.advance(CONNECTION_WAIT_MS * 2);
+  expect(session.connectionFailed).toBe(false);
+  for (const reason of ["trackers-unreachable", "no-answer", "ice-failed"] as const) {
+    notify(reason);
+    clock.advance(CONNECTION_WAIT_MS / 2);
+    expect(session.connectionFailed).toBe(false);
+    notify("waiting");
+    clock.advance(CONNECTION_WAIT_MS * 2);
+    expect(session.connectionFailed).toBe(false);
+    notify(reason);
+    clock.advance(CONNECTION_WAIT_MS);
+    expect(session.connectionFailed).toBe(true);
+    notify("waiting");
+    expect(session.connectionFailed).toBe(false);
+  }
+  expect(retry).not.toHaveBeenCalled();
+});
 
 it("a second creator rejoining by link merges the room instead of reseeding it", async () => {
   const clock = new FakeClock(),

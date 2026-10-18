@@ -50,9 +50,19 @@ const subtle = () => {
 
 const freshRooms = new WeakSet<RoomLink>();
 
-/** A creation capability is local, unforgeable by parsing a link, and consumed on the first open. */
-export function claimRoomCreation(room: RoomLink): boolean {
-  return freshRooms.delete(room);
+/** Reserve creation across async initialization; only a successful activation consumes it. */
+export function reserveRoomCreation(room: RoomLink): { commit(): void; rollback(): void } | undefined {
+  if (!freshRooms.delete(room)) return undefined;
+  let reserved = true;
+  return {
+    commit() {
+      reserved = false;
+    },
+    rollback() {
+      if (reserved) freshRooms.add(room);
+      reserved = false;
+    },
+  };
 }
 
 /** A new room: 32 random bytes from WebCrypto, epoch 0. */

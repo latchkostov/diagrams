@@ -911,9 +911,15 @@ for (const abortAfter of [1, 2]) {
     consoleErrors,
   }) => {
     await relay([context], 140 + abortAfter);
+    await page.clock.install();
     await open(page);
     await name(page, "api", "Durable before interrupted append");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
+    await page.getByTestId("node-api").dblclick();
+    const field = page.getByTestId("inspector-field-label");
+    await expect(field).toBeFocused();
+    // Automatic retry must stay pending until the old page is gone, even on a loaded runner.
+    await pauseClock(page);
     await page.evaluate((after) => {
       const put = IDBObjectStore.prototype.put;
       let staged = 0;
@@ -927,12 +933,14 @@ for (const abortAfter of [1, 2]) {
         return result;
       };
     }, abortAfter);
-    await name(page, "api", "Interrupted undurable append");
+    await field.fill("Interrupted undurable append");
+    await field.press("Enter");
     await expect(page.getByTestId("collab-recovery-problem")).toContainText("Not saved on this device");
     await expect(page.getByTestId("node-api")).toContainText("Interrupted undurable append");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
     // Do not close the session or flush before reload: lose everything outside IndexedDB.
     await page.reload();
+    await page.clock.resume();
     await expect(page.getByTestId("node-api")).toContainText("Durable before interrupted append");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
     expectNoErrors(consoleErrors);
