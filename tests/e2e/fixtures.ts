@@ -322,6 +322,16 @@ export async function interactionLog(page: Page, after = 0): Promise<string[]> {
   );
 }
 
+/**
+ * Which level took each of live view's Space, Enter and Esc presses since `after` ("escape:trace", "space:toggle"):
+ * the live.key decisions in the interaction journal (src/canvas/interaction/liveKeys.ts).
+ */
+export async function liveKeyLevels(page: Page, after = 0): Promise<string[]> {
+  return (await interactionJournal(page, after))
+    .filter((e) => e.event.startsWith("live.key:"))
+    .map((e) => e.event.slice("live.key:".length));
+}
+
 /** What moved the view, in order: "fit:pane", "reveal:placement" (commands that left the view as it was are left out). */
 export async function cameraMoves(page: Page, after = 0): Promise<string[]> {
   return (await cameraJournal(page, after))

@@ -1,5 +1,6 @@
 import type { CameraEvent } from "../camera";
-import { focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
+import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
+import { liveKeys } from "./liveKeys";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
 import type {
   ElementHandle,
@@ -10,6 +11,8 @@ import type {
   FocusState,
   FocusTarget,
   InteractionPhase,
+  LiveKeyAction,
+  LiveKeyContext,
   MenuCloseReason,
   MenuVia,
   MenusState,
@@ -151,8 +154,13 @@ export function createInteractionController<P = unknown>(
   }
 
   function label(event: FocusEvent) {
-    if (event.type === "menu.closed") return `menu.closed:${event.reason}`;
+    if (event.type === "menu.closed")
+      return event.kind === "live" ? `live.menu.closed:${event.reason}` : `menu.closed:${event.reason}`;
+    if (event.type === "menu.opened" && event.kind === "live") return "live.menu.opened";
     if (event.type === "selection.changed") return `selection.changed:${event.cause}`;
+    if (event.type === "dialog.closed" && event.dialog !== "checks")
+      return `dialog.closed:${event.dialog}${event.reason ? `:${event.reason}` : ""}`;
+    if (event.type === "live.key") return `live.key:${event.key}:${event.action}`;
     return event.type;
   }
 
@@ -293,18 +301,6 @@ export function createInteractionController<P = unknown>(
     if (next === "placement") camera?.placing();
   }
 
-  function describe(command: FocusCommand) {
-    if (command.type === "keep") return "keep";
-    const t = command.target;
-    const what =
-      t.kind === "node" || t.kind === "edge" || t.kind === "item"
-        ? `${t.kind}:${t.id}`
-        : t.kind === "field"
-          ? `field:${t.name}`
-          : t.kind;
-    return `${command.type}:${what}@${command.when}`;
-  }
-
   return {
     /** The open menu or dialog, if any. */
     get menu(): OpenSurface<P> | null {
@@ -418,6 +414,15 @@ export function createInteractionController<P = unknown>(
         cancelFrame = null;
         scheduler.microtask(() => attempt(move));
       } else if ((move.when === "ready" || (move.when === "measured" && begun)) && !move.retry) attempt(move);
+    },
+    /**
+     * Space, Enter or Esc in live view: the level that takes it (liveKeys.ts), journaled as one live.key event for
+     * the focus policy (row L1). The call site runs the level it's given.
+     */
+    liveKey(context: LiveKeyContext): LiveKeyAction {
+      const action = liveKeys(context);
+      decide({ type: "live.key", key: context.key, action });
+      return action;
     },
     /** A press or a key anywhere (window capture): a move's second attempt stands down. */
     input() {

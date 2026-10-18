@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useStore } from "@xyflow/react";
+import { useInteraction } from "../canvas/interaction";
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { formatClock } from "./format";
@@ -16,6 +17,7 @@ const BOTTOM_RESERVE = 170;
  */
 export function NoteCallout({ state }: { state: LiveState }) {
   const ui = useLive();
+  const interaction = useInteraction();
   const note = state.run?.note;
   const waiting = !!state.run?.waiting;
   const transform = useStore((s) => s.transform);
@@ -44,9 +46,10 @@ export function NoteCallout({ state }: { state: LiveState }) {
   }, [noteKey]);
 
   useLayoutEffect(() => {
-    // A pausing presentation note moves keyboard focus to its explicit resume action.
-    if (waiting && ui.presenting) continueRef.current?.focus();
-  }, [noteKey, waiting, ui.presenting]);
+    // A pausing presentation note moves keyboard focus to its explicit resume action (focus policy row L2).
+    const resume = continueRef.current;
+    if (waiting && ui.presenting && resume) interaction?.dispatch({ type: "narration.waiting", resume });
+  }, [noteKey, waiting, ui.presenting, interaction]);
 
   if (!note) return null;
   // The authoring panel covers the right side of the pane.

@@ -143,8 +143,19 @@ const INTERACTION_RULES = [
  * - inspector/fields.tsx: a segmented control moves focus among its own radio buttons (the ARIA radio group's
  *   arrow keys), and an inert note's Remove button hands focus to its own section as it removes itself.
  * - SheetResizeHandle.tsx: the handle focuses itself on a press, so its arrow keys resize the sheet it belongs to.
+ * - live/InjectDialog.tsx: the modal puts the cursor in its first field and traps Tab inside itself (its focus
+ *   return on close is row D3).
+ * - live/TraceCard.tsx: a waiting card that becomes a journey keeps focus on its own hop list.
+ * - live/CapacityLayer.tsx: the bottleneck callout keeps focus on itself when its own action button goes (the
+ *   trouble callout's return to the canvas is row L3).
  */
-const FOCUS_LOCAL = ["src/canvas/inspector/fields.tsx", "src/canvas/SheetResizeHandle.tsx"];
+const FOCUS_LOCAL = [
+  "src/canvas/inspector/fields.tsx",
+  "src/canvas/SheetResizeHandle.tsx",
+  "src/live/InjectDialog.tsx",
+  "src/live/TraceCard.tsx",
+  "src/live/CapacityLayer.tsx",
+];
 
 export default tseslint.config(
   {
@@ -195,7 +206,8 @@ export default tseslint.config(
   {
     // One writer for keyboard focus and menus in the canvas: src/canvas/interaction (see its index.ts). A later
     // no-restricted-syntax replaces an earlier one for the same files, so this restates the camera's selectors.
-    files: ["src/canvas/**/*.{ts,tsx}"],
+    // Live (src/live) is a mode of the canvas: its keys, popovers, panels and focus returns go through it too.
+    files: ["src/canvas/**/*.{ts,tsx}", "src/live/**/*.{ts,tsx}"],
     ignores: ["src/canvas/interaction/**", "src/canvas/camera/**", "src/**/*.test.*", ...FOCUS_LOCAL],
     rules: { "no-restricted-syntax": ["error", ...CAMERA_RESTATED, ...INTERACTION_RULES] },
   },

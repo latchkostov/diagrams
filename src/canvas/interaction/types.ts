@@ -12,18 +12,31 @@ export type Platform = "mac" | "other";
 /**
  * What can be open over the canvas, one at a time: a context menu (a node, an edge, a boundary, a note, the
  * selection or the pane), quick-add (a double-click, a dropped connection), quick-add beside its outline (Alt+arrow,
- * the "+"), or a dialog the canvas opens (the keyboard shortcuts).
+ * the "+"), or a dialog the canvas opens (the keyboard shortcuts). `live`: a popover on Live's bar (its "⋯" menu,
+ * the expectations list). Live's popovers report opening and closing to the focus policy but are not one of the
+ * canvas's surfaces: they don't replace a canvas menu or hold data-interaction-state (see liveKeys.ts).
  */
-export type SurfaceKind = "context" | "quickAdd" | "connected" | "dialog";
+export type SurfaceKind = "context" | "quickAdd" | "connected" | "dialog" | "live";
 
 /**
  * Why a menu closed. `pick`: an item ran. `escape`: Esc in the menu or on the canvas. `outside`: a press outside it.
  * `scroll`: the wheel, or a pan by hand. `replaced`: another menu opened in its place. `blur`: the window lost
  * focus. `resize`: the window resized. `gesture`: a drag or a connection started. `command`: a canvas command that
- * acts without it (Alt+Shift+arrow). `unmount`: the canvas went away or stopped being editable.
+ * acts without it (Alt+Shift+arrow). `toggle`: the control that opened it, pressed again (Live's bar). `unmount`:
+ * the canvas went away or stopped being editable (or Live's bar went away).
  */
 export type MenuCloseReason =
-  "pick" | "escape" | "outside" | "scroll" | "replaced" | "blur" | "resize" | "gesture" | "command" | "unmount";
+  | "pick"
+  | "escape"
+  | "outside"
+  | "scroll"
+  | "replaced"
+  | "blur"
+  | "resize"
+  | "gesture"
+  | "command"
+  | "toggle"
+  | "unmount";
 
 /** How a menu was asked for: a pointer (a right-click, macOS Control-click, a double-click) or a key. */
 export type MenuVia = "pointer" | "keyboard";
@@ -89,7 +102,11 @@ export type FocusTarget =
   /** An Inspector field (`owner`: the flow id its name field names, when it must be that item's). */
   | { kind: "field"; name: string; owner?: string }
   /** The stencil rail's search. */
-  | { kind: "paletteSearch" };
+  | { kind: "paletteSearch" }
+  /** The Live bar's control that opens its side panels ("⋯", data-live-panel-opener). */
+  | { kind: "panelOpener" }
+  /** A field (by test id) in one of Live's side panels: waits while the panel is open and the field isn't yet. */
+  | { kind: "panelField"; panel: string; field: string };
 
 /**
  * When a focus command runs. `now`: at once. `commit`: once React has committed the change that caused it, after
@@ -172,8 +189,27 @@ export type FocusEvent =
     }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */
   | { type: "inspector.toggled"; cause: "panel" | "selection" }
-  /** The Checks card closed (Esc, its close button): focus goes back to what opened it. */
-  | { type: "dialog.closed"; dialog: "checks"; opener: ElementHandle | null }
+  /**
+   * A dialog or panel closed, and focus goes back to what opened it. `checks`: the Checks card (Esc, its close
+   * button). `livePanel`: one of Live's side panels (Esc), back to its opener, else the Live bar's panel opener.
+   * `inject`: Live's inject dialog (any way it closed), back to its opener, else the node it injects at (`node`).
+   */
+  | {
+      type: "dialog.closed";
+      dialog: "checks" | "livePanel" | "inject";
+      opener: ElementHandle | null;
+      /** inject: the node it was opened on. */
+      node?: string;
+      reason?: MenuCloseReason;
+    }
+  /** Space, Enter or Esc in live view, and the level that took it (liveKeys.ts). */
+  | { type: "live.key"; key: LiveKey; action: LiveKeyAction }
+  /** A pausing note while presenting: its Continue button takes the keyboard. */
+  | { type: "narration.waiting"; resume: ElementHandle }
+  /** A floating Live callout went away (dismissed, the trouble over) while focus was inside it. */
+  | { type: "callout.closed"; hadFocus: boolean }
+  /** A Live panel's field should take the cursor once the panel lists it (a new entry point's rate). */
+  | { type: "panel.field"; panel: string; field: string }
   /** Esc on the canvas, from `from` (a node or an edge), clearing the selection. */
   | { type: "escape"; from: ElementHandle | null }
   /** The gallery handed the keyboard to this canvas (after its dialog's teardown restored the opener). */
@@ -210,6 +246,63 @@ export interface FocusDecision {
   state: FocusState;
   /** Exactly one per event. */
   command: FocusCommand;
+}
+
+/** The keys live view handles itself (liveKeys.ts). */
+export type LiveKey = "space" | "enter" | "escape";
+
+/**
+ * Which level took Space, Enter or Esc in live view (liveKeys.ts). Someone else's: `slowmo` (slow motion's own
+ * keys), `recording` (the recorder's Esc), `editor` (a text field or an inline editor), `owner` (an open menu,
+ * dialog or Live panel), `canvas` (the canvas clears the selection itself), `presentation` (presenting leaves on
+ * Esc), `none` (nothing in live view: a control's own key, Enter with no note waiting, Esc in an always-on view).
+ * Live's own: `selection` (clear it), `trace` (end the message trace), `path` (clear the highlighted path), `exit`
+ * (leave live view), `toggle` (play or pause), `resume` (continue a waiting note), `repeat` (a held Space: swallowed).
+ */
+export type LiveKeyAction =
+  | "slowmo"
+  | "recording"
+  | "editor"
+  | "owner"
+  | "canvas"
+  | "selection"
+  | "trace"
+  | "presentation"
+  | "path"
+  | "exit"
+  | "toggle"
+  | "resume"
+  | "repeat"
+  | "none";
+
+/** What the call site knows as Space, Enter or Esc arrives (liveKeys.ts decides from it alone). */
+export interface LiveKeyContext {
+  key: LiveKey;
+  /** A held key's repeats. */
+  repeat: boolean;
+  /** Slow motion is on, and this is a key it handles (Space as " ", Esc). */
+  slowMotion: boolean;
+  /** A recording is running (its indicator owns Esc). */
+  recording: boolean;
+  /** The key went to a text field or an inline editor. */
+  editable: boolean;
+  /** The key went to a control with its own Space and Enter (a button, a select, a link, an overlay, a splitter). */
+  control: boolean;
+  /** A menu, a dialog or one of Live's side panels is open (it takes Esc first). */
+  owner: boolean;
+  /** Something on the canvas is selected. */
+  selection: boolean;
+  /** Focus is on the canvas, outside the trace card: the canvas's own Esc clears the selection. */
+  canvasFocus: boolean;
+  /** A message trace is on. */
+  trace: boolean;
+  presenting: boolean;
+  /** A highlighted path (everything downstream of an edge). */
+  path: boolean;
+  /** Live view can't be left (an always-on embed). */
+  alwaysOn: boolean;
+  /** A note waits for Continue. */
+  waiting: boolean;
 }
 
 /** What tests and the e2e journal see: nothing open or pending, a menu or dialog open, or focus waiting to move. */

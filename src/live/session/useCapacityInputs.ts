@@ -9,6 +9,7 @@ import { capacityView, freePlaySimulation, inputsWithoutFix, withFix, type Capac
 import { capacityOverlay, useCapacityOverlay } from "../capacityOverlay";
 
 import type { CameraController } from "../../canvas/camera";
+import type { InteractionController } from "../../canvas/interaction";
 import type { SessionProps } from "../LiveSession";
 import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";
@@ -137,10 +138,12 @@ export function useCapacityEntry({
   store,
   session,
   camera,
+  interaction,
 }: Pick<SessionProps, "editor"> & {
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
   session: LiveSessionState;
   camera: CameraController;
+  interaction: Pick<InteractionController, "dispatch">;
 }) {
   const { flash } = session;
   /**
@@ -174,18 +177,10 @@ export function useCapacityEntry({
       flash(`Added an entry point into ${target.label || target.id}. Set its rate in msg/s.`);
       // Bring the new node into view beside the panel, once it's measured.
       camera.dispatch({ type: "live.added", panel: true });
-      // The panel lists it once the session picks up the edit; then the rate field takes the cursor.
-      const started = performance.now();
-      const focusRate = () => {
-        const field = document.querySelector<HTMLInputElement>(`[data-testid="capacity-rate-${CSS.escape(id)}"]`);
-        if (field) {
-          field.focus();
-          field.select();
-        } else if (performance.now() - started < 2000) requestAnimationFrame(focusRate);
-      };
-      requestAnimationFrame(focusRate);
+      // The panel lists it once the session picks up the edit; then the rate field takes the cursor (row L4).
+      interaction.dispatch({ type: "panel.field", panel: "capacity-panel", field: `capacity-rate-${id}` });
     },
-    [editor, store, flash, camera],
+    [editor, store, flash, camera, interaction],
   );
 
   return { addEntry };

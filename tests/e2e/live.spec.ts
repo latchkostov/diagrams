@@ -13,6 +13,9 @@ import {
   pauseClock,
   waitForCameraIdle,
   cameraMoves,
+  interactionJournalMark,
+  interactionLog,
+  liveKeyLevels,
 } from "./fixtures";
 
 // Live view: the toggle, injection from the context menu, saved simulations, narration, the storm
@@ -25,9 +28,12 @@ test("Escape still leaves live when an earlier handler commits a host render", a
   await gotoLab(page, "live-keyboard");
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await page.getByTestId("live-keyboard-arm").click();
+  const mark = await interactionJournalMark(page);
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("live-keyboard-host")).toHaveAttribute("data-revision", "1");
   await expect(page.getByTestId("live-controls")).toHaveCount(0);
+  // The Lab's stage has no canvas: live view's own controller decided the level (liveKeys row X10).
+  expect(await liveKeyLevels(page, mark)).toEqual(["escape:exit"]);
   await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
 });
 
@@ -111,8 +117,10 @@ test.describe("live view", () => {
     await page.keyboard.press("l");
     await expect(page.getByTestId("live-controls")).toBeVisible();
     // Esc backs out of live view when nothing else (menu, selection, dialog) claims it.
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    expect(await interactionLog(page, mark)).toEqual(["live.key:escape:exit -> keep"]);
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await page.getByTestId("live-toggle").click();
@@ -258,9 +266,12 @@ test.describe("live view", () => {
     await page.keyboard.press("Space");
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
 
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("present-exit")).toHaveCount(0);
     await expect(page.getByTestId("live-controls")).toBeVisible();
+    // Presentation keeps its own Esc: live view leaves it alone (liveKeys row X8).
+    expect(await liveKeyLevels(page, mark)).toEqual(["escape:presentation"]);
     expectNoErrors(consoleErrors);
   });
 
@@ -407,11 +418,21 @@ test.describe("live view", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("live-inject-count")).toBeFocused();
     expect(await page.getByTestId("live-play").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     expect(
       await page.getByTestId("node-inventory").evaluate((el) => el.closest("[data-id]") === document.activeElement),
     ).toBe(true);
+    // The dialog's field takes Esc (liveKeys row X3); the dialog closes with its reason and gives focus back by row
+    // D3: nothing had focus as it opened (its menu item had gone), so to the node it injects at.
+    expect(await interactionLog(page, mark)).toEqual([
+      "live.key:escape:editor -> keep",
+      "dialog.closed:inject:escape -> focus:node:inventory@now",
+      "focus.entered -> keep",
+      "focused: focus:node:inventory@now",
+      "focus.ran -> keep",
+    ]);
     expect(await page.getByTestId("live-play").evaluate((el) => !!el.closest("[inert]"))).toBe(false);
     await open();
     await page.getByTestId("live-inject-cancel").click();
@@ -494,17 +515,30 @@ test.describe("live view", () => {
     await page.getByTestId("sim-panel-add-traffic").click();
     await page.getByTestId("sim-panel-traffic-0-node-pick").click();
     await expect(page.getByTestId("sim-panel-picking")).toBeVisible();
+    let mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("sim-panel-picking")).toHaveCount(0);
     await expect(page.getByTestId("sim-panel")).toBeVisible();
+    // The panel owns Esc (liveKeys row X4); cancelling its picker moves no focus.
+    expect(await interactionLog(page, mark)).toEqual(["live.key:escape:owner -> keep"]);
     // Next, the panel closes and focus returns to the live bar; live view stays on.
+    mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("sim-panel")).toHaveCount(0);
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await expect(page.getByTestId("live-more")).toBeFocused();
+    // Row D2: nothing had focus as it opened (its menu item went with the menu), so the bar's panel opener ("⋯").
+    expect(await interactionLog(page, mark)).toEqual([
+      "live.key:escape:owner -> keep",
+      "dialog.closed:livePanel:escape -> focus:panelOpener@now",
+      "focused: focus:panelOpener@now",
+      "focus.ran -> keep",
+    ]);
     // Then live view itself.
+    mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    expect(await liveKeyLevels(page, mark)).toEqual(["escape:exit"]);
   });
 
   test("live node menus lead with live actions and stay within the chrome budget", async ({ page }) => {
@@ -681,10 +715,18 @@ test.describe("live view", () => {
     const rows = list.getByTestId(/^expectation-row-/);
     expect(await rows.count()).toBeGreaterThan(0);
     await expect(rows.first()).toContainText(/(pending|holds|failed) · now \d/);
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(list).toHaveCount(0);
     await expect(summary).toBeFocused();
     await expect(page.getByTestId("live-controls")).toBeVisible();
+    // A Live popover closes with its reason and gives focus back to its button at once (row M5).
+    expect(await interactionLog(page, mark)).toEqual([
+      "live.key:escape:owner -> keep",
+      "live.menu.closed:escape -> focus:element@now",
+      "focused: focus:element@now",
+      "focus.ran -> keep",
+    ]);
   });
 });
 

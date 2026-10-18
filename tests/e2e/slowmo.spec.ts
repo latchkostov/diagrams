@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
 import { cameraJournal, cameraJournalMark, viewportTransform, waitForCameraIdle } from "./fixtures";
+import { interactionJournalMark, liveKeyLevels } from "./fixtures";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -239,8 +240,12 @@ test.describe("slow motion", () => {
     await openNodeMenu(page, "payments", "sim.slowmo-from");
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
     await page.waitForTimeout(1500);
+    const keys = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(play(page)).toHaveAttribute("data-state", "paused");
+    // Slow motion's own Esc (liveKeys row X1): live view's chain never acts on it. Slow motion's listener usually
+    // stops the key before live view's hears it; when live view's hears it first, it journals the level and yields.
+    expect(["", "escape:slowmo"]).toContain((await liveKeyLevels(page, keys)).join());
     // Slow motion planned its take, then gave the view back where it was (panePolicy W4, W2).
     const commands = (await cameraJournal(page, mark)).map((e) => e.command);
     expect(commands.indexOf("slowmoPlan")).toBeGreaterThanOrEqual(0);

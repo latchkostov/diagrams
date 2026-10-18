@@ -1,6 +1,7 @@
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
 import { Suspense, lazy, useEffect, useMemo } from "react";
 import { useCameraController } from "../canvas/camera";
+import { InteractionContext, useInteractionOrLocal } from "../canvas/interaction";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { actionRegistry } from "../editor/actions";
 import { useSettings } from "../harness/settings";
@@ -63,6 +64,9 @@ export function LiveSession({
   // Every move of the view goes through the canvas camera (src/canvas/camera): Live only says what changed.
   const camera = useCameraController();
   if (!camera) throw new Error("LiveSession needs a camera (CameraContext)");
+  // Live's keys, popovers, panels and focus returns go through the canvas's interaction controller (src/canvas/
+  // interaction); a Lab stage without a canvas gets one of its own.
+  const { controller: interaction, local } = useInteractionOrLocal();
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
@@ -145,7 +149,7 @@ export function LiveSession({
     saveInputs,
   } = fixes;
 
-  const { addEntry } = useCapacityEntry({ session, editor, store, camera });
+  const { addEntry } = useCapacityEntry({ session, editor, store, camera, interaction });
 
   useLiveContextMenu({
     session,
@@ -160,7 +164,7 @@ export function LiveSession({
     onPanelChange,
   });
 
-  useLiveKeyboard({ session, spotlight, presenting, alwaysOn, onExit, editor });
+  useLiveKeyboard({ session, spotlight, presenting, alwaysOn, onExit, editor, interaction });
 
   const ui = useMemo<LiveUi>(
     () => ({
@@ -226,7 +230,7 @@ export function LiveSession({
 
   useEffect(() => planningHost.publish(ui), [ui]);
 
-  return (
+  const view = (
     <LiveContext.Provider value={ui}>
       <ViewportPortal>
         <canvas
@@ -384,6 +388,7 @@ export function LiveSession({
       />
     </LiveContext.Provider>
   );
+  return local ? <InteractionContext.Provider value={interaction}>{view}</InteractionContext.Provider> : view;
 }
 
 export { EditCapacity } from "./session/EditCapacity";
