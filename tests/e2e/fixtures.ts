@@ -248,6 +248,47 @@ export async function waitForSelectionSettled(page: Page) {
 }
 
 /**
+ * Waits until the canvas camera has nothing queued, deferred or moving: `data-camera-state="idle"` on canvas-wrap,
+ * which its controller (src/canvas/camera/controller.ts) holds for the whole lifetime of pending pane work, a
+ * pointer-up's Inspector change, a reveal waiting for measurement, a fit's refinement and a move in flight. Work
+ * deferred by an open menu reads `deferred`, never idle. Live's own panel and narration fits aren't the canvas
+ * camera's yet: Live specs keep waitForStableViewport.
+ */
+export async function waitForCameraIdle(page: Page) {
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-camera-state", "idle");
+}
+
+/** One command the canvas camera ran (e2e builds only; see src/canvas/camera/journal.ts). */
+export interface CameraJournalEntry {
+  seq: number;
+  command: string;
+  cause?: string;
+  moved: boolean;
+  from: { x: number; y: number; zoom: number };
+  to?: { x: number; y: number; zoom: number };
+}
+
+/** The camera commands run since `after` (a length from an earlier read), as "command:cause" strings or entries. */
+export async function cameraJournal(page: Page, after = 0): Promise<CameraJournalEntry[]> {
+  const all = await page.evaluate(
+    () => (window as unknown as { __cameraJournal?: CameraJournalEntry[] }).__cameraJournal ?? [],
+  );
+  return all.slice(after);
+}
+
+/** The journal's length now: pass it to cameraJournal to read only what follows. */
+export async function cameraJournalMark(page: Page): Promise<number> {
+  return (await cameraJournal(page)).length;
+}
+
+/** What moved the view, in order: "fit:pane", "reveal:placement" (commands that left the view as it was are left out). */
+export async function cameraMoves(page: Page, after = 0): Promise<string[]> {
+  return (await cameraJournal(page, after))
+    .filter((e) => e.moved)
+    .map((e) => (e.cause ? `${e.command}:${e.cause}` : e.command));
+}
+
+/**
  * Fits the whole diagram to the canvas (Fit diagram, Shift+1) and waits for the view to settle. The canvas
  * never scrolls (overflow: clip), so a node past its edge, under the inspector or the AI rail, can't be
  * clicked until the view brings it back: a selection that opened the inspector, or a smaller window,
