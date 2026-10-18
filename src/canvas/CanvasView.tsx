@@ -1,3 +1,8 @@
+import { isAnnotationNode, isDiagramNode, isGroupNode } from "./nodeKinds";
+import { useBoxSelection } from "./selection/useBoxSelection";
+import { useCanvasNavigation, useSelectionSummary } from "./selection/useCanvasNavigation";
+import { usePanKeys } from "./selection/usePanKeys";
+import { useSettledSelection } from "./selection/useSettledSelection";
 import { CanvasControls, CanvasMinimap, DotGrid, ZoomVar } from "./chrome/CanvasControls";
 import { CanvasOverlays } from "./chrome/CanvasOverlays";
 import { useChromeHint, useChromeOverlays } from "./chrome/useCanvasChrome";
@@ -11,10 +16,7 @@ import {
 import { useCaptionContrast } from "./useCaptionContrast";
 import { ConnectedQuickAddMenu } from "./ConnectedQuickAddMenu";
 import { connectedMenuPlacement, type ConnectedMenuAnchor } from "./geometry/connectedMenuPlacement";
-import { isDenyRule } from "../stencils/netDevices";
-import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
-import { pipsByNode } from "./nodes/dependencyRows";
-import { dependencyVisibility, projectDependencies, useShowDependencies } from "./dependencyVisibility";
+import { dependencyVisibility } from "./dependencyVisibility";
 import { edgeMarks } from "./edgeMarks";
 import {
   useCallback,
@@ -49,7 +51,6 @@ import {
   type OnConnectStart,
   type OnNodeDrag,
   type IsValidConnection,
-  type ReactFlowState,
 } from "@xyflow/react";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
@@ -59,27 +60,11 @@ import { usePrivacyFlags } from "../lib/usePrivacy";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
 import { memberBoxes } from "./memberBoxes";
 import { expandGroupIds } from "../model/groupHierarchy";
-import {
-  edgeAriaLabel,
-  fromFlow,
-  nodeAriaLabel,
-  toFlow,
-  withEdgeAria,
-  withNodeAria,
-  withRovingFocus,
-  type DiagramMeta,
-} from "./convert";
+import { fromFlow, toFlow, type DiagramMeta } from "./convert";
 import { previewMembership, type GroupRect, type MemberBox } from "./membership";
-import { nearestInDirection, readingOrder, stepInOrder, tabOrder, type NavBox } from "./keyboardNav";
 import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } from "./DiagramContext";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
-import {
-  ANNOTATION_DND_MIME,
-  annotationAriaLabel,
-  resolveAnnotationColor,
-  annotationTitle,
-  parseAnnotationDrag,
-} from "./annotations";
+import { ANNOTATION_DND_MIME, resolveAnnotationColor, annotationTitle, parseAnnotationDrag } from "./annotations";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
@@ -91,10 +76,10 @@ import { useEditorPrefs } from "../editor/prefs";
 import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
 import type { FlowSelection } from "../editor/historySelection";
 import { useEditor } from "../editor/useEditor";
-import { inCanvas, useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
+import { useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
 import { isEditableTarget } from "../editor/shortcuts";
 import type { NewNode, Selection, XYBox } from "../editor/types";
-import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
+import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode } from "./types";
 import { flushSync } from "react-dom";
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
 import { CanvasFitContext } from "./canvasFit";
@@ -107,7 +92,7 @@ import { notify, toast } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
 import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
 import { getRecentStencils, pushRecentStencil } from "../lib/recentStencils";
-import { connectHitAt, connectOver, connectTarget, edgesBetween, pickInBox, type BoxItem } from "./gestures";
+import { connectHitAt, connectOver, connectTarget } from "./gestures";
 import { ConnectionLine } from "./ConnectionLine";
 import { captureTypeAhead } from "./typeAhead";
 import { useSmartGuides } from "./useSmartGuides";
@@ -133,7 +118,6 @@ import {
   useModeFit,
   useMoveHandlers,
   usePaneCamera,
-  useRevealFocused,
   useRevealIds,
   useRevealSelection,
 } from "./camera";
@@ -152,16 +136,6 @@ const PAN_MIDDLE = [1];
  * wrapper: everything handed to <ReactFlow> keeps its identity across the canvas's renders.
  */
 const SNAP_GRID: [number, number] = [10, 10];
-/** Ids whose selected flag inside React Flow disagrees with the box's pick. */
-function staleBoxFlags(
-  s: Pick<ReactFlowState<FlowNode, DiagramFlowEdge>, "nodeLookup">,
-  picked: ReadonlySet<string>,
-): Set<string> {
-  const out = new Set<string>();
-  for (const n of s.nodeLookup.values()) if (!!n.selected !== picked.has(n.id)) out.add(n.id);
-  return out;
-}
-
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
 /** Below this width the inspector waits for a selection: two open side panels leave too little canvas. */
 const ROOMY = 1680;
@@ -216,9 +190,6 @@ export function CanvasView(props: Props) {
   );
 }
 
-const isDiagramNode = (n: FlowNode): n is DiagramFlowNode => n.type === "diagram";
-const isGroupNode = (n: FlowNode): n is GroupFlowNode => n.type === "boundary";
-const isAnnotationNode = (n: FlowNode): n is AnnotationFlowNode => n.type === "annotation";
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
 type MenuState = {
@@ -901,92 +872,7 @@ function CanvasInner({
     [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, pickNamed],
   );
 
-  // ---------------------------------------------------------------- selection box (D5)
-  // React Flow's own box picks only whole nodes and every edge they touch. Ours picks what it touches
-  // (Ctrl/Cmd held: only what's wholly inside), boundaries and zones only when wholly inside, and the
-  // edges whose both ends it picked. React Flow's selection changes are dropped while a box is drawn.
-  const contain = useRef(false);
-  /** Shift held as the box started: what was selected then stays selected (Shift adds, as Shift+click does). */
-  const boxBase = useRef<{ nodes: ReadonlySet<string>; edges: ReadonlySet<string> } | null>(null);
-  const boxPicked = useRef<string | null>(null);
-  const boxSet = useRef<Set<string> | null>(null);
-  /**
-   * Sets the box's pick on the app's nodes. React Flow's own box code flips the selected flag on its
-   * internal copies before emitting the changes we drop, and keeps an internal copy as long as the app's
-   * node object is the same. `stale` (ids whose internal flag disagrees) get a fresh object, so React
-   * Flow re-reads them from the app's state and both agree.
-   */
-  const applyBoxPick = useCallback(
-    (set: ReadonlySet<string>, stale: ReadonlySet<string>) =>
-      setNodes((ns) =>
-        ns.map((n) => (!!n.selected === set.has(n.id) && !stale.has(n.id) ? n : { ...n, selected: set.has(n.id) })),
-      ),
-    [setNodes],
-  );
-  useEffect(() => {
-    if (!editGestures) return;
-    return store.subscribe((s, prev) => {
-      if (!s.userSelectionActive || !s.userSelectionRect) {
-        if (prev.userSelectionActive && !s.userSelectionActive) {
-          // React Flow's last pick may have flipped its own flags after ours: one source of truth.
-          const set = boxSet.current;
-          if (set) {
-            const stale = staleBoxFlags(s, set);
-            if (stale.size) applyBoxPick(set, stale);
-          }
-          boxSet.current = null;
-          boxBase.current = null;
-          // React Flow shows its multi-selection frame (drag it, right-click it) from its own pick, which
-          // it sets after this; follow ours instead: the combined selection, so a Shift-drag that adds nothing
-          // keeps the frame of what was already selected.
-          const any = set ? set.size > 0 : !!boxPicked.current;
-          queueMicrotask(() => store.setState({ nodesSelectionActive: any }));
-        }
-        boxPicked.current = null;
-        return;
-      }
-      if (s.userSelectionRect === prev.userSelectionRect && prev.userSelectionActive) return;
-      const r = s.userSelectionRect;
-      const [tx, ty, k] = s.transform;
-      const box = { x: (r.x - tx) / k, y: (r.y - ty) / k, width: r.width / k, height: r.height / k };
-      const items: BoxItem[] = [];
-      for (const n of s.nodeLookup.values()) {
-        const w = n.measured?.width ?? n.width ?? 0;
-        const h = n.measured?.height ?? n.height ?? 0;
-        if (n.hidden || n.selectable === false || !w || !h) continue;
-        const backdrop =
-          n.type === "boundary" || (n.type === "annotation" && (n as AnnotationFlowNode).data.kind === "zone");
-        items.push({ id: n.id, ...n.internals.positionAbsolute, width: w, height: h, backdrop });
-      }
-      const base = boxBase.current;
-      const picked = pickInBox(items, box, contain.current);
-      const key = picked.join(" ");
-      const set = new Set(base ? [...base.nodes, ...picked] : picked);
-      const stale = staleBoxFlags(s, set);
-      if (key === boxPicked.current && !stale.size) return;
-      const pickChanged = key !== boxPicked.current;
-      boxPicked.current = key;
-      boxSet.current = set;
-      applyBoxPick(set, stale);
-      if (!pickChanged) return;
-      const hiddenDeps = !dependencyVisibility.get();
-      const edgeSet = edgesBetween(
-        s.edges.filter((e) => !(hiddenDeps && isDependency(e.data))),
-        set,
-      );
-      if (base) for (const id of base.edges) edgeSet.add(id);
-      // The same array when no edge's flag changes: the routes and their caches stay as they are.
-      setEdges((es) => {
-        let changed = false;
-        const next = es.map((e) => {
-          if (!!e.selected === edgeSet.has(e.id)) return e;
-          changed = true;
-          return { ...e, selected: edgeSet.has(e.id) };
-        });
-        return changed ? next : es;
-      });
-    });
-  }, [editGestures, store, setNodes, setEdges, applyBoxPick]);
+  const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({ editGestures, store, setNodes, setEdges });
 
   // ---------------------------------------------------------------- Alt-drag duplicates (D9), smart guides (D6)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
@@ -1272,51 +1158,7 @@ function CanvasInner({
     [editor, guides, editGestures, sayLeft, droppedNodes, endGesture],
   );
 
-  // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
-  // Space held: a drag pans from anywhere, even starting on a node (nodes don't drag meanwhile), with a
-  // grab cursor. Alt held over a selected node: the copy cursor (Alt-drag duplicates).
-  const [spaceHeld, setSpaceHeld] = useState(false);
-  useEffect(() => {
-    const wrap = wrapper.current;
-    if (!editGestures || !wrap) return;
-    const setSpace = (on: boolean) => {
-      wrap.classList.toggle("is-space-pan", on);
-      setSpaceHeld(on);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Alt") wrap.classList.toggle("is-alt", e.type === "keydown");
-      if (e.code !== "Space") return;
-      if (e.type === "keyup") return setSpace(false);
-      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || isEditableTarget(e.target)) return;
-      if (!(e.target === document.body || inCanvas(e.target))) return;
-      // Not a page scroll, and not a key press on a focused node.
-      e.preventDefault();
-      setSpace(true);
-    };
-    const reset = () => {
-      wrap.classList.remove("is-alt");
-      setSpace(false);
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("keyup", onKey);
-    window.addEventListener("blur", reset);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("keyup", onKey);
-      window.removeEventListener("blur", reset);
-      reset();
-    };
-  }, [editGestures]);
-
-  // The middle button pans (everywhere); it never starts the browser's autoscroll.
-  useEffect(() => {
-    const wrap = wrapper.current;
-    const noAutoscroll = (e: MouseEvent) => {
-      if (e.button === 1) e.preventDefault();
-    };
-    wrap?.addEventListener("mousedown", noAutoscroll);
-    return () => wrap?.removeEventListener("mousedown", noAutoscroll);
-  }, []);
+  const spaceHeld = usePanKeys(wrapper, editGestures);
 
   // ---------------------------------------------------------------- context menus
 
@@ -1599,106 +1441,23 @@ function CanvasInner({
   );
   // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
   const hideChrome = presenting || readOnly;
-  const diagramNodes = useMemo(() => nodes.filter(isDiagramNode), [nodes]);
-  const groupNodes = useMemo(() => nodes.filter(isGroupNode), [nodes]);
-  const annotationNodes = useMemo(() => nodes.filter(isAnnotationNode), [nodes]);
-  const selectedNodes = useMemo(() => diagramNodes.filter((n) => n.selected), [diagramNodes]);
-  const selectedAnnotations = useMemo(() => annotationNodes.filter((n) => n.selected), [annotationNodes]);
-  const selectedGroups = useMemo(() => groupNodes.filter((n) => n.selected), [groupNodes]);
-  const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
-  const nothingSelected =
-    !selectedNodes.length && !selectedGroups.length && !selectedEdges.length && !selectedAnnotations.length;
-  // A single selected node or connection with findings shows them at the top of its inspector, with the fix.
-  const soleId =
-    selectedNodes.length + selectedGroups.length + selectedEdges.length + selectedAnnotations.length === 1
-      ? (selectedNodes[0]?.id ?? selectedEdges[0]?.id)
-      : undefined;
+  const {
+    diagramNodes,
+    groupNodes,
+    annotationNodes,
+    selectedNodes,
+    selectedAnnotations,
+    selectedGroups,
+    selectedEdges,
+    nothingSelected,
+    soleId,
+  } = useSelectionSummary(nodes, edges);
   const inspectorFindings =
     soleId && checksOn ? <SelectionFindings store={checks} id={soleId} host={checksHost} /> : undefined;
   // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
   const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
-  // The inspector waits for pointer-up (D5). Below 1680 px it opens with a selection and narrows the
-  // canvas: opening it under a drag (a box being drawn, a node being moved) would shift the canvas under
-  // the pointer. It follows `settledEmpty`, the selection as of the last pointer-up. A press costs no
-  // render (a ref); keys, undo and menus change it at once.
-  const pointerHeld = useRef(false);
-  const latestEmpty = useRef(nothingSelected);
-  const [settledEmpty, setSettledEmpty] = useState(nothingSelected);
-  const settledNow = useRef(settledEmpty);
-  /** Camera readiness held from a pointer-up until the Inspector follows its settled selection. */
-  const settling = useRef<(() => void) | null>(null);
-  useLayoutEffect(() => {
-    latestEmpty.current = nothingSelected;
-    settledNow.current = settledEmpty;
-    // This commit has the settled selection (and the Inspector's pane change, for the camera).
-    settling.current?.();
-    settling.current = null;
-    if (!pointerHeld.current && settledEmpty !== nothingSelected) setSettledEmpty(nothingSelected);
-  }, [nothingSelected, settledEmpty]);
-  useEffect(() => {
-    const wrap = wrapper.current;
-    if (!editGestures || !wrap) return;
-    let generation = 0;
-    let frame = 0;
-    let timer = 0;
-    let release = () => {};
-    /** The camera waits on this pointer-up: its Inspector change is still to come. */
-    let unsettled: (() => void) | null = null;
-    const cancel = () => {
-      cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-      unsettled?.();
-      unsettled = null;
-    };
-    const hold = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      // Toolbar commands and text controls are not diagram gestures. Their selection changes
-      // must remain immediate (Undo can select nodes before a subsequent palette command).
-      if (e.target instanceof Element && e.target.closest("button, input, textarea, select, [contenteditable=true]"))
-        return;
-      const press = ++generation;
-      cancel();
-      release();
-      pointerHeld.current = true;
-      const up = () => {
-        release();
-        unsettled?.();
-        unsettled = controller.hold();
-        // After the drop has painted: the inspector opening is its own frame, not the pointer-up's.
-        // Keep the interaction unsettled until then: a selection render after pointer-up must not
-        // bypass this boundary and move a double-click's target between its two clicks.
-        frame = requestAnimationFrame(() => {
-          timer = window.setTimeout(() => {
-            if (press !== generation) return;
-            pointerHeld.current = false;
-            const done = unsettled;
-            unsettled = null;
-            if (settledNow.current === latestEmpty.current) done?.();
-            else settling.current = done;
-            setSettledEmpty(latestEmpty.current);
-          }, 0);
-          frame = 0;
-        });
-      };
-      release = () => {
-        window.removeEventListener("pointerup", up, true);
-        window.removeEventListener("pointercancel", up, true);
-      };
-      window.addEventListener("pointerup", up, true);
-      window.addEventListener("pointercancel", up, true);
-    };
-    wrap.addEventListener("mousedown", hold, true);
-    return () => {
-      generation++;
-      cancel();
-      release();
-      settling.current?.();
-      settling.current = null;
-      pointerHeld.current = false;
-      wrap.removeEventListener("mousedown", hold, true);
-    };
-  }, [editGestures, controller]);
+  const settledEmpty = useSettledSelection({ wrapper, editGestures, controller, nothingSelected });
   const inspectorHidden =
     livePanelOpen ||
     !prefs.inspector ||
@@ -1760,286 +1519,25 @@ function CanvasInner({
       ]),
     [diagramNodes, annotationNodes],
   );
-  // ---------------------------------------------------------------- keyboard selection between nodes (D14)
-  // The canvas is one Tab stop: the node last focused (else the first in reading order) is the one in the page's
-  // Tab order. Inside, Tab and Shift+Tab step through nodes in reading order, Ctrl+Alt+arrows go to the nearest
-  // node that way, and Ctrl+Alt+] / [ to a node's outgoing and incoming edges. Selection and focus move
-  // together, the view follows, and a polite live region names what's selected.
-  const [focusId, setFocusId] = useState<string | undefined>();
-  /** The node keyboard selection is focusing: it brings it into view itself (revealSelection). */
-  const navFocus = useRef<string | undefined>(undefined);
-  const revealFocusedRef = useRevealFocused(controller);
-  useEffect(() => {
-    const wrap = wrapper.current;
-    if (!wrap) return;
-    const onFocus = (e: FocusEvent) => {
-      const id = e.target instanceof Element ? e.target.closest(".react-flow__node")?.getAttribute("data-id") : null;
-      if (!id) return;
-      setFocusId(id);
-      const own = navFocus.current === id;
-      // The node itself, by keyboard (a click is on a node in view; an editor inside it isn't the node).
-      const node = e.target instanceof HTMLElement && e.target.classList.contains("react-flow__node");
-      if (!own && node && (e.target as HTMLElement).matches(":focus-visible"))
-        revealFocusedRef.current(id, e.target as HTMLElement);
-    };
-    wrap.addEventListener("focusin", onFocus);
-    return () => wrap.removeEventListener("focusin", onFocus);
-  }, [revealFocusedRef]);
-  const { width: nominalW, height: nominalH } = getNodeVariant(nodeVariant).size;
-  const navBox = useCallback(
-    (n: FlowNode): NavBox => ({
-      id: n.id,
-      x: n.position.x,
-      y: n.position.y,
-      width: n.measured?.width ?? n.width ?? nominalW,
-      height: n.measured?.height ?? n.height ?? nominalH,
-    }),
-    [nominalW, nominalH],
-  );
-  /** Tab's order: reading order, each boundary just before its first member, an empty one where it reads. */
-  const navOrder = useCallback(
-    (ns: readonly FlowNode[]) =>
-      tabOrder(
-        ns.filter((n) => !isGroupNode(n)).map(navBox),
-        ns.filter(isGroupNode).map((g) => ({
-          ...navBox(g),
-          members: ns.filter((m) => m.data.group === g.data.groupId).map((m) => m.id),
-        })),
-        direction,
-      ),
-    [navBox, direction],
-  );
-  const rovingId = useMemo(() => {
-    if (readOnly) return undefined;
-    if (focusId && nodes.some((n) => n.id === focusId && !n.hidden)) return focusId;
-    // The first thing Tab would meet, a boundary included: a diagram of boundaries only is still reachable.
-    return navOrder(nodes.filter((n) => !n.hidden))[0];
-  }, [readOnly, focusId, nodes, navOrder]);
-  // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
-  // Only one node is in the page's Tab order (see above).
-  const ariaNodes = useMemo(
-    () => (readOnly ? withNodeAria(nodes) : withRovingFocus(withNodeAria(nodes), rovingId)),
-    [nodes, readOnly, rovingId],
-  );
-  /** What the live region says (seq: the same words again are read again). */
-
-  const announce = useCallback((text: string) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })), []);
-  useLayoutEffect(() => {
-    navigate.current = (step, from) => {
-      const ns = getNodes().filter((n) => !n.hidden);
-      const es = store.getState().edges.filter((e) => !e.hidden);
-      const el = from instanceof Element ? from : null;
-      const focusedNode = stepping.current ?? el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined;
-      const focusedEdge = el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined;
-      const sel = editor.getSelection();
-      const selectedFlowIds = [...sel.nodeIds, ...sel.groupIds.map((g) => GROUP_PREFIX + g)];
-      const current = focusedNode ?? (!focusedEdge && selectedFlowIds.length === 1 ? selectedFlowIds[0] : undefined);
-      const labelOf = (id: string) => {
-        const n = ns.find((x) => x.id === id);
-        if (!n) return id;
-        if (isDiagramNode(n)) return n.data.label || n.id;
-        if (isAnnotationNode(n)) return annotationTitle(n.data);
-        return (n as GroupFlowNode).data.label || tr("chrome.untitledBoundary");
-      };
-      const order = navOrder(ns);
-
-      const goNode = (id: string) => {
-        const n = ns.find((x) => x.id === id);
-        if (!n) return false;
-        if (isGroupNode(n)) editor.select({ groupIds: [n.data.groupId] });
-        else editor.select({ nodeIds: [id] });
-        setFocusId(id);
-        stepping.current = id;
-        requestAnimationFrame(() => {
-          if (stepping.current === id) stepping.current = undefined;
-          // Focus events fire inside focus(): the flag covers exactly this one.
-          navFocus.current = id;
-          wrapper.current
-            ?.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
-            ?.focus({ preventScroll: true });
-          navFocus.current = undefined;
-        });
-        revealSelection(undefined, 0, "navigation");
-        const at = `${order.indexOf(id) + 1} of ${order.length}`;
-        if (isDiagramNode(n)) {
-          const outs = es.filter((e) => e.source === id).length;
-          const ins = es.filter((e) => e.target === id).length;
-          const inGroup = n.data.group ? editor.getGroup(n.data.group)?.label : undefined;
-          const edges = outs + ins ? `${outs} out, ${ins} in` : "no connections";
-          // Hidden dependencies show as pips, whose list opens on the focused node: say it too.
-          const pips = dependencyVisibility.get() ? [] : (pipsByNode(store.getState().edges).get(id) ?? []);
-          const deps = pips.length
-            ? ` Dependencies: ${pips.map((r) => `${RELATION_META[r.relation].label} · ${labelOf(r.target)}`).join(", ")}.`
-            : "";
-          announce(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.${deps}`);
-        } else if (isAnnotationNode(n)) announce(`${annotationAriaLabel(n.data)}. ${at}.`);
-        else {
-          const members = ns.filter(
-            (m) => (isDiagramNode(m) || isAnnotationNode(m)) && m.data.group === (n as GroupFlowNode).data.groupId,
-          );
-          announce(`${labelOf(id)}, boundary, ${members.length === 1 ? "1 node" : `${members.length} nodes`}. ${at}.`);
-        }
-        return true;
-      };
-
-      if (step === "next" || step === "prev") {
-        // From an edge, the order goes on from its source.
-        const start = current ?? (focusedEdge ? es.find((e) => e.id === focusedEdge)?.source : undefined);
-        if (!start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;
-        const next = start ? stepInOrder(order, start, step === "prev") : (rovingId ?? order[0]);
-        return next ? goNode(next) : false;
-      }
-
-      if (step === "edge-out" || step === "edge-in") {
-        // From a node: its first outgoing (or incoming) edge; again from that edge: the node's next one.
-        const edge = focusedEdge ? es.find((e) => e.id === focusedEdge) : undefined;
-        const out = step === "edge-out";
-        const anchor = edge ? (out ? edge.source : edge.target) : current;
-        if (!anchor || anchor.startsWith(GROUP_PREFIX)) return false;
-        const pos = new Map(order.map((id, i) => [id, i]));
-        const list = es
-          .filter((e) => (out ? e.source : e.target) === anchor)
-          .sort((a, b) => (pos.get(out ? a.target : a.source) ?? 0) - (pos.get(out ? b.target : b.source) ?? 0));
-        if (!list.length) {
-          announce(`${labelOf(anchor)} has no ${out ? "outgoing" : "incoming"} edges.`);
-          return false;
-        }
-        const i = edge ? list.findIndex((e) => e.id === edge.id) : -1;
-        const e = list[(i + 1) % list.length];
-        editor.select({ edgeIds: [e.id] });
-        requestAnimationFrame(() =>
-          wrapper.current
-            ?.querySelector<SVGElement>(`.react-flow__edge[data-id="${CSS.escape(e.id)}"]`)
-            ?.focus({ preventScroll: true }),
-        );
-        revealSelection(undefined, 0, "navigation");
-        const said = edgeAriaLabel(
-          labelOf(e.source),
-          labelOf(e.target),
-          e.data?.kind,
-          e.data?.label,
-          e.data?.relation,
-          isDenyRule(e.data?.props),
-        );
-        const settings = settingsSummary(edgeSettings(e.data));
-        announce(
-          `${said}.${settings ? ` ${settings}.` : ""} ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`,
-        );
-        return true;
-      }
-
-      // Ctrl+Alt+arrows: the nearest node that way (boundaries and zones are backdrops, not stops).
-      const stops = ns.filter((n) => !isGroupNode(n) && !(isAnnotationNode(n) && n.data.kind === "zone")).map(navBox);
-      let fromBox = current ? stops.find((b) => b.id === current) : undefined;
-      if (!fromBox && focusedEdge) {
-        // From an edge: halfway along it.
-        const e = es.find((x) => x.id === focusedEdge);
-        const a = e && stops.find((b) => b.id === e.source);
-        const b = e && stops.find((x) => x.id === e.target);
-        if (a && b)
-          fromBox = {
-            id: focusedEdge,
-            x: (a.x + a.width / 2 + b.x + b.width / 2) / 2,
-            y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
-            width: 0,
-            height: 0,
-          };
-      }
-      if (!fromBox) {
-        // Nothing selected: the first thing in Tab's order (a boundary, when there are only boundaries).
-        const first = readingOrder(stops, direction)[0]?.id ?? order[0];
-        return first ? goNode(first) : false;
-      }
-      const to = nearestInDirection(fromBox, stops, step);
-      if (!to) {
-        announce(
-          `Nothing ${step === "right" ? "to the right" : step === "left" ? "to the left" : step === "up" ? "above" : "below"}.`,
-        );
-        return false;
-      }
-      return goNode(to);
-    };
+  const { ariaNodes, ariaEdges } = useCanvasNavigation({
+    nodes,
+    edges,
+    labels,
+    readOnly,
+    direction,
+    nodeVariant,
+    controller,
+    getNodes,
+    store,
+    editor,
+    wrapper,
+    revealSelection,
+    setEdges,
+    navigate,
+    stepping,
+    onHistoryStep,
+    setAnnouncement,
   });
-  // Undo and Redo select what the step changed (historySelection.ts). From the canvas (focus on a node, an
-  // edge or the canvas itself), focus goes with it: onto the first selected node in Tab's order (else the
-  // first selected edge, else the canvas, never a node that's gone or no longer selected), revealed and
-  // announced. From the toolbar, the inspector or a panel, focus stays put; Tab into the canvas still lands on
-  // the selection.
-  useLayoutEffect(() => {
-    onHistoryStep.current = (direction, selection) => {
-      const wrap = wrapper.current;
-      const active = document.activeElement;
-      const fromCanvas =
-        !!wrap &&
-        !!active &&
-        wrap.contains(active) &&
-        (active === wrap || !!active.closest(".react-flow__node, .react-flow__edge"));
-      // After React has drawn the restored canvas.
-      requestAnimationFrame(() => {
-        const ns = getNodes().filter((n) => !n.hidden);
-        const picked = new Set(selection.nodes);
-        const target = navOrder(ns).find((id) => picked.has(id));
-        if (target) setFocusId(target);
-        if (!fromCanvas || !wrap) return;
-        // Once what's selected is measured (React Flow hides a node until then, and a hidden one can't take
-        // focus), and while the view pans to it.
-        revealSelection(
-          () => {
-            const edge = target ? undefined : selection.edges[0];
-            const el = target
-              ? wrap.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(target)}"]`)
-              : edge
-                ? wrap.querySelector<HTMLElement>(`.react-flow__edge[data-id="${CSS.escape(edge)}"]`)
-                : null;
-            navFocus.current = target;
-            el?.focus({ preventScroll: true });
-            // An edge that isn't a Tab stop, or nothing to focus: the canvas, not the page.
-            if (!el || document.activeElement !== el) wrap.focus({ preventScroll: true });
-            navFocus.current = undefined;
-            const count = selection.nodes.length + selection.edges.length;
-            const only = count === 1 && target ? ns.find((n) => n.id === target) : undefined;
-            const name = !only
-              ? undefined
-              : isDiagramNode(only)
-                ? only.data.label || only.id
-                : isAnnotationNode(only)
-                  ? annotationTitle(only.data)
-                  : (only as GroupFlowNode).data.label || tr("chrome.untitledBoundary");
-            const what = !count
-              ? tr("chrome.nothingSelected")
-              : name
-                ? tr("chrome.valueSelected", { name })
-                : tr("ai.selected", { count });
-            announce(
-              direction === "undo"
-                ? tr("chrome.undoneValue", { selection: what })
-                : tr("chrome.redoneValue", { selection: what }),
-            );
-          },
-          0,
-          "navigation",
-        );
-      });
-    };
-  });
-  const showDependencies = useShowDependencies();
-  useEffect(
-    () =>
-      dependencyVisibility.subscribe(() => {
-        if (dependencyVisibility.get()) return;
-        if (document.activeElement?.closest('[data-dependency="true"]')) wrapper.current?.focus();
-        setEdges((es) => es.map((e) => (e.selected && isDependency(e.data) ? { ...e, selected: false } : e)));
-      }),
-    [setEdges],
-  );
-  const ariaEdges = useMemo(
-    () =>
-      projectDependencies(
-        withEdgeAria(edges, (id) => labels.get(id) ?? id),
-        showDependencies,
-      ),
-    [edges, labels, showDependencies],
-  );
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
   const contentCount = nodeCount + annotationNodes.length;
@@ -2078,9 +1576,9 @@ function CanvasInner({
             onPointerDownCapture={(e) => {
               // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
               const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
-              if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBase.current = null);
+              if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBaseRef.current = null);
               const { nodes: ns, edges: es } = store.getState();
-              boxBase.current = {
+              boxBaseRef.current = {
                 nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
                 edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
               };
@@ -2104,7 +1602,7 @@ function CanvasInner({
                   });
               }
               // Ctrl/Cmd during a box selection: only what's wholly inside.
-              contain.current = e.ctrlKey || e.metaKey;
+              containRef.current = e.ctrlKey || e.metaKey;
             }}
             onPointerLeave={() => (pointer.current = null)}
             onDragOver={(e) => {
