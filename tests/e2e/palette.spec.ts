@@ -1,9 +1,9 @@
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 
 // Canvas palette: search first, family filter, collapsible categories, recently used on top.
-// Selectors are data-testid only. Uses a public example (src/examples/aws-fanout.json).
+// Selectors are data-testid only. Uses a public example (src/examples/aws-serverless-orders.json).
 
-const SLUG = "aws-fanout";
+const SLUG = "aws-serverless-orders";
 
 test.describe("palette", () => {
   test.beforeEach(async ({ page }) => {

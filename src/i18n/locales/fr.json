@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Applications cloud",
   "examples.themeIntegration": "Intégration",
   "examples.themeReliability": "Fiabilité",
+  "examples.themeSystems": "Systèmes complets",
   "autoscaling.budget": "Budget du cycle de vie des ressources dépassé : {limit, number}. Réduisez les groupes configurés ou le multiplicateur de capacité.",
   "autoscaling.bindingInvalid": "Cette modification invaliderait une source de mise à l’échelle. Modifiez ou désactivez d’abord la politique du nœud concerné ou de la simulation enregistrée.",
   "autoscaling.bindingRequired": "Connectez un broker compatible et un groupe de consommateurs, puis choisissez la source dans les options avancées. Ce préréglage est enregistré uniquement après le choix d’une source.",

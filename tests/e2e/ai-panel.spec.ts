@@ -285,7 +285,7 @@ test.describe("AI panel dock", () => {
     expect(raw).not.toContain("Add a billing worker");
 
     // Another diagram has its own (empty) thread.
-    await openExample(page, "aws-fanout");
+    await openExample(page, "aws-serverless-orders");
     await expect(page.getByTestId("ai-empty")).toBeVisible();
     await page.goBack();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
@@ -303,8 +303,8 @@ test.describe("AI panel dock", () => {
     await expect(page.getByTestId("ai-apply")).toBeEnabled();
     const document = await page.evaluateHandle(() => window.document);
     // Use the picker without reloading: only changing the editor should reset the composer.
-    await openExample(page, "aws-fanout");
-    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "aws-fanout");
+    await openExample(page, "aws-serverless-orders");
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "aws-serverless-orders");
     expect(await document.evaluate((original) => original === window.document)).toBe(true);
     await document.dispose();
     await expect(page.getByTestId("ai-request")).toHaveValue("");

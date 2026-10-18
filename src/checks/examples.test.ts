@@ -24,33 +24,21 @@ const bySlug = Object.fromEntries(
 const EXPECTED: Record<string, string[]> = {
   "where-the-time-goes": [],
   "zone-outage-drill": [],
-  "autoscaling-image-workers": [],
-  "keda-render-workers": ["warning capacity:uploads", "suggestion capacity:worker"],
+  // The KEDA pipeline sleeps at zero in free play (no rate), so nothing is offered to it until a story sends work.
+  "autoscaling-basics": [],
   "aks-app-config-key-vault": [],
-  "aws-fanout": ["suggestion dead-letter:archive-q", "suggestion dead-letter:receipt-q", "suggestion no-reader:dlq"],
   "aws-serverless-orders": [],
   "branch-to-datacentre": [],
-  "azure-service-bus-integration": [
-    "warning dead-letter:posting-sub",
-    "suggestion dead-letter:approval-sub",
-    "suggestion no-reader:dlq",
-  ],
+  "azure-service-bus-integration": [],
   "cdc-analytics": [],
   "cqrs-event-sourcing": [],
   "event-driven-data-platform": [],
   "gcp-streaming-analytics": [],
-  "iot-telemetry": ["warning capacity:hot"],
   "kafka-order-pipeline": [],
-  "multi-region-active-active": [],
   "nightly-batch-elt": [],
-  "notification-fanout": [
-    "suggestion dead-letter:email-q",
-    "suggestion dead-letter:sms-q",
-    "suggestion dead-letter:push-q",
-    "suggestion secret-identity:key-vault",
-  ],
+  "notification-fanout": [],
   "outbox-saga-checkout": ["suggestion no-reader:payments-dlq"],
-  "rag-assistant": ["suggestion dead-letter:ingest-q"],
+  "rag-assistant": [],
   "webhook-ingestion": [],
   "partitions-vs-subscriptions": ["warning capacity:log-readers"],
   "shared-api-quotas": ["warning capacity:answer"],
@@ -69,6 +57,14 @@ const EXPECTED: Record<string, string[]> = {
   "ev-charging-network": [],
 };
 
+// Every finding a public example ignores, with the reason the file gives: an ignore explains a finding, it
+// never hides one silently.
+const IGNORED: Record<string, string[]> = {
+  "azure-service-bus-integration": [
+    "no-reader:dlq: Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed",
+  ],
+};
+
 describe("checks on the public examples", () => {
   it("covers every public example", () => {
     expect(Object.keys(bySlug).sort()).toEqual(Object.keys(EXPECTED).sort());
@@ -78,6 +74,8 @@ describe("checks on the public examples", () => {
     const d = bySlug[slug];
     const result = runChecks(d);
     expect(result.findings.map((f) => `${f.severity} ${f.id}`)).toEqual(EXPECTED[slug]);
+    const reasons = new Map((d.checks?.ignore ?? []).map((i) => [`${i.rule}:${i.target}`, i.reason]));
+    expect(result.ignored.map((f) => `${f.id}: ${reasons.get(f.id)}`)).toEqual(IGNORED[slug] ?? []);
     // Every fix with ops applies through the ops core and clears its finding.
     for (const f of result.findings.filter((f) => f.fix?.ops)) {
       const applied = applyOps(d, f.fix!.ops!);
@@ -119,10 +117,10 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  */
 const PLANNED: Record<string, string[]> = {
   "zone-outage-drill": ["26 dropped api-b in Zone outage: no health checks (down)"],
-  "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
-  "multi-region-active-active": ["96 dropped alb-us in Region outage and failover (down)"],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
+  // Poison invoices quarantines its 30 commands for an operator to replay (the file's ignore says why no reader).
+  "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
   // A dark region drops what was already on its way there; a bad canary build fails requests in its own cell only.
   "cell-based-bookings": [
     "20 dropped east-alb in us-east-1 goes dark (down)",

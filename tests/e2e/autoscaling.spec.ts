@@ -442,11 +442,11 @@ test("A1: public Kafka showcase starts workers and drains its burst within ten s
   consoleErrors,
 }) => {
   await page.clock.install();
-  await gotoLive(page, "./?view=canvas&example=autoscaling-image-workers&live=1&sim=upload-burst&paused=1");
+  await gotoLive(page, "./?view=canvas&example=autoscaling-basics&live=1&sim=upload-burst&paused=1");
   await pauseClock(page);
   await page.getByTestId("live-play").click();
   await page.clock.runFor(2000);
-  const worker = page.getByTestId("node-badge-worker");
+  const worker = page.getByTestId("node-badge-image-workers");
   const topic = page.getByTestId("node-badge-uploads");
   await expect(worker).toHaveAttribute("data-ready", "1");
   await expect(worker).toHaveAttribute("data-starting", "1");
@@ -456,7 +456,7 @@ test("A1: public Kafka showcase starts workers and drains its burst within ten s
   await page.clock.runFor(4000);
   await expect(topic).toHaveAttribute("data-backlog", "0");
   await expect(worker).toHaveAttribute("data-backlog", "0");
-  await page.getByTestId("node-worker").dblclick();
+  await page.getByTestId("node-image-workers").dblclick();
   await page.getByTestId("planning-live-details-toggle").click();
   await expect(page.getByTestId("autoscaling-chart")).toBeVisible();
   await expect(page.getByTestId("autoscaling-history-summary")).toContainText("Peak replicas");

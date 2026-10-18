@@ -1,14 +1,32 @@
 {
   "layout": {
     "status": 0,
-    "stdout": "<tmp>/laid.json: placed 14 nodes, fitted 1 boundary.\n",
-    "nodes": { "partner": [40, 220], "apim": [439, 220], "ingest": [839, 220], "invoices": [1254, 160], "approval-sub": [1663, 160], "posting-sub": [1663, 280], "workflow": [2063, 220], "worker": [2853, 280], "commands": [2444, 220], "dlq": [2853, 160], "cosmos": [3256, 220], "blob": [1254, 280], "vault": [1254, 40], "insights": [1254, 400] },
+    "stdout": "<tmp>/laid.json: placed 17 nodes, fitted 1 boundary.\n",
+    "nodes": {
+      "partner": [40, 220],
+      "apim": [439, 220],
+      "ingest": [839, 220],
+      "invoices": [1254, 160],
+      "approval-sub": [1663, 160],
+      "posting-sub": [1663, 280],
+      "workflow": [2063, 100],
+      "worker": [2853, 280],
+      "commands": [2444, 160],
+      "dlq": [2853, 160],
+      "cosmos": [3256, 220],
+      "blob": [1254, 280],
+      "vault": [1254, 40],
+      "insights": [1254, 400],
+      "approval-dlq": [2063, 220],
+      "posting-dlq": [2063, 340],
+      "dlq-triage": [2444, 280]
+    },
     "groups": { "azure": [399, -24, 3131, 536] }
   },
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "508412ae232dd75b171fef67ec43f23f494f4784b1cace3987fac831e5be1bb0", "bytes": 7199 },
+    "decoded": { "sha256": "9d6ece8ccf92df7903343afb7bc561ef6028cef171a78cbaf48059d7a4c874e4", "bytes": 8333 },
     "sameAsFile": true,
     "warned": false
   },
@@ -24,7 +42,7 @@
         "description": "Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.",
         "direction": "LR",
         "groups": [
-          { "id": "azure", "label": "Azure · enterprise integration", "tone": "azure", "x": 380, "y": 0, "width": 2240, "height": 632 }
+          { "id": "azure", "label": "Azure · enterprise integration", "tone": "azure", "x": 380, "y": -24, "width": 2240, "height": 656 }
         ],
         "nodes": [
           {
@@ -165,6 +183,18 @@
             "y": 520,
             "group": "azure",
             "props": {}
+          },
+          { "id": "approval-dlq", "stencil": "azure.service-bus.queue", "label": "approval-workflow DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 40, "group": "azure" },
+          { "id": "posting-dlq", "stencil": "azure.service-bus.queue", "label": "ledger-posting DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure" },
+          {
+            "id": "dlq-triage",
+            "stencil": "azure.logic-apps",
+            "label": "DLQ triage",
+            "sublabel": "subscription dead letters: alert, then replay",
+            "x": 2320,
+            "y": 520,
+            "group": "azure",
+            "props": { "concurrency": 8, "latencyMs": 150 }
           }
         ],
         "edges": [
@@ -265,7 +295,25 @@
             "props": { "travelMs": 200 }
           },
           { "id": "ingest-to-vault", "from": "ingest", "to": "vault", "kind": "sync", "relation": "secret" },
-          { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" }
+          { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" },
+          {
+            "id": "approval-sub-to-approval-dlq",
+            "from": "approval-sub",
+            "to": "approval-dlq",
+            "kind": "async",
+            "label": "After 10 deliveries",
+            "props": { "dlq": true }
+          },
+          {
+            "id": "posting-sub-to-posting-dlq",
+            "from": "posting-sub",
+            "to": "posting-dlq",
+            "kind": "async",
+            "label": "After 10 deliveries",
+            "props": { "dlq": true }
+          },
+          { "id": "approval-dlq-to-dlq-triage", "from": "approval-dlq", "to": "dlq-triage", "kind": "async" },
+          { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" }
         ],
         "simulations": [
           {
@@ -381,7 +429,12 @@
             "durationMs": 20000,
             "scale": 1
           }
-        ]
+        ],
+        "checks": {
+          "ignore": [
+            { "rule": "no-reader", "target": "dlq", "reason": "Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed" }
+          ]
+        }
       },
       "icons": {
         "azure-api-management": { "sha256": "fec79230351f57a3ecd32b6bcc77ff78418797df8378aebedd7c9e664f65970f", "bytes": 2277 },

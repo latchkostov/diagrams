@@ -1,5 +1,6 @@
 /** The themes the example picker and the start card group examples by, in display order. */
 export const EXAMPLE_THEMES = [
+  { id: "systems", label: "Full systems" },
   { id: "streaming", label: "Event streaming" },
   { id: "data", label: "Data & AI" },
   { id: "cloud", label: "Cloud apps" },

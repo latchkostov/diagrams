@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "uploader": [40, 40], "poster-studio": [40, 160], "uploads": [400, 40], "render-requests": [400, 160], "image-workers": [760, 40], "render-workers": [760, 160], "thumbnails": [1120, 100] },
+    "TB": { "uploader": [40, 40], "poster-studio": [320, 40], "uploads": [40, 200], "render-requests": [320, 200], "image-workers": [40, 360], "render-workers": [320, 360], "thumbnails": [180, 520] }
+  },
+  "tidy": { "uploader": [80, 180], "uploads": [430, 180], "image-workers": [790, 180], "thumbnails": [1140, 240], "poster-studio": [80, 300], "render-requests": [430, 300], "render-workers": [790, 300] },
+  "arrange": {
+    "alignLeft": { "uploader": [80, 180], "uploads": [80, 180], "image-workers": [80, 180], "thumbnails": [80, 180], "poster-studio": [80, 440], "render-requests": [80, 440], "render-workers": [80, 440] },
+    "alignMiddle": { "uploader": [80, 310], "uploads": [420, 310], "image-workers": [780, 310], "thumbnails": [1140, 310], "poster-studio": [80, 310], "render-requests": [420, 310], "render-workers": [780, 310] },
+    "distributeH": { "uploader": [80, 180], "uploads": [433, 180], "image-workers": [787, 180], "thumbnails": [1140, 180], "poster-studio": [257, 440], "render-requests": [610, 440], "render-workers": [963, 440] },
+    "distributeV": { "uploader": [80, 180], "uploads": [420, 223], "image-workers": [780, 267], "thumbnails": [1140, 310], "poster-studio": [80, 353], "render-requests": [420, 397], "render-workers": [780, 440] },
+    "spreadH": { "uploader": [80, 180], "uploads": [600, 180], "image-workers": [1120, 180], "thumbnails": [1640, 180], "poster-studio": [340, 180], "render-requests": [860, 180], "render-workers": [1380, 180] },
+    "boundaryAround": { "x": 40, "y": 116, "width": 1360, "height": 436 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "uploader": [40, 40], "uploads": [400, 40], "image-workers": [760, 40], "thumbnails": [1120, 100], "poster-studio": [40, 160], "render-requests": [400, 160], "render-workers": [760, 160] },
+    "groups": {}
+  }
+}

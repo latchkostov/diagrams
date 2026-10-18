@@ -31,7 +31,10 @@
     "cosmos": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Invoice ledger", "healthChecks": false },
     "blob": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Invoice originals", "healthChecks": false },
     "vault": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Integration secrets", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
-    "insights": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Integration telemetry", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
+    "insights": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Integration telemetry", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "approval-dlq": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "approval-workflow DLQ", "healthChecks": false },
+    "posting-dlq": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "ledger-posting DLQ", "healthChecks": false },
+    "dlq-triage": { "concurrency": 8, "latencyMs": 150, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "DLQ triage", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
   },
   "legacyExport": {
     "format": "diagrams/v1",
@@ -50,7 +53,9 @@
       "vault.props.preset",
       "vault.props.presetRevision",
       "insights.props.preset",
-      "insights.props.presetRevision"
+      "insights.props.presetRevision",
+      "dlq-triage.props.preset",
+      "dlq-triage.props.presetRevision"
     ]
   },
   "autoScale": { "freePlay": 1, "month-end": 2, "poison": 1 },
@@ -62,7 +67,8 @@
       "approval-sub": { "count": 1 },
       "posting-sub": { "count": 1 },
       "workflow": { "count": 1 },
-      "worker": { "count": 1 }
+      "worker": { "count": 1 },
+      "dlq-triage": { "count": 1 }
     }
   },
   "edit": {
@@ -87,7 +93,10 @@
         "cosmos": ["Infinity", 0, 0, 1, 1, 0],
         "blob": ["Infinity", 0, 0, 1, 1, 0],
         "vault": ["Infinity", 0, 0, 1, 1, 0],
-        "insights": ["Infinity", 0, 0, 1, 1, 0]
+        "insights": ["Infinity", 0, 0, 1, 1, 0],
+        "approval-dlq": [53.333333333333336, 0, 0, 1, 1, 0],
+        "posting-dlq": [53.333333333333336, 0, 0, 1, 1, 0],
+        "dlq-triage": [53.333333333333336, 0, 0, 1, 1, 0]
       },
       "connections": {},
       "offeredTypes": {}
@@ -237,6 +246,30 @@
         "addConsumer": "dlq",
         "fixId": "no-reader:dlq",
         "converged": true
+      },
+      "dlq-triage": {
+        "id": "dlq-triage",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 53.333333333333336,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.15,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
       }
     },
     "capabilities": {
@@ -258,6 +291,10 @@
         { "kind": "consumes", "edge": "posting-sub-to-worker", "peer": "posting-sub", "filter": ["InvoiceAccepted"], "retry": "requeue", "retryBackoffMs": 0 },
         { "kind": "consumes", "edge": "commands-to-worker", "peer": "commands", "filter": ["PostInvoice"], "retry": "requeue", "retryBackoffMs": 0 },
         { "kind": "calls", "edge": "worker-to-cosmos", "peer": "cosmos" }
+      ],
+      "dlq-triage": [
+        { "kind": "consumes", "edge": "approval-dlq-to-dlq-triage", "peer": "approval-dlq", "retry": "requeue", "retryBackoffMs": 0 },
+        { "kind": "consumes", "edge": "posting-dlq-to-dlq-triage", "peer": "posting-dlq", "retry": "requeue", "retryBackoffMs": 0 }
       ]
     },
     "sizing": null,
@@ -479,6 +516,51 @@
         "partitions": 3,
         "messageType": "Integration telemetry",
         "healthChecks": false
+      },
+      "approval-dlq": {
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "approval-workflow DLQ",
+        "healthChecks": false
+      },
+      "posting-dlq": {
+        "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "ledger-posting DLQ",
+        "healthChecks": false
+      },
+      "dlq-triage": {
+        "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 150,
+        "concurrency": 8,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "DLQ triage",
+        "healthChecks": false
       }
     }
   },
@@ -505,7 +587,10 @@
           "cosmos": ["Infinity", 100, 0, 1, 1, 0],
           "blob": ["Infinity", 100, 0, 1, 1, 0],
           "vault": ["Infinity", 0, 0, 1, 1, 0],
-          "insights": ["Infinity", 0, 0, 1, 1, 0]
+          "insights": ["Infinity", 0, 0, 1, 1, 0],
+          "approval-dlq": [53.333333333333336, 0, 0, 1, 1, 0],
+          "posting-dlq": [53.333333333333336, 0, 0, 1, 1, 0],
+          "dlq-triage": [53.333333333333336, 0, 0, 1, 1, 0]
         },
         "connections": { "ingest-to-invoices": 100, "ingest-to-blob": 100, "invoices-to-approval-sub": 100, "approval-sub-to-workflow": 100, "workflow-to-commands": 100, "commands-to-worker": 100, "worker-to-cosmos": 100 },
         "offeredTypes": { "ingest": ["InvoiceHighValue"], "invoices": ["InvoiceHighValue"], "blob": ["InvoiceHighValue"], "approval-sub": ["InvoiceHighValue"], "workflow": ["InvoiceHighValue"], "commands": ["PostInvoice"], "worker": ["PostInvoice"], "cosmos": ["InvoicePosted"] }
@@ -659,6 +744,30 @@
           "addConsumer": "dlq",
           "fixId": "no-reader:dlq",
           "converged": true
+        },
+        "dlq-triage": {
+          "id": "dlq-triage",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 53.333333333333336,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.15,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -688,7 +797,10 @@
           "cosmos": ["Infinity", 30, 0, 1, 1, 0],
           "blob": ["Infinity", 30, 0, 1, 1, 0],
           "vault": ["Infinity", 0, 0, 1, 1, 0],
-          "insights": ["Infinity", 0, 0, 1, 1, 0]
+          "insights": ["Infinity", 0, 0, 1, 1, 0],
+          "approval-dlq": [53.333333333333336, 0, 0, 1, 1, 0],
+          "posting-dlq": [53.333333333333336, 0, 0, 1, 1, 0],
+          "dlq-triage": [53.333333333333336, 0, 0, 1, 1, 0]
         },
         "connections": { "ingest-to-invoices": 30, "ingest-to-blob": 30, "invoices-to-approval-sub": 30, "approval-sub-to-workflow": 30, "workflow-to-commands": 30, "commands-to-worker": 30, "worker-to-cosmos": 30 },
         "offeredTypes": { "ingest": ["InvoiceHighValue"], "invoices": ["InvoiceHighValue"], "blob": ["InvoiceHighValue"], "approval-sub": ["InvoiceHighValue"], "workflow": ["InvoiceHighValue"], "commands": ["PostInvoice"], "worker": ["PostInvoice"], "cosmos": ["InvoicePosted"] }
@@ -842,6 +954,30 @@
           "addConsumer": "dlq",
           "fixId": "no-reader:dlq",
           "converged": true
+        },
+        "dlq-triage": {
+          "id": "dlq-triage",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 53.333333333333336,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.15,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": {
@@ -863,6 +999,10 @@
           { "kind": "consumes", "edge": "posting-sub-to-worker", "peer": "posting-sub", "filter": ["InvoiceAccepted"], "retry": "inplace", "retryBackoffMs": 100 },
           { "kind": "consumes", "edge": "commands-to-worker", "peer": "commands", "filter": ["PostInvoice"], "retry": "inplace", "retryBackoffMs": 100 },
           { "kind": "calls", "edge": "worker-to-cosmos", "peer": "cosmos" }
+        ],
+        "dlq-triage": [
+          { "kind": "consumes", "edge": "approval-dlq-to-dlq-triage", "peer": "approval-dlq", "retry": "requeue", "retryBackoffMs": 0 },
+          { "kind": "consumes", "edge": "posting-dlq-to-dlq-triage", "peer": "posting-dlq", "retry": "requeue", "retryBackoffMs": 0 }
         ]
       },
       "sizing": "(same as edit)",
@@ -1084,6 +1224,51 @@
           "partitions": 3,
           "messageType": "Integration telemetry",
           "healthChecks": false
+        },
+        "approval-dlq": {
+          "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "approval-workflow DLQ",
+          "healthChecks": false
+        },
+        "posting-dlq": {
+          "profile": { "family": "queue", "revision": "p3", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "ledger-posting DLQ",
+          "healthChecks": false
+        },
+        "dlq-triage": {
+          "profile": { "family": "workflow", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 150,
+          "concurrency": 8,
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "DLQ triage",
+          "healthChecks": false
         }
       }
     }
@@ -1114,7 +1299,10 @@
             "cosmos": ["idle", "", { "modeled": false }],
             "blob": ["idle", "", { "modeled": false }],
             "vault": ["idle", "", { "modeled": false }],
-            "insights": ["idle", "", { "modeled": false }]
+            "insights": ["idle", "", { "modeled": false }],
+            "approval-dlq": ["idle", ""],
+            "posting-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -1143,7 +1331,10 @@
             "cosmos": ["idle", "", { "modeled": false }],
             "blob": ["idle", "", { "modeled": false }],
             "vault": ["idle", "", { "modeled": false }],
-            "insights": ["idle", "", { "modeled": false }]
+            "insights": ["idle", "", { "modeled": false }],
+            "approval-dlq": ["idle", ""],
+            "posting-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -1172,7 +1363,10 @@
             "cosmos": ["idle", "", { "modeled": false }],
             "blob": ["idle", "", { "modeled": false }],
             "vault": ["idle", "", { "modeled": false }],
-            "insights": ["idle", "", { "modeled": false }]
+            "insights": ["idle", "", { "modeled": false }],
+            "approval-dlq": ["idle", ""],
+            "posting-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -1201,7 +1395,10 @@
             "cosmos": ["idle", "", { "modeled": false }],
             "blob": ["idle", "", { "modeled": false }],
             "vault": ["idle", "", { "modeled": false }],
-            "insights": ["idle", "", { "modeled": false }]
+            "insights": ["idle", "", { "modeled": false }],
+            "approval-dlq": ["idle", ""],
+            "posting-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -1229,7 +1426,10 @@
         "cosmos": ["idle", "100/s · no limit", { "modeled": false }],
         "blob": ["idle", "100/s · no limit", { "modeled": false }],
         "vault": ["idle", "", { "modeled": false }],
-        "insights": ["idle", "", { "modeled": false }]
+        "insights": ["idle", "", { "modeled": false }],
+        "approval-dlq": ["idle", ""],
+        "posting-dlq": ["idle", ""],
+        "dlq-triage": ["idle", ""]
       }
     },
     "poison": {
@@ -1254,7 +1454,10 @@
         "cosmos": ["idle", "30/s · no limit", { "modeled": false }],
         "blob": ["idle", "30/s · no limit", { "modeled": false }],
         "vault": ["idle", "", { "modeled": false }],
-        "insights": ["idle", "", { "modeled": false }]
+        "insights": ["idle", "", { "modeled": false }],
+        "approval-dlq": ["idle", ""],
+        "posting-dlq": ["idle", ""],
+        "dlq-triage": ["idle", ""]
       }
     }
   }

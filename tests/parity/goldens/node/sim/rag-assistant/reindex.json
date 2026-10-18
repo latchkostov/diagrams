@@ -38,7 +38,9 @@
         "ingest-q": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
         "embed-worker": { "replicas": [4, 4, 0] },
         "embeddings": { "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -63,7 +65,9 @@
         },
         "embed-worker": { "processed": 168, "backlog": 1, "inFlight": 4, "throughput": 20.559470363725882, "replicas": [4, 4, 0] },
         "embeddings": { "processed": 161, "inFlight": 2, "throughput": 20.631315917945187, "replicas": [1, 1, 0] },
-        "vault": { "replicas": [1, 1, 0] }
+        "vault": { "replicas": [1, 1, 0] },
+        "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "ingest-triage": { "replicas": [1, 1, 0] }
       }
     }
   ],
@@ -88,9 +92,28 @@
       },
       "embed-worker": { "processed": 1200, "throughput": 12.56924300668031, "replicas": [4, 4, 0] },
       "embeddings": { "processed": 1200, "throughput": 17.923837932684876, "replicas": [1, 1, 0] },
-      "vault": { "replicas": [1, 1, 0] }
+      "vault": { "replicas": [1, 1, 0] },
+      "ingest-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "ingest-triage": { "replicas": [1, 1, 0] }
     },
-    "edges": { "user-to-rag-api": 60, "rag-api-to-cache": 60, "rag-api-to-vector-db": 60, "rag-api-to-llm": 60, "rag-api-to-feedback": 16, "feedback-to-eval-job": 16, "eval-job-to-llm": 16, "eval-job-to-quality": 16, "docs-to-ingest-q": 300, "ingest-q-to-embed-worker": 300, "embed-worker-to-embeddings": 300, "embed-worker-to-vector-db": 300, "rag-api-to-vault": 0, "embed-worker-to-vault": 0 }
+    "edges": {
+      "user-to-rag-api": 60,
+      "rag-api-to-cache": 60,
+      "rag-api-to-vector-db": 60,
+      "rag-api-to-llm": 60,
+      "rag-api-to-feedback": 16,
+      "feedback-to-eval-job": 16,
+      "eval-job-to-llm": 16,
+      "eval-job-to-quality": 16,
+      "docs-to-ingest-q": 300,
+      "ingest-q-to-embed-worker": 300,
+      "embed-worker-to-embeddings": 300,
+      "embed-worker-to-vector-db": 300,
+      "rag-api-to-vault": 0,
+      "embed-worker-to-vault": 0,
+      "ingest-q-to-ingest-dlq": 0,
+      "ingest-dlq-to-ingest-triage": 0
+    }
   },
   "events": {
     "total": 3728,

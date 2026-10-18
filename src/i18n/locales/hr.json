@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Aplikacije u oblaku",
   "examples.themeIntegration": "Integracija",
   "examples.themeReliability": "Pouzdanost",
+  "examples.themeSystems": "Cjeloviti sustavi",
   "autoscaling.budget": "Prekoračen je proračun životnog ciklusa resursa: {limit, number}. Smanjite konfigurirane skupine ili množitelj kapaciteta.",
   "autoscaling.bindingInvalid": "Ova bi izmjena narušila izvor skaliranja. Najprije promijenite ili isključite pravilo zahvaćenog čvora ili spremljene simulacije.",
   "autoscaling.bindingRequired": "Povežite kompatibilni broker i grupu potrošača (consumer group) pa odaberite izvor u naprednim postavkama. Predložak se sprema tek nakon odabira izvora.",

@@ -147,10 +147,11 @@
           { "id": "key-vault", "label": "notify-kv", "stencil": "azure.key-vault" },
           { "id": "twilio", "label": "Twilio", "stencil": "twilio" },
           { "id": "push", "label": "FCM and APNs", "stencil": "generic.push" },
-          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
-          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
-          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
-          { "id": "note-1", "label": "Pinned by the parity harness" }
+          { "id": "email-dlq", "label": "Email DLQ", "stencil": "azure.service-bus.queue" },
+          { "id": "sms-dlq", "label": "SMS DLQ", "stencil": "azure.service-bus.queue" },
+          { "id": "push-dlq", "label": "Push DLQ", "stencil": "azure.service-bus.queue" },
+          { "id": "dlq-triage", "label": "DLQ triage", "stencil": "azure.functions" },
+          { "id": "identity", "label": "Sender identity", "stencil": "azure.managed-identity" }
         ],
         "hint": "Use an id from candidates, or call describe_diagram.",
         "applied": false
@@ -199,7 +200,7 @@
             "stencil": "service.dotnet",
             "label": "Parity reader",
             "x": 640,
-            "y": 616,
+            "y": 840,
             "props": { "replicas": 3 }
           }
         }
@@ -217,10 +218,10 @@
   "diagram": {
     "format": "diagrams/v1",
     "title": "Parity edit",
-    "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.",
+    "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.",
     "direction": "TB",
     "groups": [
-      { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 760, "y": -24, "width": 1440, "height": 536 },
+      { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 760, "y": -24, "width": 1440, "height": 776 },
       { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 216, "width": 682, "height": 176 }
     ],
     "nodes": [
@@ -282,7 +283,7 @@
         "x": 1560,
         "y": 40,
         "group": "azure",
-        "props": {}
+        "props": { "maxDeliveryCount": 10 }
       },
       {
         "id": "sms-q",
@@ -292,7 +293,7 @@
         "x": 1560,
         "y": 280,
         "group": "azure",
-        "props": {}
+        "props": { "maxDeliveryCount": 10 }
       },
       {
         "id": "push-q",
@@ -302,7 +303,7 @@
         "x": 1560,
         "y": 400,
         "group": "azure",
-        "props": {}
+        "props": { "maxDeliveryCount": 10 }
       },
       {
         "id": "email-sender",
@@ -354,9 +355,23 @@
         "y": 400,
         "props": {}
       },
-      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 340, "y": 616 },
+      { "id": "email-dlq", "stencil": "azure.service-bus.queue", "label": "Email DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 160, "group": "azure" },
+      { "id": "sms-dlq", "stencil": "azure.service-bus.queue", "label": "SMS DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure" },
+      { "id": "push-dlq", "stencil": "azure.service-bus.queue", "label": "Push DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 640, "group": "azure" },
+      {
+        "id": "dlq-triage",
+        "stencil": "azure.functions",
+        "label": "DLQ triage",
+        "sublabel": "alert, then replay",
+        "x": 1940,
+        "y": 580,
+        "group": "azure",
+        "props": { "concurrency": 8, "latencyMs": 100 }
+      },
+      { "id": "identity", "stencil": "azure.managed-identity", "label": "Sender identity", "sublabel": "user-assigned", "x": 1180, "y": 520, "group": "azure" },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 340, "y": 840 },
       { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
-      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 340, "y": 728 }
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 340, "y": 952 }
     ],
     "edges": [
       {
@@ -454,6 +469,37 @@
       },
       { "id": "email-sender-to-key-vault", "from": "email-sender", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
       { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom" },
+      {
+        "id": "email-q-to-email-dlq",
+        "from": "email-q",
+        "to": "email-dlq",
+        "kind": "async",
+        "label": "After 10 tries",
+        "props": { "dlq": true }
+      },
+      {
+        "id": "sms-q-to-sms-dlq",
+        "from": "sms-q",
+        "to": "sms-dlq",
+        "kind": "async",
+        "label": "After 10 tries",
+        "sourceSide": "left",
+        "targetSide": "left",
+        "props": { "dlq": true }
+      },
+      {
+        "id": "push-q-to-push-dlq",
+        "from": "push-q",
+        "to": "push-dlq",
+        "kind": "async",
+        "label": "After 10 tries",
+        "props": { "dlq": true }
+      },
+      { "id": "email-dlq-to-dlq-triage", "from": "email-dlq", "to": "dlq-triage", "kind": "async" },
+      { "id": "sms-dlq-to-dlq-triage", "from": "sms-dlq", "to": "dlq-triage", "kind": "async" },
+      { "id": "push-dlq-to-dlq-triage", "from": "push-dlq", "to": "dlq-triage", "kind": "async" },
+      { "id": "email-sender-to-identity", "from": "email-sender", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity" },
+      { "id": "sms-limiter-to-identity", "from": "sms-limiter", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity" },
       { "id": "e-1", "from": "carrier", "to": "topic-1", "kind": "async" },
       {
         "id": "e-4",

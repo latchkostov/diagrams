@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Aplikacje w chmurze",
   "examples.themeIntegration": "Integracja",
   "examples.themeReliability": "Niezawodność",
+  "examples.themeSystems": "Pełne systemy",
   "autoscaling.budget": "Przekroczono budżet cyklu życia zasobów: {limit, number}. Zmniejsz skonfigurowane grupy lub mnożnik pojemności.",
   "autoscaling.bindingInvalid": "Ta zmiana unieważni źródło skalowania. Najpierw zmień lub wyłącz zasady danego węzła lub zapisanej symulacji.",
   "autoscaling.bindingRequired": "Połącz zgodny broker i grupę konsumentów, a następnie wybierz źródło w ustawieniach zaawansowanych. Ustawienie zostanie zapisane dopiero po wybraniu źródła.",

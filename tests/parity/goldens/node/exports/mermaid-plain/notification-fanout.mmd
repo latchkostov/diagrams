@@ -14,6 +14,11 @@ flowchart LR
     sms_limiter["SMS rate limiter<br/>Token bucket · 50/s"]
     push_sender["Push sender<br/>Batches of 500"]
     key_vault["notify-kv<br/>Provider API keys"]
+    email_dlq["Email DLQ<br/>$DeadLetterQueue"]
+    sms_dlq["SMS DLQ<br/>$DeadLetterQueue"]
+    push_dlq["Push DLQ<br/>$DeadLetterQueue"]
+    dlq_triage["DLQ triage<br/>alert, then replay"]
+    identity["Sender identity<br/>user-assigned"]
   end
   carrier(["Carrier tracking<br/>Parcel scanned"])
   sendgrid(["SendGrid<br/>Email"])
@@ -34,5 +39,14 @@ flowchart LR
   push_sender -->|"Send"| push
   email_sender -.->|"reads secrets"| key_vault
   sms_limiter -.->|"reads secrets"| key_vault
-  linkStyle 1,2,4,5,6,7,8,9 stroke-dasharray: 6 4
+  email_q -.->|"After 10 tries"| email_dlq
+  sms_q -.->|"After 10 tries"| sms_dlq
+  push_q -.->|"After 10 tries"| push_dlq
+  email_dlq -.-> dlq_triage
+  sms_dlq -.-> dlq_triage
+  push_dlq -.-> dlq_triage
+  email_sender -.->|"gets tokens from: runs as"| identity
+  sms_limiter -.->|"gets tokens from: runs as"| identity
+  linkStyle 1,2,4,5,6,7,8,9,15,16,17,18,19,20 stroke-dasharray: 6 4
   linkStyle 13,14 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 21,22 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4

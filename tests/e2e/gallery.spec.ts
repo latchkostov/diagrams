@@ -186,7 +186,7 @@ test.describe("gallery", () => {
   });
 
   test("the quick add button on a tile adds it without opening details", async ({ page }) => {
-    await page.addInitScript((key) => localStorage.setItem(key, "aws-fanout"), LAST_CANVAS_KEY);
+    await page.addInitScript((key) => localStorage.setItem(key, "aws-serverless-orders"), LAST_CANVAS_KEY);
     await gotoGallery(page);
     await page.getByTestId("stencil-tile-postgres").hover();
     await page.getByTestId("tile-add-postgres").click();
@@ -195,7 +195,7 @@ test.describe("gallery", () => {
   });
 
   test("dragging a tile onto the drop dock adds it to the diagram", async ({ page }) => {
-    await page.addInitScript((key) => localStorage.setItem(key, "aws-fanout"), LAST_CANVAS_KEY);
+    await page.addInitScript((key) => localStorage.setItem(key, "aws-serverless-orders"), LAST_CANVAS_KEY);
     await gotoGallery(page);
     await expect(page.getByTestId("gallery-drop-target")).toHaveCount(0);
     const tile = page.getByTestId("stencil-tile-redis.cache");

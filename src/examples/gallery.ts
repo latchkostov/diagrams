@@ -34,6 +34,7 @@ export function filterExamples(items: readonly Example[], query: string, feature
 }
 
 const themeLabels = {
+  systems: msg("examples.themeSystems"),
   streaming: msg("examples.themeStreaming"),
   data: msg("examples.themeData"),
   cloud: msg("examples.themeCloud"),

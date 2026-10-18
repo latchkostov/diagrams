@@ -330,11 +330,11 @@ test.describe("command palette", () => {
 
     await gotoGallery(page);
     await openPalette(page);
-    await input(page).fill("aws fanout");
-    expect(await firstItemId(page)).toBe("diagram:aws-fanout");
+    await input(page).fill("aws serverless orders");
+    expect(await firstItemId(page)).toBe("diagram:aws-serverless-orders");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("canvas-view")).toBeVisible();
-    await expect(page).toHaveURL(/example=aws-fanout/);
+    await expect(page).toHaveURL(/example=aws-serverless-orders/);
     expectNoErrors(consoleErrors);
   });
 });

@@ -1,34 +1,6 @@
 {
-  "summary": "0 warnings, 1 suggestion.",
-  "findings": {
-    "dead-letter:ingest-q": {
-      "title": "Ingest jobs has no dead-letter queue",
-      "message": "If Chunk and embed can't handle a message, it's dropped after 5 deliveries. A command queue is where losing messages hurts most.",
-      "rationale": "A message that keeps failing is redelivered up to the broker's delivery limit, then goes to the broker's dead-letter route, or is dropped when there isn't one (or its filter doesn't take the message). A dead-letter queue keeps it to inspect and replay.",
-      "fix": { "label": "Add dead-letter queue" }
-    }
-  },
-  "agentReport": {
-    "findings": [
-      {
-        "id": "dead-letter:ingest-q",
-        "rule": "dead-letter",
-        "severity": "suggestion",
-        "title": "Ingest jobs has no dead-letter queue",
-        "message": "If Chunk and embed can't handle a message, it's dropped after 5 deliveries. A command queue is where losing messages hurts most.",
-        "targets": ["ingest-q", "embed-worker"],
-        "fix": {
-          "label": "Add dead-letter queue",
-          "ops": [
-            { "op": "add_node", "kind": "generic.queue", "label": "Ingest jobs DLQ", "key": "new-dlq" },
-            { "op": "connect", "from": "ingest-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
-            { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
-          ]
-        }
-      }
-    ],
-    "summary": "0 warnings, 1 suggestion.",
-    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
-  },
-  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 1 suggestion." }
+  "summary": "Nothing to check. 10 checks ran.",
+  "findings": {},
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran." },
+  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 10 checks ran." }
 }

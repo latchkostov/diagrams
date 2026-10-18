@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Aplicações na nuvem",
   "examples.themeIntegration": "Integração",
   "examples.themeReliability": "Fiabilidade",
+  "examples.themeSystems": "Sistemas completos",
   "autoscaling.budget": "Orçamento do ciclo de vida dos recursos excedido: {limit, number}. Reduza os grupos configurados ou o multiplicador de capacidade.",
   "autoscaling.bindingInvalid": "Esta edição invalidaria uma fonte de dimensionamento. Primeiro altere ou desative a política do nó afetado ou da simulação guardada.",
   "autoscaling.bindingRequired": "Ligue um broker compatível e um grupo de consumidores e escolha a origem em Avançado. A predefinição só é guardada após selecionar uma origem.",

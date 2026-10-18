@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "クラウドアプリ",
   "examples.themeIntegration": "連携",
   "examples.themeReliability": "信頼性",
+  "examples.themeSystems": "システム全体",
   "autoscaling.budget": "リソースのライフサイクル予算を超えました: {limit, number}。構成したグループまたは容量の倍率を減らしてください。",
   "autoscaling.bindingInvalid": "この編集によりスケーリングのソースが無効になります。先に、該当ノードまたは保存済みシミュレーションのポリシーを変更するか無効にしてください。",
   "autoscaling.bindingRequired": "対応するブローカーとコンシューマーグループを接続し、詳細設定でソースを選択してください。ソースを選択するまで、このプリセットは保存されません。",

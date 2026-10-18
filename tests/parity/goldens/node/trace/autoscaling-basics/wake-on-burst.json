@@ -1,0 +1,164 @@
+{
+  "trace": { "rootId": 1, "type": "Poster studio", "origin": "poster-studio", "startedAt": 1000, "done": true, "partial": false, "truncated": false, "steps": 10, "endedAt": 3260 },
+  "steps": [
+    { "t": 1000, "kind": "emit", "id": 1, "type": "Poster studio", "node": "poster-studio" },
+    { "t": 1000, "kind": "done", "id": 1, "type": "Poster studio", "node": "poster-studio" },
+    { "t": 1000, "kind": "send", "id": 1, "type": "Poster studio", "node": "poster-studio", "edge": "request-render", "via": "message", "until": 1010 },
+    { "t": 1010, "kind": "arrive", "id": 1, "type": "Poster studio", "node": "render-requests", "edge": "request-render" },
+    { "t": 1010, "kind": "done", "id": 1, "type": "Poster studio", "node": "render-requests" },
+    { "t": 3000, "kind": "send", "id": 1, "type": "Poster studio", "node": "render-requests", "edge": "render", "via": "message", "until": 3010 },
+    { "t": 3010, "kind": "arrive", "id": 1, "type": "Poster studio", "node": "render-workers", "edge": "render" },
+    { "t": 3010, "kind": "start", "id": 1, "type": "Poster studio", "node": "render-workers" },
+    { "t": 3260, "kind": "done", "id": 1, "type": "Poster studio", "node": "render-workers" },
+    { "t": 3260, "kind": "end", "id": 1, "type": "Poster studio", "node": "render-workers", "reason": "consumed" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "Poster studio",
+    "origin": "poster-studio",
+    "startedAt": 1000,
+    "totalMs": 2260,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "Poster studio", "node": "poster-studio", "copy": false },
+      { "key": "3", "kind": "hop", "t": 10, "id": 1, "type": "Poster studio", "node": "render-requests", "from": "poster-studio", "edge": "request-render", "sync": false, "latencyMs": 10, "waitMs": 0, "travelMs": 10, "renamed": false, "copy": false },
+      { "key": "6", "kind": "hop", "t": 2010, "id": 1, "type": "Poster studio", "node": "render-workers", "from": "render-requests", "edge": "render", "sync": false, "latencyMs": 2000, "waitMs": 1990, "travelMs": 10, "renamed": false, "copy": false }
+    ],
+    "visits": [
+      { "id": 1, "node": "poster-studio", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "render-requests", "at": 10, "done": 10, "left": 2000 },
+      { "id": 1, "node": "render-workers", "at": 2010, "start": 2010, "done": 2260 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["poster-studio", "render-requests", "render-workers"],
+    "edges": ["request-render", "render"],
+    "rowOf": { "0": "0", "3": "3", "6": "6" }
+  },
+  "sequence": {
+    "title": "Poster studio #1",
+    "summary": "2.26 s end to end",
+    "participants": [
+      { "id": "poster-studio", "label": "Poster studio" },
+      { "id": "render-requests", "label": "Render requests" },
+      { "id": "render-workers", "label": "Poster workers" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 10, "from": "poster-studio", "to": "render-requests", "style": "async", "label": "Poster studio", "id": 1, "type": "Poster studio" },
+      { "kind": "gap", "t": 10, "ms": 1990, "text": "1.99 s waiting in Render requests", "node": "render-requests" },
+      { "kind": "arrow", "t": 2000, "until": 2010, "from": "render-requests", "to": "render-workers", "style": "async", "label": "Poster studio", "id": 1, "type": "Poster studio" }
+    ],
+    "totalMs": 2260,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"Poster studio #1 · 2.26 s end to end\"\n---\nsequenceDiagram\n  participant poster_studio as Poster studio\n  participant render_requests as Render requests\n  participant render_workers as Poster workers\n  poster_studio-)render_requests: Poster studio (+0.00 s)\n  Note over poster_studio,render_workers: ⏱ 1.99 s waiting in Render requests\n  render_requests-)render_workers: Poster studio (+2.00 s)\n",
+  "svg": {
+    "light": { "sha256": "be00638040745d85b995ba3cfe68791dc3c877a54053661ff6d4aca1939742ed", "bytes": 4830, "width": 554, "height": 312, "headerHeight": 142 },
+    "dark": { "sha256": "35d65296bbdcc0b91e77a35c14f11569d079dfbffccbcb452544abdbf7cf01c7", "bytes": 4829, "width": 554, "height": 312, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "Poster studio",
+    "origin": "poster-studio",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "Poster studio",
+        "node": "poster-studio",
+        "anchor": { "edge": "request-render", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Poster studio sends Poster studio",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#309bd5",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "Poster studio", "edge": "request-render", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 10, "caption": "Poster studio", "tone": "plain", "i": 1, "color": "#309bd5", "rowKey": "3" },
+      {
+        "kind": "append",
+        "msg": 1,
+        "type": "Poster studio",
+        "node": "render-requests",
+        "anchor": { "edge": "request-render", "end": 1 },
+        "start": 1800,
+        "duration": 450,
+        "realFrom": 10,
+        "realTo": 10,
+        "caption": "appended to Render requests",
+        "i": 2,
+        "color": "#309bd5",
+        "tone": "plain"
+      },
+      {
+        "kind": "wait",
+        "msg": 1,
+        "type": "Poster studio",
+        "node": "render-requests",
+        "anchor": { "edge": "request-render", "end": 1 },
+        "start": 2250,
+        "duration": 1815.629311158056,
+        "realFrom": 10,
+        "realTo": 2000,
+        "caption": "Render requests · waited 1.99 s",
+        "i": 3,
+        "color": "#309bd5",
+        "tone": "plain",
+        "short": "waited 1.99 s"
+      },
+      { "kind": "travel", "msg": 1, "type": "Poster studio", "edge": "render", "reverse": false, "start": 4065.629311158056, "duration": 1000, "realFrom": 2000, "realTo": 2010, "caption": "Poster studio", "tone": "plain", "i": 4, "color": "#309bd5", "rowKey": "6" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Poster studio",
+        "node": "render-workers",
+        "anchor": { "edge": "render", "end": 1 },
+        "start": 5065.629311158056,
+        "duration": 1311.0749561002053,
+        "realFrom": 2010,
+        "realTo": 2260,
+        "caption": "Poster workers · processing · 250 ms",
+        "i": 5,
+        "color": "#309bd5",
+        "tone": "plain",
+        "short": "processing · 250 ms"
+      },
+      { "kind": "end", "msg": 1, "type": "Poster studio", "node": "render-workers", "start": 6376.704267258261, "duration": 1200, "realFrom": 2260, "realTo": 2260, "caption": "Done · 2.26 s", "tone": "done", "i": 6, "color": "#309bd5" }
+    ],
+    "duration": 7576.704267258261,
+    "realTotal": 2260,
+    "stops": [0, 800, 4066, 6377],
+    "nodes": ["poster-studio", "render-requests", "render-workers"],
+    "edges": ["request-render", "render"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 2.26 s",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "6": 4065.629311158056 }
+  },
+  "slowMotionReduced": {
+    "duration": 10500,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["append", 3000, 1500],
+      ["wait", 4500, 1500],
+      ["travel", 6000, 1500],
+      ["process", 7500, 1500],
+      ["end", 9000, 1500]
+    ]
+  }
+}

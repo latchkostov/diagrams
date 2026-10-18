@@ -15,6 +15,8 @@ flowchart LR
   embed_worker["Chunk and embed<br/>~800 tokens · 100 overlap"]
   embeddings(["Embeddings API<br/>text-embedding-3-large"])
   vault["Vault<br/>LLM API keys"]
+  ingest_dlq["Failed ingest jobs<br/>dead letters after 5 tries"]
+  ingest_triage["Ingest triage<br/>logs page, alerts docs team"]
   user -->|"POST /ask"| rag_api
   rag_api -->|"Cache lookup"| cache
   rag_api -->|"Top-k chunks"| vector_db
@@ -29,5 +31,7 @@ flowchart LR
   embed_worker -->|"Upsert chunks"| vector_db
   rag_api -.->|"reads secrets"| vault
   embed_worker -.->|"reads secrets"| vault
-  linkStyle 4,5,7,8,9 stroke-dasharray: 6 4
+  ingest_q -.->|"After 5 tries"| ingest_dlq
+  ingest_dlq -.-> ingest_triage
+  linkStyle 4,5,7,8,9,14,15 stroke-dasharray: 6 4
   linkStyle 12,13 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4

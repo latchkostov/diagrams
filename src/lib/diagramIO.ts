@@ -1,5 +1,6 @@
 import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
 import { examples, getLoadedExample } from "../examples";
+import { RETIRED_EXAMPLES } from "../examples/retired";
 import { LIMITS, parseNative, preserveUnknown, validateDiagram } from "../interop/native";
 import { notify } from "../interop/ui/toast";
 import { safeStorage } from "./storage";
@@ -686,28 +687,39 @@ export function createLibraryDiagram(
   return createLibraryEntry(input, target, sessionId, provenance);
 }
 
-function createLibraryEntry(
-  input: DiagramFile,
-  target: SaveTarget | undefined,
-  sessionId: string = randomHex(4),
-  provenance: PrivacyFlags & { sourceSlug?: string } = {},
-  promotion?: { conversation: string | null; beforePublish: (slug: string) => void },
-): string {
-  const entries = readIndex();
-  let slug: string;
-  do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
-  while (entries.some((e) => e.slug === slug));
-  // A file's `"private": true` becomes the entry's switch; the stored document never carries it.
+/**
+ * The library entry's privacy for a new document: a file's `"private": true` becomes the entry's switch, and copies
+ * inherit their source's privacy (a local-only example's provenance, or the Private switch). Shared by creation and by
+ * the retired-edits repair, which republishes an entry for an already stored document.
+ */
+function entryFlags(input: DiagramFile, provenance: PrivacyFlags & { sourceSlug?: string } = {}): PrivacyFlags {
   const d = withPrivacyField(input, false);
-  // Copies inherit their source's privacy: a local-only example's provenance, or the Private switch.
   const source = provenance.sourceSlug !== undefined ? getPrivacyFlags(provenance.sourceSlug) : {};
-  const flags: PrivacyFlags = {
+  return {
     localOnly:
       provenance.localOnly ||
       (provenance.sourceSlug !== undefined && privacyOf({ localOnly: source.localOnly, diagram: d }) === "local-only"),
     private: provenance.private || source.private || input.private === true,
     onDevice: provenance.onDevice || source.onDevice,
   };
+}
+
+function createLibraryEntry(
+  input: DiagramFile,
+  target: SaveTarget | undefined,
+  sessionId: string = randomHex(4),
+  provenance: PrivacyFlags & { sourceSlug?: string } = {},
+  promotion?: { conversation: string | null; beforePublish: (slug: string) => void },
+  fixedSlug?: string,
+): string {
+  const entries = readIndex();
+  let slug = fixedSlug ?? "";
+  if (!fixedSlug)
+    do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
+    while (entries.some((e) => e.slug === slug));
+  // A file's `"private": true` becomes the entry's switch; the stored document never carries it.
+  const d = withPrivacyField(input, false);
+  const flags = entryFlags(input, provenance);
   const r = validateDiagram(d);
   if (!r.ok) throw new Error(r.error);
   const session: DocumentSession = {
@@ -916,3 +928,107 @@ export const emptyDiagram = (): DiagramFile => ({
   nodes: [],
   edges: [],
 });
+
+/** A library slug derived from a retired slug and its stored edits: tabs adopting the same edits write one entry. */
+function retiredCopySlug(slug: string, raw: string): string {
+  let a = 0x811c9dc5;
+  let b = 0x01000193;
+  for (const ch of `${slug}:${raw}`) {
+    const c = ch.codePointAt(0)!;
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x5bd1e995) >>> 0;
+  }
+  return LIBRARY_SLUG_PREFIX + (a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0")).slice(0, 12);
+}
+
+/** When Your diagrams can't take them, the edits stay where they are and one notice offers them all as downloads. */
+function offerRetiredEdits(failed: readonly DiagramFile[]): void {
+  const titles = failed.map((d) => d.title.trim() || UNTITLED);
+  notify(
+    `${failed.length === 1 ? `Your edits to "${titles[0]}", an example that has been replaced,` : `Your edits to ${failed.length} examples that have been replaced`} couldn't be moved to Your diagrams: this browser's storage is full. Download them now, or free up space (File → Your diagrams…) and reload.`,
+    {
+      kind: "error",
+      duration: 60_000,
+      action: {
+        label: "Download edits",
+        testId: "retired-edits-download",
+        run: () =>
+          void import("../interop/files").then(({ downloadText }) =>
+            failed.forEach((d, i) =>
+              downloadText(JSON.stringify(d, null, 2), `${titles[i]}.diagram.json`, "application/json"),
+            ),
+          ),
+      },
+    },
+  );
+}
+
+/** The adopted copy holds exactly these edits, at least as private, and Your diagrams lists it: only then may the source go. */
+function adoptionVerified(copy: string, edited: DiagramFile): boolean {
+  if (!hasLibraryEntry(copy)) return false;
+  if (edited.private === true && getPrivacyFlags(copy).private !== true) return false;
+  const stored = getCurrent(copy);
+  return !!stored && JSON.stringify(stored) === JSON.stringify(withPrivacyField(edited, false));
+}
+
+/**
+ * Makes sure the copy exists and is listed. A document whose library entry was never published (an interrupted start)
+ * gets its entry; a copy that's already complete is left as it is. Only a document this run creates can be rolled
+ * back, so a peer's committed copy is never removed. False when storage refuses.
+ */
+function ensureAdopted(copy: string, edited: DiagramFile): boolean {
+  const document = getOriginal(copy);
+  if (document && hasLibraryEntry(copy)) return true;
+  try {
+    // The stored document no longer carries `private`: the entry's switch comes from the edits themselves.
+    if (document)
+      commitWrites([
+        [entryKey(copy), JSON.stringify(summarize(copy, document, Date.now(), undefined, entryFlags(edited)))],
+      ]);
+    else createLibraryEntry(edited, undefined, undefined, {}, undefined, copy);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function adoptRetired(exclusive: boolean): string[] {
+  const adopted: string[] = [];
+  const failed: DiagramFile[] = [];
+  for (const slug of Object.keys(RETIRED_EXAMPLES)) {
+    const key = AUTOSAVE_PREFIX + slug;
+    const raw = safeStorage.getItem(key);
+    const edited = raw === null ? undefined : readDiagram(key);
+    if (raw === null || !edited) continue;
+    const copy = retiredCopySlug(slug, raw);
+    // You deleted this copy: it isn't recreated, and the edits stay where they were.
+    if (isDeleted(copy)) continue;
+    if (!ensureAdopted(copy, edited)) {
+      failed.push(edited);
+      continue;
+    }
+    adopted.push(copy);
+    // Without the cross-tab lock another tab may still be writing: keep the source, the copy is found again next time.
+    if (exclusive && adoptionVerified(copy, edited)) safeStorage.removeItem(key);
+  }
+  if (failed.length) offerRetiredEdits(failed);
+  if (adopted.length) changed();
+  return adopted;
+}
+
+/** One tab at a time adopts (Web Locks); see adoptRetiredExampleEdits. */
+export const ADOPT_RETIRED_LOCK = "livediagrams-adopt-retired";
+
+/**
+ * Edits saved under a retired example's slug (an example autosave from before copies existed) become one of your
+ * diagrams, so retiring an example never loses them. The copy's slug is derived from the edits, so a retry finds the
+ * same entry instead of adding another. Tabs adopt one at a time under a Web Lock, and the old key is removed only
+ * once Your diagrams lists the copy and it reads back the same edits; where Web Locks are missing, the old key is
+ * always kept. When storage is full, the edits stay put and a notice offers them as downloads. Resolves to the copies'
+ * slugs. Runs at startup, after the storage lifecycle (src/main.tsx).
+ */
+export async function adoptRetiredExampleEdits(): Promise<string[]> {
+  const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+  if (!locks?.request) return adoptRetired(false);
+  return locks.request(ADOPT_RETIRED_LOCK, () => adoptRetired(true));
+}

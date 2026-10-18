@@ -1,14 +1,14 @@
 {
   "layout": {
     "status": 0,
-    "stdout": "<tmp>/laid.json: placed 13 nodes.\n",
-    "nodes": { "user": [40, 160], "rag-api": [433, 160], "cache": [823, 220], "feedback": [823, 100], "llm": [1600, 280], "vector-db": [1207, 160], "eval-job": [1207, 40], "quality": [1600, 160], "docs": [40, 280], "ingest-q": [433, 280], "embed-worker": [823, 340], "embeddings": [1207, 400], "vault": [1207, 280] },
+    "stdout": "<tmp>/laid.json: placed 15 nodes.\n",
+    "nodes": { "user": [40, 220], "rag-api": [433, 220], "cache": [823, 220], "feedback": [823, 100], "llm": [1606, 340], "vector-db": [1213, 160], "eval-job": [1213, 40], "quality": [1606, 220], "docs": [40, 340], "ingest-q": [433, 340], "embed-worker": [823, 340], "embeddings": [1213, 400], "vault": [1213, 280], "ingest-dlq": [823, 460], "ingest-triage": [1213, 520] },
     "groups": {}
   },
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "0107ff7391bac3b531a8f8368a2061bce2c9841a2153ec65aea335de39af1ed3", "bytes": 7381 },
+    "decoded": { "sha256": "4d12945d0eb615151c0d1946c40e91ab7013603aae30d5598c97daad93fcb440", "bytes": 7906 },
     "sameAsFile": true,
     "warned": false
   },
@@ -132,7 +132,17 @@
             "y": 480,
             "props": { "concurrency": 400, "latencyMs": 150 }
           },
-          { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "LLM API keys", "x": 1180, "y": 320 }
+          { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "LLM API keys", "x": 1180, "y": 320 },
+          { "id": "ingest-dlq", "stencil": "generic.queue", "label": "Failed ingest jobs", "sublabel": "dead letters after 5 tries", "x": 420, "y": 640 },
+          {
+            "id": "ingest-triage",
+            "stencil": "service.python",
+            "label": "Ingest triage",
+            "sublabel": "logs page, alerts docs team",
+            "x": 800,
+            "y": 640,
+            "props": { "concurrency": 4, "latencyMs": 100 }
+          }
         ],
         "edges": [
           {
@@ -232,7 +242,16 @@
             "props": { "travelMs": 200 }
           },
           { "id": "rag-api-to-vault", "from": "rag-api", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
-          { "id": "embed-worker-to-vault", "from": "embed-worker", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "bottom" }
+          { "id": "embed-worker-to-vault", "from": "embed-worker", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "bottom" },
+          {
+            "id": "ingest-q-to-ingest-dlq",
+            "from": "ingest-q",
+            "to": "ingest-dlq",
+            "kind": "async",
+            "label": "After 5 tries",
+            "props": { "dlq": true }
+          },
+          { "id": "ingest-dlq-to-ingest-triage", "from": "ingest-dlq", "to": "ingest-triage", "kind": "async" }
         ],
         "simulations": [
           {

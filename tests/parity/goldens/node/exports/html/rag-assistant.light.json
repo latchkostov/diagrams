@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "30e28534aa4893adb237e353ea2eb32c4560e7679f32485f53006d302ae35f41", "bytes": 38228 },
+  "file": { "sha256": "a0bc9d637377122b9e6f0b1582f0fc0df0ca7ce3b8d7240a7f6312267721a770", "bytes": 38753 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -116,7 +116,17 @@
           "y": 480,
           "props": { "concurrency": 400, "latencyMs": 150 }
         },
-        { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "LLM API keys", "x": 1180, "y": 320 }
+        { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "LLM API keys", "x": 1180, "y": 320 },
+        { "id": "ingest-dlq", "stencil": "generic.queue", "label": "Failed ingest jobs", "sublabel": "dead letters after 5 tries", "x": 420, "y": 640 },
+        {
+          "id": "ingest-triage",
+          "stencil": "service.python",
+          "label": "Ingest triage",
+          "sublabel": "logs page, alerts docs team",
+          "x": 800,
+          "y": 640,
+          "props": { "concurrency": 4, "latencyMs": 100 }
+        }
       ],
       "edges": [
         {
@@ -216,7 +226,16 @@
           "props": { "travelMs": 200 }
         },
         { "id": "rag-api-to-vault", "from": "rag-api", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
-        { "id": "embed-worker-to-vault", "from": "embed-worker", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "bottom" }
+        { "id": "embed-worker-to-vault", "from": "embed-worker", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "bottom" },
+        {
+          "id": "ingest-q-to-ingest-dlq",
+          "from": "ingest-q",
+          "to": "ingest-dlq",
+          "kind": "async",
+          "label": "After 5 tries",
+          "props": { "dlq": true }
+        },
+        { "id": "ingest-dlq-to-ingest-triage", "from": "ingest-dlq", "to": "ingest-triage", "kind": "async" }
       ],
       "simulations": [
         {

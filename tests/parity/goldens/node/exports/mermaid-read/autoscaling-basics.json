@@ -1,0 +1,24 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Autoscaling basics",
+    "direction": "LR",
+    "nodes": [
+      { "id": "uploader", "stencil": "generic.service", "label": "Upload clients", "x": 40, "y": 40 },
+      { "id": "uploads", "stencil": "generic.service", "label": "Image uploads", "sublabel": "6 partitions", "x": 400, "y": 40 },
+      { "id": "image_workers", "stencil": "generic.service", "label": "Thumbnail workers", "x": 760, "y": 40 },
+      { "id": "thumbnails", "stencil": "generic.database", "label": "Thumbnails", "x": 1120, "y": 100 },
+      { "id": "poster_studio", "stencil": "generic.service", "label": "Poster studio", "x": 40, "y": 160 },
+      { "id": "render_requests", "stencil": "generic.service", "label": "Render requests", "sublabel": "3 partitions", "x": 400, "y": 160 },
+      { "id": "render_workers", "stencil": "generic.service", "label": "Poster workers", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-uploader-uploads", "from": "uploader", "to": "uploads", "kind": "async" },
+      { "id": "e2-uploads-image_workers", "from": "uploads", "to": "image_workers", "kind": "async" },
+      { "id": "e3-image_workers-thumbnails", "from": "image_workers", "to": "thumbnails", "kind": "async" },
+      { "id": "e4-poster_studio-render_requests", "from": "poster_studio", "to": "render_requests", "kind": "async" },
+      { "id": "e5-render_requests-render_workers", "from": "render_requests", "to": "render_workers", "kind": "async" }
+    ]
+  }
+}

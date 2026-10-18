@@ -1,11 +1,11 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, openMissingDlq, expectNoErrors } from "./fixtures";
 import { callTool, installFakeModelContext, must, nodeCount, toolNames } from "./ai-helpers";
 
 // Architecture checks for agents: check_diagram (read-only) through a fake document.modelContext. A finding's
 // fix is edit_diagram ops, so applying it is an ordinary agent turn with Undo. Selectors are data-testid only.
 
-const EXAMPLE = "azure-service-bus-integration";
+// The diagram: openMissingDlq (one dead-letter warning, two suggestions; tests/fixtures/checks/service-bus-missing-dlq.diagram.json).
 
 interface Report {
   findings: {
@@ -28,7 +28,7 @@ test("check_diagram finds the missing dead-letter queue; its fix is one undoable
   consoleErrors,
 }) => {
   await installFakeModelContext(page);
-  await gotoCanvas(page, EXAMPLE);
+  await openMissingDlq(page);
   await expect(page.getByTestId("node-posting-sub")).toBeVisible();
   await expect.poll(() => toolNames(page)).toContain("check_diagram");
 
@@ -69,7 +69,7 @@ test("check_diagram finds the missing dead-letter queue; its fix is one undoable
 
 test("live view offers check_diagram too", async ({ page }) => {
   await installFakeModelContext(page);
-  await gotoCanvas(page, EXAMPLE);
+  await openMissingDlq(page);
   await expect(page.getByTestId("node-posting-sub")).toBeVisible();
   await page.getByTestId("live-toggle").click();
   await expect.poll(() => toolNames(page)).toEqual(["check_diagram", "describe_diagram", "get_share_link"]);
@@ -78,7 +78,7 @@ test("live view offers check_diagram too", async ({ page }) => {
 
 test("the file's ignores hold, and a private diagram offers no check_diagram", async ({ page, consoleErrors }) => {
   await installFakeModelContext(page);
-  await gotoCanvas(page, EXAMPLE);
+  await openMissingDlq(page);
   const diagram = {
     format: "diagrams/v1",
     title: "Ledger intake",

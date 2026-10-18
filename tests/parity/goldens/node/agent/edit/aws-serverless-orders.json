@@ -136,10 +136,10 @@
           { "id": "email", "label": "Email receipt", "stencil": "generic.email" },
           { "id": "sms", "label": "SMS update", "stencil": "generic.sms" },
           { "id": "cognito", "label": "Cognito user pool", "stencil": "generic.identity-provider" },
-          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
-          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
-          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
-          { "id": "note-1", "label": "Pinned by the parity harness" }
+          { "id": "archive-q", "label": "order-archive", "stencil": "aws.sqs" },
+          { "id": "archive-dlq", "label": "order-archive-dlq", "stencil": "aws.sqs" },
+          { "id": "archive-fn", "label": "Archive orders", "stencil": "aws.lambda" },
+          { "id": "archive-s3", "label": "Order archive", "stencil": "aws.s3" }
         ],
         "hint": "Use an id from candidates, or call describe_diagram.",
         "applied": false
@@ -188,7 +188,7 @@
             "stencil": "service.dotnet",
             "label": "Parity reader",
             "x": 640,
-            "y": 832,
+            "y": 1280,
             "props": { "replicas": 3 }
           }
         }
@@ -205,10 +205,10 @@
   "diagram": {
     "format": "diagrams/v1",
     "title": "Parity edit",
-    "description": "API Gateway and Lambda write orders to DynamoDB; its stream feeds EventBridge rules for a Step Functions workflow, SQS and SNS.",
+    "description": "API Gateway and Lambda write orders to DynamoDB; its stream feeds EventBridge rules that fan out to a Step Functions payment workflow, an isolated fulfillment queue, an archive queue and SNS notifications, with a scheduled reconciliation.",
     "direction": "TB",
     "groups": [
-      { "id": "aws", "label": "AWS · us-east-1", "tone": "aws", "x": 391, "y": 96, "width": 2222, "height": 716 },
+      { "id": "aws", "label": "AWS · us-east-1", "tone": "aws", "x": 380, "y": 96, "width": 2233, "height": 1116 },
       { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 0, "y": 96, "width": 701, "height": 176 }
     ],
     "nodes": [
@@ -361,9 +361,69 @@
         "props": {}
       },
       { "id": "cognito", "stencil": "generic.identity-provider", "label": "Cognito user pool", "sublabel": "Shopper sign-in", "x": 431, "y": 400, "group": "aws" },
-      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 340, "y": 832 },
+      {
+        "id": "archive-q",
+        "stencil": "aws.sqs",
+        "label": "order-archive",
+        "sublabel": "Batch 100 · retention 14 days",
+        "x": 1940,
+        "y": 860,
+        "group": "aws",
+        "props": { "maxDeliveryCount": 5, "retentionDays": 14 }
+      },
+      {
+        "id": "archive-dlq",
+        "stencil": "aws.sqs",
+        "label": "order-archive-dlq",
+        "sublabel": "Redrive after 5 receives",
+        "x": 1940,
+        "y": 1100,
+        "group": "aws",
+        "props": { "isDeadLetter": true }
+      },
+      {
+        "id": "archive-fn",
+        "stencil": "aws.lambda",
+        "label": "Archive orders",
+        "sublabel": "Batch 100 · JSONL",
+        "x": 2320,
+        "y": 860,
+        "group": "aws",
+        "props": { "concurrency": 20, "latencyMs": 150, "emits": "OrderArchived" }
+      },
+      {
+        "id": "archive-s3",
+        "stencil": "aws.s3",
+        "label": "Order archive",
+        "sublabel": "s3://orders/year/month/",
+        "x": 2320,
+        "y": 1100,
+        "group": "aws",
+        "props": { "latencyMs": 1 }
+      },
+      {
+        "id": "schedule",
+        "stencil": "aws.eventbridge",
+        "label": "Reconcile schedule",
+        "sublabel": "rate(15 minutes)",
+        "x": 420,
+        "y": 640,
+        "group": "aws",
+        "props": { "ratePerSec": 0.0011111111111111111, "messageType": "ReconcileTick" }
+      },
+      {
+        "id": "reconcile",
+        "stencil": "aws.lambda",
+        "label": "Reconcile orders",
+        "sublabel": "Find stuck PLACED orders",
+        "x": 800,
+        "y": 640,
+        "group": "aws",
+        "props": { "concurrency": 10, "latencyMs": 150 }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 340, "y": 1280 },
       { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 24 },
-      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 340, "y": 944 }
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 340, "y": 1392 }
     ],
     "edges": [
       {
@@ -491,6 +551,62 @@
         "props": { "travelMs": 300, "group": "sms" }
       },
       { "id": "apigw-to-cognito", "from": "apigw", "to": "cognito", "label": "JWT authorizer", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "top" },
+      {
+        "id": "bus-to-archive-q",
+        "from": "bus",
+        "to": "archive-q",
+        "kind": "async",
+        "label": "Rule: all orders",
+        "props": { "travelMs": 300, "group": "archive-rule", "filter": ["Order*"] }
+      },
+      {
+        "id": "archive-q-to-archive-fn",
+        "from": "archive-q",
+        "to": "archive-fn",
+        "kind": "async",
+        "label": "Event source",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "archive-fn-to-archive-s3",
+        "from": "archive-fn",
+        "to": "archive-s3",
+        "kind": "sync",
+        "label": "PutObject",
+        "props": { "travelMs": 200 }
+      },
+      {
+        "id": "archive-q-to-archive-dlq",
+        "from": "archive-q",
+        "to": "archive-dlq",
+        "kind": "async",
+        "label": "After 5 receives",
+        "props": { "travelMs": 300, "dlq": true }
+      },
+      {
+        "id": "archive-dlq-to-archive-q",
+        "from": "archive-dlq",
+        "to": "archive-q",
+        "kind": "async",
+        "label": "Redrive",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "schedule-to-reconcile",
+        "from": "schedule",
+        "to": "reconcile",
+        "kind": "async",
+        "label": "Scheduled event",
+        "props": { "travelMs": 300 }
+      },
+      {
+        "id": "reconcile-to-orders-table",
+        "from": "reconcile",
+        "to": "orders-table",
+        "kind": "sync",
+        "label": "Query PLACED",
+        "props": { "travelMs": 200 }
+      },
       { "id": "e-1", "from": "client", "to": "topic-1", "kind": "async" },
       {
         "id": "e-4",
@@ -632,6 +748,73 @@
             "metric": { "node": "dlq", "field": "backlog" },
             "op": "==",
             "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "throttle",
+        "title": "Fulfillment Lambda is throttled",
+        "description": "Reserved concurrency for RequestShipment drops to one. Its queue grows while payments, the archive and receipts carry on; when concurrency is restored, the backlog drains.",
+        "seed": 7,
+        "scale": 2,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "client",
+            "messageType": "PlaceOrder",
+            "label": "240 orders over 8 seconds",
+            "shape": { "kind": "constant", "ratePerSec": 30, "durationMs": 8000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Each EventBridge rule feeds its own queue, so one slow consumer can't hold up the others.", "focus": ["bus", "fulfillment-q", "archive-q", "sns"] }
+          },
+          { "atMs": 2000, "action": { "do": "props", "node": "fulfillment-fn", "props": { "concurrency": 1 } } },
+          {
+            "atMs": 2000,
+            "action": { "do": "note", "text": "RequestShipment is throttled to one concurrent execution. Its queue grows; the archive and receipts are unaffected.", "focus": ["fulfillment-q", "fulfillment-fn", "archive-q", "email"] }
+          },
+          { "atMs": 10000, "action": { "do": "props", "node": "fulfillment-fn", "props": { "concurrency": 50 } } },
+          {
+            "atMs": 10000,
+            "action": { "do": "note", "text": "Reserved concurrency is restored and fulfillment catches up.", "focus": ["fulfillment-fn", "three-pl"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "lag-grows",
+            "label": "Fulfillment lag grows while throttled",
+            "metric": { "node": "fulfillment-q", "field": "lag" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 8000
+          },
+          {
+            "id": "drained",
+            "label": "Fulfillment drains",
+            "metric": { "node": "fulfillment-q", "field": "lag" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "archived",
+            "label": "Every order event is archived",
+            "metric": { "node": "archive-s3", "field": "processed" },
+            "op": "==",
+            "value": 480,
+            "when": "end"
+          },
+          {
+            "id": "receipts",
+            "label": "Receipts are unaffected",
+            "metric": { "node": "email", "field": "processed" },
+            "op": "==",
+            "value": 240,
             "when": "end"
           }
         ]

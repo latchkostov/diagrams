@@ -125,11 +125,12 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   consoleErrors,
 }) => {
   await gotoCanvas(page, "aks-app-config-key-vault");
-  // The invoice example without its commands DLQ: Poison invoices now loses its 30 invoices.
+  // The invoice example without its commands DLQ: Poison invoices now loses its 30 invoices. Its subscriptions keep
+  // their own dead-letter queues, so that is the only warning.
   await importExample(page, "azure-service-bus-integration", "Invoices without a DLQ", (d) => {
     d.edges = d.edges.filter((e) => e.id !== "commands-to-dlq");
   });
-  await expect(page.getByTestId("checks-count")).toHaveText("2 warnings", { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: pageLoadTimeout() });
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
   const texts = await recordStatus(page);
@@ -144,7 +145,7 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   const evidence = page.getByTestId("check-evidence-dead-letter:commands");
   await expect(evidence).toHaveText("30 dropped in “Poison invoices”");
   // Evidence is never a warning of its own: the count under the title is the checks' own.
-  await expect(page.getByTestId("checks-count")).toHaveText("2 warnings", { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: pageLoadTimeout() });
   // Focus stayed on the one button, now Run again.
   await expect(page.getByTestId("checks-run-simulations")).toBeFocused();
   await expect(page.getByTestId("checks-run-simulations")).toHaveText("Run again");
@@ -175,27 +176,28 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
 });
 
 test("a deliberate outage is on purpose, not a finding", async ({ page }) => {
-  await gotoCanvas(page, "multi-region-active-active");
+  await gotoCanvas(page, "cell-based-bookings");
   await openChecks(page);
   await page.getByTestId("checks-run-simulations").click();
   await expect(status(page)).toHaveText("Played 2 simulations");
   await expect(page.getByTestId("checks-simulations-notes")).toHaveText(
-    "On purpose: 96 dropped at Load balancer, which “Region outage and failover” takes down.",
+    "On purpose: 20 dropped at Regional ALB, which “us-east-1 goes dark” takes down." +
+      "On purpose: 245 dropped at Booking API, which “A bad deploy stays in one cell” makes fail.",
   );
   await expect(page.getByTestId("checks-empty")).toBeVisible();
   await expect(page.getByTestId("checks-count")).toHaveCount(0);
-  // Two load balancers share the name: the note's selects the one it means.
-  await page.getByTestId("checks-planned-alb-us").click();
-  await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("us-east-1 · 3 AZs");
+  // Three load balancers share the name: the note's selects the one it means.
+  await page.getByTestId("checks-planned-east-alb").click();
+  await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("us-east-1");
 });
 
 test("focus stays on the link when a run adds the first finding, and when Run again takes it away", async ({
   page,
 }) => {
   await gotoCanvas(page, "aks-app-config-key-vault");
-  // us-east-1's API fails 2% of writes: no static finding, and a `dropped` one once the simulations play.
-  await importExample(page, "multi-region-active-active", "Flaky writes", (d) => {
-    const api = d.nodes.find((n) => n.id === "api-us");
+  // One cell's API fails 2% of bookings: no static finding, and a `dropped` one once the simulations play.
+  await importExample(page, "cell-based-bookings", "Flaky writes", (d) => {
+    const api = d.nodes.find((n) => n.id === "east-c2-api");
     if (api) api.props = { ...api.props, failureRate: 0.02 };
   });
   await openChecks(page);
@@ -203,7 +205,7 @@ test("focus stays on the link when a run adds the first finding, and when Run ag
   const link = page.getByTestId("checks-run-simulations");
   await link.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("check-row-dropped:api-us")).toBeVisible();
+  await expect(page.getByTestId("check-row-dropped:east-c2-api")).toBeVisible();
   await expect(link).toHaveText("Run again");
   await expect(link).toBeFocused();
   // Again: the counts go while it plays (no finding), and come back.
@@ -293,7 +295,7 @@ test("no saved simulations, no Run simulations; and none in live view", async ({
   await expect(page.getByTestId(RUN_COMMAND)).toHaveCount(0);
   await expect(page.getByTestId(STOP_COMMAND)).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await gotoCanvas(page, "multi-region-active-active");
+  await gotoCanvas(page, "cell-based-bookings");
   await openChecks(page);
   await expect(page.getByTestId("checks-run-simulations")).toBeVisible();
   await page.getByTestId("live-toggle").click();

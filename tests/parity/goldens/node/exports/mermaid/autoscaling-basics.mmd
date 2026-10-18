@@ -1,0 +1,18 @@
+---
+title: Autoscaling basics
+---
+flowchart LR
+  uploader(["Upload clients"])
+  uploads["Image uploads<br/>6 partitions"]
+  image_workers["Thumbnail workers"]
+  thumbnails[("Thumbnails")]
+  poster_studio(["Poster studio"])
+  render_requests["Render requests<br/>3 partitions"]
+  render_workers["Poster workers"]
+  uploader -.-> uploads
+  uploads -.-> image_workers
+  image_workers -.-> thumbnails
+  poster_studio -.-> render_requests
+  render_requests -.-> render_workers
+  linkStyle 0,1,2,3,4 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Two invented pipelines, one per autoscaler. Image workers scale on CPU with a Kubernetes HPA while Kafka buffers an upload burst; poster render workers sleep at zero until KEDA sees Kafka lag, wake, drain the burst and return to zero. Teaching timings (1 s syncs and polling, 1-2 s startup, short stabilization and cooldown) are deliberately shorter than the published defaults. Open a worker's Live details for replica history.","nodes":{"uploader":["uploader","client.browser"],"uploads":["uploads","kafka.topic"],"image_workers":["image-workers","service.go"],"thumbnails":["thumbnails","aws.s3"],"poster_studio":["poster-studio","client.browser"],"render_requests":["render-requests","kafka.topic"],"render_workers":["render-workers","service.go"]},"edges":["upload","thumbnail","store","request-render","render"],"relations":{}}

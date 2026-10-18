@@ -10,10 +10,8 @@ import { planScaling } from "../../../src/sim/scalingPlanner";
 import { planMessage } from "../../../src/checks/scalingFindings";
 import { metricPhrase, planDescriptor, planSentence, reasonText } from "../../../src/planning/scalingPlanText";
 
-for (const { slug, diagram } of [
-  ...corpus.filter(({ slug }) => slug.startsWith("a1-") || slug.startsWith("a2-")),
-  ...examples.filter(({ slug }) => slug === "autoscaling-image-workers" || slug === "keda-render-workers"),
-]) {
+// The retired standalone showcases live on as frozen corpus inputs (a1-image-workers, a2-render-workers).
+for (const { slug, diagram } of corpus.filter(({ slug }) => slug.startsWith("a1-") || slug.startsWith("a2-"))) {
   for (const simulation of diagram.simulations ?? []) {
     it(`${slug}: ${simulation.id} replica history and explanations`, () => {
       const controller = new LiveController(diagram);

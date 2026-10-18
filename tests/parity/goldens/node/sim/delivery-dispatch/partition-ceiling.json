@@ -378,7 +378,7 @@
     ]
   },
   "notes": [
-    { "atMs": 0, "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["couriers", "mqtt", "loc-ingest", "locations-topic"] },
+    { "atMs": 0, "text": "3,600 pings a second. Each geo indexer handles about 400.", "focus": ["loc-ingest", "locations-topic"] },
     { "atMs": 5000, "text": "KEDA scales to eight indexers and stops: the topic has eight partitions, so lag keeps growing.", "focus": ["locations-topic", "geo-indexer"] },
     { "atMs": 12000, "text": "The team raises the topic to 24 partitions and KEDA's maximum to match. KEDA adds indexers and the lag drains.", "focus": ["locations-topic", "geo-indexer", "geo-index"] }
   ],

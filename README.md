@@ -21,10 +21,11 @@ in the browser. There is no account and no server.
   narration notes, and expectations that pass or fail live. Simulations are saved in the diagram file.
 - **Inputs and capacity.** Rates in real units ("2,000 orders/s"), replicas, partitions, and Traffic × and
   Capacity × what-ifs. A bottleneck heat map suggests a fix you can apply in one click.
-- **Examples.** Fifteen narrated examples grouped by theme: event streaming (Kafka, CQRS and event sourcing,
-  CDC, IoT), data and AI (an event-driven Snowflake platform with reverse ETL, nightly batch ELT, GCP streaming
-  analytics, a RAG assistant), cloud serverless, integration (webhooks, notifications, Service Bus) and
-  reliability (outbox and saga, multi-region active/active). Each has two saved simulations.
+- **Examples.** Twenty-eight narrated examples grouped by theme: full systems of 40 to 60 services (Black Friday
+  commerce, cell-based bookings across three regions, a payments ledger, food-delivery dispatch, an EV charging
+  network), event streaming (Kafka, CQRS and event sourcing, CDC, autoscaling), data and AI (an event-driven Snowflake
+  platform, nightly batch ELT, GCP streaming analytics, a RAG assistant), cloud apps, integration (webhooks,
+  notifications, Service Bus) and reliability (outbox and saga, networks). Each has two or more saved simulations.
 - **Sharing.** Your diagrams are stored locally. **File ▸ Share…** lists every way out, safest first, each saying
   who can open it: an Interactive HTML file (with a password if you like), the diagram file, an embed your own app
   supplies, a link with a password, and, one deliberate step further, a public share link or embed. Export to PNG,

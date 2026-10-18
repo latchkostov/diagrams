@@ -30,7 +30,26 @@ current canvas and offers a save/export recovery notice; it does not replace the
 Existing example autosaves are read for compatibility and carried into the copy on the next edit.
 
 Large showcases (40–150 nodes: `black-friday-commerce`, `cell-based-bookings`, `payments-ledger`,
-`delivery-dispatch`, `ev-charging-network`) open first in their theme. They are invented systems whose saved stories
-start a narrated note within ten seconds of Live; each note's focus takes the camera, so a large diagram stays
-readable while a story plays. Keep them under live view's adaptive threshold (about 1,000 nodes plus connections),
-free of unexplained checks findings, and covered by `src/examples/largeShowcases.test.ts`.
+`delivery-dispatch`, `ev-charging-network`) make up the **Full systems** theme, first in the gallery. They are
+invented systems whose saved stories start a narrated note within ten seconds of Live; each note's focus takes the
+camera, so a large diagram stays readable while a story plays. Keep every note's focus a close-up (at least 60% zoom
+on a desktop; on a phone the canvas's 15% minimum zoom binds, and the note pans to its cards), the diagrams under live view's adaptive threshold
+(about 1,000 nodes plus connections), free of unexplained checks findings, and covered by
+`src/examples/largeShowcases.test.ts`.
+
+## Retiring an example
+
+Never just delete one. Add it to `RETIRED_EXAMPLES` in `src/examples/retired.ts` with its replacement and a story
+for each of its saved simulation ids. The entry rewrites a retired `?example=` (and its `sim`) before anything
+reads the address, so links, shared and embedded URLs keep working; a remembered last canvas reopens as the
+replacement; and edits saved under the old slug (an example autosave from before copies) become one of your
+diagrams at startup. Repoint tests that used it as a fixture, freeze a copy where a test pins its exact behaviour
+(`tests/parity/corpus`, `src/test/fixtures`), and let `pnpm parity:update` remove its goldens.
+
+| Retired                      | Opens                   |
+| ---------------------------- | ----------------------- |
+| `multi-region-active-active` | `cell-based-bookings`   |
+| `iot-telemetry`              | `ev-charging-network`   |
+| `aws-fanout`                 | `aws-serverless-orders` |
+| `autoscaling-image-workers`  | `autoscaling-basics`    |
+| `keda-render-workers`        | `autoscaling-basics`    |

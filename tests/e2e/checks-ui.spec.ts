@@ -7,6 +7,8 @@ import {
   pageLoadTimeout,
   expect,
   gotoCanvas,
+  openMissingDlq,
+  currentDiagram,
   expectNoErrors,
   waitForStableViewport,
   fitDiagram,
@@ -19,8 +21,8 @@ import { installChecksMeasurement } from "./checks-measurement";
 // is open, the inspector's finding, and typing that stays responsive while checks run. data-testid only.
 
 const MOD = "ControlOrMeta";
-/** One warning: the ledger worker fails in "Poison invoices" and ledger-posting has no dead-letter queue. */
-const WARN = "azure-service-bus-integration";
+/** One warning: the ledger worker fails in "Poison invoices" and ledger-posting has no dead-letter queue.
+ *  openMissingDlq imports it (tests/fixtures/checks/service-bus-missing-dlq.diagram.json). */
 const WARNING = "dead-letter:posting-sub";
 /** No findings at all. */
 const CLEAN = "aks-app-config-key-vault";
@@ -41,7 +43,7 @@ async function openFromCount(page: Page) {
 
 test.describe("the count under the title", () => {
   test("shows warnings only, for an example with one, and nothing for a clean one", async ({ page, consoleErrors }) => {
-    await gotoCanvas(page, WARN);
+    await openMissingDlq(page);
     await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
     await gotoCanvas(page, CLEAN);
     await expect(page.getByTestId("node-api")).toBeVisible();
@@ -52,13 +54,14 @@ test.describe("the count under the title", () => {
     expectNoErrors(consoleErrors);
   });
 
+  // Suggestions only (no-reader:payments-dlq, src/checks/examples.test.ts): the count stays away.
   test("suggestions alone show nothing; live view and presenting show no count", async ({ page }) => {
-    await gotoCanvas(page, "rag-assistant");
-    await expect(page.getByTestId("node-ingest-q")).toBeVisible();
+    await gotoCanvas(page, "outbox-saga-checkout");
+    await expect(page.getByTestId("node-payments-dlq")).toBeVisible();
     await page.waitForTimeout(2500);
     await expect(page.getByTestId("checks-count")).toHaveCount(0);
 
-    await gotoCanvas(page, WARN);
+    await openMissingDlq(page);
     await expect(page.getByTestId("checks-count")).toBeVisible();
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-controls")).toBeVisible();
@@ -70,7 +73,7 @@ test.describe("the count under the title", () => {
 
 test.describe("the Checks card", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoCanvas(page, WARN);
+    await openMissingDlq(page);
     await expect(page.getByTestId("checks-count")).toBeVisible();
   });
 
@@ -176,7 +179,8 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   page,
   consoleErrors,
 }, info) => {
-  await gotoCanvas(page, WARN);
+  await openMissingDlq(page);
+  const original = await currentDiagram(page);
   await openFromCount(page);
   await page.getByTestId(`check-more-${WARNING}`).click();
   await page.getByTestId(`check-ignore-${WARNING}`).click();
@@ -204,6 +208,7 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   });
   await page.getByTestId("import-input").setInputFiles(file);
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await expect(page.getByTestId("example-picker")).not.toHaveAttribute("data-diagram-slug", original);
   await page.getByTestId("view-button").click();
   await page.getByTestId("view-checks").click();
   await page.getByTestId("checks-ignored-toggle").click();
@@ -215,13 +220,14 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
 });
 
 test("an empty diagram's check finishes: an empty state, not 'Checking…' forever", async ({ page }) => {
-  await gotoCanvas(page, WARN);
+  await openMissingDlq(page);
   await page.getByTestId("import-input").setInputFiles({
     name: "empty.diagram.json",
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify({ format: "diagrams/v1", title: "Empty", nodes: [], edges: [] })),
   });
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await expect(page.getByTestId("diagram-title")).toHaveText("Empty");
   await page.getByTestId("view-button").click();
   await page.getByTestId("view-checks").click();
   await expect(page.getByTestId("checks-empty")).toContainText("Nothing to check yet");
@@ -229,7 +235,7 @@ test("an empty diagram's check finishes: an empty state, not 'Checking…' forev
 });
 
 test("keyboard: Esc closes a finding's options first, then the card, and focus goes back", async ({ page }) => {
-  await gotoCanvas(page, WARN);
+  await openMissingDlq(page);
   await expect(page.getByTestId("checks-count")).toBeVisible();
   await page.getByTestId("checks-count").focus();
   await page.keyboard.press("Enter");
@@ -259,7 +265,7 @@ test("keyboard: Esc closes a finding's options first, then the card, and focus g
 });
 
 test("a fix clicked twice adds one dead-letter queue", async ({ page }) => {
-  await gotoCanvas(page, WARN);
+  await openMissingDlq(page);
   await openFromCount(page);
   const nodes = page.getByTestId(/^node-(?!tooltip$|editor-)/);
   const before = await nodes.count();
@@ -271,7 +277,7 @@ test("a fix clicked twice adds one dead-letter queue", async ({ page }) => {
 
 test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
-  await gotoCanvas(page, WARN);
+  await openMissingDlq(page);
   await openFromCount(page);
   await page.getByTestId(`check-more-${WARNING}`).click();
   const cardBox = await boxOf(card(page));
@@ -348,7 +354,7 @@ performanceTest("typing a label is as responsive while checks run as with them h
       if (i === 14) edges.push({ id: `b-${id}`, from: id, to: `p${p}n11`, kind: "sync" });
     }
   const diagram = { format: "diagrams/v1", title: "Large", nodes, edges };
-  await gotoCanvas(page, WARN);
+  await openMissingDlq(page);
   await page.getByTestId("import-input").setInputFiles({
     name: "large.diagram.json",
     mimeType: "application/json",

@@ -1,14 +1,14 @@
 {
-  "file": { "sha256": "caf379fc071ae63d06048d2f70f369562cc8321c97e452b244e3b863cd37661a", "bytes": 32615 },
+  "file": { "sha256": "8bdefab1fec9d7ef12ff459a078da776e08c9415db0f434bf3cd3838e63c0188", "bytes": 37637 },
   "payload": {
     "version": 1,
     "diagram": {
       "format": "diagrams/v1",
       "title": "Notification fan-out",
-      "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.",
+      "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.",
       "direction": "LR",
       "groups": [
-        { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 380, "y": 0, "width": 1860, "height": 512 }
+        { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 380, "y": -24, "width": 1820, "height": 776 }
       ],
       "nodes": [
         {
@@ -68,7 +68,7 @@
           "x": 1560,
           "y": 40,
           "group": "azure",
-          "props": {}
+          "props": { "maxDeliveryCount": 10 }
         },
         {
           "id": "sms-q",
@@ -78,7 +78,7 @@
           "x": 1560,
           "y": 280,
           "group": "azure",
-          "props": {}
+          "props": { "maxDeliveryCount": 10 }
         },
         {
           "id": "push-q",
@@ -88,7 +88,7 @@
           "x": 1560,
           "y": 400,
           "group": "azure",
-          "props": {}
+          "props": { "maxDeliveryCount": 10 }
         },
         {
           "id": "email-sender",
@@ -139,7 +139,21 @@
           "x": 2320,
           "y": 400,
           "props": {}
-        }
+        },
+        { "id": "email-dlq", "stencil": "azure.service-bus.queue", "label": "Email DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 160, "group": "azure" },
+        { "id": "sms-dlq", "stencil": "azure.service-bus.queue", "label": "SMS DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure" },
+        { "id": "push-dlq", "stencil": "azure.service-bus.queue", "label": "Push DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 640, "group": "azure" },
+        {
+          "id": "dlq-triage",
+          "stencil": "azure.functions",
+          "label": "DLQ triage",
+          "sublabel": "alert, then replay",
+          "x": 1940,
+          "y": 580,
+          "group": "azure",
+          "props": { "concurrency": 8, "latencyMs": 100 }
+        },
+        { "id": "identity", "stencil": "azure.managed-identity", "label": "Sender identity", "sublabel": "user-assigned", "x": 1180, "y": 520, "group": "azure" }
       ],
       "edges": [
         {
@@ -244,7 +258,38 @@
           "props": { "travelMs": 200 }
         },
         { "id": "email-sender-to-key-vault", "from": "email-sender", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
-        { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom" }
+        { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom" },
+        {
+          "id": "email-q-to-email-dlq",
+          "from": "email-q",
+          "to": "email-dlq",
+          "kind": "async",
+          "label": "After 10 tries",
+          "props": { "dlq": true }
+        },
+        {
+          "id": "sms-q-to-sms-dlq",
+          "from": "sms-q",
+          "to": "sms-dlq",
+          "kind": "async",
+          "label": "After 10 tries",
+          "sourceSide": "left",
+          "targetSide": "left",
+          "props": { "dlq": true }
+        },
+        {
+          "id": "push-q-to-push-dlq",
+          "from": "push-q",
+          "to": "push-dlq",
+          "kind": "async",
+          "label": "After 10 tries",
+          "props": { "dlq": true }
+        },
+        { "id": "email-dlq-to-dlq-triage", "from": "email-dlq", "to": "dlq-triage", "kind": "async" },
+        { "id": "sms-dlq-to-dlq-triage", "from": "sms-dlq", "to": "dlq-triage", "kind": "async" },
+        { "id": "push-dlq-to-dlq-triage", "from": "push-dlq", "to": "dlq-triage", "kind": "async" },
+        { "id": "email-sender-to-identity", "from": "email-sender", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity" },
+        { "id": "sms-limiter-to-identity", "from": "sms-limiter", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity" }
       ],
       "simulations": [
         {
@@ -317,6 +362,7 @@
       "azure-cosmos-db": { "sha256": "0d7a1b51b99663c876f0ab112ff6f403f1a7408e6bebb2768ed339eefec79548", "bytes": 3550 },
       "azure-functions": { "sha256": "a0db338f682176fb01465ae4590055ecdb3c7862ce174df80eefee3ab444d134", "bytes": 2399 },
       "azure-key-vault": { "sha256": "e7d3f312fe58b856144a78ab18fff5947ea95be560538079b96770ac00a87b06", "bytes": 2995 },
+      "azure-managed-identity": { "sha256": "1a200841f63f401143d6166a197a6212dab657cb1d6b1b0de945a680a743857e", "bytes": 3220 },
       "azure-service-bus": { "sha256": "fcb7a4b1a367139c449790d6799ba6f2d53eb0f0e18176ee300e842d09022ba7", "bytes": 3909 },
       "generic-push": { "sha256": "50d924eb3d08a76fcd9c01ba00327022a7066df5efc79fa2d37e0e9051729f7d", "bytes": 658 },
       "generic-rate-limiter": { "sha256": "6622811a3ad16c0caa46d1592d3144da878bb3266101850e7a1c0ec83f57ae17", "bytes": 379 },

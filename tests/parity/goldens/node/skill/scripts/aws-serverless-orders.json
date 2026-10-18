@@ -1,14 +1,37 @@
 {
   "layout": {
     "status": 0,
-    "stdout": "<tmp>/laid.json: placed 16 nodes, fitted 1 boundary.\n",
-    "nodes": { "client": [40, 280], "apigw": [400, 280], "create-order": [790, 220], "orders-table": [1150, 280], "stream-fn": [1510, 280], "bus": [1870, 280], "sfn": [2230, 160], "stripe": [2592, -40], "dlq": [2592, 280], "fulfillment-q": [2230, 280], "fulfillment-fn": [2592, 160], "three-pl": [2985, 280], "sns": [2230, 400], "email": [2592, 400], "sms": [2592, 520], "cognito": [790, 340] },
-    "groups": { "aws": [360, 96, 2525, 536] }
+    "stdout": "<tmp>/laid.json: placed 22 nodes, fitted 1 boundary.\n",
+    "nodes": {
+      "client": [-280, 460],
+      "apigw": [400, 460],
+      "create-order": [790, 340],
+      "orders-table": [1150, 400],
+      "stream-fn": [1510, 400],
+      "bus": [1870, 400],
+      "sfn": [2230, 220],
+      "stripe": [2630, -40],
+      "dlq": [2630, 400],
+      "fulfillment-q": [2230, 340],
+      "fulfillment-fn": [2630, 160],
+      "three-pl": [3343, 340],
+      "sns": [2230, 580],
+      "email": [2630, 520],
+      "sms": [2630, 640],
+      "cognito": [790, 460],
+      "archive-q": [2230, 460],
+      "archive-dlq": [2630, 760],
+      "archive-fn": [2630, 280],
+      "archive-s3": [3023, 460],
+      "schedule": [40, 340],
+      "reconcile": [400, 340]
+    },
+    "groups": { "aws": [0, 96, 3291, 776] }
   },
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "3156660689ded90ad9ff26ddbdbcfeb697b03ad225d80684ecc2de6c548bc1ba", "bytes": 8939 },
+    "decoded": { "sha256": "114b1dc7df436bd9a75cff95ecb5711def6e42901422b6e98f224da0e68629c8", "bytes": 12890 },
     "sameAsFile": true,
     "warned": false
   },
@@ -21,10 +44,10 @@
       "diagram": {
         "format": "diagrams/v1",
         "title": "AWS serverless orders",
-        "description": "API Gateway and Lambda write orders to DynamoDB; its stream feeds EventBridge rules for a Step Functions workflow, SQS and SNS.",
+        "description": "API Gateway and Lambda write orders to DynamoDB; its stream feeds EventBridge rules that fan out to a Step Functions payment workflow, an isolated fulfillment queue, an archive queue and SNS notifications, with a scheduled reconciliation.",
         "direction": "LR",
         "groups": [
-          { "id": "aws", "label": "AWS · us-east-1", "tone": "aws", "x": 380, "y": 120, "width": 2240, "height": 692 }
+          { "id": "aws", "label": "AWS · us-east-1", "tone": "aws", "x": 380, "y": 120, "width": 2240, "height": 1100 }
         ],
         "nodes": [
           {
@@ -174,7 +197,67 @@
             "group": "aws",
             "props": {}
           },
-          { "id": "cognito", "stencil": "generic.identity-provider", "label": "Cognito user pool", "sublabel": "Shopper sign-in", "x": 431, "y": 400, "group": "aws" }
+          { "id": "cognito", "stencil": "generic.identity-provider", "label": "Cognito user pool", "sublabel": "Shopper sign-in", "x": 431, "y": 400, "group": "aws" },
+          {
+            "id": "archive-q",
+            "stencil": "aws.sqs",
+            "label": "order-archive",
+            "sublabel": "Batch 100 · retention 14 days",
+            "x": 1940,
+            "y": 860,
+            "group": "aws",
+            "props": { "maxDeliveryCount": 5, "retentionDays": 14 }
+          },
+          {
+            "id": "archive-dlq",
+            "stencil": "aws.sqs",
+            "label": "order-archive-dlq",
+            "sublabel": "Redrive after 5 receives",
+            "x": 1940,
+            "y": 1100,
+            "group": "aws",
+            "props": { "isDeadLetter": true }
+          },
+          {
+            "id": "archive-fn",
+            "stencil": "aws.lambda",
+            "label": "Archive orders",
+            "sublabel": "Batch 100 · JSONL",
+            "x": 2320,
+            "y": 860,
+            "group": "aws",
+            "props": { "concurrency": 20, "latencyMs": 150, "emits": "OrderArchived" }
+          },
+          {
+            "id": "archive-s3",
+            "stencil": "aws.s3",
+            "label": "Order archive",
+            "sublabel": "s3://orders/year/month/",
+            "x": 2320,
+            "y": 1100,
+            "group": "aws",
+            "props": { "latencyMs": 1 }
+          },
+          {
+            "id": "schedule",
+            "stencil": "aws.eventbridge",
+            "label": "Reconcile schedule",
+            "sublabel": "rate(15 minutes)",
+            "x": 420,
+            "y": 640,
+            "group": "aws",
+            "props": { "ratePerSec": 0.0011111111111111111, "messageType": "ReconcileTick" }
+          },
+          {
+            "id": "reconcile",
+            "stencil": "aws.lambda",
+            "label": "Reconcile orders",
+            "sublabel": "Find stuck PLACED orders",
+            "x": 800,
+            "y": 640,
+            "group": "aws",
+            "props": { "concurrency": 10, "latencyMs": 150 }
+          }
         ],
         "edges": [
           {
@@ -309,7 +392,63 @@
             "kind": "async",
             "props": { "travelMs": 300, "group": "sms" }
           },
-          { "id": "apigw-to-cognito", "from": "apigw", "to": "cognito", "label": "JWT authorizer", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "top" }
+          { "id": "apigw-to-cognito", "from": "apigw", "to": "cognito", "label": "JWT authorizer", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "top" },
+          {
+            "id": "bus-to-archive-q",
+            "from": "bus",
+            "to": "archive-q",
+            "kind": "async",
+            "label": "Rule: all orders",
+            "props": { "travelMs": 300, "group": "archive-rule", "filter": ["Order*"] }
+          },
+          {
+            "id": "archive-q-to-archive-fn",
+            "from": "archive-q",
+            "to": "archive-fn",
+            "kind": "async",
+            "label": "Event source",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "archive-fn-to-archive-s3",
+            "from": "archive-fn",
+            "to": "archive-s3",
+            "kind": "sync",
+            "label": "PutObject",
+            "props": { "travelMs": 200 }
+          },
+          {
+            "id": "archive-q-to-archive-dlq",
+            "from": "archive-q",
+            "to": "archive-dlq",
+            "kind": "async",
+            "label": "After 5 receives",
+            "props": { "travelMs": 300, "dlq": true }
+          },
+          {
+            "id": "archive-dlq-to-archive-q",
+            "from": "archive-dlq",
+            "to": "archive-q",
+            "kind": "async",
+            "label": "Redrive",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "schedule-to-reconcile",
+            "from": "schedule",
+            "to": "reconcile",
+            "kind": "async",
+            "label": "Scheduled event",
+            "props": { "travelMs": 300 }
+          },
+          {
+            "id": "reconcile-to-orders-table",
+            "from": "reconcile",
+            "to": "orders-table",
+            "kind": "sync",
+            "label": "Query PLACED",
+            "props": { "travelMs": 200 }
+          }
         ],
         "simulations": [
           {
@@ -444,6 +583,73 @@
                 "when": "end"
               }
             ]
+          },
+          {
+            "id": "throttle",
+            "title": "Fulfillment Lambda is throttled",
+            "description": "Reserved concurrency for RequestShipment drops to one. Its queue grows while payments, the archive and receipts carry on; when concurrency is restored, the backlog drains.",
+            "seed": 7,
+            "scale": 2,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "client",
+                "messageType": "PlaceOrder",
+                "label": "240 orders over 8 seconds",
+                "shape": { "kind": "constant", "ratePerSec": 30, "durationMs": 8000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Each EventBridge rule feeds its own queue, so one slow consumer can't hold up the others.", "focus": ["bus", "fulfillment-q", "archive-q", "sns"] }
+              },
+              { "atMs": 2000, "action": { "do": "props", "node": "fulfillment-fn", "props": { "concurrency": 1 } } },
+              {
+                "atMs": 2000,
+                "action": { "do": "note", "text": "RequestShipment is throttled to one concurrent execution. Its queue grows; the archive and receipts are unaffected.", "focus": ["fulfillment-q", "fulfillment-fn", "archive-q", "email"] }
+              },
+              { "atMs": 10000, "action": { "do": "props", "node": "fulfillment-fn", "props": { "concurrency": 50 } } },
+              {
+                "atMs": 10000,
+                "action": { "do": "note", "text": "Reserved concurrency is restored and fulfillment catches up.", "focus": ["fulfillment-fn", "three-pl"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "lag-grows",
+                "label": "Fulfillment lag grows while throttled",
+                "metric": { "node": "fulfillment-q", "field": "lag" },
+                "op": ">",
+                "value": 0,
+                "when": "at",
+                "atMs": 8000
+              },
+              {
+                "id": "drained",
+                "label": "Fulfillment drains",
+                "metric": { "node": "fulfillment-q", "field": "lag" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "archived",
+                "label": "Every order event is archived",
+                "metric": { "node": "archive-s3", "field": "processed" },
+                "op": "==",
+                "value": 480,
+                "when": "end"
+              },
+              {
+                "id": "receipts",
+                "label": "Receipts are unaffected",
+                "metric": { "node": "email", "field": "processed" },
+                "op": "==",
+                "value": 240,
+                "when": "end"
+              }
+            ]
           }
         ]
       },
@@ -452,6 +658,7 @@
         "aws-dynamodb": { "sha256": "682c5f50891c32b946f08761514899c04263bb0452a64d26a8c4d2602d8264dc", "bytes": 6120 },
         "aws-eventbridge": { "sha256": "f01c5248cde4b218382a835b9c97db4e992eed45d497dc294cabe1be5c2dd550", "bytes": 4486 },
         "aws-lambda": { "sha256": "66901bf03fc8e947cfd6633a5cee9bec3d7ee5b68d96a74622779e8e9cf5bcb7", "bytes": 1953 },
+        "aws-s3": { "sha256": "9eb9da8cd09cf6770410a45ab3dacc830aea6752f0d6be88305f249e70f713df", "bytes": 2031 },
         "aws-sns": { "sha256": "9805176c950fdf2f6840101e64c822ae8b1b978871ccda85fa3eb766c563f509", "bytes": 3726 },
         "aws-sqs": { "sha256": "8c262db53d2142510d9951733380ba5041e572cc26a0bb1751a102d647f05c24", "bytes": 6604 },
         "aws-step-functions": { "sha256": "a058a1115e7a0c2fe490304a3e9b5bacf0dd7feb7bbaf89bc433c3670f1d7fa8", "bytes": 2505 },

@@ -1,0 +1,231 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "uploader": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "image-workers": { "replicas": [1, 1, 0] },
+        "thumbnails": { "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2,
+      "nodes": {
+        "uploader": { "processed": 40, "throughput": 4.498078543015311, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 39,
+          "throughput": 3.538268275513526,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 38, "inFlight": 1, "throughput": 3.573769286949732, "replicas": [1, 1, 0] },
+        "thumbnails": { "processed": 38, "throughput": 3.6826067650411773, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2,
+      "nodes": {
+        "uploader": { "processed": 80, "throughput": 4.49828275546523, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 79,
+          "throughput": 3.538474540332686,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 78, "inFlight": 1, "throughput": 3.574036797999521, "replicas": [1, 1, 0] },
+        "thumbnails": { "processed": 78, "throughput": 3.682882423015316, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 2,
+      "nodes": {
+        "uploader": { "processed": 120, "throughput": 4.4982827647364605, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 119,
+          "throughput": 3.5384745496970944,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 118, "inFlight": 1, "throughput": 3.574036810144503, "replicas": [1, 1, 0] },
+        "thumbnails": { "processed": 118, "throughput": 3.6828824355301677, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2,
+      "nodes": {
+        "uploader": { "processed": 160, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 159,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 158, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+        "thumbnails": { "processed": 158, "throughput": 3.682882435530734, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 2,
+      "nodes": {
+        "uploader": { "processed": 200, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 199,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 198, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+        "thumbnails": { "processed": 198, "throughput": 3.682882435530734, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 2,
+      "nodes": {
+        "uploader": { "processed": 240, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+        "uploads": {
+          "processed": 239,
+          "throughput": 3.5384745496975167,
+          "lag": { "thumbnails": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "image-workers": { "processed": 238, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+        "thumbnails": { "processed": 238, "throughput": 3.682882435530734, "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 2,
+    "real": {
+      "uploader": { "processed": 240, "throughput": 4.498282764736878, "replicas": [1, 1, 0] },
+      "uploads": {
+        "processed": 239,
+        "throughput": 3.5384745496975167,
+        "lag": { "thumbnails": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "image-workers": { "processed": 238, "inFlight": 1, "throughput": 3.574036810145053, "replicas": [1, 1, 0] },
+      "thumbnails": { "processed": 238, "throughput": 3.682882435530734, "replicas": [1, 1, 0] },
+      "poster-studio": { "replicas": [1, 1, 0] },
+      "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+      "render-workers": { "replicas": [0, 0, 0] }
+    },
+    "edges": { "upload": 239, "thumbnail": 239, "store": 238, "request-render": 0, "render": 0 }
+  },
+  "events": {
+    "total": 1671,
+    "byKind": { "process": 955, "deliver": 716 },
+    "byNode": {
+      "uploader": { "process": 240 },
+      "uploads": { "deliver": 239, "process": 239 },
+      "image-workers": { "deliver": 239, "process": 238 },
+      "thumbnails": { "deliver": 238, "process": 238 }
+    },
+    "perSecond": [
+      "3cc1abdaae56",
+      "c2e7bb0fbc7d",
+      "52b04b5a54d0",
+      "a36113b0d708",
+      "0ab02f688a30",
+      "97d989712f9b",
+      "f8eca3da6bb2",
+      "858539b08381",
+      "54e4c2545b87",
+      "9a13b7b02867",
+      "c97046dfb459",
+      "765910aa2658",
+      "2efa6a29a195",
+      "0240e012bce6",
+      "7389a4b9f1a9",
+      "2e71254aa011",
+      "d18e2c3bc7a6",
+      "ae5ede3cddc4",
+      "f77ef32be7b6",
+      "cd1c5ee0f44e",
+      "a08368c1afec",
+      "c44d84b4089e",
+      "57353cab94b0",
+      "54d91bbb60c9",
+      "ac4f205fee76",
+      "d04f15639f1d",
+      "f8a8ec571801",
+      "303c3c81d243",
+      "fdd86e71cedb",
+      "a22ab02114cf",
+      "741c77855d31",
+      "ba5083ec088d",
+      "978203a3109a",
+      "30d05198f0fe",
+      "1da61c2a087b",
+      "2a5964e1d925",
+      "73c26dc17ae8",
+      "c1aec93e09df",
+      "9c26586524f0",
+      "c3e61c4d8ce2",
+      "cbdc3717f83d",
+      "d7955624e05c",
+      "9afddebc9e6f",
+      "d6e49d0d4656",
+      "e3d791ed5f92",
+      "687a4238931d",
+      "9a55c3071805",
+      "570402e5acb0",
+      "a8f0ab8df2c1",
+      "f4abc88120aa",
+      "0b7a70d09473",
+      "a54626211745",
+      "aa79d2e8b321",
+      "fe604f9f4fb2",
+      "002af48447bd",
+      "abca8f6dff7e",
+      "15a781882db9",
+      "4bf53027c2d0",
+      "dd500f278022",
+      "977be4a4567d",
+      "e8048e8f2b04"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 238, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 238, "min": 300, "mean": 300, "p50": 300, "p90": 300, "max": 300 },
+    "waitMs": {
+      "image-workers": { "count": 238, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "thumbnails": { "count": 238, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "image-workers": { "count": 238, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 },
+      "thumbnails": { "count": 238, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

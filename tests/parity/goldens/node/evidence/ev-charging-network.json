@@ -3,7 +3,8 @@
     "played": [
       { "id": "vendor-shell", "title": "The depot firewall blocks a vendor shell", "playedMs": 20000, "capped": false },
       { "id": "reboot-storm", "title": "A firmware wave reboots the street fleet", "playedMs": 30000, "capped": false },
-      { "id": "firewall-failover", "title": "The depot firewall fails over", "playedMs": 16000, "capped": false }
+      { "id": "firewall-failover", "title": "The depot firewall fails over", "playedMs": 16000, "capped": false },
+      { "id": "hot-spot", "title": "One partition runs hot", "playedMs": 20000, "capped": false }
     ],
     "unplayed": [],
     "tooBig": [],
@@ -13,5 +14,5 @@
   "planned": [],
   "counted": 0,
   "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 3 saved simulations (at most 60 s each)." }
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 4 saved simulations (at most 60 s each)." }
 }

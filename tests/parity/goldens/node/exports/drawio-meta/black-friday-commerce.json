@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "9b6f1820e4b3b87114407eac3d0df339795be6ac2ac1d87c4abbee7e98418d50",
-    "bytes": 318110,
+    "sha256": "ae2a42e4a078c391bc03e69cd906b85832a78ade66a024f569abf6957ab53843",
+    "bytes": 318063,
     "inlined": {
       "airflow": "airflow bb347b1c98e3b7d4",
       "argocd": "argo f05272f641716862",
@@ -1238,7 +1238,7 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["checkout-api", "orders-db", "outbox-relay", "orders"] }
+                "action": { "do": "note", "text": "A sustained peak: about 130 orders a second reach Kafka.", "focus": ["outbox-relay", "orders"] }
               },
               {
                 "atMs": 4000,

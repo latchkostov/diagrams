@@ -30,6 +30,7 @@ flowchart LR
     state_db[("Charger twins<br/>Cosmos DB")]
     faults["Fault detection<br/>windows per charger"]
     alerts["Fault alerts<br/>Event Grid"]
+    dashboard["Fleet dashboard<br/>availability by site"]
     oncall["Field service<br/>dispatch a technician"]
   end
   subgraph g_sessions ["AKS · sessions and billing"]
@@ -60,6 +61,7 @@ flowchart LR
   subgraph g_partners ["Partners"]
     roaming(["Roaming hub<br/>OCPI · partner CDRs"])
     stripe(["Stripe<br/>card payments"])
+    tech_email(["Technician email<br/>fault tickets"])
     dso(["Grid operator<br/>load reports"])
   end
   vendor(["Charger vendor<br/>remote support"])
@@ -87,6 +89,8 @@ flowchart LR
   state -->|"Reported"| state_db
   faults -->|"Fault"| alerts
   alerts -.-> oncall
+  oncall -->|"Ticket"| tech_email
+  dashboard -.->|"depends on: Queries twins"| state_db
   drivers -->|"HTTPS"| apim
   apim --> sessions_api
   sessions_api -->|"Session"| sessions_db
@@ -111,8 +115,8 @@ flowchart LR
   commands -.->|"gets tokens from"| mi
   ocpp -.->|"sends telemetry to"| insights
   sessions_api -.->|"sends telemetry to"| insights
-  linkStyle 5,6,14,15,16,17,18,21,25,27,30,31,32,34,35,36 stroke-dasharray: 6 4
-  linkStyle 12,39 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
-  linkStyle 40 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
-  linkStyle 41,42,43 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
-  linkStyle 44,45 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 5,6,14,15,16,17,18,21,27,29,32,33,34,36,37,38 stroke-dasharray: 6 4
+  linkStyle 12,23,41 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 42 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 43,44,45 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 46,47 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4

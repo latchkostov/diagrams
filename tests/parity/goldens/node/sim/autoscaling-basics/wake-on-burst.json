@@ -1,0 +1,91 @@
+{
+  "run": {
+    "time": 10000,
+    "totalMs": 10000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "woke", "label": "A render worker starts from zero", "status": "pass", "value": 0 },
+      { "id": "rendered", "label": "All 80 posters render", "status": "pass", "value": 80 },
+      { "id": "drained", "label": "The lag drains", "status": "pass", "value": 0 }
+    ],
+    "markers": [
+      { "atMs": 1000, "kind": "note", "label": "Eighty render requests arrive while no worker runs. KEDA sees the group's lag and wakes one." },
+      { "atMs": 1000, "kind": "traffic", "label": "burst" },
+      { "atMs": 4000, "kind": "note", "label": "HPA takes over from one replica and scales on lag; the backlog drains, then the workers return to zero." }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "uploader": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "image-workers": { "replicas": [1, 1, 0] },
+        "thumbnails": { "replicas": [1, 1, 0] },
+        "poster-studio": { "replicas": [1, 1, 0] },
+        "render-requests": { "lag": { "renders": 0 }, "replicas": [1, 1, 0] },
+        "render-workers": { "replicas": [0, 0, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 0,
+      "nodes": {
+        "uploader": { "replicas": [1, 1, 0] },
+        "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+        "image-workers": { "replicas": [1, 1, 0] },
+        "thumbnails": { "replicas": [1, 1, 0] },
+        "poster-studio": { "processed": 80, "throughput": 0.009922313207164997, "replicas": [1, 1, 0] },
+        "render-requests": {
+          "processed": 80,
+          "throughput": 0.009922313207164997,
+          "lag": { "renders": 0 },
+          "replicas": [1, 1, 0]
+        },
+        "render-workers": { "processed": 80, "throughput": 0.4131746217207187, "replicas": [0, 0, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 10000,
+    "inSystem": 0,
+    "real": {
+      "uploader": { "replicas": [1, 1, 0] },
+      "uploads": { "lag": { "thumbnails": 0 }, "replicas": [1, 1, 0] },
+      "image-workers": { "replicas": [1, 1, 0] },
+      "thumbnails": { "replicas": [1, 1, 0] },
+      "poster-studio": { "processed": 80, "throughput": 0.009922313207164997, "replicas": [1, 1, 0] },
+      "render-requests": {
+        "processed": 80,
+        "throughput": 0.009922313207164997,
+        "lag": { "renders": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "render-workers": { "processed": 80, "throughput": 0.4131746217207187, "replicas": [0, 0, 0] }
+    },
+    "edges": { "upload": 0, "thumbnail": 0, "store": 0, "request-render": 80, "render": 80 }
+  },
+  "events": {
+    "total": 480,
+    "byKind": { "inject": 80, "process": 240, "deliver": 160 },
+    "byNode": {
+      "poster-studio": { "inject": 80, "process": 80 },
+      "render-requests": { "deliver": 80, "process": 80 },
+      "render-workers": { "deliver": 80, "process": 80 }
+    },
+    "perSecond": ["-", "bb56dda8c1fb", "-", "86fd416f22f9", "40275d3e32d6", "83ac74e3dcc6", "-", "-", "-", "-", "-"]
+  },
+  "notes": [
+    { "atMs": 1000, "text": "Eighty render requests arrive while no worker runs. KEDA sees the group's lag and wakes one.", "focus": ["render-requests", "render-workers"] },
+    { "atMs": 4000, "text": "HPA takes over from one replica and scales on lag; the backlog drains, then the workers return to zero.", "focus": ["render-workers"] }
+  ],
+  "latency": {
+    "journeys": { "done": 80, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 80, "min": 2260, "mean": 3579.5, "p50": 3750, "p90": 4290, "max": 4510 },
+    "waitMs": { "render-workers": { "count": 80, "min": 0, "mean": 50.25, "p50": 0, "p90": 220, "max": 250 } },
+    "processMs": { "render-workers": { "count": 80, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}

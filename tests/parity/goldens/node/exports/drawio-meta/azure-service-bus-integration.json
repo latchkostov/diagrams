@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "0bfc459d1f1bbb6739fd427423de0e353933f38829fc6adc65ad835c3cb49799",
-    "bytes": 23211,
+    "sha256": "a99d36a8e1f06d05c09bd74edcbce22a37743e47a28f9b911910cc3992901acc",
+    "bytes": 27353,
     "inlined": { "client.partner": "client-partner ab557544ad77cdc8", "generic.queue": "generic-queue e831fa8bafcc6fa3" }
   },
   "readBack": [
@@ -13,7 +13,7 @@
         "description": "Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.",
         "direction": "LR",
         "groups": [
-          { "id": "azure", "label": "Azure · enterprise integration", "tone": "azure", "x": 380, "y": 0, "width": 2240, "height": 632 }
+          { "id": "azure", "label": "Azure · enterprise integration", "tone": "azure", "x": 380, "y": -24, "width": 2240, "height": 656 }
         ],
         "nodes": [
           {
@@ -154,6 +154,18 @@
             "y": 520,
             "props": {},
             "group": "azure"
+          },
+          { "id": "approval-dlq", "stencil": "azure.service-bus.queue", "label": "approval-workflow DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 40, "group": "azure" },
+          { "id": "posting-dlq", "stencil": "azure.service-bus.queue", "label": "ledger-posting DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure" },
+          {
+            "id": "dlq-triage",
+            "stencil": "azure.logic-apps",
+            "label": "DLQ triage",
+            "sublabel": "subscription dead letters: alert, then replay",
+            "x": 2320,
+            "y": 520,
+            "props": { "concurrency": 8, "latencyMs": 150 },
+            "group": "azure"
           }
         ],
         "edges": [
@@ -254,7 +266,25 @@
             "props": { "travelMs": 200 }
           },
           { "id": "ingest-to-vault", "from": "ingest", "to": "vault", "kind": "sync", "relation": "secret" },
-          { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" }
+          { "id": "ingest-to-insights", "from": "ingest", "to": "insights", "label": "Traces / exceptions", "kind": "async", "relation": "telemetry" },
+          {
+            "id": "approval-sub-to-approval-dlq",
+            "from": "approval-sub",
+            "to": "approval-dlq",
+            "label": "After 10 deliveries",
+            "kind": "async",
+            "props": { "dlq": true }
+          },
+          {
+            "id": "posting-sub-to-posting-dlq",
+            "from": "posting-sub",
+            "to": "posting-dlq",
+            "label": "After 10 deliveries",
+            "kind": "async",
+            "props": { "dlq": true }
+          },
+          { "id": "approval-dlq-to-dlq-triage", "from": "approval-dlq", "to": "dlq-triage", "kind": "async" },
+          { "id": "posting-dlq-to-dlq-triage", "from": "posting-dlq", "to": "dlq-triage", "kind": "async" }
         ],
         "simulations": [
           {
@@ -370,7 +400,12 @@
             "durationMs": 20000,
             "scale": 1
           }
-        ]
+        ],
+        "checks": {
+          "ignore": [
+            { "rule": "no-reader", "target": "dlq", "reason": "Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed" }
+          ]
+        }
       }
     }
   ]

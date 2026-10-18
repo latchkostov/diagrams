@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Aplicații cloud",
   "examples.themeIntegration": "Integrare",
   "examples.themeReliability": "Fiabilitate",
+  "examples.themeSystems": "Sisteme complete",
   "autoscaling.budget": "Bugetul ciclului de viață al resurselor a fost depășit: {limit, number}. Reduceți grupurile configurate sau multiplicatorul de capacitate.",
   "autoscaling.bindingInvalid": "Această modificare ar invalida o sursă de scalare. Mai întâi modificați sau dezactivați politica nodului afectat ori a simulării salvate.",
   "autoscaling.bindingRequired": "Conectați un broker compatibil și un grup de consumatori (consumer group), apoi alegeți sursa din setările avansate. Presetarea se salvează numai după alegerea unei surse.",

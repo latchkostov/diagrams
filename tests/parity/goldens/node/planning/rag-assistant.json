@@ -9,7 +9,8 @@
         "count": 1,
         "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
       },
-      "embed-worker": { "count": 4 }
+      "embed-worker": { "count": 4 },
+      "ingest-triage": { "count": 1 }
     }
   },
   "edit": {
@@ -33,7 +34,9 @@
         "ingest-q": [80, 0.2, 0.0025, 1, 1, 0],
         "embed-worker": [80, 0.2, 0.0025, 4, 4, 0],
         "embeddings": [2666.6666666666665, 0.2, 0.00007500000000000001, 1, 1, 0],
-        "vault": ["Infinity", 0, 0, 1, 1, 0]
+        "vault": ["Infinity", 0, 0, 1, 1, 0],
+        "ingest-dlq": [40, 0, 0, 1, 1, 0],
+        "ingest-triage": [40, 0, 0, 1, 1, 0]
       },
       "connections": { "user-to-rag-api": 2, "docs-to-ingest-q": 0.2, "rag-api-to-cache": 2, "rag-api-to-vector-db": 2, "rag-api-to-llm": 2, "rag-api-to-feedback": 0.5, "ingest-q-to-embed-worker": 0.2, "feedback-to-eval-job": 0.5, "embed-worker-to-embeddings": 0.2, "embed-worker-to-vector-db": 0.2, "eval-job-to-llm": 0.5, "eval-job-to-quality": 0.5 },
       "offeredTypes": { "user": ["Question"], "docs": ["PageChanged"], "rag-api": ["Question"], "ingest-q": ["PageChanged"], "cache": ["Question"], "vector-db": ["Question", "ChunkVectors"], "llm": ["Question", "EvalScore"], "feedback": ["AnswerRated"], "embed-worker": ["PageChanged"], "eval-job": ["AnswerRated"], "embeddings": ["ChunkVectors"], "quality": ["EvalScore"] }
@@ -171,6 +174,30 @@
         "minimumReplicas": 1,
         "changes": null,
         "converged": true
+      },
+      "ingest-triage": {
+        "id": "ingest-triage",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 40,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.1,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
       }
     },
     "capabilities": {
@@ -198,6 +225,9 @@
         { "kind": "consumes", "edge": "ingest-q-to-embed-worker", "peer": "ingest-q", "retry": "requeue", "retryBackoffMs": 0 },
         { "kind": "calls", "edge": "embed-worker-to-embeddings", "peer": "embeddings" },
         { "kind": "calls", "edge": "embed-worker-to-vector-db", "peer": "vector-db" }
+      ],
+      "ingest-triage": [
+        { "kind": "consumes", "edge": "ingest-dlq-to-ingest-triage", "peer": "ingest-dlq", "retry": "requeue", "retryBackoffMs": 0 }
       ]
     },
     "sizing": null,
@@ -400,6 +430,36 @@
         "partitions": 3,
         "messageType": "Vault",
         "healthChecks": false
+      },
+      "ingest-dlq": {
+        "profile": { "family": "queue", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Failed ingest jobs",
+        "healthChecks": false
+      },
+      "ingest-triage": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 100,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Ingest triage",
+        "healthChecks": false
       }
     }
   },
@@ -425,7 +485,9 @@
           "ingest-q": [80, 0, 0, 1, 1, 0],
           "embed-worker": [80, 0, 0, 4, 4, 0],
           "embeddings": [2666.6666666666665, 0, 0, 1, 1, 0],
-          "vault": ["Infinity", 0, 0, 1, 1, 0]
+          "vault": ["Infinity", 0, 0, 1, 1, 0],
+          "ingest-dlq": [40, 0, 0, 1, 1, 0],
+          "ingest-triage": [40, 0, 0, 1, 1, 0]
         },
         "connections": { "user-to-rag-api": 40, "rag-api-to-cache": 40, "rag-api-to-vector-db": 40, "rag-api-to-llm": 40, "rag-api-to-feedback": 10, "feedback-to-eval-job": 10, "eval-job-to-llm": 10, "eval-job-to-quality": 10 },
         "offeredTypes": { "user": ["Question"], "rag-api": ["Question"], "cache": ["Question"], "vector-db": ["Question"], "llm": ["Question", "EvalScore"], "feedback": ["AnswerRated"], "eval-job": ["AnswerRated"], "quality": ["EvalScore"] }
@@ -559,6 +621,30 @@
           "minimumReplicas": 1,
           "changes": null,
           "converged": true
+        },
+        "ingest-triage": {
+          "id": "ingest-triage",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 40,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.1,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -587,7 +673,9 @@
           "ingest-q": [80, 1200, 15, 1, 1, 0],
           "embed-worker": [80, 1200, 15, 4, 4, 0],
           "embeddings": [2666.6666666666665, 1200, 0.45, 1, 1, 0],
-          "vault": ["Infinity", 0, 0, 1, 1, 0]
+          "vault": ["Infinity", 0, 0, 1, 1, 0],
+          "ingest-dlq": [40, 0, 0, 1, 1, 0],
+          "ingest-triage": [40, 0, 0, 1, 1, 0]
         },
         "connections": { "user-to-rag-api": 20, "docs-to-ingest-q": 1200, "rag-api-to-cache": 20, "rag-api-to-vector-db": 20, "rag-api-to-llm": 20, "rag-api-to-feedback": 5, "ingest-q-to-embed-worker": 1200, "feedback-to-eval-job": 5, "embed-worker-to-embeddings": 1200, "embed-worker-to-vector-db": 1200, "eval-job-to-llm": 5, "eval-job-to-quality": 5 },
         "offeredTypes": { "user": ["Question"], "docs": ["PageChanged"], "rag-api": ["Question"], "ingest-q": ["PageChanged"], "cache": ["Question"], "vector-db": ["Question", "ChunkVectors"], "llm": ["Question", "EvalScore"], "feedback": ["AnswerRated"], "embed-worker": ["PageChanged"], "eval-job": ["AnswerRated"], "embeddings": ["ChunkVectors"], "quality": ["EvalScore"] }
@@ -727,6 +815,30 @@
           "minimumReplicas": 1,
           "changes": null,
           "converged": true
+        },
+        "ingest-triage": {
+          "id": "ingest-triage",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 40,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 4,
+          "seconds": 0.1,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -763,7 +875,9 @@
             "ingest-q": ["ok", "0% · 0.2/s of 80/s"],
             "embed-worker": ["ok", "0% · 0.2/s of 80/s"],
             "embeddings": ["ok", "0% · 0.2/s of 2.7k/s"],
-            "vault": ["idle", "", { "modeled": false }]
+            "vault": ["idle", "", { "modeled": false }],
+            "ingest-dlq": ["idle", ""],
+            "ingest-triage": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -791,7 +905,9 @@
             "ingest-q": ["ok", "1% · 1/s of 80/s"],
             "embed-worker": ["ok", "1% · 1/s of 80/s"],
             "embeddings": ["ok", "0% · 1/s of 2.7k/s"],
-            "vault": ["idle", "", { "modeled": false }]
+            "vault": ["idle", "", { "modeled": false }],
+            "ingest-dlq": ["idle", ""],
+            "ingest-triage": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -819,7 +935,9 @@
             "ingest-q": ["ok", "1% · 0.2/s of 40/s"],
             "embed-worker": ["ok", "1% · 0.2/s of 40/s"],
             "embeddings": ["ok", "0% · 0.2/s of 2.7k/s"],
-            "vault": ["idle", "", { "modeled": false }]
+            "vault": ["idle", "", { "modeled": false }],
+            "ingest-dlq": ["idle", ""],
+            "ingest-triage": ["idle", ""]
           }
         },
         "partitionsNotes": {}
@@ -847,7 +965,9 @@
             "ingest-q": ["ok", "0% · 0.2/s of 80/s"],
             "embed-worker": ["ok", "0% · 0.2/s of 80/s"],
             "embeddings": ["ok", "0% · 0.2/s of 2.7k/s"],
-            "vault": ["idle", "", { "modeled": false }]
+            "vault": ["idle", "", { "modeled": false }],
+            "ingest-dlq": ["idle", ""],
+            "ingest-triage": ["idle", ""]
           }
         },
         "partitionsNotes": { "feedback": "Its consumer group has 1 replica: partitions past 1 add no speed." }
@@ -874,7 +994,9 @@
         "ingest-q": ["idle", ""],
         "embed-worker": ["idle", ""],
         "embeddings": ["idle", ""],
-        "vault": ["idle", "", { "modeled": false }]
+        "vault": ["idle", "", { "modeled": false }],
+        "ingest-dlq": ["idle", ""],
+        "ingest-triage": ["idle", ""]
       }
     },
     "reindex": {
@@ -901,7 +1023,9 @@
         "ingest-q": ["over", "15× · 1.2k/s of 80/s"],
         "embed-worker": ["over", "15× · 1.2k/s of 80/s"],
         "embeddings": ["ok", "45% · 1.2k/s of 2.7k/s"],
-        "vault": ["idle", "", { "modeled": false }]
+        "vault": ["idle", "", { "modeled": false }],
+        "ingest-dlq": ["idle", ""],
+        "ingest-triage": ["idle", ""]
       }
     }
   }

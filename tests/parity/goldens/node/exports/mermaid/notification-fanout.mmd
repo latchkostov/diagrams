@@ -14,6 +14,11 @@ flowchart LR
     sms_limiter["SMS rate limiter<br/>Token bucket · 50/s"]
     push_sender["Push sender<br/>Batches of 500"]
     key_vault["notify-kv<br/>Provider API keys"]
+    email_dlq["Email DLQ<br/>$DeadLetterQueue"]
+    sms_dlq["SMS DLQ<br/>$DeadLetterQueue"]
+    push_dlq["Push DLQ<br/>$DeadLetterQueue"]
+    dlq_triage["DLQ triage<br/>alert, then replay"]
+    identity["Sender identity<br/>user-assigned"]
   end
   carrier(["Carrier tracking<br/>Parcel scanned"])
   sendgrid(["SendGrid<br/>Email"])
@@ -34,6 +39,15 @@ flowchart LR
   push_sender -->|"Send"| push
   email_sender -.->|"reads secrets"| key_vault
   sms_limiter -.->|"reads secrets"| key_vault
-  linkStyle 1,2,4,5,6,7,8,9 stroke-dasharray: 6 4
+  email_q -.->|"After 10 tries"| email_dlq
+  sms_q -.->|"After 10 tries"| sms_dlq
+  push_q -.->|"After 10 tries"| push_dlq
+  email_dlq -.-> dlq_triage
+  sms_dlq -.-> dlq_triage
+  push_dlq -.-> dlq_triage
+  email_sender -.->|"gets tokens from: runs as"| identity
+  sms_limiter -.->|"gets tokens from: runs as"| identity
+  linkStyle 1,2,4,5,6,7,8,9,15,16,17,18,19,20 stroke-dasharray: 6 4
   linkStyle 13,14 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
-%% diagrams:{"v":1,"description":"One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.","nodes":{"carrier":["carrier","generic.webhook"],"shipping":["shipping","azure.container-apps"],"events":["events","azure.service-bus.topic"],"preferences":["preferences","azure.cosmos-db"],"router":["router","azure.functions"],"email_q":["email-q","azure.service-bus.queue"],"sms_q":["sms-q","azure.service-bus.queue"],"push_q":["push-q","azure.service-bus.queue"],"email_sender":["email-sender","azure.functions"],"sms_limiter":["sms-limiter","generic.rate-limiter"],"push_sender":["push-sender","azure.functions"],"sendgrid":["sendgrid","sendgrid"],"key_vault":["key-vault","azure.key-vault"],"twilio":["twilio","twilio"],"push":["push","generic.push"]},"groups":{"g_azure":["azure","azure"]},"edges":["carrier-to-shipping","shipping-to-events","events-to-router","router-to-preferences","router-to-email-q","router-to-sms-q","router-to-push-q","email-q-to-email-sender","sms-q-to-sms-limiter","push-q-to-push-sender","email-sender-to-sendgrid","sms-limiter-to-twilio","push-sender-to-push","email-sender-to-key-vault","sms-limiter-to-key-vault"],"relations":{"13":"secret","14":"secret"}}
+  linkStyle 21,22 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.","nodes":{"carrier":["carrier","generic.webhook"],"shipping":["shipping","azure.container-apps"],"events":["events","azure.service-bus.topic"],"preferences":["preferences","azure.cosmos-db"],"router":["router","azure.functions"],"email_q":["email-q","azure.service-bus.queue"],"sms_q":["sms-q","azure.service-bus.queue"],"push_q":["push-q","azure.service-bus.queue"],"email_sender":["email-sender","azure.functions"],"sms_limiter":["sms-limiter","generic.rate-limiter"],"push_sender":["push-sender","azure.functions"],"sendgrid":["sendgrid","sendgrid"],"key_vault":["key-vault","azure.key-vault"],"twilio":["twilio","twilio"],"push":["push","generic.push"],"email_dlq":["email-dlq","azure.service-bus.queue"],"sms_dlq":["sms-dlq","azure.service-bus.queue"],"push_dlq":["push-dlq","azure.service-bus.queue"],"dlq_triage":["dlq-triage","azure.functions"],"identity":["identity","azure.managed-identity"]},"groups":{"g_azure":["azure","azure"]},"edges":["carrier-to-shipping","shipping-to-events","events-to-router","router-to-preferences","router-to-email-q","router-to-sms-q","router-to-push-q","email-q-to-email-sender","sms-q-to-sms-limiter","push-q-to-push-sender","email-sender-to-sendgrid","sms-limiter-to-twilio","push-sender-to-push","email-sender-to-key-vault","sms-limiter-to-key-vault","email-q-to-email-dlq","sms-q-to-sms-dlq","push-q-to-push-dlq","email-dlq-to-dlq-triage","sms-dlq-to-dlq-triage","push-dlq-to-dlq-triage","email-sender-to-identity","sms-limiter-to-identity"],"relations":{"13":"secret","14":"secret","21":"identity","22":"identity"}}

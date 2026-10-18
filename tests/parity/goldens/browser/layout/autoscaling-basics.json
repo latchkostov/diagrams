@@ -1,0 +1,34 @@
+{
+  "autoLayout": {
+    "viewport": "translate(8.61538px, 243.538px) scale(0.784615)",
+    "nodes": {
+      "uploader": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Upload clients Web Browser" },
+      "uploads": { "kind": "node", "box": "translate(400px, 40px) 220×72", "text": "Image uploads 6 partitions" },
+      "image-workers": { "kind": "node", "box": "translate(760px, 40px) 220×72", "text": "Thumbnail workers Go Service" },
+      "thumbnails": { "kind": "node", "box": "translate(1120px, 100px) 220×72", "text": "Thumbnails Amazon S3" },
+      "poster-studio": { "kind": "node", "box": "translate(40px, 160px) 220×72", "text": "Poster studio Web Browser" },
+      "render-requests": { "kind": "node", "box": "translate(400px, 160px) 220×72", "text": "Render requests 3 partitions" },
+      "render-workers": { "kind": "node", "box": "translate(760px, 160px) 220×72", "text": "Poster workers Go Service" },
+      "label-hpa": { "kind": "annotation", "box": "translate(80px, 120px) 240×40", "text": "HPA on CPU" },
+      "label-keda": { "kind": "annotation", "box": "translate(80px, 380px) 320×40", "text": "KEDA on Kafka lag, from zero" }
+    },
+    "edges": { "upload": "M260,76 L400,76", "thumbnail": "M620,76 L760,76", "store": "M980,76 L1040,76 Q1050,76 1050,86 L1050,126 Q1050,136 1060,136 L1120,136", "request-render": "M260,196 L400,196", "render": "M620,196 L760,196" },
+    "labels": {}
+  },
+  "tidy": {
+    "viewport": "translate(-179.923px, 243.538px) scale(0.784615)",
+    "nodes": {
+      "uploader": { "kind": "node", "box": "translate(80px, 180px) 220×72", "text": "Upload clients Web Browser" },
+      "uploads": { "kind": "node", "box": "translate(430px, 180px) 220×72", "text": "Image uploads 6 partitions" },
+      "image-workers": { "kind": "node", "box": "translate(790px, 180px) 220×72", "text": "Thumbnail workers Go Service" },
+      "thumbnails": { "kind": "node", "box": "translate(1140px, 240px) 220×72", "text": "Thumbnails Amazon S3" },
+      "poster-studio": { "kind": "node", "box": "translate(80px, 300px) 220×72", "text": "Poster studio Web Browser" },
+      "render-requests": { "kind": "node", "box": "translate(430px, 300px) 220×72", "text": "Render requests 3 partitions" },
+      "render-workers": { "kind": "node", "box": "translate(790px, 300px) 220×72", "text": "Poster workers Go Service" },
+      "label-hpa": { "kind": "annotation", "box": "translate(80px, 120px) 240×40", "text": "HPA on CPU" },
+      "label-keda": { "kind": "annotation", "box": "translate(80px, 380px) 320×40", "text": "KEDA on Kafka lag, from zero" }
+    },
+    "edges": { "upload": "M300,216 L430,216", "thumbnail": "M650,216 L790,216", "store": "M1010,216 L1065,216 Q1075,216 1075,226 L1075,266 Q1075,276 1085,276 L1140,276", "request-render": "M300,336 L430,336", "render": "M650,336 L790,336" },
+    "labels": {}
+  }
+}

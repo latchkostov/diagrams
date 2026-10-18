@@ -9,9 +9,9 @@
       "label": "Azure · enterprise integration",
       "tone": "azure",
       "x": 380,
-      "y": 0,
+      "y": -24,
       "width": 2240,
-      "height": 632
+      "height": 656
     }
   ],
   "nodes": [
@@ -184,6 +184,37 @@
       "y": 520,
       "group": "azure",
       "props": {}
+    },
+    {
+      "id": "approval-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "approval-workflow DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 40,
+      "group": "azure"
+    },
+    {
+      "id": "posting-dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "ledger-posting DLQ",
+      "sublabel": "$DeadLetterQueue",
+      "x": 1560,
+      "y": 520,
+      "group": "azure"
+    },
+    {
+      "id": "dlq-triage",
+      "stencil": "azure.logic-apps",
+      "label": "DLQ triage",
+      "sublabel": "subscription dead letters: alert, then replay",
+      "x": 2320,
+      "y": 520,
+      "group": "azure",
+      "props": {
+        "concurrency": 8,
+        "latencyMs": 150
+      }
     }
   ],
   "edges": [
@@ -335,6 +366,38 @@
       "label": "Traces / exceptions",
       "kind": "async",
       "relation": "telemetry"
+    },
+    {
+      "id": "approval-sub-to-approval-dlq",
+      "from": "approval-sub",
+      "to": "approval-dlq",
+      "kind": "async",
+      "label": "After 10 deliveries",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "posting-sub-to-posting-dlq",
+      "from": "posting-sub",
+      "to": "posting-dlq",
+      "kind": "async",
+      "label": "After 10 deliveries",
+      "props": {
+        "dlq": true
+      }
+    },
+    {
+      "id": "approval-dlq-to-dlq-triage",
+      "from": "approval-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
+    },
+    {
+      "id": "posting-dlq-to-dlq-triage",
+      "from": "posting-dlq",
+      "to": "dlq-triage",
+      "kind": "async"
     }
   ],
   "simulations": [
@@ -528,5 +591,14 @@
       "durationMs": 20000,
       "scale": 1
     }
-  ]
+  ],
+  "checks": {
+    "ignore": [
+      {
+        "rule": "no-reader",
+        "target": "dlq",
+        "reason": "Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed"
+      }
+    ]
+  }
 }

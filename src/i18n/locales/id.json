@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "Aplikasi cloud",
   "examples.themeIntegration": "Integrasi",
   "examples.themeReliability": "Keandalan",
+  "examples.themeSystems": "Sistem lengkap",
   "autoscaling.budget": "Anggaran siklus hidup sumber daya terlampaui: {limit, number}. Kurangi grup yang dikonfigurasi atau pengali kapasitas.",
   "autoscaling.bindingInvalid": "Perubahan ini akan merusak sumber penskalaan. Ubah atau nonaktifkan dahulu kebijakan node yang terpengaruh atau simulasi tersimpan.",
   "autoscaling.bindingRequired": "Hubungkan broker dan grup konsumen (consumer group) yang kompatibel, lalu pilih sumber di Lanjutan. Prasetel ini baru disimpan setelah sumber dipilih.",

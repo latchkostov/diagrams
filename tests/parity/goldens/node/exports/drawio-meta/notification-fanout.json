@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "7b084d7806ef4c8a1553a9a567cab8033f8130c0ece7a87ffb4a96ece53c744d",
-    "bytes": 26551,
+    "sha256": "ceab71ab51fccb38b6b22d9cb388577e7553bc34bcc60c60eda95dad3b3fe2dd",
+    "bytes": 33795,
     "inlined": { "generic.push": "generic-push 1ca44679bfdf1352", "generic.rate-limiter": "generic-rate-limiter 7f75f8aa59c5823e", "generic.webhook": "generic-webhook 2a9d64776a349ed2", "sendgrid": "sendgrid 3bdd8a6b83eaa245", "twilio": "twilio 4238a615d0c0b67b" }
   },
   "readBack": [
@@ -10,10 +10,10 @@
       "diagram": {
         "format": "diagrams/v1",
         "title": "Notification fan-out",
-        "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.",
+        "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.",
         "direction": "LR",
         "groups": [
-          { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 380, "y": 0, "width": 1860, "height": 512 }
+          { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 380, "y": -24, "width": 1820, "height": 776 }
         ],
         "nodes": [
           {
@@ -72,7 +72,7 @@
             "sublabel": "~90% opted in",
             "x": 1560,
             "y": 40,
-            "props": {},
+            "props": { "maxDeliveryCount": 10 },
             "group": "azure"
           },
           {
@@ -82,7 +82,7 @@
             "sublabel": "~30% opted in",
             "x": 1560,
             "y": 280,
-            "props": {},
+            "props": { "maxDeliveryCount": 10 },
             "group": "azure"
           },
           {
@@ -92,7 +92,7 @@
             "sublabel": "~70% have the app",
             "x": 1560,
             "y": 400,
-            "props": {},
+            "props": { "maxDeliveryCount": 10 },
             "group": "azure"
           },
           {
@@ -152,7 +152,21 @@
             "x": 2320,
             "y": 400,
             "props": {}
-          }
+          },
+          { "id": "email-dlq", "stencil": "azure.service-bus.queue", "label": "Email DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 160, "group": "azure" },
+          { "id": "sms-dlq", "stencil": "azure.service-bus.queue", "label": "SMS DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure" },
+          { "id": "push-dlq", "stencil": "azure.service-bus.queue", "label": "Push DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 640, "group": "azure" },
+          {
+            "id": "dlq-triage",
+            "stencil": "azure.functions",
+            "label": "DLQ triage",
+            "sublabel": "alert, then replay",
+            "x": 1940,
+            "y": 580,
+            "props": { "concurrency": 8, "latencyMs": 100 },
+            "group": "azure"
+          },
+          { "id": "identity", "stencil": "azure.managed-identity", "label": "Sender identity", "sublabel": "user-assigned", "x": 1180, "y": 520, "group": "azure" }
         ],
         "edges": [
           {
@@ -257,7 +271,38 @@
             "props": { "travelMs": 200 }
           },
           { "id": "email-sender-to-key-vault", "from": "email-sender", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
-          { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom" }
+          { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom" },
+          {
+            "id": "email-q-to-email-dlq",
+            "from": "email-q",
+            "to": "email-dlq",
+            "label": "After 10 tries",
+            "kind": "async",
+            "props": { "dlq": true }
+          },
+          {
+            "id": "sms-q-to-sms-dlq",
+            "from": "sms-q",
+            "to": "sms-dlq",
+            "label": "After 10 tries",
+            "kind": "async",
+            "sourceSide": "left",
+            "targetSide": "left",
+            "props": { "dlq": true }
+          },
+          {
+            "id": "push-q-to-push-dlq",
+            "from": "push-q",
+            "to": "push-dlq",
+            "label": "After 10 tries",
+            "kind": "async",
+            "props": { "dlq": true }
+          },
+          { "id": "email-dlq-to-dlq-triage", "from": "email-dlq", "to": "dlq-triage", "kind": "async" },
+          { "id": "sms-dlq-to-dlq-triage", "from": "sms-dlq", "to": "dlq-triage", "kind": "async" },
+          { "id": "push-dlq-to-dlq-triage", "from": "push-dlq", "to": "dlq-triage", "kind": "async" },
+          { "id": "email-sender-to-identity", "from": "email-sender", "to": "identity", "label": "runs as", "kind": "async", "relation": "identity" },
+          { "id": "sms-limiter-to-identity", "from": "sms-limiter", "to": "identity", "label": "runs as", "kind": "async", "relation": "identity" }
         ],
         "simulations": [
           {

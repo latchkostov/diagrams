@@ -1,79 +1,9 @@
 {
-  "all": {
-    "isError": false,
-    "output": {
-      "findings": [
-        {
-          "id": "dead-letter:ingest-q",
-          "rule": "dead-letter",
-          "severity": "suggestion",
-          "title": "Ingest jobs has no dead-letter queue",
-          "message": "If Chunk and embed can't handle a message, it's dropped after 5 deliveries. A command queue is where losing messages hurts most.",
-          "targets": ["ingest-q", "embed-worker"],
-          "fix": {
-            "label": "Add dead-letter queue",
-            "ops": [
-              { "op": "add_node", "kind": "generic.queue", "label": "Ingest jobs DLQ", "key": "new-dlq" },
-              { "op": "connect", "from": "ingest-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
-              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
-            ]
-          }
-        }
-      ],
-      "summary": "0 warnings, 1 suggestion.",
-      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
-    }
-  },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "0 warnings, 1 suggestion." } },
-  "oneRule": {
-    "isError": false,
-    "output": {
-      "findings": [
-        {
-          "id": "dead-letter:ingest-q",
-          "rule": "dead-letter",
-          "severity": "suggestion",
-          "title": "Ingest jobs has no dead-letter queue",
-          "message": "If Chunk and embed can't handle a message, it's dropped after 5 deliveries. A command queue is where losing messages hurts most.",
-          "targets": ["ingest-q", "embed-worker"],
-          "fix": {
-            "label": "Add dead-letter queue",
-            "ops": [
-              { "op": "add_node", "kind": "generic.queue", "label": "Ingest jobs DLQ", "key": "new-dlq" },
-              { "op": "connect", "from": "ingest-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
-              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
-            ]
-          }
-        }
-      ],
-      "summary": "0 warnings, 1 suggestion.",
-      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
-    }
-  },
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": {
-      "findings": [
-        {
-          "id": "dead-letter:ingest-q",
-          "rule": "dead-letter",
-          "severity": "suggestion",
-          "title": "Ingest jobs has no dead-letter queue",
-          "message": "If Chunk and embed can't handle a message, it's dropped after 5 deliveries. A command queue is where losing messages hurts most.",
-          "targets": ["ingest-q", "embed-worker"],
-          "fix": {
-            "label": "Add dead-letter queue",
-            "ops": [
-              { "op": "add_node", "kind": "generic.queue", "label": "Ingest jobs DLQ", "key": "new-dlq" },
-              { "op": "connect", "from": "ingest-q", "to": "new-dlq", "kind": "async", "label": "dead letters", "key": "new-dlq-route" },
-              { "op": "update", "target": "new-dlq-route", "props": { "dlq": true } }
-            ]
-          }
-        }
-      ],
-      "summary": "0 warnings, 1 suggestion.",
-      "simulations": "Played 2 saved simulations (at most 60 s each).",
-      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
-    }
+    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
   }
 }

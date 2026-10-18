@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "98db00493408344b45cd3a494dd57f4c2a7f157f61a0aebc812d041484f42bd1", "bytes": 153796 },
+  "file": { "sha256": "46246c357d6aa92f00bea1ca1d7052808c6ac61e09a57e8621ca633415bf4423", "bytes": 161750 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -19,7 +19,7 @@
         { "id": "ota", "label": "Firmware and commands", "tone": "neutral", "group": "azure", "x": 1900, "y": 1116, "width": 1140, "height": 316 },
         { "id": "cold", "label": "Cold path", "tone": "neutral", "group": "azure", "x": 3220, "y": 436, "width": 720, "height": 316 },
         { "id": "platform", "label": "Platform", "tone": "neutral", "group": "azure", "x": 3220, "y": 1116, "width": 1153, "height": 176 },
-        { "id": "partners", "label": "Partners", "tone": "neutral", "x": 4580, "y": 576, "width": 300, "height": 456 }
+        { "id": "partners", "label": "Partners", "tone": "neutral", "x": 4580, "y": 136, "width": 300, "height": 896 }
       ],
       "nodes": [
         {
@@ -175,7 +175,7 @@
           "label": "Charger events",
           "sublabel": "32 partitions · capture on",
           "group": "hub",
-          "props": { "partitions": 32 },
+          "props": { "partitions": 32, "retentionDays": 7 },
           "x": 2780,
           "y": 200
         },
@@ -210,6 +210,7 @@
           "y": 200
         },
         { "id": "alerts", "stencil": "azure.event-grid", "label": "Fault alerts", "sublabel": "Event Grid", "group": "hot", "x": 3680, "y": 200 },
+        { "id": "dashboard", "stencil": "grafana", "label": "Fleet dashboard", "sublabel": "availability by site", "group": "hot", "x": 4100, "y": 60 },
         {
           "id": "oncall",
           "stencil": "azure.logic-apps",
@@ -236,7 +237,7 @@
           "label": "Sessions API",
           "sublabel": "start, stop, receipts",
           "group": "sessions",
-          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0, "emits": "RemoteStart" },
+          "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
           "x": 2360,
           "y": 780
         },
@@ -369,7 +370,7 @@
             "api": {
               "maxInFlight": 20,
               "quotas": [
-                { "id": "ocpi-rate", "unit": "requests", "amount": 20, "windowMs": 1000, "algorithm": "token-bucket" }
+                { "id": "ocpi-rate", "unit": "requests", "amount": 50, "windowMs": 1000, "algorithm": "token-bucket" }
               ]
             }
           },
@@ -386,6 +387,7 @@
           "x": 4620,
           "y": 780
         },
+        { "id": "tech-email", "stencil": "generic.email", "label": "Technician email", "sublabel": "fault tickets", "group": "partners", "x": 4620, "y": 200 },
         { "id": "dso", "stencil": "client.partner", "label": "Grid operator", "sublabel": "load reports", "group": "partners", "x": 4620, "y": 640 }
       ],
       "edges": [
@@ -470,10 +472,27 @@
           "kind": "async",
           "props": { "group": "field-service" }
         },
+        {
+          "id": "oncall--tech-email",
+          "from": "oncall",
+          "to": "tech-email",
+          "kind": "sync",
+          "label": "Ticket",
+          "props": { "emits": "FaultTicket" }
+        },
+        { "id": "dashboard--state-db", "from": "dashboard", "to": "state-db", "kind": "async", "label": "Queries twins", "relation": "depends" },
         { "id": "drivers--apim", "from": "drivers", "to": "apim", "kind": "sync", "label": "HTTPS" },
         { "id": "apim--sessions-api", "from": "apim", "to": "sessions-api", "kind": "sync" },
         { "id": "sessions-api--sessions-db", "from": "sessions-api", "to": "sessions-db", "kind": "sync", "label": "Session" },
-        { "id": "sessions-api--cmd-q", "from": "sessions-api", "to": "cmd-q", "kind": "async", "label": "RemoteStart", "targetSide": "top" },
+        {
+          "id": "sessions-api--cmd-q",
+          "from": "sessions-api",
+          "to": "cmd-q",
+          "kind": "async",
+          "label": "RemoteStart",
+          "targetSide": "top",
+          "props": { "emits": "RemoteStart" }
+        },
         { "id": "metering--sessions-db", "from": "metering", "to": "sessions-db", "kind": "sync", "label": "kWh" },
         {
           "id": "sessions-db--billing",
@@ -496,7 +515,14 @@
         },
         { "id": "rollout--firmware", "from": "rollout", "to": "firmware", "kind": "async", "label": "Wave" },
         { "id": "firmware--images", "from": "firmware", "to": "images", "kind": "sync", "label": "Stage" },
-        { "id": "firmware--cmd-q", "from": "firmware", "to": "cmd-q", "kind": "async", "label": "UpdateFirmware" },
+        {
+          "id": "firmware--cmd-q",
+          "from": "firmware",
+          "to": "cmd-q",
+          "kind": "async",
+          "label": "UpdateFirmware",
+          "props": { "emits": "UpdateFirmware" }
+        },
         {
           "id": "cmd-dlq--firmware",
           "from": "cmd-dlq",
@@ -522,51 +548,60 @@
       ],
       "simulations": [
         {
-          "id": "firewall-failover",
-          "title": "The depot firewall fails over",
-          "description": "The active depot firewall dies. For three seconds, while the standby takes over its sessions, depot telemetry waits at the pair; nothing is dropped.",
-          "seed": 53,
-          "scale": 1,
-          "durationMs": 16000,
+          "id": "hot-spot",
+          "title": "One partition runs hot",
+          "description": "A misconfigured partition key sends every street charger's events to one Event Hubs partition. Each consumer group can use one reader per partition, so 63 of the twin updater's 64 replicas sit idle and lag grows; redistributing the key across 32 partitions drains it.",
+          "seed": 54,
+          "scale": 2,
+          "durationMs": 20000,
+          "setup": {
+            "props": { "events": { "partitions": 1 }, "state": { "replicas": 64, "concurrency": 1, "latencyMs": 150 } }
+          },
           "traffic": [
             {
-              "id": "depot",
-              "node": "depot-chargers",
-              "label": "Depot chargers",
-              "shape": { "kind": "constant", "ratePerSec": 60, "durationMs": 12000 }
+              "id": "street",
+              "node": "street",
+              "label": "200 readings on one partition",
+              "messageType": "MeterValues",
+              "shape": { "kind": "constant", "ratePerSec": 50, "durationMs": 4000 }
             }
           ],
           "timeline": [
             {
               "atMs": 0,
-              "action": { "do": "note", "text": "One firewall in the pair carries the depot's traffic; the other stands by.", "focus": ["depot-fw"] }
+              "action": { "do": "note", "text": "Every reading lands on one partition. One partition activates one twin updater; the other 63 replicas sit idle while lag grows.", "focus": ["events", "state"] }
             },
-            { "atMs": 4000, "action": { "do": "props", "node": "depot-fw", "props": { "replicas": 1 } } },
-            {
-              "atMs": 4000,
-              "action": { "do": "note", "text": "The active unit fails. Traffic waits at the pair while the standby takes over.", "focus": ["depot-fw", "depot-switch"] }
-            },
+            { "atMs": 8000, "action": { "do": "props", "node": "events", "props": { "partitions": 32 } } },
             {
               "atMs": 8000,
-              "action": { "do": "note", "text": "The standby carries everything. Nothing was lost, but the pair has no spare until the failed unit is replaced.", "focus": ["depot-fw", "depot-router"] }
+              "action": { "do": "note", "text": "The partition key is fixed and spread across 32 partitions. More replicas get work and the lag drains.", "focus": ["events", "state", "state-db"] }
             }
           ],
           "expectations": [
             {
-              "id": "waits",
-              "label": "Telemetry waits during the failover",
-              "metric": { "node": "depot-fw", "field": "backlog" },
+              "id": "hot-lag",
+              "label": "Lag builds on the hot partition",
+              "metric": { "node": "events", "field": "lag", "group": "state" },
               "op": ">",
-              "value": 50,
-              "when": "eventually"
+              "value": 0,
+              "when": "at",
+              "atMs": 6000
             },
             {
-              "id": "no-drops",
-              "label": "The firewall never drops a message",
-              "metric": { "node": "depot-fw", "field": "dropped" },
+              "id": "twins",
+              "label": "Every reading reaches the twins",
+              "metric": { "node": "state-db", "field": "processed" },
+              "op": "==",
+              "value": 200,
+              "when": "end"
+            },
+            {
+              "id": "drained",
+              "label": "The lag drains",
+              "metric": { "node": "events", "field": "lag", "group": "state" },
               "op": "==",
               "value": 0,
-              "when": "always"
+              "when": "end"
             }
           ]
         }
@@ -595,9 +630,11 @@
       "dotnet": { "sha256": "993caba10a755f1f3ba9e25ff9fd3d529ed2d04cefe18a76d40aece85c6a7f36", "bytes": 1020 },
       "flink": { "sha256": "e054482f1f069e432b744e4eb50d76bc3eb8f8d11cea02000c2f0535f9ff6ca6", "bytes": 73080 },
       "generic-batch-job": { "sha256": "c5e8748f24bb852e0fc782d36cb9a95bf4b4333cc0313a228b980298f041c2ee", "bytes": 732 },
+      "generic-email": { "sha256": "f0db58eaa97e89831f8591e9a1557e2470bca8fd215a0b887d8430147f9ddd19", "bytes": 447 },
       "generic-external-api": { "sha256": "d3a95660f5a9fb8dbd298a79af1604cd83926a306583abeee407a7389b130be8", "bytes": 369 },
       "generic-scheduler": { "sha256": "266deca56e169c26ee822773d0161086c467ac0822e7830b434cdaa2555a3919", "bytes": 374 },
       "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+      "grafana": { "sha256": "47b2cb370fb846522ea552fc41a39ffb273b24d0a7fe51dd73342e3c1b78b090", "bytes": 6627 },
       "java": { "sha256": "5267ef9b941ed3577d43b258c86bd6f218c30356da4c8edf6ef49a989845b337", "bytes": 2011 },
       "net-firewall": { "sha256": "e74432f5ddeb079dd3a07076c0222d2f8190a0baa18072af0876ca8dfa919a14", "bytes": 780 },
       "net-router": { "sha256": "446818b3b3767d4dd39c01decbf16d0ec749defd0f66335e729862e7e9855d46", "bytes": 693 },

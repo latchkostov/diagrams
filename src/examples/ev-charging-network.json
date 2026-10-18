@@ -109,9 +109,9 @@
       "label": "Partners",
       "tone": "neutral",
       "x": 4580,
-      "y": 576,
+      "y": 136,
       "width": 300,
-      "height": 456
+      "height": 896
     }
   ],
   "nodes": [
@@ -320,7 +320,8 @@
       "sublabel": "32 partitions · capture on",
       "group": "hub",
       "props": {
-        "partitions": 32
+        "partitions": 32,
+        "retentionDays": 7
       },
       "x": 2780,
       "y": 200
@@ -383,6 +384,15 @@
       "y": 200
     },
     {
+      "id": "dashboard",
+      "stencil": "grafana",
+      "label": "Fleet dashboard",
+      "sublabel": "availability by site",
+      "group": "hot",
+      "x": 4100,
+      "y": 60
+    },
+    {
       "id": "oncall",
       "stencil": "azure.logic-apps",
       "label": "Field service",
@@ -426,8 +436,7 @@
         "concurrency": 32,
         "latencyMs": 40,
         "jitter": 0.1,
-        "failureRate": 0,
-        "emits": "RemoteStart"
+        "failureRate": 0
       },
       "x": 2360,
       "y": 780
@@ -642,7 +651,7 @@
             {
               "id": "ocpi-rate",
               "unit": "requests",
-              "amount": 20,
+              "amount": 50,
               "windowMs": 1000,
               "algorithm": "token-bucket"
             }
@@ -667,6 +676,15 @@
       },
       "x": 4620,
       "y": 780
+    },
+    {
+      "id": "tech-email",
+      "stencil": "generic.email",
+      "label": "Technician email",
+      "sublabel": "fault tickets",
+      "group": "partners",
+      "x": 4620,
+      "y": 200
     },
     {
       "id": "dso",
@@ -862,6 +880,24 @@
       }
     },
     {
+      "id": "oncall--tech-email",
+      "from": "oncall",
+      "to": "tech-email",
+      "kind": "sync",
+      "label": "Ticket",
+      "props": {
+        "emits": "FaultTicket"
+      }
+    },
+    {
+      "id": "dashboard--state-db",
+      "from": "dashboard",
+      "to": "state-db",
+      "kind": "async",
+      "label": "Queries twins",
+      "relation": "depends"
+    },
+    {
       "id": "drivers--apim",
       "from": "drivers",
       "to": "apim",
@@ -887,7 +923,10 @@
       "to": "cmd-q",
       "kind": "async",
       "label": "RemoteStart",
-      "targetSide": "top"
+      "targetSide": "top",
+      "props": {
+        "emits": "RemoteStart"
+      }
     },
     {
       "id": "metering--sessions-db",
@@ -955,7 +994,10 @@
       "from": "firmware",
       "to": "cmd-q",
       "kind": "async",
-      "label": "UpdateFirmware"
+      "label": "UpdateFirmware",
+      "props": {
+        "emits": "UpdateFirmware"
+      }
     },
     {
       "id": "cmd-dlq--firmware",
@@ -1214,7 +1256,7 @@
           "action": {
             "do": "note",
             "text": "Four consumer groups read charger events: twins, fault detection, metering and capture to the lake.",
-            "focus": ["events", "state", "faults", "metering", "raw"]
+            "focus": ["events", "state", "faults", "state-db"]
           }
         },
         {
@@ -1356,6 +1398,105 @@
           "op": "==",
           "value": 0,
           "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "hot-spot",
+      "title": "One partition runs hot",
+      "description": "A misconfigured partition key sends every street charger's events to one Event Hubs partition. Each consumer group can use one reader per partition, so 63 of the twin updater's 64 replicas sit idle and lag grows; redistributing the key across 32 partitions drains it.",
+      "seed": 54,
+      "scale": 2,
+      "durationMs": 20000,
+      "setup": {
+        "props": {
+          "events": {
+            "partitions": 1
+          },
+          "state": {
+            "replicas": 64,
+            "concurrency": 1,
+            "latencyMs": 150
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "street",
+          "node": "street",
+          "label": "200 readings on one partition",
+          "messageType": "MeterValues",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 50,
+            "durationMs": 4000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Every reading lands on one partition. One partition activates one twin updater; the other 63 replicas sit idle while lag grows.",
+            "focus": ["events", "state"]
+          }
+        },
+        {
+          "atMs": 8000,
+          "action": {
+            "do": "props",
+            "node": "events",
+            "props": {
+              "partitions": 32
+            }
+          }
+        },
+        {
+          "atMs": 8000,
+          "action": {
+            "do": "note",
+            "text": "The partition key is fixed and spread across 32 partitions. More replicas get work and the lag drains.",
+            "focus": ["events", "state", "state-db"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "hot-lag",
+          "label": "Lag builds on the hot partition",
+          "metric": {
+            "node": "events",
+            "field": "lag",
+            "group": "state"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 6000
+        },
+        {
+          "id": "twins",
+          "label": "Every reading reaches the twins",
+          "metric": {
+            "node": "state-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 200,
+          "when": "end"
+        },
+        {
+          "id": "drained",
+          "label": "The lag drains",
+          "metric": {
+            "node": "events",
+            "field": "lag",
+            "group": "state"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
         }
       ]
     }

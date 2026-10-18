@@ -1775,6 +1775,7 @@
   "examples.themeCloud": "클라우드 앱",
   "examples.themeIntegration": "통합",
   "examples.themeReliability": "안정성",
+  "examples.themeSystems": "전체 시스템",
   "autoscaling.budget": "리소스 수명 주기 예산 초과: {limit, number}. 구성된 그룹이나 용량 배수를 줄이세요.",
   "autoscaling.bindingInvalid": "이 편집은 확장 소스를 무효화합니다. 먼저 영향을 받는 노드 또는 저장된 시뮬레이션의 정책을 변경하거나 비활성화하세요.",
   "autoscaling.bindingRequired": "호환되는 브로커와 컨슈머 그룹을 연결한 뒤 고급 설정에서 소스를 선택하세요. 소스를 선택해야 이 프리셋이 저장됩니다.",

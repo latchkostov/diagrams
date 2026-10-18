@@ -17,11 +17,10 @@ import { stencilsDoc } from "../../../scripts/skill-gen";
 import { normalizeScriptOutput } from "../lib/scriptOutput";
 
 const SKILL = join(ROOT, "skills/livediagrams");
-// Frozen inputs for the existing aggregate outputs (including A1), independent of later showcase additions.
+// Frozen inputs for the existing aggregate outputs, independent of later showcase additions. Retired examples left
+// the cohort with their files (docs/EXAMPLES.md); their A1 input lives on in the corpus as a1-image-workers.
 const ORIGINAL_EXAMPLES = [
   "aks-app-config-key-vault",
-  "autoscaling-image-workers",
-  "aws-fanout",
   "aws-serverless-orders",
   "azure-service-bus-integration",
   "branch-to-datacentre",
@@ -29,9 +28,7 @@ const ORIGINAL_EXAMPLES = [
   "cqrs-event-sourcing",
   "event-driven-data-platform",
   "gcp-streaming-analytics",
-  "iot-telemetry",
   "kafka-order-pipeline",
-  "multi-region-active-active",
   "nightly-batch-elt",
   "notification-fanout",
   "outbox-saga-checkout",

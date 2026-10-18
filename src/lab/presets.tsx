@@ -744,7 +744,7 @@ const CAPACITY_STATES: Record<string, { label: string; slug: string; sim: string
   healthy: { label: "Healthy (Black Friday at 0.5×)", slug: "kafka-order-pipeline", sim: "black-friday", traffic: 0.5 },
   busy: { label: "Busy (Black Friday as saved)", slug: "kafka-order-pipeline", sim: "black-friday" },
   saturated: { label: "Saturated (Black Friday at 3×)", slug: "kafka-order-pipeline", sim: "black-friday", traffic: 3 },
-  idle: { label: "Idle replicas (partition hot spot)", slug: "iot-telemetry", sim: "hot-spot" },
+  idle: { label: "Idle replicas (partition hot spot)", slug: "ev-charging-network", sim: "hot-spot" },
 };
 
 const capacityPresets: Preset[] = [

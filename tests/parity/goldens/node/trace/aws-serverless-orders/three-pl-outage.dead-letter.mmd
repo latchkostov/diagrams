@@ -1,5 +1,5 @@
 ---
-title: "PlaceOrder #1 · 10.4 s end to end · 3 copies · 2 retries · dead-lettered"
+title: "PlaceOrder #1 · 10.4 s end to end · 5 copies · 2 retries · dead-lettered"
 ---
 sequenceDiagram
   participant client as Web shop
@@ -9,7 +9,10 @@ sequenceDiagram
   participant stream_fn as Stream publisher
   participant bus as commerce-bus
   participant sfn as Payment workflow
+  participant archive_q as order-archive
+  participant archive_fn as Archive orders
   participant stripe as Stripe
+  participant archive_s3 as Order archive
   participant fulfillment_q as fulfillment-queue
   participant sns as order-updates
   participant fulfillment_fn as RequestShipment
@@ -26,30 +29,38 @@ sequenceDiagram
   orders_table-)stream_fn: OrderPlaced (+0.70 s)<br/>DynamoDB Streams
   stream_fn-)bus: OrderPlaced (+1.06 s)<br/>PutEvents
   bus-)sfn: OrderPlaced (+1.36 s)<br/>Rule: OrderPlaced
+  bus-)archive_q: OrderPlaced (+1.36 s)<br/>Rule: all orders
+  archive_q-)archive_fn: OrderPlaced (+1.66 s)<br/>Event source
   sfn->>stripe: OrderPaid (+2.08 s)<br/>Task: charge
   sfn->>orders_table: OrderPaid (+2.08 s)<br/>UpdateItem: PAID
+  archive_fn->>archive_s3: OrderArchived (+2.10 s)<br/>PutObject
   stripe-->>sfn: reply (+2.28 s)
   orders_table-->>sfn: reply (+2.29 s)
   orders_table-)stream_fn: OrderPaid (+2.29 s)<br/>DynamoDB Streams
+  archive_s3-->>archive_fn: reply (+2.31 s)
   stream_fn-)bus: OrderPaid (+2.65 s)<br/>PutEvents
   bus-)fulfillment_q: OrderPaid (+2.95 s)<br/>Rule: OrderPaid
   bus-)sns: OrderPaid (+2.95 s)<br/>Rule: OrderPaid
+  bus-)archive_q: OrderPaid (+2.95 s)<br/>Rule: all orders
   fulfillment_q-)fulfillment_fn: OrderPaid (+3.25 s)<br/>Event source
   sns-)email: OrderPaid (+3.25 s)<br/>Email
   sns-)sms: OrderPaid (+3.25 s)<br/>SMS
+  archive_q-)archive_fn: OrderPaid (+3.25 s)<br/>Event source
+  archive_fn->>archive_s3: OrderArchived (+3.70 s)<br/>PutObject
   Note over fulfillment_fn: ✕ attempt 1 failed
-  fulfillment_fn--)fulfillment_q: back to the broker after attempt 1 (+3.72 s)
-  fulfillment_q-)fulfillment_fn: OrderPaid (+4.32 s)<br/>Event source
+  fulfillment_fn--)fulfillment_q: back to the broker after attempt 1 (+3.71 s)
+  archive_s3-->>archive_fn: reply (+3.91 s)
+  fulfillment_q-)fulfillment_fn: OrderPaid (+4.31 s)<br/>Event source
   Note over fulfillment_fn: ✕ attempt 2 failed
-  fulfillment_fn--)fulfillment_q: back to the broker after attempt 2 (+4.78 s)
-  fulfillment_q-)fulfillment_fn: OrderPaid (+5.38 s)<br/>Event source
+  fulfillment_fn--)fulfillment_q: back to the broker after attempt 2 (+4.76 s)
+  fulfillment_q-)fulfillment_fn: OrderPaid (+5.36 s)<br/>Event source
   Note over fulfillment_fn: ✕ attempt 3 failed
-  fulfillment_fn--)fulfillment_q: back to the broker after attempt 3 (+5.86 s)
+  fulfillment_fn--)fulfillment_q: back to the broker after attempt 3 (+5.80 s)
   Note over fulfillment_q: Dead-lettered after 3 deliveries
   rect rgba(209, 57, 63, 0.14)
-    fulfillment_q-)dlq: OrderPaid (dead letter) (+6.16 s)
+    fulfillment_q-)dlq: OrderPaid (dead letter) (+6.10 s)
   end
-  Note over client,three_pl: ⏱ 3.00 s waiting in fulfillment-dlq
+  Note over client,three_pl: ⏱ 3.06 s waiting in fulfillment-dlq
   dlq-)fulfillment_q: OrderPaid (+9.46 s)<br/>Redrive
   fulfillment_q-)fulfillment_fn: OrderPaid (+9.76 s)<br/>Event source
   fulfillment_fn->>three_pl: ShipmentRequested (+10.19 s)<br/>Create shipment

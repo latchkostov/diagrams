@@ -11,7 +11,8 @@
       },
       "email-sender": { "count": 10 },
       "sms-limiter": { "count": 1 },
-      "push-sender": { "count": 10 }
+      "push-sender": { "count": 10 },
+      "dlq-triage": { "count": 1 }
     }
   },
   "edit": {
@@ -37,7 +38,12 @@
         "sendgrid": ["Infinity", 9, 0, 1, 1, 0],
         "key-vault": ["Infinity", 0, 0, 1, 1, 0],
         "twilio": ["Infinity", 3, 0, 1, 1, 0],
-        "push": ["Infinity", 7, 0, 1, 1, 0]
+        "push": ["Infinity", 7, 0, 1, 1, 0],
+        "email-dlq": [80, 0, 0, 1, 1, 0],
+        "sms-dlq": [80, 0, 0, 1, 1, 0],
+        "push-dlq": [80, 0, 0, 1, 1, 0],
+        "dlq-triage": [80, 0, 0, 1, 1, 0],
+        "identity": ["Infinity", 0, 0, 1, 1, 0]
       },
       "connections": { "carrier-to-shipping": 10, "shipping-to-events": 10, "events-to-router": 10, "router-to-preferences": 10, "router-to-email-q": 9, "router-to-sms-q": 3, "router-to-push-q": 7, "email-q-to-email-sender": 9, "sms-q-to-sms-limiter": 3, "push-q-to-push-sender": 7, "email-sender-to-sendgrid": 9, "sms-limiter-to-twilio": 3, "push-sender-to-push": 7 },
       "offeredTypes": {
@@ -183,6 +189,30 @@
         "minimumReplicas": 10,
         "changes": null,
         "converged": true
+      },
+      "dlq-triage": {
+        "id": "dlq-triage",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 80,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.1,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
       }
     },
     "capabilities": {
@@ -214,6 +244,11 @@
       "push-sender": [
         { "kind": "consumes", "edge": "push-q-to-push-sender", "peer": "push-q", "retry": "requeue", "retryBackoffMs": 0 },
         { "kind": "calls", "edge": "push-sender-to-push", "peer": "push" }
+      ],
+      "dlq-triage": [
+        { "kind": "consumes", "edge": "email-dlq-to-dlq-triage", "peer": "email-dlq", "retry": "requeue", "retryBackoffMs": 0 },
+        { "kind": "consumes", "edge": "sms-dlq-to-dlq-triage", "peer": "sms-dlq", "retry": "requeue", "retryBackoffMs": 0 },
+        { "kind": "consumes", "edge": "push-dlq-to-dlq-triage", "peer": "push-dlq", "retry": "requeue", "retryBackoffMs": 0 }
       ]
     },
     "sizing": null,
@@ -306,7 +341,7 @@
         "retry": "requeue",
         "retryBackoffMs": 0,
         "failureRate": 0,
-        "maxDeliveryCount": 3,
+        "maxDeliveryCount": 10,
         "partitions": 3,
         "messageType": "email",
         "healthChecks": false
@@ -321,7 +356,7 @@
         "retry": "requeue",
         "retryBackoffMs": 0,
         "failureRate": 0,
-        "maxDeliveryCount": 3,
+        "maxDeliveryCount": 10,
         "partitions": 3,
         "messageType": "sms",
         "healthChecks": false
@@ -336,7 +371,7 @@
         "retry": "requeue",
         "retryBackoffMs": 0,
         "failureRate": 0,
-        "maxDeliveryCount": 3,
+        "maxDeliveryCount": 10,
         "partitions": 3,
         "messageType": "push",
         "healthChecks": false
@@ -448,6 +483,81 @@
         "partitions": 3,
         "messageType": "FCM and APNs",
         "healthChecks": false
+      },
+      "email-dlq": {
+        "profile": { "family": "queue", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Email DLQ",
+        "healthChecks": false
+      },
+      "sms-dlq": {
+        "profile": { "family": "queue", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "SMS DLQ",
+        "healthChecks": false
+      },
+      "push-dlq": {
+        "profile": { "family": "queue", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Push DLQ",
+        "healthChecks": false
+      },
+      "dlq-triage": {
+        "profile": { "family": "serverless", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 100,
+        "concurrency": 8,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "DLQ triage",
+        "healthChecks": false
+      },
+      "identity": {
+        "profile": { "family": "dependency", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Sender identity",
+        "healthChecks": false
       }
     }
   },
@@ -475,7 +585,12 @@
           "sendgrid": ["Infinity", 360, 0, 1, 1, 0],
           "key-vault": ["Infinity", 0, 0, 1, 1, 0],
           "twilio": ["Infinity", 120, 0, 1, 1, 0],
-          "push": ["Infinity", 280, 0, 1, 1, 0]
+          "push": ["Infinity", 280, 0, 1, 1, 0],
+          "email-dlq": [80, 0, 0, 1, 1, 0],
+          "sms-dlq": [80, 0, 0, 1, 1, 0],
+          "push-dlq": [80, 0, 0, 1, 1, 0],
+          "dlq-triage": [80, 0, 0, 1, 1, 0],
+          "identity": ["Infinity", 0, 0, 1, 1, 0]
         },
         "connections": { "carrier-to-shipping": 400, "shipping-to-events": 400, "events-to-router": 400, "router-to-preferences": 400, "router-to-email-q": 360, "router-to-sms-q": 120, "router-to-push-q": 280, "email-q-to-email-sender": 360, "sms-q-to-sms-limiter": 120, "push-q-to-push-sender": 280, "email-sender-to-sendgrid": 360, "sms-limiter-to-twilio": 120, "push-sender-to-push": 280 },
         "offeredTypes": {
@@ -625,6 +740,30 @@
           "minimumReplicas": 10,
           "changes": null,
           "converged": true
+        },
+        "dlq-triage": {
+          "id": "dlq-triage",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 80,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.1,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -655,7 +794,12 @@
           "sendgrid": ["Infinity", 36, 0, 1, 1, 0],
           "key-vault": ["Infinity", 0, 0, 1, 1, 0],
           "twilio": ["Infinity", 12, 0, 1, 1, 0],
-          "push": ["Infinity", 28, 0, 1, 1, 0]
+          "push": ["Infinity", 28, 0, 1, 1, 0],
+          "email-dlq": [80, 0, 0, 1, 1, 0],
+          "sms-dlq": [80, 0, 0, 1, 1, 0],
+          "push-dlq": [80, 0, 0, 1, 1, 0],
+          "dlq-triage": [80, 0, 0, 1, 1, 0],
+          "identity": ["Infinity", 0, 0, 1, 1, 0]
         },
         "connections": { "carrier-to-shipping": 40, "shipping-to-events": 40, "events-to-router": 40, "router-to-preferences": 40, "router-to-email-q": 36, "router-to-sms-q": 12, "router-to-push-q": 28, "email-q-to-email-sender": 36, "sms-q-to-sms-limiter": 12, "push-q-to-push-sender": 28, "email-sender-to-sendgrid": 36, "sms-limiter-to-twilio": 12, "push-sender-to-push": 28 },
         "offeredTypes": {
@@ -803,6 +947,30 @@
           "minimumReplicas": 10,
           "changes": null,
           "converged": true
+        },
+        "dlq-triage": {
+          "id": "dlq-triage",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 80,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 8,
+          "seconds": 0.1,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
         }
       },
       "capabilities": "(same as edit)",
@@ -838,7 +1006,12 @@
             "sendgrid": ["idle", "9/s · no limit", { "modeled": false }],
             "key-vault": ["idle", "", { "modeled": false }],
             "twilio": ["idle", "3/s · no limit", { "modeled": false }],
-            "push": ["idle", "7/s · no limit", { "modeled": false }]
+            "push": ["idle", "7/s · no limit", { "modeled": false }],
+            "email-dlq": ["idle", ""],
+            "sms-dlq": ["idle", ""],
+            "push-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""],
+            "identity": ["idle", "", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -868,7 +1041,12 @@
             "sendgrid": ["idle", "45/s · no limit", { "modeled": false }],
             "key-vault": ["idle", "", { "modeled": false }],
             "twilio": ["idle", "15/s · no limit", { "modeled": false }],
-            "push": ["idle", "35/s · no limit", { "modeled": false }]
+            "push": ["idle", "35/s · no limit", { "modeled": false }],
+            "email-dlq": ["idle", ""],
+            "sms-dlq": ["idle", ""],
+            "push-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""],
+            "identity": ["idle", "", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -898,7 +1076,12 @@
             "sendgrid": ["idle", "9/s · no limit", { "modeled": false }],
             "key-vault": ["idle", "", { "modeled": false }],
             "twilio": ["idle", "3/s · no limit", { "modeled": false }],
-            "push": ["idle", "7/s · no limit", { "modeled": false }]
+            "push": ["idle", "7/s · no limit", { "modeled": false }],
+            "email-dlq": ["idle", ""],
+            "sms-dlq": ["idle", ""],
+            "push-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""],
+            "identity": ["idle", "", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -928,7 +1111,12 @@
             "sendgrid": ["idle", "9/s · no limit", { "modeled": false }],
             "key-vault": ["idle", "", { "modeled": false }],
             "twilio": ["idle", "3/s · no limit", { "modeled": false }],
-            "push": ["idle", "7/s · no limit", { "modeled": false }]
+            "push": ["idle", "7/s · no limit", { "modeled": false }],
+            "email-dlq": ["idle", ""],
+            "sms-dlq": ["idle", ""],
+            "push-dlq": ["idle", ""],
+            "dlq-triage": ["idle", ""],
+            "identity": ["idle", "", { "modeled": false }]
           }
         },
         "partitionsNotes": { "events": "Its consumer group has 1 replica: partitions past 1 add no speed." }
@@ -960,7 +1148,12 @@
         "sendgrid": ["idle", "360/s · no limit", { "modeled": false }],
         "key-vault": ["idle", "", { "modeled": false }],
         "twilio": ["idle", "120/s · no limit", { "modeled": false }],
-        "push": ["idle", "280/s · no limit", { "modeled": false }]
+        "push": ["idle", "280/s · no limit", { "modeled": false }],
+        "email-dlq": ["idle", ""],
+        "sms-dlq": ["idle", ""],
+        "push-dlq": ["idle", ""],
+        "dlq-triage": ["idle", ""],
+        "identity": ["idle", "", { "modeled": false }]
       }
     },
     "sms-outage": {
@@ -986,7 +1179,12 @@
         "sendgrid": ["idle", "36/s · no limit", { "modeled": false }],
         "key-vault": ["idle", "", { "modeled": false }],
         "twilio": ["idle", "12/s · no limit", { "modeled": false }],
-        "push": ["idle", "28/s · no limit", { "modeled": false }]
+        "push": ["idle", "28/s · no limit", { "modeled": false }],
+        "email-dlq": ["idle", ""],
+        "sms-dlq": ["idle", ""],
+        "push-dlq": ["idle", ""],
+        "dlq-triage": ["idle", ""],
+        "identity": ["idle", "", { "modeled": false }]
       }
     }
   }

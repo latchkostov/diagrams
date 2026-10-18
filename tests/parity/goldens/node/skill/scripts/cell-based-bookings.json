@@ -62,7 +62,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "8179939604228b99ccd73bab02ad26dd38d18c598a8f6bb7811dd3517c907c6e", "bytes": 25320 },
+    "decoded": { "sha256": "2b2b3705fb99e0cfd19255d3e2dbd902a43dc7a9caccfb3055835ea0fa37156d", "bytes": 25550 },
     "sameAsFile": true,
     "warned": false
   },
@@ -802,7 +802,7 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "Three regions take bookings. Each region splits customers across two cells; no request ever leaves its cell.", "focus": ["dns", "east-alb", "west-alb", "eu-alb"] }
+                "action": { "do": "note", "text": "Three regions take bookings. Each region splits customers across two cells; no request ever leaves its cell.", "focus": ["travellers", "mobile", "agents", "dns"] }
               },
               { "atMs": 5000, "action": { "do": "status", "node": "east-alb", "status": "down" } },
               {
@@ -811,12 +811,16 @@
               },
               {
                 "atMs": 9000,
-                "action": { "do": "note", "text": "us-west-2 and eu-west-1 take the extra half each. Their cells run hotter but stay under capacity: that headroom is the design.", "focus": ["west-c1-api", "west-c2-api", "eu-c1-api", "eu-c2-api"] }
+                "action": { "do": "note", "text": "us-west-2 takes half of the extra traffic. Its cells run hotter but stay under capacity: that headroom is the design.", "focus": ["west-alb", "west-router", "west-c1-api", "west-c2-api"] }
+              },
+              {
+                "atMs": 13000,
+                "action": { "do": "note", "text": "eu-west-1 takes the other half, with the same headroom.", "focus": ["eu-alb", "eu-router", "eu-c1-api", "eu-c2-api"] }
               },
               { "atMs": 18000, "action": { "do": "status", "node": "east-alb", "status": "up" } },
               {
                 "atMs": 18000,
-                "action": { "do": "note", "text": "us-east-1 is back and DNS sends its share home. Global tables replicated every booking while it was away.", "focus": ["dns", "east-alb", "east-c1-db", "west-c1-db"] }
+                "action": { "do": "note", "text": "us-east-1 is back and DNS sends its share home. Global tables replicated every booking while it was away.", "focus": ["east-alb", "east-router", "east-c1-db", "east-c2-db"] }
               }
             ],
             "expectations": [
@@ -876,21 +880,21 @@
             "timeline": [
               {
                 "atMs": 0,
-                "action": { "do": "note", "text": "Six cells, each a complete copy of the booking stack. The pipeline deploys to one cell at a time.", "focus": ["pipeline", "east-c1-api"] }
+                "action": { "do": "note", "text": "Six cells, each a complete copy of the booking stack. The release pipeline deploys to one cell at a time, starting here.", "focus": ["east-c1-api", "east-c1-avail", "east-c1-db", "east-c1-cache"] }
               },
               { "atMs": 4000, "action": { "do": "props", "node": "east-c1-api", "props": { "failureRate": 0.8 } } },
               {
                 "atMs": 4000,
-                "action": { "do": "note", "text": "Build 7.3 reaches the canary cell and fails most of its bookings.", "focus": ["pipeline", "east-c1-api", "east-c1-db"] }
+                "action": { "do": "note", "text": "Build 7.3 reaches the canary cell and fails most of its bookings.", "focus": ["east-c1-api", "east-c1-avail", "east-c1-db"] }
               },
               {
                 "atMs": 8000,
-                "action": { "do": "note", "text": "Only that cell's customers notice. The other five cells, and every other region, carry on untouched.", "focus": ["east-c1-api", "east-c2-api", "west-c1-api", "eu-c1-api"] }
+                "action": { "do": "note", "text": "Only that cell's customers notice. The neighbouring cell, and the four cells in the other regions, carry on untouched.", "focus": ["east-c1-api", "east-c2-api", "east-c1-db", "east-c2-db"] }
               },
               { "atMs": 12000, "action": { "do": "props", "node": "east-c1-api", "props": { "failureRate": 0 } } },
               {
                 "atMs": 12000,
-                "action": { "do": "note", "text": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again.", "focus": ["metrics", "pipeline", "east-c1-api"] }
+                "action": { "do": "note", "text": "The cell's CloudWatch alarm halts the rollout and rolls it back. Bookings succeed again.", "focus": ["east-c1-api", "east-c1-db"] }
               }
             ],
             "expectations": [

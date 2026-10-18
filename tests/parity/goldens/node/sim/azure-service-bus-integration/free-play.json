@@ -18,7 +18,10 @@
         "cosmos": { "replicas": [1, 1, 0] },
         "blob": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] },
-        "insights": { "replicas": [1, 1, 0] }
+        "insights": { "replicas": [1, 1, 0] },
+        "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -38,7 +41,10 @@
         "cosmos": { "replicas": [1, 1, 0] },
         "blob": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] },
-        "insights": { "replicas": [1, 1, 0] }
+        "insights": { "replicas": [1, 1, 0] },
+        "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -58,7 +64,10 @@
         "cosmos": { "replicas": [1, 1, 0] },
         "blob": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] },
-        "insights": { "replicas": [1, 1, 0] }
+        "insights": { "replicas": [1, 1, 0] },
+        "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -78,7 +87,10 @@
         "cosmos": { "replicas": [1, 1, 0] },
         "blob": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] },
-        "insights": { "replicas": [1, 1, 0] }
+        "insights": { "replicas": [1, 1, 0] },
+        "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -98,7 +110,10 @@
         "cosmos": { "replicas": [1, 1, 0] },
         "blob": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] },
-        "insights": { "replicas": [1, 1, 0] }
+        "insights": { "replicas": [1, 1, 0] },
+        "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -118,7 +133,10 @@
         "cosmos": { "replicas": [1, 1, 0] },
         "blob": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] },
-        "insights": { "replicas": [1, 1, 0] }
+        "insights": { "replicas": [1, 1, 0] },
+        "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] }
       }
     },
     {
@@ -138,7 +156,10 @@
         "cosmos": { "replicas": [1, 1, 0] },
         "blob": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] },
-        "insights": { "replicas": [1, 1, 0] }
+        "insights": { "replicas": [1, 1, 0] },
+        "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+        "dlq-triage": { "replicas": [1, 1, 0] }
       }
     }
   ],
@@ -159,9 +180,31 @@
       "cosmos": { "replicas": [1, 1, 0] },
       "blob": { "replicas": [1, 1, 0] },
       "vault": { "replicas": [1, 1, 0] },
-      "insights": { "replicas": [1, 1, 0] }
+      "insights": { "replicas": [1, 1, 0] },
+      "approval-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "posting-dlq": { "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "dlq-triage": { "replicas": [1, 1, 0] }
     },
-    "edges": { "partner-to-apim": 0, "apim-to-ingest": 0, "ingest-to-invoices": 0, "invoices-to-approval-sub": 0, "invoices-to-posting-sub": 0, "approval-sub-to-workflow": 0, "posting-sub-to-worker": 0, "workflow-to-commands": 0, "commands-to-worker": 0, "commands-to-dlq": 0, "worker-to-cosmos": 0, "ingest-to-blob": 0, "ingest-to-vault": 0, "ingest-to-insights": 0 }
+    "edges": {
+      "partner-to-apim": 0,
+      "apim-to-ingest": 0,
+      "ingest-to-invoices": 0,
+      "invoices-to-approval-sub": 0,
+      "invoices-to-posting-sub": 0,
+      "approval-sub-to-workflow": 0,
+      "posting-sub-to-worker": 0,
+      "workflow-to-commands": 0,
+      "commands-to-worker": 0,
+      "commands-to-dlq": 0,
+      "worker-to-cosmos": 0,
+      "ingest-to-blob": 0,
+      "ingest-to-vault": 0,
+      "ingest-to-insights": 0,
+      "approval-sub-to-approval-dlq": 0,
+      "posting-sub-to-posting-dlq": 0,
+      "approval-dlq-to-dlq-triage": 0,
+      "posting-dlq-to-dlq-triage": 0
+    }
   },
   "events": {
     "total": 0,

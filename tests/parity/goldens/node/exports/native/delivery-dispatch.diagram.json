@@ -1474,8 +1474,6 @@
             "do": "note",
             "text": "3,600 pings a second. Each geo indexer handles about 400.",
             "focus": [
-              "couriers",
-              "mqtt",
               "loc-ingest",
               "locations-topic"
             ]

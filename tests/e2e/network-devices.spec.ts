@@ -105,8 +105,8 @@ test.describe("network devices", () => {
 
   test("device settings stay editable as custom properties where no control shows them", async ({ page }) => {
     // An ordinary gateway given a throughput keeps it in Custom properties, to see, change or remove.
-    await gotoCanvas(page, "multi-region-active-active");
-    await page.getByTestId("node-alb-us").click();
+    await gotoCanvas(page, "cell-based-bookings");
+    await page.getByTestId("node-east-alb").click();
     await page.getByTestId("inspector-section-node-properties").click();
     await page.getByTestId("inspector-prop-new").fill("gbps");
     await page.getByTestId("inspector-prop-add").click();

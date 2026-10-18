@@ -1,0 +1,587 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "uploader", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "uploader",
+            "to": "uploads"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "uploads" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "image-workers",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "uploader", "label": "Upload clients", "stencil": "client.browser" },
+          { "id": "uploads", "label": "Renamed by parity", "stencil": "kafka.topic" },
+          { "id": "image-workers", "label": "Thumbnail workers", "stencil": "aws.lambda" },
+          { "id": "thumbnails", "label": "Thumbnails", "stencil": "aws.s3" },
+          { "id": "poster-studio", "label": "Poster studio", "stencil": "client.browser" },
+          { "id": "render-requests", "label": "Render requests", "stencil": "kafka.topic" },
+          { "id": "render-workers", "label": "Poster workers", "stencil": "service.go" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "label-hpa", "label": "HPA on CPU" },
+          { "id": "label-keda", "label": "KEDA on Kafka lag, from zero" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 680,
+            "y": 292,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["uploads"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["image-workers"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "uploader", "uploads"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["uploader"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3-a1" },
+    "title": "Parity edit",
+    "description": "Two invented pipelines, one per autoscaler. Image workers scale on CPU with a Kubernetes HPA while Kafka buffers an upload burst; poster render workers sleep at zero until KEDA sees Kafka lag, wake, drain the burst and return to zero. Teaching timings (1 s syncs and polling, 1-2 s startup, short stabilization and cooldown) are deliberately shorter than the published defaults. Open a worker's Live details for replica history.",
+    "nodes": [
+      {
+        "id": "uploader",
+        "stencil": "client.browser",
+        "label": "Upload clients",
+        "x": 80,
+        "y": 180,
+        "props": { "ratePerSec": 4 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "uploads",
+        "stencil": "kafka.topic",
+        "label": "Renamed by parity",
+        "sublabel": "6 partitions",
+        "x": 420,
+        "y": 180,
+        "props": { "partitions": 6, "latencyMs": 120 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "image-workers",
+        "stencil": "aws.lambda",
+        "label": "Thumbnail workers",
+        "x": 780,
+        "y": 180,
+        "props": {
+          "replicas": 1,
+          "concurrency": 4,
+          "latencyMs": 250,
+          "jitter": 0,
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 40,
+            "baselineMemoryMiB": 128,
+            "memoryMiBPerMessage": 2,
+            "cpuRequestMilli": 500,
+            "cpuLimitMilli": 1000,
+            "memoryRequestMiB": 256,
+            "memoryLimitMiB": 512,
+            "startup": { "delayMs": 2000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a1",
+            "preset": "hpa-service",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "hpa",
+              "minReplicas": 1,
+              "maxReplicas": 6,
+              "initialReplicas": 1,
+              "settings": {
+                "syncMs": 1000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 0,
+                "cpuInitializationPeriodMs": 0,
+                "metrics": [
+                  {
+                    "source": { "kind": "resource", "resource": "cpu" },
+                    "target": { "kind": "utilization", "percentOfRequest": 70 },
+                    "windowMs": 1000,
+                    "metricDelayMs": 0
+                  }
+                ],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    { "type": "Pods", "value": 4, "periodMs": 15000 },
+                    { "type": "Percent", "value": 100, "periodMs": 15000 }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 30000,
+                  "selectPolicy": "Max",
+                  "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "thumbnails",
+        "stencil": "aws.s3",
+        "label": "Thumbnails",
+        "x": 1140,
+        "y": 180,
+        "props": { "latencyMs": 10, "jitter": 0 }
+      },
+      {
+        "id": "poster-studio",
+        "stencil": "client.browser",
+        "label": "Poster studio",
+        "x": 80,
+        "y": 440,
+        "props": { "ratePerSec": 0 }
+      },
+      {
+        "id": "render-requests",
+        "stencil": "kafka.topic",
+        "label": "Render requests",
+        "sublabel": "3 partitions",
+        "x": 420,
+        "y": 440,
+        "props": { "partitions": 3 }
+      },
+      {
+        "id": "render-workers",
+        "stencil": "service.go",
+        "label": "Poster workers",
+        "x": 780,
+        "y": 440,
+        "props": {
+          "replicas": 1,
+          "concurrency": 4,
+          "latencyMs": 250,
+          "jitter": 0,
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 40,
+            "baselineMemoryMiB": 128,
+            "memoryMiBPerMessage": 2,
+            "cpuRequestMilli": 500,
+            "cpuLimitMilli": 1000,
+            "memoryRequestMiB": 256,
+            "memoryLimitMiB": 512,
+            "startup": { "delayMs": 1000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a2",
+            "preset": "keda-kafka",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "keda",
+              "minReplicas": 0,
+              "maxReplicas": 6,
+              "initialReplicas": 0,
+              "pollingMs": 1000,
+              "cooldownMs": 2000,
+              "initialCooldownMs": 0,
+              "triggers": [
+                {
+                  "type": "kafka",
+                  "source": { "node": "render-requests", "group": "renders" },
+                  "target": 10,
+                  "activation": 0,
+                  "useCachedMetrics": false,
+                  "allowIdleConsumers": false
+                }
+              ],
+              "settings": {
+                "syncMs": 1000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 0,
+                "cpuInitializationPeriodMs": 0,
+                "metrics": [],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    { "type": "Pods", "value": 4, "periodMs": 15000 },
+                    { "type": "Percent", "value": 100, "periodMs": 15000 }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 300000,
+                  "selectPolicy": "Max",
+                  "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                }
+              }
+            }
+          }
+        }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 380, "y": 292 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": -16 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 380, "y": 516 }
+    ],
+    "edges": [
+      {
+        "id": "thumbnail",
+        "from": "uploads",
+        "to": "image-workers",
+        "kind": "async",
+        "props": { "travelMs": 10, "group": "thumbnails" }
+      },
+      { "id": "store", "from": "image-workers", "to": "thumbnails", "kind": "async", "props": { "travelMs": 10 } },
+      {
+        "id": "request-render",
+        "from": "poster-studio",
+        "to": "render-requests",
+        "kind": "async",
+        "props": { "travelMs": 10 }
+      },
+      {
+        "id": "render",
+        "from": "render-requests",
+        "to": "render-workers",
+        "kind": "async",
+        "props": { "travelMs": 10, "group": "renders" }
+      },
+      { "id": "e-1", "from": "uploader", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "uploader", "to": "queue-1", "kind": "async", "props": { "travelMs": 10 } },
+      { "id": "e-5", "from": "queue-1", "to": "uploads", "kind": "async", "props": { "travelMs": 10 } }
+    ],
+    "annotations": [
+      { "id": "label-hpa", "kind": "text", "text": "HPA on CPU", "x": 80, "y": 120, "width": 240, "height": 40, "textSize": "m" },
+      { "id": "label-keda", "kind": "text", "text": "KEDA on Kafka lag, from zero", "x": 80, "y": 380, "width": 320, "height": 40, "textSize": "m" },
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 1440, "y": 300, "width": 240, "height": 160 }
+    ],
+    "simulations": [
+      {
+        "id": "upload-burst",
+        "title": "HPA: image workers absorb a burst",
+        "seed": 42,
+        "scale": 1,
+        "durationMs": 24000,
+        "traffic": [
+          {
+            "id": "burst",
+            "node": "uploader",
+            "messageType": "ImageUploaded",
+            "shape": { "kind": "constant", "ratePerSec": 48, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "Demand is above one worker’s target. New replicas start while Kafka holds the backlog.", "focus": ["uploads", "image-workers"] }
+          },
+          {
+            "atMs": 7000,
+            "action": { "do": "note", "text": "Ready workers drain the upload burst. Open Live details to see desired and ready replicas over time.", "focus": ["image-workers"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "buffered",
+            "label": "Uploads wait for starting workers",
+            "metric": { "node": "uploads", "field": "lag", "group": "thumbnails" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 2000
+          },
+          {
+            "id": "drained",
+            "label": "Every upload finishes",
+            "metric": { "node": "image-workers", "field": "processed" },
+            "op": "==",
+            "value": 192,
+            "when": "end"
+          },
+          {
+            "id": "empty",
+            "label": "The topic backlog drains",
+            "metric": { "node": "uploads", "field": "lag", "group": "thumbnails" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "wake-on-burst",
+        "title": "KEDA: render workers wake from zero",
+        "seed": 7,
+        "scale": 1,
+        "durationMs": 10000,
+        "traffic": [
+          { "id": "burst", "node": "poster-studio", "shape": { "kind": "burst", "count": 80, "atMs": 1000 } }
+        ],
+        "timeline": [
+          {
+            "atMs": 1000,
+            "action": { "do": "note", "text": "Eighty render requests arrive while no worker runs. KEDA sees the group's lag and wakes one.", "focus": ["render-requests", "render-workers"] }
+          },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "HPA takes over from one replica and scales on lag; the backlog drains, then the workers return to zero.", "focus": ["render-workers"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "woke",
+            "label": "A render worker starts from zero",
+            "metric": { "node": "render-requests", "field": "lag", "group": "renders" },
+            "op": ">",
+            "value": 0,
+            "when": "at",
+            "atMs": 2000
+          },
+          {
+            "id": "rendered",
+            "label": "All 80 posters render",
+            "metric": { "node": "render-workers", "field": "processed" },
+            "op": "==",
+            "value": 80,
+            "when": "end"
+          },
+          {
+            "id": "drained",
+            "label": "The lag drains",
+            "metric": { "node": "render-requests", "field": "lag", "group": "renders" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "uploader",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "uploader",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "uploader",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "uploader",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "image-workers", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["image-workers"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "image-workers", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": 40, "y": 116, "width": 640, "height": 176 }
+    ],
+    "direction": "TB"
+  }
+}
