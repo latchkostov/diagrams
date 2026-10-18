@@ -61,5 +61,5 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
   so signalling, not NAT traversal). Join to diagram on screen 0.84–3.57 s (median 1.63 s); edits arrived in 1–5 ms
   both ways; every reload rejoined without asking again in 0.87–1.82 s with the latest edits.
 - Output parity: one golden changed on purpose, `node/i18n/catalogs.json`: every language lists 44 more messages
-  (2,202 → 2,246), the new English-only `collab.*` keys count as fallbacks, and the `collab` area hash changes.
+  (2,212 → 2,256 on current master), the new English-only `collab.*` keys count as fallbacks, and the `collab` area hash changes.
   No other golden changed.
