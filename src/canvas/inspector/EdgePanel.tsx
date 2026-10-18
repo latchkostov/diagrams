@@ -10,7 +10,7 @@ import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
 import { edgeSimFields } from "../simFieldRules";
 import { type DiagramFlowEdge } from "../types";
-import { Field, InertNote, Section, Segmented, SideSelect } from "./controls";
+import { Field, InertNote, Section, Segmented, SideSelect } from "./fields";
 import { Disclosure } from "./Disclosure";
 import { SettingsEditor } from "./SettingsEditor";
 import { SimInput } from "./SimulationFields";

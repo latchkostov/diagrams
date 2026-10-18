@@ -1,7 +1,7 @@
 import { Icon, type IconName } from "../../components/Icon";
 import { type AlignMode } from "../../editor/arrange";
 import { t } from "../../i18n";
-import { Field, Section } from "./controls";
+import { Field, Section } from "./fields";
 import { type InspectorProps } from "./types";
 import { useState, type CSSProperties } from "react";
 import { ContextMenu } from "../../components/ContextMenu";

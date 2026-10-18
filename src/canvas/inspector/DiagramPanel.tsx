@@ -5,7 +5,7 @@ import { t } from "../../i18n";
 import { colorLabel } from "../../i18n/chrome";
 import { PlanningUpgrade, RequestRoutesSection } from "../../planning/lazy";
 import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, resolveAnnotationColor } from "../annotations";
-import { Field, Section, Segmented } from "./controls";
+import { Field, Section, Segmented } from "./fields";
 import { bulkStep, countText } from "./MultiPanel";
 import { type InspectorProps } from "./types";
 

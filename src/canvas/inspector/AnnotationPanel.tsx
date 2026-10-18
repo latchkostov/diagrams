@@ -15,7 +15,7 @@ import {
   textSizeLabel,
 } from "../annotations";
 import type { AnnotationFlowNode } from "../types";
-import { CopyId, Field, Section, Segmented, SizeInput } from "./controls";
+import { CopyId, Field, Section, Segmented, SizeInput } from "./fields";
 import { bulkStep } from "./MultiPanel";
 import { type InspectorProps } from "./types";
 

@@ -6,7 +6,7 @@ import { toneLabel } from "../../i18n/chrome";
 import { eligibleParentGroupIds } from "../../model/groupHierarchy";
 import { isPresetGroupTone, resolveGroupTone, toneColor } from "../groupTones";
 import type { GroupFlowNode, GroupTone } from "../types";
-import { CopyId, Field, Section, SizeInput } from "./controls";
+import { CopyId, Field, Section, SizeInput } from "./fields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 

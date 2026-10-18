@@ -22,9 +22,9 @@ import {
 import { getStencil } from "../../stencils/registry";
 import { inertNodeProps, nodeSimFields } from "../simFieldRules";
 import { type DiagramFlowNode } from "../types";
-import { InertNote, Field } from "./controls";
+import { InertNote, Field } from "./fields";
 import { Disclosure } from "./Disclosure";
-import { formatInert } from "./helpers";
+import { formatInert } from "./fields";
 import { SIM_FIELDS, showSim, type SimField } from "./simFields";
 import { type InspectorProps } from "./types";
 import { formatCount } from "../../live/format";

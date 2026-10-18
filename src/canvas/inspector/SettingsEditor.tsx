@@ -12,7 +12,7 @@ import {
   type ConfigSetting,
 } from "../../model/relations";
 import type { DiagramFlowEdge } from "../types";
-import { Section } from "./controls";
+import { Section } from "./fields";
 
 /**
  * The settings a service reads over a config edge: one key per line, `!` before a secret (a Key Vault
