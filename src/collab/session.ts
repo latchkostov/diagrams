@@ -10,6 +10,7 @@ import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import {
   encodePresence,
+  MAX_SELECTION,
   parsePresence,
   PresenceTable,
   randomAlias,
@@ -52,6 +53,7 @@ export type RejectReason =
   | "reply-throttled"
   | "request-throttled"
   | "proof-throttled"
+  | "presence-throttled"
   | "queue-full"
   | "too-many-partials"
   | "internal"
@@ -116,6 +118,16 @@ export class CollabSession {
   status: SessionStatus = "waiting";
   connectionFailed = false;
   connectivity: Connectivity = "waiting";
+  /** A joiner's attempt found no one: no document and no failure for COLLAB_LIMITS.noAnswerMs (reset by Retry). */
+  noAnswer = false;
+  private noAnswerWait?: () => void;
+  /** A goodbye sealed ahead of time, so a page going away can send it at once (sealing is asynchronous). */
+  private bye?: Uint8Array;
+  private byeJob: Promise<void> = Promise.resolve();
+  /** Document frames sealed since the goodbye was: past half a replay window, it is sealed again. */
+  private framesSinceBye = 0;
+  private cursorTimer?: () => void;
+  private cursorSentAt = -Infinity;
   private connectionWait?: () => void;
   recovery?: RoomRecovery;
   private synced = new Set<PeerId>();
@@ -131,6 +143,8 @@ export class CollabSession {
   /** Sync requests answered per requester: each costs an encode of what it lacks, before any reply is sent. */
   private readonly requests: RateLimit;
   private readonly proofs: RateLimit;
+  /** Presence frames per sender (cursors are frequent): its own bound, so they never ride free. */
+  private readonly presenceRate: RateLimit;
   /** Bytes of frames waiting in the inbox: in total and per transport peer. */
   private queuedBytes = 0;
   private readonly queuedFrom = new Map<PeerId, number>();
@@ -163,6 +177,7 @@ export class CollabSession {
     this.replies = new RateLimit(clock, COLLAB_LIMITS.replyBytesPerWindow);
     this.requests = new RateLimit(clock, COLLAB_LIMITS.syncRequestsPerWindow);
     this.proofs = new RateLimit(clock, COLLAB_LIMITS.syncProofsPerWindow);
+    this.presenceRate = new RateLimit(clock, COLLAB_LIMITS.presenceFramesPerWindow);
     this.reassembler = new Reassembler(clock);
     this.presence = new PresenceTable(clock);
   }
@@ -231,11 +246,76 @@ export class CollabSession {
     return this.presence.list();
   }
 
+  /** Changes whenever what peers' presence says changes (subscribers re-read peers() then). */
+  get presenceRevision(): number {
+    return this.presence.revision;
+  }
+
+  /** Room-clock time, for presence's own times (a cursor's last move). */
+  now(): number {
+    return this.clock.now();
+  }
+
+  /** What this person has selected, for the others' outlines. Sent at once. */
+  setSelection(ids: readonly string[]): void {
+    const selection = ids.slice(0, MAX_SELECTION);
+    const current = this.me.selection ?? [];
+    if (current.length === selection.length && selection.every((id, i) => current[i] === id)) return;
+    this.me = { ...this.me, selection };
+    this.sendPresence();
+  }
+
+  /** Where this person's pointer is over the canvas (undefined: it left). At most 15 times a second, the last wins. */
+  setCursor(cursor: { x: number; y: number } | undefined): void {
+    this.me = { ...this.me, cursor };
+    if (this.cursorTimer) return;
+    const wait = this.cursorSentAt + COLLAB_LIMITS.cursorIntervalMs - this.clock.now();
+    if (wait <= 0) {
+      this.cursorSentAt = this.clock.now();
+      this.sendPresence();
+      return;
+    }
+    this.cursorTimer = this.clock.after(wait, () => {
+      this.cursorTimer = undefined;
+      this.cursorSentAt = this.clock.now();
+      this.sendPresence();
+    });
+  }
+
+  /**
+   * The page is going: the goodbye goes out now, already sealed, so peers drop this person at once instead of after
+   * the presence TTL (a reload otherwise leaves a second entry for 30 s).
+   */
+  goodbyeNow(): void {
+    if (this.status === "left" || !this.bye) return;
+    try {
+      this.transport.send(this.bye);
+    } catch {
+      // Best effort: the presence TTL still removes this person.
+    }
+    this.bye = undefined;
+  }
+
+  /** Seals the next goodbye ahead of time (a counter of its own, well inside every receiver's replay window). */
+  private prepareBye(): void {
+    this.byeJob = this.byeJob
+      .then(async () => {
+        if (this.status === "left" || this.leaving) return;
+        this.framesSinceBye = 0;
+        this.bye = await this.sealer.seal("doc", frame(DOC.bye));
+      })
+      .catch(() => {});
+  }
+
   retryConnection(): void {
     if (this.leaving || this.status === "left") return;
     this.connectionWait?.();
     this.connectionWait = undefined;
     this.connectionFailed = false;
+    // A new attempt: its own no-answer deadline.
+    this.noAnswer = false;
+    this.noAnswerWait?.();
+    this.noAnswerWait = undefined;
     this.transport.retry?.();
     this.requestSync();
     this.updateStatus();
@@ -277,6 +357,11 @@ export class CollabSession {
     } finally {
       this.status = "left";
       this.connectionFailed = false;
+      this.noAnswerWait?.();
+      this.noAnswerWait = undefined;
+      this.cursorTimer?.();
+      this.cursorTimer = undefined;
+      this.bye = undefined;
       this.connectionWait?.();
       this.connectionWait = undefined;
       for (const stop of this.stops) stop();
@@ -297,6 +382,7 @@ export class CollabSession {
       this.doc.onChange(() => {
         this.revision++;
         this.synced.clear();
+        this.updateNoAnswer();
         this.emit();
         void this.proveSync();
       }),
@@ -324,14 +410,21 @@ export class CollabSession {
     this.stops.push(
       this.clock.every(COLLAB_LIMITS.presenceHeartbeatMs, () => {
         this.sendPresence();
+        // A fresh goodbye now and then: a long session's counter never leaves receivers' replay windows behind it.
+        this.prepareBye();
         if (this.presence.expire()) this.emit();
       }),
     );
     this.requestSync();
     this.sendPresence();
+    this.prepareBye();
     this.updateStatus();
   }
 
+  /**
+   * The session's connection state, in one place and in order: connectivity and its failure flag first, then the
+   * no-answer deadline (which reads that flag), then one notification.
+   */
   private updateStatus(): void {
     if (this.status === "left") return;
     const next: SessionStatus = this.transport.peers().length ? "connected" : "waiting";
@@ -351,10 +444,30 @@ export class CollabSession {
         this.emit();
       });
     }
+    const answered = this.noAnswer;
+    this.updateNoAnswer();
     if (next !== this.status) {
       this.status = next;
       this.emit();
-    } else if (changed) this.emit();
+    } else if (changed || answered !== this.noAnswer) this.emit();
+  }
+
+  /** A joiner without a document and without a failure waits COLLAB_LIMITS.noAnswerMs, once per attempt. */
+  private updateNoAnswer(): void {
+    const waiting = !this.hasDocument && !this.connectionFailed;
+    if (!waiting) {
+      this.noAnswerWait?.();
+      this.noAnswerWait = undefined;
+      this.noAnswer = false;
+      return;
+    }
+    if (this.noAnswer || this.noAnswerWait) return;
+    this.noAnswerWait = this.clock.after(COLLAB_LIMITS.noAnswerMs, () => {
+      this.noAnswerWait = undefined;
+      if (this.hasDocument || this.connectionFailed || this.status === "left") return;
+      this.noAnswer = true;
+      this.emit();
+    });
   }
 
   private emit(): void {
@@ -399,6 +512,8 @@ export class CollabSession {
     this.outbox = this.outbox.then(async () => {
       try {
         const sealed = await this.sealer.seal(channel, plaintext);
+        // Every receiver keeps a window of a sender's counters: the cached goodbye stays well inside it.
+        if (channel === "doc" && ++this.framesSinceBye >= COLLAB_LIMITS.replayWindow / 2) this.prepareBye();
         if (this.status === "left") return;
         this.transport.send(sealed, to);
         this.stats.framesSent++;
@@ -446,6 +561,7 @@ export class CollabSession {
     let msg = unframe(opened.plaintext);
     if (!msg) return this.reject("malformed");
     if (opened.channel === "presence") {
+      if (!this.presenceRate.take(opened.sender, 1)) return this.reject("presence-throttled");
       const state = msg.type === PRESENCE.state ? parsePresence(msg.payload) : undefined;
       if (!state) return this.reject("malformed");
       if (this.presence.receive(opened.sender, opened.counter, state)) this.emit();
