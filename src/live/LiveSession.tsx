@@ -5,18 +5,16 @@ import { useCameraController } from "../canvas/camera";
 import { placeNextTo } from "../canvas/placement";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { actionRegistry, builtinSections } from "../editor/actions";
-import type { EditorApi } from "../editor/types";
 import { useSettings } from "../harness/settings";
 import { useLocale } from "../i18n";
 import { notify } from "../interop/ui/toast";
-import { edgeSemanticSignature } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { useLiveSessionHost } from "../palette/host";
 import { planningHost } from "../planning/host";
 import type { MessageTrace, NodeStatus } from "../sim/types";
 import { stencilRole } from "../stencils/roles";
 import { buildJourney, formatDuration as formatSpan } from "../trace/journey";
-import { BottleneckCallout, CapacityLayer, TroubleCallout } from "./CapacityLayer";
+import { BottleneckCallout, TroubleCallout } from "./CapacityLayer";
 import { CapacityPanel } from "./CapacityPanel";
 import { ControlBar } from "./ControlBar";
 import { EventLog } from "./EventLog";
@@ -25,7 +23,6 @@ import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
 import { SimPanel } from "./SimPanel";
 import { TraceCard } from "./TraceCard";
-import { addConsumer } from "./addConsumer";
 import {
   capacityView,
   emptyInputs,
@@ -44,7 +41,7 @@ import { liveActions, liveMutationGuard } from "./liveActions";
 import { Recorder } from "./record/Recorder";
 import { initialRecordState, isCapturing, recordReducer } from "./record/recordModel";
 import { useFrameLoop } from "./session/useFrameLoop";
-import { sayConsumerAdded, useLiveDiagramChanges, useLiveFixes } from "./session/useLiveFixes";
+import { useLiveDiagramChanges, useLiveFixes } from "./session/useLiveFixes";
 import { useLiveKeyboard } from "./session/useLiveKeyboard";
 import { SlowCaption } from "./slowmo/SlowBar";
 import { PACING } from "./slowmo/script";
@@ -974,59 +971,4 @@ function useReducedMotion(): boolean {
   return reduced;
 }
 
-/** Edit mode's capacity heat map: the diagram's own rates and sizes, with the bottleneck callout. */
-export function EditCapacity({
-  editor,
-  presenting,
-  planning,
-}: {
-  editor: EditorApi;
-  presenting: boolean;
-  planning?: DiagramFile["planning"];
-}) {
-  const locale = useLocale();
-  const nodes = useStore((st) => st.nodes);
-  const edges = useStore((st) => st.edges);
-  // Positions don't change capacity: key the analysis on what does.
-  const structure = useMemo(
-    () =>
-      JSON.stringify([
-        planning?.revision,
-        nodes.map((n) => (n.type === "diagram" ? [n.id, n.data.stencil, n.data.label, n.data.props ?? null] : n.id)),
-        edges.map((e) => edgeSemanticSignature({ id: e.id, from: e.source, to: e.target, ...e.data })),
-      ]),
-    [nodes, edges, planning?.revision],
-  );
-  const { value: view } = useMemo(() => {
-    const current = structure ? editor.getDiagram() : null;
-    // The editor's imperative metadata catches up in a layout effect, after this render's children.
-    const d = current ? { ...current, planning } : null;
-    return { locale, value: d ? capacityView(d, freePlaySimulation(d, emptyInputs())) : null };
-  }, [structure, editor, locale, planning]);
-  const apply = useCallback(
-    (fix: CapacityFix) => {
-      const merge = "capacity:fix:" + Date.now();
-      for (const c of fix.changes) editor.setNodeProps(c.nodeId, { [c.key]: c.to }, { merge });
-      notify("Applied the fix: " + fix.label + ".", {
-        action: { label: "Undo", run: () => editor.undo(), testId: "capacity-fix-undo", undoes: true },
-      });
-    },
-    [editor],
-  );
-  if (!view) return null;
-  return (
-    <>
-      <ViewportPortal>
-        <CapacityLayer view={view} presenting={presenting} />
-      </ViewportPortal>
-      <div className={"cap-hud" + (presenting ? " is-presenting" : "")}>
-        <BottleneckCallout
-          view={view}
-          floating
-          onApply={presenting ? undefined : apply}
-          onAddConsumer={presenting ? undefined : (id) => addConsumer(editor, id) && sayConsumerAdded(editor, id)}
-        />
-      </div>
-    </>
-  );
-}
+export { EditCapacity } from "./session/EditCapacity";
