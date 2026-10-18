@@ -1,0 +1,18 @@
+---
+title: "Viewers #1 · 1.24 s end to end"
+---
+sequenceDiagram
+  participant viewers as Viewers
+  participant cdn as CloudFront
+  participant edge_cache as Edge cache
+  participant cdn_logs as CDN logs
+  participant qoe as Playback quality
+  participant qoe_dash as QoE dashboard
+  viewers->>cdn: Viewers (+0.00 s)<br/>HTTPS
+  cdn-->>viewers: reply (+0.21 s)
+  cdn->>edge_cache: Viewers (+0.21 s)<br/>Hit
+  edge_cache-->>cdn: reply (+0.42 s)
+  edge_cache-)cdn_logs: AccessLog (+0.42 s)<br/>Access logs
+  cdn_logs-)qoe: AccessLog (+0.72 s)
+  qoe->>qoe_dash: AccessLog (+1.04 s)<br/>Metrics
+  qoe_dash-->>qoe: reply (+1.24 s)

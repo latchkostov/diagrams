@@ -1,0 +1,115 @@
+---
+title: "UploadVideo #1 · 13.6 s end to end · 20 copies · 2 retries · dead-lettered"
+---
+sequenceDiagram
+  participant creators as Creators
+  participant upload_api as Upload API
+  participant upload_svc as Upload service
+  participant originals as Originals
+  participant media_events as Media events
+  participant glacier as Masters archive
+  participant workflow as Ingest workflow
+  participant probe as Probe
+  participant thumbs as Thumbnails
+  participant captions as Captions
+  participant uhd_q as 4K encode jobs
+  participant hd_q as HD encode jobs
+  participant audio_q as Audio encode jobs
+  participant catalog_api as Catalog service
+  participant rights as Rights service
+  participant catalog as Catalog
+  participant uhd_enc as 4K encoders
+  participant hd_enc as HD encoders
+  participant audio_enc as Audio encoders
+  participant renditions as Renditions
+  participant ready_q as Packaging jobs
+  participant packager as Packager
+  participant drm as DRM key service
+  participant streaming as Streaming bucket
+  participant publish_topic as Publish events
+  participant creator_email as Creator email
+  participant webhooks as Creator webhooks
+  participant search_indexer as Search indexer
+  participant search_index as Title search
+  participant encode_dlq as Media DLQ
+  participant triage as Encode triage
+  creators->>upload_api: UploadVideo (+0.00 s)<br/>HTTPS
+  upload_api-->>creators: reply (+0.20 s)
+  upload_api->>upload_svc: UploadVideo (+0.20 s)<br/>Upload
+  upload_svc-->>upload_api: reply (+0.46 s)
+  upload_svc->>originals: UploadVideo (+0.46 s)<br/>PutObject
+  originals-->>upload_svc: reply (+0.67 s)
+  originals-)media_events: SourceUploaded (+0.67 s)<br/>ObjectCreated
+  originals-)glacier: MasterArchived (+0.67 s)<br/>Lifecycle
+  media_events-)workflow: SourceUploaded (+0.97 s)<br/>Rule: new source
+  workflow->>probe: EncodeJob (+1.56 s)<br/>Probe
+  workflow->>thumbs: EncodeJob (+1.56 s)<br/>Thumbnails
+  workflow->>captions: EncodeJob (+1.56 s)<br/>Transcribe
+  workflow-)uhd_q: EncodeJob (+1.56 s)<br/>4K ladder
+  workflow-)hd_q: EncodeJob (+1.56 s)<br/>HD ladder
+  workflow-)audio_q: EncodeJob (+1.56 s)<br/>Audio
+  workflow->>catalog_api: EncodeJob (+1.56 s)<br/>Draft title
+  workflow->>rights: EncodeJob (+1.56 s)<br/>Rights check
+  catalog_api-->>workflow: reply (+1.78 s)
+  catalog_api->>catalog: EncodeJob (+1.78 s)
+  rights-->>workflow: reply (+1.84 s)
+  uhd_q-)uhd_enc: EncodeJob (+1.86 s)
+  hd_q-)hd_enc: EncodeJob (+1.86 s)
+  audio_q-)audio_enc: EncodeJob (+1.86 s)
+  catalog-->>catalog_api: reply (+1.99 s)
+  probe-->>workflow: reply (+2.19 s)
+  thumbs-->>workflow: reply (+2.34 s)
+  audio_enc->>renditions: RenditionReady (+2.49 s)<br/>Segments
+  audio_enc-)ready_q: RenditionReady (+2.49 s)
+  renditions-->>audio_enc: reply (+2.70 s)
+  ready_q-)packager: RenditionReady (+2.79 s)
+  hd_enc->>renditions: RenditionReady (+3.16 s)<br/>Segments
+  hd_enc-)ready_q: RenditionReady (+3.16 s)
+  packager->>drm: TitlePublished (+3.29 s)<br/>Content keys
+  packager->>streaming: TitlePublished (+3.29 s)<br/>Manifests
+  packager->>catalog_api: TitlePublished (+3.29 s)<br/>Playable
+  packager-)publish_topic: TitlePublished (+3.29 s)
+  renditions-->>hd_enc: reply (+3.37 s)
+  ready_q-)packager: RenditionReady (+3.46 s)
+  streaming-->>packager: reply (+3.50 s)
+  catalog_api-->>packager: reply (+3.52 s)
+  catalog_api->>catalog: TitlePublished (+3.52 s)
+  publish_topic-)creator_email: TitlePublished (+3.59 s)
+  publish_topic-)webhooks: TitlePublished (+3.59 s)
+  publish_topic-)search_indexer: TitlePublished (+3.59 s)
+  drm-->>packager: reply (+3.61 s)
+  catalog-->>catalog_api: reply (+3.73 s)
+  captions-->>workflow: reply (+3.79 s)
+  search_indexer->>search_index: TitlePublished (+3.95 s)<br/>Index title
+  packager->>drm: TitlePublished (+3.99 s)<br/>Content keys
+  packager->>streaming: TitlePublished (+3.99 s)<br/>Manifests
+  packager->>catalog_api: TitlePublished (+3.99 s)<br/>Playable
+  packager-)publish_topic: TitlePublished (+3.99 s)
+  Note over uhd_enc: ✕ attempt 1 failed
+  uhd_enc--)uhd_q: back to the broker after attempt 1 (+4.16 s)
+  search_index-->>search_indexer: reply (+4.16 s)
+  streaming-->>packager: reply (+4.20 s)
+  catalog_api-->>packager: reply (+4.22 s)
+  catalog_api->>catalog: TitlePublished (+4.22 s)
+  publish_topic-)creator_email: TitlePublished (+4.29 s)
+  publish_topic-)webhooks: TitlePublished (+4.29 s)
+  publish_topic-)search_indexer: TitlePublished (+4.29 s)
+  drm-->>packager: reply (+4.33 s)
+  catalog-->>catalog_api: reply (+4.43 s)
+  uhd_q-)uhd_enc: EncodeJob (+4.46 s)
+  search_indexer->>search_index: TitlePublished (+4.64 s)<br/>Index title
+  search_index-->>search_indexer: reply (+4.85 s)
+  Note over creators,triage: ⏱ 3.43 s at 4K encoders: failing and retrying
+  Note over uhd_enc: ✕ attempt 2 failed
+  uhd_enc--)uhd_q: back to the broker after attempt 2 (+8.48 s)
+  uhd_q-)uhd_enc: EncodeJob (+10.00 s)
+  Note over creators,triage: ⏱ 1.92 s at 4K encoders: failing and retrying
+  Note over uhd_enc: ✕ attempt 3 failed
+  uhd_enc--)uhd_q: back to the broker after attempt 3 (+12.22 s)
+  Note over uhd_q: Dead-lettered after 3 deliveries
+  rect rgba(209, 57, 63, 0.14)
+    uhd_q-)encode_dlq: EncodeJob (dead letter) (+12.52 s)
+  end
+  encode_dlq-)triage: EncodeJob (+12.82 s)
+  triage->>creator_email: EncodeJob (+13.22 s)<br/>Upload failed
+  creator_email-->>triage: reply (+13.64 s)

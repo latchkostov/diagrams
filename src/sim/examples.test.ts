@@ -11,6 +11,9 @@ const SIMULATIONS: Record<string, number> = {
   "../examples/aws-serverless-orders.json": 3,
   "../examples/black-friday-commerce.json": 3,
   "../examples/ev-charging-network.json": 4,
+  "../examples/hybrid-enterprise-network.json": 3,
+  "../examples/recommendations-feature-store.json": 4,
+  "../examples/video-on-demand-pipeline.json": 3,
 };
 
 describe("saved example simulations with the real stencil registry", () => {

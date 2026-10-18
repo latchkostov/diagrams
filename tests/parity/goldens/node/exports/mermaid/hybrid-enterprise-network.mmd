@@ -1,0 +1,112 @@
+---
+title: Hybrid enterprise network
+---
+flowchart LR
+  subgraph g_hq ["HQ campus · Manchester"]
+    access["Access switches<br/>stacked, PoE, 802.1X"]
+    core["Core switch pair<br/>L3, staff and guest VRFs"]
+    hq_fw["HQ firewall pair<br/>zones: staff, guest"]
+    hq_wan["HQ SD-WAN edge<br/>dual fibre"]
+    breakout["Guest breakout<br/>straight to the internet"]
+  end
+  subgraph g_wan ["SD-WAN branches"]
+    york_router["York router<br/>SD-WAN over fibre"]
+    hull_router["Hull router<br/>SD-WAN over fibre"]
+    derby_router["Derby router<br/>SD-WAN over fibre"]
+    leicester_router["Leicester router<br/>fibre and LTE, health checks"]
+  end
+  subgraph g_carrier ["Mobile carrier"]
+    lte["4G carrier<br/>LTE underlay"]
+  end
+  subgraph g_dc ["Data centre · Leeds"]
+    dc_edge["DC edge routers<br/>BGP, two ISPs"]
+    hub["SD-WAN hub<br/>overlay head-end"]
+    dc_fw["DC firewall pair<br/>inside, DMZ, VPN zones"]
+  end
+  subgraph g_dmz ["DMZ"]
+    dmz_switch["DMZ switch"]
+    waf["WAF and load balancer<br/>TLS, bot rules"]
+    shop["Web shop<br/>two web servers"]
+  end
+  subgraph g_servers ["Server farm · spine and leaf"]
+    spine_1["Spine 1<br/>100G"]
+    spine_2["Spine 2<br/>100G"]
+    leaf["Server leaf pair<br/>vPC"]
+    adc["ADC pair<br/>TLS, health checks"]
+    erp["ERP<br/>orders, stock, finance"]
+    intranet["Intranet<br/>HR, news, wiki"]
+    files["File servers<br/>DFS shares"]
+    erp_db[("ERP database<br/>Always On")]
+  end
+  subgraph g_mgmt ["Identity and monitoring"]
+    ad["Active Directory<br/>staff sign-in"]
+    nac["Network access control<br/>802.1X"]
+    dns["Internal DNS<br/>split horizon"]
+    siem["SIEM<br/>firewall and flow logs"]
+  end
+  subgraph g_aws ["AWS eu-west-2 · analytics"]
+    vpn["Site-to-site VPN<br/>IPsec, two tunnels"]
+    transit["Transit gateway<br/>attachments per VPC"]
+    warehouse[("Sales warehouse<br/>Redshift")]
+  end
+  hq_staff(["HQ staff<br/>ERP all day"])
+  hq_intranet(["HQ intranet<br/>news, HR, wiki"])
+  hq_files(["HQ file shares<br/>mapped drives"])
+  guests(["Guest Wi-Fi<br/>visitor devices"])
+  customers(["Online customers<br/>the web shop"])
+  remote(["Remote staff<br/>laptops on VPN"])
+  york_staff(["York branch<br/>40 staff, ERP and files"])
+  hull_staff(["Hull branch<br/>40 staff, ERP and files"])
+  derby_staff(["Derby branch<br/>40 staff, ERP and files"])
+  leicester_staff(["Leicester branch<br/>40 staff, ERP and files"])
+  hq_staff --> access
+  hq_intranet --> access
+  hq_files --> access
+  guests -->|"Guest SSID"| access
+  access --> core
+  core --> hq_fw
+  hq_fw -->|"Allow: staff to DC"| hq_wan
+  hq_fw -->|"Allow: guest web"| breakout
+  hq_fw -->|"Deny: guest to DC"| dc_edge
+  hq_wan -->|"SD-WAN overlay"| dc_edge
+  york_staff --> york_router
+  york_router -->|"Tunnel"| hub
+  hull_staff --> hull_router
+  hull_router -->|"Tunnel"| hub
+  derby_staff --> derby_router
+  derby_router -->|"Tunnel"| hub
+  leicester_staff --> leicester_router
+  leicester_router -->|"Fibre underlay"| hub
+  leicester_router -->|"LTE underlay"| lte
+  lte -->|"Tunnel"| hub
+  hub -->|"Branch traffic"| dc_fw
+  customers -->|"HTTPS"| dc_edge
+  remote -->|"GlobalProtect"| dc_edge
+  dc_edge --> dc_fw
+  dc_fw -->|"Allow: inside apps"| spine_1
+  dc_fw --> spine_2
+  dc_fw -->|"Allow: web"| dmz_switch
+  spine_1 --> leaf
+  spine_2 --> leaf
+  leaf --> adc
+  leaf -->|"SMB"| files
+  adc --> erp
+  adc --> intranet
+  erp -->|"SQL"| erp_db
+  dmz_switch --> waf
+  waf --> shop
+  shop -->|"Orders API"| erp
+  erp -->|"Nightly export"| vpn
+  vpn --> transit
+  transit -->|"COPY"| warehouse
+  access -.->|"gets tokens from: 802.1X"| nac
+  erp -.->|"gets tokens from: Kerberos"| ad
+  files -.->|"gets tokens from"| ad
+  intranet -.->|"gets tokens from"| ad
+  erp -.->|"depends on: Name lookups"| dns
+  dc_fw -.->|"sends telemetry to: Logs"| siem
+  hq_fw -.->|"sends telemetry to"| siem
+  linkStyle 40,41,42,43 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 44 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 45,46 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"An invented retailer, Northwind Traders. Staff at the Manchester head office and four branches reach the ERP in the Leeds data centre over SD-WAN, through firewall pairs and a spine-and-leaf server farm. Customers reach the web shop through a DMZ, and a site-to-site VPN carries the nightly export to an AWS warehouse.","nodes":{"hq_staff":["hq-staff","client.team"],"hq_intranet":["hq-intranet","client.team"],"hq_files":["hq-files","client.team"],"guests":["guests","client.mobile"],"customers":["customers","client.browser"],"remote":["remote","client.mobile"],"access":["access","cisco.catalyst"],"core":["core","cisco.catalyst"],"hq_fw":["hq-fw","paloalto.ngfw"],"hq_wan":["hq-wan","cisco.isr"],"breakout":["breakout","generic.router"],"york_staff":["york-staff","client.team"],"york_router":["york-router","cisco.isr"],"hull_staff":["hull-staff","client.team"],"hull_router":["hull-router","cisco.isr"],"derby_staff":["derby-staff","client.team"],"derby_router":["derby-router","cisco.isr"],"leicester_staff":["leicester-staff","client.team"],"leicester_router":["leicester-router","cisco.isr"],"lte":["lte","generic.router"],"dc_edge":["dc-edge","juniper.mx"],"hub":["hub","juniper.srx"],"dc_fw":["dc-fw","paloalto.ngfw"],"dmz_switch":["dmz-switch","cisco.nexus"],"waf":["waf","f5.bigip"],"shop":["shop","service.node"],"spine_1":["spine-1","arista.switch"],"spine_2":["spine-2","arista.switch"],"leaf":["leaf","cisco.nexus"],"adc":["adc","f5.bigip"],"erp":["erp","service.java"],"intranet":["intranet","service.node"],"files":["files","generic.service"],"erp_db":["erp-db","sqlserver"],"ad":["ad","generic.identity-provider"],"nac":["nac","generic.identity-provider"],"dns":["dns","generic.dns"],"siem":["siem","splunk"],"vpn":["vpn","generic.router"],"transit":["transit","generic.router"],"warehouse":["warehouse","aws.redshift"]},"groups":{"g_hq":["hq","onprem"],"g_wan":["wan","neutral"],"g_carrier":["carrier","neutral"],"g_dc":["dc","onprem"],"g_dmz":["dmz","neutral"],"g_servers":["servers","neutral"],"g_mgmt":["mgmt","neutral"],"g_aws":["aws","aws"]},"edges":["hq-staff--access","hq-intranet--access","hq-files--access","guests--access","access--core","core--hq-fw","hq-fw--hq-wan","hq-fw--breakout","deny-guest-to-dc","hq-wan--dc-edge","york-staff--york-router","york-fibre","hull-staff--hull-router","hull-fibre","derby-staff--derby-router","derby-fibre","leicester-staff--leicester-router","leicester-fibre","leicester-router--lte","lte--hub","hub--dc-fw","customers--dc-edge","remote--dc-edge","dc-edge--dc-fw","dc-fw--spine-1","dc-fw--spine-2","dc-fw--dmz-switch","spine-1--leaf","spine-2--leaf","leaf--adc","leaf--files","adc--erp","adc--intranet","erp--erp-db","dmz-switch--waf","waf--shop","shop--erp","erp--vpn","vpn--transit","transit--warehouse","access--nac","erp--ad","files--ad","intranet--ad","erp--dns","dc-fw--siem","hq-fw--siem"],"relations":{"40":"identity","41":"identity","42":"identity","43":"identity","44":"depends","45":"telemetry","46":"telemetry"}}

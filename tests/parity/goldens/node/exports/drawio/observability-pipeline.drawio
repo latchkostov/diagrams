@@ -1,0 +1,512 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-zhbi64" name="Observability pipeline">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_description="An invented platform team, Halyard Ops. Every request a shop service handles sends logs, spans and metrics to node agents, then through load-balanced gateway collectors that tail-sample traces, into Kafka. Kafka buffers each signal for its own backends, so an outage or a log storm in one never stalls the rest." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;log-storm&quot;,&quot;title&quot;:&quot;An incident log storm&quot;,&quot;description&quot;:&quot;A bad Checkout deploy logs every retry: telemetry jumps fivefold for ten seconds. Gateway collectors scale on CPU, Kafka absorbs the burst, and the log ingesters work through their lag without slowing traces or metrics.&quot;,&quot;seed&quot;:81,&quot;scale&quot;:20,&quot;durationMs&quot;:40000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;shop&quot;,&quot;node&quot;:&quot;shoppers&quot;,&quot;label&quot;:&quot;Shoppers&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:400,&quot;durationMs&quot;:30000}},{&quot;id&quot;:&quot;storm&quot;,&quot;node&quot;:&quot;agent-shop&quot;,&quot;label&quot;:&quot;Checkout's retry logs&quot;,&quot;messageType&quot;:&quot;RetryLog&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:1600,&quot;fromMs&quot;:3000,&quot;durationMs&quot;:10000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Every request sends telemetry to the node agents, then to gateway collectors behind a load balancer that hashes by trace ID.&quot;,&quot;focus&quot;:[&quot;agent-shop&quot;,&quot;otlp-lb&quot;,&quot;gateways&quot;]}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;A bad Checkout deploy logs every retry: five times the telemetry. The gateway collectors' CPU climbs and their HPA adds pods.&quot;,&quot;focus&quot;:[&quot;agent-shop&quot;,&quot;gateways&quot;,&quot;tenant-limits&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Kafka absorbs the logs. The ingesters fall behind for a while; traces and metrics, in their own topics, don't.&quot;,&quot;focus&quot;:[&quot;logs&quot;,&quot;ingesters&quot;,&quot;spans&quot;,&quot;metrics&quot;]}},{&quot;atMs&quot;:20000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The deploy is rolled back and the ingesters catch up. Nothing was dropped.&quot;,&quot;focus&quot;:[&quot;logs&quot;,&quot;ingesters&quot;,&quot;loki-store&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;lag&quot;,&quot;label&quot;:&quot;Log ingestion falls behind&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;logs&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;loki&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:500,&quot;when&quot;:&quot;eventually&quot;},{&quot;id&quot;:&quot;caught-up&quot;,&quot;label&quot;:&quot;Log ingestion catches up&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;logs&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;loki&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;spans-flow&quot;,&quot;label&quot;:&quot;Traces never fall behind&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;spans&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;tempo&quot;},&quot;op&quot;:&quot;&lt;&quot;,&quot;value&quot;:200,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;loki-outage&quot;,&quot;title&quot;:&quot;Drill: Loki is down for ten seconds&quot;,&quot;description&quot;:&quot;Loki's write path fails. Kafka keeps every log for the ingesters while dashboards for traces and metrics carry on; when Loki returns, the backlog drains in order.&quot;,&quot;seed&quot;:82,&quot;scale&quot;:10,&quot;durationMs&quot;:35000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;shop&quot;,&quot;node&quot;:&quot;shoppers&quot;,&quot;label&quot;:&quot;Shoppers&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:400,&quot;durationMs&quot;:25000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Logs, spans and metrics each have their own topic and consumers.&quot;,&quot;focus&quot;:[&quot;logs&quot;,&quot;spans&quot;,&quot;metrics&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;fault&quot;,&quot;fault&quot;:{&quot;kind&quot;:&quot;boundary&quot;,&quot;boundary&quot;:&quot;loki&quot;,&quot;down&quot;:true}}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Drill: take down the Loki boundary. Kafka keeps the logs: nothing is lost, it just waits.&quot;,&quot;focus&quot;:[&quot;logs&quot;,&quot;ingesters&quot;,&quot;loki-store&quot;]}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;fault&quot;,&quot;fault&quot;:{&quot;kind&quot;:&quot;boundary&quot;,&quot;boundary&quot;:&quot;loki&quot;,&quot;down&quot;:false}}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Loki is back and the ingesters drain the backlog. ClickHouse and the archive never stopped.&quot;,&quot;focus&quot;:[&quot;logs&quot;,&quot;ingesters&quot;,&quot;ch-sink&quot;,&quot;s3-sink&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;held&quot;,&quot;label&quot;:&quot;Logs wait in Kafka during the outage&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;logs&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;loki&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:1000,&quot;when&quot;:&quot;at&quot;,&quot;atMs&quot;:13000},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;The backlog drains&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;logs&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;loki&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-loss&quot;,&quot;label&quot;:&quot;Nothing is dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ingesters&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]}]" dg_planning="{&quot;revision&quot;:&quot;p3-a1&quot;}">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-shop" label="EKS · shop services" dg_id="shop" dg_tone="k8s">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#326CE5;strokeColor=#326CE5;" vertex="1" parent="1">
+            <mxGeometry x="400" y="-4" width="1641" height="736" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-data" label="EKS · data jobs" dg_id="data" dg_tone="k8s">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#326CE5;strokeColor=#326CE5;" vertex="1" parent="1">
+            <mxGeometry x="400" y="836" width="1634" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-collect" label="Collection tier" dg_id="collect" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="2200" y="496" width="1180" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-buffer" label="Kafka · telemetry buffer" dg_id="buffer" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3520" y="356" width="339" height="456" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-backends" label="Observability backends" dg_id="backends" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3960" y="-68" width="780" height="520" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-loki" label="Loki write path" dg_id="loki" dg_tone="neutral" dg_group="backends">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="4000" y="-4" width="300" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-alerting" label="Alerting" dg_id="alerting" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="4000" y="976" width="740" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-archive" label="Archive and analytics" dg_id="archive" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="4000" y="576" width="740" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-partners" label="Paging and security" dg_id="partners" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="4960" y="576" width="300" height="876" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-platform" label="Platform" dg_id="platform" dg_tone="neutral">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="2200" y="976" width="1213" height="176" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-shoppers" label="Shoppers&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;web and app&lt;/span&gt;" dg_id="shoppers" dg_stencil="client.browser" dg_props="{&quot;ratePerSec&quot;:400,&quot;messageType&quot;:&quot;Request&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="346" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ingress" label="Ingress&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;NGINX&lt;/span&gt;" dg_id="ingress" dg_stencil="nginx" dg_props="{&quot;latencyMs&quot;:0,&quot;jitter&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0096391A;strokeColor=#009639;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="60" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-checkout" label="Checkout" dg_id="checkout" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-checkout-db" label="Orders" dg_id="checkout-db" dg_stencil="aws.aurora" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#C925D11A;strokeColor=#C925D1;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-search" label="Search" dg_id="search" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="500" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-search-db" label="Product index" dg_id="search-db" dg_stencil="elasticsearch" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00BFB31A;strokeColor=#00BFB3;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="940" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cart" label="Cart" dg_id="cart" dg_stencil="service.node" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="500" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cart-db" label="Carts" dg_id="cart-db" dg_stencil="redis.cache" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DC382D1A;strokeColor=#DC382D;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="940" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payments" label="Payments" dg_id="payments" dg_stencil="service.dotnet" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#512BD41A;strokeColor=#512BD4;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="500" y="490" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-payments-db" label="Payments" dg_id="payments-db" dg_stencil="postgres" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3367911A;strokeColor=#336791;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="940" y="490" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-inventory" label="Inventory" dg_id="inventory" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="500" y="630" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-inventory-db" label="Stock" dg_id="inventory-db" dg_stencil="mysql" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00758F1A;strokeColor=#00758F;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="940" y="630" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-agent-shop" label="Node agents&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;DaemonSet · batch, enrich&lt;/span&gt;" dg_id="agent-shop" dg_stencil="opentelemetry" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:6,&quot;concurrency&quot;:256,&quot;latencyMs&quot;:5,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#425CC71A;strokeColor=#425CC7;fontSize=12;" vertex="1" parent="dg-g-shop">
+            <mxGeometry x="1380" y="280" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-scheduler" label="Job scheduler&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;every minute&lt;/span&gt;" dg_id="scheduler" dg_stencil="generic.scheduler" dg_props="{&quot;ratePerSec&quot;:5,&quot;messageType&quot;:&quot;JobRun&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#64748B1A;strokeColor=#64748B;fontSize=12;" vertex="1" parent="dg-g-data">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-etl" label="Catalog ETL&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Spark&lt;/span&gt;" dg_id="etl" dg_stencil="generic.batch-job" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:16,&quot;latencyMs&quot;:200,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#A855F71A;strokeColor=#A855F7;fontSize=12;" vertex="1" parent="dg-g-data">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-reports" label="Sales reports&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Python&lt;/span&gt;" dg_id="reports" dg_stencil="generic.batch-job" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:16,&quot;latencyMs&quot;:200,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#A855F71A;strokeColor=#A855F7;fontSize=12;" vertex="1" parent="dg-g-data">
+            <mxGeometry x="500" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-agent-data" label="Node agents&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;DaemonSet · data cluster&lt;/span&gt;" dg_id="agent-data" dg_stencil="opentelemetry" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:3,&quot;concurrency&quot;:256,&quot;latencyMs&quot;:5,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#425CC71A;strokeColor=#425CC7;fontSize=12;" vertex="1" parent="dg-g-data">
+            <mxGeometry x="1380" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-otlp-lb" label="OTLP load balancer&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;hash by trace ID&lt;/span&gt;" dg_id="otlp-lb" dg_stencil="load-balancer" dg_props="{&quot;latencyMs&quot;:0,&quot;jitter&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0EA5E91A;strokeColor=#0EA5E9;fontSize=12;" vertex="1" parent="dg-g-collect">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-gateways" label="Gateway collectors&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;tail sampling · HPA&lt;/span&gt;" dg_id="gateways" dg_stencil="opentelemetry" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:3,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0,&quot;resources&quot;:{&quot;preset&quot;:&quot;io-service&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;cpuMsPerMessage&quot;:3,&quot;baselineMemoryMiB&quot;:192,&quot;memoryMiBPerMessage&quot;:1,&quot;cpuRequestMilli&quot;:1000,&quot;cpuLimitMilli&quot;:2000,&quot;memoryRequestMiB&quot;:1024,&quot;memoryLimitMiB&quot;:2048,&quot;startup&quot;:{&quot;delayMs&quot;:2000,&quot;jitterFraction&quot;:0},&quot;terminationGraceMs&quot;:30000},&quot;autoscaling&quot;:{&quot;mode&quot;:&quot;on&quot;,&quot;modelRevision&quot;:&quot;a1&quot;,&quot;preset&quot;:&quot;hpa-service&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;controller&quot;:{&quot;kind&quot;:&quot;hpa&quot;,&quot;minReplicas&quot;:3,&quot;maxReplicas&quot;:12,&quot;initialReplicas&quot;:3,&quot;settings&quot;:{&quot;syncMs&quot;:1000,&quot;tolerance&quot;:0.1,&quot;initialReadinessDelayMs&quot;:0,&quot;cpuInitializationPeriodMs&quot;:0,&quot;metrics&quot;:[{&quot;source&quot;:{&quot;kind&quot;:&quot;resource&quot;,&quot;resource&quot;:&quot;cpu&quot;},&quot;target&quot;:{&quot;kind&quot;:&quot;utilization&quot;,&quot;percentOfRequest&quot;:70},&quot;windowMs&quot;:1000,&quot;metricDelayMs&quot;:0}],&quot;up&quot;:{&quot;stabilizationMs&quot;:0,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Pods&quot;,&quot;value&quot;:4,&quot;periodMs&quot;:15000},{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:15000}]},&quot;down&quot;:{&quot;stabilizationMs&quot;:30000,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:15000}]}}}}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#425CC71A;strokeColor=#425CC7;fontSize=12;" vertex="1" parent="dg-g-collect">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-tenant-limits" label="Tenant limits&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;per-team budgets&lt;/span&gt;" dg_id="tenant-limits" dg_stencil="generic.rate-limiter" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:2,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#CA8A041A;strokeColor=#CA8A04;fontSize=12;" vertex="1" parent="dg-g-collect">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-logs" label="Logs&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;otlp.logs · 48 partitions&lt;/span&gt;" dg_id="logs" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:48}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-buffer">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-spans" label="Spans&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;otlp.spans · 24 partitions&lt;/span&gt;" dg_id="spans" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:24}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-buffer">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-metrics" label="Metrics&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;otlp.metrics · 12 partitions&lt;/span&gt;" dg_id="metrics" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:12}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-buffer">
+            <mxGeometry x="60" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ingesters" label="Log ingesters&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Loki write path&lt;/span&gt;" dg_id="ingesters" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:10,&quot;latencyMs&quot;:20,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-loki">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-loki-store" label="Loki&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;logs, 14 days&lt;/span&gt;" dg_id="loki-store" dg_stencil="loki">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F2A9001A;strokeColor=#F2A900;fontSize=12;" vertex="1" parent="dg-g-backends">
+            <mxGeometry x="540" y="134" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-tempo" label="Trace store&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Tempo, 7 days&lt;/span&gt;" dg_id="tempo" dg_stencil="jaeger">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#17A2C41A;strokeColor=#17A2C4;fontSize=12;" vertex="1" parent="dg-g-backends">
+            <mxGeometry x="100" y="274" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-prom" label="Metrics store&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;remote write, 13 months&lt;/span&gt;" dg_id="prom" dg_stencil="prometheus">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E6522C1A;strokeColor=#E6522C;fontSize=12;" vertex="1" parent="dg-g-backends">
+            <mxGeometry x="100" y="414" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-grafana" label="Grafana&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;dashboards, explore&lt;/span&gt;" dg_id="grafana" dg_stencil="grafana">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F468001A;strokeColor=#F46800;fontSize=12;" vertex="1" parent="dg-g-backends">
+            <mxGeometry x="540" y="414" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-rules" label="Alert rules&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;SLO burn rates&lt;/span&gt;" dg_id="rules" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:20,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-alerting">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-alertmanager" label="Alertmanager&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;group, dedupe, route&lt;/span&gt;" dg_id="alertmanager" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-alerting">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ch-sink" label="ClickHouse sink&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Kafka Connect&lt;/span&gt;" dg_id="ch-sink" dg_stencil="kafka.connect" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:5,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-archive">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-clickhouse" label="Log analytics&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;ClickHouse&lt;/span&gt;" dg_id="clickhouse" dg_stencil="clickhouse" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E0A8001A;strokeColor=#E0A800;fontSize=12;" vertex="1" parent="dg-g-archive">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-s3-sink" label="Archive sink&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;S3 sink, Parquet&lt;/span&gt;" dg_id="s3-sink" dg_stencil="kafka.connect" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:5,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-archive">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-cold" label="Cold archive&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;1 year, Glacier&lt;/span&gt;" dg_id="cold" dg_stencil="aws.s3" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#7AA116;resIcon=mxgraph.aws4.s3;" vertex="1" parent="dg-g-archive">
+            <mxGeometry x="562" y="212" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-vault" label="Vault&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;TLS and redaction keys&lt;/span&gt;" dg_id="vault" dg_stencil="vault">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EAB3081A;strokeColor=#EAB308;fontSize=12;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-pipeline-config" label="Pipeline config&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;sampling and tenant budgets&lt;/span&gt;" dg_id="pipeline-config" dg_stencil="generic.config-store">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0D94881A;strokeColor=#0D9488;fontSize=12;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-roles" label="Workload roles&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;IRSA&lt;/span&gt;" dg_id="roles" dg_stencil="aws.iam-role">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DD344C1A;strokeColor=#DD344C;fontSize=12;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-pagerduty" label="Paging service&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;on-call rotations&lt;/span&gt;" dg_id="pagerduty" dg_stencil="generic.external-api" dg_props="{&quot;preset&quot;:&quot;managed-measured&quot;,&quot;presetRevision&quot;:&quot;2026-10-14&quot;,&quot;latencyMs&quot;:150,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="dg-g-partners">
+            <mxGeometry x="60" y="490" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-status-page" label="Status page&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;public incidents&lt;/span&gt;" dg_id="status-page" dg_stencil="generic.external-api">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="dg-g-partners">
+            <mxGeometry x="60" y="770" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-slack" label="Slack&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;#incidents&lt;/span&gt;" dg_id="slack" dg_stencil="slack">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E01E5A1A;strokeColor=#E01E5A;fontSize=12;" vertex="1" parent="dg-g-partners">
+            <mxGeometry x="60" y="630" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-siem" label="Security SIEM&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;audit logs only&lt;/span&gt;" dg_id="siem" dg_stencil="splunk">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ED00801A;strokeColor=#ED0080;fontSize=12;" vertex="1" parent="dg-g-partners">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-shoppers--ingress" label="HTTPS" dg_id="shoppers--ingress" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-shoppers" target="dg-n-ingress">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--checkout" label="" dg_id="ingress--checkout" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-checkout">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-checkout--checkout-db" label="" dg_id="checkout--checkout-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-checkout" target="dg-n-checkout-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-checkout--agent-shop" label="OTLP" dg_id="checkout--agent-shop" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Telemetry&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-checkout" target="dg-n-agent-shop">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--search" label="" dg_id="ingress--search" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-search">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-search--search-db" label="" dg_id="search--search-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-search" target="dg-n-search-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-search--agent-shop" label="OTLP" dg_id="search--agent-shop" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Telemetry&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-search" target="dg-n-agent-shop">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--cart" label="" dg_id="ingress--cart" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-cart">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-cart--cart-db" label="" dg_id="cart--cart-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-cart" target="dg-n-cart-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-cart--agent-shop" label="OTLP" dg_id="cart--agent-shop" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Telemetry&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-cart" target="dg-n-agent-shop">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--payments" label="" dg_id="ingress--payments" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-payments">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-payments--payments-db" label="" dg_id="payments--payments-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-payments" target="dg-n-payments-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-payments--agent-shop" label="OTLP" dg_id="payments--agent-shop" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Telemetry&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-payments" target="dg-n-agent-shop">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingress--inventory" label="" dg_id="ingress--inventory" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingress" target="dg-n-inventory">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-inventory--inventory-db" label="" dg_id="inventory--inventory-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-inventory" target="dg-n-inventory-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-inventory--agent-shop" label="OTLP" dg_id="inventory--agent-shop" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Telemetry&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-inventory" target="dg-n-agent-shop">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-scheduler--etl" label="Run" dg_id="scheduler--etl" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-scheduler" target="dg-n-etl">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-scheduler--reports" label="Run" dg_id="scheduler--reports" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-scheduler" target="dg-n-reports">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-etl--agent-data" label="OTLP" dg_id="etl--agent-data" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Telemetry&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-etl" target="dg-n-agent-data">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-reports--agent-data" label="OTLP" dg_id="reports--agent-data" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Telemetry&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-reports" target="dg-n-agent-data">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-agent-shop--otlp-lb" label="OTLP/gRPC" dg_id="agent-shop--otlp-lb" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-agent-shop" target="dg-n-otlp-lb">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-agent-data--otlp-lb" label="OTLP/gRPC" dg_id="agent-data--otlp-lb" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-agent-data" target="dg-n-otlp-lb">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-otlp-lb--gateways" label="" dg_id="otlp-lb--gateways" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-otlp-lb" target="dg-n-gateways">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-gateways--tenant-limits" label="Sampled" dg_id="gateways--tenant-limits" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateways" target="dg-n-tenant-limits">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-tenant-limits--logs" label="Logs" dg_id="tenant-limits--logs" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;LogRecord&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-tenant-limits" target="dg-n-logs">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-tenant-limits--spans" label="Kept traces" dg_id="tenant-limits--spans" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Span&quot;,&quot;share&quot;:0.1,&quot;filter&quot;:[&quot;Telemetry&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-tenant-limits" target="dg-n-spans">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-tenant-limits--metrics" label="Metrics" dg_id="tenant-limits--metrics" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;MetricPoint&quot;,&quot;share&quot;:0.2,&quot;filter&quot;:[&quot;Telemetry&quot;]}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-tenant-limits" target="dg-n-metrics">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-logs--ingesters" label="" dg_id="logs--ingesters" dg_kind="async" dg_props="{&quot;group&quot;:&quot;loki&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-logs" target="dg-n-ingesters">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ingesters--loki-store" label="Push chunks" dg_id="ingesters--loki-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ingesters" target="dg-n-loki-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-logs--ch-sink" label="" dg_id="logs--ch-sink" dg_kind="async" dg_props="{&quot;group&quot;:&quot;clickhouse&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-logs" target="dg-n-ch-sink">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-logs--s3-sink" label="" dg_id="logs--s3-sink" dg_kind="async" dg_props="{&quot;group&quot;:&quot;archive&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-logs" target="dg-n-s3-sink">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-logs--siem" label="" dg_id="logs--siem" dg_kind="async" dg_props="{&quot;group&quot;:&quot;siem&quot;,&quot;share&quot;:0.02}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-logs" target="dg-n-siem">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-spans--tempo" label="" dg_id="spans--tempo" dg_kind="async" dg_props="{&quot;group&quot;:&quot;tempo&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-spans" target="dg-n-tempo">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-spans--s3-sink" label="" dg_id="spans--s3-sink" dg_kind="async" dg_props="{&quot;group&quot;:&quot;archive&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-spans" target="dg-n-s3-sink">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-metrics--prom" label="" dg_id="metrics--prom" dg_kind="async" dg_props="{&quot;group&quot;:&quot;prometheus&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-metrics" target="dg-n-prom">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-metrics--rules" label="" dg_id="metrics--rules" dg_kind="async" dg_props="{&quot;group&quot;:&quot;rules&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-metrics" target="dg-n-rules">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ch-sink--clickhouse" label="Insert" dg_id="ch-sink--clickhouse" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ch-sink" target="dg-n-clickhouse">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-s3-sink--cold" label="Parquet" dg_id="s3-sink--cold" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-s3-sink" target="dg-n-cold">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-rules--alertmanager" label="Firing" dg_id="rules--alertmanager" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Alert&quot;,&quot;share&quot;:0.01}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-rules" target="dg-n-alertmanager">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-alertmanager--pagerduty" label="Page" dg_id="alertmanager--pagerduty" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-alertmanager" target="dg-n-pagerduty">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-alertmanager--slack" label="Notify" dg_id="alertmanager--slack" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-alertmanager" target="dg-n-slack">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-alertmanager--status-page" label="Incident" dg_id="alertmanager--status-page" dg_kind="sync" dg_props="{&quot;share&quot;:0.2}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-alertmanager" target="dg-n-status-page">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-grafana--loki-store" label="LogQL" dg_id="grafana--loki-store" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-grafana" target="dg-n-loki-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-gateways--vault" label="Redaction keys" dg_id="gateways--vault" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;" edge="1" parent="1" source="dg-n-gateways" target="dg-n-vault">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-gateways--roles" label="" dg_id="gateways--roles" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-gateways" target="dg-n-roles">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-gateways--pipeline-config" label="Sampling policy" dg_id="gateways--pipeline-config" dg_kind="async" dg_relation="config">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#2A8A83;dashed=1;dashPattern=1 4;dfRelation=config;" edge="1" parent="1" source="dg-n-gateways" target="dg-n-pipeline-config">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-tenant-limits--pipeline-config" label="Budgets" dg_id="tenant-limits--pipeline-config" dg_kind="async" dg_relation="config">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#2A8A83;dashed=1;dashPattern=1 4;dfRelation=config;" edge="1" parent="1" source="dg-n-tenant-limits" target="dg-n-pipeline-config">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-grafana--tempo" label="TraceQL" dg_id="grafana--tempo" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-grafana" target="dg-n-tempo">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-grafana--prom" label="PromQL" dg_id="grafana--prom" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-grafana" target="dg-n-prom">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

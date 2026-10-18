@@ -1,0 +1,632 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-1e31jyd" name="Recommendations with a feature store">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v2" dg_description="An invented streaming service, Meridian Media. Home pages get candidates from an embedding index and rankings from a model that reads an online feature store, kept fresh by streaming jobs and nightly bulk loads from an offline store. A canary takes 5% of rankings and a shadow model scores a 10% mirror; a drift monitor reads every prediction." dg_direction="LR" dg_simulations="[{&quot;id&quot;:&quot;friday-night&quot;,&quot;title&quot;:&quot;Friday night peak&quot;,&quot;description&quot;:&quot;Home-page loads climb fourfold in a few seconds. Ranker v7 scales on CPU while the feature server and online store keep up; the shadow model keeps scoring its mirrored 10% without answering anyone.&quot;,&quot;seed&quot;:61,&quot;scale&quot;:20,&quot;durationMs&quot;:30000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;tv&quot;,&quot;node&quot;:&quot;tv&quot;,&quot;label&quot;:&quot;TVs and web&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;ramp&quot;,&quot;fromMs&quot;:0,&quot;startRate&quot;:300,&quot;stages&quot;:[{&quot;durationMs&quot;:4000,&quot;targetRate&quot;:1200},{&quot;durationMs&quot;:16000,&quot;targetRate&quot;:1200},{&quot;durationMs&quot;:4000,&quot;targetRate&quot;:300}]}},{&quot;id&quot;:&quot;phones&quot;,&quot;node&quot;:&quot;phones&quot;,&quot;label&quot;:&quot;App&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;ramp&quot;,&quot;fromMs&quot;:0,&quot;startRate&quot;:200,&quot;stages&quot;:[{&quot;durationMs&quot;:4000,&quot;targetRate&quot;:800},{&quot;durationMs&quot;:16000,&quot;targetRate&quot;:800},{&quot;durationMs&quot;:4000,&quot;targetRate&quot;:200}]}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Each home page asks for candidates, then ranks them: 95% on Ranker v7, 5% on the v8 canary, and 10% mirrored to the v9 shadow.&quot;,&quot;focus&quot;:[&quot;home-api&quot;,&quot;candidates&quot;,&quot;ranking-router&quot;,&quot;ranker-v7&quot;,&quot;ranker-v8&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Friday night: four times the home loads. Ranker v7 passes 70% CPU and its HPA adds pods.&quot;,&quot;focus&quot;:[&quot;ranking-router&quot;,&quot;ranker-v7&quot;]}},{&quot;atMs&quot;:9000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Every ranker reads the same online features, kept fresh by streaming jobs and bulk loads.&quot;,&quot;focus&quot;:[&quot;feature-server&quot;,&quot;online-store&quot;,&quot;ann-index&quot;]}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Predictions go to a log: the drift monitor watches them, and the lake keeps them for training.&quot;,&quot;focus&quot;:[&quot;predictions&quot;,&quot;drift&quot;,&quot;lake-sink&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;scored&quot;,&quot;label&quot;:&quot;Ranker v7 scores the peak&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ranker-v7&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:10000,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-loss&quot;,&quot;label&quot;:&quot;Nothing is dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;feature-server&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;Prediction lag drains&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;predictions&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;drift&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;}]},{&quot;id&quot;:&quot;canary-rollback&quot;,&quot;title&quot;:&quot;The canary misbehaves&quot;,&quot;description&quot;:&quot;Argo CD rolls Ranker v8 out to 5% of home pages. Its new feature join times out on half its requests; the router keeps sending it 5% until the on-call engineer sets its weight to zero.&quot;,&quot;seed&quot;:62,&quot;scale&quot;:10,&quot;durationMs&quot;:22000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;tv&quot;,&quot;node&quot;:&quot;tv&quot;,&quot;label&quot;:&quot;TVs and web&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:300,&quot;durationMs&quot;:18000}},{&quot;id&quot;:&quot;phones&quot;,&quot;node&quot;:&quot;phones&quot;,&quot;label&quot;:&quot;App&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:200,&quot;durationMs&quot;:18000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Argo CD has rolled Ranker v8 out as a canary: the router sends it 5% of rankings.&quot;,&quot;focus&quot;:[&quot;ranking-router&quot;,&quot;ranker-v7&quot;,&quot;ranker-v8&quot;]}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;ranker-v8&quot;,&quot;props&quot;:{&quot;failureRate&quot;:0.5}}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;v8's new feature join times out on half its requests. Those members get a fallback row.&quot;,&quot;focus&quot;:[&quot;ranking-router&quot;,&quot;ranker-v8&quot;,&quot;feature-server&quot;]}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;props&quot;,&quot;node&quot;:&quot;ranking-router&quot;,&quot;props&quot;:{&quot;routeTable&quot;:{&quot;rules&quot;:[],&quot;default&quot;:{&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;ranking-router--ranker-v7&quot;,&quot;weight&quot;:100},{&quot;edgeId&quot;:&quot;ranking-router--ranker-v8&quot;,&quot;weight&quot;:0}]}}}}},{&quot;atMs&quot;:8000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The quality dashboard shows the dip. On-call sets v8's weight to zero, and v7 takes every ranking again.&quot;,&quot;focus&quot;:[&quot;ranking-router&quot;,&quot;ranker-v7&quot;,&quot;ranker-v8&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;canary-failed&quot;,&quot;label&quot;:&quot;The canary fails rankings&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ranker-v8&quot;,&quot;field&quot;:&quot;failed&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;v7-clean&quot;,&quot;label&quot;:&quot;Ranker v7 never fails&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;ranker-v7&quot;,&quot;field&quot;:&quot;failed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;slow-features&quot;,&quot;title&quot;:&quot;Drill: the feature server slows down&quot;,&quot;description&quot;:&quot;A drill: a bad client upgrade makes every feature lookup ten times slower for ten seconds. Rankings queue at the feature server, which every ranker shares, then drain once the slowdown clears.&quot;,&quot;seed&quot;:63,&quot;scale&quot;:10,&quot;durationMs&quot;:26000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;tv&quot;,&quot;node&quot;:&quot;tv&quot;,&quot;label&quot;:&quot;TVs and web&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:300,&quot;durationMs&quot;:20000}},{&quot;id&quot;:&quot;phones&quot;,&quot;node&quot;:&quot;phones&quot;,&quot;label&quot;:&quot;App&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;constant&quot;,&quot;ratePerSec&quot;:200,&quot;durationMs&quot;:20000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;All three rankers, and the weekly batch scorer, read features from one shared feature server.&quot;,&quot;focus&quot;:[&quot;ranker-v7&quot;,&quot;ranker-v8&quot;,&quot;ranker-v9&quot;,&quot;feature-server&quot;]}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;fault&quot;,&quot;drill&quot;:&quot;slow-dependency&quot;,&quot;fault&quot;:{&quot;kind&quot;:&quot;slow&quot;,&quot;node&quot;:&quot;feature-server&quot;,&quot;factor&quot;:10}}},{&quot;atMs&quot;:4000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Slow dependency drill: feature lookups take ten times as long. The feature server's slots fill and rankings queue.&quot;,&quot;focus&quot;:[&quot;feature-server&quot;,&quot;online-store&quot;]}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;fault&quot;,&quot;drill&quot;:&quot;slow-dependency&quot;,&quot;fault&quot;:{&quot;kind&quot;:&quot;slow&quot;,&quot;node&quot;:&quot;feature-server&quot;,&quot;factor&quot;:1}}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The slowdown clears. The queue drains in a few seconds; nothing was dropped, but every queued home page waited.&quot;,&quot;focus&quot;:[&quot;feature-server&quot;,&quot;ranker-v7&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;queued&quot;,&quot;label&quot;:&quot;Rankings queue at the feature server&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;feature-server&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;&gt;&quot;,&quot;value&quot;:100,&quot;when&quot;:&quot;eventually&quot;},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;The queue drains&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;feature-server&quot;,&quot;field&quot;:&quot;backlog&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;no-loss&quot;,&quot;label&quot;:&quot;Nothing is dropped&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;feature-server&quot;,&quot;field&quot;:&quot;dropped&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;always&quot;}]},{&quot;id&quot;:&quot;sunday-picks&quot;,&quot;title&quot;:&quot;Sunday picks wake the batch scorer&quot;,&quot;description&quot;:&quot;At six on Sunday the schedule queues 6,000 members for their weekly email. KEDA wakes the batch scorer from zero on topic lag, scales it out to the partition count, then lets it sleep again.&quot;,&quot;seed&quot;:64,&quot;scale&quot;:10,&quot;durationMs&quot;:40000,&quot;traffic&quot;:[{&quot;id&quot;:&quot;members&quot;,&quot;node&quot;:&quot;picks-schedule&quot;,&quot;label&quot;:&quot;6,000 members&quot;,&quot;messageType&quot;:&quot;ScoreMember&quot;,&quot;shape&quot;:{&quot;kind&quot;:&quot;burst&quot;,&quot;count&quot;:6000,&quot;atMs&quot;:1000,&quot;spreadMs&quot;:4000}}],&quot;timeline&quot;:[{&quot;atMs&quot;:0,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;The batch scorer has no pods: it sleeps until members to score arrive.&quot;,&quot;focus&quot;:[&quot;picks-schedule&quot;,&quot;pick-requests&quot;,&quot;batch-scorer&quot;]}},{&quot;atMs&quot;:3000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;6,000 members queue in the topic. KEDA sees the lag and wakes the scorer, then adds pods, up to one per partition.&quot;,&quot;focus&quot;:[&quot;pick-requests&quot;,&quot;batch-scorer&quot;]}},{&quot;atMs&quot;:14000,&quot;action&quot;:{&quot;do&quot;:&quot;note&quot;,&quot;text&quot;:&quot;Each scored member's picks are stored and mailed. The scorer shares the feature server with live home pages.&quot;,&quot;focus&quot;:[&quot;batch-scorer&quot;,&quot;feature-server&quot;,&quot;picks-db&quot;,&quot;picks-mailer&quot;]}}],&quot;expectations&quot;:[{&quot;id&quot;:&quot;scored&quot;,&quot;label&quot;:&quot;Every member is scored&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;batch-scorer&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:6000,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;mailed&quot;,&quot;label&quot;:&quot;Every member gets an email&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;picks-mailer&quot;,&quot;field&quot;:&quot;processed&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:6000,&quot;when&quot;:&quot;end&quot;},{&quot;id&quot;:&quot;drained&quot;,&quot;label&quot;:&quot;The topic drains&quot;,&quot;metric&quot;:{&quot;node&quot;:&quot;pick-requests&quot;,&quot;field&quot;:&quot;lag&quot;,&quot;group&quot;:&quot;scorer&quot;},&quot;op&quot;:&quot;==&quot;,&quot;value&quot;:0,&quot;when&quot;:&quot;end&quot;}]}]" dg_planning="{&quot;revision&quot;:&quot;p3-a1&quot;,&quot;requestRoutes&quot;:[{&quot;id&quot;:&quot;home&quot;,&quot;label&quot;:&quot;Home page&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;GET&quot;,&quot;path&quot;:&quot;/v1/home&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:0,&quot;marker&quot;:&quot;circle&quot;}},{&quot;id&quot;:&quot;play-event&quot;,&quot;label&quot;:&quot;Playback event&quot;,&quot;address&quot;:{&quot;method&quot;:&quot;POST&quot;,&quot;path&quot;:&quot;/v1/events/play&quot;},&quot;appearance&quot;:{&quot;paletteSlot&quot;:2,&quot;marker&quot;:&quot;square&quot;}}]}">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-g-aws" label="AWS us-east-1 · production" dg_id="aws" dg_tone="aws">
+          <mxCell style="points=[];outlineConnect=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;spacingLeft=30;dashed=0;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#232F3E;strokeColor=#232F3E;" vertex="1" parent="1">
+            <mxGeometry x="400" y="32" width="4459" height="1840" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-serving" label="EKS · home page serving" dg_id="serving" dg_tone="k8s" dg_group="aws">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#326CE5;strokeColor=#326CE5;" vertex="1" parent="1">
+            <mxGeometry x="860" y="96" width="1660" height="1016" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-features" label="Feature store" dg_id="features" dg_tone="neutral" dg_group="aws">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="2640" y="96" width="302" height="876" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-streaming" label="Streaming features" dg_id="streaming" dg_tone="neutral" dg_group="aws">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="860" y="1236" width="1220" height="596" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-batch" label="Batch features and training" dg_id="batch" dg_tone="neutral" dg_group="aws">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3160" y="96" width="1620" height="456" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-monitoring" label="Model monitoring" dg_id="monitoring" dg_tone="neutral" dg_group="aws">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="2200" y="1516" width="740" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-platform" label="Platform" dg_id="platform" dg_tone="neutral" dg_group="aws">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#94A3B8;strokeColor=#94A3B8;" vertex="1" parent="1">
+            <mxGeometry x="3160" y="756" width="1180" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-g-picks" label="Weekly picks · EKS batch" dg_id="picks" dg_tone="k8s" dg_group="aws">
+          <mxCell style="rounded=1;arcSize=3;absoluteArcSize=1;dashed=1;spacingLeft=12;spacingTop=4;container=1;collapsible=0;recursiveResize=0;html=1;whiteSpace=wrap;fillColor=none;verticalAlign=top;align=left;fontStyle=1;fontSize=12;fontColor=#326CE5;strokeColor=#326CE5;" vertex="1" parent="1">
+            <mxGeometry x="3160" y="1236" width="1659" height="316" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-tv" label="TVs and web&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;home page loads&lt;/span&gt;" dg_id="tv" dg_stencil="client.browser" dg_props="{&quot;ratePerSec&quot;:300,&quot;trafficMix&quot;:{&quot;mode&quot;:&quot;shares&quot;,&quot;entries&quot;:[{&quot;routeId&quot;:&quot;home&quot;,&quot;share&quot;:0.6},{&quot;routeId&quot;:&quot;play-event&quot;,&quot;share&quot;:0.4}]}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#6366F11A;strokeColor=#6366F1;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="426" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-phones" label="Meridian app&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;iOS and Android&lt;/span&gt;" dg_id="phones" dg_stencil="client.mobile" dg_props="{&quot;ratePerSec&quot;:200,&quot;trafficMix&quot;:{&quot;mode&quot;:&quot;shares&quot;,&quot;entries&quot;:[{&quot;routeId&quot;:&quot;home&quot;,&quot;share&quot;:0.5},{&quot;routeId&quot;:&quot;play-event&quot;,&quot;share&quot;:0.5}]}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#10B9811A;strokeColor=#10B981;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="20" y="646" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-gateway" label="API gateway&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;route table&lt;/span&gt;" dg_id="gateway" dg_stencil="aws.api-gateway" dg_props="{&quot;latencyMs&quot;:0,&quot;jitter&quot;:0,&quot;routeTable&quot;:{&quot;rules&quot;:[{&quot;id&quot;:&quot;home&quot;,&quot;label&quot;:&quot;Home rows&quot;,&quot;match&quot;:{&quot;methods&quot;:[&quot;GET&quot;],&quot;path&quot;:{&quot;kind&quot;:&quot;exact&quot;,&quot;value&quot;:&quot;/v1/home&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;gateway--home-api&quot;,&quot;weight&quot;:1}]},{&quot;id&quot;:&quot;events&quot;,&quot;label&quot;:&quot;Playback events&quot;,&quot;match&quot;:{&quot;methods&quot;:[&quot;POST&quot;],&quot;path&quot;:{&quot;kind&quot;:&quot;prefix&quot;,&quot;value&quot;:&quot;/v1/events&quot;}},&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;gateway--collector&quot;,&quot;weight&quot;:1}]}]}}">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#8C4FFF;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="dg-g-aws">
+            <mxGeometry x="122" y="496" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-home-api" label="Home API&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;builds the rows&lt;/span&gt;" dg_id="home-api" dg_stencil="service.node" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:6,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:30,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="60" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-candidates" label="Candidate generation&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;500 titles per member&lt;/span&gt;" dg_id="candidates" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:20,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="500" y="490" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-profiles" label="Member profiles&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;taste, language, devices&lt;/span&gt;" dg_id="profiles" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:3,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-metadata" label="Title metadata&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;rights, maturity, art&lt;/span&gt;" dg_id="metadata" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:3,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="500" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-bookmarks" label="Continue watching&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;resume points&lt;/span&gt;" dg_id="bookmarks" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:3,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="500" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-artwork" label="Artwork chooser&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;bandit per member&lt;/span&gt;" dg_id="artwork" dg_stencil="service.python" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:3,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:15,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="500" y="630" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ranking-router" label="Ranking router&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;95% v7, 5% v8 canary&lt;/span&gt;" dg_id="ranking-router" dg_stencil="envoy" dg_props="{&quot;latencyMs&quot;:0,&quot;jitter&quot;:0,&quot;routeTable&quot;:{&quot;rules&quot;:[],&quot;default&quot;:{&quot;targets&quot;:[{&quot;edgeId&quot;:&quot;ranking-router--ranker-v7&quot;,&quot;weight&quot;:95},{&quot;edgeId&quot;:&quot;ranking-router--ranker-v8&quot;,&quot;weight&quot;:5}]}}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#AC61991A;strokeColor=#AC6199;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="500" y="770" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ranker-v7" label="Ranker v7&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;PyTorch · HPA on CPU&lt;/span&gt;" dg_id="ranker-v7" dg_stencil="service.python" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0,&quot;resources&quot;:{&quot;preset&quot;:&quot;io-service&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;cpuMsPerMessage&quot;:8,&quot;baselineMemoryMiB&quot;:192,&quot;memoryMiBPerMessage&quot;:1,&quot;cpuRequestMilli&quot;:1000,&quot;cpuLimitMilli&quot;:2000,&quot;memoryRequestMiB&quot;:2048,&quot;memoryLimitMiB&quot;:4096,&quot;startup&quot;:{&quot;delayMs&quot;:3000,&quot;jitterFraction&quot;:0},&quot;terminationGraceMs&quot;:30000},&quot;autoscaling&quot;:{&quot;mode&quot;:&quot;on&quot;,&quot;modelRevision&quot;:&quot;a1&quot;,&quot;preset&quot;:&quot;hpa-service&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;controller&quot;:{&quot;kind&quot;:&quot;hpa&quot;,&quot;minReplicas&quot;:4,&quot;maxReplicas&quot;:16,&quot;initialReplicas&quot;:4,&quot;settings&quot;:{&quot;syncMs&quot;:1000,&quot;tolerance&quot;:0.1,&quot;initialReadinessDelayMs&quot;:0,&quot;cpuInitializationPeriodMs&quot;:0,&quot;metrics&quot;:[{&quot;source&quot;:{&quot;kind&quot;:&quot;resource&quot;,&quot;resource&quot;:&quot;cpu&quot;},&quot;target&quot;:{&quot;kind&quot;:&quot;utilization&quot;,&quot;percentOfRequest&quot;:70},&quot;windowMs&quot;:1000,&quot;metricDelayMs&quot;:0}],&quot;up&quot;:{&quot;stabilizationMs&quot;:0,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Pods&quot;,&quot;value&quot;:4,&quot;periodMs&quot;:15000},{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:15000}]},&quot;down&quot;:{&quot;stabilizationMs&quot;:30000,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:15000}]}}}}}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="940" y="770" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ranker-v8" label="Ranker v8 canary&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;new watch-time features&lt;/span&gt;" dg_id="ranker-v8" dg_stencil="service.python" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="940" y="910" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ranker-v9" label="Ranker v9 shadow&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;mirrored, answers discarded&lt;/span&gt;" dg_id="ranker-v9" dg_stencil="service.python" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:50,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="500" y="910" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-feature-server" label="Feature server&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;joins member and title features&lt;/span&gt;" dg_id="feature-server" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:8,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-serving">
+            <mxGeometry x="1380" y="770" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-online-store" label="Online features&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;latest value per key&lt;/span&gt;" dg_id="online-store" dg_stencil="redis.cache" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DC382D1A;strokeColor=#DC382D;fontSize=12;" vertex="1" parent="dg-g-features">
+            <mxGeometry x="60" y="630" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-profiles-db" label="Profiles&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;DynamoDB&lt;/span&gt;" dg_id="profiles-db" dg_stencil="aws.dynamodb" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#C925D1;resIcon=mxgraph.aws4.dynamodb;" vertex="1" parent="dg-g-features">
+            <mxGeometry x="122" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-bookmarks-db" label="Resume points&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Cassandra&lt;/span&gt;" dg_id="bookmarks-db" dg_stencil="cassandra" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#1287B11A;strokeColor=#1287B1;fontSize=12;" vertex="1" parent="dg-g-features">
+            <mxGeometry x="60" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-title-cache" label="Title cache&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;metadata, 5-min TTL&lt;/span&gt;" dg_id="title-cache" dg_stencil="redis.cache" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DC382D1A;strokeColor=#DC382D;fontSize=12;" vertex="1" parent="dg-g-features">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-ann-index" label="Embedding index&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;title embeddings&lt;/span&gt;" dg_id="ann-index" dg_stencil="generic.vector-db" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-features">
+            <mxGeometry x="60" y="490" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-offline-store" label="Offline features&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Iceberg, point in time&lt;/span&gt;" dg_id="offline-store" dg_stencil="aws.s3" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#7AA116;resIcon=mxgraph.aws4.s3;" vertex="1" parent="dg-g-features">
+            <mxGeometry x="122" y="772" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-collector" label="Event collector&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;plays, pauses, skips&lt;/span&gt;" dg_id="collector" dg_stencil="service.go" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:5,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#00ADD81A;strokeColor=#00ADD8;fontSize=12;" vertex="1" parent="dg-g-streaming">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-play-events" label="Playback events&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;play-events.v2 · 48 partitions&lt;/span&gt;" dg_id="play-events" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:48}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-streaming">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-sessionizer" label="Session features&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;last 30 minutes per member&lt;/span&gt;" dg_id="sessionizer" dg_stencil="flink" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:8,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E6526F1A;strokeColor=#E6526F;fontSize=12;" vertex="1" parent="dg-g-streaming">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-bookmarks-writer" label="Resume writer&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;last position per title&lt;/span&gt;" dg_id="bookmarks-writer" dg_stencil="service.java" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:5,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E76F001A;strokeColor=#E76F00;fontSize=12;" vertex="1" parent="dg-g-streaming">
+            <mxGeometry x="940" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-trending" label="Trending now&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;plays per title, 5-min windows&lt;/span&gt;" dg_id="trending" dg_stencil="flink" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:4,&quot;concurrency&quot;:64,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E6526F1A;strokeColor=#E6526F;fontSize=12;" vertex="1" parent="dg-g-streaming">
+            <mxGeometry x="940" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-lake-sink" label="Lake sink&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Iceberg sink&lt;/span&gt;" dg_id="lake-sink" dg_stencil="kafka.connect" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:128,&quot;latencyMs&quot;:10,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-streaming">
+            <mxGeometry x="940" y="490" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-predictions" label="Prediction log&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;predictions.v1 · 24 partitions&lt;/span&gt;" dg_id="predictions" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:24}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-streaming">
+            <mxGeometry x="500" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-dags" label="Feature DAGs&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;hourly and nightly&lt;/span&gt;" dg_id="dags" dg_stencil="airflow" dg_props="{&quot;ratePerSec&quot;:0.05,&quot;messageType&quot;:&quot;DagRun&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#017CEE1A;strokeColor=#017CEE;fontSize=12;" vertex="1" parent="dg-g-batch">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-backfill" label="Feature backfill&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Spark, point-in-time joins&lt;/span&gt;" dg_id="backfill" dg_stencil="databricks" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FF36211A;strokeColor=#FF3621;fontSize=12;" vertex="1" parent="dg-g-batch">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-materialize" label="Materialize&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;offline to online&lt;/span&gt;" dg_id="materialize" dg_stencil="generic.batch-job" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:1,&quot;concurrency&quot;:4,&quot;latencyMs&quot;:500,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#A855F71A;strokeColor=#A855F7;fontSize=12;" vertex="1" parent="dg-g-batch">
+            <mxGeometry x="500" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-train" label="Ranker training&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;nightly, GPU&lt;/span&gt;" dg_id="train" dg_stencil="generic.batch-job" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:1,&quot;concurrency&quot;:1,&quot;latencyMs&quot;:3000,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#A855F71A;strokeColor=#A855F7;fontSize=12;" vertex="1" parent="dg-g-batch">
+            <mxGeometry x="500" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-eval" label="Offline evaluation&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;replay last week's sessions&lt;/span&gt;" dg_id="eval" dg_stencil="generic.batch-job" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:1,&quot;concurrency&quot;:1,&quot;latencyMs&quot;:2000,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#A855F71A;strokeColor=#A855F7;fontSize=12;" vertex="1" parent="dg-g-batch">
+            <mxGeometry x="940" y="350" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-registry" label="Model registry&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;versions and metrics&lt;/span&gt;" dg_id="registry" dg_stencil="aws.s3" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#7AA116;resIcon=mxgraph.aws4.s3;" vertex="1" parent="dg-g-batch">
+            <mxGeometry x="1442" y="352" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-picks-schedule" label="Picks schedule&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;Sundays 06:00&lt;/span&gt;" dg_id="picks-schedule" dg_stencil="generic.scheduler" dg_props="{&quot;ratePerSec&quot;:0,&quot;messageType&quot;:&quot;ScoreMember&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#64748B1A;strokeColor=#64748B;fontSize=12;" vertex="1" parent="dg-g-picks">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-pick-requests" label="Members to score&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;picks.requests · 16 partitions&lt;/span&gt;" dg_id="pick-requests" dg_stencil="kafka.topic" dg_props="{&quot;partitions&quot;:16}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#7C3AED1A;strokeColor=#7C3AED;fontSize=12;" vertex="1" parent="dg-g-picks">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-batch-scorer" label="Batch scorer&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;KEDA on lag, sleeps at zero&lt;/span&gt;" dg_id="batch-scorer" dg_stencil="service.python" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:0,&quot;concurrency&quot;:8,&quot;latencyMs&quot;:200,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0,&quot;resources&quot;:{&quot;preset&quot;:&quot;io-service&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;cpuMsPerMessage&quot;:40,&quot;baselineMemoryMiB&quot;:192,&quot;memoryMiBPerMessage&quot;:1,&quot;cpuRequestMilli&quot;:1000,&quot;cpuLimitMilli&quot;:2000,&quot;memoryRequestMiB&quot;:2048,&quot;memoryLimitMiB&quot;:4096,&quot;startup&quot;:{&quot;delayMs&quot;:2000,&quot;jitterFraction&quot;:0},&quot;terminationGraceMs&quot;:30000},&quot;autoscaling&quot;:{&quot;mode&quot;:&quot;on&quot;,&quot;modelRevision&quot;:&quot;a2&quot;,&quot;preset&quot;:&quot;keda-kafka&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;controller&quot;:{&quot;kind&quot;:&quot;keda&quot;,&quot;minReplicas&quot;:0,&quot;maxReplicas&quot;:16,&quot;initialReplicas&quot;:0,&quot;pollingMs&quot;:1000,&quot;cooldownMs&quot;:5000,&quot;initialCooldownMs&quot;:0,&quot;triggers&quot;:[{&quot;type&quot;:&quot;kafka&quot;,&quot;source&quot;:{&quot;node&quot;:&quot;pick-requests&quot;,&quot;group&quot;:&quot;scorer&quot;},&quot;target&quot;:500,&quot;activation&quot;:0,&quot;useCachedMetrics&quot;:false,&quot;allowIdleConsumers&quot;:false}],&quot;settings&quot;:{&quot;syncMs&quot;:1000,&quot;tolerance&quot;:0.1,&quot;initialReadinessDelayMs&quot;:0,&quot;cpuInitializationPeriodMs&quot;:0,&quot;metrics&quot;:[],&quot;up&quot;:{&quot;stabilizationMs&quot;:0,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Pods&quot;,&quot;value&quot;:4,&quot;periodMs&quot;:3000},{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:3000}]},&quot;down&quot;:{&quot;stabilizationMs&quot;:300000,&quot;selectPolicy&quot;:&quot;Max&quot;,&quot;policies&quot;:[{&quot;type&quot;:&quot;Percent&quot;,&quot;value&quot;:100,&quot;periodMs&quot;:15000}]}}}},&quot;emits&quot;:&quot;PicksReady&quot;}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="dg-g-picks">
+            <mxGeometry x="940" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-picks-db" label="Weekly picks&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;DynamoDB, one row per member&lt;/span&gt;" dg_id="picks-db" dg_stencil="aws.dynamodb" dg_props="{&quot;latencyMs&quot;:0}">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#C925D1;resIcon=mxgraph.aws4.dynamodb;" vertex="1" parent="dg-g-picks">
+            <mxGeometry x="1442" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-picks-mailer" label="Picks mailer&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;renders the email&lt;/span&gt;" dg_id="picks-mailer" dg_stencil="service.node" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:40,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#5FA04E1A;strokeColor=#5FA04E;fontSize=12;" vertex="1" parent="dg-g-picks">
+            <mxGeometry x="1380" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-esp" label="Email provider&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;transactional email&lt;/span&gt;" dg_id="esp" dg_stencil="generic.email">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EF44441A;strokeColor=#EF4444;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="5020" y="1446" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-drift" label="Drift monitor&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;feature and score drift&lt;/span&gt;" dg_id="drift" dg_stencil="service.python" dg_props="{&quot;preset&quot;:&quot;processor-lesson&quot;,&quot;presetRevision&quot;:&quot;1&quot;,&quot;replicas&quot;:2,&quot;concurrency&quot;:32,&quot;latencyMs&quot;:20,&quot;jitter&quot;:0.1,&quot;failureRate&quot;:0}">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#3776AB1A;strokeColor=#3776AB;fontSize=12;" vertex="1" parent="dg-g-monitoring">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-alerts" label="Drift alerts&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;SNS&lt;/span&gt;" dg_id="alerts" dg_stencil="aws.sns">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#E7157B;resIcon=mxgraph.aws4.sns;" vertex="1" parent="dg-g-monitoring">
+            <mxGeometry x="562" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-slack" label="Slack&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;#recs-oncall&lt;/span&gt;" dg_id="slack" dg_stencil="slack">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#E01E5A1A;strokeColor=#E01E5A;fontSize=12;" vertex="1" parent="1">
+            <mxGeometry x="5020" y="1586" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-quality" label="Model quality&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;CTR, coverage, drift&lt;/span&gt;" dg_id="quality" dg_stencil="grafana">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F468001A;strokeColor=#F46800;fontSize=12;" vertex="1" parent="dg-g-monitoring">
+            <mxGeometry x="500" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-argocd" label="Argo CD&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;model rollouts&lt;/span&gt;" dg_id="argocd" dg_stencil="argocd">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EF7B4D1A;strokeColor=#EF7B4D;fontSize=12;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="60" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-roles" label="Workload roles&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;IRSA&lt;/span&gt;" dg_id="roles" dg_stencil="aws.iam-role">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DD344C1A;strokeColor=#DD344C;fontSize=12;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="500" y="70" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-secrets" label="Secrets Manager" dg_id="secrets" dg_stencil="aws.secrets-manager">
+          <mxCell style="sketch=0;outlineConnect=0;fontColor=#232F3E;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;fillColor=#DD344C;resIcon=mxgraph.aws4.secrets_manager;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="1002" y="72" width="56" height="56" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-experiments" label="Experiments&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;A/B assignment&lt;/span&gt;" dg_id="experiments" dg_stencil="generic.config-store">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0D94881A;strokeColor=#0D9488;fontSize=12;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="60" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-n-feature-registry" label="Feature registry&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6B7280;&quot;&gt;one definition per feature&lt;/span&gt;" dg_id="feature-registry" dg_stencil="generic.config-store">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0D94881A;strokeColor=#0D9488;fontSize=12;" vertex="1" parent="dg-g-platform">
+            <mxGeometry x="500" y="210" width="180" height="60" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-note-skew" label="Training and serving read the same feature definitions: offline for point-in-time training sets, online for the latest value." dg_id="note-skew" dg_annotation="note" dg_text="Training and serving read the same feature definitions: offline for point-in-time training sets, online for the latest value.">
+          <mxCell style="shape=note;html=1;whiteSpace=wrap;backgroundOutline=1;size=14;align=left;verticalAlign=top;spacing=10;fontSize=14;fillColor=#FFF4C2;strokeColor=#E0A800;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="900" width="320" height="150" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-tv--gateway" label="HTTPS" dg_id="tv--gateway" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-tv" target="dg-n-gateway">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-phones--gateway" label="HTTPS" dg_id="phones--gateway" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-phones" target="dg-n-gateway">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-gateway--home-api" label="Home" dg_id="gateway--home-api" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateway" target="dg-n-home-api">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-gateway--collector" label="Events" dg_id="gateway--collector" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-gateway" target="dg-n-collector">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--profiles" label="Profile" dg_id="home-api--profiles" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-profiles">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-profiles--profiles-db" label="" dg_id="profiles--profiles-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-profiles" target="dg-n-profiles-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--metadata" label="Titles" dg_id="home-api--metadata" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-metadata">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-metadata--title-cache" label="" dg_id="metadata--title-cache" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-metadata" target="dg-n-title-cache">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--artwork" label="Artwork" dg_id="home-api--artwork" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-artwork">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--bookmarks" label="Resume row" dg_id="home-api--bookmarks" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-bookmarks">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-bookmarks--bookmarks-db" label="" dg_id="bookmarks--bookmarks-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-bookmarks" target="dg-n-bookmarks-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-play-events--bookmarks-writer" label="" dg_id="play-events--bookmarks-writer" dg_kind="async" dg_props="{&quot;group&quot;:&quot;bookmarks&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-play-events" target="dg-n-bookmarks-writer">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-bookmarks-writer--bookmarks-db" label="Resume point" dg_id="bookmarks-writer--bookmarks-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-bookmarks-writer" target="dg-n-bookmarks-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-artwork--online-store" label="Arm stats" dg_id="artwork--online-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-artwork" target="dg-n-online-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--candidates" label="Candidates" dg_id="home-api--candidates" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-candidates">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-candidates--ann-index" label="Nearest titles" dg_id="candidates--ann-index" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-candidates" target="dg-n-ann-index">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--ranking-router" label="Rank" dg_id="home-api--ranking-router" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-ranking-router">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--ranker-v9" label="Mirror 10%" dg_id="home-api--ranker-v9" dg_kind="sync" dg_props="{&quot;share&quot;:0.1}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-ranker-v9">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranking-router--ranker-v7" label="" dg_id="ranking-router--ranker-v7" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ranking-router" target="dg-n-ranker-v7">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranking-router--ranker-v8" label="" dg_id="ranking-router--ranker-v8" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ranking-router" target="dg-n-ranker-v8">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v7--feature-server" label="Features" dg_id="ranker-v7--feature-server" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ranker-v7" target="dg-n-feature-server">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v8--feature-server" label="Features" dg_id="ranker-v8--feature-server" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ranker-v8" target="dg-n-feature-server">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v9--feature-server" label="Features" dg_id="ranker-v9--feature-server" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-ranker-v9" target="dg-n-feature-server">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-feature-server--online-store" label="" dg_id="feature-server--online-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-feature-server" target="dg-n-online-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v7--predictions" label="Scored rows" dg_id="ranker-v7--predictions" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Prediction&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ranker-v7" target="dg-n-predictions">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v8--predictions" label="Scored rows" dg_id="ranker-v8--predictions" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;Prediction&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ranker-v8" target="dg-n-predictions">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v9--predictions" label="Shadow scores" dg_id="ranker-v9--predictions" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;ShadowPrediction&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ranker-v9" target="dg-n-predictions">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-collector--play-events" label="PlayEvent" dg_id="collector--play-events" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;PlayEvent&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-collector" target="dg-n-play-events">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-play-events--sessionizer" label="" dg_id="play-events--sessionizer" dg_kind="async" dg_props="{&quot;group&quot;:&quot;sessions&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-play-events" target="dg-n-sessionizer">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-play-events--trending" label="" dg_id="play-events--trending" dg_kind="async" dg_props="{&quot;group&quot;:&quot;trending&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-play-events" target="dg-n-trending">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-play-events--lake-sink" label="" dg_id="play-events--lake-sink" dg_kind="async" dg_props="{&quot;group&quot;:&quot;lake&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-play-events" target="dg-n-lake-sink">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-sessionizer--online-store" label="Update" dg_id="sessionizer--online-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-sessionizer" target="dg-n-online-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-trending--online-store" label="Update" dg_id="trending--online-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-trending" target="dg-n-online-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-lake-sink--offline-store" label="Append" dg_id="lake-sink--offline-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-lake-sink" target="dg-n-offline-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-predictions--drift" label="" dg_id="predictions--drift" dg_kind="async" dg_props="{&quot;group&quot;:&quot;drift&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-predictions" target="dg-n-drift">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-predictions--lake-sink" label="" dg_id="predictions--lake-sink" dg_kind="async" dg_props="{&quot;group&quot;:&quot;lake&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-predictions" target="dg-n-lake-sink">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-drift--quality" label="Metrics" dg_id="drift--quality" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-drift" target="dg-n-quality">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-drift--alerts" label="DriftDetected" dg_id="drift--alerts" dg_kind="async" dg_props="{&quot;emits&quot;:&quot;DriftDetected&quot;,&quot;share&quot;:0.01}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-drift" target="dg-n-alerts">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-alerts--slack" label="Page" dg_id="alerts--slack" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-alerts" target="dg-n-slack">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-picks-schedule--pick-requests" label="One per member" dg_id="picks-schedule--pick-requests" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-picks-schedule" target="dg-n-pick-requests">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-pick-requests--batch-scorer" label="" dg_id="pick-requests--batch-scorer" dg_kind="async" dg_props="{&quot;group&quot;:&quot;scorer&quot;}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-pick-requests" target="dg-n-batch-scorer">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-batch-scorer--feature-server" label="Features" dg_id="batch-scorer--feature-server" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-batch-scorer" target="dg-n-feature-server">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-batch-scorer--picks-db" label="Write picks" dg_id="batch-scorer--picks-db" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-batch-scorer" target="dg-n-picks-db">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-batch-scorer--picks-mailer" label="PicksReady" dg_id="batch-scorer--picks-mailer" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-batch-scorer" target="dg-n-picks-mailer">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-picks-mailer--esp" label="Send" dg_id="picks-mailer--esp" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-picks-mailer" target="dg-n-esp">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dags--backfill" label="Run" dg_id="dags--backfill" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-dags" target="dg-n-backfill">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-backfill--offline-store" label="Write features" dg_id="backfill--offline-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-backfill" target="dg-n-offline-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dags--materialize" label="Run" dg_id="dags--materialize" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-dags" target="dg-n-materialize">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-materialize--online-store" label="Bulk load" dg_id="materialize--online-store" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-materialize" target="dg-n-online-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-dags--train" label="Nightly" dg_id="dags--train" dg_kind="async">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-dags" target="dg-n-train">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-train--eval" label="Candidate model" dg_id="train--eval" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-train" target="dg-n-eval">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-eval--registry" label="Publish if better" dg_id="eval--registry" dg_kind="sync">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;" edge="1" parent="1" source="dg-n-eval" target="dg-n-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-train--offline-store" label="Training sets" dg_id="train--offline-store" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-train" target="dg-n-offline-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-materialize--offline-store" label="Reads" dg_id="materialize--offline-store" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-materialize" target="dg-n-offline-store">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v7--registry" label="Loads v7" dg_id="ranker-v7--registry" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-ranker-v7" target="dg-n-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-ranker-v8--registry" label="Loads v8" dg_id="ranker-v8--registry" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-ranker-v8" target="dg-n-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-argocd--ranker-v8" label="Canary" dg_id="argocd--ranker-v8" dg_kind="async" dg_relation="deploy">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#3B8752;dashed=1;dashPattern=1 4;dfRelation=deploy;" edge="1" parent="1" source="dg-n-argocd" target="dg-n-ranker-v8">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-feature-server--roles" label="" dg_id="feature-server--roles" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-feature-server" target="dg-n-roles">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-home-api--experiments" label="Variant" dg_id="home-api--experiments" dg_kind="async" dg_relation="config">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#2A8A83;dashed=1;dashPattern=1 4;dfRelation=config;" edge="1" parent="1" source="dg-n-home-api" target="dg-n-experiments">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-feature-server--feature-registry" label="Definitions" dg_id="feature-server--feature-registry" dg_kind="async" dg_relation="config">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#2A8A83;dashed=1;dashPattern=1 4;dfRelation=config;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="dg-n-feature-server" target="dg-n-feature-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-sessionizer--feature-registry" label="" dg_id="sessionizer--feature-registry" dg_kind="async" dg_relation="config">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#2A8A83;dashed=1;dashPattern=1 4;dfRelation=config;" edge="1" parent="1" source="dg-n-sessionizer" target="dg-n-feature-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-backfill--feature-registry" label="" dg_id="backfill--feature-registry" dg_kind="async" dg_relation="config">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#2A8A83;dashed=1;dashPattern=1 4;dfRelation=config;" edge="1" parent="1" source="dg-n-backfill" target="dg-n-feature-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-collector--secrets" label="Signing key" dg_id="collector--secrets" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;" edge="1" parent="1" source="dg-n-collector" target="dg-n-secrets">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-collector--roles" label="" dg_id="collector--roles" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-collector" target="dg-n-roles">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-batch-scorer--registry" label="Loads v7" dg_id="batch-scorer--registry" dg_kind="async" dg_relation="depends">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#556075;dashed=1;dashPattern=1 4;dfRelation=depends;" edge="1" parent="1" source="dg-n-batch-scorer" target="dg-n-registry">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-picks-mailer--secrets" label="Provider key" dg_id="picks-mailer--secrets" dg_kind="async" dg_relation="secret">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#A6720C;dashed=1;dashPattern=1 4;dfRelation=secret;" edge="1" parent="1" source="dg-n-picks-mailer" target="dg-n-secrets">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-e-picks-mailer--roles" label="" dg_id="picks-mailer--roles" dg_kind="async" dg_relation="identity">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=#5A61C4;dashed=1;dashPattern=1 4;dfRelation=identity;" edge="1" parent="1" source="dg-n-picks-mailer" target="dg-n-roles">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

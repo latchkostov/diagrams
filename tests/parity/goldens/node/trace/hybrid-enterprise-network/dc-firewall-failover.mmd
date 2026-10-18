@@ -1,0 +1,38 @@
+---
+title: "ERP #1 · 2.36 s end to end"
+---
+sequenceDiagram
+  participant hq_staff as HQ staff
+  participant access as Access switches
+  participant core as Core switch pair
+  participant hq_fw as HQ firewall pair
+  participant hq_wan as HQ SD-WAN edge
+  participant dc_edge as DC edge routers
+  participant dc_fw as DC firewall pair
+  participant spine_1 as Spine 1
+  participant leaf as Server leaf pair
+  participant adc as ADC pair
+  participant erp as ERP
+  participant erp_db as ERP database
+  hq_staff->>access: ERP (+0.00 s)
+  access-->>hq_staff: reply (+0.21 s)
+  access->>core: ERP (+0.21 s)
+  core-->>access: reply (+0.42 s)
+  core->>hq_fw: ERP (+0.42 s)
+  hq_fw-->>core: reply (+0.63 s)
+  hq_fw->>hq_wan: ERP (+0.63 s)<br/>Allow: staff to DC
+  hq_wan-->>hq_fw: reply (+0.84 s)
+  hq_wan->>dc_edge: ERP (+0.84 s)<br/>SD-WAN overlay
+  dc_edge-->>hq_wan: reply (+1.05 s)
+  dc_edge->>dc_fw: ERP (+1.05 s)
+  dc_fw-->>dc_edge: reply (+1.26 s)
+  dc_fw->>spine_1: ERP (+1.26 s)<br/>Allow: inside apps
+  spine_1-->>dc_fw: reply (+1.47 s)
+  spine_1->>leaf: ERP (+1.47 s)
+  leaf-->>spine_1: reply (+1.68 s)
+  leaf->>adc: ERP (+1.68 s)
+  adc-->>leaf: reply (+1.89 s)
+  adc->>erp: ERP (+1.89 s)
+  erp-->>adc: reply (+2.16 s)
+  erp->>erp_db: ERP (+2.16 s)<br/>SQL
+  erp_db-->>erp: reply (+2.36 s)

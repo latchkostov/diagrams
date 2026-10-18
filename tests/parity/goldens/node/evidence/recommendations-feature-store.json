@@ -1,0 +1,29 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "friday-night", "title": "Friday night peak", "playedMs": 30000, "capped": false },
+      { "id": "canary-rollback", "title": "The canary misbehaves", "playedMs": 22000, "capped": false },
+      { "id": "slow-features", "title": "Drill: the feature server slows down", "playedMs": 26000, "capped": false },
+      { "id": "sunday-picks", "title": "Sunday picks wake the batch scorer", "playedMs": 40000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      {
+        "simulation": "The canary misbehaves",
+        "node": "ranker-v8",
+        "broker": false,
+        "what": "dropped",
+        "count": 10,
+        "onPurpose": { "count": 10, "why": "fails" }
+      }
+    ],
+    "dropped": []
+  },
+  "planned": [
+    { "node": "ranker-v8", "simulation": "The canary misbehaves", "what": "dropped", "count": 10, "why": "fails" }
+  ],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 10 dropped at ranker-v8 in “The canary misbehaves”." }
+}

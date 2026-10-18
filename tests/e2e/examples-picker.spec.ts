@@ -154,6 +154,10 @@ const BY_THEME: Record<string, string[]> = {
     "payments-ledger",
     "delivery-dispatch",
     "ev-charging-network",
+    "recommendations-feature-store",
+    "video-on-demand-pipeline",
+    "observability-pipeline",
+    "hybrid-enterprise-network",
   ],
   streaming: [
     "where-the-time-goes",
@@ -229,7 +233,7 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("rateLimits");
-  await expect(page.getByTestId(/^example-card-/)).toHaveCount(6);
+  await expect(page.getByTestId(/^example-card-/)).toHaveCount(8);
   await expect(page.getByTestId("example-card-shared-api-quotas")).toBeVisible();
   await expect(page.getByTestId("example-card-notification-fanout")).toBeVisible();
   await page.getByTestId("example-run-notification-fanout").click();
@@ -239,12 +243,20 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   expectNoErrors(consoleErrors);
 });
 
-test("Autoscaling filter finds the four autoscaling showcases and runs the HPA story", async ({ page }) => {
+test("Autoscaling filter finds the seven autoscaling showcases and runs the HPA story", async ({ page }) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("autoscaling");
-  await expect(publicExampleCards(page)).toHaveCount(4);
-  for (const slug of ["black-friday-commerce", "delivery-dispatch", "autoscaling-basics", "cloud-run-timetable-api"])
+  await expect(publicExampleCards(page)).toHaveCount(7);
+  for (const slug of [
+    "black-friday-commerce",
+    "delivery-dispatch",
+    "recommendations-feature-store",
+    "video-on-demand-pipeline",
+    "observability-pipeline",
+    "autoscaling-basics",
+    "cloud-run-timetable-api",
+  ])
     await expect(page.getByTestId(`example-card-${slug}`)).toBeVisible();
   await page.getByTestId("example-run-autoscaling-basics").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -255,8 +267,15 @@ test("Routing filter finds the route table showcases and runs the parcel API's s
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("routing");
-  await expect(publicExampleCards(page)).toHaveCount(4);
-  for (const slug of ["delivery-dispatch", "black-friday-commerce", "payments-ledger", "api-route-table"])
+  await expect(publicExampleCards(page)).toHaveCount(6);
+  for (const slug of [
+    "delivery-dispatch",
+    "black-friday-commerce",
+    "payments-ledger",
+    "recommendations-feature-store",
+    "video-on-demand-pipeline",
+    "api-route-table",
+  ])
     await expect(page.getByTestId(`example-card-${slug}`)).toBeVisible();
   await page.getByTestId("example-run-api-route-table").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });

@@ -1,0 +1,1144 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "creators", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "creators",
+            "to": "upload-api"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "viewers" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "studios",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "creators", "label": "Creators", "stencil": "client.browser" },
+          { "id": "viewers", "label": "Renamed by parity", "stencil": "client.mobile" },
+          { "id": "studios", "label": "Studio deliveries", "stencil": "aws.lambda" },
+          { "id": "upload-api", "label": "Upload API", "stencil": "aws.api-gateway" },
+          { "id": "upload-svc", "label": "Upload service", "stencil": "service.go" },
+          { "id": "originals", "label": "Originals", "stencil": "aws.s3" },
+          { "id": "glacier", "label": "Masters archive", "stencil": "aws.s3" },
+          { "id": "media-events", "label": "Media events", "stencil": "aws.eventbridge" },
+          { "id": "workflow", "label": "Ingest workflow", "stencil": "aws.step-functions" },
+          { "id": "probe", "label": "Probe", "stencil": "aws.lambda" },
+          { "id": "captions", "label": "Captions", "stencil": "generic.ml-model" },
+          { "id": "thumbs", "label": "Thumbnails", "stencil": "aws.lambda" },
+          { "id": "uhd-q", "label": "4K encode jobs", "stencil": "aws.sqs" },
+          { "id": "hd-q", "label": "HD encode jobs", "stencil": "aws.sqs" },
+          { "id": "audio-q", "label": "Audio encode jobs", "stencil": "aws.sqs" },
+          { "id": "uhd-enc", "label": "4K encoders", "stencil": "service.go" },
+          { "id": "hd-enc", "label": "HD encoders", "stencil": "service.go" },
+          { "id": "audio-enc", "label": "Audio encoders", "stencil": "service.go" },
+          { "id": "encode-dlq", "label": "Media DLQ", "stencil": "aws.sqs" },
+          { "id": "triage", "label": "Encode triage", "stencil": "aws.lambda" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 600,
+            "y": 1544,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["viewers"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["studios"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "creators", "viewers"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["creators"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": {
+      "revision": "p3-a1",
+      "requestRoutes": [
+        {
+          "id": "segment",
+          "label": "Video segment",
+          "address": { "method": "GET", "path": "/v/7731/1080p/seg-0042.m4s" },
+          "appearance": { "paletteSlot": 0, "marker": "circle" }
+        },
+        {
+          "id": "playback",
+          "label": "Start playback",
+          "address": { "method": "POST", "path": "/v1/playback/7731" },
+          "appearance": { "paletteSlot": 3, "marker": "triangle" }
+        }
+      ]
+    },
+    "title": "Parity edit",
+    "description": "An invented creator video platform, Lumen Studio. Uploads start an ingest workflow that fans out 4K, HD and audio encodes to queues, where KEDA scales encoders on depth; packaging fetches DRM keys and publishes HLS and DASH. Viewers stream through a CDN whose route table sends almost every segment to the edge cache.",
+    "direction": "TB",
+    "groups": [
+      { "id": "aws", "label": "AWS us-east-1 · media", "tone": "aws", "x": 400, "y": -68, "width": 5220, "height": 1580 },
+      { "id": "ingest", "label": "Upload and ingest", "tone": "neutral", "group": "aws", "x": 440, "y": -4, "width": 2500, "height": 456 },
+      { "id": "encode", "label": "EKS · encoding", "tone": "k8s", "group": "aws", "x": 2200, "y": 496, "width": 780, "height": 596 },
+      { "id": "publish", "label": "Packaging and publishing", "tone": "neutral", "group": "aws", "x": 3520, "y": 496, "width": 2060, "height": 456 },
+      { "id": "delivery", "label": "Playback", "tone": "neutral", "group": "aws", "x": 1440, "y": 1156, "width": 740, "height": 316 },
+      { "id": "edge", "label": "CloudFront", "tone": "aws", "group": "aws", "x": 440, "y": 1156, "width": 740, "height": 316 },
+      { "id": "partners", "label": "Partners", "tone": "neutral", "x": 5840, "y": -4, "width": 308, "height": 1096 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": -40, "y": 136, "width": 300, "height": 1336 }
+    ],
+    "nodes": [
+      {
+        "id": "creators",
+        "stencil": "client.browser",
+        "label": "Creators",
+        "sublabel": "studio uploads",
+        "props": { "ratePerSec": 0.2, "messageType": "UploadVideo" },
+        "x": 0,
+        "y": 200,
+        "group": "boundary-1"
+      },
+      {
+        "id": "viewers",
+        "stencil": "client.mobile",
+        "label": "Renamed by parity",
+        "sublabel": "TV, web and app",
+        "props": {
+          "ratePerSec": 400,
+          "trafficMix": {
+            "mode": "shares",
+            "entries": [{ "routeId": "segment", "share": 0.95 }, { "routeId": "playback", "share": 0.05 }]
+          },
+          "latencyMs": 120
+        },
+        "x": 0,
+        "y": 1360,
+        "group": "boundary-1"
+      },
+      {
+        "id": "studios",
+        "stencil": "aws.lambda",
+        "label": "Studio deliveries",
+        "sublabel": "masters by file transfer",
+        "props": { "ratePerSec": 0, "messageType": "StudioMaster" },
+        "x": 0,
+        "y": 480
+      },
+      {
+        "id": "upload-api",
+        "stencil": "aws.api-gateway",
+        "label": "Upload API",
+        "sublabel": "presigned uploads",
+        "group": "ingest",
+        "props": { "latencyMs": 0, "jitter": 0 },
+        "x": 480,
+        "y": 200
+      },
+      {
+        "id": "upload-svc",
+        "stencil": "service.go",
+        "label": "Upload service",
+        "sublabel": "multipart, resumable",
+        "group": "ingest",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 50, "jitter": 0.1, "failureRate": 0 },
+        "x": 920,
+        "y": 200
+      },
+      {
+        "id": "originals",
+        "stencil": "aws.s3",
+        "label": "Originals",
+        "sublabel": "source masters",
+        "group": "ingest",
+        "props": { "latencyMs": 0 },
+        "x": 1360,
+        "y": 200
+      },
+      {
+        "id": "glacier",
+        "stencil": "aws.s3",
+        "label": "Masters archive",
+        "sublabel": "Glacier after 30 days",
+        "group": "ingest",
+        "props": { "latencyMs": 0 },
+        "x": 1360,
+        "y": 340
+      },
+      { "id": "media-events", "stencil": "aws.eventbridge", "label": "Media events", "sublabel": "ObjectCreated rules", "group": "ingest", "x": 1800, "y": 200 },
+      {
+        "id": "workflow",
+        "stencil": "aws.step-functions",
+        "label": "Ingest workflow",
+        "sublabel": "probe, plan, fan out",
+        "group": "ingest",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 200, "latencyMs": 300, "jitter": 0.1, "failureRate": 0, "emits": "EncodeJob" },
+        "x": 2240,
+        "y": 200
+      },
+      {
+        "id": "probe",
+        "stencil": "aws.lambda",
+        "label": "Probe",
+        "sublabel": "codec, length, HDR",
+        "group": "ingest",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 400, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 100 },
+        "x": 2680,
+        "y": 60
+      },
+      {
+        "id": "captions",
+        "stencil": "generic.ml-model",
+        "label": "Captions",
+        "sublabel": "speech to text",
+        "group": "ingest",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 8, "latencyMs": 2000, "jitter": 0.1, "failureRate": 0 },
+        "x": 2680,
+        "y": 340
+      },
+      {
+        "id": "thumbs",
+        "stencil": "aws.lambda",
+        "label": "Thumbnails",
+        "sublabel": "every 10 s",
+        "group": "ingest",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 600, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 100 },
+        "x": 2680,
+        "y": 200
+      },
+      {
+        "id": "uhd-q",
+        "stencil": "aws.sqs",
+        "label": "4K encode jobs",
+        "sublabel": "SQS · 3 receives",
+        "group": "encode",
+        "props": { "maxDeliveryCount": 3 },
+        "x": 2240,
+        "y": 560
+      },
+      {
+        "id": "hd-q",
+        "stencil": "aws.sqs",
+        "label": "HD encode jobs",
+        "sublabel": "SQS · 3 receives",
+        "group": "encode",
+        "props": { "maxDeliveryCount": 3 },
+        "x": 2240,
+        "y": 700
+      },
+      {
+        "id": "audio-q",
+        "stencil": "aws.sqs",
+        "label": "Audio encode jobs",
+        "sublabel": "SQS · 3 receives",
+        "group": "encode",
+        "props": { "maxDeliveryCount": 3 },
+        "x": 2240,
+        "y": 840
+      },
+      {
+        "id": "uhd-enc",
+        "stencil": "service.go",
+        "label": "4K encoders",
+        "sublabel": "KEDA on queue depth",
+        "group": "encode",
+        "props": {
+          "preset": "processor-lesson",
+          "presetRevision": "1",
+          "replicas": 1,
+          "concurrency": 1,
+          "latencyMs": 2000,
+          "jitter": 0.1,
+          "failureRate": 0,
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 1600,
+            "baselineMemoryMiB": 192,
+            "memoryMiBPerMessage": 1,
+            "cpuRequestMilli": 2000,
+            "cpuLimitMilli": 4000,
+            "memoryRequestMiB": 4096,
+            "memoryLimitMiB": 8192,
+            "startup": { "delayMs": 2000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a2",
+            "preset": "keda-aws-sqs-queue",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "keda",
+              "minReplicas": 1,
+              "maxReplicas": 24,
+              "initialReplicas": 1,
+              "pollingMs": 1000,
+              "cooldownMs": 5000,
+              "initialCooldownMs": 0,
+              "triggers": [
+                {
+                  "type": "aws-sqs-queue",
+                  "source": { "node": "uhd-q" },
+                  "target": 2,
+                  "activation": 0,
+                  "useCachedMetrics": false,
+                  "scaleOnInFlight": true,
+                  "scaleOnDelayed": false
+                }
+              ],
+              "settings": {
+                "syncMs": 1000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 0,
+                "cpuInitializationPeriodMs": 0,
+                "metrics": [],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    { "type": "Pods", "value": 4, "periodMs": 3000 },
+                    { "type": "Percent", "value": 100, "periodMs": 3000 }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 300000,
+                  "selectPolicy": "Max",
+                  "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                }
+              }
+            }
+          },
+          "emits": "RenditionReady"
+        },
+        "x": 2680,
+        "y": 560
+      },
+      {
+        "id": "hd-enc",
+        "stencil": "service.go",
+        "label": "HD encoders",
+        "sublabel": "KEDA on queue depth",
+        "group": "encode",
+        "props": {
+          "preset": "processor-lesson",
+          "presetRevision": "1",
+          "replicas": 1,
+          "concurrency": 2,
+          "latencyMs": 1000,
+          "jitter": 0.1,
+          "failureRate": 0,
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 700,
+            "baselineMemoryMiB": 192,
+            "memoryMiBPerMessage": 1,
+            "cpuRequestMilli": 2000,
+            "cpuLimitMilli": 4000,
+            "memoryRequestMiB": 2048,
+            "memoryLimitMiB": 4096,
+            "startup": { "delayMs": 2000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a2",
+            "preset": "keda-aws-sqs-queue",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "keda",
+              "minReplicas": 1,
+              "maxReplicas": 24,
+              "initialReplicas": 1,
+              "pollingMs": 1000,
+              "cooldownMs": 5000,
+              "initialCooldownMs": 0,
+              "triggers": [
+                {
+                  "type": "aws-sqs-queue",
+                  "source": { "node": "hd-q" },
+                  "target": 2,
+                  "activation": 0,
+                  "useCachedMetrics": false,
+                  "scaleOnInFlight": true,
+                  "scaleOnDelayed": false
+                }
+              ],
+              "settings": {
+                "syncMs": 1000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 0,
+                "cpuInitializationPeriodMs": 0,
+                "metrics": [],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    { "type": "Pods", "value": 4, "periodMs": 3000 },
+                    { "type": "Percent", "value": 100, "periodMs": 3000 }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 300000,
+                  "selectPolicy": "Max",
+                  "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                }
+              }
+            }
+          },
+          "emits": "RenditionReady"
+        },
+        "x": 2680,
+        "y": 700
+      },
+      {
+        "id": "audio-enc",
+        "stencil": "service.go",
+        "label": "Audio encoders",
+        "sublabel": "AAC and Atmos",
+        "group": "encode",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 4, "latencyMs": 300, "jitter": 0.1, "failureRate": 0, "emits": "RenditionReady" },
+        "x": 2680,
+        "y": 840
+      },
+      { "id": "encode-dlq", "stencil": "aws.sqs", "label": "Media DLQ", "sublabel": "failed encode and packaging jobs", "group": "encode", "x": 2240, "y": 980 },
+      {
+        "id": "triage",
+        "stencil": "aws.lambda",
+        "label": "Encode triage",
+        "sublabel": "flag the upload, tell the creator",
+        "group": "encode",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 100, "jitter": 0, "failureRate": 0, "scaling": "auto", "maxConcurrency": 10 },
+        "x": 2680,
+        "y": 980
+      },
+      {
+        "id": "renditions",
+        "stencil": "aws.s3",
+        "label": "Renditions",
+        "sublabel": "CMAF segments",
+        "group": "publish",
+        "props": { "latencyMs": 0 },
+        "x": 3560,
+        "y": 560
+      },
+      {
+        "id": "ready-q",
+        "stencil": "aws.sqs",
+        "label": "Packaging jobs",
+        "sublabel": "SQS",
+        "group": "publish",
+        "props": { "maxDeliveryCount": 5 },
+        "x": 3560,
+        "y": 700
+      },
+      {
+        "id": "packager",
+        "stencil": "service.go",
+        "label": "Packager",
+        "sublabel": "HLS and DASH manifests",
+        "group": "publish",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 8, "latencyMs": 200, "jitter": 0.1, "failureRate": 0, "emits": "TitlePublished" },
+        "x": 4000,
+        "y": 700
+      },
+      {
+        "id": "streaming",
+        "stencil": "aws.s3",
+        "label": "Streaming bucket",
+        "sublabel": "origin",
+        "group": "publish",
+        "props": { "latencyMs": 0 },
+        "x": 4440,
+        "y": 560
+      },
+      {
+        "id": "search-indexer",
+        "stencil": "aws.lambda",
+        "label": "Search indexer",
+        "sublabel": "titles to OpenSearch",
+        "group": "publish",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 50, "jitter": 0.1, "failureRate": 0, "scaling": "auto", "maxConcurrency": 20 },
+        "x": 4880,
+        "y": 840
+      },
+      {
+        "id": "search-index",
+        "stencil": "elasticsearch",
+        "label": "Title search",
+        "sublabel": "OpenSearch",
+        "group": "publish",
+        "props": { "latencyMs": 0 },
+        "x": 5320,
+        "y": 840
+      },
+      {
+        "id": "catalog-api",
+        "stencil": "service.java",
+        "label": "Catalog service",
+        "sublabel": "titles, renditions, rights",
+        "group": "publish",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+        "x": 4440,
+        "y": 700
+      },
+      {
+        "id": "catalog",
+        "stencil": "aws.dynamodb",
+        "label": "Catalog",
+        "sublabel": "DynamoDB",
+        "group": "publish",
+        "props": { "latencyMs": 0 },
+        "x": 4880,
+        "y": 700
+      },
+      { "id": "publish-topic", "stencil": "aws.sns", "label": "Publish events", "sublabel": "SNS", "group": "publish", "x": 4440, "y": 840 },
+      {
+        "id": "playback-api",
+        "stencil": "service.java",
+        "label": "Playback API",
+        "sublabel": "manifests and licences",
+        "group": "delivery",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 6, "concurrency": 64, "latencyMs": 15, "jitter": 0.1, "failureRate": 0 },
+        "x": 1480,
+        "y": 1360
+      },
+      {
+        "id": "licences",
+        "stencil": "service.go",
+        "label": "Licence service",
+        "sublabel": "DRM licences",
+        "group": "delivery",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+        "x": 1920,
+        "y": 1360
+      },
+      {
+        "id": "cdn",
+        "stencil": "generic.cdn",
+        "label": "CloudFront",
+        "sublabel": "route table",
+        "group": "edge",
+        "props": {
+          "latencyMs": 0,
+          "jitter": 0,
+          "routeTable": {
+            "rules": [
+              {
+                "id": "segments",
+                "label": "Video segments",
+                "match": { "methods": ["GET"], "path": { "kind": "prefix", "value": "/v/" } },
+                "targets": [{ "edgeId": "cdn--edge-cache", "weight": 97 }, { "edgeId": "cdn--streaming", "weight": 3 }]
+              },
+              {
+                "id": "playback",
+                "label": "Playback API",
+                "match": { "methods": ["POST"], "path": { "kind": "prefix", "value": "/v1/playback" } },
+                "targets": [{ "edgeId": "cdn--playback-api", "weight": 1 }]
+              }
+            ]
+          }
+        },
+        "x": 480,
+        "y": 1360
+      },
+      {
+        "id": "edge-cache",
+        "stencil": "generic.cache",
+        "label": "Edge cache",
+        "sublabel": "97% of segments",
+        "group": "edge",
+        "props": { "latencyMs": 0 },
+        "x": 920,
+        "y": 1220
+      },
+      {
+        "id": "cdn-logs",
+        "stencil": "aws.kinesis",
+        "label": "CDN logs",
+        "sublabel": "Kinesis · 8 shards",
+        "group": "edge",
+        "props": { "partitions": 8 },
+        "x": 920,
+        "y": 1360
+      },
+      {
+        "id": "qoe",
+        "stencil": "flink",
+        "label": "Playback quality",
+        "sublabel": "rebuffering per region",
+        "group": "delivery",
+        "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+        "x": 1480,
+        "y": 1220
+      },
+      { "id": "qoe-dash", "stencil": "grafana", "label": "QoE dashboard", "sublabel": "start time, rebuffers", "group": "delivery", "x": 1920, "y": 1220 },
+      {
+        "id": "rights",
+        "stencil": "generic.external-api",
+        "label": "Rights service",
+        "sublabel": "territories, windows",
+        "group": "partners",
+        "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 80, "jitter": 0.1, "failureRate": 0 },
+        "x": 5880,
+        "y": 60
+      },
+      {
+        "id": "drm",
+        "stencil": "generic.external-api",
+        "label": "DRM key service",
+        "sublabel": "Widevine, FairPlay keys",
+        "group": "partners",
+        "props": {
+          "preset": "managed-measured",
+          "presetRevision": "2026-10-14",
+          "latencyMs": 120,
+          "jitter": 0.1,
+          "failureRate": 0,
+          "api": {
+            "maxInFlight": 50,
+            "quotas": [
+              { "id": "drm-rate", "unit": "requests", "amount": 40, "windowMs": 1000, "algorithm": "token-bucket" }
+            ]
+          }
+        },
+        "x": 5880,
+        "y": 560
+      },
+      { "id": "creator-email", "stencil": "generic.email", "label": "Creator email", "sublabel": "published or failed", "group": "partners", "x": 5880, "y": 980 },
+      { "id": "webhooks", "stencil": "client.partner", "label": "Creator webhooks", "sublabel": "studio integrations", "group": "partners", "x": 5880, "y": 840 },
+      { "id": "kms", "stencil": "generic.secret-store", "label": "KMS", "sublabel": "content keys", "group": "aws", "x": 2680, "y": 1360 },
+      { "id": "roles", "stencil": "aws.iam-role", "label": "Workload roles", "sublabel": "IRSA", "group": "aws", "x": 3120, "y": 1360 },
+      { "id": "cloudwatch", "stencil": "aws.cloudwatch", "label": "CloudWatch", "sublabel": "queue depth alarms", "group": "aws", "x": 3560, "y": 1360 },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 300, "y": 1544 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 300, "y": 1664 }
+    ],
+    "edges": [
+      { "id": "upload-api--upload-svc", "from": "upload-api", "to": "upload-svc", "kind": "sync", "label": "Upload" },
+      { "id": "upload-svc--originals", "from": "upload-svc", "to": "originals", "kind": "sync", "label": "PutObject" },
+      { "id": "studios--originals", "from": "studios", "to": "originals", "kind": "async", "label": "Accelerated upload" },
+      {
+        "id": "originals--media-events",
+        "from": "originals",
+        "to": "media-events",
+        "kind": "async",
+        "label": "ObjectCreated",
+        "props": { "emits": "SourceUploaded" }
+      },
+      {
+        "id": "originals--glacier",
+        "from": "originals",
+        "to": "glacier",
+        "kind": "async",
+        "label": "Lifecycle",
+        "props": { "emits": "MasterArchived" }
+      },
+      {
+        "id": "media-events--workflow",
+        "from": "media-events",
+        "to": "workflow",
+        "kind": "async",
+        "label": "Rule: new source",
+        "props": { "group": "ingest-rule" }
+      },
+      { "id": "workflow--probe", "from": "workflow", "to": "probe", "kind": "sync", "label": "Probe" },
+      { "id": "workflow--thumbs", "from": "workflow", "to": "thumbs", "kind": "sync", "label": "Thumbnails" },
+      { "id": "workflow--captions", "from": "workflow", "to": "captions", "kind": "sync", "label": "Transcribe" },
+      { "id": "workflow--uhd-q", "from": "workflow", "to": "uhd-q", "kind": "async", "label": "4K ladder" },
+      { "id": "workflow--hd-q", "from": "workflow", "to": "hd-q", "kind": "async", "label": "HD ladder" },
+      { "id": "workflow--audio-q", "from": "workflow", "to": "audio-q", "kind": "async", "label": "Audio" },
+      { "id": "workflow--catalog-api", "from": "workflow", "to": "catalog-api", "kind": "sync", "label": "Draft title" },
+      { "id": "catalog-api--catalog", "from": "catalog-api", "to": "catalog", "kind": "sync" },
+      { "id": "workflow--rights", "from": "workflow", "to": "rights", "kind": "sync", "label": "Rights check" },
+      { "id": "uhd-q--uhd-enc", "from": "uhd-q", "to": "uhd-enc", "kind": "async" },
+      { "id": "hd-q--hd-enc", "from": "hd-q", "to": "hd-enc", "kind": "async" },
+      { "id": "audio-q--audio-enc", "from": "audio-q", "to": "audio-enc", "kind": "async" },
+      {
+        "id": "uhd-q--encode-dlq",
+        "from": "uhd-q",
+        "to": "encode-dlq",
+        "kind": "async",
+        "label": "After 3 receives",
+        "props": { "dlq": true }
+      },
+      {
+        "id": "hd-q--encode-dlq",
+        "from": "hd-q",
+        "to": "encode-dlq",
+        "kind": "async",
+        "label": "After 3 receives",
+        "props": { "dlq": true }
+      },
+      {
+        "id": "audio-q--encode-dlq",
+        "from": "audio-q",
+        "to": "encode-dlq",
+        "kind": "async",
+        "label": "After 3 receives",
+        "props": { "dlq": true }
+      },
+      { "id": "encode-dlq--triage", "from": "encode-dlq", "to": "triage", "kind": "async" },
+      { "id": "triage--creator-email", "from": "triage", "to": "creator-email", "kind": "sync", "label": "Upload failed" },
+      { "id": "uhd-enc--renditions", "from": "uhd-enc", "to": "renditions", "kind": "sync", "label": "Segments" },
+      { "id": "hd-enc--renditions", "from": "hd-enc", "to": "renditions", "kind": "sync", "label": "Segments" },
+      { "id": "audio-enc--renditions", "from": "audio-enc", "to": "renditions", "kind": "sync", "label": "Segments" },
+      { "id": "uhd-enc--ready-q", "from": "uhd-enc", "to": "ready-q", "kind": "async", "label": "RenditionReady" },
+      { "id": "hd-enc--ready-q", "from": "hd-enc", "to": "ready-q", "kind": "async", "label": "RenditionReady" },
+      { "id": "audio-enc--ready-q", "from": "audio-enc", "to": "ready-q", "kind": "async", "label": "RenditionReady" },
+      { "id": "ready-q--packager", "from": "ready-q", "to": "packager", "kind": "async" },
+      {
+        "id": "ready-q--encode-dlq",
+        "from": "ready-q",
+        "to": "encode-dlq",
+        "kind": "async",
+        "label": "After 5 receives",
+        "props": { "dlq": true }
+      },
+      { "id": "packager--drm", "from": "packager", "to": "drm", "kind": "sync", "label": "Content keys" },
+      { "id": "packager--streaming", "from": "packager", "to": "streaming", "kind": "sync", "label": "Manifests" },
+      { "id": "packager--catalog-api", "from": "packager", "to": "catalog-api", "kind": "sync", "label": "Playable" },
+      { "id": "packager--publish-topic", "from": "packager", "to": "publish-topic", "kind": "async", "label": "TitlePublished" },
+      {
+        "id": "publish-topic--creator-email",
+        "from": "publish-topic",
+        "to": "creator-email",
+        "kind": "async",
+        "props": { "group": "email" }
+      },
+      {
+        "id": "publish-topic--webhooks",
+        "from": "publish-topic",
+        "to": "webhooks",
+        "kind": "async",
+        "props": { "group": "webhooks" }
+      },
+      {
+        "id": "publish-topic--search-indexer",
+        "from": "publish-topic",
+        "to": "search-indexer",
+        "kind": "async",
+        "props": { "group": "search" }
+      },
+      { "id": "search-indexer--search-index", "from": "search-indexer", "to": "search-index", "kind": "sync", "label": "Index title" },
+      { "id": "viewers--cdn", "from": "viewers", "to": "cdn", "kind": "sync", "label": "HTTPS" },
+      { "id": "cdn--edge-cache", "from": "cdn", "to": "edge-cache", "kind": "sync", "label": "Hit" },
+      { "id": "cdn--streaming", "from": "cdn", "to": "streaming", "kind": "sync", "label": "Miss" },
+      { "id": "cdn--playback-api", "from": "cdn", "to": "playback-api", "kind": "sync", "label": "Manifest, licence" },
+      { "id": "playback-api--catalog-api", "from": "playback-api", "to": "catalog-api", "kind": "sync", "label": "Rights" },
+      { "id": "playback-api--licences", "from": "playback-api", "to": "licences", "kind": "sync", "label": "Licence" },
+      {
+        "id": "edge-cache--cdn-logs",
+        "from": "edge-cache",
+        "to": "cdn-logs",
+        "kind": "async",
+        "label": "Access logs",
+        "props": { "emits": "AccessLog" }
+      },
+      { "id": "cdn-logs--qoe", "from": "cdn-logs", "to": "qoe", "kind": "async", "props": { "group": "qoe" } },
+      { "id": "qoe--qoe-dash", "from": "qoe", "to": "qoe-dash", "kind": "sync", "label": "Metrics" },
+      { "id": "packager--kms", "from": "packager", "to": "kms", "kind": "async", "label": "Content keys", "relation": "secret" },
+      { "id": "licences--kms", "from": "licences", "to": "kms", "kind": "async", "relation": "secret" },
+      { "id": "packager--roles", "from": "packager", "to": "roles", "kind": "async", "relation": "identity" },
+      { "id": "uhd-enc--roles", "from": "uhd-enc", "to": "roles", "kind": "async", "relation": "identity" },
+      { "id": "hd-enc--cloudwatch", "from": "hd-enc", "to": "cloudwatch", "kind": "async", "relation": "telemetry" },
+      { "id": "e-1", "from": "creators", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "creators", "to": "queue-1", "kind": "sync", "label": "HTTPS" },
+      { "id": "e-5", "from": "queue-1", "to": "upload-api", "kind": "sync" }
+    ],
+    "simulations": [
+      {
+        "id": "premiere-uploads",
+        "title": "Premiere day: where the encode time goes",
+        "description": "A studio delivers a festival slate: masters arrive six times faster for six seconds. Each becomes three encode jobs; KEDA adds 4K and HD encoders on queue depth. Hover the encoders and the packager for sampled p50, p95 and p99: the spike doubles them, and the growth is waiting, not encoding. Teaching timings: 1 s polling, 2 s startup.",
+        "seed": 71,
+        "scale": 1,
+        "durationMs": 40000,
+        "traffic": [
+          {
+            "id": "masters",
+            "node": "studios",
+            "label": "Festival slate",
+            "messageType": "StudioMaster",
+            "shape": { "kind": "spike", "baseRate": 1, "peakRate": 6, "atMs": 4000, "peakMs": 6000, "durationMs": 20000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Each master lands in Originals; an S3 event starts the ingest workflow, which fans out one job per rendition ladder.", "focus": ["originals", "media-events", "workflow"] }
+          },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "The slate arrives: six masters a second. A 4K encode takes two seconds, so jobs wait while KEDA adds encoders.", "focus": ["uhd-q", "uhd-enc", "hd-q", "hd-enc"] }
+          },
+          {
+            "atMs": 12000,
+            "action": { "do": "note", "text": "Hover 4K encoders: p95 has doubled to about five seconds. An encode still takes two; the rest is waiting for an encoder.", "focus": ["uhd-q", "uhd-enc"] }
+          },
+          {
+            "atMs": 20000,
+            "action": { "do": "note", "text": "Packaging fetches content keys under the DRM service's 40-a-second limit and publishes each title.", "focus": ["ready-q", "packager", "drm"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "uhd",
+            "label": "Every 4K encode finishes",
+            "metric": { "node": "uhd-enc", "field": "failed" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "drained",
+            "label": "The 4K queue drains",
+            "metric": { "node": "uhd-q", "field": "backlog" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "no-dlq",
+            "label": "Nothing is dead-lettered",
+            "metric": { "node": "encode-dlq", "field": "processed" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "corrupt-source",
+        "title": "A batch of corrupt sources",
+        "description": "A creator's export tool writes broken 4K masters for twenty seconds. Those encode jobs fail three times and go to the dead-letter queue; triage flags each upload and emails its creator. HD and audio renditions are unaffected.",
+        "seed": 72,
+        "scale": 1,
+        "durationMs": 50000,
+        "traffic": [
+          {
+            "id": "uploads",
+            "node": "creators",
+            "label": "Creator uploads",
+            "messageType": "UploadVideo",
+            "shape": { "kind": "constant", "ratePerSec": 1, "durationMs": 30000 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Uploads arrive steadily; three ladders encode each one independently.", "focus": ["uhd-q", "hd-q", "audio-q"] }
+          },
+          { "atMs": 3000, "action": { "do": "props", "node": "uhd-enc", "props": { "failureRate": 1 } } },
+          {
+            "atMs": 3000,
+            "action": { "do": "note", "text": "A batch of 4K masters is corrupt. The 4K encoder fails them; SQS makes each visible again for a retry.", "focus": ["uhd-q", "uhd-enc"] }
+          },
+          { "atMs": 23000, "action": { "do": "props", "node": "uhd-enc", "props": { "failureRate": 0 } } },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "After three receives a job goes to the dead-letter queue, where triage flags its upload and emails the creator.", "focus": ["uhd-q", "encode-dlq", "triage"] }
+          },
+          {
+            "atMs": 23000,
+            "action": { "do": "note", "text": "The export tool is fixed. New 4K jobs encode again; HD and audio never stopped.", "focus": ["uhd-q", "uhd-enc", "hd-enc"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "parked",
+            "label": "Corrupt 4K jobs are dead-lettered",
+            "metric": { "node": "uhd-q", "field": "deadLettered" },
+            "op": ">",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "hd-ok",
+            "label": "HD never fails",
+            "metric": { "node": "hd-enc", "field": "failed" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          },
+          {
+            "id": "told",
+            "label": "Triage handles every dead letter",
+            "metric": { "node": "encode-dlq", "field": "backlog" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "premiere-night",
+        "title": "Premiere night: the edge cache carries it",
+        "description": "The premiere goes live and viewers triple in seconds. The CDN's route table sends 97% of segment requests to the edge cache; only misses reach the origin bucket, and playback starts ask the API for a manifest and a DRM licence.",
+        "seed": 73,
+        "scale": 20,
+        "durationMs": 24000,
+        "traffic": [
+          {
+            "id": "viewers",
+            "node": "viewers",
+            "label": "Viewers",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 400,
+              "stages": [
+                { "durationMs": 4000, "targetRate": 1200 },
+                { "durationMs": 12000, "targetRate": 1200 },
+                { "durationMs": 4000, "targetRate": 400 }
+              ]
+            }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 0,
+            "action": { "do": "note", "text": "Almost every request is a video segment; a few start playback and need a manifest and a licence.", "focus": ["viewers", "cdn", "edge-cache"] }
+          },
+          {
+            "atMs": 4000,
+            "action": { "do": "note", "text": "Three times the viewers. The edge cache answers 97% of segments; the origin bucket only sees misses.", "focus": ["viewers", "cdn", "edge-cache"] }
+          },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "Playback starts reach the API, which checks rights with the catalog and asks for a DRM licence.", "focus": ["playback-api", "licences"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "cached",
+            "label": "The edge cache serves most segments",
+            "metric": { "node": "edge-cache", "field": "processed" },
+            "op": ">",
+            "value": 15000,
+            "when": "end"
+          },
+          {
+            "id": "no-loss",
+            "label": "Playback never drops a request",
+            "metric": { "node": "playback-api", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "creators",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "creators",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "creators",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "creators",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "studios", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["studios"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "studios", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 0, "y": 320, "width": 240, "height": 160 }
+    ]
+  }
+}

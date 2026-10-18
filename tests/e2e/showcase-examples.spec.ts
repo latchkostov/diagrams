@@ -188,6 +188,38 @@ const largeShowcases = [
     ],
   },
   { slug: "ev-charging-network", sim: "vendor-shell", signals: [["depot-fw", "blocked", 0]], zone: "zone-ot" },
+  {
+    slug: "recommendations-feature-store",
+    sim: "friday-night",
+    signals: [
+      ["ranker-v7", "desired", 4],
+      ["feature-server", "processed", 0],
+    ],
+  },
+  {
+    slug: "video-on-demand-pipeline",
+    sim: "premiere-uploads",
+    signals: [
+      ["uhd-enc", "desired", 1],
+      ["packager", "processed", 0],
+    ],
+  },
+  {
+    slug: "observability-pipeline",
+    sim: "log-storm",
+    signals: [
+      ["gateways", "desired", 3],
+      ["ingesters", "processed", 0],
+    ],
+  },
+  {
+    slug: "hybrid-enterprise-network",
+    sim: "leicester-fibre-cut",
+    signals: [
+      ["lte", "processed", 0],
+      ["hub", "processed", 0],
+    ],
+  },
 ] as const;
 
 for (const theme of ["light", "dark"] as const)
@@ -387,6 +419,34 @@ const narrations = [
     at: 6500,
     text: "deny rule stops",
     focus: ["depot-fw", "depot-switch"],
+  },
+  {
+    slug: "recommendations-feature-store",
+    sim: "friday-night",
+    at: 4500,
+    text: "four times the home loads",
+    focus: ["ranking-router", "ranker-v7"],
+  },
+  {
+    slug: "video-on-demand-pipeline",
+    sim: "premiere-uploads",
+    at: 4500,
+    text: "The slate arrives",
+    focus: ["uhd-q", "uhd-enc"],
+  },
+  {
+    slug: "observability-pipeline",
+    sim: "log-storm",
+    at: 3500,
+    text: "A bad Checkout deploy logs every retry",
+    focus: ["agent-shop", "gateways"],
+  },
+  {
+    slug: "hybrid-enterprise-network",
+    sim: "leicester-fibre-cut",
+    at: 4500,
+    text: "the fibre is cut",
+    focus: ["leicester-router", "lte"],
   },
 ] as const;
 

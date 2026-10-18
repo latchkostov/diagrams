@@ -26,6 +26,10 @@ describe("example gallery", () => {
       "payments-ledger",
       "delivery-dispatch",
       "ev-charging-network",
+      "recommendations-feature-store",
+      "video-on-demand-pipeline",
+      "observability-pipeline",
+      "hybrid-enterprise-network",
     ]);
   });
   it("matches all words across title, summary, description, slug and translated feature labels", () => {
@@ -49,7 +53,7 @@ describe("example gallery", () => {
       filterExamples(publicItems, "Network devices")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["ev-charging-network", "branch-to-datacentre", "contoso-dmz"]);
+    ).toEqual(["ev-charging-network", "hybrid-enterprise-network", "branch-to-datacentre", "contoso-dmz"]);
   });
   it("combines search and feature filters, without empty theme sections", () => {
     expect(
@@ -61,6 +65,8 @@ describe("example gallery", () => {
       "payments-ledger",
       "delivery-dispatch",
       "ev-charging-network",
+      "video-on-demand-pipeline",
+      "observability-pipeline",
       "shared-api-quotas",
       "notification-fanout",
     ]);
@@ -77,12 +83,27 @@ describe("example gallery", () => {
       filterExamples(publicItems, "", "autoscaling")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["black-friday-commerce", "delivery-dispatch", "autoscaling-basics", "cloud-run-timetable-api"]);
+    ).toEqual([
+      "black-friday-commerce",
+      "delivery-dispatch",
+      "recommendations-feature-store",
+      "video-on-demand-pipeline",
+      "observability-pipeline",
+      "autoscaling-basics",
+      "cloud-run-timetable-api",
+    ]);
     expect(
       filterExamples(publicItems, "", "routing")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["black-friday-commerce", "payments-ledger", "delivery-dispatch", "api-route-table"]);
+    ).toEqual([
+      "black-friday-commerce",
+      "payments-ledger",
+      "delivery-dispatch",
+      "recommendations-feature-store",
+      "video-on-demand-pipeline",
+      "api-route-table",
+    ]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
@@ -99,6 +120,10 @@ describe("example gallery", () => {
       "payments-ledger": ["partitions", "rateLimits", "routing"],
       "ev-charging-network": ["partitions", "rateLimits", "networkDevices"],
       "cell-based-bookings": [],
+      "recommendations-feature-store": ["faultDrills", "partitions", "autoscaling", "routing"],
+      "video-on-demand-pipeline": ["latency", "partitions", "rateLimits", "autoscaling", "routing"],
+      "observability-pipeline": ["faultDrills", "partitions", "rateLimits", "autoscaling"],
+      "hybrid-enterprise-network": ["faultDrills", "networkDevices"],
       "zone-outage-drill": ["faultDrills"],
     };
     for (const [slug, tags] of Object.entries(expected)) {

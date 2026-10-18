@@ -1,0 +1,725 @@
+{
+  "withIcons": {
+    "sha256": "c1529d1dc29f8930dd033a4d92cf325b5358016f75671d88c23ceba381686150",
+    "bytes": 182981,
+    "inlined": {
+      "aws.aurora": "aws-aurora 99c39529fc98ae62",
+      "aws.iam-role": "aws-iam-role bd4cb5cfaa081156",
+      "clickhouse": "clickhouse 1b5d29a1fc4fd5ac",
+      "client.browser": "client-browser 0022934839e05a07",
+      "elasticsearch": "elasticsearch d154cead8640e871",
+      "generic.batch-job": "generic-batch-job b4b740a6bd33435a",
+      "generic.config-store": "generic-config-store ef55f06431b5c98f",
+      "generic.external-api": "generic-external-api 8115696d1b46c6c6",
+      "generic.rate-limiter": "generic-rate-limiter 7f75f8aa59c5823e",
+      "generic.scheduler": "generic-scheduler e9060d1f29acbbe0",
+      "grafana": "grafana 6d9cdbf24a7433ad",
+      "jaeger": "jaeger cf437f71b4eafda4",
+      "kafka.connect": "kafka 81e432d1da74c5fe",
+      "kafka.topic": "kafka 81e432d1da74c5fe",
+      "load-balancer": "generic-load-balancer 1316765f75d1d432",
+      "loki": "loki 73825949432bb3ff",
+      "mysql": "mysql 8385a36b957c1e58",
+      "nginx": "nginx 8d6595e217ce21f1",
+      "opentelemetry": "opentelemetry 5bcc78922128103e",
+      "postgres": "postgresql 5bc8dcc1fbb1ec10",
+      "prometheus": "prometheus 9f1b367cd67b82a6",
+      "redis.cache": "redis a2b5f283f87eccc0",
+      "service.dotnet": "dotnet 625b7d68f63c47d9",
+      "service.go": "go 6f494b4da5a84f2a",
+      "service.java": "java a7012363e0756258",
+      "service.node": "nodejs ad81b1a87b698cc5",
+      "slack": "slack 1134b9dd8b5c1937",
+      "splunk": "splunk 5ed8bacc47ff97d2",
+      "vault": "vault 5be5a2e3b6c832b7"
+    }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-a1" },
+        "title": "Observability pipeline",
+        "description": "An invented platform team, Halyard Ops. Every request a shop service handles sends logs, spans and metrics to node agents, then through load-balanced gateway collectors that tail-sample traces, into Kafka. Kafka buffers each signal for its own backends, so an outage or a log storm in one never stalls the rest.",
+        "direction": "LR",
+        "groups": [
+          { "id": "shop", "label": "EKS · shop services", "tone": "k8s", "x": 400, "y": -4, "width": 1641, "height": 736 },
+          { "id": "data", "label": "EKS · data jobs", "tone": "k8s", "x": 400, "y": 836, "width": 1634, "height": 316 },
+          { "id": "collect", "label": "Collection tier", "tone": "neutral", "x": 2200, "y": 496, "width": 1180, "height": 176 },
+          { "id": "buffer", "label": "Kafka · telemetry buffer", "tone": "neutral", "x": 3520, "y": 356, "width": 339, "height": 456 },
+          { "id": "backends", "label": "Observability backends", "tone": "neutral", "x": 3960, "y": -68, "width": 780, "height": 520 },
+          { "id": "loki", "label": "Loki write path", "tone": "neutral", "x": 4000, "y": -4, "width": 300, "height": 176, "group": "backends" },
+          { "id": "alerting", "label": "Alerting", "tone": "neutral", "x": 4000, "y": 976, "width": 740, "height": 176 },
+          { "id": "archive", "label": "Archive and analytics", "tone": "neutral", "x": 4000, "y": 576, "width": 740, "height": 316 },
+          { "id": "partners", "label": "Paging and security", "tone": "neutral", "x": 4960, "y": 576, "width": 300, "height": 876 },
+          { "id": "platform", "label": "Platform", "tone": "neutral", "x": 2200, "y": 976, "width": 1213, "height": 176 }
+        ],
+        "nodes": [
+          {
+            "id": "shoppers",
+            "stencil": "client.browser",
+            "label": "Shoppers",
+            "sublabel": "web and app",
+            "x": 0,
+            "y": 340,
+            "props": { "ratePerSec": 400, "messageType": "Request" }
+          },
+          {
+            "id": "ingress",
+            "stencil": "nginx",
+            "label": "Ingress",
+            "sublabel": "NGINX",
+            "x": 440,
+            "y": 340,
+            "props": { "latencyMs": 0, "jitter": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "checkout",
+            "stencil": "service.java",
+            "label": "Checkout",
+            "x": 880,
+            "y": 60,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "checkout-db",
+            "stencil": "aws.aurora",
+            "label": "Orders",
+            "x": 1320,
+            "y": 60,
+            "props": { "latencyMs": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "search",
+            "stencil": "service.go",
+            "label": "Search",
+            "x": 880,
+            "y": 200,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "search-db",
+            "stencil": "elasticsearch",
+            "label": "Product index",
+            "x": 1320,
+            "y": 200,
+            "props": { "latencyMs": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "cart",
+            "stencil": "service.node",
+            "label": "Cart",
+            "x": 880,
+            "y": 340,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "cart-db",
+            "stencil": "redis.cache",
+            "label": "Carts",
+            "x": 1320,
+            "y": 340,
+            "props": { "latencyMs": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "payments",
+            "stencil": "service.dotnet",
+            "label": "Payments",
+            "x": 880,
+            "y": 480,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "payments-db",
+            "stencil": "postgres",
+            "label": "Payments",
+            "x": 1320,
+            "y": 480,
+            "props": { "latencyMs": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "inventory",
+            "stencil": "service.java",
+            "label": "Inventory",
+            "x": 880,
+            "y": 620,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "inventory-db",
+            "stencil": "mysql",
+            "label": "Stock",
+            "x": 1320,
+            "y": 620,
+            "props": { "latencyMs": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "agent-shop",
+            "stencil": "opentelemetry",
+            "label": "Node agents",
+            "sublabel": "DaemonSet · batch, enrich",
+            "x": 1760,
+            "y": 270,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 6, "concurrency": 256, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "group": "shop"
+          },
+          {
+            "id": "scheduler",
+            "stencil": "generic.scheduler",
+            "label": "Job scheduler",
+            "sublabel": "every minute",
+            "x": 440,
+            "y": 900,
+            "props": { "ratePerSec": 5, "messageType": "JobRun" },
+            "group": "data"
+          },
+          {
+            "id": "etl",
+            "stencil": "generic.batch-job",
+            "label": "Catalog ETL",
+            "sublabel": "Spark",
+            "x": 880,
+            "y": 900,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 200, "jitter": 0.1, "failureRate": 0 },
+            "group": "data"
+          },
+          {
+            "id": "reports",
+            "stencil": "generic.batch-job",
+            "label": "Sales reports",
+            "sublabel": "Python",
+            "x": 880,
+            "y": 1040,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 200, "jitter": 0.1, "failureRate": 0 },
+            "group": "data"
+          },
+          {
+            "id": "agent-data",
+            "stencil": "opentelemetry",
+            "label": "Node agents",
+            "sublabel": "DaemonSet · data cluster",
+            "x": 1760,
+            "y": 900,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 256, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "group": "data"
+          },
+          {
+            "id": "otlp-lb",
+            "stencil": "load-balancer",
+            "label": "OTLP load balancer",
+            "sublabel": "hash by trace ID",
+            "x": 2240,
+            "y": 560,
+            "props": { "latencyMs": 0, "jitter": 0 },
+            "group": "collect"
+          },
+          {
+            "id": "gateways",
+            "stencil": "opentelemetry",
+            "label": "Gateway collectors",
+            "sublabel": "tail sampling · HPA",
+            "x": 2680,
+            "y": 560,
+            "props": {
+              "preset": "processor-lesson",
+              "presetRevision": "1",
+              "replicas": 3,
+              "concurrency": 64,
+              "latencyMs": 10,
+              "jitter": 0.1,
+              "failureRate": 0,
+              "resources": {
+                "preset": "io-service",
+                "presetRevision": "1",
+                "cpuMsPerMessage": 3,
+                "baselineMemoryMiB": 192,
+                "memoryMiBPerMessage": 1,
+                "cpuRequestMilli": 1000,
+                "cpuLimitMilli": 2000,
+                "memoryRequestMiB": 1024,
+                "memoryLimitMiB": 2048,
+                "startup": { "delayMs": 2000, "jitterFraction": 0 },
+                "terminationGraceMs": 30000
+              },
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a1",
+                "preset": "hpa-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "hpa",
+                  "minReplicas": 3,
+                  "maxReplicas": 12,
+                  "initialReplicas": 3,
+                  "settings": {
+                    "syncMs": 1000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 0,
+                    "cpuInitializationPeriodMs": 0,
+                    "metrics": [
+                      {
+                        "source": { "kind": "resource", "resource": "cpu" },
+                        "target": { "kind": "utilization", "percentOfRequest": 70 },
+                        "windowMs": 1000,
+                        "metricDelayMs": 0
+                      }
+                    ],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 15000 },
+                        { "type": "Percent", "value": 100, "periodMs": 15000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 30000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            },
+            "group": "collect"
+          },
+          {
+            "id": "tenant-limits",
+            "stencil": "generic.rate-limiter",
+            "label": "Tenant limits",
+            "sublabel": "per-team budgets",
+            "x": 3120,
+            "y": 560,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 128, "latencyMs": 2, "jitter": 0.1, "failureRate": 0 },
+            "group": "collect"
+          },
+          {
+            "id": "logs",
+            "stencil": "kafka.topic",
+            "label": "Logs",
+            "sublabel": "otlp.logs · 48 partitions",
+            "x": 3560,
+            "y": 420,
+            "props": { "partitions": 48 },
+            "group": "buffer"
+          },
+          {
+            "id": "spans",
+            "stencil": "kafka.topic",
+            "label": "Spans",
+            "sublabel": "otlp.spans · 24 partitions",
+            "x": 3560,
+            "y": 560,
+            "props": { "partitions": 24 },
+            "group": "buffer"
+          },
+          {
+            "id": "metrics",
+            "stencil": "kafka.topic",
+            "label": "Metrics",
+            "sublabel": "otlp.metrics · 12 partitions",
+            "x": 3560,
+            "y": 700,
+            "props": { "partitions": 12 },
+            "group": "buffer"
+          },
+          {
+            "id": "ingesters",
+            "stencil": "service.go",
+            "label": "Log ingesters",
+            "sublabel": "Loki write path",
+            "x": 4040,
+            "y": 60,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 10, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+            "group": "loki"
+          },
+          { "id": "loki-store", "stencil": "loki", "label": "Loki", "sublabel": "logs, 14 days", "x": 4480, "y": 60, "group": "backends" },
+          { "id": "tempo", "stencil": "jaeger", "label": "Trace store", "sublabel": "Tempo, 7 days", "x": 4040, "y": 200, "group": "backends" },
+          { "id": "prom", "stencil": "prometheus", "label": "Metrics store", "sublabel": "remote write, 13 months", "x": 4040, "y": 340, "group": "backends" },
+          { "id": "grafana", "stencil": "grafana", "label": "Grafana", "sublabel": "dashboards, explore", "x": 4480, "y": 340, "group": "backends" },
+          {
+            "id": "rules",
+            "stencil": "service.go",
+            "label": "Alert rules",
+            "sublabel": "SLO burn rates",
+            "x": 4040,
+            "y": 1040,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
+            "group": "alerting"
+          },
+          {
+            "id": "alertmanager",
+            "stencil": "service.go",
+            "label": "Alertmanager",
+            "sublabel": "group, dedupe, route",
+            "x": 4480,
+            "y": 1040,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
+            "group": "alerting"
+          },
+          {
+            "id": "ch-sink",
+            "stencil": "kafka.connect",
+            "label": "ClickHouse sink",
+            "sublabel": "Kafka Connect",
+            "x": 4040,
+            "y": 640,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 128, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "group": "archive"
+          },
+          {
+            "id": "clickhouse",
+            "stencil": "clickhouse",
+            "label": "Log analytics",
+            "sublabel": "ClickHouse",
+            "x": 4480,
+            "y": 640,
+            "props": { "latencyMs": 0 },
+            "group": "archive"
+          },
+          {
+            "id": "s3-sink",
+            "stencil": "kafka.connect",
+            "label": "Archive sink",
+            "sublabel": "S3 sink, Parquet",
+            "x": 4040,
+            "y": 780,
+            "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 128, "latencyMs": 5, "jitter": 0.1, "failureRate": 0 },
+            "group": "archive"
+          },
+          {
+            "id": "cold",
+            "stencil": "aws.s3",
+            "label": "Cold archive",
+            "sublabel": "1 year, Glacier",
+            "x": 4480,
+            "y": 780,
+            "props": { "latencyMs": 0 },
+            "group": "archive"
+          },
+          { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "TLS and redaction keys", "x": 2240, "y": 1040, "group": "platform" },
+          { "id": "pipeline-config", "stencil": "generic.config-store", "label": "Pipeline config", "sublabel": "sampling and tenant budgets", "x": 3120, "y": 1040, "group": "platform" },
+          { "id": "roles", "stencil": "aws.iam-role", "label": "Workload roles", "sublabel": "IRSA", "x": 2680, "y": 1040, "group": "platform" },
+          {
+            "id": "pagerduty",
+            "stencil": "generic.external-api",
+            "label": "Paging service",
+            "sublabel": "on-call rotations",
+            "x": 5000,
+            "y": 1060,
+            "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 150, "jitter": 0.1, "failureRate": 0 },
+            "group": "partners"
+          },
+          { "id": "status-page", "stencil": "generic.external-api", "label": "Status page", "sublabel": "public incidents", "x": 5000, "y": 1340, "group": "partners" },
+          { "id": "slack", "stencil": "slack", "label": "Slack", "sublabel": "#incidents", "x": 5000, "y": 1200, "group": "partners" },
+          { "id": "siem", "stencil": "splunk", "label": "Security SIEM", "sublabel": "audit logs only", "x": 5000, "y": 640, "group": "partners" }
+        ],
+        "edges": [
+          { "id": "shoppers--ingress", "from": "shoppers", "to": "ingress", "label": "HTTPS", "kind": "sync" },
+          { "id": "ingress--checkout", "from": "ingress", "to": "checkout", "kind": "sync" },
+          { "id": "checkout--checkout-db", "from": "checkout", "to": "checkout-db", "kind": "sync" },
+          {
+            "id": "checkout--agent-shop",
+            "from": "checkout",
+            "to": "agent-shop",
+            "label": "OTLP",
+            "kind": "async",
+            "props": { "emits": "Telemetry" }
+          },
+          { "id": "ingress--search", "from": "ingress", "to": "search", "kind": "sync" },
+          { "id": "search--search-db", "from": "search", "to": "search-db", "kind": "sync" },
+          {
+            "id": "search--agent-shop",
+            "from": "search",
+            "to": "agent-shop",
+            "label": "OTLP",
+            "kind": "async",
+            "props": { "emits": "Telemetry" }
+          },
+          { "id": "ingress--cart", "from": "ingress", "to": "cart", "kind": "sync" },
+          { "id": "cart--cart-db", "from": "cart", "to": "cart-db", "kind": "sync" },
+          {
+            "id": "cart--agent-shop",
+            "from": "cart",
+            "to": "agent-shop",
+            "label": "OTLP",
+            "kind": "async",
+            "props": { "emits": "Telemetry" }
+          },
+          { "id": "ingress--payments", "from": "ingress", "to": "payments", "kind": "sync" },
+          { "id": "payments--payments-db", "from": "payments", "to": "payments-db", "kind": "sync" },
+          {
+            "id": "payments--agent-shop",
+            "from": "payments",
+            "to": "agent-shop",
+            "label": "OTLP",
+            "kind": "async",
+            "props": { "emits": "Telemetry" }
+          },
+          { "id": "ingress--inventory", "from": "ingress", "to": "inventory", "kind": "sync" },
+          { "id": "inventory--inventory-db", "from": "inventory", "to": "inventory-db", "kind": "sync" },
+          {
+            "id": "inventory--agent-shop",
+            "from": "inventory",
+            "to": "agent-shop",
+            "label": "OTLP",
+            "kind": "async",
+            "props": { "emits": "Telemetry" }
+          },
+          { "id": "scheduler--etl", "from": "scheduler", "to": "etl", "label": "Run", "kind": "async" },
+          { "id": "scheduler--reports", "from": "scheduler", "to": "reports", "label": "Run", "kind": "async" },
+          {
+            "id": "etl--agent-data",
+            "from": "etl",
+            "to": "agent-data",
+            "label": "OTLP",
+            "kind": "async",
+            "props": { "emits": "Telemetry" }
+          },
+          {
+            "id": "reports--agent-data",
+            "from": "reports",
+            "to": "agent-data",
+            "label": "OTLP",
+            "kind": "async",
+            "props": { "emits": "Telemetry" }
+          },
+          { "id": "agent-shop--otlp-lb", "from": "agent-shop", "to": "otlp-lb", "label": "OTLP/gRPC", "kind": "sync" },
+          { "id": "agent-data--otlp-lb", "from": "agent-data", "to": "otlp-lb", "label": "OTLP/gRPC", "kind": "sync" },
+          { "id": "otlp-lb--gateways", "from": "otlp-lb", "to": "gateways", "kind": "sync" },
+          { "id": "gateways--tenant-limits", "from": "gateways", "to": "tenant-limits", "label": "Sampled", "kind": "sync" },
+          {
+            "id": "tenant-limits--logs",
+            "from": "tenant-limits",
+            "to": "logs",
+            "label": "Logs",
+            "kind": "async",
+            "props": { "emits": "LogRecord" }
+          },
+          {
+            "id": "tenant-limits--spans",
+            "from": "tenant-limits",
+            "to": "spans",
+            "label": "Kept traces",
+            "kind": "async",
+            "props": { "emits": "Span", "share": 0.1, "filter": ["Telemetry"] }
+          },
+          {
+            "id": "tenant-limits--metrics",
+            "from": "tenant-limits",
+            "to": "metrics",
+            "label": "Metrics",
+            "kind": "async",
+            "props": { "emits": "MetricPoint", "share": 0.2, "filter": ["Telemetry"] }
+          },
+          { "id": "logs--ingesters", "from": "logs", "to": "ingesters", "kind": "async", "props": { "group": "loki" } },
+          { "id": "ingesters--loki-store", "from": "ingesters", "to": "loki-store", "label": "Push chunks", "kind": "sync" },
+          {
+            "id": "logs--ch-sink",
+            "from": "logs",
+            "to": "ch-sink",
+            "kind": "async",
+            "props": { "group": "clickhouse" }
+          },
+          { "id": "logs--s3-sink", "from": "logs", "to": "s3-sink", "kind": "async", "props": { "group": "archive" } },
+          {
+            "id": "logs--siem",
+            "from": "logs",
+            "to": "siem",
+            "kind": "async",
+            "props": { "group": "siem", "share": 0.02 }
+          },
+          { "id": "spans--tempo", "from": "spans", "to": "tempo", "kind": "async", "props": { "group": "tempo" } },
+          {
+            "id": "spans--s3-sink",
+            "from": "spans",
+            "to": "s3-sink",
+            "kind": "async",
+            "props": { "group": "archive" }
+          },
+          {
+            "id": "metrics--prom",
+            "from": "metrics",
+            "to": "prom",
+            "kind": "async",
+            "props": { "group": "prometheus" }
+          },
+          { "id": "metrics--rules", "from": "metrics", "to": "rules", "kind": "async", "props": { "group": "rules" } },
+          { "id": "ch-sink--clickhouse", "from": "ch-sink", "to": "clickhouse", "label": "Insert", "kind": "sync" },
+          { "id": "s3-sink--cold", "from": "s3-sink", "to": "cold", "label": "Parquet", "kind": "sync" },
+          {
+            "id": "rules--alertmanager",
+            "from": "rules",
+            "to": "alertmanager",
+            "label": "Firing",
+            "kind": "async",
+            "props": { "emits": "Alert", "share": 0.01 }
+          },
+          { "id": "alertmanager--pagerduty", "from": "alertmanager", "to": "pagerduty", "label": "Page", "kind": "sync" },
+          { "id": "alertmanager--slack", "from": "alertmanager", "to": "slack", "label": "Notify", "kind": "sync" },
+          {
+            "id": "alertmanager--status-page",
+            "from": "alertmanager",
+            "to": "status-page",
+            "label": "Incident",
+            "kind": "sync",
+            "props": { "share": 0.2 }
+          },
+          { "id": "grafana--loki-store", "from": "grafana", "to": "loki-store", "label": "LogQL", "kind": "async", "relation": "depends" },
+          { "id": "gateways--vault", "from": "gateways", "to": "vault", "label": "Redaction keys", "kind": "async", "relation": "secret" },
+          { "id": "gateways--roles", "from": "gateways", "to": "roles", "kind": "async", "relation": "identity" },
+          { "id": "gateways--pipeline-config", "from": "gateways", "to": "pipeline-config", "label": "Sampling policy", "kind": "async", "relation": "config" },
+          { "id": "tenant-limits--pipeline-config", "from": "tenant-limits", "to": "pipeline-config", "label": "Budgets", "kind": "async", "relation": "config" },
+          { "id": "grafana--tempo", "from": "grafana", "to": "tempo", "label": "TraceQL", "kind": "async", "relation": "depends" },
+          { "id": "grafana--prom", "from": "grafana", "to": "prom", "label": "PromQL", "kind": "async", "relation": "depends" }
+        ],
+        "simulations": [
+          {
+            "id": "log-storm",
+            "title": "An incident log storm",
+            "description": "A bad Checkout deploy logs every retry: telemetry jumps fivefold for ten seconds. Gateway collectors scale on CPU, Kafka absorbs the burst, and the log ingesters work through their lag without slowing traces or metrics.",
+            "seed": 81,
+            "scale": 20,
+            "durationMs": 40000,
+            "traffic": [
+              {
+                "id": "shop",
+                "node": "shoppers",
+                "label": "Shoppers",
+                "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 30000 }
+              },
+              {
+                "id": "storm",
+                "node": "agent-shop",
+                "label": "Checkout's retry logs",
+                "messageType": "RetryLog",
+                "shape": { "kind": "constant", "ratePerSec": 1600, "fromMs": 3000, "durationMs": 10000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Every request sends telemetry to the node agents, then to gateway collectors behind a load balancer that hashes by trace ID.", "focus": ["agent-shop", "otlp-lb", "gateways"] }
+              },
+              {
+                "atMs": 3000,
+                "action": { "do": "note", "text": "A bad Checkout deploy logs every retry: five times the telemetry. The gateway collectors' CPU climbs and their HPA adds pods.", "focus": ["agent-shop", "gateways", "tenant-limits"] }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "note", "text": "Kafka absorbs the logs. The ingesters fall behind for a while; traces and metrics, in their own topics, don't.", "focus": ["logs", "ingesters", "spans", "metrics"] }
+              },
+              {
+                "atMs": 20000,
+                "action": { "do": "note", "text": "The deploy is rolled back and the ingesters catch up. Nothing was dropped.", "focus": ["logs", "ingesters", "loki-store"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "lag",
+                "label": "Log ingestion falls behind",
+                "metric": { "node": "logs", "field": "lag", "group": "loki" },
+                "op": ">",
+                "value": 500,
+                "when": "eventually"
+              },
+              {
+                "id": "caught-up",
+                "label": "Log ingestion catches up",
+                "metric": { "node": "logs", "field": "lag", "group": "loki" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "spans-flow",
+                "label": "Traces never fall behind",
+                "metric": { "node": "spans", "field": "lag", "group": "tempo" },
+                "op": "<",
+                "value": 200,
+                "when": "always"
+              }
+            ]
+          },
+          {
+            "id": "loki-outage",
+            "title": "Drill: Loki is down for ten seconds",
+            "description": "Loki's write path fails. Kafka keeps every log for the ingesters while dashboards for traces and metrics carry on; when Loki returns, the backlog drains in order.",
+            "seed": 82,
+            "scale": 10,
+            "durationMs": 35000,
+            "traffic": [
+              {
+                "id": "shop",
+                "node": "shoppers",
+                "label": "Shoppers",
+                "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 25000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 0,
+                "action": { "do": "note", "text": "Logs, spans and metrics each have their own topic and consumers.", "focus": ["logs", "spans", "metrics"] }
+              },
+              {
+                "atMs": 4000,
+                "action": { "do": "fault", "fault": { "kind": "boundary", "boundary": "loki", "down": true } }
+              },
+              {
+                "atMs": 4000,
+                "action": { "do": "note", "text": "Drill: take down the Loki boundary. Kafka keeps the logs: nothing is lost, it just waits.", "focus": ["logs", "ingesters", "loki-store"] }
+              },
+              {
+                "atMs": 14000,
+                "action": { "do": "fault", "fault": { "kind": "boundary", "boundary": "loki", "down": false } }
+              },
+              {
+                "atMs": 14000,
+                "action": { "do": "note", "text": "Loki is back and the ingesters drain the backlog. ClickHouse and the archive never stopped.", "focus": ["logs", "ingesters", "ch-sink", "s3-sink"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "held",
+                "label": "Logs wait in Kafka during the outage",
+                "metric": { "node": "logs", "field": "lag", "group": "loki" },
+                "op": ">",
+                "value": 1000,
+                "when": "at",
+                "atMs": 13000
+              },
+              {
+                "id": "drained",
+                "label": "The backlog drains",
+                "metric": { "node": "logs", "field": "lag", "group": "loki" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "no-loss",
+                "label": "Nothing is dropped",
+                "metric": { "node": "ingesters", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "always"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

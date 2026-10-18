@@ -1,0 +1,120 @@
+---
+title: Observability pipeline
+---
+flowchart LR
+  subgraph g_shop ["EKS · shop services"]
+    ingress["Ingress<br/>NGINX"]
+    checkout["Checkout"]
+    checkout_db[("Orders")]
+    search["Search"]
+    search_db[("Product index")]
+    cart["Cart"]
+    cart_db[("Carts")]
+    payments["Payments"]
+    payments_db[("Payments")]
+    inventory["Inventory"]
+    inventory_db[("Stock")]
+    agent_shop["Node agents<br/>DaemonSet · batch, enrich"]
+  end
+  subgraph g_data ["EKS · data jobs"]
+    scheduler["Job scheduler<br/>every minute"]
+    etl["Catalog ETL<br/>Spark"]
+    reports["Sales reports<br/>Python"]
+    agent_data["Node agents<br/>DaemonSet · data cluster"]
+  end
+  subgraph g_collect ["Collection tier"]
+    otlp_lb["OTLP load balancer<br/>hash by trace ID"]
+    gateways["Gateway collectors<br/>tail sampling · HPA"]
+    tenant_limits["Tenant limits<br/>per-team budgets"]
+  end
+  subgraph g_buffer ["Kafka · telemetry buffer"]
+    logs["Logs<br/>otlp.logs · 48 partitions"]
+    spans["Spans<br/>otlp.spans · 24 partitions"]
+    metrics["Metrics<br/>otlp.metrics · 12 partitions"]
+  end
+  subgraph g_backends ["Observability backends"]
+    loki_store["Loki<br/>logs, 14 days"]
+    tempo["Trace store<br/>Tempo, 7 days"]
+    prom["Metrics store<br/>remote write, 13 months"]
+    grafana["Grafana<br/>dashboards, explore"]
+  end
+  subgraph g_loki ["Loki write path"]
+    ingesters["Log ingesters<br/>Loki write path"]
+  end
+  subgraph g_alerting ["Alerting"]
+    rules["Alert rules<br/>SLO burn rates"]
+    alertmanager["Alertmanager<br/>group, dedupe, route"]
+  end
+  subgraph g_archive ["Archive and analytics"]
+    ch_sink["ClickHouse sink<br/>Kafka Connect"]
+    clickhouse[("Log analytics<br/>ClickHouse")]
+    s3_sink["Archive sink<br/>S3 sink, Parquet"]
+    cold[("Cold archive<br/>1 year, Glacier")]
+  end
+  subgraph g_partners ["Paging and security"]
+    pagerduty(["Paging service<br/>on-call rotations"])
+    status_page(["Status page<br/>public incidents"])
+    slack(["Slack<br/>#incidents"])
+    siem["Security SIEM<br/>audit logs only"]
+  end
+  subgraph g_platform ["Platform"]
+    vault["Vault<br/>TLS and redaction keys"]
+    pipeline_config["Pipeline config<br/>sampling and tenant budgets"]
+    roles["Workload roles<br/>IRSA"]
+  end
+  shoppers(["Shoppers<br/>web and app"])
+  shoppers -->|"HTTPS"| ingress
+  ingress --> checkout
+  checkout --> checkout_db
+  checkout -.->|"OTLP"| agent_shop
+  ingress --> search
+  search --> search_db
+  search -.->|"OTLP"| agent_shop
+  ingress --> cart
+  cart --> cart_db
+  cart -.->|"OTLP"| agent_shop
+  ingress --> payments
+  payments --> payments_db
+  payments -.->|"OTLP"| agent_shop
+  ingress --> inventory
+  inventory --> inventory_db
+  inventory -.->|"OTLP"| agent_shop
+  scheduler -.->|"Run"| etl
+  scheduler -.->|"Run"| reports
+  etl -.->|"OTLP"| agent_data
+  reports -.->|"OTLP"| agent_data
+  agent_shop -->|"OTLP/gRPC"| otlp_lb
+  agent_data -->|"OTLP/gRPC"| otlp_lb
+  otlp_lb --> gateways
+  gateways -->|"Sampled"| tenant_limits
+  tenant_limits -.->|"Logs"| logs
+  tenant_limits -.->|"Kept traces"| spans
+  tenant_limits -.->|"Metrics"| metrics
+  logs -.-> ingesters
+  ingesters -->|"Push chunks"| loki_store
+  logs -.-> ch_sink
+  logs -.-> s3_sink
+  logs -.-> siem
+  spans -.-> tempo
+  spans -.-> s3_sink
+  metrics -.-> prom
+  metrics -.-> rules
+  ch_sink -->|"Insert"| clickhouse
+  s3_sink -->|"Parquet"| cold
+  rules -.->|"Firing"| alertmanager
+  alertmanager -->|"Page"| pagerduty
+  alertmanager -->|"Notify"| slack
+  alertmanager -->|"Incident"| status_page
+  grafana -.->|"depends on: LogQL"| loki_store
+  gateways -.->|"reads secrets: Redaction keys"| vault
+  gateways -.->|"gets tokens from"| roles
+  gateways -.->|"reads config: Sampling policy"| pipeline_config
+  tenant_limits -.->|"reads config: Budgets"| pipeline_config
+  grafana -.->|"depends on: TraceQL"| tempo
+  grafana -.->|"depends on: PromQL"| prom
+  linkStyle 3,6,9,12,15,16,17,18,19,24,25,26,27,29,30,31,32,33,34,35,38 stroke-dasharray: 6 4
+  linkStyle 42,47,48 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 43 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 44 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 45,46 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"An invented platform team, Halyard Ops. Every request a shop service handles sends logs, spans and metrics to node agents, then through load-balanced gateway collectors that tail-sample traces, into Kafka. Kafka buffers each signal for its own backends, so an outage or a log storm in one never stalls the rest.","nodes":{"shoppers":["shoppers","client.browser"],"ingress":["ingress","nginx"],"checkout":["checkout","service.java"],"checkout_db":["checkout-db","aws.aurora"],"search":["search","service.go"],"search_db":["search-db","elasticsearch"],"cart":["cart","service.node"],"cart_db":["cart-db","redis.cache"],"payments":["payments","service.dotnet"],"payments_db":["payments-db","postgres"],"inventory":["inventory","service.java"],"inventory_db":["inventory-db","mysql"],"agent_shop":["agent-shop","opentelemetry"],"scheduler":["scheduler","generic.scheduler"],"etl":["etl","generic.batch-job"],"reports":["reports","generic.batch-job"],"agent_data":["agent-data","opentelemetry"],"otlp_lb":["otlp-lb","load-balancer"],"gateways":["gateways","opentelemetry"],"tenant_limits":["tenant-limits","generic.rate-limiter"],"logs":["logs","kafka.topic"],"spans":["spans","kafka.topic"],"metrics":["metrics","kafka.topic"],"ingesters":["ingesters","service.go"],"loki_store":["loki-store","loki"],"tempo":["tempo","jaeger"],"prom":["prom","prometheus"],"grafana":["grafana","grafana"],"rules":["rules","service.go"],"alertmanager":["alertmanager","service.go"],"ch_sink":["ch-sink","kafka.connect"],"clickhouse":["clickhouse","clickhouse"],"s3_sink":["s3-sink","kafka.connect"],"cold":["cold","aws.s3"],"vault":["vault","vault"],"pipeline_config":["pipeline-config","generic.config-store"],"roles":["roles","aws.iam-role"],"pagerduty":["pagerduty","generic.external-api"],"status_page":["status-page","generic.external-api"],"slack":["slack","slack"],"siem":["siem","splunk"]},"groups":{"g_shop":["shop","k8s"],"g_data":["data","k8s"],"g_collect":["collect","neutral"],"g_buffer":["buffer","neutral"],"g_backends":["backends","neutral"],"g_loki":["loki","neutral"],"g_alerting":["alerting","neutral"],"g_archive":["archive","neutral"],"g_partners":["partners","neutral"],"g_platform":["platform","neutral"]},"edges":["shoppers--ingress","ingress--checkout","checkout--checkout-db","checkout--agent-shop","ingress--search","search--search-db","search--agent-shop","ingress--cart","cart--cart-db","cart--agent-shop","ingress--payments","payments--payments-db","payments--agent-shop","ingress--inventory","inventory--inventory-db","inventory--agent-shop","scheduler--etl","scheduler--reports","etl--agent-data","reports--agent-data","agent-shop--otlp-lb","agent-data--otlp-lb","otlp-lb--gateways","gateways--tenant-limits","tenant-limits--logs","tenant-limits--spans","tenant-limits--metrics","logs--ingesters","ingesters--loki-store","logs--ch-sink","logs--s3-sink","logs--siem","spans--tempo","spans--s3-sink","metrics--prom","metrics--rules","ch-sink--clickhouse","s3-sink--cold","rules--alertmanager","alertmanager--pagerduty","alertmanager--slack","alertmanager--status-page","grafana--loki-store","gateways--vault","gateways--roles","gateways--pipeline-config","tenant-limits--pipeline-config","grafana--tempo","grafana--prom"],"relations":{"42":"depends","43":"secret","44":"identity","45":"config","46":"config","47":"depends","48":"depends"}}

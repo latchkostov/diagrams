@@ -1,0 +1,3 @@
+exit 0
+VALID <repo>/src/examples/video-on-demand-pipeline.json: 43 nodes, 54 edges, 7 boundaries, 3 simulations
+  warning: 43 nodes: consider a smaller diagram, or split it into several, so it stays readable.

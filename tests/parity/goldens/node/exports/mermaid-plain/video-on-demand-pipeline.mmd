@@ -1,0 +1,119 @@
+---
+title: Video-on-demand pipeline
+---
+flowchart LR
+  subgraph g_aws ["AWS us-east-1 · media"]
+    kms["KMS<br/>content keys"]
+    roles["Workload roles<br/>IRSA"]
+    cloudwatch["CloudWatch<br/>queue depth alarms"]
+  end
+  subgraph g_ingest ["Upload and ingest"]
+    upload_api["Upload API<br/>presigned uploads"]
+    upload_svc["Upload service<br/>multipart, resumable"]
+    originals[("Originals<br/>source masters")]
+    glacier[("Masters archive<br/>Glacier after 30 days")]
+    media_events["Media events<br/>ObjectCreated rules"]
+    workflow["Ingest workflow<br/>probe, plan, fan out"]
+    probe["Probe<br/>codec, length, HDR"]
+    captions["Captions<br/>speech to text"]
+    thumbs["Thumbnails<br/>every 10 s"]
+  end
+  subgraph g_encode ["EKS · encoding"]
+    uhd_q["4K encode jobs<br/>SQS · 3 receives"]
+    hd_q["HD encode jobs<br/>SQS · 3 receives"]
+    audio_q["Audio encode jobs<br/>SQS · 3 receives"]
+    uhd_enc["4K encoders<br/>KEDA on queue depth"]
+    hd_enc["HD encoders<br/>KEDA on queue depth"]
+    audio_enc["Audio encoders<br/>AAC and Atmos"]
+    encode_dlq["Media DLQ<br/>failed encode and packaging jobs"]
+    triage["Encode triage<br/>flag the upload, tell the creator"]
+  end
+  subgraph g_publish ["Packaging and publishing"]
+    renditions[("Renditions<br/>CMAF segments")]
+    ready_q["Packaging jobs<br/>SQS"]
+    packager["Packager<br/>HLS and DASH manifests"]
+    streaming[("Streaming bucket<br/>origin")]
+    search_indexer["Search indexer<br/>titles to OpenSearch"]
+    search_index[("Title search<br/>OpenSearch")]
+    catalog_api["Catalog service<br/>titles, renditions, rights"]
+    catalog[("Catalog<br/>DynamoDB")]
+    publish_topic["Publish events<br/>SNS"]
+  end
+  subgraph g_delivery ["Playback"]
+    playback_api["Playback API<br/>manifests and licences"]
+    licences["Licence service<br/>DRM licences"]
+    qoe["Playback quality<br/>rebuffering per region"]
+    qoe_dash["QoE dashboard<br/>start time, rebuffers"]
+  end
+  subgraph g_edge ["CloudFront"]
+    cdn["CloudFront<br/>route table"]
+    edge_cache[("Edge cache<br/>97% of segments")]
+    cdn_logs["CDN logs<br/>Kinesis · 8 shards"]
+  end
+  subgraph g_partners ["Partners"]
+    rights(["Rights service<br/>territories, windows"])
+    drm(["DRM key service<br/>Widevine, FairPlay keys"])
+    creator_email(["Creator email<br/>published or failed"])
+    webhooks(["Creator webhooks<br/>studio integrations"])
+  end
+  creators(["Creators<br/>studio uploads"])
+  viewers(["Viewers<br/>TV, web and app"])
+  studios(["Studio deliveries<br/>masters by file transfer"])
+  creators -->|"HTTPS"| upload_api
+  upload_api -->|"Upload"| upload_svc
+  upload_svc -->|"PutObject"| originals
+  studios -.->|"Accelerated upload"| originals
+  originals -.->|"ObjectCreated"| media_events
+  originals -.->|"Lifecycle"| glacier
+  media_events -.->|"Rule: new source"| workflow
+  workflow -->|"Probe"| probe
+  workflow -->|"Thumbnails"| thumbs
+  workflow -->|"Transcribe"| captions
+  workflow -.->|"4K ladder"| uhd_q
+  workflow -.->|"HD ladder"| hd_q
+  workflow -.->|"Audio"| audio_q
+  workflow -->|"Draft title"| catalog_api
+  catalog_api --> catalog
+  workflow -->|"Rights check"| rights
+  uhd_q -.-> uhd_enc
+  hd_q -.-> hd_enc
+  audio_q -.-> audio_enc
+  uhd_q -.->|"After 3 receives"| encode_dlq
+  hd_q -.->|"After 3 receives"| encode_dlq
+  audio_q -.->|"After 3 receives"| encode_dlq
+  encode_dlq -.-> triage
+  triage -->|"Upload failed"| creator_email
+  uhd_enc -->|"Segments"| renditions
+  hd_enc -->|"Segments"| renditions
+  audio_enc -->|"Segments"| renditions
+  uhd_enc -.->|"RenditionReady"| ready_q
+  hd_enc -.->|"RenditionReady"| ready_q
+  audio_enc -.->|"RenditionReady"| ready_q
+  ready_q -.-> packager
+  ready_q -.->|"After 5 receives"| encode_dlq
+  packager -->|"Content keys"| drm
+  packager -->|"Manifests"| streaming
+  packager -->|"Playable"| catalog_api
+  packager -.->|"TitlePublished"| publish_topic
+  publish_topic -.-> creator_email
+  publish_topic -.-> webhooks
+  publish_topic -.-> search_indexer
+  search_indexer -->|"Index title"| search_index
+  viewers -->|"HTTPS"| cdn
+  cdn -->|"Hit"| edge_cache
+  cdn -->|"Miss"| streaming
+  cdn -->|"Manifest, licence"| playback_api
+  playback_api -->|"Rights"| catalog_api
+  playback_api -->|"Licence"| licences
+  edge_cache -.->|"Access logs"| cdn_logs
+  cdn_logs -.-> qoe
+  qoe -->|"Metrics"| qoe_dash
+  packager -.->|"reads secrets: Content keys"| kms
+  licences -.->|"reads secrets"| kms
+  packager -.->|"gets tokens from"| roles
+  uhd_enc -.->|"gets tokens from"| roles
+  hd_enc -.->|"sends telemetry to"| cloudwatch
+  linkStyle 3,4,5,6,10,11,12,16,17,18,19,20,21,22,27,28,29,30,31,35,36,37,38,46,47 stroke-dasharray: 6 4
+  linkStyle 49,50 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 51,52 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 53 stroke:#7C6D98,stroke-width:1.25px,stroke-dasharray: 2 4

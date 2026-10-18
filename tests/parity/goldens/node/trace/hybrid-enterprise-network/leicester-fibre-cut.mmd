@@ -1,0 +1,29 @@
+---
+title: "ERP #1 · 1.73 s end to end"
+---
+sequenceDiagram
+  participant leicester_staff as Leicester branch
+  participant leicester_router as Leicester router
+  participant hub as SD-WAN hub
+  participant dc_fw as DC firewall pair
+  participant spine_1 as Spine 1
+  participant leaf as Server leaf pair
+  participant adc as ADC pair
+  participant erp as ERP
+  participant erp_db as ERP database
+  leicester_staff->>leicester_router: ERP (+0.00 s)
+  leicester_router-->>leicester_staff: reply (+0.21 s)
+  leicester_router->>hub: ERP (+0.21 s)<br/>Fibre underlay
+  hub-->>leicester_router: reply (+0.42 s)
+  hub->>dc_fw: ERP (+0.42 s)<br/>Branch traffic
+  dc_fw-->>hub: reply (+0.63 s)
+  dc_fw->>spine_1: ERP (+0.63 s)<br/>Allow: inside apps
+  spine_1-->>dc_fw: reply (+0.84 s)
+  spine_1->>leaf: ERP (+0.84 s)
+  leaf-->>spine_1: reply (+1.05 s)
+  leaf->>adc: ERP (+1.05 s)
+  adc-->>leaf: reply (+1.26 s)
+  adc->>erp: ERP (+1.26 s)
+  erp-->>adc: reply (+1.53 s)
+  erp->>erp_db: ERP (+1.53 s)<br/>SQL
+  erp_db-->>erp: reply (+1.73 s)

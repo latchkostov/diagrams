@@ -1,0 +1,3 @@
+exit 0
+VALID <repo>/src/examples/hybrid-enterprise-network.json: 41 nodes, 47 edges, 8 boundaries, 3 simulations
+  warning: 41 nodes: consider a smaller diagram, or split it into several, so it stays readable.

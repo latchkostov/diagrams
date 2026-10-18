@@ -1,0 +1,44 @@
+---
+title: "Request #1 · 2.26 s end to end · 4 copies"
+---
+sequenceDiagram
+  participant shoppers as Shoppers
+  participant ingress as Ingress
+  participant checkout as Checkout
+  participant checkout_db as Orders
+  participant agent_shop as Node agents
+  participant otlp_lb as OTLP load balancer
+  participant gateways as Gateway collectors
+  participant tenant_limits as Tenant limits
+  participant logs as Logs
+  participant ingesters as Log ingesters
+  participant ch_sink as ClickHouse sink
+  participant s3_sink as Archive sink
+  participant siem as Security SIEM
+  participant clickhouse as Log analytics
+  participant cold as Cold archive
+  participant loki_store as Loki
+  shoppers->>ingress: Request (+0.00 s)<br/>HTTPS
+  ingress-->>shoppers: reply (+0.21 s)
+  ingress->>checkout: Request (+0.21 s)
+  checkout-->>ingress: reply (+0.46 s)
+  checkout->>checkout_db: Request (+0.46 s)
+  checkout-)agent_shop: Telemetry (+0.46 s)<br/>OTLP
+  checkout_db-->>checkout: reply (+0.67 s)
+  agent_shop->>otlp_lb: Telemetry (+0.78 s)<br/>OTLP/gRPC
+  otlp_lb-->>agent_shop: reply (+0.99 s)
+  otlp_lb->>gateways: Telemetry (+0.99 s)
+  gateways-->>otlp_lb: reply (+1.21 s)
+  gateways->>tenant_limits: Telemetry (+1.21 s)<br/>Sampled
+  tenant_limits-->>gateways: reply (+1.43 s)
+  tenant_limits-)logs: LogRecord (+1.43 s)<br/>Logs
+  logs-)ingesters: LogRecord (+1.73 s)
+  logs-)ch_sink: LogRecord (+1.73 s)
+  logs-)s3_sink: LogRecord (+1.73 s)
+  logs-)siem: LogRecord (+1.73 s)
+  ch_sink->>clickhouse: LogRecord (+2.05 s)<br/>Insert
+  s3_sink->>cold: LogRecord (+2.05 s)<br/>Parquet
+  ingesters->>loki_store: LogRecord (+2.06 s)<br/>Push chunks
+  clickhouse-->>ch_sink: reply (+2.26 s)
+  cold-->>s3_sink: reply (+2.26 s)
+  loki_store-->>ingesters: reply (+2.26 s)
