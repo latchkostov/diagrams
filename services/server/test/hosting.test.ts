@@ -1,6 +1,7 @@
 import { once } from "node:events";
 import { createConnection } from "node:net";
 import { request } from "node:http";
+import type { ServerResponse } from "node:http";
 import { mkdtemp, mkdir, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -29,13 +30,17 @@ async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "ld-hosting-"));
   onTestFinished(() => rm(root, { recursive: true, force: true }));
   const files = {
-    "index.html": "<!doctype html><title>App</title>",
+    "index.html":
+      '<!doctype html><html><head><title>App</title><script type="module" src="./assets/app-AbCd1234.js"></script><link rel="stylesheet" href="./assets/style-AbCd1234.css"></head><body></body></html>',
     "auth.html": "<!doctype html><title>Auth</title>",
     "assets/app-AbCd1234.js": "export const app = true;",
     "assets/style-AbCd1234.css": "body { color: black; }",
     "embed/live-diagram.js": "export const embed = true;",
     "icon.svg": '<svg xmlns="http://www.w3.org/2000/svg"/>',
     "font.woff2": "font",
+    "skill/index.html": '<!doctype html><script src="copy.js"></script><a href="SKILL.md">Skill</a>',
+    "skill/copy.js": "export const copy = true;",
+    "skill/SKILL.md": "Skill documentation",
     "headers.json": JSON.stringify(selfHostHeaderManifest({ frameAncestors })),
   };
   for (const [name, text] of Object.entries(files)) {
@@ -72,7 +77,19 @@ describe("static UI hosting", () => {
       for (const suffix of ["", "index.html", "room/unknown?x=1"]) {
         const res = await get(s.origin, `${base}${suffix}`);
         expect(res.status).toBe(200);
-        expect(res.body.toString()).toBe(f.files["index.html"]);
+        const html = res.body.toString();
+        expect(html).toBe(
+          f.files["index.html"].replace("<head>", `<head>\n    <base data-self-host="true" href="${base}">`),
+        );
+        const documentUrl = `${s.origin}${base}${suffix}`;
+        const href = html.match(/<base[^>]+href="([^"]+)"/)?.[1];
+        if (!href) throw new Error("Expected base element");
+        const assetBase = new URL(href, documentUrl);
+        for (const asset of html.matchAll(/(?:src|href)="(\.\/assets\/[^"]+)"/g)) {
+          const loaded = await get(s.origin, new URL(asset[1], assetBase).pathname);
+          expect(loaded.status).toBe(200);
+          expect(loaded.headers["content-type"]).not.toContain("text/html");
+        }
         expect(res.headers["content-type"]).toBe("text/html; charset=utf-8");
         expect(res.headers["cache-control"]).toBe("no-cache");
       }
@@ -92,7 +109,7 @@ describe("static UI hosting", () => {
       const head = await get(s.origin, base, {}, "HEAD");
       expect(head.status).toBe(200);
       expect(head.body.length).toBe(0);
-      expect(Number(head.headers["content-length"])).toBe(Buffer.byteLength(f.files["index.html"]));
+      expect(Number(head.headers["content-length"])).toBe((await get(s.origin, base)).body.length);
       expect((await get(s.origin, base, {}, "POST")).status).toBe(405);
       for (const suffix of [
         "assets/missing.js",
@@ -113,6 +130,41 @@ describe("static UI hosting", () => {
       }
     },
   );
+
+  it.each(["/", "/tools/diagrams/"])(
+    "canonicalises directory indexes at %s, preserving query and relative links",
+    async (base) => {
+      const f = await fixture();
+      const s = await startServer({ LD_STATIC: "on", LD_STATIC_DIR: f.root, LD_BASE: base });
+      const response = await get(s.origin, `${base}skill?x=1&embed=1`);
+      expect(response.status).toBe(308);
+      expect(response.headers.location).toBe(`${base}skill/?x=1&embed=1`);
+      const directoryUrl = new URL(response.headers.location ?? "", s.origin);
+      const page = await get(s.origin, directoryUrl.pathname + directoryUrl.search);
+      expect(page.body.toString()).toBe(f.files["skill/index.html"]);
+      for (const file of ["copy.js", "SKILL.md"]) {
+        const resource = await get(s.origin, new URL(file, directoryUrl).pathname);
+        expect(resource.status).toBe(200);
+        expect(resource.body.toString()).toBe(f.files[`skill/${file}` as keyof typeof f.files]);
+      }
+    },
+  );
+
+  it("selects the embed policy only for a parsed embed query parameter", async () => {
+    const f = await fixture();
+    const s = await startServer({ LD_STATIC: "on", LD_STATIC_DIR: f.root });
+    const policies = selfHostHeaderManifest({ frameAncestors });
+    for (const path of ["/?x=?embed=1", "/?x=%3Fembed=1", "/route&embed=1", "/route%3Fembed=1", "/?x=1%26embed=1"]) {
+      const res = await get(s.origin, path);
+      expect(res.status, path).toBe(200);
+      expect(res.headers["content-security-policy"], path).toBe(policies.app["Content-Security-Policy"]);
+    }
+    for (const path of ["/?embed", "/?embed=1", "/?x=1&embed=0", "/?%65mbed=1"]) {
+      expect((await get(s.origin, path)).headers["content-security-policy"], path).toBe(
+        policies.embed["Content-Security-Policy"],
+      );
+    }
+  });
 
   it("rejects raw and encoded traversal, Windows paths, dotfiles and symlink escapes", async () => {
     const f = await fixture();
@@ -154,10 +206,11 @@ describe("static UI hosting", () => {
     const res = await get(s.origin, "/", { "Accept-Encoding": name });
     expect(res.headers["content-encoding"]).toBe(name);
     expect(res.headers.vary).toBe("Accept-Encoding");
-    expect(decompress(res.body).toString()).toBe(f.files["index.html"]);
+    const expected = (await get(s.origin, "/")).body.toString();
+    expect(decompress(res.body).toString()).toBe(expected);
     const plain = await get(s.origin, "/", { "Accept-Encoding": "br;q=0, gzip;q=0" });
     expect(plain.headers["content-encoding"]).toBeUndefined();
-    expect(plain.body.toString()).toBe(f.files["index.html"]);
+    expect(plain.body.toString()).toBe(expected);
     expect((await get(s.origin, "/", { "Accept-Encoding": "*;q=0" })).status).toBe(406);
     expect((await get(s.origin, "/font.woff2", { "Accept-Encoding": "br, identity;q=0" })).status).toBe(406);
   });
@@ -208,17 +261,25 @@ describe("static UI hosting", () => {
     },
   );
 
-  it.each(["index", "manifest", "invalid-manifest"])("refuses startup with missing/invalid %s", async (kind) => {
-    const f = await fixture();
-    if (kind === "invalid-manifest") await writeFile(join(f.root, "headers.json"), "{}");
-    else await rm(join(f.root, kind === "index" ? "index.html" : "headers.json"));
-    const relay = createRelayServer({
-      config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC_DIR: f.root }),
-    });
-    onTestFinished(() => relay.close());
-    await expect(relay.listen()).rejects.toThrow();
-    expect(relay.server.listening).toBe(false);
-  });
+  it.each(["index", "manifest", "invalid-manifest", "script-cache"])(
+    "refuses startup with missing/invalid %s",
+    async (kind) => {
+      const f = await fixture();
+      if (kind === "invalid-manifest") await writeFile(join(f.root, "headers.json"), "{}");
+      else if (kind === "script-cache")
+        await writeFile(
+          join(f.root, "headers.json"),
+          JSON.stringify({ ...selfHostHeaderManifest({ frameAncestors }), script: {} }),
+        );
+      else await rm(join(f.root, kind === "index" ? "index.html" : "headers.json"));
+      const relay = createRelayServer({
+        config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC_DIR: f.root }),
+      });
+      onTestFinished(() => relay.close());
+      await expect(relay.listen()).rejects.toThrow();
+      expect(relay.server.listening).toBe(false);
+    },
+  );
 });
 
 describe("server operations", () => {
@@ -270,9 +331,21 @@ describe("server operations", () => {
     expect(text).toContain('refusals_total{reason="origin"} 1');
     expect(text).toContain(`buffer_budget_bytes ${s.config.totalBufferBytes}`);
     expect(text).toContain(`buffer_bytes ${2 * RELAY_LIMITS.closeFrameBytes}`);
-    expect(text).toContain('room_size_bucket{le="1"} 0');
-    expect(text).toContain('room_size_bucket{le="2"} 1');
+    expect(text).toContain("# TYPE rooms_by_size gauge\n");
+    expect(text).toContain('rooms_by_size{size="1"} 0');
+    expect(text).toContain('rooms_by_size{size="2"} 1');
+    expect(text).not.toContain("room_size_");
     for (const secret of [room, canary, "127.0.0.1"]) expect(text).not.toContain(secret);
+    b.socket.close();
+    await b.closed;
+    const departed = (await get(s.origin, "/metrics")).body.toString();
+    expect(departed).toContain('rooms_by_size{size="1"} 1');
+    expect(departed).toContain('rooms_by_size{size="2"} 0');
+    a.socket.close();
+    await a.closed;
+    const empty = (await get(s.origin, "/metrics")).body.toString();
+    expect(empty).toContain("rooms_active 0\n");
+    expect(empty).toContain('rooms_by_size{size="1"} 0');
   });
 
   it("logs IPs only when opted in, with whitelisted JSON fields", async () => {
@@ -305,26 +378,74 @@ describe("server operations", () => {
     await barrier(a.socket);
     a.socket.pause();
     const ws = [...s.wss.clients][0];
+    const accepted = once(s.server, "connection");
     const http = createConnection({ host: "127.0.0.1", port: Number(new URL(s.origin).port) });
     http.on("error", () => {});
     onTestFinished(() => {
       http.destroy();
     });
     await once(http, "connect");
+    const [serverSocket] = await accepted;
+    const destroy = vi.spyOn(serverSocket, "destroy");
     http.write("GET / HTTP/1.1\r\nHost:");
     const httpClosed = new Promise<void>((resolve) => http.once("close", () => resolve()));
     const terminate = vi.spyOn(ws, "terminate");
     const stopped = s.shutdown();
     clock.advance(s.config.drainTimeoutMs - 1);
     expect(terminate).not.toHaveBeenCalled();
+    expect(destroy).not.toHaveBeenCalled();
+    expect(serverSocket.destroyed).toBe(false);
     clock.advance(1);
     expect(terminate).toHaveBeenCalledOnce();
+    expect(destroy).toHaveBeenCalledOnce();
     a.socket.resume();
     await stopped;
     await httpClosed;
     await a.closed;
     expect(clock.pending).toBe(0);
     expect(s.wss.clients.size).toBe(0);
+  });
+
+  it("shutdown lets an in-flight HTTP response finish before the deadline", async () => {
+    const clock = new FakeClock();
+    const f = await fixture();
+    const s = await startServer({ LD_STATIC: "on", LD_STATIC_DIR: f.root }, clock);
+    let response!: ServerResponse;
+    const original = s.server.listeners("request");
+    s.server.removeAllListeners("request");
+    s.server.on("request", (req, res) => {
+      if (req.url === "/held-response") {
+        response = res;
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.write("first chunk\n");
+      } else for (const listener of original) listener.call(s.server, req, res);
+    });
+    const req = request(`${s.origin}/held-response`, { agent: false });
+    req.on("error", () => {});
+    onTestFinished(() => {
+      req.destroy();
+    });
+    const received = once(req, "response");
+    req.end();
+    const [incoming] = await received;
+    const chunks: Buffer[] = [];
+    const first = once(incoming, "data");
+    incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const ended = once(incoming, "end");
+    // Keep a deliberate premature-close regression from leaking an unhandled rejection.
+    void ended.catch(() => {});
+    await first;
+    if (!response.socket) throw new Error("Expected active response socket");
+    const destroy = vi.spyOn(response.socket, "destroy");
+    const stopped = s.shutdown();
+    clock.advance(s.config.drainTimeoutMs - 1);
+    expect(destroy).not.toHaveBeenCalled();
+    expect(response.destroyed).toBe(false);
+    response.end("last chunk\n");
+    await ended;
+    await stopped;
+    expect(Buffer.concat(chunks).toString()).toBe("first chunk\nlast chunk\n");
+    expect(clock.pending).toBe(0);
   });
 
   it("releases IP and total admission after ws rejects a malformed handshake", async () => {
@@ -347,24 +468,34 @@ describe("server operations", () => {
     expect(s.rooms.size).toBe(1);
   });
 
-  it.each(["broadcast", "addressed"])("delivers exactly the negotiated envelope boundary for %s", async (kind) => {
-    const s = await startServer({ LD_MAX_PAYLOAD: String(RELAY_LIMITS.minPayload) });
-    const a = await connect(s, s.origin, room);
-    const b = await connect(s, s.origin, room);
-    await Promise.all([a, b].map((c) => barrier(c.socket)));
-    const welcome = parseControl(Buffer.from(a.messages[0].bytes).toString());
-    const recipient = parseControl(Buffer.from(b.messages[0].bytes).toString());
-    if (welcome?.t !== "welcome" || recipient?.t !== "welcome") throw new Error("Expected welcome");
-    const envelope = new Uint8Array(welcome.maxFrame).fill(42);
-    const delivered = once(b.socket, "message");
-    a.socket.send(clientFrame(envelope, kind === "addressed" ? recipient.self : undefined));
-    const [raw] = await Promise.race([
-      delivered,
-      a.closed.then((code) => {
-        throw new Error(`Sender closed before delivery: ${code}`);
-      }),
-    ]);
-    expect(readServerFrame(raw)?.envelope).toEqual(envelope);
-    expect(readServerFrame(raw)?.from).toBe(welcome.self);
-  });
+  it.each(["broadcast", "addressed"])(
+    "preserves the full session frame at minimum LD_MAX_PAYLOAD for %s",
+    async (kind) => {
+      const s = await startServer({ LD_MAX_PAYLOAD: String(RELAY_LIMITS.minPayload) });
+      const a = await connect(s, s.origin, room);
+      const b = await connect(s, s.origin, room);
+      await Promise.all([a, b].map((c) => barrier(c.socket)));
+      const welcome = parseControl(Buffer.from(a.messages[0].bytes).toString());
+      const recipient = parseControl(Buffer.from(b.messages[0].bytes).toString());
+      if (welcome?.t !== "welcome" || recipient?.t !== "welcome") throw new Error("Expected welcome");
+      const frameSize = RELAY_LIMITS.minPayload - 9;
+      expect(welcome.maxFrame).toBe(frameSize);
+      const envelope = new Uint8Array(frameSize).fill(42);
+      const delivered = once(b.socket, "message");
+      a.socket.send(clientFrame(envelope, kind === "addressed" ? recipient.self : undefined));
+      const [raw] = await Promise.race([
+        delivered,
+        a.closed.then((code) => {
+          throw new Error(`Sender closed before delivery: ${code}`);
+        }),
+      ]);
+      expect(readServerFrame(raw)?.envelope).toEqual(envelope);
+      expect(readServerFrame(raw)?.from).toBe(welcome.self);
+      const received = b.messages.filter((m) => m.binary).length;
+      a.socket.send(clientFrame(new Uint8Array(frameSize + 1), kind === "addressed" ? recipient.self : undefined));
+      expect(await a.closed).toBe(1009);
+      await barrier(b.socket);
+      expect(b.messages.filter((m) => m.binary)).toHaveLength(received);
+    },
+  );
 });

@@ -26,13 +26,10 @@ export class Metrics {
       ...values.flatMap(([name, type, value]) => [`# TYPE ${name} ${type}`, `${name} ${value}`]),
       "# TYPE refusals_total counter",
       ...[...this.refusals].map(([reason, n]) => `refusals_total{reason="${reason}"} ${n}`),
-      "# TYPE room_size histogram",
-      ...[...new Set([1, 2, 4, 8, config.roomCap])]
-        .sort((a, b) => a - b)
-        .map((le) => `room_size_bucket{le="${le}"} ${sizes.filter((n) => n <= le).length}`),
-      `room_size_bucket{le="+Inf"} ${sizes.length}`,
-      `room_size_sum ${sizes.reduce((sum, n) => sum + n, 0)}`,
-      `room_size_count ${sizes.length}`,
+      "# TYPE rooms_by_size gauge",
+      ...Array.from({ length: config.roomCap }, (_, i) => i + 1).map(
+        (size) => `rooms_by_size{size="${size}"} ${sizes.filter((n) => n === size).length}`,
+      ),
       "",
     ].join("\n");
   }

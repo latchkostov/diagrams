@@ -3,13 +3,14 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve } from "node:path";
 import { validateHeaderName, validateHeaderValue, type IncomingMessage, type ServerResponse } from "node:http";
 import { pipeline } from "node:stream/promises";
-import { createBrotliCompress, createGzip } from "node:zlib";
+import { prepareIndexHtml } from "../../../scripts/prepare-site";
+import { CompressionCache } from "./compression";
 
 interface HeaderManifest {
   version: number;
   app: Record<string, string>;
   embed: Record<string, string>;
-  script: Record<string, string>;
+  script: Record<string, string> & { "Cache-Control": string };
 }
 
 const MIME: Record<string, string> = {
@@ -51,10 +52,11 @@ function manifest(raw: string): HeaderManifest {
   }
   if (!value.app["Content-Security-Policy"] || !value.embed["Content-Security-Policy"])
     throw new Error("Missing static security policy");
+  if (!value.script["Cache-Control"]) throw new Error("Missing script Cache-Control policy");
   return value;
 }
 
-/** Match nginx's raw query parameter policy, before URL normalisation can erase traversal attempts. */
+/** Validate raw paths before URL normalisation can erase traversal attempts. */
 export function requestPath(url: string): string | undefined {
   try {
     const path = decodeURIComponent(url.split("?")[0]);
@@ -102,6 +104,7 @@ function encoding(header = "", compressible = true): "br" | "gzip" | "identity" 
 export async function createStaticHandler(directory: string, base: string) {
   const root = await realpath(resolve(directory));
   const headers = manifest(await readFile(resolve(root, "headers.json"), "utf8"));
+  const compression = new CompressionCache();
   const inside = (file: string) => {
     const path = relative(root, file);
     return path !== ".." && !path.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) && !isAbsolute(path);
@@ -111,23 +114,25 @@ export async function createStaticHandler(directory: string, base: string) {
       const file = await realpath(resolve(root, name));
       if (!inside(file)) return;
       const info = await stat(file);
-      if (info.isFile()) return { file, info };
+      if (info.isFile()) return { file, info, directoryIndex: false };
       if (info.isDirectory()) {
         const index = await realpath(resolve(file, "index.html"));
         if (inside(index)) {
           const info = await stat(index);
-          if (info.isFile()) return { file: index, info };
+          if (info.isFile()) return { file: index, info, directoryIndex: true };
         }
       }
     } catch (error) {
       if (!["ENOENT", "ENOTDIR", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
     }
   };
-  if (!(await find("index.html"))) throw new Error("Static index.html is missing");
+  const index = await find("index.html");
+  if (!index) throw new Error("Static index.html is missing");
+  const indexHtml = Buffer.from(prepareIndexHtml(await readFile(index.file, "utf8"), base));
   return async (req: IncomingMessage, res: ServerResponse) => {
     const url = req.url ?? "/";
     const path = requestPath(url);
-    const policy = { ...(/(?:\?|&)embed(?:=|&|$)/.test(url) ? headers.embed : headers.app) };
+    const policy = { ...(new URL(url, "http://localhost").searchParams.has("embed") ? headers.embed : headers.app) };
     if (path?.endsWith("/auth.html")) delete policy["Cross-Origin-Opener-Policy"];
     const script = /\/embed\/[^/]+\.js$/.test(path ?? "");
     if (script) Object.assign(policy, headers.script);
@@ -164,11 +169,29 @@ export async function createStaticHandler(directory: string, base: string) {
       fail(404);
       return;
     }
+    if (found.directoryIndex && !path.endsWith("/")) {
+      const query = url.includes("?") ? url.slice(url.indexOf("?")) : "";
+      res.writeHead(308, { Location: `${url.split("?")[0]}/${query}` }).end();
+      return;
+    }
+    const prepared = found.file === index.file ? indexHtml : undefined;
     const mime = MIME[extname(found.file).toLowerCase()] ?? "application/octet-stream";
-    const selected = encoding(
+    let selected = encoding(
       req.headers["accept-encoding"],
       /^(text\/|application\/(javascript|json|wasm|xml)|image\/svg)/.test(mime),
     );
+    let compressed: Buffer | undefined;
+    if (selected && selected !== "identity" && req.method !== "HEAD") {
+      const task = compression.get(
+        found.file,
+        `${found.info.mtimeMs}:${found.info.ctimeMs}:${found.info.size}`,
+        prepared?.length ?? found.info.size,
+        selected,
+        prepared,
+      );
+      if (task) compressed = await task;
+      else selected = encoding(req.headers["accept-encoding"], false);
+    }
     if (!selected) {
       fail(406);
       return;
@@ -187,13 +210,13 @@ export async function createStaticHandler(directory: string, base: string) {
     );
     res.setHeader("Vary", "Accept-Encoding");
     if (compress) res.setHeader("Content-Encoding", selected);
-    else res.setHeader("Content-Length", found.info.size);
+    else res.setHeader("Content-Length", prepared?.length ?? found.info.size);
+    if (compressed) res.setHeader("Content-Length", compressed.length);
     if (req.method === "HEAD") {
       res.end();
       return;
     }
-    const stream = createReadStream(found.file);
-    if (compress) await pipeline(stream, selected === "br" ? createBrotliCompress() : createGzip(), res);
-    else await pipeline(stream, res);
+    if (prepared || compressed) res.end(compressed ?? prepared);
+    else await pipeline(createReadStream(found.file), res);
   };
 }

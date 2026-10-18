@@ -80,8 +80,9 @@ used by nginx and Caddy; the runtime consumes data without importing Vite. For c
 or providers, run `pnpm headers:self-host --out dist` with the existing options after building.
 This changes header data only; application switches remain compiled into the UI.
 
-Files are served below `LD_BASE`, with a query-preserving redirect to its trailing slash and
-an index fallback for extensionless SPA routes. Missing resources and directories without an
+Files are served below `LD_BASE`, with query-preserving trailing-slash redirects for the base and
+directory indexes, and an index fallback for extensionless SPA routes. App index HTML is prepared
+and cached at startup with a base element anchored to `LD_BASE`. Missing resources and directories without an
 index return 404. The server never lists directories or exposes `headers.json`. Decoded dot
 segments, backslashes, Windows path aliases, malformed escapes and symlink escapes are refused.
 Keep the static root read-only in production. `<base>api` and `<base>collab` namespaces stay
@@ -89,9 +90,12 @@ reserved (501 for non-upgrade requests).
 
 HTML is `no-cache`, successful assets use nginx's immutable policy, module scripts keep the
 shared embed cache/CORS/resource policy, and errors are `no-store`. MIME types include JS,
-CSS, SVG, fonts, JSON and WebAssembly. Compression is streamed on demand with Brotli or gzip,
-quality-value negotiation and `Vary: Accept-Encoding`; no precompressed build is required.
-App/embed CSP selection and the auth page's absent opener policy match the nginx configuration.
+CSS, SVG, fonts, JSON and WebAssembly. Brotli (explicit quality 4) and gzip use a 32 MiB, 256-entry
+LRU keyed by file metadata and encoding, with in-flight deduplication and at most two compression
+jobs. Inputs over 8 MiB or requests arriving while both slots are occupied use identity (406 when
+identity is forbidden). Quality-value negotiation and `Vary: Accept-Encoding` are preserved; no
+precompressed build is required. App/embed CSP selection uses parsed query parameters, matching
+the app; the auth page omits the opener policy.
 
 ## Health, telemetry and shutdown
 
@@ -102,7 +106,8 @@ The operational paths are rooted at `/`, independent of `LD_BASE`; disabled `/me
 
 `LD_METRICS=1` enables Prometheus text: `rooms_active`, `sockets_active`, `bytes_in_total`,
 `bytes_out_total`, `refusals_total{reason}`, `buffer_bytes`, `buffer_budget_bytes`,
-`socket_buffer_budget_bytes` and the aggregate `room_size` histogram. Byte counters count
+`socket_buffer_budget_bytes` and current `rooms_by_size{size="N"}` gauges (one series for each size
+from 1 through `LD_ROOM_CAP`, including zero counts). Byte counters count
 received/queued relay message payload bytes (including control messages), excluding WebSocket
 framing and ping/pong. Buffer accounting includes framing and close reservations. Refusal labels
 are server-owned categories, never arbitrary input. No metric identifies a room or client.
