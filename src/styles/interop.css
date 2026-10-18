@@ -909,7 +909,8 @@ p.ix-storage-state {
   font-size: 14px;
 }
 
-.ix-embed .diagram-card p {
+.ix-embed .diagram-card p,
+.ix-embed .diagram-card .diagram-description {
   display: none;
 }
 

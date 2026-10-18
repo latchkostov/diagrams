@@ -280,6 +280,7 @@ export function validateDiagram(data: unknown): NativeResult {
     ids.add(id);
     if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
     if (out.sublabel !== undefined && typeof out.sublabel !== "string") delete out.sublabel;
+    if (out.description !== undefined && typeof out.description !== "string") delete out.description;
     if (out.group !== undefined && !groupIds.has(out.group as string)) {
       warnings.push(`Node "${n.id}" referred to a missing group and was taken out of it.`);
       delete out.group;
@@ -781,7 +782,7 @@ const KNOWN_TOP = new Set([
   // Never carried over from a stored original: exports add it from the diagram's privacy (withPrivacyField).
   "private",
 ]);
-const KNOWN_NODE = new Set(["id", "stencil", "label", "sublabel", "x", "y", "group", "props"]);
+const KNOWN_NODE = new Set(["id", "stencil", "label", "sublabel", "description", "x", "y", "group", "props"]);
 const KNOWN_EDGE = new Set([
   "id",
   "from",

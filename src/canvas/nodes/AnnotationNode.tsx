@@ -13,6 +13,7 @@ import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { resolveAnnotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
+import { MarkdownView, handleMarkdownKeyDown } from "../../components/markdown";
 import { keepInPane } from "../keepInPane";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
@@ -86,11 +87,16 @@ function AnnotationNodeImpl({
     if (needed > h + 1) updateNode(id, { height: annotationSize(needed) });
   }, [data.text, data.textSize, kind, h, id, updateNode]);
 
+  const supportsMarkdown = kind === "note" || kind === "text";
   const text = isEditing ? (
     <AnnotationEditor value={data.text} kind={kind} onDone={commit} />
   ) : (
     <div className="ann-content" ref={content} data-testid={`annotation-text-${id}`}>
-      {data.text || (kind === "note" ? <span className="ann-placeholder">Double-click to write</span> : null)}
+      {supportsMarkdown && data.text.trim() ? (
+        <MarkdownView text={data.text} />
+      ) : (
+        data.text || (kind === "note" ? <span className="ann-placeholder">Double-click to write</span> : null)
+      )}
     </div>
   );
 
@@ -232,6 +238,7 @@ function AnnotationEditor({
   const [v, setV] = useState(value);
   const ref = useRef<HTMLTextAreaElement>(null);
   const done = useRef(false);
+  const supportsMarkdown = kind === "note" || kind === "text";
   const finish = () => {
     if (done.current) return;
     done.current = true;
@@ -241,8 +248,13 @@ function AnnotationEditor({
   useSelectOnMount(ref);
   // Magnified when zoomed out (a zone: its name chip), it stays inside the canvas.
   useLayoutEffect(() => keepInPane(kind === "zone" ? (ref.current?.parentElement ?? null) : ref.current), [kind]);
-  const onKey = (e: KeyboardEvent) => {
+  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     e.stopPropagation();
+    if (supportsMarkdown && ref.current) {
+      if (handleMarkdownKeyDown(e, ref.current, v, (next) => setV(annotationText(next)))) {
+        return;
+      }
+    }
     if (editKeyAction(e.nativeEvent, { multiline: kind !== "zone" }) !== "save") return;
     e.preventDefault();
     const wrapper = ref.current?.closest(".react-flow__node");
@@ -265,6 +277,7 @@ function AnnotationEditor({
       aria-label={`${kindLabel[kind]} text`}
       name="annotation-text"
       spellCheck
+      data-markdown-input={supportsMarkdown ? "" : undefined}
       data-testid="annotation-editor"
     />
   );

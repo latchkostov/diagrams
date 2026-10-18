@@ -156,7 +156,14 @@ export const nodeToFlow = (n: DiagramNode): DiagramFlowNode => ({
   type: "diagram",
   ariaLabel: nodeAriaLabel(n),
   position: { x: n.x, y: n.y },
-  data: { stencil: n.stencil, label: n.label, sublabel: n.sublabel, group: n.group, props: n.props },
+  data: {
+    stencil: n.stencil,
+    label: n.label,
+    sublabel: n.sublabel,
+    description: n.description,
+    group: n.group,
+    props: n.props,
+  },
 });
 
 /**
@@ -284,6 +291,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
         stencil: n.data.stencil,
         label: n.data.label,
         sublabel: n.data.sublabel,
+        description: n.data.description,
         x: r(n.position.x),
         y: r(n.position.y),
         group: n.data.group,

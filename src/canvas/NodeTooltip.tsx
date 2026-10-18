@@ -2,6 +2,7 @@ import { stencilLabel, stencilDescription } from "../i18n/stencils";
 import { useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
 import { useSyncExternalStore, type RefObject } from "react";
+import { MarkdownView } from "../components/markdown";
 import { NODE_TIP_ID, useTipDescribes, type TipStore } from "./useNodeTooltip";
 
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */
@@ -12,19 +13,21 @@ export interface NodeTip {
   label: string;
   sublabel?: string;
   stencil: string;
+  description?: string;
 }
 
 export function NodeTooltip({ tip }: { tip: NodeTip }) {
   useLocale();
   const stencil = getStencil(tip.stencil);
   const above = tip.rect.top > 120;
+  const hasDoc = Boolean(tip.description?.trim());
   const style = {
     left: tip.rect.left + tip.rect.width / 2,
     top: above ? tip.rect.top - 8 : tip.rect.bottom + 8,
   };
   return (
     <div
-      className={`node-tip${above ? " is-above" : " is-below"}`}
+      className={`node-tip${above ? " is-above" : " is-below"}${hasDoc ? " has-doc" : ""}`}
       style={style}
       id={NODE_TIP_ID}
       role="tooltip"
@@ -34,6 +37,11 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
       {tip.sublabel && <span className="node-tip-sub mono">{tip.sublabel}</span>}
       <span className="node-tip-kind">{stencilLabel(stencil)}</span>
       {stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>}
+      {hasDoc && (
+        <div className="node-tip-doc" data-testid="node-tooltip-doc">
+          <MarkdownView text={tip.description!} className="node-tip-md" />
+        </div>
+      )}
     </div>
   );
 }

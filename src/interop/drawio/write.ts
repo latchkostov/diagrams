@@ -150,7 +150,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
     const x = n.x + (CARD.width - shape.width) / 2 - (g?.x ?? 0);
     const y = n.y + (CARD.height - shape.height) / 2 - (g?.y ?? 0);
     lines.push(
-      `        <object id="${escapeXml(cellId("n", n.id))}" label="${escapeXml(labelHtml(n.label, n.sublabel))}" dg_id="${escapeXml(n.id)}" dg_stencil="${escapeXml(n.stencil)}"${attr("dg_props", json(n.props))}>`,
+      `        <object id="${escapeXml(cellId("n", n.id))}" label="${escapeXml(labelHtml(n.label, n.sublabel))}" dg_id="${escapeXml(n.id)}" dg_stencil="${escapeXml(n.stencil)}"${attr("dg_description", n.description)}${attr("dg_props", json(n.props))}>`,
       `          <mxCell style="${escapeXml(shape.style)}" vertex="1" parent="${escapeXml(g ? cellId("g", g.id) : "1")}">`,
       `            <mxGeometry x="${r(x)}" y="${r(y)}" width="${shape.width}" height="${shape.height}" as="geometry" />`,
       `          </mxCell>`,
