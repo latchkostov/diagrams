@@ -4,7 +4,7 @@ import { resolveMultiplier } from "../sim/units";
 import type { BrokerSpec } from "../model/brokers";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
 import { t, useLocale } from "../i18n";
-import { hoverTop } from "./hoverPlacement";
+import { hoverRoom, hoverTop } from "./hoverPlacement";
 import { memo, useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { DiagramFile, SimRole } from "../model/types";
@@ -20,6 +20,8 @@ import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
 import { HA_LABEL } from "../stencils/netDevices";
 import { NodePlanning } from "../planning/lazy";
+import { LatencyReadout } from "./LatencyReadout";
+import { latencyLabel, latencySampling } from "./latencyFormat";
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
 
@@ -210,6 +212,7 @@ const NodeBadge = memo(function NodeBadge({
   const domNode = useStore((store) => store.domNode);
   const transform = useStore((store) => (hovered ? store.transform : null));
   const tooltipId = `live-node-detail-${encodeURIComponent(node.id)}`;
+  const hasLatency = !!s.latency;
   useLayoutEffect(() => {
     if (!hovered || !domNode) return;
     const tooltip = document.getElementById(tooltipId);
@@ -222,7 +225,8 @@ const NodeBadge = memo(function NodeBadge({
       const detailScale = tooltip.offsetWidth ? tooltip.getBoundingClientRect().width / tooltip.offsetWidth : zoom;
       tooltip.style.maxWidth = `${Math.max(0, pane.width - 24) / detailScale}px`;
       tooltip.classList.remove("is-compact");
-      if (tooltip.getBoundingClientRect().height > pane.height - 24) tooltip.classList.add("is-compact");
+      const room = hasLatency ? Math.min(pane.height - 24, hoverRoom(pane, box)) : pane.height - 24;
+      if (tooltip.getBoundingClientRect().height > room) tooltip.classList.add("is-compact");
       tooltip.style.left = "0px";
       tooltip.style.bottom = "auto";
       tooltip.style.top = "0px";
@@ -237,7 +241,7 @@ const NodeBadge = memo(function NodeBadge({
     observer.observe(tooltip);
     observer.observe(domNode);
     return () => observer.disconnect();
-  }, [hovered, domNode, node.id, tooltipId, transform, node.position.x, node.position.y]);
+  }, [hovered, domNode, node.id, tooltipId, transform, node.position.x, node.position.y, hasLatency]);
   useEffect(() => {
     if (!hovered || !domNode) return;
     const el = domNode.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(node.id)}"]`);
@@ -266,7 +270,8 @@ const NodeBadge = memo(function NodeBadge({
   // One slot under the node: with the heat map on, its label (which carries the rate) replaces the
   // throughput readout; a broker keeps its lag only while something is waiting.
   const capShown = !!cap && cap.level !== "idle";
-  const showMetric = active && !(capShown && (!broker || s.backlog === 0));
+  const latencyBadge = s.latency && (s.role === "sink" || !!cap);
+  const showMetric = active && !latencyBadge && !(capShown && (!broker || s.backlog === 0));
   const held = broker ? heldWords(s) : null;
   // A topic nobody reads says so with its count; the heat map's chip would only repeat it as a rate.
   const unread = !!held?.lead;
@@ -344,6 +349,11 @@ const NodeBadge = memo(function NodeBadge({
               <b className="mono">{formatRate(s.throughput)}</b>
             </span>
           )}
+          {latencyBadge && s.latency && (
+            <span className="lv-metric mono" data-testid={`node-latency-${node.id}`} title={latencySampling(s.latency)}>
+              {latencyLabel(s.latency)}
+            </span>
+          )}
           {cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
           {blocked > 0 && (
             <span
@@ -380,8 +390,14 @@ const NodeBadge = memo(function NodeBadge({
       )}
 
       {hovered && (
-        <div id={tooltipId} className="lv-detail" role="tooltip" data-testid={`node-detail-${node.id}`}>
+        <div
+          id={tooltipId}
+          className={`lv-detail${hasLatency ? " has-latency" : ""}`}
+          role="tooltip"
+          data-testid={`node-detail-${node.id}`}
+        >
           <HoverExplanation id={node.id} />
+          {s.latency && <LatencyReadout id={node.id} latency={s.latency} />}
           <small className="lv-detail-more" data-testid="node-detail-more">
             {t("planning.moreInProperties")}
           </small>

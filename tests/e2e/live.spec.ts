@@ -25,12 +25,12 @@ import {
 
 const KAFKA = "kafka-order-pipeline";
 
-test("presented pausing notes focus Continue without stealing focus in normal live view", async ({
-  page,
-  consoleErrors,
-}) => {
-  await page.clock.install();
-  for (const presenting of [true, false]) {
+for (const presenting of [true, false]) {
+  test(`pausing notes keep the intended focus (${presenting ? "presenting" : "live"})`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8&paused=1`);
     if (presenting) {
       await page.getByTestId("present-toggle").click();
@@ -49,9 +49,9 @@ test("presented pausing notes focus Continue without stealing focus in normal li
     if (presenting) await expect(page.getByTestId("live-note-continue")).toBeFocused();
     else await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
     await page.clock.resume();
-  }
-  expectNoErrors(consoleErrors);
-});
+    expectNoErrors(consoleErrors);
+  });
+}
 
 test("standalone Live clears busy after mounting", async ({ page, consoleErrors }) => {
   // LiveKeyboardLab mounts LiveView without an onHandle observer.

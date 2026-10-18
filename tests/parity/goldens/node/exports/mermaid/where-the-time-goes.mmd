@@ -1,0 +1,13 @@
+---
+title: Where the time goes
+---
+flowchart LR
+  checkout(["Order intake<br/>2,000 orders/s"])
+  orders["Orders<br/>Kafka · billing consumer group"]
+  billing["Billing<br/>300 ms per order"]
+  receipts(["Receipts<br/>Async completion"])
+  checkout -.-> orders
+  orders -.-> billing
+  billing -.-> receipts
+  linkStyle 0,1,2 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Kafka carries 2,000 orders/s to Billing. A spike at 4 s turns a 0.3 s async path into seconds of waiting; hover for sampled p50, p95 and p99.","nodes":{"checkout":["checkout","client.browser"],"orders":["orders","kafka.topic"],"billing":["billing","service.dotnet"],"receipts":["receipts","generic.email"]},"edges":["intake-orders","orders-billing","billing-receipts"],"relations":{}}

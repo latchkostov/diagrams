@@ -1,0 +1,429 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "checkout": { "ratePerSec": 2000, "messageType": "OrderPlaced", "jitter": 0, "latencyMs": 0, "replicas": 1, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
+    "orders": { "partitions": 12, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "Orders", "healthChecks": false },
+    "billing": { "replicas": 12, "concurrency": 60, "latencyMs": 300, "jitter": 0, "ratePerSec": 2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Billing", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "receipts": {
+      "latencyMs": 0,
+      "api": { "latencyMs": 0, "errorRate": 0 },
+      "ratePerSec": 2,
+      "replicas": 1,
+      "jitter": 0.2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Receipts",
+      "healthChecks": false,
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14"
+    }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "billing.props.preset", "billing.props.presetRevision", "receipts.props.preset", "receipts.props.presetRevision", "receipts.props.api"] },
+  "autoScale": { "freePlay": 50, "billing-spike": 200, "steady-orders": 50 },
+  "brokerAssignments": {
+    "brokers": {
+      "orders": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": {
+      "billing": {
+        "count": 12,
+        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+      }
+    }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "billing",
+      "suggestion": "Billing: 83% utilized",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "checkout": ["Infinity", 2000, 0, 1, 1, 0],
+        "orders": [2400, 2000, 0.8333333333333334, 1, 1, 0],
+        "billing": [
+          2400,
+          2000,
+          0.8333333333333334,
+          12,
+          12,
+          0,
+          {
+            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+          }
+        ],
+        "receipts": ["Infinity", 2000, 0, 1, 1, 0]
+      },
+      "connections": { "intake-orders": 2000, "orders-billing": 2000, "billing-receipts": 2000 },
+      "offeredTypes": { "checkout": ["OrderPlaced"], "orders": ["OrderPlaced"], "billing": ["OrderPlaced"], "receipts": ["OrderPlaced"] }
+    },
+    "explanations": {
+      "billing": {
+        "id": "billing",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 2400,
+        "offered": 2000,
+        "replicas": 12,
+        "baseReplicas": 12,
+        "omittedContributors": 0,
+        "activeReplicas": 12,
+        "assignments": [
+          {
+            "broker": "orders",
+            "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+            "count": 12
+          }
+        ],
+        "slots": 60,
+        "seconds": 0.3,
+        "utilization": 0.8333333333333334,
+        "growth": 0,
+        "contributors": [{ "edge": "orders-billing", "node": "orders", "label": "Orders", "rate": 2000 }],
+        "target": 0.5,
+        "minimumReplicas": 12,
+        "changes": null,
+        "converged": true
+      },
+      "receipts": {
+        "managed": "api",
+        "id": "receipts",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": "Infinity",
+        "offered": 2000,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "billing-receipts", "node": "billing", "label": "Billing", "rate": 2000 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "checkout": [{ "kind": "publishes", "edge": "intake-orders", "peer": "orders" }],
+      "billing": [
+        {
+          "kind": "consumes",
+          "edge": "orders-billing",
+          "peer": "orders",
+          "group": "billing",
+          "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "checkout": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2000,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "OrderPlaced",
+        "healthChecks": false
+      },
+      "orders": {
+        "broker": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "log", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 12,
+        "messageType": "Orders",
+        "healthChecks": false
+      },
+      "billing": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 300,
+        "concurrency": 60,
+        "replicas": 12,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Billing",
+        "healthChecks": false
+      },
+      "receipts": {
+        "admission": { "api": { "latencyMs": 0, "errorRate": 0 }, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Receipts",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "billing-spike": {
+      "configured": "(same as edit)",
+      "simulation": "billing-spike",
+      "analysis": {
+        "bottleneck": "billing",
+        "suggestion": "Billing: raise replicas from 12 to 50.",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "checkout": ["Infinity", 10000, 0, 1, 1, 0],
+          "orders": [2400, 10000, 4.166666666666667, 1, 1, 0],
+          "billing": [
+            2400,
+            10000,
+            4.166666666666667,
+            12,
+            12,
+            0,
+            {
+              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
+            }
+          ],
+          "receipts": ["Infinity", 10000, 0, 1, 1, 0]
+        },
+        "connections": { "intake-orders": 10000, "orders-billing": 10000, "billing-receipts": 10000 },
+        "offeredTypes": { "checkout": ["OrderPlaced"], "orders": ["OrderPlaced"], "billing": ["OrderPlaced"], "receipts": ["OrderPlaced"] }
+      },
+      "explanations": {
+        "billing": {
+          "id": "billing",
+          "role": "processor",
+          "status": "up",
+          "reason": "capacity",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 2400,
+          "offered": 10000,
+          "replicas": 12,
+          "baseReplicas": 12,
+          "omittedContributors": 0,
+          "activeReplicas": 12,
+          "assignments": [
+            {
+              "broker": "orders",
+              "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" },
+              "count": 12
+            }
+          ],
+          "slots": 60,
+          "seconds": 0.3,
+          "utilization": 4.166666666666667,
+          "growth": 7600,
+          "contributors": [{ "edge": "orders-billing", "node": "orders", "label": "Orders", "rate": 10000 }],
+          "target": 0.5,
+          "minimumReplicas": 50,
+          "targetReplicas": 100,
+          "changes": [
+            { "nodeId": "billing", "key": "replicas", "from": 12, "to": 100 },
+            { "nodeId": "orders", "key": "partitions", "from": 12, "to": 100 }
+          ],
+          "fixId": "capacity:billing",
+          "converged": true
+        },
+        "receipts": {
+          "managed": "api",
+          "id": "receipts",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": "Infinity",
+          "offered": 10000,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "billing-receipts", "node": "billing", "label": "Billing", "rate": 10000 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": [
+        { "nodeId": "billing", "key": "replicas", "from": 12, "to": 91 },
+        { "nodeId": "orders", "key": "partitions", "from": 12, "to": 91 }
+      ],
+      "redundancy": { "orders": { "replicas": 2, "enough": false }, "billing": { "replicas": 91, "enough": true } },
+      "resolved": "(same as edit)"
+    },
+    "steady-orders": { "configured": "(same as edit)", "simulation": "steady-orders", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "warn",
+          "top": "billing",
+          "headline": "Billing is busy",
+          "detail": "83% · 2k/s of 2.4k/s. Still some headroom.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "2k/s · no limit", { "modeled": false }],
+            "orders": ["warn", "83% · 2k/s of 2.4k/s"],
+            "billing": ["warn", "83% · 2k/s of 2.4k/s"],
+            "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "billing",
+          "headline": "Billing and 1 more are over capacity",
+          "detail": "417% · 10k/s of 2.4k/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "billing", "key": "replicas", "from": 12, "to": 91, "label": "Billing" },
+              { "nodeId": "orders", "key": "partitions", "from": 12, "to": 91, "label": "Orders" }
+            ],
+            "label": "Billing 12 → 91 replicas, Orders: Partitions → 91"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "10k/s · no limit", { "modeled": false }],
+            "orders": ["over", "417% · 10k/s of 2.4k/s"],
+            "billing": ["over", "417% · 10k/s of 2.4k/s"],
+            "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "over",
+          "top": "billing",
+          "headline": "Billing and 1 more are over capacity",
+          "detail": "167% · 2k/s of 1.2k/s",
+          "fix": {
+            "changes": [
+              { "nodeId": "billing", "key": "replicas", "from": 12, "to": 38, "label": "Billing" },
+              { "nodeId": "orders", "key": "partitions", "from": 12, "to": 19, "label": "Orders" }
+            ],
+            "label": "Billing 12 → 38 replicas, Orders: Partitions → 19"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "2k/s · no limit", { "modeled": false }],
+            "orders": ["over", "167% · 2k/s of 1.2k/s"],
+            "billing": ["over", "167% · 2k/s of 1.2k/s"],
+            "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": { "orders": { "partitions": 24 } }, "rates": {} },
+        "view": {
+          "tone": "warn",
+          "top": "billing",
+          "headline": "Billing is busy",
+          "detail": "83% · 2k/s of 2.4k/s. Still some headroom.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "checkout": ["idle", "2k/s · no limit", { "modeled": false }],
+            "orders": ["warn", "83% · 2k/s of 2.4k/s"],
+            "billing": ["warn", "83% · 2k/s of 2.4k/s"],
+            "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
+          }
+        },
+        "partitionsNotes": { "orders": "All configured reader instances already have an assignment." }
+      }
+    },
+    "billing-spike": {
+      "tone": "over",
+      "top": "billing",
+      "headline": "Billing and 1 more are over capacity",
+      "detail": "417% · 10k/s of 2.4k/s",
+      "fix": {
+        "changes": [
+          { "nodeId": "billing", "key": "replicas", "from": 12, "to": 91, "label": "Billing" },
+          { "nodeId": "orders", "key": "partitions", "from": 12, "to": 91, "label": "Orders" }
+        ],
+        "label": "Billing 12 → 91 replicas, Orders: Partitions → 91"
+      },
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "checkout": ["idle", "10k/s · no limit", { "modeled": false }],
+        "orders": ["over", "417% · 10k/s of 2.4k/s"],
+        "billing": ["over", "417% · 10k/s of 2.4k/s"],
+        "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
+      }
+    },
+    "steady-orders": {
+      "tone": "warn",
+      "top": "billing",
+      "headline": "Billing is busy",
+      "detail": "83% · 2k/s of 2.4k/s. Still some headroom.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "checkout": ["idle", "2k/s · no limit", { "modeled": false }],
+        "orders": ["warn", "83% · 2k/s of 2.4k/s"],
+        "billing": ["warn", "83% · 2k/s of 2.4k/s"],
+        "receipts": ["idle", "Limits unknown; enter measured or contracted values."]
+      }
+    }
+  }
+}

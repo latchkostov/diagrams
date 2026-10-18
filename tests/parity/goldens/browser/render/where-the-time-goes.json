@@ -1,0 +1,11 @@
+{
+  "viewport": "translate(7.87402px, 234.457px) scale(0.80315)",
+  "nodes": {
+    "checkout": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "Order intake 2,000 orders/s" },
+    "orders": { "kind": "node", "box": "translate(390px, 200px) 260×72", "text": "Orders Kafka · billing consumer group" },
+    "billing": { "kind": "node", "box": "translate(740px, 200px) 220×72", "text": "Billing 300 ms per order" },
+    "receipts": { "kind": "node", "box": "translate(1090px, 200px) 220×72", "text": "Receipts Async completion" }
+  },
+  "edges": { "intake-orders": "M260,236 L390,236", "orders-billing": "M650,236 L740,236", "billing-receipts": "M960,236 L1090,236" },
+  "labels": {}
+}

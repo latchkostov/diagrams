@@ -1,0 +1,98 @@
+{
+  "file": { "sha256": "d345d2201cabed3714807bc56915b22dc3f0d7f5b8d7b26ec948d1e2d5f170bc", "bytes": 15120 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "title": "Where the time goes",
+      "description": "Kafka carries 2,000 orders/s to Billing. A spike at 4 s turns a 0.3 s async path into seconds of waiting; hover for sampled p50, p95 and p99.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "checkout",
+          "stencil": "client.browser",
+          "label": "Order intake",
+          "sublabel": "2,000 orders/s",
+          "x": 40,
+          "y": 200,
+          "props": { "ratePerSec": 2000, "messageType": "OrderPlaced", "jitter": 0 }
+        },
+        {
+          "id": "orders",
+          "stencil": "kafka.topic",
+          "label": "Orders",
+          "sublabel": "Kafka · billing consumer group",
+          "x": 390,
+          "y": 200,
+          "props": { "partitions": 12 }
+        },
+        {
+          "id": "billing",
+          "stencil": "service.dotnet",
+          "label": "Billing",
+          "sublabel": "300 ms per order",
+          "x": 740,
+          "y": 200,
+          "props": { "replicas": 12, "concurrency": 60, "latencyMs": 300, "jitter": 0 }
+        },
+        {
+          "id": "receipts",
+          "stencil": "generic.email",
+          "label": "Receipts",
+          "sublabel": "Async completion",
+          "x": 1090,
+          "y": 200,
+          "props": { "latencyMs": 0, "api": { "latencyMs": 0, "errorRate": 0 } }
+        }
+      ],
+      "edges": [
+        { "id": "intake-orders", "from": "checkout", "to": "orders", "kind": "async", "props": { "travelMs": 10 } },
+        {
+          "id": "orders-billing",
+          "from": "orders",
+          "to": "billing",
+          "kind": "async",
+          "props": { "travelMs": 10, "group": "billing" }
+        },
+        { "id": "billing-receipts", "from": "billing", "to": "receipts", "kind": "async", "props": { "travelMs": 10 } }
+      ],
+      "simulations": [
+        {
+          "id": "steady-orders",
+          "title": "Room for steady orders",
+          "description": "Two thousand orders per second fit. The same 300 ms work stays quick without a spike.",
+          "seed": 41,
+          "scale": 100,
+          "durationMs": 9400,
+          "traffic": [
+            {
+              "id": "orders",
+              "node": "checkout",
+              "messageType": "OrderPlaced",
+              "shape": { "kind": "constant", "ratePerSec": 2000, "durationMs": 9400 }
+            }
+          ],
+          "timeline": [],
+          "expectations": [
+            {
+              "id": "no-loss",
+              "label": "No orders dropped at Billing",
+              "metric": { "node": "billing", "field": "dropped" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ]
+        }
+      ],
+      "planning": { "revision": "p3-a1" }
+    },
+    "icons": {
+      "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+      "dotnet": { "sha256": "993caba10a755f1f3ba9e25ff9fd3d529ed2d04cefe18a76d40aece85c6a7f36", "bytes": 1020 },
+      "generic-email": { "sha256": "f0db58eaa97e89831f8591e9a1557e2470bca8fd215a0b887d8430147f9ddd19", "bytes": 447 },
+      "kafka": { "sha256": "938a96212aef8da520eca3435f23c1a3304ce25fbfaf0e5712ce548353abc5ef", "bytes": 4092 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

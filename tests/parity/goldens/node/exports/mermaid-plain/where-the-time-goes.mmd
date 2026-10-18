@@ -1,0 +1,12 @@
+---
+title: Where the time goes
+---
+flowchart LR
+  checkout(["Order intake<br/>2,000 orders/s"])
+  orders["Orders<br/>Kafka · billing consumer group"]
+  billing["Billing<br/>300 ms per order"]
+  receipts(["Receipts<br/>Async completion"])
+  checkout -.-> orders
+  orders -.-> billing
+  billing -.-> receipts
+  linkStyle 0,1,2 stroke-dasharray: 6 4

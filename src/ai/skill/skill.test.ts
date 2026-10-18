@@ -699,8 +699,8 @@ describe("the downloadable skill", () => {
       ]),
     );
     const zip = zipSkill(files);
-    // The viewer template is most of it (about 415 kB of the zip): keep the download in check.
-    expect(zip.length).toBeLessThan(800_000);
+    // Includes the offline latency recorder/readout; retain a download budget with ~1% headroom.
+    expect(zip.length).toBeLessThan(810_000);
     expect(zipSkill(readSkill()).equals(zip)).toBe(true);
     // Read the local file entries back.
     const out = new Map<string, string>();

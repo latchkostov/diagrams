@@ -372,6 +372,22 @@
   animation: lv-note-in 0.15s ease-out;
 }
 
+.lv-latency {
+  display: grid;
+  gap: 5px;
+  margin-block: 8px;
+  padding-block: 8px;
+  border-block: 1px solid var(--line);
+}
+.lv-latency-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.lv-latency small {
+  color: var(--text-3);
+  line-height: 1.4;
+}
 .lv-detail-row {
   display: flex;
   justify-content: space-between;
@@ -2529,7 +2545,7 @@ details[open] > summary .lv-disclosure-chevron {
 .lv-detail-more {
   display: none;
 }
-.lv-detail.is-compact > :not(.planning-explanation):not(.lv-detail-more),
+.lv-detail.is-compact > :not(.planning-explanation):not(.lv-detail-more):not(.lv-latency),
 .lv-detail.is-compact .planning-explanation > :not([data-testid="planning-arithmetic"]) {
   display: none;
 }
@@ -2540,5 +2556,11 @@ details[open] > summary .lv-disclosure-chevron {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.lv-detail.is-compact.has-latency [data-testid="planning-observed"] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
 }

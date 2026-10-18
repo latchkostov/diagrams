@@ -39,6 +39,7 @@ import { activeUnits } from "../stencils/netDevices";
 import { pushDue, popDue } from "./dueHeap";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
+import { createLatencyRecorder, recordLatency, latencyMetrics, type LatencyRecorder } from "./latency";
 import { mulberry32 } from "./rng";
 import {
   acceptsType,
@@ -106,6 +107,10 @@ export const SOURCE_RATE_CAP = 10_000;
 export const SOURCE_VOLUME_CAP = 200_000;
 
 interface Message {
+  workMs: number;
+  travelMs: number;
+  /** A branch that crossed a Request is outside async completion's scope. */
+  requested?: true;
   id: number;
   type: string;
   color: string;
@@ -140,6 +145,9 @@ interface Delivery {
   original: Message;
 }
 interface Work {
+  workedAt?: number;
+  /** In-place backoff advances only with the attempt's clock, including pause/resume. */
+  waitRemaining?: number;
   memorySlots?: number;
   cpuParts?: CpuPart[];
   replica?: number;
@@ -171,6 +179,7 @@ interface RouteDecision {
   quotas: QuotaRequirement[];
 }
 interface Node {
+  latency?: LatencyRecorder;
   fleet?: Fleet;
   id: string;
   label: string;
@@ -395,6 +404,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.completedThisStep++;
     log("process", node, message);
     if (message.family.trace) step(message, "done", node.id);
+    // Each node reports the root-to-here path on successful handling, including terminal arrivals.
+    // This also lets an intermediate worker explain its queue without composing hop percentiles.
+    if (
+      !message.requested &&
+      (node.role === "processor" || node.role === "gateway" || node.role === "store" || node.role === "sink")
+    ) {
+      const elapsed = time - message.family.bornAt;
+      const work = Math.min(message.workMs, Math.max(0, elapsed - message.travelMs));
+      recordLatency(
+        (node.latency ??= createLatencyRecorder()),
+        message.type,
+        Math.max(0, elapsed - message.travelMs - work),
+        work,
+        message.travelMs,
+      );
+    }
   }
 
   /** Records a lineage step for a message whose family is being traced (callers check first). */
@@ -747,8 +772,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           for (const work of working) {
             work.replica = undefined;
             work.cpuParts = undefined;
-            if (startResources(node, work)) node.working.push(work);
-            else {
+            if (startResources(node, work)) {
+              work.workedAt = time;
+              node.working.push(work);
+            } else {
               work.slotted = false;
               node.pending.push(work);
             }
@@ -845,6 +872,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     extra?: Partial<TraceStep>,
   ): void {
     if (kind === "message" || kind === "dlq") message = rename(message, edge.emits);
+    // Replies are decorative and must never mutate the still-live branch's timings.
+    if (kind !== "reply") {
+      message.travelMs += Math.ceil(Math.max(STEP, edge.travelMs) / STEP) * STEP;
+      if (edge.sync) message.requested = true;
+    }
     const visible = drawn < maxParticles;
     if (visible) drawn++;
     edge.active++;
@@ -1039,6 +1071,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         canRetain(node, work)
       ) {
         work.remaining = node.props.retryBackoffMs + latency(node);
+        work.waitRemaining = node.props.retryBackoffMs;
         if (node.props.resources) {
           work.cpuRemaining = node.props.resources.cpuMsPerMessage * scale;
           work.cpuBackoffUntil = time + node.props.retryBackoffMs;
@@ -1152,6 +1185,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           node.pending.push(work);
           return;
         }
+        work.workedAt = time;
         node.working.push(work);
         work.slotted = true;
       }
@@ -1177,6 +1211,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           node.pending.push(work);
           return;
         }
+        work.workedAt = time;
         node.working.push(work);
         work.slotted = true;
         if (work.message.family.trace) step(work.message, "start", node.id);
@@ -1286,7 +1321,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       type,
       color: messageColor(type),
       attempts: 0,
-      family: { root: id, alive: 1, parked: 0 },
+      workMs: 0,
+      travelMs: 0,
+      family: { root: id, alive: 1, parked: 0, bornAt: time },
     };
     if (route) {
       message.request = route;
@@ -1302,7 +1339,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const { broker, group } = trip.delivery!;
     group.active--;
     group.activeByNode[trip.edge.to.id]--;
-    trip.message = { ...trip.delivery!.original, attempts: trip.message.attempts };
+    trip.message = {
+      ...trip.delivery!.original,
+      attempts: trip.message.attempts,
+      workMs: trip.message.workMs,
+      travelMs: trip.message.travelMs,
+      requested: trip.message.requested,
+    };
     if (trip.message.attempts >= broker.props.maxDeliveryCount) {
       // A denied dead-letter route blocks the message at the broker: on purpose, so not dead-lettered either.
       if (broker.dlq?.deny && accepts(broker.dlq, trip.message)) block(trip.message, broker.dlq);
@@ -1508,10 +1551,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               node.pending.push(work);
               break;
             }
+            work.workedAt = time;
             node.working.push(work);
             work.slotted = true;
           } else endResources(node, work);
         } else {
+          work.workedAt = time;
           node.working.push(work);
           work.slotted = true;
           if (work.message.family.trace) step(work.message, "start", node.id);
@@ -1676,6 +1721,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const work of node.working) {
           if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
             work.retryAdmissionAt = undefined;
+            work.waitRemaining = 0;
+            work.workedAt = time;
             work.retained = false;
             work.remaining = latency(node);
             if (!reserveAdmission(node, work)) {
@@ -1685,6 +1732,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             }
           }
           work.remaining -= STEP;
+          let worked = Math.max(0, time - Math.max(work.workedAt ?? time, time - STEP));
+          if (work.waitRemaining) {
+            const waiting = Math.min(worked, work.waitRemaining);
+            work.waitRemaining -= waiting;
+            worked -= waiting;
+          }
+          work.message.workMs += worked;
+          work.workedAt = time;
           if (f && r && node.status === "up" && (work.cpuBackoffUntil ?? 0) <= time) {
             if (work.cpuParts) {
               for (const p of work.cpuParts)
@@ -1875,6 +1930,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     lineage.reset();
     routeCounts = new Map();
     for (const node of nodes.values()) {
+      node.latency = undefined;
       node.streams = new Map();
       node.mixCredit.fill(0);
       node.mixDeficit.fill(0);
@@ -2203,6 +2259,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         if (node.role === "queue" && !node.groups.length) lag.queue = backlog;
         nodeStates[node.id] = {
+          ...(node.latency ? { latency: latencyMetrics(node.latency) } : {}),
           id: node.id,
           role: node.role,
           status: node.status,

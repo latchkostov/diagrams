@@ -31,6 +31,8 @@ async function installSyntheticRegistry(page: Page, diagram = localOnlyFixture) 
         { ...exampleMetadata["kafka-order-pipeline"], slug: "${SLUG}", diagram: publicDiagram },
         { slug: "synthetic-local", localOnly: true, title: localDiagram.title, thumb: diagramThumb(localDiagram), simulation: localDiagram.simulations?.[0]?.id, diagram: localDiagram }
       ];
+      export const exampleSummary = (example) =>
+        (typeof example.summary === "function" ? example.summary() : example.summary) ?? example.description;
       export const getLoadedExample = (slug) => examples.find((e) => e.slug === slug)?.diagram;
       export const loadExample = async (slug) => getLoadedExample(slug);`,
     }),

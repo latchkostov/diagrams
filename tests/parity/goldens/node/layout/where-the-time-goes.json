@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "checkout": [40, 40], "orders": [400, 40], "billing": [800, 40], "receipts": [1160, 40] },
+    "TB": { "checkout": [40, 40], "orders": [40, 200], "billing": [40, 360], "receipts": [40, 520] }
+  },
+  "tidy": { "checkout": [40, 200], "orders": [380, 200], "billing": [750, 200], "receipts": [1090, 200] },
+  "arrange": {
+    "alignLeft": { "checkout": [40, 200], "orders": [40, 200], "billing": [40, 200], "receipts": [40, 200] },
+    "alignMiddle": { "checkout": [40, 200], "orders": [390, 200], "billing": [740, 200], "receipts": [1090, 200] },
+    "distributeH": { "checkout": [40, 200], "orders": [377, 200], "billing": [753, 200], "receipts": [1090, 200] },
+    "distributeV": { "checkout": [40, 200], "orders": [390, 200], "billing": [740, 200], "receipts": [1090, 200] },
+    "spreadH": { "checkout": [40, 200], "orders": [390, 200], "billing": [740, 200], "receipts": [1090, 200] },
+    "boundaryAround": { "x": 0, "y": 136, "width": 1350, "height": 176 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "checkout": [40, 40], "orders": [400, 40], "billing": [800, 40], "receipts": [1160, 40] },
+    "groups": {}
+  }
+}

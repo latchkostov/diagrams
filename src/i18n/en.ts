@@ -10,6 +10,16 @@
 // stays.
 
 const en = {
+  "latency.heading": "Async latency",
+  "latency.p50": "p50 {duration}",
+  "latency.p95": "p95 {duration}",
+  "latency.p99": "p99 {duration}",
+  "latency.sampling": "from {count, plural, one {# sampled message} other {# sampled messages}} · since restart",
+  "latency.breakdown": "Waiting {wait} · work {work} · travel {travel}",
+  "latency.scope":
+    "Successful async arrivals at this node. Approximate percentiles exclude travel; travel is animation. Shares use the same sampled paths.",
+  "examples.latency": "Latency percentiles",
+  "examples.latencySummary": "A Billing backlog turns 0.3 s into 4 s",
   "liveSession.editInputs": "Edit Inputs & capacity",
   "liveSession.incomingTraffic": "Incoming traffic",
   "liveSession.deadLetterWait": "Nothing has dead-lettered yet: the next message that does will be traced.",

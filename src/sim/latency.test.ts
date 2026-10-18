@@ -1,0 +1,210 @@
+import { describe, expect, it } from "vitest";
+import type { DiagramFile, SimRole } from "../model/types";
+import { createEngine } from "./engine";
+import { createLatencyRecorder, recordLatency, latencyMetrics, LATENCY_BUCKETS, LATENCY_TYPES } from "./latency";
+import { realFrame } from "./units";
+import { createSimulationRun } from "./simulation";
+import example from "../examples/where-the-time-goes.json";
+
+function diagram(): DiagramFile {
+  return {
+    format: "diagrams/v1",
+    title: "Async timing",
+    groups: [],
+    nodes: [
+      { id: "source", stencil: "source", label: "Source", x: 0, y: 0 },
+      { id: "queue", stencil: "queue", label: "Queue", x: 0, y: 0 },
+      {
+        id: "worker",
+        stencil: "processor",
+        label: "Worker",
+        x: 0,
+        y: 0,
+        props: { latencyMs: 100, concurrency: 1, jitter: 0 },
+      },
+      { id: "sink", stencil: "sink", label: "Sink", x: 0, y: 0 },
+    ],
+    edges: [
+      { id: "sq", from: "source", to: "queue", kind: "async", props: { travelMs: 10 } },
+      { id: "qw", from: "queue", to: "worker", kind: "async", props: { travelMs: 10 } },
+      { id: "ws", from: "worker", to: "sink", kind: "async", props: { travelMs: 10 } },
+    ],
+  };
+}
+const engine = (d = diagram()) => {
+  const e = createEngine({ seed: 7, roleOf: (id) => id as SimRole });
+  e.load(d);
+  return e;
+};
+
+describe("bounded async latency", () => {
+  it("reuses immutable readouts between samples and preserves earlier frames after another arrival", () => {
+    const recorder = createLatencyRecorder();
+    recordLatency(recorder, "Order", 10, 100, 30);
+    const first = latencyMetrics(recorder);
+    expect(latencyMetrics(recorder)).toBe(first);
+    expect(Object.isFrozen(first)).toBe(true);
+    expect(Object.isFrozen(first.byType)).toBe(true);
+    expect(Object.isFrozen(first.byType.Order)).toBe(true);
+    recordLatency(recorder, "Order", 20, 100, 30);
+    expect(latencyMetrics(recorder).samples).toBe(2);
+    expect(first.samples).toBe(1);
+    expect(first.byType.Order.samples).toBe(1);
+  });
+  it("records zero and long tails, bounded buckets and type cardinality without retaining samples", () => {
+    const r = createLatencyRecorder();
+    recordLatency(r, "zero", 0, 0, 10);
+    expect(latencyMetrics(r).p99).toBe(0);
+    for (let i = 0; i < 1000; i++) recordLatency(r, String(i), i, 100, 20);
+    const metrics = latencyMetrics(r);
+    expect(r.total.buckets).toHaveLength(LATENCY_BUCKETS);
+    expect(r.types.size).toBe(LATENCY_TYPES);
+    expect(metrics).toMatchObject({ samples: 1001, typesLimited: true });
+    expect(metrics.p50).toBeGreaterThanOrEqual(599);
+    expect(metrics.p50).toBeLessThanOrEqual(599 * 1.12);
+    recordLatency(r, "huge", 1e12, 0, 0);
+    expect(latencyMetrics(r).p99).toBeGreaterThan(0);
+    const long = createLatencyRecorder();
+    recordLatency(long, "long", 1e12, 0, 0);
+    expect(latencyMetrics(long).p50).toBe(1e12);
+  });
+
+  it("measures whole paths, queue wait and work separately from animation, with unscaled sample counts", () => {
+    const e = engine();
+    e.setScale(10);
+    e.inject("source", 20, { type: "Order" });
+    e.step(30000);
+    const s = e.frame().nodes.sink.latency!;
+    expect(s.samples).toBe(20);
+    expect(s.waitMs).toBeGreaterThan(s.workMs);
+    expect(s.travelMs).toBe(20 * 30);
+    expect(s.byType.Order.samples).toBe(20);
+    expect(s.p95).toBeGreaterThan(s.p50);
+    expect(realFrame(e.frame()).nodes.sink.latency).toEqual(s);
+    const detached = e.frame();
+    expect(Object.isFrozen(detached.nodes.sink.latency!.byType.Order)).toBe(true);
+    expect(e.frame().nodes.sink.latency!.byType.Order.samples).toBe(20);
+  });
+
+  it("copies branch timing independently, even when one branch travels over a Request", () => {
+    const d = diagram();
+    d.nodes.push({ id: "other", stencil: "sink", label: "Other", x: 0, y: 0 });
+    d.edges.push({ id: "wo", from: "worker", to: "other", kind: "sync", props: { travelMs: 500 } });
+    const e = engine(d);
+    e.inject("source", 1);
+    e.step(2000);
+    expect(e.frame().nodes.sink.latency).toMatchObject({ samples: 1, travelMs: 30 });
+    expect(e.frame().nodes.other.latency).toBeUndefined();
+    expect(e.metrics().inSystem).toBe(0);
+  });
+
+  it.each(["requeue", "inplace"])("preserves birth and all attempts through %s retries and checkpoints", (retry) => {
+    const d = diagram();
+    d.nodes[2].props = { ...d.nodes[2].props, retry, retryBackoffMs: 200, failureRate: 1 };
+    const e = engine(d);
+    e.inject("source", 1);
+    e.step(150);
+    const checkpoint = e.checkpoint();
+    const finish = () => {
+      e.setNodeProps("worker", { failureRate: 0 });
+      e.step(1500);
+      return e.snapshot();
+    };
+    const first = finish();
+    e.restore(checkpoint);
+    expect(finish()).toEqual(first);
+    expect(first.nodes.sink.latency).toMatchObject({ samples: 1 });
+    expect(first.nodes.sink.latency!.waitMs).toBeGreaterThanOrEqual(200);
+    expect(first.nodes.sink.latency!.workMs).toBeGreaterThan(100);
+    expect(first.nodes.sink.latency!.travelMs).toBe(retry === "inplace" ? 30 : 50);
+  });
+
+  it("excludes failed attempts and exhausted deliveries; reset discards recordings", () => {
+    const d = diagram();
+    d.nodes[2].props = { failureRate: 1, latencyMs: 10, jitter: 0 };
+    const e = engine(d);
+    e.inject("source", 2);
+    e.step(3000);
+    expect(e.frame().nodes.worker.latency).toBeUndefined();
+    expect(e.frame().nodes.sink.latency).toBeUndefined();
+    e.setNodeProps("worker", { failureRate: 0 });
+    e.inject("source", 1);
+    e.step(1000);
+    expect(e.frame().nodes.sink.latency!.samples).toBe(1);
+    e.reset();
+    expect(e.frame().nodes.sink.latency).toBeUndefined();
+  });
+
+  it("counts paused residence as waiting and leaves unread brokers outside the completion population", () => {
+    const e = engine();
+    e.inject("source", 1);
+    e.step(50);
+    e.setNodeStatus("worker", "paused");
+    e.step(500);
+    e.setNodeStatus("worker", "up");
+    e.step(1000);
+    expect(e.frame().nodes.sink.latency).toMatchObject({ samples: 1, waitMs: 500, workMs: 100, travelMs: 30 });
+    const d = diagram();
+    d.edges = d.edges.filter((edge) => edge.id !== "qw");
+    const parked = engine(d);
+    parked.inject("source", 1);
+    parked.step(1000);
+    expect(parked.frame().nodes.queue.backlog).toBe(1);
+    expect(parked.frame().nodes.queue.latency).toBeUndefined();
+    expect(parked.frame().nodes.sink.latency).toBeUndefined();
+  });
+
+  it("keeps an in-place retry's frozen backoff in waiting when paused mid-backoff", () => {
+    const replay = (pause: boolean) => {
+      const d = diagram();
+      d.nodes[2].props = { ...d.nodes[2].props, retry: "inplace", retryBackoffMs: 200, failureRate: 1 };
+      const e = engine(d);
+      e.inject("source", 1);
+      e.step(150);
+      if (pause) {
+        e.setNodeStatus("worker", "paused");
+        e.step(500);
+        e.setNodeStatus("worker", "up");
+      }
+      e.setNodeProps("worker", { failureRate: 0 });
+      e.step(1000);
+      return e.frame().nodes.sink.latency!;
+    };
+    const baseline = replay(false),
+      paused = replay(true);
+    expect(paused.workMs).toBe(baseline.workMs);
+    expect(paused.waitMs).toBe(baseline.waitMs + 500);
+  });
+
+  it("excludes animation on both fast and slow edges without summing node percentiles", () => {
+    const read = (travelMs: number) => {
+      const d = diagram();
+      for (const edge of d.edges) edge.props = { travelMs };
+      const e = engine(d);
+      e.inject("source", 1);
+      e.step(4000);
+      return e.frame().nodes.sink.latency!;
+    };
+    const fast = read(10),
+      slow = read(500);
+    expect(slow.p95).toBe(fast.p95);
+    expect(slow.travelMs).toBe(1500);
+    expect(fast.travelMs).toBe(30);
+    expect(slow.workMs).toBe(fast.workMs);
+  });
+
+  it("replays sampled percentiles and breakdowns from a saved-run checkpoint and a restart", () => {
+    const d = example as DiagramFile;
+    const run = createSimulationRun(d, d.simulations![0]);
+    run.step(5500);
+    const checkpoint = run.checkpoint();
+    run.step(4000);
+    const end = run.engine.frame();
+    run.restore(checkpoint);
+    run.step(4000);
+    expect(run.engine.frame()).toEqual(end);
+    run.restart();
+    run.step(9500);
+    expect(run.engine.frame()).toEqual(end);
+  });
+});
