@@ -35,7 +35,8 @@ function fixture() {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
-  for (const root of directories.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of directories.splice(0))
+    rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 it("parses one-based shards and never stamps even a 1/1 shard", () => {

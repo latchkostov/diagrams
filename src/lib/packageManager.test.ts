@@ -28,7 +28,7 @@ function installedFixture() {
   const output = resolve("tests/.output");
   mkdirSync(output, { recursive: true });
   const fixture = mkdtempSync(join(output, "pnpm-policy-"));
-  onTestFinished(() => rmSync(fixture, { recursive: true, force: true }));
+  onTestFinished(() => rmSync(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
   const pkg = {
     name: "install-policy-probe",
     private: true,

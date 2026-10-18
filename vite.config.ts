@@ -202,6 +202,7 @@ export default defineConfig({
     },
   },
   test: {
+    globalSetup: ["src/test/globalSetup.ts"],
     setupFiles: ["src/test/setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     environment: "node",

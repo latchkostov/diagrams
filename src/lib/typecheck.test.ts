@@ -50,6 +50,6 @@ it.each([
       expect(readdirSync(fixture).sort()).toEqual(["probe.ts", "tsconfig.json"]);
     }
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    rmSync(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });

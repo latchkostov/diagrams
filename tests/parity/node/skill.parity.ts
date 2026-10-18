@@ -126,6 +126,7 @@ describe("layout.mjs, share-link.mjs and export-html.mjs", () => {
   for (const { slug } of examples)
     it(slug, () => {
       const dir = mkdtempSync(join(tmpdir(), "parity-skill-"));
+      const cleanDir = dir.split(ROOT).join("<repo>").replace(/\\/g, "/");
       try {
         const laid = script("layout.mjs", [exampleFile(slug), "--force", "--out", join(dir, "laid.json")]);
         const layout = JSON.parse(readFileSync(join(dir, "laid.json"), "utf8")) as DiagramFile;
@@ -149,7 +150,7 @@ describe("layout.mjs, share-link.mjs and export-html.mjs", () => {
         expectGolden(`skill/scripts/${slug}.json`, {
           layout: {
             status: laid.status,
-            stdout: laid.stdout.replace(dir.replace(/\\/g, "/"), "<tmp>"),
+            stdout: laid.stdout.replace(cleanDir, "<tmp>"),
             nodes: Object.fromEntries(layout.nodes.map((n) => [n.id, [n.x, n.y]])),
             groups: Object.fromEntries((layout.groups ?? []).map((g) => [g.id, [g.x, g.y, g.width, g.height]])),
           },
@@ -163,7 +164,7 @@ describe("layout.mjs, share-link.mjs and export-html.mjs", () => {
           exportHtml: {
             status: html.status,
             stdout: html.stdout
-              .replace(dir.replace(/\\/g, "/"), "<tmp>") // The file's size includes the released viewer template (refreshed by `pnpm skill:release`).
+              .replace(cleanDir, "<tmp>") // The file's size includes the released viewer template (refreshed by `pnpm skill:release`).
               .replace(/\d[\d,.]* [kMG]?B\b/, "<size>"),
             stderr: html.stderr,
             payload: {
@@ -173,7 +174,7 @@ describe("layout.mjs, share-link.mjs and export-html.mjs", () => {
           },
         });
       } finally {
-        rmSync(dir, { recursive: true, force: true });
+        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       }
     });
 });

@@ -6,11 +6,12 @@ import { performance } from "node:perf_hooks";
 import { pnpm } from "./commands.mjs";
 import { plan, playwrightCounts, workerCount } from "./logic.mjs";
 import { pendingReport, writeCheckpoint, readTestReport } from "./reporter.mjs";
+import { createTempRun, removalOptions } from "../test-temp.mjs";
 
 // Linux reports are copied home after the run. Keep Chrome's high-churn profiles
 // outside that copy tree, in their own native volume at this repository path.
 export const browserTemp = (root, directory, container = false) =>
-  resolve(container ? join(root, "tests/.output/tmp") : join(directory, "tmp"));
+  resolve(container ? join(root, "tests/.output/tmp/browser") : join(directory, "tmp"));
 
 export function prepareBrowserTemp(root, directory, container = false, remove = rmSync) {
   const temp = browserTemp(root, directory, container);
@@ -18,12 +19,28 @@ export function prepareBrowserTemp(root, directory, container = false, remove = 
   if (!within || within === ".." || within.startsWith(`..${sep}`) || isAbsolute(within))
     throw new Error("Browser temporary files must stay inside the repository");
   mkdirSync(temp, { recursive: true });
-  // The Linux directory is a mount point: clean its contents without unlinking it.
-  for (const entry of readdirSync(temp)) remove(join(temp, entry), { recursive: true, force: true });
+  // Keep browser scratch separate from Node runs in the Linux temp volume.
+  for (const entry of readdirSync(temp)) remove(join(temp, entry), removalOptions);
   return temp;
 }
 
 export async function runSteps(root, config, changed, directory, extraEnv = {}, execute = pnpm) {
+  const run = createTempRun("gate", { root });
+  try {
+    return await executeSteps(root, config, changed, directory, { ...extraEnv, ...run.env }, execute);
+  } finally {
+    try {
+      // Keep a Linux mount root intact, but remove browser profiles even after a command fails.
+      const container = extraEnv.GATE_CONTAINER === "1";
+      const browser = prepareBrowserTemp(root, directory, container);
+      rmSync(browser, removalOptions);
+    } finally {
+      run.dispose();
+    }
+  }
+}
+
+async function executeSteps(root, config, changed, directory, extraEnv, execute) {
   const started = performance.now();
   const rows = [];
   const reports = [];

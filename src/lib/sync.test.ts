@@ -143,7 +143,7 @@ describe("sync git orchestration", () => {
         expect(fixture.git("show", "HEAD:new-output.json")).toBe("regenerated");
         expect(fixture.git("status", "--porcelain")).toBe("");
       } finally {
-        rmSync(fixture.root, { recursive: true, force: true });
+        rmSync(fixture.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       }
     },
   );
@@ -189,7 +189,7 @@ describe("sync git orchestration", () => {
       expect(fixture.git("status", "--porcelain")).toBe("");
       expect(fixture.calls).toContainEqual(["git", "-c", "core.editor=true", "rebase", "--continue"]);
     } finally {
-      rmSync(fixture.root, { recursive: true, force: true });
+      rmSync(fixture.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -211,7 +211,7 @@ describe("sync git orchestration", () => {
       expect(fixture.calls.some(([command, ...args]) => command === "pnpm" || args.includes("--continue"))).toBe(false);
       expect(fixture.git("rev-parse", "--verify", "REBASE_HEAD").trim()).not.toBe("");
     } finally {
-      rmSync(fixture.root, { recursive: true, force: true });
+      rmSync(fixture.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -242,7 +242,7 @@ describe("sync git orchestration", () => {
       expect(calls).toContainEqual(["git", "commit", "-S", "-m", "Regenerate derived artifacts after sync"]);
       expect(calls.some((call) => call.includes("--amend"))).toBe(false);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -295,7 +295,7 @@ describe("sync git orchestration", () => {
           true,
         );
       } finally {
-        rmSync(root, { recursive: true, force: true });
+        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       }
     },
   );
@@ -316,7 +316,7 @@ describe("sync git orchestration", () => {
       await expect(sync(root, run, () => {}, true)).rejects.toThrow("generator failed");
       expect(calls.some(([, action]) => action === "commit" || action === "-c")).toBe(false);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -352,7 +352,7 @@ describe("sync git orchestration", () => {
       expect(calls).toContainEqual(["git", "fetch", "origin"]);
       expect(calls.some(([command, action]) => command === "pnpm" || action === "add")).toBe(false);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 });

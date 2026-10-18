@@ -1,8 +1,8 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { build, type Rollup } from "vite";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEPLOYMENT_VARIABLES, INTERNAL_DEFAULTS } from "../../scripts/deployment-env";
 
 // The self-hosting switches (src/lib/deployment.ts) remove code, not just menu rows: real builds of the app with
@@ -21,7 +21,8 @@ interface Output {
 }
 
 /** No .env files: a fixture is exactly its variables, whatever the checkout's .env.local says. */
-const noEnvFiles = mkdtempSync(join(tmpdir(), "deployment-build-"));
+let noEnvFiles: string;
+afterAll(() => rmSync(noEnvFiles, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
 
 async function buildWith(env: Record<string, string>): Promise<Output> {
   // A production build, as `pnpm build` makes it (Vitest runs with NODE_ENV=test, which Vite reads as development),
@@ -118,6 +119,7 @@ let locked: Output;
 const AMBIENT = { VITE_BRAND_NAME: "Ambient Brand", VITE_DISABLE_SHARE_LINKS: "1", VITE_DISABLE_ONDEVICE: "1" };
 
 beforeAll(async () => {
+  noEnvFiles = mkdtempSync(join(tmpdir(), "deployment-build-"));
   const saved = { ...process.env };
   Object.assign(process.env, AMBIENT);
   try {

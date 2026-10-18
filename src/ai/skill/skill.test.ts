@@ -8,7 +8,7 @@ import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
 import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
 import generated from "../../../scripts/generated-files.json";
@@ -32,7 +32,11 @@ import { layoutDiagram } from "./layout";
 
 const root = process.cwd();
 const skill = path.join(root, SKILL_DIR);
-const tmp = mkdtempSync(path.join(tmpdir(), "livediagrams-skill-"));
+let tmp: string;
+beforeAll(() => {
+  tmp = mkdtempSync(path.join(tmpdir(), "livediagrams-skill-"));
+});
+afterAll(() => rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
 const examples = publicExamples(root);
 let n = 0;
 
@@ -621,15 +625,22 @@ describe("sharing keeps everything the author wrote", () => {
 
 describe("share-link.mjs", () => {
   const cases = [
-    ...examples.map((e) => [e.slug, path.join(root, "src", "examples", `${e.slug}.json`)] as const),
-    ...docExamples().map((e, i) => {
-      const file = write(e.diagram);
-      run("layout.mjs", file);
-      return [`${e.name} example ${i + 1}`, file] as const;
-    }),
+    ...examples.map((e) => [e.slug, () => path.join(root, "src", "examples", `${e.slug}.json`)] as const),
+    ...docExamples().map(
+      (e, i) =>
+        [
+          `${e.name} example ${i + 1}`,
+          () => {
+            const file = write(e.diagram);
+            run("layout.mjs", file);
+            return file;
+          },
+        ] as const,
+    ),
   ];
 
-  it.each(cases)("encodes %s exactly as the app does", async (_name, file) => {
+  it.each(cases)("encodes %s exactly as the app does", async (_name, fixture) => {
+    const file = fixture();
     const r = run("share-link.mjs", file);
     expect(r.code, r.err).toBe(0);
     const url = r.out.trim();
@@ -649,7 +660,7 @@ describe("share-link.mjs", () => {
   });
 
   it("uses --base for another host, refuses an invalid diagram, and warns when the link is long", () => {
-    const ok = write(read(cases[0][1]));
+    const ok = write(read(cases[0][1]()));
     expect(run("share-link.mjs", ok, "--base", "http://localhost:5521/").out).toMatch(/^http:\/\/localhost:5521\/#d=/);
 
     const bad = run("share-link.mjs", write({ format: "diagrams/v1", title: "x", nodes: [{ id: "a" }], edges: [] }));
@@ -1022,49 +1033,53 @@ describe("releasing the viewer", () => {
 
   it("a release that fails partway changes nothing, so a retry refreshes both assets", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "livediagrams-release-"));
-    const asset = path.join(dir, "viewer-template.html");
-    const icons = path.join(dir, "icons.json");
-    writeFileSync(asset, "old template");
-    writeFileSync(icons, "old icons");
-    const files = { [asset]: "new template…", [icons]: "new icons" };
-    const state = () => [asset, icons].map((f) => readFileSync(f, "utf8"));
-    const listing = () => readdirSync(dir).sort();
-    const before = state();
+    try {
+      const asset = path.join(dir, "viewer-template.html");
+      const icons = path.join(dir, "icons.json");
+      writeFileSync(asset, "old template");
+      writeFileSync(icons, "old icons");
+      const files = { [asset]: "new template…", [icons]: "new icons" };
+      const state = () => [asset, icons].map((f) => readFileSync(f, "utf8"));
+      const listing = () => readdirSync(dir).sort();
+      const before = state();
 
-    // The second asset's swap fails: the assets already swapped get their old contents back.
-    let failIcons = true;
-    const fs: ReleaseFs = {
-      readFileSync: (f, e) => readFileSync(f, e),
-      writeFileSync: (f, t, encoding) => {
-        expect(encoding).toBe("utf8");
-        writeFileSync(f, t, encoding);
-      },
-      renameSync: (from, to) => {
-        if (failIcons && to === icons) throw new Error("disk full");
-        renameSync(from, to);
-      },
-      rmSync: (f, o) => rmSync(f, o),
-      existsSync: (f) => existsSync(f),
-    };
-    expect(() => applyRelease(files, fs)).toThrow(/disk full/);
-    expect(state()).toEqual(before);
-    expect(listing()).toEqual(["icons.json", "viewer-template.html"]);
-    // Staging fails: nothing is swapped at all.
-    failIcons = false;
-    const readOnly: ReleaseFs = {
-      ...fs,
-      writeFileSync: () => {
-        throw new Error("read-only");
-      },
-    };
-    expect(() => applyRelease(files, readOnly)).toThrow(/read-only/);
-    expect(state()).toEqual(before);
+      // The second asset's swap fails: the assets already swapped get their old contents back.
+      let failIcons = true;
+      const fs: ReleaseFs = {
+        readFileSync: (f, e) => readFileSync(f, e),
+        writeFileSync: (f, t, encoding) => {
+          expect(encoding).toBe("utf8");
+          writeFileSync(f, t, encoding);
+        },
+        renameSync: (from, to) => {
+          if (failIcons && to === icons) throw new Error("disk full");
+          renameSync(from, to);
+        },
+        rmSync: (f, o) => rmSync(f, o),
+        existsSync: (f) => existsSync(f),
+      };
+      expect(() => applyRelease(files, fs)).toThrow(/disk full/);
+      expect(state()).toEqual(before);
+      expect(listing()).toEqual(["icons.json", "viewer-template.html"]);
+      // Staging fails: nothing is swapped at all.
+      failIcons = false;
+      const readOnly: ReleaseFs = {
+        ...fs,
+        writeFileSync: () => {
+          throw new Error("read-only");
+        },
+      };
+      expect(() => applyRelease(files, readOnly)).toThrow(/read-only/);
+      expect(state()).toEqual(before);
 
-    // The retry sees the same stale files, and completes.
-    applyRelease(files, fs);
-    expect(state()).toEqual(["new template…", "new icons"]);
-    expect(readFileSync(asset).subarray(0, 3).toString("hex")).not.toBe("efbbbf");
-    expect(listing()).toEqual(["icons.json", "viewer-template.html"]);
+      // The retry sees the same stale files, and completes.
+      applyRelease(files, fs);
+      expect(state()).toEqual(["new template…", "new icons"]);
+      expect(readFileSync(asset).subarray(0, 3).toString("hex")).not.toBe("efbbbf");
+      expect(listing()).toEqual(["icons.json", "viewer-template.html"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
   });
 
   it("the site serves a fresh template and icons in place of the committed ones", () => {
