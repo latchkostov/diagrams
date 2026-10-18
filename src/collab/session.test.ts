@@ -9,6 +9,7 @@ import { deriveRoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import { DOC, fragment, frame, PRESENCE } from "./protocol";
 import { metaOf } from "./schema";
+import { encodePresence, MAX_SELECTION, parsePresence } from "./presence";
 import { refusalMessage } from "./lab/demo";
 import { seededBytes } from "./random";
 import { CollabSession, CONNECTION_WAIT_MS, PrivateDiagramError } from "./session";
@@ -797,6 +798,160 @@ describe("presence", () => {
     await b.session.leave();
     await settle();
     expect(a.session.peers()).toEqual([]);
+  });
+
+  it("carries a selection and a cursor, and times a cursor's last move on the room clock", async () => {
+    const { clock, a, b, settle } = await room3();
+    clock.advance(1000);
+    b.session.setSelection(["intake", "flow"]);
+    b.session.setCursor({ x: 10.04, y: -20 });
+    await settle();
+    const seen = a.session.peers().find((p) => p.alias === "b")!;
+    expect(seen.selection).toEqual(["intake", "flow"]);
+    expect(seen.cursor).toEqual({ x: 10, y: -20 });
+    expect(seen.cursorAt).toBe(clock.now());
+    // A refresh with the cursor where it was keeps its time (a still cursor is hidden after a while).
+    clock.advance(COLLAB_LIMITS.presenceHeartbeatMs);
+    await settle();
+    expect(a.session.peers().find((p) => p.alias === "b")!.cursorAt).toBe(seen.cursorAt);
+    // Leaving the canvas clears it.
+    b.session.setCursor(undefined);
+    clock.advance(COLLAB_LIMITS.cursorIntervalMs);
+    await settle();
+    expect(a.session.peers().find((p) => p.alias === "b")!.cursor).toBeUndefined();
+  });
+
+  it("sends the cursor at most 15 times a second, the last position winning", async () => {
+    const { net, clock, a, b, settle } = await room3();
+    let frames = 0;
+    // Byte 3 of an envelope is its channel (2: presence); only b's frames to a.
+    net.tap((r) => {
+      if (r.from === b.session.transport.self && r.to === a.session.transport.self && r.bytes[3] === 2) frames++;
+    });
+    for (let ms = 0; ms < 1000; ms++) {
+      b.session.setCursor({ x: ms, y: 0 });
+      clock.advance(1);
+    }
+    clock.advance(COLLAB_LIMITS.cursorIntervalMs);
+    await settle();
+    expect(frames).toBeLessThanOrEqual(Math.ceil(1000 / COLLAB_LIMITS.cursorIntervalMs) + 1);
+    expect(frames).toBeGreaterThanOrEqual(10);
+    expect(a.session.peers().find((p) => p.alias === "b")!.cursor).toEqual({ x: 999, y: 0 });
+  });
+
+  it("drops a sender's presence flood past its own bound, and counts it", async () => {
+    // A small bound (restored after): two ends and a few frames show the same thing as hundreds.
+    const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+    const saved = limits.presenceFramesPerWindow;
+    limits.presenceFramesPerWindow = 10;
+    onTestFinished(() => void (limits.presenceFramesPerWindow = saved));
+    const net = new MemoryNetwork();
+    const clock = new FakeClock();
+    const a = await openClient("a", net.connect(), room, clock, 31, { initial: canaryDiagram() });
+    onTestFinished(() => a.session.leave());
+    const evil = await rogue(net);
+    const state = (n: number) => textToBytes(JSON.stringify({ alias: `Flood ${n}`, colour: 1, status: "active" }));
+    for (let i = 1; i <= 15; i++) await evil.send("presence", frame(PRESENCE.state, state(i)));
+    await net.settle(() => a.session.idle());
+    expect(a.session.stats.rejected["presence-throttled"]).toBe(5);
+    // What was accepted stands: the tenth frame's state.
+    expect(a.session.peers().map((p) => p.alias)).toEqual(["Flood 10"]);
+  });
+
+  it("a joiner whose failure recovers by itself waits for an answer afresh", async () => {
+    const clock = new FakeClock(),
+      net = new MemoryNetwork();
+    let state: Connectivity = "trackers-unreachable";
+    let handlers: TransportHandlers | undefined;
+    const session = await CollabSession.open({
+      room: roomFor(908),
+      clock,
+      privacy: {},
+      transport: {
+        ...net.connect(),
+        connectivity: () => state,
+        subscribe(h) {
+          handlers = h;
+          return () => (handlers = undefined);
+        },
+      },
+    });
+    onTestFinished(() => session.leave());
+    clock.advance(CONNECTION_WAIT_MS);
+    expect(session.connectionFailed).toBe(true);
+    expect(session.noAnswer).toBe(false);
+    // Matchmaking comes back on its own, and nobody is there.
+    state = "waiting";
+    handlers!.connectivity?.();
+    expect(session.connectionFailed).toBe(false);
+    clock.advance(COLLAB_LIMITS.noAnswerMs - 1);
+    expect(session.noAnswer).toBe(false);
+    clock.advance(1);
+    expect(session.noAnswer).toBe(true);
+  });
+
+  it("the goodbye sealed ahead stays inside receivers' replay windows however much is sent", async () => {
+    const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+    const saved = limits.replayWindow;
+    limits.replayWindow = 64;
+    onTestFinished(() => void (limits.replayWindow = saved));
+    const { a, b, settle } = await room3();
+    // Many more document frames than a window, between two heartbeats.
+    for (let i = 0; i < 3 * 64; i++) b.edit((d) => ({ ...d, title: `Title ${i}` }));
+    await settle();
+    expect(a.session.peers().map((p) => p.alias)).toContain("b");
+    b.session.goodbyeNow();
+    b.session.transport.close();
+    await settle();
+    expect(a.session.peers().map((p) => p.alias)).not.toContain("b");
+  });
+
+  it("refuses an oversized selection, a nonsense cursor and unknown keys", () => {
+    const parse = (o: unknown) => parsePresence(textToBytes(JSON.stringify(o)));
+    const base = { alias: "a", colour: 0, status: "active" };
+    expect(parse({ ...base, selection: Array.from({ length: MAX_SELECTION + 1 }, (_, i) => `n${i}`) })).toBeUndefined();
+    expect(parse({ ...base, selection: [""] })).toBeUndefined();
+    expect(parse({ ...base, cursor: { x: 1 } })).toBeUndefined();
+    expect(parse({ ...base, cursor: { x: 1, y: 1e9 } })).toBeUndefined();
+    expect(parse({ ...base, cursor: { x: 1, y: 2, z: 3 } })).toBeUndefined();
+    expect(parse({ ...base, extra: true })).toBeUndefined();
+    expect(parse({ ...base, selection: ["a", "a"], cursor: { x: 1, y: 2 } })).toEqual({
+      ...base,
+      selection: ["a"],
+      cursor: { x: 1, y: 2 },
+    });
+    // A selection too long for a presence frame is cut short, never refused or overflowed.
+    const ids = Array.from({ length: MAX_SELECTION }, (_, i) => `${"x".repeat(250)}${i}`);
+    const bytes = encodePresence({ ...base, status: "active", selection: ids });
+    expect(bytes.length).toBeLessThanOrEqual(COLLAB_LIMITS.maxPresenceFrameBytes - 256);
+    expect(parsePresence(bytes)?.selection?.length).toBeGreaterThan(0);
+  });
+
+  it("a goodbye sealed ahead drops a person at once when their page goes", async () => {
+    const { a, b, settle } = await room3();
+    await b.session.idle();
+    expect(a.session.peers().map((p) => p.alias)).toContain("b");
+    b.session.goodbyeNow();
+    b.session.transport.close();
+    await settle();
+    expect(a.session.peers().map((p) => p.alias)).not.toContain("b");
+  });
+
+  it("a joiner nobody answers hears so after the no-answer wait, and Retry starts a fresh one", async () => {
+    const net = new MemoryNetwork();
+    const clock = new FakeClock();
+    const alone = await openClient("alone", net.connect(), roomFor(77), clock, 21);
+    onTestFinished(() => alone.session.leave());
+    clock.advance(COLLAB_LIMITS.noAnswerMs - 1);
+    expect(alone.session.noAnswer).toBe(false);
+    clock.advance(1);
+    expect(alone.session.noAnswer).toBe(true);
+    alone.session.retryConnection();
+    expect(alone.session.noAnswer).toBe(false);
+    clock.advance(COLLAB_LIMITS.noAnswerMs - 1);
+    expect(alone.session.noAnswer).toBe(false);
+    clock.advance(1);
+    expect(alone.session.noAnswer).toBe(true);
   });
 
   it("strips control and bidi-override characters from aliases", async () => {

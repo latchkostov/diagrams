@@ -659,7 +659,9 @@ function MainApp() {
         />
       )}
       {interop.layer}
-      {rooms && <rooms.RoomLayer room={rooms.room} slug={slug} canvas={canvasRef} />}
+      {rooms && (
+        <rooms.RoomLayer room={rooms.room} slug={slug} canvas={canvasRef} canvasShown={url.view === "canvas"} />
+      )}
       {libraryOpen && (
         <LibraryDialog
           entries={library.entries.map((e) => (e.slug === slug ? { ...e, title: liveTitle(e.title) } : e))}

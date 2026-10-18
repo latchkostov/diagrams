@@ -1,5 +1,7 @@
 import { fromFlow, toFlow } from "../canvas/convert";
-import type { EditorRoom, RoomStepMeta, RoomCommitResult, RoomRefusal } from "../editor/room";
+import type { EditorRoom, RoomPeer, RoomPresence, RoomStepMeta, RoomCommitResult, RoomRefusal } from "../editor/room";
+import { COLLAB_LIMITS } from "./limits";
+import { PRESENCE_COLOURS } from "./presence";
 import { selectionAfterRedo, selectionAfterUndo, selectionOf, snapshotDiagram } from "../editor/historySelection";
 import type { CanvasSnapshot } from "../editor/useHistory";
 import type { CanvasPrivacyState } from "../lib/localOnly";
@@ -39,6 +41,25 @@ export class CollaborativeEditorRoom implements EditorRoom {
     readonly session: CollabSession,
     private readonly privacy: () => CanvasPrivacyState,
   ) {}
+
+  /** Presence for the canvas: peers' selections and pointers, and this person's (session.ts bounds and paces them). */
+  readonly presence: RoomPresence = {
+    subscribe: (fn) => this.session.onChange(fn),
+    revision: () => this.session.presenceRevision,
+    peers: (): RoomPeer[] => {
+      const now = this.session.now();
+      return this.session.peers().map((p) => ({
+        sender: p.sender,
+        alias: p.alias,
+        colour: PRESENCE_COLOURS[p.colour],
+        selection: p.selection ?? [],
+        cursor: p.cursor,
+        cursorHideIn: p.cursor && p.status !== "away" ? COLLAB_LIMITS.cursorIdleMs - (now - (p.cursorAt ?? now)) : 0,
+      }));
+    },
+    setSelection: (ids) => this.session.setSelection(ids),
+    setCursor: (at) => this.session.setCursor(at),
+  };
 
   connect(port: Parameters<EditorRoom["connect"]>[0]): () => void {
     this.port = port;

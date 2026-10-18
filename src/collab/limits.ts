@@ -76,6 +76,17 @@ export const COLLAB_LIMITS = {
   presenceTtlMs: 30_000,
   /** How often a session refreshes its own presence. */
   presenceHeartbeatMs: 10_000,
+  /**
+   * Presence frames one sender may deliver per window (senderWindowMs): cursors at their 15 Hz cap plus heartbeats
+   * and selections, with room to spare. Past it they are dropped (and counted), unlike document frames' byte bucket.
+   */
+  presenceFramesPerWindow: 200,
+  /** A session sends its cursor at most this often (15 times a second). */
+  cursorIntervalMs: 67,
+  /** A peer's cursor that hasn't moved for this long is hidden (and while they're away). */
+  cursorIdleMs: 5_000,
+  /** A joiner with no document and no failure for this long hears "No one else is in this room" (each attempt). */
+  noAnswerMs: 30_000,
   /** How often a session asks its peers for what it's missing (heals drops and partitions). */
   antiEntropyMs: 5_000,
   /** Envelope counter ceiling per sender session: well inside the IV's 64 bits and a double's exact range. */

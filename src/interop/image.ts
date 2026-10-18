@@ -214,6 +214,8 @@ const EDITING_ONLY = [
   "landing-outline",
   // The Checks card's markers: a review aid, and their tooltips carry the findings' words.
   "check-markers",
+  // Others in a room (their outlines, pointers and names): ephemeral, and theirs, never in a picture.
+  "presence-layer",
 ];
 // SVG editing chrome (not an HTMLElement): the line an insert would split.
 const EDITING_ONLY_SVG = ["insert-line", "edge-end-line"];

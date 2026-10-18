@@ -771,6 +771,22 @@ describe("leaving and reloading", () => {
     expect(titleOf(second)).toBe("Unsaved through two reloads");
   });
 
+  it("an away tab says so to the others, and back again", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 70),
+      b = browser(net, clock, 71);
+    await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    b.room.setAway(true);
+    await settle(net, a, b);
+    expect(session(a).peers()[0].status).toBe("away");
+    b.room.setAway(false);
+    await settle(net, a, b);
+    expect(session(a).peers()[0].status).toBe("active");
+  });
+
   it("writes the copy only when the room changed", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();
