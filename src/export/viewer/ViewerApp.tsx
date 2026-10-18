@@ -34,15 +34,15 @@ function ViewerControls({ hintId }: { hintId: string }) {
   const camera = useCameraController();
   const fit = useCanvasFit();
   // Moves by hand, through the canvas camera (the view is the reader's after them); motionMs applies there.
-  const zoomIn = useCallback(() => camera?.zoomTo((k) => k * ZOOM_STEP, 150), [camera]);
-  const zoomOut = useCallback(() => camera?.zoomTo((k) => k / ZOOM_STEP, 150), [camera]);
+  const zoomIn = useCallback(() => camera?.zoomByHand((k) => k * ZOOM_STEP, 150), [camera]);
+  const zoomOut = useCallback(() => camera?.zoomByHand((k) => k / ZOOM_STEP, 150), [camera]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target;
       if (isEditableTarget(t) || (t instanceof Element && t.closest("select, [role='dialog'], [role='menu']"))) return;
       const step = e.shiftKey ? PAN_STEP * 3 : PAN_STEP;
-      const pan = (dx: number, dy: number) => camera?.panBy(dx, dy, 120);
+      const pan = (dx: number, dy: number) => camera?.panByHand(dx, dy, 120);
       const actions: Record<string, () => void> = {
         ArrowLeft: () => pan(step, 0),
         ArrowRight: () => pan(-step, 0),
@@ -52,7 +52,7 @@ function ViewerControls({ hintId }: { hintId: string }) {
         "=": zoomIn,
         "-": zoomOut,
         "!": fit,
-        ")": () => camera?.zoomTo(1, 150),
+        ")": () => camera?.zoomByHand(1, 150),
       };
       // Shift+1 and Shift+0 by key code too, whatever the keyboard layout prints there.
       const action =

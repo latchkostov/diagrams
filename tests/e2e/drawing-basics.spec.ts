@@ -8,6 +8,9 @@ import {
   waitForSelectionSettled,
   viewportTransform,
   pauseClock,
+  waitForCameraIdle,
+  cameraJournalMark,
+  cameraMoves,
 } from "./fixtures";
 
 // Drawing basics (docs/research/drawing-ux.md, batch 1): navigation (D4), selection gestures (D5),
@@ -312,6 +315,7 @@ test.describe("drawing basics", () => {
     await dragFromHandle(page, "dashboard", "bottom", drop, false);
     // Over empty canvas the line ends in a "+".
     await expect(page.getByTestId("connection-add")).toBeVisible();
+    const mark = await cameraJournalMark(page);
     await page.mouse.up();
     const quickAdd = page.getByTestId("quick-add");
     await expect(quickAdd).toBeVisible();
@@ -332,7 +336,11 @@ test.describe("drawing basics", () => {
     await expect(node).toContainText("audit.log");
     // Centred on the drop point, and connected from the dashboard.
     // (The view may have panned to keep it clear of the inspector, never zoomed: measure from the source.)
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
+    // Pans only: quick-add's room, the placement's reveal, and keyboard focus back on the named node. No fit
+    // (rule b), and so no zoom.
+    for (const move of await cameraMoves(page, mark))
+      expect(["anchor:quickAdd", "reveal:placement", "reveal:selection", "reveal:focus"]).toContain(move);
     const b = await box(node);
     const src = await box(page.getByTestId("node-dashboard"));
     expect(Math.abs(b.x + b.width / 2 - (src.x + src.width / 2))).toBeLessThan(12);

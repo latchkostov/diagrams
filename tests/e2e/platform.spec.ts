@@ -5,7 +5,9 @@ import {
   waitForStableViewport,
   viewportTransform,
   pauseClock,
-  waitForSelectionSettled,
+  waitForCameraIdle,
+  cameraJournalMark,
+  cameraMoves,
 } from "./fixtures";
 
 // These inputs exercise application platform branches on every host. They cannot
@@ -71,13 +73,16 @@ test("zoom to selection wins over a deferred Inspector reveal", async ({ page })
   const zoom = async () => Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]);
   const before = await zoom();
   await pauseClock(page);
+  const mark = await cameraJournalMark(page);
   await page.getByTestId("node-stock-db").click();
   await page.keyboard.press("Shift+Digit2");
   await page.clock.resume();
-  await waitForSelectionSettled(page);
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  // The pointer-up's Inspector change, the zoom and its refinement: idle once all of it has run.
+  await waitForCameraIdle(page);
   const canvas = page.getByTestId("canvas-wrap");
-  await expect(canvas).toHaveAttribute("data-fit-pending", "false");
-  await waitForStableViewport(page);
+  // Shift+2 won: the Inspector's deferred reveal never moved the view after it (panePolicy R2).
+  expect(await cameraMoves(page, mark)).toEqual(["zoomToSelection"]);
   expect(await zoom()).toBeGreaterThan(before * 1.5);
   expect(await zoom()).toBeCloseTo(1.25, 2);
   const pane = await canvas.boundingBox();
@@ -93,7 +98,9 @@ test("zoom to selection wins over a deferred Inspector reveal", async ({ page })
     await page.getByTestId("inspector-toggle").click();
     if (collapsed) await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
     else await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
-    await waitForStableViewport(page);
+    await waitForCameraIdle(page);
     expect(await zoom()).toBeCloseTo(1.25, 2);
   }
+  // A manual view's pane changes never refit it (R5).
+  expect((await cameraMoves(page, mark)).filter((m) => m.startsWith("fit"))).toEqual([]);
 });

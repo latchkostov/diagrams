@@ -456,12 +456,12 @@ export function createCameraController(
       publish();
     },
     /** A pan asked for by hand, by screen px (the HTML viewer's arrow keys). */
-    panBy(dx: number, dy: number, duration: number) {
+    panByHand(dx: number, dy: number, duration: number) {
       const from = base();
       nudge({ x: from.x + dx, y: from.y + dy, zoom: from.zoom }, duration);
     },
     /** A zoom asked for by hand, about the pane's centre (the HTML viewer's +, − and Shift+0). */
-    zoomTo(zoom: number | ((current: number) => number), duration: number) {
+    zoomByHand(zoom: number | ((current: number) => number), duration: number) {
       const from = base();
       nudge(port.zoomTarget(from, typeof zoom === "number" ? zoom : zoom(from.zoom)), duration);
     },
