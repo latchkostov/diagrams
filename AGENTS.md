@@ -18,7 +18,15 @@ owner's working reference and stay on this machine.
 
 ## Commands
 
-- `pnpm gate doctor`, `pnpm gate setup`, `pnpm gate quick [spec...]`, `pnpm gate full [--linux]` (portable local gate; see `docs/QUALITY.md`). Full runs require a clean commit and stamp only complete successes.
+- Default per branch: `pnpm gate quick [spec...] --max-wait 1`, targeted specs, then push; PR CI is the full gate.
+  For timing-sensitive UI, also run affected specs and neighbours under load (`--linux --repeat 5 --workers N`).
+  `pnpm gate full [--linux] --max-wait 1` remains optional for flake hunts, red CI, or extra pre-push confidence;
+  it requires a clean commit. Do not queue full gates by default. See `docs/QUALITY.md`.
+- Gates share a CPU/RAM worker budget across local worktrees. Declare `--workers N`; Linux containers also
+  declare `--cpus N`. Full defaults reserve the whole budget. A waiting gate reports holders every 15 seconds;
+  exit 75 means busy: push and let CI run the full gate, or retry later. Never remove a live lock/sidecar.
+- Compare browser benchmarks with the **Compare browser benchmarks** Actions workflow (base/head in one job),
+  selecting `--grep`, mode and `BENCH_CPU`; see `docs/BENCHMARKS.md`. Avoid local heavy benchmark comparisons.
 - `pnpm dev`, `pnpm build`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright), `pnpm check` (all)
 - Output parity (`docs/PARITY.md`): `pnpm parity` checks every output against committed goldens. A feature PR that
   changes output on purpose runs `pnpm parity:update` and explains the goldens' diff in its description. The browser

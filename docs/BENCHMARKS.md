@@ -16,8 +16,30 @@ pnpm bench:compare base.json head.json [--md out.md] [--fail-on-regression]
 node scripts/bench/run.mjs --only ui --ui live --grep "live pipeline@5000"   # one browser benchmark by title
 ```
 
-`pnpm bench` builds what it serves, so it runs on a clean checkout. To compare a branch with master, run it on both
-and compare the two `results.json`, or compare against the committed baseline (`tests/bench/baseline/master.json`).
+The default browser comparison runs off-machine: Actions → **Compare browser benchmarks** → **Run workflow**
+(`.github/workflows/bench-compare.yml`). Select the workflow revision containing the comparison workflow,
+then give it base/head refs (branches, tags or SHAs), a Playwright title pattern (`--grep`), mode
+(`quick`, `full`, `gates`) and a positive `BENCH_CPU` throttle. For example, compare `master` with
+your pushed branch using `live pipeline@500`, `quick`, `2`. Both revisions run sequentially in the
+**same job** with identical selection, mode and throttle, their own pinned dependencies and fresh builds.
+Use immutable SHAs for repeatable selections. Each run uses one browser worker, without other benchmark
+or gate jobs sharing that runner. `scripts/bench/compare.mjs` writes the job summary; the two results,
+resolved SHAs and report remain in the `browser-benchmark-comparison` artifact for 30 days.
+Timings are report-only; a failed benchmark suite or gate still fails the job. A pattern matching no
+benchmarks fails rather than producing a useful comparison. `gates` only runs gating scenarios;
+choose a pattern that includes them.
+
+With the GitHub CLI (run after the workflow is available on the repository's default branch):
+
+```sh
+gh workflow run bench-compare.yml --ref master -f base=master -f head=your-branch \
+  -f grep='live pipeline@500' -f mode=quick -f cpu=2
+```
+
+Local commands above are for harness debugging or an intentionally idle environment. Avoid local heavy
+base/head comparisons alongside gates or load repeats: calibration cannot remove contention bursts.
+`pnpm bench` builds what it serves, so use a clean checkout. The committed baseline
+(`tests/bench/baseline/master.json`) remains useful as a historical trend, not a substitute for a same-job comparison.
 
 Contents: [Design](#design) · [Workloads](#workloads) · [Metrics](#metrics) · [Method and noise
 control](#method-and-noise-control) · [Gates and report-only](#gates-and-report-only) · [Output](#output) ·

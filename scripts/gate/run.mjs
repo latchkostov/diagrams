@@ -51,6 +51,8 @@ export async function runSteps(root, config, changed, directory, extraEnv = {}, 
     E2E_INTERNAL_PORT: String(config.ports + 3),
     E2E_LOCKED_PORT: String(config.ports + 4),
     PARITY_PORT: String(config.ports),
+    PARITY_WORKERS: String(workers),
+    GATE_WORKERS: String(workers),
     PLAYWRIGHT_HTML_OPEN: "never",
     // Parity's Linux container must not use the host's temp path.
     ...extraEnv,
@@ -63,7 +65,13 @@ export async function runSteps(root, config, changed, directory, extraEnv = {}, 
     writeCheckpoint(join(stepDir, "checkpoint.json"), pendingReport());
   }
   if (config.shard) console.log(`Shard ${config.shard.current}/${config.shard.total} (whole spec files)`);
-  for (const group of groups) {
+  // Build profiles are independent, but still consume the run's declared worker budget.
+  const batches = groups.flatMap((group) => {
+    const result = [];
+    for (let i = 0; i < group.length; i += workers) result.push(group.slice(i, i + workers));
+    return result;
+  });
+  for (const group of batches) {
     const buildsFailed = rows.some((r) => r.name.endsWith("-build") && !r.ok);
     const results = await Promise.all(
       group.map(async (step) => {

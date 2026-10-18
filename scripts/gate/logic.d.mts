@@ -9,6 +9,7 @@ export interface Config {
   workers?: number;
   cpus?: number;
   memory?: string;
+  maxWait?: number;
   shard?: { current: number; total: number };
 }
 export interface Step {
@@ -33,6 +34,11 @@ export function options(argv: string[]): Config;
 export function positive(value: unknown, name: string): number;
 export function validatePorts(base: number): number;
 export function workerCount(cpus: number, memory: number, caps?: Pick<Config, "cpus" | "memory">): number;
+export function resourceRequest(config: Config, capacity: number): { workers: number; cpus: number; slots: number };
+export function admit<T extends { state: string; slots: number; sequence: number; worktree?: string; ports?: number }>(
+  entries: T[],
+  capacity: number,
+): T[];
 export function lockPort(common: string, platform: string): number;
 export function checkTree(status: string, before: string, after?: string): void;
 export function playwrightCounts(report: unknown): BrowserCounts;
