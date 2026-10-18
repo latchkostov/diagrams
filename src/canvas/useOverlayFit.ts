@@ -1,11 +1,10 @@
 import { useEffect, useState, type RefObject } from "react";
-import { useReactFlow, useStoreApi, type ReactFlowState } from "@xyflow/react";
-import type { EdgeStyle } from "../harness/edgeStyles";
-import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } from "./geometry/fit";
-import { intersects, union, type Rect } from "./geometry/rect";
-import { motionMs } from "../lib/motion";
-import { selectRoutes, useRoutingOptions, type RouteOptions } from "./edges/useEdgeRoute";
+import { useStoreApi, type ReactFlowState } from "@xyflow/react";
+import { intersects, type Rect } from "./geometry/rect";
 import type { DiagramFlowEdge, FlowNode } from "./types";
+
+// The canvas's floating chrome: what a fit and a reveal keep content clear of (camera/geometry.ts), and the
+// title card folding while nodes sit under it.
 
 /**
  * Floating chrome that diagram content must not sit under after a fit. Other lanes can opt a
@@ -35,158 +34,6 @@ export function overlayRects(root: HTMLElement): Rect[] {
     out.push({ x: r.left - base.left, y: r.top - base.top, width: w, height: h });
   }
   return out;
-}
-
-/**
- * Flow-space rects of everything that should stay visible: nodes, groups, routes and labels. With
- * `only`, just those nodes and the routes and labels of the `onlyEdges` (zoom to selection).
- */
-function contentRects(
-  s: State,
-  opts: RouteOptions,
-  only?: ReadonlySet<string>,
-  onlyEdges: ReadonlySet<string> = new Set(),
-): Rect[] {
-  const out: Rect[] = [];
-  for (const n of s.nodeLookup.values()) {
-    if (n.hidden || (only && !only.has(n.id))) continue;
-    const w = n.measured?.width ?? n.width ?? 0;
-    const h = n.measured?.height ?? n.height ?? 0;
-    if (w && h) out.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });
-  }
-  for (const [id, r] of selectRoutes(s, opts)) {
-    if (only && !onlyEdges.has(id)) continue;
-    for (const p of r.points) out.push({ x: p.x - 2, y: p.y - 2, width: 4, height: 4 });
-    if (r.label)
-      out.push({
-        x: r.label.x - r.label.width / 2,
-        y: r.label.y - r.label.height / 2,
-        width: r.label.width,
-        height: r.label.height,
-      });
-  }
-  return out;
-}
-
-/** fitView that keeps content out from under floating chrome (see geometry/fit.ts). */
-export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style: EdgeStyle; direction: "LR" | "TB" }) {
-  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
-  const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const routing = useRoutingOptions(opts);
-  // Plain function: the React compiler memoises it (it reads root.current at call time).
-  return (o: FitOptions & { duration?: number; only?: ReadonlySet<string>; onlyEdges?: ReadonlySet<string> } = {}) => {
-    const el = root.current;
-    const s = store.getState() as State;
-    if (!el || !el.clientWidth || !el.clientHeight) return;
-    const v = fitAvoiding(
-      contentRects(s, routing, o.only, o.onlyEdges),
-      { width: el.clientWidth, height: el.clientHeight },
-      overlayRects(el),
-      o,
-    );
-    if (v) return setViewport(v, { duration: motionMs(o.duration ?? 0) });
-  };
-}
-
-/** Screen room kept around a selection brought into view: clear of the title card, controls and minimap edges. */
-const VIEW_MARGIN = { top: 72, right: 40, bottom: 56, left: 40 };
-
-/**
- * The one reveal for keyboard focus and a new selection: the smallest pan (never a zoom) that shows flow-space
- * `want` in the pane, clear of the floating chrome (overlayRects: minimap, controls, live bar, title card).
- * When `want` is too big for the pane (a large boundary), `must` (its name) is what's shown instead, so the
- * part that says what it is never leaves. Null when that is in the pane and uncovered already: what's in
- * view never moves.
- */
-export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, must: Rect = want): Viewport | null {
-  const { width, height } = root.getBoundingClientRect();
-  const overlays = overlayRects(root);
-  const { x, y, zoom: k } = viewport;
-  const view = {
-    x: VIEW_MARGIN.left,
-    y: VIEW_MARGIN.top,
-    width: width - VIEW_MARGIN.left - VIEW_MARGIN.right,
-    height: height - VIEW_MARGIN.top - VIEW_MARGIN.bottom,
-  };
-  const target = want.width * k <= view.width && want.height * k <= view.height ? want : must;
-  const onScreen = (v: Viewport): Rect => ({
-    x: target.x * k + v.x,
-    y: target.y * k + v.y,
-    width: target.width * k,
-    height: target.height * k,
-  });
-  const now = onScreen(viewport);
-  const inPane = now.x >= 0 && now.y >= 0 && now.x + now.width <= width && now.y + now.height <= height;
-  if (inPane && !overlays.some((o) => intersects(now, o))) return null;
-  // Cut off by the pane's edge: into the view first. Then off the chrome.
-  const v = (inPane ? null : panIntoView(want, must, viewport, view)) ?? viewport;
-  const d = panClearOf(onScreen(v), overlays, { width, height });
-  const next = { x: v.x + d.dx, y: v.y + d.dy, zoom: k };
-  return Math.abs(next.x - x) >= 1 || Math.abs(next.y - y) >= 1 ? next : null;
-}
-
-/**
- * Pans (never zooms) so the selection and its edges are visible in the pane as it is now, e.g.
- * after the inspector opened and narrowed the canvas. If they can't all fit, the selection itself
- * wins. Returns the viewport it pans to (where the view will be once the pan lands), or null when
- * nothing is selected or nothing had to move. Selection-driven opens use `selectionOnly`
- * so an attached connection cannot pull an already-visible item away from the pointer.
- */
-export function useKeepSelectionInView(
-  root: RefObject<HTMLElement | null>,
-  opts: { style: EdgeStyle; direction: "LR" | "TB" },
-) {
-  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
-  const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const routing = useRoutingOptions(opts);
-  return (duration = 250, selectionOnly = false): Viewport | null => {
-    const el = root.current;
-    if (!el) return null;
-    const s = store.getState() as State;
-    const must: Rect[] = [];
-    const around: Rect[] = [];
-    const selectedNodes = new Set<string>();
-    for (const n of s.nodeLookup.values()) {
-      if (!n.selected || n.hidden) continue;
-      // A just-added annotation isn't measured yet, but it has its size (a node waits for the measure).
-      const w = n.measured?.width ?? n.width ?? 0;
-      const h = n.measured?.height ?? n.height ?? 0;
-      if (!w || !h) continue;
-      selectedNodes.add(n.id);
-      must.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });
-    }
-    const routes = selectRoutes(s, routing);
-    for (const e of s.edges) {
-      const attached = !selectionOnly && (selectedNodes.has(e.source) || selectedNodes.has(e.target));
-      if (!e.selected && !attached) continue;
-      const r = routes.get(e.id);
-      if (!r) continue;
-      const out = e.selected ? must : around;
-      for (const p of r.points) out.push({ x: p.x - 2, y: p.y - 2, width: 4, height: 4 });
-      if (r.label)
-        out.push({
-          x: r.label.x - r.label.width / 2,
-          y: r.label.y - r.label.height / 2,
-          width: r.label.width,
-          height: r.label.height,
-        });
-    }
-    const core = union(must);
-    const want = union([...must, ...around]);
-    if (!core || !want) return null;
-    const { width, height } = el.getBoundingClientRect();
-    const [x, y, zoom] = s.transform;
-    const view = {
-      x: VIEW_MARGIN.left,
-      y: VIEW_MARGIN.top,
-      width: width - VIEW_MARGIN.left - VIEW_MARGIN.right,
-      height: height - VIEW_MARGIN.top - VIEW_MARGIN.bottom,
-    };
-    const v = panIntoView(want, core, { x, y, zoom }, view);
-    if (!v) return null;
-    void setViewport(v, { duration: motionMs(duration), interpolate: "linear" });
-    return v;
-  };
 }
 
 /**

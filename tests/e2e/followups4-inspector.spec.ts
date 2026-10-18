@@ -11,6 +11,9 @@ import {
   viewportTransform,
   emptyCanvasPoint,
   STORAGE_KEYS,
+  cameraJournalMark,
+  cameraMoves,
+  waitForCameraIdle,
 } from "./fixtures";
 
 const ids = ["app", "kong", "orders", "canary", "search"];
@@ -32,7 +35,9 @@ async function open(page: Page, live = false, simulation = false, spread = 1) {
       `./?view=canvas&example=kafka-order-pipeline&live=1&${simulation ? "sim=inspector-note" : "paused=1"}`,
     );
   else await gotoCanvas(page, "kafka-order-pipeline");
-  await waitForStableViewport(page);
+  // Live's own panel and narration fits aren't the canvas camera's yet (docs/backlog/2026-10-17-camera-live-slowmo.md).
+  if (live) await waitForStableViewport(page);
+  else await waitForCameraIdle(page);
 }
 async function inPane(page: Page, nodes = ids) {
   const pane = await boxOf(page.getByTestId("canvas-wrap"));
@@ -132,8 +137,10 @@ for (const live of [false, true]) {
   test(`opening and closing the Inspector refits a fitted ${live ? "Live" : "edit"} view`, async ({ page }) => {
     await open(page, live);
     await page.getByTestId("fit-view-button").click();
-    await waitForStableViewport(page);
+    if (live) await waitForStableViewport(page);
+    else await waitForCameraIdle(page);
     await pauseClock(page);
+    const mark = await cameraJournalMark(page);
     await page.getByTestId("inspector-toggle").click();
     await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
     await page.clock.runFor(1500);
@@ -143,6 +150,9 @@ for (const live of [false, true]) {
     await page.clock.runFor(1500);
     expect(await inPane(page)).toBe(true);
     expect(await zoom(page)).toBeGreaterThan(narrowZoom);
+    // A panel cause refits a fitted view (panePolicy R1): once per toggle. Live refits its own panels (P2).
+    const fits = (await cameraMoves(page, mark)).filter((m) => m.startsWith("fit"));
+    expect(fits).toEqual(live ? [] : ["fit:pane", "fit:pane"]);
   });
 }
 
@@ -270,6 +280,7 @@ for (const dismissal of ["Escape", "pick", "Inspector reveal"]) {
     await open(page);
     await pauseClock(page);
     await countPaneFits(page);
+    const mark = await cameraJournalMark(page);
     if (dismissal !== "Inspector reveal") {
       await page.getByTestId("inspector-toggle").click();
       await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
@@ -290,7 +301,12 @@ for (const dismissal of ["Escape", "pick", "Inspector reveal"]) {
     if (dismissal === "Escape") {
       await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "1");
       expect(await inPane(page)).toBe(true);
+      // Dismissed without a pick, quick-add counted as a menu: the deferred panel refit ran once.
+      expect((await cameraMoves(page, mark)).filter((m) => m.startsWith("fit"))).toEqual(["fit:pane"]);
     } else {
+      // After the pick: quick-add's room and the placement's reveal at most; no fit, no zoom (rule b).
+      for (const move of await cameraMoves(page, mark))
+        expect(["anchor:quickAdd", "reveal:placement", "reveal:selection"]).toContain(move);
       await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
       const node = await boxOf(page.getByTestId("node-topic-1"));
       // The placement's own reveal may pan clear of chrome, but must keep the
@@ -311,6 +327,7 @@ for (const pendingMenu of [false, true])
     await open(page);
     await pauseClock(page);
     await countPaneFits(page);
+    const mark = await cameraJournalMark(page);
     if (pendingMenu) {
       await page.getByTestId("node-kong").click({ button: "right" });
       await expect(page.getByTestId("context-menu")).toBeVisible();
@@ -328,6 +345,8 @@ for (const pendingMenu of [false, true])
     await page.keyboard.press("Escape");
     await page.clock.runFor(1500);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-fits", "0");
+    // T is a placement: at most its reveal, never a fit (rule b and S1).
+    for (const move of await cameraMoves(page, mark)) expect(move).toMatch(/^reveal:(placement|selection)$/);
     const text = await boxOf(page.getByTestId("annotation-text-1"));
     expect(Math.abs(text.x - (pane.x + point.x))).toBeLessThan(40);
     expect(Math.abs(text.y + text.height / 2 - (pane.y + point.y))).toBeLessThan(30);
@@ -384,13 +403,15 @@ for (const live of [false, true])
     await waitForStableViewport(page);
     const before = await zoom(page);
     await pauseClock(page);
+    const mark = await cameraJournalMark(page);
     await page.getByTestId("inspector-resize").press("End");
-    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
-    await page.clock.runFor(149);
+    // Pending until the pane has settled (rendered frames, not a 150 ms timer since the controller).
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-pane-pending", "true");
     await page.clock.runFor(1500);
     expect(await zoom(page)).toBe(before);
     expect(await inPane(page, ["search"])).toBe(true);
+    // A manual view's pane change only reveals (panePolicy R5): the canvas camera never refits it.
+    expect((await cameraMoves(page, mark)).filter((m) => m.startsWith("fit"))).toEqual([]);
   });
 
 test("Inspector resize retains narration focus", async ({ page }) => {

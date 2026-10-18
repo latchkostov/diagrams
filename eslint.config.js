@@ -107,6 +107,11 @@ const TRANSLATED = [
   "src/interop/ui/Dialog.tsx",
 ];
 
+/** React Flow's viewport writers. */
+const CAMERA_CALLS = "/^(setViewport|setViewportConstrained|fitView|fitBounds|setCenter|zoomTo|zoomIn|zoomOut|panBy)$/";
+const CAMERA_MESSAGE =
+  "Only the camera controller moves the viewport (src/canvas/camera). Dispatch a camera event with its cause instead, and add a policy row for new behaviour (src/canvas/camera/index.ts explains how).";
+
 export default tseslint.config(
   {
     ignores: [
@@ -137,6 +142,27 @@ export default tseslint.config(
     files: TRANSLATED,
     plugins: { local },
     rules: { "local/no-literal-ui-text": "error" },
+  },
+  {
+    // One writer for the canvas viewport: src/canvas/camera (see its index.ts). Live and slow motion still move
+    // the view themselves until they are folded into the controller (docs/backlog/2026-10-17-camera-live-slowmo.md).
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "src/canvas/camera/**",
+      "src/live/LiveSession.tsx",
+      "src/live/slowmo/useSlowMotion.ts",
+      "src/**/*.test.*",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: `CallExpression[callee.property.name=${CAMERA_CALLS}]:not([callee.object.name="editor"]):not([callee.object.property.name="editor"])`,
+          message: CAMERA_MESSAGE,
+        },
+        { selector: `CallExpression[callee.name=${CAMERA_CALLS}]`, message: CAMERA_MESSAGE },
+      ],
+    },
   },
   {
     files: ["tests/e2e/**/*.ts"],
