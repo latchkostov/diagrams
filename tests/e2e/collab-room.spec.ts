@@ -820,6 +820,8 @@ test("joining focuses the connecting status, then the canvas; focus moved to the
       tracker.hold();
       await guest.goto(link);
       await guest.getByTestId("room-join-accept").click();
+      // Opening the room (its code, keys and recovery) can take a while on a loaded runner.
+      await expect(guest.getByTestId("room-connecting")).toBeVisible({ timeout: pageLoadTimeout() });
       await expect(guest.getByTestId("room-connecting")).toBeFocused();
     };
     const first = await other.newPage();
@@ -886,8 +888,10 @@ test("remote boundary removal closes its context menu, and a selection menu hold
       async () => {
         await guest.bringToFront();
         await guest.getByTestId("group-label-aks").click();
-        await guest.getByTestId("node-shopper").click({ modifiers: ["Shift"] });
-        await guest.getByTestId("node-shopper").click({ button: "right" });
+        await waitForStableViewport(guest);
+        await guest.getByTestId("node-gateway").click({ modifiers: ["Shift"] });
+        await waitForStableViewport(guest);
+        await guest.getByTestId("node-gateway").click({ button: "right" });
       },
       removeBoundary,
     );
