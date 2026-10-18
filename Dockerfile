@@ -3,6 +3,8 @@ FROM node:24-alpine AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Workspace packages' manifests too, so the install covers every importer in the lockfile.
+COPY services/server/package.json services/server/
 RUN pnpm install --frozen-lockfile
 COPY . .
 
