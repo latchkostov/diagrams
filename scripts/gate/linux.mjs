@@ -5,6 +5,7 @@ import process from "node:process";
 import console from "node:console";
 import { command, required } from "./commands.mjs";
 import { imageName } from "./doctor.mjs";
+import { workspaceModuleMounts } from "../workspace-mounts.mjs";
 
 export async function linuxRun(root, config, changed, directory, sha, execute = { command, required }) {
   const image = imageName(root);
@@ -68,6 +69,7 @@ export async function linuxRun(root, config, changed, directory, sha, execute = 
       archive ? `${source}:/work` : `${root}:/work`,
       "-v",
       `${modules}:/work/node_modules`,
+      ...workspaceModuleMounts(root, modules),
       "-v",
       "livediagrams-gate-pnpm-store:/pnpm-store",
       "--mount",

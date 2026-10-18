@@ -159,6 +159,7 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
+      "services/*/dist/**",
       "tests/.output",
       "src/examples/private/**",
       "**/*.gen.cjs",
@@ -251,6 +252,7 @@ export default tseslint.config(
       "*.config.ts",
       "*.config.js",
       "scripts/**/*.ts",
+      "services/**/*.ts",
       "skills/**/*.mjs",
       "eslint-rules/**/*.js",
     ],

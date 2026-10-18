@@ -204,7 +204,7 @@ export default defineConfig({
   test: {
     globalSetup: ["src/test/globalSetup.ts"],
     setupFiles: ["src/test/setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "services/server/test/**/*.test.ts"],
     environment: "node",
     // CI runners with coverage are several times slower. Timing tests compare sizes or count work instead of
     // budgets in ms (docs/QUALITY.md § Timing in tests), so only the timeout scales.
@@ -213,7 +213,7 @@ export default defineConfig({
     typecheck: {
       enabled: true,
       tsconfig: "tsconfig.node.json",
-      include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+      include: ["src/**/*.test.ts", "src/**/*.test.tsx", "services/server/test/**/*.test.ts"],
     },
     coverage: {
       provider: "v8",

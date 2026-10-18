@@ -23,6 +23,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, statSync
 import { join, relative, sep } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { createTempRun } from "./test-temp.mjs";
+import { workspaceModuleMounts } from "./workspace-mounts.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const GOLDENS = join(ROOT, "tests/parity/goldens");
@@ -124,6 +125,10 @@ function browserInContainer() {
       // lockfiles); the pnpm store, content-addressed, is shared.
       "-v",
       `livediagrams-parity-node-modules-${createHash("sha256").update(ROOT).digest("hex").slice(0, 12)}:/work/node_modules`,
+      ...workspaceModuleMounts(
+        ROOT,
+        `livediagrams-parity-workspace-${createHash("sha256").update(ROOT).digest("hex").slice(0, 12)}`,
+      ),
       // Outside the mount: pnpm would otherwise put its store beside the checkout (.pnpm-store).
       "-v",
       "livediagrams-parity-pnpm-store:/pnpm-store",

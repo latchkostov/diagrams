@@ -12,7 +12,7 @@
     "skill:check": "node scripts/skill-release.mjs --check",
     "i18n": "node scripts/i18n.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tests/parity && tsc --noEmit -p tests/bench",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests/parity && tsc --noEmit -p tests/bench && pnpm --filter @livediagrams/server typecheck",
     "typecheck:legacy": "tsc6 --noEmit && tsc6 --noEmit -p tests/parity && tsc6 --noEmit -p tests/bench",
     "test": "vitest run",
     "test:watch": "vitest",

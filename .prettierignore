@@ -1,4 +1,5 @@
 dist
+services/*/dist
 pnpm-lock.yaml
 tests/.output
 src/examples/private
