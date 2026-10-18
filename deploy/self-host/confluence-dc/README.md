@@ -41,6 +41,10 @@ simulation, or free play when there is none. Turning it off hides this extra but
 own manual Live controls remain available. Both settings always open on a still diagram, even if
 the file was saved to play when opened. There is no autoplay parameter.
 
+Macros initialize their viewers only when scrolled into view, reserving the canvas and button space
+so the page stays in place. Each loaded frame and Play action is named for its diagram's title
+(or **Untitled diagram**). Inline JSON uses the viewer's input limit before parsing.
+
 To edit, download the attachment, edit it in Live Diagrams, and upload a replacement so Confluence
 keeps its attachment history. No editor runs inside the macro. For page exports, supply a static
 image alongside the diagram; interactive content does not run in exported documents.

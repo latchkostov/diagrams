@@ -27,7 +27,7 @@ function macro(viewer: string, source: string, clickToPlay: boolean) {
 }
 
 for (const source of ["attachment", "inline"] as const) {
-  test(`Confluence macro: ${source} stays private and plays only on click under framed headers`, async ({
+  test(`Confluence macro: ${source} with saved simulations plays the first simulation under framed headers`, async ({
     page,
     baseURL,
   }) => {
@@ -37,6 +37,10 @@ for (const source of ["attachment", "inline"] as const) {
     await page.clock.install();
     await page.exposeFunction("recordMacroCsp", (message: string) => violations.push(message));
     await page.addInitScript(() => {
+      document.addEventListener("DOMContentLoaded", () => {
+        const spacer = document.querySelector<HTMLElement>('[data-testid="confluence-spacer"]');
+        if (spacer) spacer.style.height = "10000px";
+      });
       document.addEventListener("securitypolicyviolation", (event) => {
         void (window as unknown as { recordMacroCsp(s: string): Promise<void> }).recordMacroCsp(
           event.effectiveDirective,
@@ -57,7 +61,7 @@ for (const source of ["attachment", "inline"] as const) {
             cookies.push(req.headers.cookie ?? "");
             return send(
               "application/json",
-              JSON.stringify(diagram),
+              JSON.stringify(scripted),
               req.headers.cookie?.includes("session=reader") ? 200 : 403,
             );
           }
@@ -67,12 +71,13 @@ for (const source of ["attachment", "inline"] as const) {
             `default-src 'self'; script-src 'self' ${viewer}; frame-src ${viewer}; connect-src 'self'; object-src 'none'`,
           );
           const markup = macro(viewer, source === "inline" ? JSON.stringify(scripted) : attachment, true);
-          const still = macro(viewer, JSON.stringify(diagram), false);
+          const still = macro(viewer, JSON.stringify({ ...diagram, title: "Inventory overview" }), false);
+          const offscreen = macro(viewer, JSON.stringify({ ...diagram, title: " " }), true);
           return send(
             "text/html",
             readFileSync("tests/fixtures/confluence-dc/host-page.template", "utf8").replace(
               "__MACROS__",
-              markup + still,
+              markup + still + '<div data-testid="confluence-spacer"></div>' + offscreen,
             ),
           );
         }
@@ -102,7 +107,7 @@ for (const source of ["attachment", "inline"] as const) {
       const csp = (await (await frameResponse).allHeaders())["content-security-policy"];
       expect(csp).toContain(`frame-ancestors 'self' ${host}`);
       const macros = page.getByTestId("confluence-diagram");
-      await expect(macros).toHaveCount(2);
+      await expect(macros).toHaveCount(3);
       for (const index of [0, 1]) {
         const view = macros.nth(index).getByTestId("live-diagram-frame").contentFrame();
         await expect(view.getByTestId("host-embed-view")).toHaveAttribute("data-status", "ready");
@@ -112,7 +117,27 @@ for (const source of ["attachment", "inline"] as const) {
         const url = new URL((await macros.nth(index).getByTestId("live-diagram-frame").getAttribute("src")) ?? "");
         expect(Object.fromEntries(url.searchParams)).toEqual({ embed: "1", host: "1", hostOrigin: host });
         expect(url.hash).toBe("");
+        const title = index === 0 ? diagram.title : "Inventory overview";
+        await expect(macros.nth(index).getByTestId("live-diagram-frame")).toHaveAttribute("title", title);
+        if (index === 0)
+          await expect(macros.nth(index).getByTestId("confluence-play")).toHaveAccessibleName(`Play diagram: ${title}`);
+        else
+          await expect(macros.nth(index).getByTestId("confluence-play")).toHaveAttribute(
+            "aria-label",
+            `Play diagram: ${title}`,
+          );
       }
+      // Off-screen macros create neither a viewer frame nor its React application until scrolled into view.
+      await expect(macros.nth(2).getByTestId("live-diagram-frame")).toHaveCount(0);
+      const deferredHeight = await macros.nth(2).evaluate((el) => el.getBoundingClientRect().height);
+      await macros.nth(2).scrollIntoViewIfNeeded();
+      await expect(
+        macros.nth(2).getByTestId("live-diagram-frame").contentFrame().getByTestId("host-embed-view"),
+      ).toHaveAttribute("data-status", "ready");
+      await expect(macros.nth(2).getByTestId("live-diagram-frame")).toHaveAttribute("title", "Untitled diagram");
+      await expect(macros.nth(2).getByTestId("confluence-play")).toHaveAccessibleName("Play diagram: Untitled diagram");
+      expect(await macros.nth(2).evaluate((el) => el.getBoundingClientRect().height)).toBe(deferredHeight);
+      await macros.nth(0).scrollIntoViewIfNeeded();
       await pauseClock(page);
       await page.clock.runFor(10_000);
       const first = macros.nth(0).getByTestId("live-diagram-frame").contentFrame();
@@ -124,7 +149,7 @@ for (const source of ["attachment", "inline"] as const) {
       await macros.nth(0).getByTestId("confluence-play").click();
       await expect(first.getByTestId("host-embed-view")).toHaveAttribute("data-live", "1");
       await expect(first.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
-      if (source === "inline") await expect(first.getByTestId("live-sim-picker")).toHaveValue("order-flow");
+      await expect(first.getByTestId("live-sim-picker")).toHaveValue("order-flow");
       expect(cookies).toEqual(source === "attachment" ? ["session=reader"] : []);
       expect(JSON.stringify(requests)).not.toContain(marker);
       for (const req of requests) expect(req.url).not.toContain("/download/attachments/");
@@ -145,3 +170,26 @@ for (const source of ["attachment", "inline"] as const) {
     }
   });
 }
+
+test("Confluence macro: oversized inline JSON is rejected before parsing in the host", async ({ page, baseURL }) => {
+  if (!baseURL) throw new Error("A viewer base URL is required.");
+  await page.addInitScript(() => {
+    const parse = JSON.parse;
+    JSON.parse = (text, reviver) => {
+      if (text.length > 8_000_000) throw new Error("Oversized input reached JSON.parse");
+      return parse(text, reviver);
+    };
+  });
+  await page.route("**/confluence-size-check", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: macro(baseURL, '{"title":"' + "x".repeat(8_000_000) + '"}', true),
+    }),
+  );
+  await page.route("**/embed/confluence-dc.js", (route) =>
+    route.fulfill({ contentType: "text/javascript", body: readFileSync(`${recipe}confluence-dc.js`, "utf8") }),
+  );
+  await page.goto(`${baseURL}/confluence-size-check`);
+  await expect(page.getByTestId("confluence-error")).toContainText("The diagram is too large");
+  await expect(page.getByTestId("confluence-play")).toBeDisabled();
+});

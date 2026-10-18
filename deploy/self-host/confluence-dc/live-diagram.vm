@@ -18,7 +18,11 @@
   data-height="$htmlUtil.htmlEncode($height)"
   data-click-to-play="$clickToPlay"
 >
-  <live-diagram data-testid="confluence-viewer" title="Live Diagram"></live-diagram>
+  <div data-testid="confluence-canvas">
+    <template data-testid="confluence-viewer-template">
+      <live-diagram data-testid="confluence-viewer" title="Untitled diagram" loading="lazy"></live-diagram>
+    </template>
+  </div>
   <button type="button" data-testid="confluence-play" disabled="disabled" hidden="hidden">Play diagram</button>
   <p data-testid="confluence-error" role="alert" hidden="hidden"></p>
 </confluence-live-diagram>
