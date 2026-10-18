@@ -1,28 +1,23 @@
-import { useState, useSyncExternalStore, type CSSProperties, type FocusEvent } from "react";
+import { useState, useSyncExternalStore, type FocusEvent } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
 import { stencilMenu } from "../../editor/builtinActions";
 import { routingIntent } from "../../editor/routingIntent";
 import { t } from "../../i18n";
-import { galleryRoleMeta as simRoleMeta } from "../../i18n/galleryRoles";
 import { managedKind } from "../../model/admissionPresets";
-import { brokerSpec, isClusterWrapper } from "../../model/brokers";
+import { brokerSpec } from "../../model/brokers";
 import { routeTableCapable, trafficMixCapable } from "../../model/requestRouting";
-import { AdmissionFields, NodePlanning, RouteTableFields, TrafficMixFields } from "../../planning/lazy";
-import type { NodeSimProps } from "../../sim/types";
-import { assignmentLabel } from "../../stencils/brokerVocabulary";
+import { NodePlanning, RouteTableFields, TrafficMixFields } from "../../planning/lazy";
 import { deviceSpec } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
-import { inertNodeProps, nodeSimFields } from "../simFieldRules";
+import { nodeSimFields } from "../simFieldRules";
 import type { DiagramFlowNode } from "../types";
-import { AutoscalingWorkload } from "./AutoscalingWorkload";
-import { InertNote, Section } from "./controls";
-import { DeviceFields } from "./DeviceFields";
+import { Section } from "./controls";
 import { Disclosure } from "./Disclosure";
-import { customCount, formatInert } from "./helpers";
+import { customCount } from "./helpers";
 import { NodeIdentity } from "./NodeIdentity";
+import { NodeSimulation } from "./NodeSimulation";
 import { PropsEditor } from "./PropsEditor";
-import { ADC_KEYS, DEVICE_KEYS, SIM_FIELDS, SIM_KEYS } from "./simFields";
-import { SimInput } from "./SimInput";
+import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 
@@ -113,122 +108,23 @@ export function NodePanel({
         counts={counts}
       />
 
-      <Disclosure
-        id="node-simulation"
-        title={t("inspector.simulation")}
-        aside={
-          <span
-            className="insp-role"
-            style={{ "--role": simRoleMeta[role].hue } as CSSProperties}
-            title={simRoleMeta[role].hint}
-          >
-            {simRoleMeta[role].label}
-          </span>
-        }
-      >
-        {broker?.partitioned === false && (
-          <p className="insp-note" data-testid="broker-fanout">
-            {assignmentLabel(broker)} · {t("broker.fanout")}
-          </p>
-        )}
-        {managed ? (
-          <AdmissionFields
-            stencil={node.data.stencil}
-            props={props}
-            set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
-            advanced={
-              simFields.includes("emits") ? (
-                <SimInput
-                  name="emits"
-                  field={SIM_FIELDS.emits!}
-                  value={props.emits}
-                  onChange={(value) =>
-                    editor.setNodeProps(node.id, { emits: value as NodeSimProps["emits"] }, merge("emits"))
-                  }
-                />
-              ) : undefined
-            }
-          />
-        ) : device ? (
-          <DeviceFields
-            spec={device}
-            props={props}
-            set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
-          />
-        ) : simFields.length ? (
-          <AutoscalingWorkload
-            readDiagram={readDiagram}
-            nodeId={node.id}
-            stencil={node.data.stencil}
-            enabled={meta.planning?.revision === "p3-a1" && role === "processor"}
-            props={props}
-            set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
-          >
-            {simFields.map((k) => (
-              <SimInput
-                key={k}
-                name={k}
-                field={
-                  k === "partitions"
-                    ? {
-                        ...SIM_FIELDS[k]!,
-                        label: assignmentLabel(broker),
-                        hint: t("broker.assignmentHint"),
-                        note:
-                          meta.planning?.revision === "p2" ||
-                          meta.planning?.revision === "p3" ||
-                          meta.planning?.revision === "p3-a1"
-                            ? undefined
-                            : SIM_FIELDS[k]!.note,
-                      }
-                    : k === "replicas"
-                      ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
-                      : SIM_FIELDS[k]!
-                }
-                value={props[k]}
-                onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
-              />
-            ))}
-          </AutoscalingWorkload>
-        ) : isClusterWrapper(node.data.stencil) ? (
-          <p className="insp-note" data-testid="broker-wrapper">
-            {t("broker.wrapper")}
-          </p>
-        ) : role === "sink" ? (
-          <p className="insp-note" data-testid="inspector-sink-note">
-            {t("inspector.messagesEndHereAsTheyArriveNothingHereChanges")}
-          </p>
-        ) : (
-          <p className="insp-note">{t("inspector.thisStencilIsDecorativeAndDoesnTTakePart")}</p>
-        )}
-        {!routed && routing}
-        {!router && props.routeTable !== undefined && (
-          <InertNote
-            name="routeTable"
-            text={t("routing.dormantTable")}
-            onRemove={() => editor.setNodeProps(node.id, { routeTable: undefined })}
-          />
-        )}
-        {!mixer && props.trafficMix !== undefined && (
-          <InertNote
-            name="trafficMix"
-            text={t("routing.dormantMix")}
-            onRemove={() => editor.setNodeProps(node.id, { trafficMix: undefined })}
-          />
-        )}
-        {(managed ? [] : inertNodeProps(role, props)).map(({ key, why }) => (
-          <InertNote
-            key={key}
-            name={key}
-            text={t("inspector.inertValue", {
-              field: SIM_FIELDS[key]?.label ?? key,
-              value: formatInert(props[key], SIM_FIELDS[key]?.unit),
-              why,
-            })}
-            onRemove={() => editor.setNodeProps(node.id, { [key]: undefined })}
-          />
-        ))}
-      </Disclosure>
+      <NodeSimulation
+        node={node}
+        editor={editor}
+        meta={meta}
+        readDiagram={readDiagram}
+        props={props}
+        role={role}
+        broker={broker}
+        simFields={simFields}
+        managed={managed}
+        device={device}
+        merge={merge}
+        routed={routed}
+        routing={routing}
+        router={router}
+        mixer={mixer}
+      />
 
       <Disclosure id="node-properties" title={t("inspector.customProperties")} count={customCount(props, hidden)}>
         <PropsEditor
