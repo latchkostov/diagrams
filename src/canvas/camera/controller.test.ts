@@ -53,6 +53,7 @@ function harness() {
     fitted: 0,
     /** Whether the port can read d3's schedule (React Flow's internals as we know them). */
     status: true,
+    slowmoHeld: false,
   };
   /** React Flow reports every move start to the canvas (onMoveStart without an event). */
   const started = { report: (_user: boolean) => {} };
@@ -549,6 +550,41 @@ describe("camera controller", () => {
     expect(h.ownership.owner).toBe("manual");
   });
 
+  it.each([false, true])(
+    "paused follow resize holds the exact view before the pane settles (running=%s)",
+    async (running) => {
+      const h = harness();
+      h.camera.mode({ live: true, presenting: false });
+      await h.refine();
+      await h.finish();
+      h.camera.slowmo({ plan: () => ({ x: 11, y: 342.2, zoom: 0.8 }), pane: () => "hold" });
+      h.camera.dispatch({ type: "slowmo", on: true });
+      h.camera.dispatch({ type: "slowmo.take" });
+      h.tick(2);
+      await h.finish();
+      h.camera.dispatch({ type: "slowmo.follow", view: { x: 60, y: 342.2, zoom: 0.8 } });
+      if (running) h.tick();
+      // Pause freezes replay time, but the earlier follow transition can still be scheduled or easing.
+      const before = { ...h.view.current };
+      const mark = h.journal.length;
+      h.camera.input();
+      h.env.sample = null; // ResizeObserver/React Flow have not agreed on the new pane yet.
+      h.camera.dispatch({ type: "pane.changed", cause: "panel" });
+      expect(h.camera.phase).toBe("pending");
+      expect(h.ours()).toBeNull();
+      await h.finish();
+      h.tick(3);
+      expect(h.view.current).toEqual(before);
+      h.camera.dispatch({ type: "slowmo.follow", view: { x: -100, y: 342.2, zoom: 0.8 } });
+      h.env.sample = "700x800";
+      h.tick(2);
+      await h.finish();
+      expect(h.view.current).toEqual(before);
+      expect(h.camera.phase).toBe("idle");
+      expect(h.journal.slice(mark)).toEqual([expect.objectContaining({ command: "stop", moved: false, from: before })]);
+    },
+  );
+
   it("a move by hand makes the view manual: later panel work reveals instead of refitting", () => {
     const h = harness();
     h.camera.userMoved();
@@ -609,7 +645,8 @@ type Model = {
 type Real = ReturnType<typeof harness>;
 const deferred = (m: Model) => m.pending && m.menu && m.cause === "canvas";
 /** Whether running the pending work leaves a journal entry: slow motion keeps its camera from Live's refits. */
-const journals = (m: Model) => m.pending && !(m.cause === "live" && m.slowmo);
+const journals = (m: Model, r: Real) =>
+  m.pending && !(m.cause === "live" && m.slowmo) && !(m.cause === "canvas" && m.slowmo && r.env.slowmoHeld);
 const work = (m: Model, cause: NonNullable<Model["cause"]>) => {
   m.pending = true;
   m.cause = cause;
@@ -673,7 +710,7 @@ const frame = (sample: string | null) =>
     // The model's own settle rule: armed work runs on the second of two agreeing, present samples.
     const armed = m.pending && !deferred(m);
     const expected = armed && sample !== null && sample === m.last;
-    expect(ran > 0).toBe(expected && journals(m));
+    expect(ran > 0).toBe(expected && journals(m, r));
     m.last = armed && !expected ? sample : null;
     if (expected) {
       m.pending = false;
@@ -797,6 +834,7 @@ describe("camera controller: interleavings", () => {
             plan: () => ({ x: 30, y: 30, zoom: 0.7 }),
             pane: () => {
               paused = !paused;
+              real.env.slowmoHeld = paused;
               return paused ? "hold" : { x: 31, y: 30, zoom: 0.7 };
             },
           });
@@ -823,7 +861,7 @@ describe("camera controller: interleavings", () => {
           expect(real.camera.phase).toBe("idle");
           expect(real.env.panePending).toBe(false);
           expect(real.ours()).toBeNull();
-          expect(runs).toBe(journals(model) ? 1 : 0);
+          expect(runs).toBe(journals(model, real) ? 1 : 0);
           expect(ran).toBeLessThanOrEqual(model.created);
         },
       ),

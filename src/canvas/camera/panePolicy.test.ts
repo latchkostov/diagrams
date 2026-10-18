@@ -55,6 +55,19 @@ const V = { x: 1, y: 2, zoom: 0.8 };
 const REVEAL = (cause: string, withEdges = false) => ({ type: "reveal", cause, withEdges });
 
 describe("panePolicy: the agreed rules, row by row", () => {
+  it.each(["fit", "manual", "slowmo"] as const)(
+    "W1b suspends %s immediately even when a menu defers settling",
+    (owner) => {
+      const before = state({ mode: "live", slowmo: true, owner, menu: "context" });
+      const changed = decide(before, { type: "pane.changed", cause: "panel" });
+      expect(changed.commands).toEqual([{ type: "stop" }]);
+      expect(changed.state.pending).toEqual({ cause: "panel" });
+      expect(changed.state.owner).toBe(owner);
+      expect(decide(changed.state, settled()).commands).toEqual([]);
+      const closed = decide(changed.state, { type: "menu.closed" });
+      expect(decide(closed.state, settled()).commands).toEqual([{ type: "slowmoPane", following: owner === "slowmo" }]);
+    },
+  );
   it.each<[string, PolicyState, CameraEvent[], unknown[]]>([
     // A panel-driven pane change with no new selection refits a fitted view.
     [
@@ -424,19 +437,19 @@ describe("panePolicy: the agreed rules, row by row", () => {
       "W1/W5 slow motion: a pane change asks it, following",
       state({ mode: "live" }),
       [{ type: "slowmo", on: true }, { type: "pane.changed", cause: "panel" }, settled()],
-      [{ type: "slowmoPane", following: true }],
+      [{ type: "stop" }, { type: "slowmoPane", following: true }],
     ],
     [
       "W1b/W5 slow motion owns panel work even before live mode arrives",
       state(),
       [{ type: "slowmo", on: true }, { type: "pane.changed", cause: "panel" }, settled({ centreOff: true }), settled()],
-      [{ type: "slowmoPane", following: true }],
+      [{ type: "stop" }, { type: "slowmoPane", following: true }],
     ],
     [
       "W5 slow motion after a pan by hand: not following",
       state({ mode: "live" }),
       [{ type: "slowmo", on: true }, { type: "user.moved" }, { type: "pane.changed", cause: "panel" }, settled()],
-      [{ type: "slowmoPane", following: false }],
+      [{ type: "stop" }, { type: "slowmoPane", following: false }],
     ],
     [
       "W3/W4 a take plans its camera once the pane settles, absorbing a pane change",
@@ -483,10 +496,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
         settled(),
         { type: "slowmo.follow", view: V },
       ],
-      [
-        { type: "slowmoPane", following: true },
-        { type: "follow", view: V },
-      ],
+      [{ type: "stop" }, { type: "slowmoPane", following: true }, { type: "follow", view: V }],
     ],
     [
       "W6 no following outside slow motion",
@@ -646,7 +656,7 @@ describe("panePolicy: invariants over every owner, cause, menu, selection, cover
       const live = { panel: false, card: false, focus: owner === "narration" ? ["a"] : [] };
       let s = state({ owner, mode, zoomPriority, menu, slowmo, live });
       const changed = decide(s, { type: "pane.changed", cause });
-      expect(changed.commands).toEqual([]);
+      expect(changed.commands).toEqual(cause === "panel" && slowmo && mode !== "present" ? [{ type: "stop" }] : []);
       s = changed.state;
       const steps: CameraEvent[] = [facts, ...(menu ? [{ type: "menu.closed" } as const] : []), facts, facts];
       const out: CameraCommand[][] = [];
@@ -731,7 +741,7 @@ const eventArb: fc.Arbitrary<CameraEvent> = fc.oneof(
 );
 
 /** Commands only slow motion's camera gives, and what may run while slow motion has the view. */
-const SLOWMO = new Set(["slowmoPlan", "slowmoPane", "follow"]);
+const SLOWMO = new Set(["slowmoPlan", "slowmoPane", "follow", "stop"]);
 const WHILE_SLOWMO = new Set([...SLOWMO, "restore", "reveal", "fit", "zoom100", "zoomToSelection"]);
 
 describe("panePolicy: event sequences", () => {

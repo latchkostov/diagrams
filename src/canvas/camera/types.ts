@@ -115,6 +115,8 @@ export type CameraEvent =
   | ({ type: "pane.settled" } & SettledFacts);
 
 export type CameraCommand =
+  /** Suspend slow motion at the current view as soon as its pane changes, before settling. */
+  | { type: "stop" }
   | { type: "fit"; reason: FitReason }
   | { type: "zoomToSelection" }
   | { type: "zoom100" }

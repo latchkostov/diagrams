@@ -99,7 +99,7 @@ export interface CameraPort {
 /** One executed command, for the e2e journal and the unit tests. */
 export interface JournalEntry {
   seq: number;
-  command: CameraCommand["type"] | "anchor" | "nudge" | "stop";
+  command: CameraCommand["type"] | "anchor" | "nudge";
   cause?: RevealCause | FitReason | PaneCause | LiveFitReason | "user" | "quickAdd";
   /** Whether the view moved (a reveal that's already satisfied doesn't). */
   moved: boolean;
@@ -112,7 +112,7 @@ export interface SlowmoCamera {
   /** The take's planned view (a fit of its path, or its first node at a readable zoom), or null. */
   plan(): Viewport | null;
   /**
-   * The pane changed under the replay: `hold` stops a follow pan where it is (a paused replay keeps its view), a
+   * The pane settled under the replay: `hold` keeps the view stopped by W1b (a paused replay keeps its view), a
    * view replans a playing, fitted take, null leaves it. `following`: slow motion still owns the view.
    */
   pane(following: boolean): Viewport | "hold" | null;
@@ -334,6 +334,13 @@ export function createCameraController(
 
   function execute(command: CameraCommand, event: CameraEvent) {
     switch (command.type) {
+      case "stop": {
+        const here = port.viewport();
+        journal({ command: "stop", moved: false, from: here });
+        generation++;
+        early = null;
+        return void move(here, 0, { linear: false, kind: "pan" });
+      }
       case "fit": {
         const { request, animate } = fitRequest(command.reason);
         return fit(request, animate, true, command.reason);
@@ -382,12 +389,8 @@ export function createCameraController(
       case "slowmoPane": {
         const answer = slowmo?.pane(command.following) ?? null;
         if (answer !== "hold") return pan(answer, MOVES.slowmoPlan, false, { command: "slowmoPane" });
-        // A follow pan may still be easing from before Pause: stop it where it is.
-        const here = port.viewport();
-        journal({ command: "stop", moved: false, from: here });
-        generation++;
-        early = null;
-        return void move(here, 0, { linear: false, kind: "pan" });
+        // W1b already stopped the move at pane.changed, before any settling frames could advance it.
+        return;
       }
       // One move at a time: a follow pan waits for the plan's fit or the last pan to land.
       case "follow":

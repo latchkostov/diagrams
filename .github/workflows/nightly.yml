@@ -18,6 +18,31 @@ env:
   CI: "true"
 
 jobs:
+  slowmo-teardown-diagnostic:
+    name: Windows slow-motion teardown evidence (report only)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    env:
+      NIGHTLY_SLOWMO_DIAGNOSTIC: "1"
+      DEBUG: pw:browser
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/toolchain
+      - uses: ./.github/actions/chromium-cache
+      - name: Four quarantined cases, three repetitions, zero retries
+        timeout-minutes: 15
+        run: pnpm gate quick tests/e2e/slowmo.spec.ts --no-docker --only e2e --repeat 3 --workers 3 --ports 6980 --max-wait 1
+      - name: Upload traces, browser logs and synchronous teardown probes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-slowmo-teardown-evidence
+          path: tests/.output/g
+          retention-days: 14
+
   properties:
     name: Random property tests (20x runs)
     runs-on: ubuntu-26.04

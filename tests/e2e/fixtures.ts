@@ -4,6 +4,7 @@ import { test as base, expect, type FrameLocator, type Locator, type Page } from
 import type { DiagramFile } from "../../src/model/types";
 import { pauseClocks } from "../../scripts/e2e-clock";
 import { textBoundaryKey } from "../../scripts/e2e-keys";
+import { withSlowmoDiagnostic, slowmoDiagnosticEnabled, slowmoDiagnosticTest } from "./slowmo-diagnostic";
 
 export const TEXT_START = textBoundaryKey("start");
 export const TEXT_END = textBoundaryKey("end");
@@ -139,7 +140,7 @@ type Fixtures = {
   consoleErrors: string[];
 };
 
-export const test = base.extend<Fixtures>({
+const sharedTest = (slowmoDiagnosticEnabled() ? slowmoDiagnosticTest : base).extend<Fixtures>({
   devReloads: [
     async ({ context }, use) => {
       const reloads: string[] = [];
@@ -186,6 +187,7 @@ export const test = base.extend<Fixtures>({
     await use(errors);
   },
 });
+export const test = withSlowmoDiagnostic(sharedTest);
 
 /** DOM snapshots of the stress diagrams are test instrumentation, not application input work. */
 export const performanceTest = test.extend({
