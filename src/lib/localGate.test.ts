@@ -138,7 +138,7 @@ it.each(["", "bind"])(
     try {
       const result = await linuxRun(
         process.cwd(),
-        config(["--linux", "--cpus", "3", "--memory", "7g"]),
+        config(["--linux", "--workers", "2", "--cpus", "3", "--memory", "7g", "--max-wait", "1"]),
         [],
         dir,
         "test-head",
@@ -368,7 +368,7 @@ it("full gate stamps only a complete unchanged-HEAD success", async () => {
                   : finished && scenario === "HEAD change"
                     ? "new-head"
                     : "original-head",
-            acquireLock: async () => async () => {},
+            acquireBudget: async () => async () => {},
             doctor: async () => true,
             probePorts: async (port) => port,
             runSteps: async (cwd, config, changed, directory) => {

@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import process from "node:process";
+import os from "node:os";
 import console from "node:console";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
-import { options, canStamp, checkTree, gitFiles } from "./gate/logic.mjs";
-import { acquireLock, pickPorts, probePorts } from "./gate/host.mjs";
+import { options, canStamp, checkTree, gitFiles, workerCount, resourceRequest } from "./gate/logic.mjs";
+import { pickPorts, probePorts } from "./gate/host.mjs";
+import { acquireBudget } from "./gate/budget.mjs";
 import { git, cancelCommands } from "./gate/commands.mjs";
 import { doctor, setup } from "./gate/doctor.mjs";
 import { printSummary, runSteps } from "./gate/run.mjs";
@@ -18,7 +20,7 @@ export async function runGate(config, dependencies = {}, signal) {
   const {
     root: cwd = root,
     git: readGit = git,
-    acquireLock: lock = acquireLock,
+    acquireBudget: reserve = acquireBudget,
     doctor: diagnose = doctor,
     probePorts: probe = probePorts,
     pickPorts: pick = pickPorts,
@@ -30,13 +32,21 @@ export async function runGate(config, dependencies = {}, signal) {
   try {
     const root = cwd;
     const common = realpathSync(resolve(root, await readGit(["rev-parse", "--git-common-dir"], root)));
-    release = await lock(
-      common,
-      process.platform,
-      () => console.log("Waiting for another full local gate…"),
-      undefined,
-      signal,
+    const capacity = workerCount(os.availableParallelism(), os.totalmem());
+    const resources = resourceRequest(config, capacity);
+    config = { ...config, workers: resources.workers, ...(config.linux ? { cpus: resources.cpus } : {}) };
+    release = await reserve(
+      join(os.tmpdir(), "livediagrams-gate-budget-v1"),
+      {
+        capacity,
+        slots: resources.slots,
+        worktree: root,
+        branch: (await readGit(["branch", "--show-current"], root)) || "(detached HEAD)",
+        command: `pnpm gate ${process.argv.slice(2).join(" ")}`,
+      },
+      { waiting: (message) => console.log(message), maxWait: config.maxWait, signal },
     );
+    console.log(`Gate budget: ${resources.slots}/${capacity} workers/CPUs; ${config.workers} test workers`);
     const started = performance.now();
     const sha = await readGit(["rev-parse", "HEAD"], root);
     const stamp = join(stampDir ?? join(common, "verified"), sha);
@@ -55,7 +65,7 @@ export async function runGate(config, dependencies = {}, signal) {
       const base = await readGit(["merge-base", "HEAD", "origin/master"], root);
       const behind = Number(await readGit(["rev-list", "--count", "HEAD..origin/master"], root));
       if (behind)
-        console.warn(`WARNING: branch is behind origin/master by ${behind} commits; rebase before the full gate.`);
+        console.warn(`WARNING: branch is behind origin/master by ${behind} commits; run pnpm sync before pushing.`);
       changed = gitFiles(await readGit(["diff", "--name-only", "-z", "--diff-filter=ACMR", base], root));
       changed.push(...gitFiles(await readGit(["ls-files", "--others", "--exclude-standard", "-z"], root)));
       console.log(`Related files: ${changed.join(", ") || "none"}`);
@@ -112,7 +122,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         : await runGate(config, {}, abort.signal);
   } catch (error) {
     console.error(`gate: ${error.message}`);
-    process.exitCode = 1;
+    process.exitCode = error.exitCode ?? 1;
   } finally {
     process.off("SIGINT", interrupt);
     process.off("SIGTERM", interrupt);

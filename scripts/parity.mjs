@@ -117,6 +117,7 @@ function browserInContainer() {
       "run",
       "--rm",
       "--ipc=host",
+      ...(process.env.GATE_WORKERS ? ["--cpus", process.env.GATE_WORKERS] : []),
       "-v",
       `${ROOT}:/work`,
       // Linux's node_modules, kept between runs, one volume per checkout (two checkouts may run at once with different
@@ -151,7 +152,19 @@ if (!inner) rmSync(OUTPUT, { recursive: true, force: true });
 const ran = {};
 for (const tier of tiers) {
   if (tier === "node")
-    ran.node = run("pnpm", ["exec", "vitest", "run", "--config", "tests/parity/vitest.config.ts", ...filters], env);
+    ran.node = run(
+      "pnpm",
+      [
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "tests/parity/vitest.config.ts",
+        ...filters,
+        ...(process.env.GATE_WORKERS ? [`--maxWorkers=${process.env.GATE_WORKERS}`] : []),
+      ],
+      env,
+    );
   else ran.browser = IN_CONTAINER || process.env.PARITY_BROWSER_HOST === "1" ? browserHere() : browserInContainer();
 }
 if (inner) process.exit(ran.browser ? 0 : 1);

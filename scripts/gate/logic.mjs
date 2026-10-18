@@ -31,6 +31,10 @@ export function options(argv) {
       const value = args.shift() ?? "";
       if (!/^[1-9]\d*(?:[bkmg])?$/i.test(value)) throw new Error("--memory requires a Docker size, e.g. 7g");
       result.memory = value.toLowerCase();
+    } else if (arg === "--max-wait") {
+      const value = Number(args.shift());
+      if (!Number.isFinite(value) || value <= 0) throw new Error("--max-wait must be a positive number");
+      result.maxWait = value;
     } else if (["--ports", "--workers", "--repeat"].includes(arg)) result[arg.slice(2)] = positive(args.shift(), arg);
     else if (arg === "--shard") {
       const value = args.shift() ?? "";
@@ -64,7 +68,7 @@ export function validatePorts(base) {
 
 // Reserve 4 GiB for the OS, Vite, exports and trace buffers, then allow 2.5 GiB
 // per worker and three quarters of logical CPUs, capped at 12. More workers
-// measured slower and exposed races on a 32-thread host. A container's memory
+// measured slower and exposed races. A container's memory
 // limit lowers the count further, keeping parallel trace writes within capacity.
 export function workerCount(cpus, memory, caps = {}) {
   // CPU quotas need not alter the cpuset, and totalmem can describe the VM rather
@@ -73,6 +77,31 @@ export function workerCount(cpus, memory, caps = {}) {
   const size = caps.memory?.match(/^(\d+)([bkmg])?$/);
   if (size) memory = Math.min(memory, Number(size[1]) * ({ b: 1, k: 1024, m: 1024 ** 2, g: GIB }[size[2] ?? "b"] ?? 1));
   return Math.max(1, Math.min(12, Math.floor(cpus * 0.75), Math.floor((memory / GIB - 4) / 2.5)));
+}
+
+export function resourceRequest(config, capacity) {
+  const defaults = config.command === "quick" ? Math.min(2, capacity) : capacity;
+  // Admission fixes the worker count before Docker starts. Respect its caps here,
+  // rather than letting that explicit count mask cap-aware sizing inside the container.
+  const workers =
+    config.workers ?? Math.min(defaults, config.linux ? workerCount(Infinity, Infinity, config) : capacity);
+  const cpus = config.linux ? (config.cpus ?? workers) : workers;
+  const slots = Math.max(workers, Math.ceil(cpus));
+  if (slots > capacity)
+    throw new Error(`Requested ${slots} workers/CPUs exceeds the host budget ${capacity}; reduce --workers/--cpus`);
+  return { workers, cpus, slots };
+}
+
+/** Strict FIFO: reserve the available prefix, so later small runs cannot starve a full run. */
+export function admit(entries, capacity) {
+  let free = capacity - entries.filter((e) => e.state === "running").reduce((n, e) => n + e.slots, 0);
+  const granted = [];
+  for (const entry of entries.filter((e) => e.state === "waiting").sort((a, b) => a.sequence - b.sequence)) {
+    if (entry.slots > free) break;
+    free -= entry.slots;
+    granted.push(entry);
+  }
+  return granted;
 }
 
 export function lockPort(common, platform) {

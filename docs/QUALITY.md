@@ -3,7 +3,10 @@
 Every feature batch goes through the same gates before the next one starts:
 
 1. **Build:** feature agents work in their lanes (`docs/PLAN.md`) with unit + e2e tests.
-2. **Verify:** `pnpm check` (typecheck, lint, unit, e2e) and `pnpm build`.
+2. **Verify:** `pnpm gate quick [spec...] --max-wait 1` and targeted regressions locally, then push.
+   PR CI is the default full gate and runs with zero retries. For timing-sensitive UI, first repeat affected specs and neighbours
+   under load (`--linux --repeat 5 --workers N`). A local full gate is optional for flake hunts, red CI,
+   or anyone who wants the complete run before pushing.
 3. **Code review:** `pnpm review` runs seven Codex reviewers in parallel on the changes since
    `review-base` (correctness, architecture, performance, tests, security, accessibility, types; prompts in
    `scripts/review/angles/`). Findings are structured JSON merged into `.reviews/<stamp>/REPORT.md`.
@@ -47,10 +50,38 @@ pinned Chromium and the pinned Playwright Docker image; it never installs system
 Doctor explains how to fix Node/pnpm pins, missing installs, Docker access and low disk space.
 Both the OS temp drive and repository drive need at least 8 GiB free.
 
-After committing, run `pnpm gate full --ports 6480`. Omit `--ports` to find a free five-port
+For everyday branch work, run `pnpm gate quick [spec...] --max-wait 1 --ports 6660`, add targeted
+regressions, commit and push, then use PR CI as the full gate. Sync before pushing. For timing-sensitive
+UI, run the affected specs and neighbours under load with `--linux --repeat 5 --workers N` first;
+choose N within the reported CPU/RAM budget. A busy exit is a reason to use CI, not to bypass a lock.
+
+Use `pnpm gate full --max-wait 1 --ports 6660` after committing when hunting flakes, reproducing red
+CI or choosing extra local verification. Add `--linux` for CI's browser environment.
+Omit `--ports` to find a free five-port
 range in 6400–6999. The gate checks IPv4 and IPv6 loopback, never reuses an existing server,
-and rejects any range containing 5190 or 6000. A socket lock shared by all worktrees queues
-other gates; process death releases the lock without stale files on Windows, macOS or Linux.
+and rejects any range containing 5190 or 6000. Choose different ranges for concurrent runs.
+
+All gate runs in the same OS temporary directory share a worker budget, including separate clones.
+Capacity is `workerCount(os.availableParallelism(), os.totalmem())`: three quarters of logical CPUs,
+at most 12; reserve 4 GiB, then allow 2.5 GiB per worker, with a minimum capacity of one.
+Full defaults request the entire capacity; quick defaults request up to two workers. `--workers N`
+declares test workers for Playwright, Vitest and parity. Linux containers default `--cpus` to that
+count; `--cpus N` can set a different positive CPU quota, and `--memory M` caps Docker memory.
+Automatic workers respect both container caps before admission; explicit `--workers N` overrides
+automatic sizing. Admission charges the greater of workers and rounded-up container CPUs.
+Without `--cpus`, it charges the worker count. Requests above capacity fail with guidance to reduce them.
+
+A short OS socket mutex coordinates FIFO admission. Each run owns an OS-released socket with a JSON
+sidecar in the OS temp directory's `livediagrams-gate-budget-v1/`, describing worktree, branch,
+command, PID, start time, slots and queue position. Sidecars whose PID or socket is gone are ignored
+and removed. They never own capacity on their own; no manual stale-lock cleanup is needed on
+Windows, macOS or Linux. Later small runs cannot bypass a waiting full run. Two two-worker quick
+runs can proceed together on a budget of four or more.
+
+Waiters print running holders and earlier queued requests immediately and every 15 seconds, with
+elapsed time. `--max-wait <minutes>` bounds admission (fractional minutes are accepted); expiry exits
+**75**, with `busy: push and let CI run the full gate, or retry later`. Interruption removes only that
+run's reservation. Agents should use `--max-wait 1`; omission allows an unbounded, visible wait.
 
 Full runs lint, typecheck, formatting, i18n and skill checks, unit coverage, production build,
 entry size, output parity, then every CI Playwright project: chromium, dev, subpath, internal
@@ -101,12 +132,12 @@ stamp, and checks that HEAD and the tree stayed unchanged. Only complete success
 write `$(git rev-parse --git-common-dir)/verified/<sha>`. Quick runs, subsets, shards and
 `--no-docker` never stamp. `--no-docker` loudly skips Docker checks and browser parity for native CI runners.
 
-| Platform/mode           | What it predicts                                       | When to use it                                 |
-| ----------------------- | ------------------------------------------------------ | ---------------------------------------------- |
-| Windows native          | Windows Chromium, native file paths and shortcuts      | Daily Windows work and portability checks      |
-| macOS native            | macOS Chromium, Command shortcuts and native fonts     | Daily macOS work and portability checks        |
-| Linux native            | Installed Linux Chromium and local dependencies        | Daily Linux work and portability checks        |
-| Any host with `--linux` | CI's pinned Linux browser image and Linux dependencies | Before pushing and to reproduce Linux failures |
+| Platform/mode           | What it predicts                                       | When to use it                                        |
+| ----------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| Windows native          | Windows Chromium, native file paths and shortcuts      | Daily Windows work and portability checks             |
+| macOS native            | macOS Chromium, Command shortcuts and native fonts     | Daily macOS work and portability checks               |
+| Linux native            | Installed Linux Chromium and local dependencies        | Daily Linux work and portability checks               |
+| Any host with `--linux` | CI's pinned Linux browser image and Linux dependencies | Targeted load repeats, flake hunts and Linux failures |
 
 `pnpm test:e2e` starts its own servers and runs five Playwright projects:
 

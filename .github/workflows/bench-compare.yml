@@ -1,0 +1,107 @@
+name: Compare browser benchmarks
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base branch, tag or SHA
+        required: true
+        default: master
+      head:
+        description: Head branch, tag or SHA
+        required: true
+      grep:
+        description: Playwright title pattern (--grep), e.g. live pipeline@500
+        required: true
+      mode:
+        description: Benchmark mode (identical for both revisions)
+        type: choice
+        options: [quick, full, gates]
+        default: quick
+      cpu:
+        description: BENCH_CPU throttle (positive number, identical for both revisions)
+        default: "2"
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 330
+    env:
+      CI: "true"
+      BENCH_CPU: ${{ inputs.cpu }}
+      BENCH_MODE: ${{ inputs.mode }}
+      BENCH_GREP: ${{ inputs.grep }}
+      BASE_REF: ${{ inputs.base }}
+      HEAD_REF: ${{ inputs.head }}
+    steps:
+      - name: Validate selection
+        run: |
+          node -e 'if (!(Number.isFinite(+process.env.BENCH_CPU) && +process.env.BENCH_CPU > 0)) throw Error("BENCH_CPU must be positive"); if (!process.env.BENCH_GREP.trim()) throw Error("Select benchmarks with --grep"); new RegExp(process.env.BENCH_GREP)'
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.base }}
+          persist-credentials: false
+      - uses: ./.github/actions/toolchain
+      - uses: ./.github/actions/chromium-cache
+      - run: pnpm exec playwright install-deps chromium
+      - name: Base browser benchmarks
+        id: base-bench
+        continue-on-error: true
+        run: node scripts/bench/run.mjs --only ui --mode "$BENCH_MODE" --grep "$BENCH_GREP" --label "base $BASE_REF"
+      - name: Preserve base results
+        run: |
+          mkdir -p "$RUNNER_TEMP/bench-compare/base"
+          cp tests/.output/bench/results.json tests/.output/bench/summary.md "$RUNNER_TEMP/bench-compare/base/"
+          git rev-parse HEAD > "$RUNNER_TEMP/bench-compare/base/sha.txt"
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.head }}
+          persist-credentials: false
+      - uses: ./.github/actions/toolchain
+      - uses: ./.github/actions/chromium-cache
+      - run: pnpm exec playwright install-deps chromium
+      - name: Head browser benchmarks
+        id: head-bench
+        continue-on-error: true
+        run: node scripts/bench/run.mjs --only ui --mode "$BENCH_MODE" --grep "$BENCH_GREP" --label "head $HEAD_REF"
+      - name: Preserve head results
+        run: |
+          mkdir -p "$RUNNER_TEMP/bench-compare/head"
+          cp tests/.output/bench/results.json tests/.output/bench/summary.md "$RUNNER_TEMP/bench-compare/head/"
+          git rev-parse HEAD > "$RUNNER_TEMP/bench-compare/head/sha.txt"
+      - name: Compare in the same job
+        id: comparison
+        continue-on-error: true
+        run: |
+          out="$RUNNER_TEMP/bench-compare"
+          node --input-type=module - "$out" <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const load = side => JSON.parse(readFileSync(join(process.argv[2], side, 'results.json'), 'utf8'));
+          const base = load('base'), head = load('head');
+          const ids = new Set(base.metrics.filter(m => m.suite !== 'workloads').map(m => m.id));
+          if (!head.metrics.some(m => ids.has(m.id))) throw Error('No shared browser metrics; check grep and mode');
+          NODE
+          status=0
+          node scripts/bench/compare.mjs "$out/base/results.json" "$out/head/results.json" --md "$out/compare.md" || status=$?
+          {
+            echo "## Browser benchmarks: base → head"
+            echo "Base: $(cat "$out/base/sha.txt")"
+            echo "Head: $(cat "$out/head/sha.txt")"
+            printf '\nMode: %s; BENCH_CPU: %s; grep: `%s`\n\n' "$BENCH_MODE" "$BENCH_CPU" "$BENCH_GREP"
+            cat "$out/compare.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: browser-benchmark-comparison
+          path: ${{ runner.temp }}/bench-compare/
+          retention-days: 30
+      - name: Fail on a failed suite or gate
+        if: steps.base-bench.outcome == 'failure' || steps.head-bench.outcome == 'failure' || steps.comparison.outcome == 'failure'
+        run: |
+          echo "::error::A benchmark suite or gate failed; see the comparison summary and artifact."
+          exit 1

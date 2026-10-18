@@ -19,6 +19,27 @@ resolution status and measurements. Undated entries use their migration date. UX
 shared contract: its last 30 days of edits refine vocabulary, gestures, default behavior and chrome, rather
 than append PR decisions. New reviews belong in fragments; change a principle only when the contract changes.
 
+## Verification without local contention
+
+The default per-branch flow is `pnpm gate quick [spec...] --max-wait 1`, targeted regressions,
+`pnpm sync`, push, then PR CI as the full gate with zero retries. Timing-sensitive UI also needs the affected specs
+and neighbours repeated under load (`--linux --repeat 5 --workers N`) before pushing.
+Do not start a full local gate for every branch. `pnpm gate full [--linux] --max-wait 1` stays
+available for flake hunts, red CI, and optional complete verification of a clean commit.
+
+Gate runs share a CPU/RAM budget across worktrees and clones in the same OS temp directory.
+Quick defaults to up to two workers; full defaults to the whole budget. Explicit `--workers N`
+and container `--cpus N` declare the resource cost. Small quick runs can overlap within capacity;
+FIFO prevents later quick runs from starving a queued full run. Waiters report holders, branch,
+worktree, command, start time and elapsed time every 15 seconds. `--max-wait 1` exits 75 after a
+busy minute: push and let CI run the full gate, or retry later. Never remove a live socket sidecar.
+See [Quality](QUALITY.md) for resource accounting and portable commands.
+
+Browser benchmark comparisons default to the **Compare browser benchmarks** Actions workflow:
+select base/head, a title pattern (`--grep`), mode and `BENCH_CPU`. Both revisions run sequentially
+in the same job and the comparison appears in its summary. This keeps measurements away from local
+gate traffic; local runs are for harness debugging. See [Benchmarks](BENCHMARKS.md).
+
 ## Regeneration
 
 `pnpm regen` runs schemas, the skill viewer refresh and i18n validation. Runtime translation catalogs are
