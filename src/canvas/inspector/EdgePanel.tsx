@@ -1,24 +1,32 @@
 import { Dropdown } from "../../components/Dropdown";
 import { Icon } from "../../components/Icon";
-import { RELATION_CHOICES, applyChoice, choiceOf } from "../../editor/relationActions";
+import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../../editor/relationActions";
 import { t } from "../../i18n";
 import { brokerSpec } from "../../model/brokers";
-import { relationNote, relationOf } from "../../model/relations";
+import { relationNote, relationOf, isDependency } from "../../model/relations";
 import { EdgeRouteFields } from "../../planning/lazy";
 import { groupLabel } from "../../stencils/brokerVocabulary";
 import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
 import { edgeSimFields } from "../simFieldRules";
-import type { DiagramFlowEdge } from "../types";
-import { Field, InertNote, Section, Segmented } from "./controls";
+import { type DiagramFlowEdge } from "../types";
+import { Field, InertNote, Section, Segmented, SideSelect } from "./controls";
 import { Disclosure } from "./Disclosure";
-import { EdgeAdvanced } from "./EdgeAdvanced";
-import { isFanOut, relationDropdownItems } from "./helpers";
-import { RelationHint } from "./RelationHint";
 import { SettingsEditor } from "./SettingsEditor";
 import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
+import { SIM_LIMITS } from "../../interop/native";
+import { DEFAULT_TRAVEL_MS } from "../../sim/topology";
+import { PropsEditor } from "./PropsEditor";
+import { EDGE_KEYS, RULE_KEYS } from "./simFields";
+import { useState } from "react";
+import { type EditorApi } from "../../editor/types";
+import { relationLabel } from "../../i18n/chrome";
+import { inferRelation } from "../../stencils/relations";
+import type { DropdownItem } from "../../components/Dropdown";
+import type { RelationChoiceId } from "../../editor/relationActions";
+import type { SimRole } from "../../model/types";
 
 export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
@@ -189,4 +197,156 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
       <EdgeAdvanced edge={edge} editor={editor} data={data} props={props} flow={flow} rule={rule} merge={merge} />
     </>
   );
+}
+
+type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {
+  edge: DiagramFlowEdge;
+  data: NonNullable<DiagramFlowEdge["data"]>;
+  props: Record<string, unknown>;
+  flow: boolean;
+  rule: boolean;
+  merge: (field: string) => { merge: string };
+};
+
+export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: EdgeAdvancedProps) {
+  return (
+    <Disclosure id="edge-advanced" title={t("inspector.advanced")}>
+      <div className="insp-row2">
+        <Field label={t("inspector.fromSide")}>
+          <SideSelect
+            testId="inspector-field-sourceSide"
+            value={data.sourceSide}
+            onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })}
+          />
+        </Field>
+        <Field label={t("inspector.toSide")}>
+          <SideSelect
+            testId="inspector-field-targetSide"
+            value={data.targetSide}
+            onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })}
+          />
+        </Field>
+      </div>
+      {flow && (
+        <>
+          <SimInput
+            name="travelMs"
+            field={{
+              label: t("inspector.travelTime"),
+              unit: "ms",
+              kind: "number",
+              min: 0,
+              max: SIM_LIMITS.timeMs,
+              step: 50,
+              placeholder: String(DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"]),
+              hint: t("inspector.timeAMessageSpendsOnThisEdgeAt1x"),
+            }}
+            value={props.travelMs}
+            onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
+          />
+          <SimInput
+            name="filter"
+            field={{
+              label: t("inspector.filter"),
+              kind: "list",
+              placeholder: t("inspector.allMessageTypes"),
+              hint: t("inspector.onlyTheseMessageTypesTravelThisEdgeTrailingWildcard"),
+            }}
+            value={props.filter}
+            onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
+          />
+          <SimInput
+            name="emits"
+            field={{
+              label: t("inspector.renameTo"),
+              kind: "text",
+              placeholder: t("inspector.unchanged"),
+              hint: t("inspector.renameMessagesAsTheyLeaveAlongThisEdge"),
+            }}
+            value={props.emits}
+            onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
+          />
+        </>
+      )}
+      <span className="insp-label">{t("inspector.customProperties")}</span>
+      <PropsEditor
+        props={props}
+        hidden={rule ? RULE_KEYS : EDGE_KEYS}
+        onSet={(patch) => editor.setEdgeProps(edge.id, patch)}
+        onSetMerged={(patch, key) => editor.setEdgeProps(edge.id, patch, merge(`prop:${key}`))}
+      />
+    </Disclosure>
+  );
+}
+
+/** Flow edges into a typed stencil (Key Vault, an IdP...): offer the dependency they look like. */
+const dismissedHints = new Set<string>();
+
+export function RelationHint({ edge, editor }: { edge: DiagramFlowEdge; editor: EditorApi }) {
+  const [, rerender] = useState(0);
+  if (isDependency(edge.data) || dismissedHints.has(edge.id)) return null;
+  const want = inferRelation(editor.getNode(edge.source)?.stencil, editor.getNode(edge.target)?.stencil);
+  if (want === "flow") return null;
+  return (
+    <div className="insp-hint" data-testid="inspector-relation-hint">
+      <Icon name={relationIcon(want)} size={13} />
+      <span>{t("inspector.suggestRelation", { relation: relationLabel[want].toLocaleLowerCase() })}</span>
+      <button
+        type="button"
+        className="insp-link"
+        onClick={() => editor.updateEdge(edge.id, { relation: want })}
+        data-testid="inspector-relation-hint-apply"
+      >
+        {t("inspector.apply")}
+      </button>
+      <button
+        type="button"
+        className="icon-btn insp-mini"
+        title={t("inspector.keepItAFlow")}
+        aria-label={t("inspector.keepItAFlow")}
+        onClick={() => {
+          dismissedHints.add(edge.id);
+          rerender((n) => n + 1);
+        }}
+        data-testid="inspector-relation-hint-dismiss"
+      >
+        <Icon name="close" size={12} />
+      </button>
+    </div>
+  );
+}
+
+export const relationDropdownItems = (): readonly DropdownItem<RelationChoiceId>[] => [
+  {
+    get label() {
+      return t("inspector.flow");
+    },
+    options: RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => ({
+      value: c.id,
+      label: c.label,
+      icon: c.icon,
+      hint: c.kind,
+    })),
+  },
+  {
+    get label() {
+      return t("inspector.dependency");
+    },
+    options: RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => ({
+      value: c.id,
+      label: c.label,
+      icon: c.icon,
+      className: `fe-rel-${c.relation}`,
+    })),
+  },
+];
+
+/** Edges whose source copies each message to every route (sources, services, change feeds): they take a share. */
+const FAN_OUT_ROLES: ReadonlySet<SimRole> = new Set(["source", "processor", "none"]);
+
+export function isFanOut(editor: EditorApi, sourceId: string, kind: string | undefined): boolean {
+  const node = editor.getNode(sourceId);
+  if (!node) return false;
+  const role = getStencil(node.stencil).simRole;
+  return FAN_OUT_ROLES.has(role) || (role === "store" && kind !== "sync");
 }

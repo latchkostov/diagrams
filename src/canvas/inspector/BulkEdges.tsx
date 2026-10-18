@@ -1,8 +1,9 @@
+import { relationDropdownItems } from "./EdgePanel";
 import { Dropdown } from "../../components/Dropdown";
 import { RELATION_CHOICES, applyChoice, choiceOf } from "../../editor/relationActions";
 import { t } from "../../i18n";
 import { BulkRow, Section } from "./controls";
-import { MIXED, countLabel, relationDropdownItems, shared } from "./helpers";
+import { MIXED, countLabel, shared } from "./helpers";
 import { type InspectorProps } from "./types";
 
 /** The fields several edges share (D11): Relationship and Label. */
