@@ -19,11 +19,17 @@ Counts compare the starting selection checkpoint `6e9b81bb` with the completed s
 | `selection/useCanvasNavigation.ts`    |    378 |                            431 |
 | `selection/usePanKeys.ts`             |     55 | Folded into the related module |
 | `selection/useSettledSelection.ts`    |     98 |                             98 |
-| `placement/useCanvasEditCommands.ts`  |    New |                            187 |
-| `placement/useQuickAddPlacement.ts`   |    New |                            170 |
-| `placement/useConnectionPlacement.ts` |    New |                            123 |
-| `placement/useDragPlacement.ts`       |    New |                            370 |
-| `placement/useRailPlacement.ts`       |    New |                            102 |
-| `menus/useCanvasMenus.ts`             |    New |                            143 |
+| `placement/useCanvasEditCommands.ts`  |    New |                            177 |
+| `placement/useQuickAddPlacement.ts`   |    New |                            149 |
+| `placement/useConnectionPlacement.ts` |    New |                            113 |
+| `placement/useDragPlacement.ts`       |    New |                            352 |
+| `placement/useRailPlacement.ts`       |    New |                             93 |
+| `menus/useCanvasMenus.ts`             |    New |                            133 |
 
-The five-line `nodeKinds.ts` is removed; its shared guards live beside the flow types in `types.ts` (60 → 64 lines). No new source file is below 100 lines. Existing box selection, settled selection, controls and document modules retain their boundaries.
+The five-line `nodeKinds.ts` is removed; its shared guards live beside the flow types in `types.ts` (60 → 64 lines). Each new source file owns a separate concept and stays above the small-file cutoff. Existing box selection, settled selection, controls and document modules retain their boundaries.
+
+## Composition overhead
+
+The new placement and menu hooks pass their dependencies positionally and return destructured tuples. This removes the parameter bags introduced during extraction while retaining the original primitive hook arguments, callback bodies and order. Type checking and a source audit verify the positional mapping; no test assertion changes.
+
+The canvas pair is about 0.3 kB gzip larger than this task's starting checkpoint (roughly 0.14%); the entry remains about 107 kB gzip. The earlier packaging added about 1 kB to that pair and was rejected. The first high-worker validation repeat passed 221 cases before the run was deliberately stopped to apply this refinement; final validation is rerun on the committed result.

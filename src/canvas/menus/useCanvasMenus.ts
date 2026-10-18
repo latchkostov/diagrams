@@ -33,7 +33,7 @@ export function useCanvasMenuState(locale: ReturnType<typeof useLocale>) {
   const [menu, setMenu] = useState<MenuState | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- factories resolve translated metadata from the locale store
   const menuItems = useMemo(() => menu?.items() ?? [], [menu, locale]);
-  return { menu, setMenu, menuItems };
+  return [menu, setMenu, menuItems] as const;
 }
 
 export function useMenuOpen(menu: MenuState | null) {
@@ -44,27 +44,17 @@ export function useMenuOpen(menu: MenuState | null) {
   return menuOpen;
 }
 
-export function useCanvasContextMenus({
-  editor,
-  screenToFlowPosition,
-  readOnly,
-  live,
-  hideTip,
-  hintSeen,
-  dismissHint,
-  setEditing,
-  setMenu,
-}: {
-  editor: EditorApi;
-  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"];
-  readOnly: boolean;
-  live: boolean;
-  hideTip: () => void;
-  hintSeen: boolean;
-  dismissHint: () => void;
-  setEditing: Dispatch<SetStateAction<InlineEdit | null>>;
-  setMenu: Dispatch<SetStateAction<MenuState | null>>;
-}) {
+export function useCanvasContextMenus(
+  editor: EditorApi,
+  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
+  readOnly: boolean,
+  live: boolean,
+  hideTip: () => void,
+  hintSeen: boolean,
+  dismissHint: () => void,
+  setEditing: Dispatch<SetStateAction<InlineEdit | null>>,
+  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+) {
   // ---------------------------------------------------------------- context menus
 
   const openMenu = useCallback(
@@ -139,5 +129,5 @@ export function useCanvasContextMenus({
     (e: ReactMouseEvent) => openMenu(e, { target: "selection", selection: editor.getSelection() }),
     [openMenu, editor],
   );
-  return { onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu };
+  return [onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu] as const;
 }

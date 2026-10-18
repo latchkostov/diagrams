@@ -34,43 +34,25 @@ import { insertLine } from "../landing";
 import { memberBoxes } from "../memberBoxes";
 import { previewMembership, type GroupRect, type MemberBox } from "../membership";
 
-export function useDragPlacement({
-  store,
-  prefs,
-  editGestures,
-  onNodesChange,
-  onEdgesChange,
-  beginGesture,
-  endGesture,
-  rename,
-  edgeStyle,
-  meta,
-  nodeVariant,
-  screenToFlowPosition,
-  wrapper,
-  editor,
-  dragStarted,
-  hideTip,
-  setMenu,
-}: {
-  store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
-  prefs: EditorPrefs;
-  editGestures: boolean;
-  onNodesChange: (changes: NodeChange<FlowNode>[]) => void;
-  onEdgesChange: (changes: EdgeChange<DiagramFlowEdge>[]) => void;
-  beginGesture: () => void;
-  endGesture: () => void;
-  rename: RefObject<(t: RenameTarget) => void>;
-  edgeStyle: EdgeStyle;
-  meta: DiagramMeta;
-  nodeVariant: NodeVariantId;
-  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"];
-  wrapper: RefObject<HTMLDivElement | null>;
-  editor: EditorApi;
-  dragStarted: () => void;
-  hideTip: () => void;
-  setMenu: Dispatch<SetStateAction<MenuState | null>>;
-}) {
+export function useDragPlacement(
+  store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
+  prefs: EditorPrefs,
+  editGestures: boolean,
+  onNodesChange: (changes: NodeChange<FlowNode>[]) => void,
+  onEdgesChange: (changes: EdgeChange<DiagramFlowEdge>[]) => void,
+  beginGesture: () => void,
+  endGesture: () => void,
+  rename: RefObject<(t: RenameTarget) => void>,
+  edgeStyle: EdgeStyle,
+  meta: DiagramMeta,
+  nodeVariant: NodeVariantId,
+  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
+  wrapper: RefObject<HTMLDivElement | null>,
+  editor: EditorApi,
+  dragStarted: () => void,
+  hideTip: () => void,
+  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+) {
   // ---------------------------------------------------------------- Alt-drag duplicates (D9), smart guides (D6)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
   const altCopies = useRef<Map<string, string> | null>(null);
@@ -358,7 +340,7 @@ export function useDragPlacement({
     },
     [editor, guides, editGestures, sayLeft, droppedNodes, endGesture],
   );
-  return {
+  return [
     guideLayer,
     handleNodesChange,
     handleEdgesChange,
@@ -366,5 +348,5 @@ export function useDragPlacement({
     onNodeDragStart,
     onNodeDragStop,
     insertHover,
-  };
+  ] as const;
 }

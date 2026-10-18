@@ -8,27 +8,17 @@ import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode } from "../types";
 import type { MenuState } from "../menus/useCanvasMenus";
 import { connectHitAt, connectOver, connectTarget } from "../gestures";
 
-export function useConnectionPlacement({
-  getNode,
-  hideTip,
-  wrapper,
-  readOnly,
-  live,
-  editor,
-  screenToFlowPosition,
-  pickNamed,
-  setMenu,
-}: {
-  getNode: ReactFlowInstance<FlowNode, DiagramFlowEdge>["getNode"];
-  hideTip: () => void;
-  wrapper: RefObject<HTMLDivElement | null>;
-  readOnly: boolean;
-  live: boolean;
-  editor: EditorApi;
-  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"];
-  pickNamed: (make: () => NewNode | null, fallback: string) => void;
-  setMenu: Dispatch<SetStateAction<MenuState | null>>;
-}) {
+export function useConnectionPlacement(
+  getNode: ReactFlowInstance<FlowNode, DiagramFlowEdge>["getNode"],
+  hideTip: () => void,
+  wrapper: RefObject<HTMLDivElement | null>,
+  readOnly: boolean,
+  live: boolean,
+  editor: EditorApi,
+  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
+  pickNamed: (make: () => NewNode | null, fallback: string) => void,
+  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+) {
   // ---------------------------------------------------------------- connecting (D1, D2)
   // While a connection is drawn: a crosshair throughout, the node a drop would connect to lit up (a
   // drop anywhere on it connects), not-allowed over things that take no edges, and a "+" at the end
@@ -119,5 +109,5 @@ export function useConnectionPlacement({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setMenu is stable; preserve CanvasView's original dependencies
     [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, pickNamed],
   );
-  return { annotationKindOf, onConnectStart, onConnectEnd };
+  return [annotationKindOf, onConnectStart, onConnectEnd] as const;
 }

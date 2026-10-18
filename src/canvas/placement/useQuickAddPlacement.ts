@@ -23,37 +23,22 @@ import { panForConnectedMenu, type CameraController } from "../camera";
 /** About how wide quick-add is (its CSS keeps it 224–320 px): room kept for it beside the outline. */
 const QUICK_ADD_W = 300;
 
-export function useQuickAddPlacement({
-  readOnly,
-  live,
-  presenting,
-  meta,
-  editor,
-  getNode,
-  wrapper,
-  hideTip,
-  setEditing,
-  store,
-  controller,
-  pickNamed,
-  menu,
-  setMenu,
-}: {
-  readOnly: boolean;
-  live: boolean;
-  presenting: boolean;
-  meta: DiagramMeta;
-  editor: EditorApi;
-  getNode: ReactFlowInstance<FlowNode, DiagramFlowEdge>["getNode"];
-  wrapper: RefObject<HTMLDivElement | null>;
-  hideTip: () => void;
-  setEditing: Dispatch<SetStateAction<InlineEdit | null>>;
-  store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
-  controller: CameraController;
-  pickNamed: (make: () => NewNode | null, fallback: string) => void;
-  menu: MenuState | null;
-  setMenu: Dispatch<SetStateAction<MenuState | null>>;
-}) {
+export function useQuickAddPlacement(
+  readOnly: boolean,
+  live: boolean,
+  presenting: boolean,
+  meta: DiagramMeta,
+  editor: EditorApi,
+  getNode: ReactFlowInstance<FlowNode, DiagramFlowEdge>["getNode"],
+  wrapper: RefObject<HTMLDivElement | null>,
+  hideTip: () => void,
+  setEditing: Dispatch<SetStateAction<InlineEdit | null>>,
+  store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
+  controller: CameraController,
+  pickNamed: (make: () => NewNode | null, fallback: string) => void,
+  menu: MenuState | null,
+  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+) {
   // ---------------------------------------------------------------- the next node (D3)
   // Alt+arrow and the "+" on a selected node: quick-add opens under an outline of where the node will land,
   // and the pick arrives there, connected (→ and ↓ from the node, ← and ↑ into it), ready to name.
@@ -125,22 +110,16 @@ export function useQuickAddPlacement({
   }, [menu]);
   useEffect(() => () => landing.set(null), []);
   const growFromChip = useCallback((id: string) => growTo(id), [growTo]);
-  return { growTo, cloneTo, growFromChip };
+  return [growTo, cloneTo, growFromChip] as const;
 }
 
-export function paneQuickAdd({
-  readOnly,
-  screenToFlowPosition,
-  setMenu,
-  pickNamed,
-  editor,
-}: {
-  readOnly: boolean;
-  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"];
-  setMenu: Dispatch<SetStateAction<MenuState | null>>;
-  pickNamed: (make: () => NewNode | null, fallback: string) => void;
-  editor: EditorApi;
-}) {
+export function paneQuickAdd(
+  readOnly: boolean,
+  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
+  setMenu: Dispatch<SetStateAction<MenuState | null>>,
+  pickNamed: (make: () => NewNode | null, fallback: string) => void,
+  editor: EditorApi,
+) {
   /** Double-click on empty canvas: stencil search at the cursor. */
   const onPaneDoubleClick = (e: ReactMouseEvent) => {
     if (readOnly) return;

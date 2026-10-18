@@ -10,27 +10,17 @@ import { GROUP_PREFIX } from "../types";
 import { captureTypeAhead } from "../typeAhead";
 import type { CameraController, useRevealSelection } from "../camera";
 
-export function useCanvasNaming({
-  canOpenInspector,
-  editor,
-  openInspector,
-  setEditing,
-  setNaming,
-  rename: renameRef,
-  history,
-  controller,
-  revealSelection,
-}: {
-  canOpenInspector: boolean;
-  editor: EditorApi;
-  openInspector: (field?: string, caret?: "end", target?: string) => void;
-  setEditing: Dispatch<SetStateAction<InlineEdit | null>>;
-  setNaming: Dispatch<SetStateAction<{ node: string; edge: string } | null>>;
-  rename: RefObject<(t: RenameTarget) => void>;
-  history: ReturnType<typeof useHistory>;
-  controller: CameraController;
-  revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"];
-}) {
+export function useCanvasNaming(
+  canOpenInspector: boolean,
+  editor: EditorApi,
+  openInspector: (field?: string, caret?: "end", target?: string) => void,
+  setEditing: Dispatch<SetStateAction<InlineEdit | null>>,
+  setNaming: Dispatch<SetStateAction<{ node: string; edge: string } | null>>,
+  renameRef: RefObject<(t: RenameTarget) => void>,
+  history: ReturnType<typeof useHistory>,
+  controller: CameraController,
+  revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
+) {
   /**
    * Names a node, connection or boundary in the inspector (the owner's decision, 2026-10-13: no renaming in
    * place): it's selected alone, the inspector opens, and its Label takes focus with all of it selected, so
@@ -104,7 +94,7 @@ export function useCanvasNaming({
   useLayoutEffect(() => {
     nameNew.current = pickNamed;
   });
-  return { renameIn, pickNamed, nameNew };
+  return [renameIn, pickNamed, nameNew] as const;
 }
 
 export function usePlacementSettling(editor: EditorApi) {
@@ -159,7 +149,7 @@ export function usePlacementSettling(editor: EditorApi) {
       }),
     [editor],
   );
-  return { settleText, boundaryResized };
+  return [settleText, boundaryResized] as const;
 }
 
 export function useAddFromPalette(editor: EditorApi, live: boolean, controller: CameraController) {

@@ -257,7 +257,7 @@ function CanvasInner({
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
-  const { menu, setMenu, menuItems } = useCanvasMenuState(locale);
+  const [menu, setMenu, menuItems] = useCanvasMenuState(locale);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [inspectorFocus, setInspectorFocus] = useState<
     { name: string; seq: number; caret?: "end"; target?: string } | undefined
@@ -598,7 +598,7 @@ function CanvasInner({
 
   const { revealSelection } = useRevealSelection(controller);
 
-  const { renameIn, pickNamed, nameNew } = useCanvasNaming({
+  const [renameIn, pickNamed, nameNew] = useCanvasNaming(
     canOpenInspector,
     editor,
     openInspector,
@@ -608,9 +608,9 @@ function CanvasInner({
     history,
     controller,
     revealSelection,
-  });
+  );
 
-  const { growTo, cloneTo, growFromChip } = useQuickAddPlacement({
+  const [growTo, cloneTo, growFromChip] = useQuickAddPlacement(
     readOnly,
     live,
     presenting,
@@ -625,7 +625,7 @@ function CanvasInner({
     pickNamed,
     menu,
     setMenu,
-  });
+  );
   const revealIds = useRevealIds(controller, editor);
   const checksHost = useMemo(
     () => ({
@@ -642,7 +642,7 @@ function CanvasInner({
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
   });
 
-  const { annotationKindOf, onConnectStart, onConnectEnd } = useConnectionPlacement({
+  const [annotationKindOf, onConnectStart, onConnectEnd] = useConnectionPlacement(
     getNode,
     hideTip,
     wrapper,
@@ -652,11 +652,11 @@ function CanvasInner({
     screenToFlowPosition,
     pickNamed,
     setMenu,
-  });
+  );
 
   const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({ editGestures, store, setNodes, setEdges });
 
-  const {
+  const [
     guideLayer,
     handleNodesChange,
     handleEdgesChange,
@@ -664,7 +664,7 @@ function CanvasInner({
     onNodeDragStart,
     onNodeDragStop,
     insertHover,
-  } = useDragPlacement({
+  ] = useDragPlacement(
     store,
     prefs,
     editGestures,
@@ -682,12 +682,12 @@ function CanvasInner({
     dragStarted,
     hideTip,
     setMenu,
-  });
+  );
 
   const spaceHeld = usePanKeys(wrapper, editGestures);
 
-  const { onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu } =
-    useCanvasContextMenus({
+  const [onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu] =
+    useCanvasContextMenus(
       editor,
       screenToFlowPosition,
       readOnly,
@@ -697,7 +697,7 @@ function CanvasInner({
       dismissHint,
       setEditing,
       setMenu,
-    });
+    );
 
   // The handlers below keep their identity across renders (see SNAP_GRID): a new node handler re-renders every node.
   const { onMoveStart, onMove } = useMoveHandlers(controller, hideTip, setMenu);
@@ -724,9 +724,9 @@ function CanvasInner({
     hideTip();
   }, [hideTip]);
 
-  const onPaneDoubleClick = paneQuickAdd({ readOnly, screenToFlowPosition, setMenu, pickNamed, editor });
+  const onPaneDoubleClick = paneQuickAdd(readOnly, screenToFlowPosition, setMenu, pickNamed, editor);
 
-  const { onRailDragOver, endRailDrop, onDrop } = useRailPlacement({
+  const [onRailDragOver, endRailDrop, onDrop] = useRailPlacement(
     editGestures,
     insertHover,
     annotationKindOf,
@@ -735,12 +735,12 @@ function CanvasInner({
     controller,
     editor,
     revealSelection,
-  });
+  );
 
   // ---------------------------------------------------------------- derived
 
   const direction = meta.direction ?? "LR";
-  const { settleText, boundaryResized } = usePlacementSettling(editor);
+  const [settleText, boundaryResized] = usePlacementSettling(editor);
   const ui = useMemo<DiagramUi>(
     () => ({
       theme,

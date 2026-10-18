@@ -11,25 +11,16 @@ import { landing } from "../landing";
 import type { EdgeHover } from "../edgeHover";
 import type { CameraController, useRevealSelection } from "../camera";
 
-export function useRailPlacement({
-  editGestures,
-  insertHover,
-  annotationKindOf,
-  screenToFlowPosition,
-  nodeVariant,
-  controller,
-  editor,
-  revealSelection,
-}: {
-  editGestures: boolean;
-  insertHover: () => EdgeHover;
-  annotationKindOf: (id: string) => AnnotationKind | undefined;
-  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"];
-  nodeVariant: NodeVariantId;
-  controller: CameraController;
-  editor: EditorApi;
-  revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"];
-}) {
+export function useRailPlacement(
+  editGestures: boolean,
+  insertHover: () => EdgeHover,
+  annotationKindOf: (id: string) => AnnotationKind | undefined,
+  screenToFlowPosition: ReactFlowInstance<FlowNode, DiagramFlowEdge>["screenToFlowPosition"],
+  nodeVariant: NodeVariantId,
+  controller: CameraController,
+  editor: EditorApi,
+  revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
+) {
   // ---------------------------------------------------------------- dropping a stencil (D13)
   // While a stencil is dragged over the canvas: over empty canvas, a faint outline where it will land; over
   // a node, the node lights up (the drop goes after it, connected); held over an edge, the edge lights up
@@ -98,5 +89,5 @@ export function useRailPlacement({
     const made = editor.addNode(id, at);
     requestAnimationFrame(() => editor.keepClear({ nodeIds: [made] }));
   };
-  return { onRailDragOver, endRailDrop, onDrop };
+  return [onRailDragOver, endRailDrop, onDrop] as const;
 }
