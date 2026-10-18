@@ -1,11 +1,9 @@
-import { isAnnotationNode, isDiagramNode, isGroupNode } from "./nodeKinds";
+import { isAnnotationNode, isDiagramNode, isGroupNode } from "./types";
 import { useBoxSelection } from "./selection/useBoxSelection";
-import { useCanvasNavigation, useSelectionSummary } from "./selection/useCanvasNavigation";
-import { usePanKeys } from "./selection/usePanKeys";
+import { useCanvasNavigation, useSelectionSummary, usePanKeys } from "./selection/useCanvasNavigation";
 import { useSettledSelection } from "./selection/useSettledSelection";
 import { CanvasControls, CanvasMinimap, DotGrid, ZoomVar } from "./chrome/CanvasControls";
-import { CanvasOverlays } from "./chrome/CanvasOverlays";
-import { useChromeHint, useChromeOverlays } from "./chrome/useCanvasChrome";
+import { CanvasOverlays, useChromeHint, useChromeOverlays } from "./chrome/CanvasOverlays";
 import {
   useAutosave,
   useDocumentHandle,
