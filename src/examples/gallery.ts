@@ -3,6 +3,7 @@ import { exampleSummary, type Example } from "./index";
 import { groupByTheme, type ExampleTheme } from "./themes";
 
 export const exampleFeatures = [
+  { id: "faultDrills", label: msg("examples.faultDrills") },
   { id: "partitions", label: msg("examples.partitions") },
   { id: "rateLimits", label: msg("examples.rateLimits") },
   { id: "networkDevices", label: msg("examples.networkDevices") },

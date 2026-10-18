@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "visitors": [40, 100], "entry": [400, 100], "api-a": [766, 40], "api-b": [766, 160], "orders-a": [1126, 40], "orders-b": [1126, 160] },
+    "TB": { "visitors": [180, 40], "entry": [180, 200], "api-a": [40, 360], "api-b": [330, 360], "orders-a": [40, 520], "orders-b": [330, 520] }
+  },
+  "tidy": { "visitors": [20, 180], "entry": [380, 180], "api-a": [746, 120], "orders-a": [1106, 120], "api-b": [746, 240], "orders-b": [1106, 240] },
+  "arrange": {
+    "alignLeft": { "visitors": [20, 290], "entry": [20, 290], "api-a": [20, 120], "orders-a": [20, 120], "api-b": [20, 480], "orders-b": [20, 480] },
+    "alignMiddle": { "visitors": [20, 300], "entry": [360, 300], "api-a": [740, 300], "orders-a": [1100, 300], "api-b": [740, 300], "orders-b": [1100, 300] },
+    "distributeH": { "visitors": [20, 290], "entry": [235, 290], "api-a": [456, 120], "orders-a": [885, 120], "api-b": [670, 480], "orders-b": [1100, 480] },
+    "distributeV": { "visitors": [20, 264], "entry": [360, 336], "api-a": [740, 120], "orders-a": [1100, 192], "api-b": [740, 408], "orders-b": [1100, 480] },
+    "spreadH": { "visitors": [20, 120], "entry": [360, 120], "api-a": [740, 120], "orders-a": [1260, 120], "api-b": [1000, 120], "orders-b": [1520, 120] },
+    "boundaryAround": { "x": -20, "y": 56, "width": 1380, "height": 536 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": ["zone-a", "zone-b"],
+    "placedNotes": [],
+    "nodes": { "visitors": [40, 100], "entry": [400, 100], "api-a": [766, -40], "orders-a": [1126, -40], "api-b": [766, 160], "orders-b": [1126, 160] },
+    "groups": { "zone-a": [726, -104, 660, 176], "zone-b": [726, 96, 660, 176] }
+  }
+}

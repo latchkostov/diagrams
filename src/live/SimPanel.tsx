@@ -1,3 +1,7 @@
+import { DRILL_PRESETS, faultTimelineProblem, type DrillPreset } from "../model/faults";
+import { simulationProblem } from "../interop/native";
+import { FaultStep } from "./FaultStep";
+import { defaultFault, drillFault, drillKind, drillName, faultTargets } from "./faults";
 import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -43,7 +47,7 @@ const SHAPES: { kind: TrafficShape["kind"]; label: string }[] = [
   { kind: "ramp", label: "Ramp" },
   { kind: "spike", label: "Spike" },
 ];
-const ACTIONS: { value: TimelineAction["do"]; label: string }[] = [
+const ACTIONS: { value: Exclude<TimelineAction["do"], "fault">; label: string }[] = [
   { value: "note", label: "Note" },
   { value: "status", label: "Set status" },
   { value: "props", label: "Change prop" },
@@ -90,6 +94,10 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
   const dirty = !!sim && (!saved || JSON.stringify(saved) !== JSON.stringify(sim));
   const warnings = useMemo(() => (sim ? simulationWarnings(sim, diagram) : []), [sim, diagram]);
   const types = useMemo(() => knownMessageTypes(diagram), [diagram]);
+  const invalid = useMemo(
+    () => (sim ? (simulationProblem(sim) ?? faultTimelineProblem(diagram, sim)) : undefined),
+    [sim, diagram],
+  );
 
   usePickNode(picker, () => setPicker(null));
   // Esc cancels a node pick first, then closes the panel.
@@ -227,18 +235,49 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
                 onPick={(label, apply) => setPicker({ label, apply })}
               />
             ))}
-            <button
+            <select
               className="lv-add"
-              onClick={() =>
+              value=""
+              aria-label={translate("fault.addStep")}
+              onChange={(event) => {
+                const preset = event.target.value;
+                if (!preset) return;
+                if (preset !== "note" && !faultTargets(diagram, drillKind(preset as DrillPreset)).length) return;
                 edit((d) => {
                   const last = d.timeline?.at(-1)?.atMs ?? -2000;
-                  (d.timeline ??= []).push({ atMs: last + 2000, action: { do: "note", text: "", focus: [] } });
-                })
-              }
+                  const action: TimelineAction =
+                    preset === "note"
+                      ? { do: "note", text: "", focus: [] }
+                      : {
+                          do: "fault",
+                          fault: drillFault(preset as DrillPreset, diagram),
+                          drill: preset as DrillPreset,
+                        };
+                  (d.timeline ??= []).push({ atMs: last + 2000, action });
+                });
+              }}
               data-testid="sim-panel-add-step"
             >
-              <LiveIcon name="plus" size={13} /> Add step
-            </button>
+              <option value="">{translate("fault.addStep")}</option>
+              <option value="note">{translate("fault.note")}</option>
+              <optgroup label={translate("fault.presets")}>
+                {DRILL_PRESETS.map((preset) => (
+                  <option
+                    key={preset}
+                    value={preset}
+                    disabled={!faultTargets(diagram, drillKind(preset)).length}
+                    data-testid={`sim-panel-preset-${preset}`}
+                  >
+                    {drillName(preset)}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            {DRILL_PRESETS.some((preset) => !faultTargets(diagram, drillKind(preset)).length) && (
+              <p className="lv-warning" data-testid="sim-panel-unavailable-faults">
+                {translate("fault.unavailablePresets")}
+              </p>
+            )}
           </Disclosure>
 
           <Disclosure
@@ -335,6 +374,11 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
             )}
           </Disclosure>
 
+          {invalid && (
+            <p className="lv-warnings" data-testid="sim-panel-invalid">
+              {invalid}
+            </p>
+          )}
           {warnings.length > 0 && (
             <ul className="lv-warnings" data-testid="sim-panel-warnings">
               {warnings.map((w, i) => (
@@ -366,6 +410,7 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
           <button
             className="btn"
             onClick={() => onRun(sim)}
+            disabled={!!invalid}
             data-testid="sim-panel-run"
             title={running ? "Restart this simulation" : "Play this simulation now"}
           >
@@ -374,7 +419,7 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
           <button
             className="btn btn-primary"
             onClick={() => onSave(sim)}
-            disabled={!dirty || !sim.title.trim() || !sim.id}
+            disabled={!dirty || !sim.title.trim() || !sim.id || !!invalid}
             data-testid="sim-panel-save"
           >
             <LiveIcon name="save" size={13} /> Save
@@ -930,7 +975,8 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
   const a = step.action;
   const setAction = (action: TimelineAction) => onChange({ ...step, action });
   const switchTo = (kind: TimelineAction["do"]) => {
-    const node = "node" in a ? a.node : (a.focus?.[0] ?? diagram.nodes[0]?.id ?? "");
+    const node = "node" in a ? a.node : ((a.do === "note" ? a.focus?.[0] : undefined) ?? diagram.nodes[0]?.id ?? "");
+    if (kind === "fault") setAction({ do: "fault", fault: defaultFault("boundary", diagram) });
     if (kind === "note") setAction({ do: "note", text: "", focus: node ? [node] : [] });
     if (kind === "status") setAction({ do: "status", node, status: "down" });
     if (kind === "props") setAction({ do: "props", node, props: { latencyMs: 1000 } });
@@ -963,6 +1009,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           data-testid={`${t}-action`}
           name={`${t}-action`}
         >
+          <option value="fault">{translate("fault.action")}</option>
           {ACTIONS.map((x) => (
             <option key={x.value} value={x.value}>
               {x.label}
@@ -974,7 +1021,19 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           <LiveIcon name="trash" size={13} />
         </button>
       </div>
-      {a.do === "note" ? (
+      {a.do === "fault" ? (
+        <>
+          {a.drill && <small>{translate("fault.drill", { name: drillName(a.drill) })}</small>}
+          <FaultStep
+            fault={a.fault}
+            diagram={diagram}
+            testId={t}
+            onChange={(fault) =>
+              setAction({ do: "fault", fault, ...(fault.kind === a.fault.kind && a.drill ? { drill: a.drill } : {}) })
+            }
+          />
+        </>
+      ) : a.do === "note" ? (
         <>
           <textarea
             rows={2}

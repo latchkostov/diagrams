@@ -1,3 +1,4 @@
+import { faultSchema, DRILL_PRESETS } from "./faults";
 import { nodeSimPropsSchema, edgeSimPropsSchema } from "./simProps";
 import { EDGE_RELATIONS, MAX_SETTINGS, MAX_SETTING_KEY } from "./relations";
 import { CHECK_LIMITS, CHECK_RULE_ID } from "./checks";
@@ -337,6 +338,11 @@ function diagramSchema(a1 = false) {
                 atMs: ms(""),
                 action: {
                   oneOf: [
+                    {
+                      type: "object",
+                      required: ["do", "fault"],
+                      properties: { do: { const: "fault" }, fault: faultSchema, drill: { enum: [...DRILL_PRESETS] } },
+                    },
                     {
                       type: "object",
                       required: ["do", "node", "status"],

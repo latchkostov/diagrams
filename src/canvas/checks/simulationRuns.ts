@@ -2,7 +2,8 @@ import type { DiagramFile } from "../../model/types";
 import type { CheckResult } from "../../checks/types";
 import type { Evidence, PlannedLoss, PlayedSimulation } from "../../checks/evidence";
 import type { EvidenceProgress, EvidenceRun, WithEvidence } from "../../checks/evidenceClient";
-import type { DiagramFlowEdge, DiagramNodeData, FlowNode } from "../types";
+import type { DiagramFlowEdge, FlowNode } from "../types";
+import { simulationProjection } from "../../sim/simulationContent";
 
 // Run simulations, for the Checks card (docs/research/architecture-checks.md, batch 5): on a click, the diagram's
 // saved simulations play headless in a worker (src/checks/evidenceClient.ts, a lazy chunk) and their counts go on
@@ -15,26 +16,23 @@ import type { DiagramFlowEdge, DiagramNodeData, FlowNode } from "../types";
 export interface SimContent {
   nodes: readonly FlowNode[];
   edges: readonly DiagramFlowEdge[];
-  meta: { simulations?: readonly unknown[] };
+  meta: { simulations?: readonly unknown[]; planning?: DiagramFile["planning"] };
 }
 
 /**
  * What a simulation plays: each node's id, stencil, label, subtitle and props (a label names the messages a node sends,
  * and marks a dead-letter queue), each connection's ends, kind, relationship and props, and the simulations. Not
- * positions, sizes, boundaries, attachment sides, annotations or the selection: moving a node, even out of a
- * boundary, or selecting things changes nothing a simulation sees. Values as they are, no copies: strings by value,
+ * positions, sizes, boundary labels, attachment sides, annotations or the selection. Membership and boundary
+ * ancestry affect outages. Values as they are: strings by value,
  * objects by reference (Undo brings back the very same ones), and by content only when the reference changed.
  */
 export function basisOf(c: SimContent): unknown[] {
-  const out: unknown[] = [c.meta.simulations];
-  for (const n of c.nodes) {
-    if (n.type !== "diagram") continue;
-    const d = n.data as DiagramNodeData;
-    out.push(n.id, d.stencil, d.label, d.sublabel, d.props);
-  }
-  out.push(null);
-  for (const e of c.edges) out.push(e.id, e.source, e.target, e.data?.kind, e.data?.relation, e.data?.props);
-  return out;
+  return simulationProjection({
+    ...c.meta,
+    nodes: c.nodes.flatMap((n) => (n.type === "diagram" ? [{ id: n.id, ...n.data }] : [])),
+    groups: c.nodes.flatMap((n) => (n.type === "boundary" ? [{ id: n.data.groupId, group: n.data.group }] : [])),
+    edges: c.edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })),
+  });
 }
 
 /** Equal for a simulation: the same value, or objects with the same content (a props object made again). */
@@ -46,18 +44,8 @@ function same(a: unknown, b: unknown): boolean {
 
 /** Whether `c` is what `basis` was taken from, as a simulation sees it (no copy made: it runs on every change). */
 export function matchesBasis(basis: readonly unknown[], c: SimContent): boolean {
-  let i = 0;
-  const next = (...vs: unknown[]) => vs.every((v) => i < basis.length && same(basis[i++], v));
-  if (!next(c.meta.simulations)) return false;
-  for (const n of c.nodes) {
-    if (n.type !== "diagram") continue;
-    const d = n.data as DiagramNodeData;
-    if (!next(n.id, d.stencil, d.label, d.sublabel, d.props)) return false;
-  }
-  if (!next(null)) return false;
-  for (const e of c.edges)
-    if (!next(e.id, e.source, e.target, e.data?.kind, e.data?.relation, e.data?.props)) return false;
-  return i === basis.length;
+  const next = basisOf(c);
+  return basis.length === next.length && basis.every((value, i) => same(value, next[i]));
 }
 
 /** What the card shows about simulations. */

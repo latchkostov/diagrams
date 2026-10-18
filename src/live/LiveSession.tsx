@@ -1,3 +1,4 @@
+import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
 import { Suspense, lazy, useEffect, useMemo } from "react";
 import { useCameraController } from "../canvas/camera";
@@ -14,7 +15,7 @@ import { EventLog } from "./EventLog";
 import { InjectDialog } from "./InjectDialog";
 import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
-import { SimPanel } from "./SimPanel";
+import { SimPanel } from "./lazySimPanel";
 import { TraceCard } from "./TraceCard";
 import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";
@@ -278,7 +279,10 @@ export function LiveSession({
             disabledHint={
               troubleOnScreen.action.kind === "events" || troubleOnScreen.action.kind === "inputs"
                 ? undefined
-                : liveMutationGuard(() => slow.session.active).hint()
+                : (liveMutationGuard(() => slow.session.active).hint() ??
+                  (troubleOnScreen.action.kind === "revive"
+                    ? boundaryRestoreHint(controller.currentDiagram, troubleOnScreen.action.node, state.snapshot.faults)
+                    : undefined))
             }
           />
         ) : (

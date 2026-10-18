@@ -1,0 +1,28 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "health-checks", "title": "Zone outage: health checks", "playedMs": 9000, "capped": false },
+      { "id": "no-health-checks", "title": "Zone outage: no health checks", "playedMs": 9000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      {
+        "simulation": "Zone outage: no health checks",
+        "node": "api-b",
+        "broker": false,
+        "what": "dropped",
+        "count": 26,
+        "onPurpose": { "count": 26, "why": "down" },
+        "expects": "some"
+      }
+    ],
+    "dropped": []
+  },
+  "planned": [
+    { "node": "api-b", "simulation": "Zone outage: no health checks", "what": "dropped", "count": 26, "why": "down" }
+  ],
+  "counted": 0,
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 26 dropped at api-b in “Zone outage: no health checks”." }
+}

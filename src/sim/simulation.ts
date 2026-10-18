@@ -1,3 +1,5 @@
+import { faultLabel } from "../model/faultWords";
+import { faultTimelineProblem, FaultTimelineError } from "../model/faults";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { createRealCountInjector } from "./injection";
@@ -120,6 +122,8 @@ export function createSimulationRun(
   simulation: Simulation,
   opts: SimulationRunOptions = {},
 ): SimulationRun {
+  const problem = faultTimelineProblem(diagram, simulation);
+  if (problem) throw new FaultTimelineError(problem);
   const seed = simulation.seed ?? opts.seed ?? 1;
   const scale = resolveScale(simulation.scale);
   let multipliers = {
@@ -139,7 +143,12 @@ export function createSimulationRun(
   const markers: TimelineMarker[] = timeline.map((step) => ({
     atMs: step.atMs,
     kind: step.action.do,
-    label: step.action.do === "note" ? step.action.text : `${step.action.do}: ${step.action.node}`,
+    label:
+      step.action.do === "note"
+        ? step.action.text
+        : step.action.do === "fault"
+          ? faultLabel(step.action.fault, step.action.drill)
+          : `${step.action.do}: ${step.action.node}`,
   }));
   for (const profile of simulation.traffic) {
     const window = trafficWindow(profile.shape),
@@ -182,6 +191,9 @@ export function createSimulationRun(
       const step = timeline[cursor++],
         action = step.action;
       switch (action.do) {
+        case "fault":
+          engine.setFault(action.fault);
+          break;
         case "status":
           engine.setNodeStatus(action.node, action.status);
           break;

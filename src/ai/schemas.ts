@@ -1,3 +1,4 @@
+import { faultSchema, DRILL_PRESETS } from "../model/faults";
 import { requestRoutesSchema } from "../model/requestRouting";
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
 import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
@@ -412,7 +413,7 @@ export const set_simulationSchema: JsonSchema = {
       },
       traffic: {
         type: "array",
-        minItems: 1,
+        minItems: 0,
         maxItems: 20,
         items: {
           type: "object",
@@ -462,6 +463,23 @@ export const set_simulationSchema: JsonSchema = {
             label: {
               type: "string",
             },
+          },
+        },
+      },
+      faults: {
+        type: "array",
+        maxItems: 50,
+        description:
+          "Saved drill timeline: boundary outages, node slowdown/failure overlays and cross-boundary flow partitions. Restore with down/cut false, factor 1 or rate 0. Targets are ids or exact labels from describe_diagram. Requests over cut links fail; brokers retain queued messages.",
+        items: {
+          type: "object",
+          required: ["atSec", "fault"],
+          additionalProperties: false,
+          properties: {
+            atSec: { type: "number", minimum: 0 },
+            fault: faultSchema,
+            drill: { enum: [...DRILL_PRESETS] },
+            note: { type: "string", maxLength: 300 },
           },
         },
       },
@@ -594,7 +612,7 @@ export const toolDescriptions = {
   edit_diagram:
     "Add, connect, change or remove diagram elements in one atomic step (one undo). Describe kinds in plain words ('.NET consumer', 'Kafka topic'); the app picks the icon and position. Put a whole request in one call.",
   set_simulation:
-    "Create or replace a simulation in plain units: who sends how much traffic, what breaks when, and what should hold true. Times are seconds.",
+    "Create or replace a simulation in plain units: who sends how much traffic, what breaks when, and what should hold true. Times are seconds. Use faults for named drills: zone-outage, region-connectivity, slow-dependency or error-spike. Faults can take down a boundary, slow a node, inject failures or cut a flow between boundaries; use another fault step to restore it.",
   new_diagram: "Start a new, empty diagram. The current one stays in the library.",
   get_share_link:
     "Get a link that opens the current diagram. The diagram is stored in the link itself; nothing is uploaded.",

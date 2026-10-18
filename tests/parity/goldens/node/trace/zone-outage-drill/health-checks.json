@@ -1,0 +1,183 @@
+{
+  "trace": { "rootId": 1, "type": "Checkout", "origin": "visitors", "startedAt": 100, "done": true, "partial": false, "truncated": false, "steps": 16, "endedAt": 180 },
+  "steps": [
+    { "t": 100, "kind": "emit", "id": 1, "type": "Checkout", "node": "visitors" },
+    { "t": 100, "kind": "done", "id": 1, "type": "Checkout", "node": "visitors" },
+    { "t": 100, "kind": "send", "id": 1, "type": "Checkout", "node": "visitors", "edge": "visitors-entry", "via": "message", "until": 120 },
+    { "t": 120, "kind": "arrive", "id": 1, "type": "Checkout", "node": "entry", "edge": "visitors-entry" },
+    { "t": 120, "kind": "send", "id": 1, "type": "Checkout", "node": "entry", "edge": "visitors-entry", "via": "reply", "until": 140 },
+    { "t": 120, "kind": "done", "id": 1, "type": "Checkout", "node": "entry" },
+    { "t": 120, "kind": "send", "id": 1, "type": "Checkout", "node": "entry", "edge": "entry-api-a", "via": "message", "until": 140 },
+    { "t": 140, "kind": "arrive", "id": 1, "type": "Checkout", "node": "api-a", "edge": "entry-api-a" },
+    { "t": 140, "kind": "start", "id": 1, "type": "Checkout", "node": "api-a" },
+    { "t": 160, "kind": "send", "id": 1, "type": "Checkout", "node": "api-a", "edge": "entry-api-a", "via": "reply", "until": 180 },
+    { "t": 160, "kind": "done", "id": 1, "type": "Checkout", "node": "api-a" },
+    { "t": 160, "kind": "send", "id": 1, "type": "Checkout", "node": "api-a", "edge": "api-orders-a", "via": "message", "until": 180 },
+    { "t": 180, "kind": "arrive", "id": 1, "type": "Checkout", "node": "orders-a", "edge": "api-orders-a" },
+    { "t": 180, "kind": "send", "id": 1, "type": "Checkout", "node": "orders-a", "edge": "api-orders-a", "via": "reply", "until": 200 },
+    { "t": 180, "kind": "done", "id": 1, "type": "Checkout", "node": "orders-a" },
+    { "t": 180, "kind": "end", "id": 1, "type": "Checkout", "node": "orders-a", "reason": "stored" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "Checkout",
+    "origin": "visitors",
+    "startedAt": 100,
+    "totalMs": 80,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "Checkout", "node": "visitors", "copy": false },
+      { "key": "3", "kind": "hop", "t": 20, "id": 1, "type": "Checkout", "node": "entry", "from": "visitors", "edge": "visitors-entry", "sync": true, "latencyMs": 20, "waitMs": 0, "travelMs": 20, "renamed": false, "copy": false },
+      { "key": "7", "kind": "hop", "t": 40, "id": 1, "type": "Checkout", "node": "api-a", "from": "entry", "edge": "entry-api-a", "sync": true, "latencyMs": 20, "waitMs": 0, "travelMs": 20, "renamed": false, "copy": false },
+      { "key": "12", "kind": "hop", "t": 80, "id": 1, "type": "Checkout", "node": "orders-a", "from": "api-a", "edge": "api-orders-a", "sync": true, "latencyMs": 40, "waitMs": 0, "processMs": 20, "travelMs": 20, "renamed": false, "copy": false }
+    ],
+    "visits": [
+      { "id": 1, "node": "visitors", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "entry", "at": 20, "done": 20, "left": 20 },
+      { "id": 1, "node": "api-a", "at": 40, "start": 40, "done": 60, "left": 60 },
+      { "id": 1, "node": "orders-a", "at": 80, "done": 80 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["visitors", "entry", "api-a", "orders-a"],
+    "edges": ["visitors-entry", "entry-api-a", "api-orders-a"],
+    "rowOf": { "0": "0", "3": "3", "7": "7", "12": "12" }
+  },
+  "sequence": {
+    "title": "Checkout #1",
+    "summary": "80 ms end to end",
+    "participants": [
+      { "id": "visitors", "label": "Visitors" },
+      { "id": "entry", "label": "Entry load balancer" },
+      { "id": "api-a", "label": "Checkout API a" },
+      { "id": "orders-a", "label": "Orders a" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 20, "from": "visitors", "to": "entry", "style": "sync", "label": "Checkout", "id": 1, "type": "Checkout" },
+      { "kind": "arrow", "t": 20, "until": 40, "from": "entry", "to": "visitors", "style": "reply", "label": "reply", "id": 1, "type": "Checkout" },
+      { "kind": "arrow", "t": 20, "until": 40, "from": "entry", "to": "api-a", "style": "sync", "label": "Checkout", "detail": "Healthy target a", "id": 1, "type": "Checkout" },
+      { "kind": "arrow", "t": 60, "until": 80, "from": "api-a", "to": "entry", "style": "reply", "label": "reply", "id": 1, "type": "Checkout" },
+      { "kind": "arrow", "t": 60, "until": 80, "from": "api-a", "to": "orders-a", "style": "sync", "label": "Checkout", "detail": "Local write", "id": 1, "type": "Checkout" },
+      { "kind": "arrow", "t": 80, "until": 100, "from": "orders-a", "to": "api-a", "style": "reply", "label": "reply", "id": 1, "type": "Checkout" }
+    ],
+    "totalMs": 80,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"Checkout #1 · 80 ms end to end\"\n---\nsequenceDiagram\n  participant visitors as Visitors\n  participant entry as Entry load balancer\n  participant api_a as Checkout API a\n  participant orders_a as Orders a\n  visitors->>entry: Checkout (+0.00 s)\n  entry-->>visitors: reply (+0.02 s)\n  entry->>api_a: Checkout (+0.02 s)<br/>Healthy target a\n  api_a-->>entry: reply (+0.06 s)\n  api_a->>orders_a: Checkout (+0.06 s)<br/>Local write\n  orders_a-->>api_a: reply (+0.08 s)\n",
+  "svg": {
+    "light": { "sha256": "3269bb9a4f88b7758c28622490ffa32965764d683bd17d04e3f5656240bdec5c", "bytes": 8559, "width": 670, "height": 470, "headerHeight": 142 },
+    "dark": { "sha256": "5529bb7c74f13d0ca43b7a9e6fd428e3d1860c62d8ddeca22c5ab046fc083c20", "bytes": 8558, "width": 670, "height": 470, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "Checkout",
+    "origin": "visitors",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "Checkout",
+        "node": "visitors",
+        "anchor": { "edge": "visitors-entry", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Visitors sends Checkout",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#8b6cef",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "Checkout", "edge": "visitors-entry", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 20, "caption": "Checkout", "tone": "plain", "i": 1, "color": "#8b6cef", "rowKey": "3" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Checkout",
+        "node": "entry",
+        "anchor": { "edge": "visitors-entry", "end": 1 },
+        "start": 1800,
+        "duration": 600,
+        "realFrom": 20,
+        "realTo": 20,
+        "caption": "Entry load balancer · route Healthy target a",
+        "i": 2,
+        "color": "#8b6cef",
+        "tone": "plain",
+        "short": "route Healthy target a"
+      },
+      { "kind": "reply", "msg": 1, "type": "Checkout", "edge": "visitors-entry", "reverse": true, "start": 2400, "duration": 600, "realFrom": 20, "realTo": 40, "i": 3, "color": "#8b6cef", "tone": "plain" },
+      { "kind": "travel", "msg": 1, "type": "Checkout", "edge": "entry-api-a", "reverse": false, "start": 2400, "duration": 1000, "realFrom": 20, "realTo": 40, "caption": "Checkout", "tone": "plain", "i": 4, "color": "#8b6cef", "rowKey": "7" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Checkout",
+        "node": "api-a",
+        "anchor": { "edge": "entry-api-a", "end": 1 },
+        "start": 3400,
+        "duration": 736.559319442089,
+        "realFrom": 40,
+        "realTo": 60,
+        "caption": "Checkout API a · Healthy target a · 20 ms",
+        "i": 5,
+        "color": "#8b6cef",
+        "tone": "plain",
+        "short": "Healthy target a · 20 ms"
+      },
+      { "kind": "reply", "msg": 1, "type": "Checkout", "edge": "entry-api-a", "reverse": true, "start": 4136.559319442089, "duration": 600, "realFrom": 60, "realTo": 80, "i": 6, "color": "#8b6cef", "tone": "plain" },
+      { "kind": "travel", "msg": 1, "type": "Checkout", "edge": "api-orders-a", "reverse": false, "start": 4136.559319442089, "duration": 1000, "realFrom": 60, "realTo": 80, "caption": "Checkout", "tone": "plain", "i": 7, "color": "#8b6cef", "rowKey": "12" },
+      {
+        "kind": "write",
+        "msg": 1,
+        "type": "Checkout",
+        "node": "orders-a",
+        "anchor": { "edge": "api-orders-a", "end": 1 },
+        "start": 5136.559319442089,
+        "duration": 900,
+        "realFrom": 80,
+        "realTo": 80,
+        "caption": "Orders a · write Checkout",
+        "sink": 300,
+        "i": 8,
+        "color": "#8b6cef",
+        "tone": "plain",
+        "short": "write Checkout"
+      },
+      { "kind": "reply", "msg": 1, "type": "Checkout", "edge": "api-orders-a", "reverse": true, "start": 6036.559319442089, "duration": 600, "realFrom": 80, "realTo": 100, "i": 9, "color": "#8b6cef", "tone": "plain" },
+      { "kind": "end", "msg": 1, "type": "Checkout", "node": "orders-a", "start": 6436.559319442089, "duration": 1200, "realFrom": 80, "realTo": 80, "caption": "Done · 80 ms · 1 write", "tone": "done", "i": 10, "color": "#8b6cef" }
+    ],
+    "duration": 7636.559319442089,
+    "realTotal": 80,
+    "stops": [0, 800, 2400, 4137, 6437],
+    "nodes": ["visitors", "entry", "api-a", "orders-a"],
+    "edges": ["visitors-entry", "entry-api-a", "api-orders-a"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 80 ms · 1 write",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "7": 2400, "12": 4136.559319442089 }
+  },
+  "slowMotionReduced": {
+    "duration": 12000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["process", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["process", 6000, 1500],
+      ["travel", 7500, 1500],
+      ["write", 9000, 1500],
+      ["end", 10500, 1500]
+    ]
+  }
+}

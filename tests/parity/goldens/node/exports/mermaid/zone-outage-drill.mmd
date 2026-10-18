@@ -1,0 +1,20 @@
+---
+title: Zone outage drill
+---
+flowchart LR
+  subgraph g_zone_a ["Zone a"]
+    api_a["Checkout API a<br/>Can carry both zones"]
+    orders_a[("Orders a<br/>Available local copy")]
+  end
+  subgraph g_zone_b ["Zone b"]
+    api_b["Checkout API b<br/>Can carry both zones"]
+    orders_b[("Orders b<br/>Available local copy")]
+  end
+  visitors(["Visitors<br/>10 checkouts / s"])
+  entry["Entry load balancer<br/>Two zones · one entry"]
+  visitors -->|"Checkout"| entry
+  entry -->|"Healthy target a"| api_a
+  api_a -->|"Local write"| orders_a
+  entry -->|"Healthy target b"| api_b
+  api_b -->|"Local write"| orders_b
+%% diagrams:{"v":1,"description":"Two availability zones serve the same checkout traffic. At 3 s zone b goes down; health checks route every new checkout to zone a. Compare the second drill to see requests lost without health checks.","nodes":{"visitors":["visitors","client.user"],"entry":["entry","aws.elb"],"api_a":["api-a","aws.ecs"],"orders_a":["orders-a","aws.dynamodb"],"api_b":["api-b","aws.ecs"],"orders_b":["orders-b","aws.dynamodb"]},"groups":{"g_zone_a":["zone-a","aws"],"g_zone_b":["zone-b","aws"]},"edges":["visitors-entry","entry-api-a","api-orders-a","entry-api-b","api-orders-b"],"relations":{}}

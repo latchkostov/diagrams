@@ -1,3 +1,6 @@
+import type { Fault } from "../model/faults";
+import { faultTimelineProblem } from "../model/faults";
+import { simulationProjection } from "../sim/simulationContent";
 // The live view's model: one engine (free play) or one simulation run (a saved simulation), plus
 // the playback state around it. Pure TypeScript with no DOM or React, so it is unit-tested directly.
 // The UI drives it from requestAnimationFrame (`advance`) and reads `snapshot()` every frame;
@@ -10,7 +13,7 @@
 
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS, LifecycleBudgetError } from "../model/resourceBudget";
 import { simulationProblem, validateDiagram } from "../interop/native";
-import { flowEdges, edgeSemanticSignature } from "../model/relations";
+import { flowEdges } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
@@ -102,13 +105,9 @@ type TraceIntent = { kind: "idle" } | { kind: "root"; rootId: number } | { kind:
 
 export type DiagramUpdate = "none" | "patched" | "reloaded";
 
-/** Changes to these restart the engine; anything else (positions, groups, titles) doesn't touch it. */
+/** Shared simulation content, excluding props/scripts that the controller patches separately. */
 export function structuralKey(d: DiagramFile): string {
-  return JSON.stringify([
-    d.planning,
-    d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel ?? ""]),
-    d.edges.map(edgeSemanticSignature),
-  ]);
+  return JSON.stringify(simulationProjection(d, true));
 }
 
 // JSON object key order is not a property edit (including nested emission maps).
@@ -549,6 +548,12 @@ export class LiveController {
 
   /** Switch between free play (null) and a saved simulation. Rebuilds, keeps play / pause, clears inputs. */
   selectSimulation(sim: Simulation | null): boolean {
+    const problem = sim && (simulationProblem(sim) ?? faultTimelineProblem(this.diagram, sim));
+    if (problem) {
+      this.resourceError = problem;
+      this.publish();
+      return false;
+    }
     if (sim && this.diagram.planning?.revision === "p3-a1") {
       const candidate = {
         ...this.diagram,
@@ -799,6 +804,12 @@ export class LiveController {
     return sources;
   }
 
+  setFault(fault: Fault): void {
+    this.engine.setFault(fault);
+    this.dirty = true;
+    this.publish();
+  }
+
   setNodeStatus(nodeId: string, status: NodeStatus): void {
     this.engine.setNodeStatus(nodeId, status);
     const t = this.tweaks.get(nodeId) ?? { props: {} };
@@ -922,7 +933,11 @@ export class LiveController {
 
   private build(): void {
     this.continuity = {};
-    this.resourceError = undefined;
+    this.resourceError = this.sim ? faultTimelineProblem(this.diagram, this.sim) : undefined;
+    if (this.resourceError) {
+      this.sim = null;
+      this.base = null;
+    }
     const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles, traceHistory: TRACE_HISTORY };
     if (this.sim) {
       // No saved dot scale: pick one from the traffic (the 1/2/5 series, about 60 dots a second at

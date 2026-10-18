@@ -1,3 +1,4 @@
+import { DRILL_PRESETS, faultProblem, faultTarget, type Fault } from "../model/faults";
 import { createResourceValidator } from "../model/resourceValidation";
 import { validateRouting } from "../model/routingValidation";
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
@@ -432,7 +433,7 @@ export function validateDiagram(data: unknown): NativeResult {
           );
         else {
           sims.push(sim as Record<string, unknown>);
-          warnings.push(...simulationReferenceWarnings(sim as Simulation, ids));
+          warnings.push(...simulationReferenceWarnings(sim as Simulation, ids, d as unknown as DiagramFile));
         }
       });
       const budget = simulationBudgetProblem(sims);
@@ -562,8 +563,15 @@ export function simulationProblem(sim: unknown): string | undefined {
       if (!isObj(step) || !time(step.atMs) || !isObj(step.action))
         return "every timeline step needs bounded atMs and an action";
       const a = step.action;
-      if (a.do !== "note" && typeof a.node !== "string") return "a timeline action needs a node";
+      if (a.do !== "note" && a.do !== "fault" && typeof a.node !== "string") return "a timeline action needs a node";
       switch (a.do) {
+        case "fault": {
+          const problem = faultProblem(a.fault);
+          if (problem) return problem;
+          if (a.drill !== undefined && !DRILL_PRESETS.includes(a.drill as (typeof DRILL_PRESETS)[number]))
+            return "unknown drill preset";
+          break;
+        }
         case "note":
           if (
             typeof a.text !== "string" ||
@@ -637,20 +645,40 @@ export function simulationProblem(sim: unknown): string | undefined {
   return undefined;
 }
 
-export function simulationReferenceWarnings(sim: Simulation, nodeIds: Set<string>): string[] {
+export function simulationReferenceWarnings(sim: Simulation, nodeIds: Set<string>, diagram?: DiagramFile): string[] {
   const refs = new Set([
     ...sim.traffic.map((t) => t.node),
-    ...(sim.timeline ?? []).flatMap(({ action }) => (action.do === "note" ? (action.focus ?? []) : [action.node])),
+    ...(sim.timeline ?? []).flatMap(({ action }) =>
+      action.do === "note"
+        ? (action.focus ?? [])
+        : action.do === "fault"
+          ? "node" in action.fault
+            ? [action.fault.node]
+            : []
+          : [action.node],
+    ),
     ...Object.keys(sim.setup?.props ?? {}),
     ...Object.keys(sim.setup?.status ?? {}),
     ...(sim.expectations ?? []).flatMap((x) => ("node" in x.metric ? [x.metric.node] : [])),
   ]);
-  return [...refs]
-    .filter((id) => !nodeIds.has(id))
-    .map(
-      (id) =>
-        `Simulation "${sim.title}" refers to missing node "${id}"; repair the reference in the simulation editor.`,
-    );
+  const missingFaults = (sim.timeline ?? []).flatMap(({ action }) => {
+    if (!diagram || action.do !== "fault") return [];
+    const f: Fault = action.fault;
+    if (f.kind === "boundary" && !diagram.groups?.some((g) => g.id === f.boundary))
+      return [`Simulation "${sim.title}" refers to missing boundary "${faultTarget(f)}".`];
+    if (f.kind === "link" && !diagram.edges.some((e) => e.id === f.edge))
+      return [`Simulation "${sim.title}" refers to missing connection "${faultTarget(f)}".`];
+    return [];
+  });
+  return [
+    ...missingFaults,
+    ...[...refs]
+      .filter((id) => !nodeIds.has(id))
+      .map(
+        (id) =>
+          `Simulation "${sim.title}" refers to missing node "${id}"; repair the reference in the simulation editor.`,
+      ),
+  ];
 }
 
 function simulationListBudget(raw: unknown[]): string | undefined {

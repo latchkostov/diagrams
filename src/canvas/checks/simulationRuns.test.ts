@@ -97,7 +97,7 @@ describe("the content a simulation sees", () => {
     expect(matchesBasis(basis, { ...c, nodes: [...c.nodes, node("z")] })).toBe(false);
   });
 
-  it("compares what plays, not the data objects: a new boundary or attachment side is no edit; new props are", () => {
+  it("sees membership and props, while ignoring attachment sides and equal replacement props", () => {
     const props = { failureRate: 0.1 };
     const c: SimContent = {
       nodes: [node("a", { stencil: "service.node", label: "A", props }), node("b")],
@@ -110,7 +110,7 @@ describe("the content a simulation sees", () => {
       ...c,
       nodes: [node("a", { stencil: "service.node", label: "A", props, group: "g1" }), c.nodes[1]],
     };
-    expect(matchesBasis(basis, grouped)).toBe(true);
+    expect(matchesBasis(basis, grouped)).toBe(false);
     const sides = {
       ...c,
       edges: [{ ...c.edges[0], data: { ...c.edges[0].data!, sourceSide: "top" as const } } as DiagramFlowEdge],

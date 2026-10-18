@@ -91,12 +91,53 @@ Messages carry a `type`. Two small props make flows realistic without code:
 ## UI (live view)
 
 - **Control bar:** play/pause, speed, restart, a simulation picker ("Free play" + saved simulations),
-  a timeline scrubber with markers (notes, chaos actions, traffic windows), and live expectation chips.
+  a timeline scrubber with markers (notes, fault actions, traffic windows), and live expectation chips.
 - **Narration callouts** anchored near focused nodes; others dim while a note is active.
 - **Authoring panel:** add a traffic profile (start node, message type, shape editor with a live rate
   sparkline), add timeline steps (pick node, action, time), add expectations (metric picker, op, value).
 - **Quick start from the canvas:** right-click a node → _Simulate from here…_, e.g. "Send a burst of
   100 `MemberJoined`", which creates a simulation you can save, tweak and replay.
+
+## Faults and saved drills
+
+Live node, boundary and cross-boundary flow context menus have one **Fault** submenu. Boundaries can be
+**Take down** / **Restore**, including nested members. Nodes offer **Slow down** (2×, 5×, 10×), **Fail**
+(10%, 50%) and clearing the injected slowdown/failures. Edges between distinct boundaries offer **Cut link** /
+**Restore link**. No toolbar controls are added.
+
+Timeline **Add step** offers four named drill presets: **Zone outage**, **Region connectivity**, **Slow dependency**
+and **Error spike**. Each inserts an editable fault step; select its target, magnitude and time. Add another fault
+step to restore it. The saved representation is, for example:
+
+```json
+{
+  "atMs": 3000,
+  "action": {
+    "do": "fault",
+    "drill": "zone-outage",
+    "fault": { "kind": "boundary", "boundary": "zone-b", "down": true }
+  }
+}
+```
+
+Other fault forms: `{ "kind": "slow", "node": "api", "factor": 5 }`,
+`{ "kind": "fail", "node": "api", "rate": 0.5 }`, and
+`{ "kind": "link", "edge": "cross-zone", "cut": true }`. Clear with `down: false`, `factor: 1`, `rate: 0`
+or `cut: false`. Faults overlay configuration; repeated slowdown choices replace rather than multiply one another.
+Slowdown applies to new processing attempts (including managed service latency and resource CPU work). Clearing
+reveals any configuration edits made underneath it. Boundary restoration preserves each node's underlying status,
+and overlapping outages compose.
+
+A cut prevents broker deliveries: queued messages wait and in-flight deliveries return without spending an attempt.
+Pushed messages drop, including Requests until caller waits are implemented. Health-check gateways skip cut links
+when another target is available. Outages and injected failures retain the existing processing/retry semantics.
+Faults, underlying statuses, fault magnitudes, RNG and in-flight work are in checkpoints, so seeks replay exactly.
+Boundary membership/ancestry changes restart playback as topology edits; ordinary moves and boundary renames do not.
+
+The agent/WebMCP `set_simulation` tool accepts `faults: [{ atSec: 3, fault: { ... }, drill: "zone-outage" }]`,
+with node, boundary and connection references resolved like its other inputs. `describe_diagram` includes the saved
+fault timeline. **Zone outage drill** demonstrates loss-free health-check routing and the comparison without it.
+Dependency outages and the run-end drill report are a later PR.
 
 ## Inputs & capacity
 

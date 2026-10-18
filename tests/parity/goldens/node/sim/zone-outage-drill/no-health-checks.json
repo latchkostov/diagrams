@@ -1,0 +1,88 @@
+{
+  "run": {
+    "time": 9000,
+    "totalMs": 9000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "api-a-loss", "label": "Nothing lost at api-a", "status": "pass", "value": 0 },
+      { "id": "api-b-loss", "label": "Without health checks, checkouts are lost at api-b", "status": "pass", "value": 26 },
+      { "id": "orders-a-loss", "label": "Nothing lost at orders-a", "status": "pass", "value": 0 },
+      { "id": "orders-b-loss", "label": "Nothing lost at orders-b", "status": "pass", "value": 0 },
+      { "id": "surviving-zone", "label": "Zone a continues serving checkouts", "status": "pass", "value": 40 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "checkouts" },
+      { "atMs": 3000, "kind": "fault", "label": "Zone outage: zone-b" },
+      { "atMs": 3200, "kind": "note", "label": "Zone b is down. Without health checks the load balancer still sends half the checkouts there: watch the dropped count." },
+      { "atMs": 8000, "kind": "traffic", "label": "checkouts ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "visitors": { "replicas": [1, 1, 0] },
+        "entry": { "replicas": [1, 1, 0] },
+        "api-a": { "replicas": [2, 2, 0] },
+        "orders-a": { "replicas": [1, 1, 0] },
+        "api-b": { "replicas": [2, 2, 0] },
+        "orders-b": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 9000,
+    "inSystem": 0,
+    "real": {
+      "visitors": { "processed": 80, "throughput": 3.883889534280525, "replicas": [1, 1, 0] },
+      "entry": { "processed": 80, "throughput": 3.922923273036496, "replicas": [1, 1, 0] },
+      "api-a": { "processed": 40, "throughput": 1.9395198621871372, "replicas": [2, 2, 0] },
+      "orders-a": { "processed": 40, "throughput": 1.9787007624118258, "replicas": [1, 1, 0] },
+      "api-b": { "status": "down", "processed": 14, "failed": 26, "dropped": 26, "outageDropped": 26, "throughput": 0.011109423394407476, "replicas": [2, 2, 0] },
+      "orders-b": { "status": "down", "processed": 14, "throughput": 0.011333848633899095, "replicas": [1, 1, 0] }
+    },
+    "edges": { "visitors-entry": 80, "entry-api-a": 40, "api-orders-a": 40, "entry-api-b": 40, "api-orders-b": 14 }
+  },
+  "events": {
+    "total": 616,
+    "byKind": { "inject": 80, "process": 268, "deliver": 214, "status": 2, "fail": 26, "drop": 26 },
+    "byNode": {
+      "visitors": { "inject": 80, "process": 80 },
+      "entry": { "deliver": 80, "process": 80 },
+      "api-a": { "deliver": 40, "process": 40 },
+      "orders-a": { "deliver": 40, "process": 40 },
+      "api-b": { "deliver": 40, "process": 14, "status": 1, "fail": 26, "drop": 26 },
+      "orders-b": { "deliver": 14, "process": 14, "status": 1 }
+    },
+    "perSecond": [
+      "28ada7522d0c",
+      "eedbad4b5657",
+      "7b5eff79bfd1",
+      "e1e51b473c87",
+      "2631d704c608",
+      "97e86d65b98b",
+      "3de7b5ea101f",
+      "5811bab080e2",
+      "8f162f62f4b6",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 3200, "text": "Zone b is down. Without health checks the load balancer still sends half the checkouts there: watch the dropped count.", "focus": [] }
+  ],
+  "latency": {
+    "journeys": { "done": 80, "retried": 0, "deadLettered": 0, "dropped": 26, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 80, "min": 40, "mean": 67, "p50": 80, "p90": 80, "max": 80 },
+    "waitMs": {
+      "api-a": { "count": 40, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "api-b": { "count": 14, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "api-a": { "count": 40, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "api-b": { "count": 14, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

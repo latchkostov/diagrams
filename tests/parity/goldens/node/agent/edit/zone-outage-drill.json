@@ -1,0 +1,525 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "visitors", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "visitors",
+            "to": "entry"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "entry" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "api-a",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "visitors", "label": "Visitors", "stencil": "client.user" },
+          { "id": "entry", "label": "Renamed by parity", "stencil": "aws.elb" },
+          { "id": "api-a", "label": "Checkout API a", "stencil": "aws.lambda" },
+          { "id": "orders-a", "label": "Orders a", "stencil": "aws.dynamodb" },
+          { "id": "api-b", "label": "Checkout API b", "stencil": "aws.ecs" },
+          { "id": "orders-b", "label": "Orders b", "stencil": "aws.dynamodb" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 620,
+            "y": 626,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["entry"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["api-a"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "visitors", "entry"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["visitors"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Two availability zones serve the same checkout traffic. At 3 s zone b goes down; health checks route every new checkout to zone a. Compare the second drill to see requests lost without health checks.",
+    "direction": "TB",
+    "groups": [
+      { "id": "zone-a", "label": "Zone a", "tone": "aws", "x": 700, "y": 56, "width": 660, "height": 176 },
+      { "id": "zone-b", "label": "Zone b", "tone": "aws", "x": 700, "y": 440, "width": 680, "height": 170 },
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": -20, "y": 226, "width": 640, "height": 176 }
+    ],
+    "nodes": [
+      {
+        "id": "visitors",
+        "stencil": "client.user",
+        "label": "Visitors",
+        "sublabel": "10 checkouts / s",
+        "x": 20,
+        "y": 290,
+        "props": { "ratePerSec": 10, "messageType": "Checkout" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "entry",
+        "stencil": "aws.elb",
+        "label": "Renamed by parity",
+        "sublabel": "Two zones · one entry",
+        "x": 360,
+        "y": 290,
+        "props": { "latencyMs": 120, "jitter": 0, "healthChecks": true },
+        "group": "boundary-1"
+      },
+      {
+        "id": "api-a",
+        "stencil": "aws.lambda",
+        "label": "Checkout API a",
+        "sublabel": "Can carry both zones",
+        "group": "zone-a",
+        "x": 740,
+        "y": 120,
+        "props": { "replicas": 2, "concurrency": 8, "latencyMs": 20, "jitter": 0, "failureRate": 0 }
+      },
+      {
+        "id": "orders-a",
+        "stencil": "aws.dynamodb",
+        "label": "Orders a",
+        "sublabel": "Available local copy",
+        "group": "zone-a",
+        "x": 1100,
+        "y": 120,
+        "props": { "latencyMs": 0, "jitter": 0 }
+      },
+      {
+        "id": "api-b",
+        "stencil": "aws.ecs",
+        "label": "Checkout API b",
+        "sublabel": "Can carry both zones",
+        "group": "zone-b",
+        "x": 740,
+        "y": 480,
+        "props": { "replicas": 2, "concurrency": 8, "latencyMs": 20, "jitter": 0, "failureRate": 0 }
+      },
+      {
+        "id": "orders-b",
+        "stencil": "aws.dynamodb",
+        "label": "Orders b",
+        "sublabel": "Available local copy",
+        "group": "zone-b",
+        "x": 1100,
+        "y": 480,
+        "props": { "latencyMs": 0, "jitter": 0 }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 320, "y": 402 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 320, "y": 514 }
+    ],
+    "edges": [
+      {
+        "id": "entry-api-a",
+        "from": "entry",
+        "to": "api-a",
+        "label": "Healthy target a",
+        "kind": "sync",
+        "props": { "travelMs": 20 }
+      },
+      {
+        "id": "api-orders-a",
+        "from": "api-a",
+        "to": "orders-a",
+        "label": "Local write",
+        "kind": "sync",
+        "props": { "travelMs": 20 }
+      },
+      {
+        "id": "entry-api-b",
+        "from": "entry",
+        "to": "api-b",
+        "label": "Healthy target b",
+        "kind": "sync",
+        "props": { "travelMs": 20 }
+      },
+      {
+        "id": "api-orders-b",
+        "from": "api-b",
+        "to": "orders-b",
+        "label": "Local write",
+        "kind": "sync",
+        "props": { "travelMs": 20 }
+      },
+      { "id": "e-1", "from": "visitors", "to": "topic-1", "kind": "async" },
+      {
+        "id": "e-4",
+        "from": "visitors",
+        "to": "queue-1",
+        "kind": "sync",
+        "label": "Checkout",
+        "props": { "travelMs": 20 }
+      },
+      { "id": "e-5", "from": "queue-1", "to": "entry", "kind": "sync", "props": { "travelMs": 20 } }
+    ],
+    "simulations": [
+      {
+        "id": "health-checks",
+        "title": "Zone outage: health checks",
+        "description": "Zone b fails at 3 s. Compare how the load balancer chooses its next target.",
+        "seed": 7,
+        "scale": 1,
+        "durationMs": 9000,
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "visitors",
+            "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 8000 }
+          }
+        ],
+        "setup": { "props": { "entry": { "healthChecks": true } } },
+        "timeline": [
+          {
+            "atMs": 3000,
+            "action": {
+              "do": "fault",
+              "fault": { "kind": "boundary", "boundary": "zone-b", "down": true },
+              "drill": "zone-outage"
+            }
+          },
+          {
+            "atMs": 3200,
+            "action": { "do": "note", "text": "Zone b is down. Health checks have shifted new checkouts to zone a. Nothing is lost." }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "api-a-loss",
+            "label": "Nothing lost at api-a",
+            "metric": { "node": "api-a", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "api-b-loss",
+            "label": "Nothing lost at api-b",
+            "metric": { "node": "api-b", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "orders-a-loss",
+            "label": "Nothing lost at orders-a",
+            "metric": { "node": "orders-a", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "orders-b-loss",
+            "label": "Nothing lost at orders-b",
+            "metric": { "node": "orders-b", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "surviving-zone",
+            "label": "Zone a continues serving checkouts",
+            "metric": { "node": "orders-a", "field": "processed" },
+            "op": ">=",
+            "value": 20,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "no-health-checks",
+        "title": "Zone outage: no health checks",
+        "description": "Zone b fails at 3 s. Compare how the load balancer chooses its next target.",
+        "seed": 7,
+        "scale": 1,
+        "durationMs": 9000,
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "visitors",
+            "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 8000 }
+          }
+        ],
+        "setup": { "props": { "entry": { "healthChecks": false } } },
+        "timeline": [
+          {
+            "atMs": 3000,
+            "action": {
+              "do": "fault",
+              "fault": { "kind": "boundary", "boundary": "zone-b", "down": true },
+              "drill": "zone-outage"
+            }
+          },
+          {
+            "atMs": 3200,
+            "action": { "do": "note", "text": "Zone b is down. Without health checks the load balancer still sends half the checkouts there: watch the dropped count." }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "api-a-loss",
+            "label": "Nothing lost at api-a",
+            "metric": { "node": "api-a", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "api-b-loss",
+            "label": "Without health checks, checkouts are lost at api-b",
+            "metric": { "node": "api-b", "field": "dropped" },
+            "op": ">=",
+            "value": 10,
+            "when": "end"
+          },
+          {
+            "id": "orders-a-loss",
+            "label": "Nothing lost at orders-a",
+            "metric": { "node": "orders-a", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "orders-b-loss",
+            "label": "Nothing lost at orders-b",
+            "metric": { "node": "orders-b", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          },
+          {
+            "id": "surviving-zone",
+            "label": "Zone a continues serving checkouts",
+            "metric": { "node": "orders-a", "field": "processed" },
+            "op": ">=",
+            "value": 20,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "visitors",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "visitors",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "visitors",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "visitors",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "api-a", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["api-a"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "api-a", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 20, "y": 410, "width": 240, "height": 160 }
+    ]
+  }
+}

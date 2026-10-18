@@ -66,6 +66,28 @@ const counts = (d: DiagramFile, ev?: Evidence) =>
   );
 
 describe("simulation evidence", () => {
+  it("attributes intentional link losses to their actual connection, preserving healthy-input failures", () => {
+    const d = flaky({ timeline: [] }, 1);
+    d.groups = ["a", "b"].map((id) => ({ id, label: id, x: 0, y: 0, width: 300, height: 300 }));
+    d.nodes.forEach((n) => {
+      n.group = n.id === "api" ? "b" : "a";
+    });
+    d.nodes.push({ id: "unused", stencil: "client.browser", label: "Unused", x: 0, y: 0, group: "a" });
+    d.edges.push({ id: "unused-input", from: "unused", to: "api", kind: "sync" });
+    const baseline = shown(d);
+    d.simulations![0].timeline = [
+      { atMs: 0, action: { do: "fault", fault: { kind: "link", edge: "unused-input", cut: true } } },
+    ];
+    const cutUnused = shown(d);
+    expect(cutUnused.planned).toEqual([]);
+    expect(cutUnused.result.findings).toEqual(baseline.result.findings);
+    d.simulations![0].traffic.push({ id: "cut-traffic", node: "unused", shape: { kind: "burst", count: 10 } });
+    const mixed = shown(d);
+    expect(mixed.planned).toEqual([expect.objectContaining({ node: "api", count: 10, why: "down" })]);
+    expect(mixed.result.findings.find((f) => f.id === "dropped:api")?.evidence).toEqual(
+      baseline.result.findings.find((f) => f.id === "dropped:api")?.evidence,
+    );
+  });
   it("puts the losses on the finding they bear out", () => {
     const d = queued();
     expect(runChecks(d).findings.map((f) => `${f.severity} ${f.id}`)).toEqual(["warning dead-letter:q"]);
@@ -253,6 +275,50 @@ describe("simulation evidence", () => {
       const d = flaky({ setup: { props: { api: { failureRate: 0.5 } } } }, 0);
       expect(shown(d).planned.map((p) => p.why)).toEqual(["fails"]);
     });
+    it("counts every intentional loss when failures and outages happen in the same run", () => {
+      const d = flaky(
+        {
+          setup: { props: { api: { failureRate: 1 } } },
+          timeline: [{ atMs: 500, action: { do: "status", node: "api", status: "down" } }],
+        },
+        0,
+      );
+      const s = shown(d);
+      expect(s.result.findings).toEqual([]);
+      expect(s.planned).toEqual([expect.objectContaining({ node: "api", count: 40, why: "down" })]);
+    });
+
+    it.each(["boundary", "fail", "link"] as const)(
+      "recognizes an intentional %s fault without an expectation",
+      (kind) => {
+        const d = outage({ timeline: [] });
+        d.groups = [
+          { id: "a", label: "Zone a", x: 0, y: 0, width: 300, height: 300 },
+          { id: "b", label: "Zone b", x: 400, y: 0, width: 300, height: 300 },
+        ];
+        for (const n of d.nodes) n.group = n.id === "api" ? "b" : "a";
+        const edge = d.edges.find((e) => e.to === "api")!;
+        const fault =
+          kind === "boundary"
+            ? { kind, boundary: "b", down: true }
+            : kind === "link"
+              ? { kind, edge: edge.id, cut: true }
+              : { kind, node: "api", rate: 0.5 as const };
+        d.simulations![0].timeline = [{ atMs: 0, action: { do: "fault", fault } }];
+        const s = shown(d);
+        expect(s.result.findings).toEqual([]);
+        expect(s.planned).toEqual([
+          {
+            node: "api",
+            simulation: "Checkout rush",
+            what: "dropped",
+            count: expect.any(Number),
+            why: kind === "fail" ? "fails" : "down",
+          },
+        ]);
+        expect(s.planned[0].count).toBeGreaterThan(0);
+      },
+    );
 
     it("only for what its played timeline did: an outage after the losses, or past the minute, excuses nothing", () => {
       // The API fails every request (the design); the simulation's outage comes later, or never plays.

@@ -174,6 +174,11 @@ const publicExamples: PublicExample[] = (
       summary: "Transactional outbox, saga steps, compensation",
     },
     {
+      slug: "zone-outage-drill",
+      theme: "reliability",
+      summary: "A zone outage, health checks and a drill without them",
+    },
+    {
       slug: "multi-region-active-active",
       theme: "reliability",
       summary: "Two live regions, failover, a global table",

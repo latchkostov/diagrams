@@ -70,22 +70,26 @@ test.describe("slow motion", () => {
     test.fixme(process.platform === "win32", "Nightly native teardown: docs/backlog/2026-10-18-nightly-native-load.md");
     await watchFromStorefront(page);
     await play(page).click();
-    await page.waitForTimeout(800);
+    await waitForCameraIdle(page);
     await page.getByTestId("node-payments").click({ button: "right" });
-    for (const id of ["sim.kill", "sim.inject", "sim.storm"]) {
+    for (const id of ["sim.inject", "sim.storm"]) {
       await expect(menuItem(page, id)).toHaveAttribute("aria-disabled", "true");
       await expect(menuItem(page, id)).toContainText("Exit slow motion (Esc) first");
     }
     await expect(menuItem(page, "sim.trace-next")).not.toHaveAttribute("aria-disabled", "true");
+    await menuItem(page, "sim.fault").click();
+    await expect(menuItem(page, "sim.kill")).toHaveAttribute("aria-disabled", "true");
+    await expect(menuItem(page, "sim.failure")).toContainText("Exit slow motion (Esc) first");
+    await page.keyboard.press("Escape");
+    await page.getByTestId("node-payments").click({ button: "right" });
     await menuItem(page, "sim.behaviour").click();
     await expect(menuItem(page, "sim.pause")).toHaveAttribute("aria-disabled", "true");
-    await expect(menuItem(page, "sim.failure")).toContainText("Exit slow motion (Esc) first");
     await expect(menuItem(page, "sim.events")).not.toHaveAttribute("aria-disabled", "true");
     await page.keyboard.press("Escape");
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
     await page.getByTestId("node-payments").click();
     await page.keyboard.press("ControlOrMeta+k");
-    await page.getByTestId("command-input").fill("Kill");
+    await page.getByTestId("command-input").fill("Take down");
     const kill = page.getByTestId("command-item-action:sim.kill");
     await expect(kill).toHaveAttribute("aria-disabled", "true");
     await expect(kill).toContainText("Exit slow motion (Esc) first");

@@ -12,7 +12,7 @@ import {
 } from "./timelineMath";
 
 /**
- * Scrubber for a saved simulation: traffic windows as bands, notes / chaos actions as markers,
+ * Scrubber for a saved simulation: traffic windows as bands, notes / fault actions as markers,
  * progress fill and a playhead. Dragging seeks (runs are seeded, so going back replays exactly).
  */
 export function Timeline({
@@ -55,7 +55,7 @@ export function Timeline({
         <span className="lv-fill" />
       </div>
       {markers.map((m, i) => (
-        // A click jumps there (just past the marker, so its note shows or its chaos has happened).
+        // A click jumps there (just past the marker, so its note shows or its fault has happened).
         <button
           type="button"
           key={`${m.atMs}-${i}`}

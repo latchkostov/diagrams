@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { aiDock, collapseDock } from "../../ai/ui/dock";
-import type { DiagramFile, Simulation } from "../../model/types";
+import type { Simulation } from "../../model/types";
 import { useLiveSessionHost } from "../../palette/host";
 import type { InjectRequest } from "../InjectDialog";
 import { emptyInputs } from "../capacityModel";
@@ -9,6 +9,7 @@ import { LiveController } from "../controller";
 import { liveMutationGuard } from "../liveActions";
 import type { SlowMotionView } from "../slowmo/useSlowMotion";
 import { useTraceState } from "./useTraceSpotlight";
+import { liveDiagramReader } from "../diagramReader";
 
 import type { SessionProps } from "../LiveSession";
 import type { LiveCommands } from "./useLiveCommands";
@@ -20,7 +21,7 @@ export function useLiveSessionState({
   params,
   simulations: simsProp,
 }: Pick<SessionProps, "editor" | "diagram" | "params" | "simulations">) {
-  const getDiagram = useCallback((): DiagramFile => (editor ? editor.getDiagram() : diagram!), [editor, diagram]);
+  const getDiagram = useMemo(() => liveDiagramReader(editor, diagram), [editor, diagram]);
   const simulations = useMemo(() => simsProp ?? diagram?.simulations ?? [], [simsProp, diagram]);
   const simsRef = useRef(simulations);
   useLayoutEffect(() => {

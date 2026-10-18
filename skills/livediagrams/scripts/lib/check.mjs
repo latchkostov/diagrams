@@ -3,7 +3,14 @@
 // the app's own validator (./app.mjs, bundled by `pnpm schemas`): a diagram that passes here opens in the
 // app exactly as written, with nothing dropped or repaired.
 import { readFileSync } from "node:fs";
-import { annotationGeometryError, isColorValue, LIMITS as L, simulationProblem, validateDiagram } from "./app.mjs";
+import {
+  annotationGeometryError,
+  canCutLink,
+  isColorValue,
+  LIMITS as L,
+  simulationProblem,
+  validateDiagram,
+} from "./app.mjs";
 
 /** Stencil ids, enums and property schemas, generated from the app (`pnpm schemas`). */
 export const spec = JSON.parse(readFileSync(new URL("./spec.json", import.meta.url), "utf8"));
@@ -156,7 +163,9 @@ function simulationRefs(sim) {
   sim.traffic.forEach((t, j) => refs.push([t.node, `traffic[${j}].node`]));
   (sim.timeline ?? []).forEach(({ action: a }, j) => {
     if (a.do === "note") (a.focus ?? []).forEach((id) => refs.push([id, `timeline[${j}].action.focus`]));
-    else refs.push([a.node, `timeline[${j}].action.node`]);
+    else if (a.do === "fault") {
+      if ("node" in a.fault) refs.push([a.fault.node, `timeline[${j}].action.fault.node`]);
+    } else refs.push([a.node, `timeline[${j}].action.node`]);
   });
   for (const id of Object.keys(sim.setup?.status ?? {})) refs.push([id, "setup.status"]);
   for (const id of Object.keys(sim.setup?.props ?? {})) refs.push([id, "setup.props"]);
@@ -170,12 +179,20 @@ function simulationRefs(sim) {
  * The app's own structural check first (an invalid simulation is silently dropped when the app opens the
  * file), then references and live-view advice, which only ever see a structurally valid simulation.
  */
-function checkSimulation(sim, i, nodeIds, nodes, errors, warnings) {
+function checkSimulation(sim, i, nodeIds, nodes, errors, warnings, diagram) {
   const where = `simulations[${i}]${isObj(sim) && isStr(sim.title) ? ` ${q(sim.title)}` : ""}`;
   const problem = simulationProblem(sim);
   if (problem) return void errors.push(`${where}: ${problem}. The app would drop this simulation.`);
   for (const [id, what] of simulationRefs(sim))
     if (!nodeIds.has(id)) errors.push(`${where}: ${what} refers to ${q(id)}, which isn't a node id.`);
+  for (const { action } of sim.timeline ?? []) {
+    if (action.do !== "fault") continue;
+    const f = action.fault;
+    if (f.kind === "boundary" && !diagram.groups.some((g) => g.id === f.boundary))
+      errors.push(`${where}: fault boundary ${q(f.boundary)} isn't a boundary id.`);
+    if (f.kind === "link" && !canCutLink(diagram, f.edge))
+      errors.push(`${where}: fault link ${q(f.edge)} must be a flow between two boundaries.`);
+  }
   // Short bursts may animate many dots briefly; sustained traffic should stay near 60 dots a second.
   const scale = sim.scale ?? 1;
   const multiplier = sim.multipliers?.traffic ?? 1;
@@ -437,7 +454,7 @@ export function checkDiagram(d) {
   const sims = Array.isArray(d.simulations) ? d.simulations : [];
   const simIds = new Set();
   sims.forEach((sim, i) => {
-    checkSimulation(sim, i, nodeIds, nodes, errors, warnings);
+    checkSimulation(sim, i, nodeIds, nodes, errors, warnings, { ...d, nodes, edges: d.edges, groups });
     if (isObj(sim) && isStr(sim.id)) {
       if (simIds.has(sim.id)) errors.push(`simulations[${i}]: another simulation already has the id ${q(sim.id)}.`);
       simIds.add(sim.id);
