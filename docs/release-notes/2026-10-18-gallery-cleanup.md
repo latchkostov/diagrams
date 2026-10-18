@@ -10,7 +10,7 @@ start card.
   `src/examples/retired.ts` maps each slug and its saved simulation ids to the replacement. The entry rewrites a
   retired `?example=` and `sim` before anything reads the address, so old links, shared and embedded URLs keep
   working. A remembered last canvas reopens as the replacement. Edits saved under a retired slug (example
-  autosaves from before copies existed) become one of your diagrams at startup, and stay put if storage is full.
+  autosaves from before copies existed) become one of your diagrams at startup. If storage is full, they stay under the old key and an error notice offers them as a .diagram.json download. The copy’s slug is derived from the edits, so two tabs starting together, or a retry after an interrupted cleanup, keep one copy; adoption runs after the storage lifecycle starts.
 - **Merged content.** `aws-serverless-orders` gains the fan-out's archive queue (with its DLQ and redrive), a
   scheduled reconciliation, and a third story, _Fulfillment Lambda is throttled_. `ev-charging-network` gains the IoT
   example's hot-partition story (_One partition runs hot_, 63 of 64 idle replicas until the key spreads over 32
