@@ -83,6 +83,13 @@ describe("live benchmark parsing and gates (no browser)", () => {
     expect(slowPhase(frames, tail)).toEqual({ slowPhaseMs: 120_000, slowPhaseFps: 56 / 120, settled: false });
   });
 
+  it("uses the expanded stability sample's median after a single long stall", () => {
+    const frames = at([...Array(15).fill(1_000), 30_000]);
+    const tail = steadyTail(frames);
+    expect(tail).toEqual({ gapMs: 1_000, fps: 1, stable: false });
+    expect(slowPhase(frames, tail)).toMatchObject({ slowPhaseMs: 45_000, settled: false });
+  });
+
   it("large live gates reject missing decoration", () => {
     const expected = 2_957;
     const limits = liveGateLimits(expected, true);

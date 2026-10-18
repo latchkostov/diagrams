@@ -511,7 +511,6 @@ export class LiveController {
     if (!Number.isFinite(targetMs)) return;
     const target = Math.max(0, targetMs);
     this.continuity = {};
-    this.dirty = true;
     this.cancelReplay();
     if (target < this.snapshot().time - 1) {
       const rootId = this.engine.tracer.followed(),

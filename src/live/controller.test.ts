@@ -9,6 +9,8 @@ import { resourceLesson } from "../model/autoscaling";
 import * as admissions from "../sim/admission";
 import * as allocations from "../sim/allocation";
 import { LifecycleBudgetError } from "../model/resourceBudget";
+import * as engines from "../sim/engine";
+import { snapshotContinuity } from "./snapshotContinuity";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
 const roleOf = (stencil: string) => roles[stencil] ?? "none";
@@ -142,6 +144,31 @@ describe("LiveController", () => {
     expect(c.snapshot().time).toBeLessThan(600);
     c.seek(3000);
     expect(c.snapshot().nodes.db.processed).toBe(processed);
+  });
+
+  it.each([false, true])("constructs only the published snapshot per seek (playing=%s)", (playing) => {
+    const create = vi.spyOn(engines, "createEngine");
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation(storm);
+    c.setPlaying(playing);
+    const snapshot = vi.spyOn(create.mock.results.at(-1)!.value!, "snapshot");
+    try {
+      for (const target of [0, 3000, 500, 500]) {
+        const before = c.snapshot();
+        const continuity = snapshotContinuity.get(before);
+        snapshot.mockClear();
+        c.seek(target);
+        const after = c.snapshot();
+        expect(snapshot, `seek to ${target} from ${before.time}`).toHaveBeenCalledOnce();
+        expect(after.time).toBe(target);
+        expect(snapshotContinuity.get(after)).not.toBe(continuity);
+        expect(snapshotContinuity.get(before)).toBe(continuity);
+      }
+    } finally {
+      snapshot.mockRestore();
+      create.mockRestore();
+      c.dispose();
+    }
   });
 
   it("steps a fixed slice and restarts clean", () => {

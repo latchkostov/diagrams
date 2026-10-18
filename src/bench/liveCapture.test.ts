@@ -1,7 +1,7 @@
 import type { CDPSession, Page } from "@playwright/test";
 import { afterEach, expect, it, vi } from "vitest";
 import { startTransient, switchTraffic } from "../../tests/bench/ui/liveCapture";
-import { slowPhase, steadyTail } from "./liveMetrics";
+import { LIVE_SETTLE_FRAMES, slowPhase, steadyTail } from "./liveMetrics";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -22,7 +22,38 @@ it("keeps an unstable capture unsettled when its recording cap is reached", asyn
   expect(cdp.off).toHaveBeenCalledOnce();
 });
 
+it("keeps collecting recurring stalls at every polling boundary until the recording cap", async () => {
+  const gaps = [...Array(8).fill(1_000), ...Array.from({ length: 16 }, () => [5_000, 1_000, 1_000]).flat()];
+  const trace = [0];
+  for (const gap of gaps) trace.push(trace[trace.length - 1] + gap);
+  const frames = trace.slice(0, LIVE_SETTLE_FRAMES + 1);
+  vi.stubGlobal("window", { __liveCapture: { frames, stop: () => ({ frames, peakTransitions: 0 }) } });
+  const polls: number[] = [];
+  const page = {
+    evaluate: async (fn: () => unknown, arg?: unknown) => (arg ? undefined : fn()),
+    waitForFunction: async (fn: (arg: unknown) => boolean, arg: unknown) => {
+      frames.push(...trace.slice(frames.length, frames.length + LIVE_SETTLE_FRAMES));
+      polls.push(frames.at(-1)!);
+      expect(fn(arg)).toBe(true);
+    },
+  } as unknown as Page;
+  const cdp = { on: vi.fn(), off: vi.fn(), send: vi.fn(async () => {}) } as unknown as CDPSession;
+  const capture = await startTransient({ page, cdp }, false, 120_000);
+  expect(await capture.collect()).toMatchObject({ slowPhaseMs: 120_000, settled: false });
+  expect(polls[0]).toBe(28_000);
+  expect(frames).toEqual(trace);
+  expect(cdp.off).toHaveBeenCalledOnce();
+});
+
 it.each([false, true])("records the initial x10 stall, including panel closure (panel=%s)", async (panel) => {
+  await recordTraffic(panel);
+});
+
+it("captures transition peaks when panel closure exceeds the recording cap", async () => {
+  await recordTraffic(true, true);
+});
+
+async function recordTraffic(panel: boolean, closesAfterCap = false) {
   let now = 10_000;
   let nextId = 0;
   const callbacks = new Map<number, FrameRequestCallback>();
@@ -113,8 +144,11 @@ it.each([false, true])("records the initial x10 stall, including panel closure (
     // Drain only promise continuations, while the close operation remains blocked.
     await closing;
     expect(window.__liveCapture.frames).toEqual([10_000, 16_000]);
-    animations = Array.from({ length: 5 }, () => new Transition());
+    if (closesAfterCap) frame(120_000);
+    const capped = [...window.__liveCapture.frames];
+    animations = Array.from({ length: closesAfterCap ? 100 : 5 }, () => new Transition());
     frame(100);
+    if (closesAfterCap) expect(window.__liveCapture.frames).toEqual(capped);
     layers({ layers: Array(9).fill({}) });
     releaseClose();
   }
@@ -123,16 +157,17 @@ it.each([false, true])("records the initial x10 stall, including panel closure (
   for (let i = 0; i < 120; i++) frame(100);
   const recording = window.__liveCapture.stop();
   expect(recording.frames[0]).toBe(10_000);
-  expect(recording.peakTransitions).toBe(panel ? 5 : 2);
+  expect(recording.peakTransitions).toBe(closesAfterCap ? 100 : panel ? 5 : 2);
   const tail = steadyTail(recording.frames);
-  expect(tail.stable).toBe(true);
-  expect(slowPhase(recording.frames, tail)).toMatchObject({ slowPhaseMs: 6_000, settled: true });
+  expect(tail.stable).toBe(!closesAfterCap);
+  const slowPhaseMs = closesAfterCap ? 126_000 : 6_000;
+  expect(slowPhase(recording.frames, tail)).toMatchObject({ slowPhaseMs, settled: !closesAfterCap });
   expect(await capture?.collect()).toMatchObject({
-    slowPhaseMs: 6_000,
-    settled: true,
+    slowPhaseMs,
+    settled: !closesAfterCap,
     peakLayers: panel ? 9 : 0,
-    peakTransitions: panel ? 5 : 2,
+    peakTransitions: closesAfterCap ? 100 : panel ? 5 : 2,
   });
   expect(cdp.off).toHaveBeenCalledOnce();
   expect(callbacks.size).toBe(0);
-});
+}
