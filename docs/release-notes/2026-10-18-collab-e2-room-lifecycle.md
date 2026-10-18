@@ -30,10 +30,10 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
 
 ## Verification and network evidence
 
-- Vitest, `src/collab/room/lifecycle.test.ts` on the in-memory network (13 cases): the creator seeds once; a link
+- Vitest, `src/collab/room/lifecycle.test.ts` on the in-memory network (14 cases): the creator seeds once; a link
   never seeds; a second "creator" with an old copy can't revert a peer's edit; consent before any transport;
   Private refused before any transport; reload rejoin; replay of an unsaved edit, and no replay of an older copy;
-  Leave; the room's own link; back/forward cache; wipe. The Private and replay cases fail with their fix removed.
+  Leave, also while a reload's rejoin is still opening; the room's own link; back/forward cache; wipe. The Private and replay cases fail with their fix removed.
 - Playwright, `tests/e2e/collab-room.spec.ts`: two browser contexts with real WebRTC over host candidates and a
   tracker emulated in the runner: start, consent with zero sockets and zero peer connections before Join, edits
   both ways, reload, hard drop; Leave and Don't join; a damaged link; Clear everything with a second tab that
