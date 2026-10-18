@@ -1,0 +1,27 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Zone outage drill",
+    "direction": "LR",
+    "groups": [
+      { "id": "g_zone_a", "label": "Zone a", "tone": "neutral", "x": 766, "y": 40, "width": 660, "height": 176 },
+      { "id": "g_zone_b", "label": "Zone b", "tone": "neutral", "x": 766, "y": 160, "width": 660, "height": 176 }
+    ],
+    "nodes": [
+      { "id": "api_a", "stencil": "generic.service", "label": "Checkout API a", "sublabel": "Can carry both zones", "x": 806, "y": 104, "group": "g_zone_a" },
+      { "id": "orders_a", "stencil": "generic.database", "label": "Orders a", "sublabel": "Available local copy", "x": 1166, "y": 104, "group": "g_zone_a" },
+      { "id": "api_b", "stencil": "generic.service", "label": "Checkout API b", "sublabel": "Can carry both zones", "x": 806, "y": 224, "group": "g_zone_b" },
+      { "id": "orders_b", "stencil": "generic.database", "label": "Orders b", "sublabel": "Available local copy", "x": 1166, "y": 224, "group": "g_zone_b" },
+      { "id": "visitors", "stencil": "generic.service", "label": "Visitors", "sublabel": "10 checkouts / s", "x": 80, "y": 164 },
+      { "id": "entry", "stencil": "load-balancer", "label": "Entry load balancer", "sublabel": "Two zones · one entry", "x": 440, "y": 164 }
+    ],
+    "edges": [
+      { "id": "e1-visitors-entry", "from": "visitors", "to": "entry", "label": "Checkout", "kind": "sync" },
+      { "id": "e2-entry-api_a", "from": "entry", "to": "api_a", "label": "Healthy target a", "kind": "sync" },
+      { "id": "e3-api_a-orders_a", "from": "api_a", "to": "orders_a", "label": "Local write", "kind": "sync" },
+      { "id": "e4-entry-api_b", "from": "entry", "to": "api_b", "label": "Healthy target b", "kind": "sync" },
+      { "id": "e5-api_b-orders_b", "from": "api_b", "to": "orders_b", "label": "Local write", "kind": "sync" }
+    ]
+  }
+}

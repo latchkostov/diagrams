@@ -2583,3 +2583,25 @@ details[open] > summary .lv-disclosure-chevron {
   padding-block: 0;
   border: 0;
 }
+
+/* Boundary outages and partitions read without opening a panel. */
+[data-live-status="down"].grp {
+  filter: grayscale(1);
+  background: color-mix(in oklab, var(--text-3) 12%, var(--surface));
+  border-style: dashed;
+}
+
+[data-live-status="down"].grp .grp-label::before {
+  content: "×";
+  font-weight: 700;
+}
+
+[data-live-cut="1"] .react-flow__edge-path {
+  stroke: var(--status-down);
+  stroke-dasharray: 4 8;
+  opacity: 0.55;
+}
+
+.lv-marker.is-fault {
+  background: var(--status-down);
+}

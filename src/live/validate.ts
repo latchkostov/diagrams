@@ -1,3 +1,5 @@
+import { canCutLink, faultTarget } from "../model/faults";
+import { t } from "../i18n";
 // Warnings for a simulation against the diagram it runs on. The runner ignores unknown node ids,
 // so a renamed node silently breaks a simulation; the authoring panel surfaces it instead.
 
@@ -32,7 +34,16 @@ export function simulationWarnings(sim: Simulation, diagram: DiagramFile): SimWa
   (sim.timeline ?? []).forEach((step, i) => {
     const a = step.action;
     if (a.do === "note") (a.focus ?? []).forEach((id) => missing(`timeline:${i}`, id, "Focus"));
-    else missing(`timeline:${i}`, a.node, "Target");
+    else if (a.do === "fault") {
+      const f = a.fault;
+      const valid =
+        f.kind === "boundary"
+          ? diagram.groups?.some((g) => g.id === f.boundary)
+          : f.kind === "link"
+            ? canCutLink(diagram, f.edge)
+            : nodes.has(f.node);
+      if (!valid) out.push({ where: `timeline:${i}`, text: t("fault.invalidTarget", { target: faultTarget(f) }) });
+    } else missing(`timeline:${i}`, a.node, "Target");
     if (!(step.atMs >= 0)) out.push({ where: `timeline:${i}`, text: "Time must be zero or more." });
   });
   for (const e of sim.expectations ?? []) {

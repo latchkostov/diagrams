@@ -13,6 +13,7 @@ Keep the feature vocabulary small. Stable IDs are translated by `src/examples/ga
 
 | ID               | Label           | Evidence required                                                      |
 | ---------------- | --------------- | ---------------------------------------------------------------------- |
+| `faultDrills`    | Fault drills    | An executable timeline fault with a declared target.                   |
 | `partitions`     | Partitions      | A node explicitly configures more than one partition.                  |
 | `rateLimits`     | Rate limits     | A rate-limiter stencil or explicit API quota models a rate limit.      |
 | `networkDevices` | Network devices | A router, switch, firewall or ADC from the supported network families. |

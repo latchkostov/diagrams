@@ -1,0 +1,88 @@
+{
+  "run": {
+    "time": 9000,
+    "totalMs": 9000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "api-a-loss", "label": "Nothing lost at api-a", "status": "pass", "value": 0 },
+      { "id": "api-b-loss", "label": "Nothing lost at api-b", "status": "pass", "value": 0 },
+      { "id": "orders-a-loss", "label": "Nothing lost at orders-a", "status": "pass", "value": 0 },
+      { "id": "orders-b-loss", "label": "Nothing lost at orders-b", "status": "pass", "value": 0 },
+      { "id": "surviving-zone", "label": "Zone a continues serving checkouts", "status": "pass", "value": 66 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "checkouts" },
+      { "atMs": 3000, "kind": "fault", "label": "Zone outage: zone-b" },
+      { "atMs": 3200, "kind": "note", "label": "Zone b is down. Health checks have shifted new checkouts to zone a. Nothing is lost." },
+      { "atMs": 8000, "kind": "traffic", "label": "checkouts ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "visitors": { "replicas": [1, 1, 0] },
+        "entry": { "replicas": [1, 1, 0] },
+        "api-a": { "replicas": [2, 2, 0] },
+        "orders-a": { "replicas": [1, 1, 0] },
+        "api-b": { "replicas": [2, 2, 0] },
+        "orders-b": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 9000,
+    "inSystem": 0,
+    "real": {
+      "visitors": { "processed": 80, "throughput": 3.883889534280525, "replicas": [1, 1, 0] },
+      "entry": { "processed": 80, "throughput": 3.922923273036496, "replicas": [1, 1, 0] },
+      "api-a": { "processed": 66, "throughput": 4.071911385512044, "replicas": [2, 2, 0] },
+      "orders-a": { "processed": 66, "throughput": 4.15416945196959, "replicas": [1, 1, 0] },
+      "api-b": { "status": "down", "processed": 14, "throughput": 0.011109423394407476, "replicas": [2, 2, 0] },
+      "orders-b": { "status": "down", "processed": 14, "throughput": 0.011333848633899095, "replicas": [1, 1, 0] }
+    },
+    "edges": { "visitors-entry": 80, "entry-api-a": 66, "api-orders-a": 66, "entry-api-b": 14, "api-orders-b": 14 }
+  },
+  "events": {
+    "total": 642,
+    "byKind": { "inject": 80, "process": 320, "deliver": 240, "status": 2 },
+    "byNode": {
+      "visitors": { "inject": 80, "process": 80 },
+      "entry": { "deliver": 80, "process": 80 },
+      "api-a": { "deliver": 66, "process": 66 },
+      "orders-a": { "deliver": 66, "process": 66 },
+      "api-b": { "deliver": 14, "process": 14, "status": 1 },
+      "orders-b": { "deliver": 14, "process": 14, "status": 1 }
+    },
+    "perSecond": [
+      "28ada7522d0c",
+      "eedbad4b5657",
+      "7b5eff79bfd1",
+      "72279b94e890",
+      "7363f9883be9",
+      "5041478c1a88",
+      "72886f055e26",
+      "e32fa280b1ce",
+      "0638b8ba9b5c",
+      "-"
+    ]
+  },
+  "notes": [
+    { "atMs": 3200, "text": "Zone b is down. Health checks have shifted new checkouts to zone a. Nothing is lost.", "focus": [] }
+  ],
+  "latency": {
+    "journeys": { "done": 80, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 80, "min": 80, "mean": 80, "p50": 80, "p90": 80, "max": 80 },
+    "waitMs": {
+      "api-a": { "count": 66, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "api-b": { "count": 14, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "api-a": { "count": 66, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 },
+      "api-b": { "count": 14, "min": 20, "mean": 20, "p50": 20, "p90": 20, "max": 20 }
+    }
+  }
+}

@@ -1,3 +1,6 @@
+import { boundaryRestoreHint } from "../model/faultWords";
+import { t } from "../i18n";
+import { canCutLink, type Fault } from "../model/faults";
 // Context-menu entries for the live view, registered in the "simulation" section of the action
 // registry while live mode is on (and offered only in the "live" mode). They change the running engine only; "Save to diagram" is the
 // explicit way to keep a tweak.
@@ -6,7 +9,6 @@ import type { Action, MenuNode } from "../editor/actions";
 import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import type { LiveController } from "./controller";
-import { formatPercent } from "./format";
 import type { XY } from "../editor/types";
 
 export interface LiveActionsHost {
@@ -38,8 +40,6 @@ export interface LiveActionsHost {
   openRecord(): void;
 }
 
-const FAILURE_RATES = [0, 0.1, 0.25, 0.5, 1];
-const SLOWDOWNS = [1, 2, 5, 10];
 const CONCURRENCY = [1, 2, 4, 8, 16, 64];
 
 export const EXIT_SLOW_MOTION_HINT = "Exit slow motion (Esc) first";
@@ -61,11 +61,11 @@ export function liveActions(host: LiveActionsHost): Action[] {
         ? row
         : {
             ...row,
-            disabled: !guard.enabled(),
-            hint: guard.hint(),
+            disabled: row.disabled || !guard.enabled(),
+            hint: guard.hint() ?? row.hint,
             run: row.run
               ? () => {
-                  if (guard.enabled()) row.run?.();
+                  if (guard.enabled() && !row.disabled) row.run?.();
                 }
               : undefined,
             children: row.children && protect(row.children),
@@ -82,7 +82,6 @@ export function liveActions(host: LiveActionsHost): Action[] {
     const raw = { ...node?.props, ...c.getState().simulation?.setup?.props?.[id] };
     return resolveProps(role(id), node?.label ?? id, raw, node?.stencil, c.currentDiagram.planning);
   };
-  const baseLatency = (id: string) => baseProps(id).latencyMs || 250;
   const isNode = (id: string | undefined): id is string => !!id && !!c.snapshot().nodes[id];
 
   const actions: Action[] = [
@@ -144,16 +143,105 @@ export function liveActions(host: LiveActionsHost): Action[] {
       run: (ctx) => host.startStorm(ctx.nodeId!),
     },
     {
-      id: "sim.kill",
-      paletteLabel: (ctx) => (status(ctx.nodeId!) === "down" ? "Revive node" : "Kill node"),
+      id: "sim.fault",
       section: "simulation",
-      targets: ["node"],
-      label: (ctx) => (status(ctx.nodeId!) === "down" ? "Revive" : "Kill"),
-      icon: "close",
-      danger: true,
-      order: 50,
-      when: (ctx) => isNode(ctx.nodeId),
-      run: (ctx) => c.setNodeStatus(ctx.nodeId!, status(ctx.nodeId!) === "down" ? "up" : "down"),
+      targets: ["node", "edge", "group"],
+      label: t("fault.menu"),
+      icon: "bolt",
+      order: 35,
+      when: (ctx) =>
+        ctx.target === "node"
+          ? isNode(ctx.nodeId)
+          : ctx.target === "group"
+            ? !!c.currentDiagram.groups?.some((g) => g.id === ctx.groupId)
+            : !!ctx.edgeId && canCutLink(c.currentDiagram, ctx.edgeId),
+      children: (ctx) => {
+        const faults = c.snapshot().faults ?? [];
+        const apply = (fault: Fault) => () => c.setFault(fault);
+        if (ctx.target === "group") {
+          const boundary = ctx.groupId!;
+          const down = faults.some((f) => f.kind === "boundary" && f.boundary === boundary);
+          return protect([
+            {
+              type: "item",
+              id: "sim.boundary-down",
+              label: down ? t("fault.restore") : t("fault.takeDown"),
+              run: apply({ kind: "boundary", boundary, down: !down }),
+            },
+          ]);
+        }
+        if (ctx.target === "edge") {
+          const edge = ctx.edgeId!;
+          const cut = faults.some((f) => f.kind === "link" && f.edge === edge);
+          return protect([
+            {
+              type: "item",
+              id: "sim.cut-link",
+              label: cut ? t("fault.reconnect") : t("fault.cut"),
+              run: apply({ kind: "link", edge, cut: !cut }),
+            },
+          ]);
+        }
+        const node = ctx.nodeId!;
+        const restoreHint = boundaryRestoreHint(c.currentDiagram, node, faults);
+        const slow = faults.find((f) => f.kind === "slow" && f.node === node);
+        const fail = faults.find((f) => f.kind === "fail" && f.node === node);
+        return protect([
+          {
+            type: "item",
+            id: "sim.kill",
+            disabled: !!restoreHint,
+            hint: restoreHint,
+            label: status(node) === "down" ? t("fault.restore") : t("fault.takeDown"),
+            run: () => c.setNodeStatus(node, status(node) === "down" ? "up" : "down"),
+          },
+          ...(["processor", "gateway", "store"].includes(role(node)) || props(node).admission
+            ? [
+                {
+                  type: "item" as const,
+                  id: "sim.slow",
+                  label: t("fault.slow"),
+                  children: ([2, 5, 10] as const).map((factor) => ({
+                    type: "item" as const,
+                    id: `sim.slow:${factor}`,
+                    label: t("fault.factor", { factor }),
+                    checked: slow?.kind === "slow" && slow.factor === factor,
+                    run: apply({ kind: "slow", node, factor }),
+                  })),
+                },
+              ]
+            : []),
+          ...(role(node) !== "source"
+            ? [
+                {
+                  type: "item" as const,
+                  id: "sim.failure",
+                  label: t("fault.fail"),
+                  children: ([0.1, 0.5] as const).map((rate) => ({
+                    type: "item" as const,
+                    id: `sim.failure:${rate}`,
+                    label: t("fault.rate", { rate: rate * 100 }),
+                    checked: fail?.kind === "fail" && fail.rate === rate,
+                    run: apply({ kind: "fail", node, rate }),
+                  })),
+                },
+              ]
+            : []),
+          ...(slow || fail
+            ? [
+                {
+                  type: "item" as const,
+                  id: "sim.clear-faults",
+                  label: t("fault.clear"),
+                  run: () => {
+                    c.setFault({ kind: "slow", node, factor: 1 });
+                    c.setFault({ kind: "fail", node, rate: 0 });
+                  },
+                },
+              ]
+            : []),
+        ]);
+      },
     },
     {
       // Everything else about a node's live behaviour sits one level down (menus stay short).
@@ -177,20 +265,6 @@ export function liveActions(host: LiveActionsHost): Action[] {
             run: () => c.setNodeStatus(id, status(id) === "paused" ? "up" : "paused"),
           });
         }
-        if (r === "processor") {
-          rows.push({
-            type: "item",
-            id: "sim.failure",
-            label: "Failure rate",
-            children: FAILURE_RATES.map((f) => ({
-              type: "item",
-              id: `sim.failure:${f}`,
-              label: f === 0 ? "Never fails" : f === 1 ? "Always fails (100%)" : formatPercent(f),
-              checked: Math.abs(p.failureRate - f) < 1e-9,
-              run: () => c.setNodeProps(id, { failureRate: f }),
-            })),
-          });
-        }
         // A network device's pair or cluster: lose a unit (an active-standby pair fails over), or get them back.
         const device = p.device;
         if (device && device.ha !== "standalone" && status(id) === "up") {
@@ -209,21 +283,6 @@ export function liveActions(host: LiveActionsHost): Action[] {
               label: `Bring back every unit (${base})`,
               run: () => c.setNodeProps(id, { replicas: base }),
             });
-        }
-        if (r === "processor" || r === "gateway" || r === "store") {
-          const base = baseLatency(id);
-          rows.push({
-            type: "item",
-            id: "sim.slow",
-            label: "Slow down",
-            children: SLOWDOWNS.map((f) => ({
-              type: "item",
-              id: `sim.slow:${f}`,
-              label: f === 1 ? `Normal (${Math.round(base)} ms)` : `Latency ×${f} (${Math.round(base * f)} ms)`,
-              checked: Math.abs(p.latencyMs - base * f) < 0.5,
-              run: () => c.setNodeProps(id, { latencyMs: base * f }),
-            })),
-          });
         }
         if (r === "processor") {
           rows.push({

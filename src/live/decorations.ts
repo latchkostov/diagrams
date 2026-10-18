@@ -101,6 +101,13 @@ export class Decorator {
       setAttr(el, "data-live-dim", dim ? "1" : null);
     }
 
+    const downBoundaries = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "boundary" ? [f.boundary] : [])));
+    const cutLinks = new Set((snapshot.faults ?? []).flatMap((f) => (f.kind === "link" ? [f.edge] : [])));
+    for (const el of root.querySelectorAll<HTMLElement>(".grp[data-caption-root]")) {
+      const down = downBoundaries.has(el.dataset.captionRoot!);
+      setAttr(el, "data-live-status", down ? "down" : null);
+    }
+
     for (const el of root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
       const id = el.getAttribute("data-id")!;
       const e = snapshot.edges[id];
@@ -111,13 +118,15 @@ export class Decorator {
       if (since !== undefined && !active) this.lastActive.delete(id);
       const dim = spotlight ? !spotlight.edges.has(id) : false;
       const lit = spotlight?.kind === "trace" && spotlight.edges.has(id);
-      const key = `${active}|${dim}|${lit}`;
+      const cut = cutLinks.has(id);
+      const key = `${active}|${dim}|${lit}|${cut}`;
       seen.add(el);
       if (this.applied.get(el) === key) continue;
       this.applied.set(el, key);
       const state = active ? "active" : "idle";
       const was = el.getAttribute("data-live-edge");
       if (was !== null && was !== state) stats.edgeFlips++;
+      setAttr(el, "data-live-cut", cut ? "1" : null);
       setAttr(el, "data-live-edge", state);
       setAttr(el, "data-live-dim", dim ? "1" : null);
       setAttr(el, "data-live-trace", lit ? "1" : null);
@@ -136,9 +145,10 @@ export class Decorator {
     const root = this.root;
     for (const a of ["data-live", "data-live-spotlight", "data-live-still", "data-live-large"]) root.removeAttribute(a);
     for (const el of root.querySelectorAll(
-      "[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]",
+      "[data-live-cut],[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]",
     )) {
       for (const a of [
+        "data-live-cut",
         "data-live-status",
         "data-live-edge",
         "data-live-dim",

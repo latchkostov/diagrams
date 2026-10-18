@@ -23,6 +23,7 @@ const bySlug = Object.fromEntries(
 
 const EXPECTED: Record<string, string[]> = {
   "where-the-time-goes": [],
+  "zone-outage-drill": [],
   "autoscaling-image-workers": [],
   "keda-render-workers": ["warning capacity:uploads", "suggestion capacity:worker"],
   "aks-app-config-key-vault": [],
@@ -117,6 +118,7 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  * change here is a change to that table.
  */
 const PLANNED: Record<string, string[]> = {
+  "zone-outage-drill": ["26 dropped api-b in Zone outage: no health checks (down)"],
   "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
   "multi-region-active-active": ["96 dropped alb-us in Region outage and failover (down)"],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).

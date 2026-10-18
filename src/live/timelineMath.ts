@@ -80,7 +80,8 @@ export function markerSeekTime(atMs: number): number {
 /** "note" → the glyph used on the track. */
 export const markerGlyph: Record<TimelineMarker["kind"], string> = {
   note: "note",
-  status: "chaos",
+  status: "fault",
+  fault: "fault",
   props: "tweak",
   inject: "inject",
   trace: "trace",

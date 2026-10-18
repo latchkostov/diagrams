@@ -24,6 +24,15 @@ describe("saved example simulations with the real stencil registry", () => {
         for (const step of simulation.timeline ?? []) {
           if (step.action.do === "note") {
             for (const id of step.action.focus ?? []) expect(ids.has(id)).toBe(true);
+          } else if (step.action.do === "fault") {
+            const f = step.action.fault;
+            expect(
+              f.kind === "boundary"
+                ? diagram.groups?.some((g) => g.id === f.boundary)
+                : f.kind === "link"
+                  ? diagram.edges.some((e) => e.id === f.edge)
+                  : ids.has(f.node),
+            ).toBe(true);
           } else expect(ids.has(step.action.node)).toBe(true);
         }
         for (const expectation of simulation.expectations ?? []) {

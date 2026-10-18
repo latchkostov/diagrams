@@ -1,0 +1,400 @@
+{
+  "autoScale": { "freePlay": 1, "health-checks": 1, "no-health-checks": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "api-a",
+      "suggestion": "Checkout API a: 1% utilized",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "visitors": ["Infinity", 10, 0, 1, 1, 0], "entry": ["Infinity", 10, 0, 1, 1, 0], "api-a": [800, 5, 0.00625, 2, 2, 0], "orders-a": ["Infinity", 5, 0, 1, 1, 0], "api-b": [800, 5, 0.00625, 2, 2, 0], "orders-b": ["Infinity", 5, 0, 1, 1, 0] },
+      "connections": { "visitors-entry": 10, "entry-api-a": 5, "entry-api-b": 5, "api-orders-a": 5, "api-orders-b": 5 },
+      "offeredTypes": { "visitors": ["Checkout"], "entry": ["Checkout"], "api-a": ["Checkout"], "api-b": ["Checkout"], "orders-a": ["Checkout"], "orders-b": ["Checkout"] }
+    },
+    "explanations": {
+      "api-a": {
+        "id": "api-a",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 800,
+        "offered": 5,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.02,
+        "utilization": 0.00625,
+        "growth": 0,
+        "contributors": [
+          { "edge": "entry-api-a", "node": "entry", "label": "Visitors", "rate": 5, "via": "Entry load balancer" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      },
+      "api-b": {
+        "id": "api-b",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 800,
+        "offered": 5,
+        "replicas": 2,
+        "baseReplicas": 2,
+        "omittedContributors": 0,
+        "activeReplicas": 2,
+        "assignments": [],
+        "slots": 8,
+        "seconds": 0.02,
+        "utilization": 0.00625,
+        "growth": 0,
+        "contributors": [
+          { "edge": "entry-api-b", "node": "entry", "label": "Visitors", "rate": 5, "via": "Entry load balancer" }
+        ],
+        "target": 0.5,
+        "minimumReplicas": 2,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "visitors": [{ "kind": "calls", "edge": "visitors-entry", "peer": "entry" }],
+      "entry": [
+        { "kind": "calls", "edge": "entry-api-a", "peer": "api-a" },
+        { "kind": "calls", "edge": "entry-api-b", "peer": "api-b" }
+      ],
+      "api-a": [{ "kind": "calls", "edge": "api-orders-a", "peer": "orders-a" }],
+      "api-b": [{ "kind": "calls", "edge": "api-orders-b", "peer": "orders-b" }]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "visitors": {
+        "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 10,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "entry": {
+        "profile": { "family": "proxy", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Entry load balancer",
+        "healthChecks": true
+      },
+      "api-a": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 20,
+        "concurrency": 8,
+        "replicas": 2,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout API a",
+        "healthChecks": false
+      },
+      "orders-a": {
+        "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders a",
+        "healthChecks": false
+      },
+      "api-b": {
+        "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 20,
+        "concurrency": 8,
+        "replicas": 2,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout API b",
+        "healthChecks": false
+      },
+      "orders-b": {
+        "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders b",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "health-checks": { "configured": "(same as edit)", "simulation": "health-checks", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "no-health-checks": {
+      "configured": "(same as edit)",
+      "simulation": "no-health-checks",
+      "analysis": "(same as edit)",
+      "explanations": "(same as edit)",
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": {
+        "visitors": {
+          "profile": { "family": "client", "revision": "legacy", "evidence": [], "units": "real" },
+          "ratePerSec": 10,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0.2,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Checkout",
+          "healthChecks": false
+        },
+        "entry": {
+          "profile": { "family": "proxy", "revision": "legacy", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Entry load balancer",
+          "healthChecks": false
+        },
+        "api-a": {
+          "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 20,
+          "concurrency": 8,
+          "replicas": 2,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Checkout API a",
+          "healthChecks": false
+        },
+        "orders-a": {
+          "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Orders a",
+          "healthChecks": false
+        },
+        "api-b": {
+          "profile": { "family": "service", "revision": "legacy", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 20,
+          "concurrency": 8,
+          "replicas": 2,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Checkout API b",
+          "healthChecks": false
+        },
+        "orders-b": {
+          "profile": { "family": "nosql", "revision": "legacy", "evidence": [], "units": "real" },
+          "ratePerSec": 2,
+          "latencyMs": 0,
+          "concurrency": "Infinity",
+          "replicas": 1,
+          "jitter": 0,
+          "retry": "requeue",
+          "retryBackoffMs": 0,
+          "failureRate": 0,
+          "maxDeliveryCount": 3,
+          "partitions": 3,
+          "messageType": "Orders b",
+          "healthChecks": false
+        }
+      }
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "api-a",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API a at 1% · 5/s of 800/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "visitors": ["idle", "10/s · no limit", { "modeled": false }],
+            "entry": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-a": ["ok", "1% · 5/s of 800/s"],
+            "orders-a": ["idle", "5/s · no limit", { "modeled": false }],
+            "api-b": ["ok", "1% · 5/s of 800/s"],
+            "orders-b": ["idle", "5/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "api-a",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API a at 3% · 25/s of 800/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "visitors": ["idle", "50/s · no limit", { "modeled": false }],
+            "entry": ["idle", "50/s · no limit", { "modeled": false }],
+            "api-a": ["ok", "3% · 25/s of 800/s"],
+            "orders-a": ["idle", "25/s · no limit", { "modeled": false }],
+            "api-b": ["ok", "3% · 25/s of 800/s"],
+            "orders-b": ["idle", "25/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "api-a",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API a at 1% · 5/s of 400/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "visitors": ["idle", "10/s · no limit", { "modeled": false }],
+            "entry": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-a": ["ok", "1% · 5/s of 400/s"],
+            "orders-a": ["idle", "5/s · no limit", { "modeled": false }],
+            "api-b": ["ok", "1% · 5/s of 400/s"],
+            "orders-b": ["idle", "5/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "api-a",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout API a at 1% · 5/s of 800/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "visitors": ["idle", "10/s · no limit", { "modeled": false }],
+            "entry": ["idle", "10/s · no limit", { "modeled": false }],
+            "api-a": ["ok", "1% · 5/s of 800/s"],
+            "orders-a": ["idle", "5/s · no limit", { "modeled": false }],
+            "api-b": ["ok", "1% · 5/s of 800/s"],
+            "orders-b": ["idle", "5/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "health-checks": {
+      "tone": "ok",
+      "top": "api-a",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Checkout API a at 1% · 5/s of 800/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "visitors": ["idle", "10/s · no limit", { "modeled": false }],
+        "entry": ["idle", "10/s · no limit", { "modeled": false }],
+        "api-a": ["ok", "1% · 5/s of 800/s"],
+        "orders-a": ["idle", "5/s · no limit", { "modeled": false }],
+        "api-b": ["ok", "1% · 5/s of 800/s"],
+        "orders-b": ["idle", "5/s · no limit", { "modeled": false }]
+      }
+    },
+    "no-health-checks": {
+      "tone": "ok",
+      "top": "api-a",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Checkout API a at 1% · 5/s of 800/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "visitors": ["idle", "10/s · no limit", { "modeled": false }],
+        "entry": ["idle", "10/s · no limit", { "modeled": false }],
+        "api-a": ["ok", "1% · 5/s of 800/s"],
+        "orders-a": ["idle", "5/s · no limit", { "modeled": false }],
+        "api-b": ["ok", "1% · 5/s of 800/s"],
+        "orders-b": ["idle", "5/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

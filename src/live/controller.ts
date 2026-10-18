@@ -1,3 +1,4 @@
+import type { Fault } from "../model/faults";
 // The live view's model: one engine (free play) or one simulation run (a saved simulation), plus
 // the playback state around it. Pure TypeScript with no DOM or React, so it is unit-tested directly.
 // The UI drives it from requestAnimationFrame (`advance`) and reads `snapshot()` every frame;
@@ -106,7 +107,8 @@ export type DiagramUpdate = "none" | "patched" | "reloaded";
 export function structuralKey(d: DiagramFile): string {
   return JSON.stringify([
     d.planning,
-    d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel ?? ""]),
+    d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel ?? "", n.group]),
+    d.groups?.map((g) => [g.id, g.group]),
     d.edges.map(edgeSemanticSignature),
   ]);
 }
@@ -797,6 +799,12 @@ export class LiveController {
     this.dirty = true;
     this.publish();
     return sources;
+  }
+
+  setFault(fault: Fault): void {
+    this.engine.setFault(fault);
+    this.dirty = true;
+    this.publish();
   }
 
   setNodeStatus(nodeId: string, status: NodeStatus): void {

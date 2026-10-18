@@ -110,6 +110,13 @@ export interface SimulationSpec {
     messageType?: string;
     label?: string;
   }[];
+  /** Timeline fault overlays; targets accept the same element references as other tools. */
+  faults?: {
+    atSec: number;
+    fault: import("../model/faults").Fault;
+    drill?: import("../model/faults").DrillPreset;
+    note?: string;
+  }[];
   events?: {
     atSec: number;
     node: Ref;

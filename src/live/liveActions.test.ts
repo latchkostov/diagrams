@@ -6,6 +6,7 @@ import { ActionRegistry, type ActionContext, type MenuItem, type MenuNode } from
 import { actionCommands } from "../palette/sources";
 import { LiveController } from "./controller";
 import { EXIT_SLOW_MOTION_HINT, liveActions, type LiveActionsHost } from "./liveActions";
+import { faultDrillFixture } from "../lab/faultDrillFixture";
 
 const diagram = JSON.parse(readFileSync("src/examples/kafka-order-pipeline.json", "utf8")) as DiagramFile;
 const items = (rows: MenuNode[]): MenuItem[] =>
@@ -70,10 +71,10 @@ describe("live action availability during slow motion", () => {
       for (const id of ["sim.trace-next", "sim.events", "sim.record", "sim.trace-message:next"])
         expect(rows.find((r) => r.id === id)?.disabled, id).not.toBe(true);
       const commands = actionCommands(registry, contexts);
-      expect(commands.find((command) => command.id === "action:sim.kill")?.label).toBe("Kill node");
+      expect(commands.find((command) => command.id === "action:sim.kill")?.label).toBe("Fault › Take down");
       controller.setNodeStatus("payments", "down");
       expect(actionCommands(registry, contexts).find((command) => command.id === "action:sim.kill")?.label).toBe(
-        "Revive node",
+        "Fault › Restore",
       );
       controller.setNodeStatus("payments", "up");
       expect(commands.find((c) => c.id === "action:sim.failure:0.5")).toMatchObject({
@@ -90,4 +91,73 @@ describe("live action availability during slow motion", () => {
       controller.dispose();
     },
   );
+});
+
+it("keeps faults in one short contextual submenu, with guarded boundary and link restoration", () => {
+  let held = false;
+  const controller = new LiveController(faultDrillFixture());
+  const host: LiveActionsHost = {
+    controller,
+    slowMotionActive: () => held,
+    openInject: vi.fn(),
+    startStorm: vi.fn(),
+    showEvents: vi.fn(),
+    trace: vi.fn(),
+    tracing: () => null,
+    traceNext: vi.fn(),
+    traceSlowest: vi.fn(),
+    traceDeadLettered: vi.fn(),
+    slowMotion: vi.fn(),
+    slowMotionTrace: vi.fn(),
+    canReplayTrace: () => false,
+    endTrace: vi.fn(),
+    tracingMessage: () => false,
+    saveTweaks: vi.fn(),
+    messageType: () => "Job",
+    openRecord: vi.fn(),
+  };
+  const registry = new ActionRegistry();
+  registry.register(liveActions(host));
+  const base: ActionContext = {
+    target: "node",
+    nodeId: "worker",
+    mode: "live",
+    editor: {} as EditorApi,
+    selection: { nodeIds: [], edgeIds: [], groupIds: [] },
+  };
+  for (const ctx of [
+    base,
+    { ...base, target: "group" as const, groupId: "zone-b" },
+    { ...base, target: "edge" as const, edgeId: "request" },
+  ]) {
+    const rows = registry.build(ctx).filter((r) => r.type === "item");
+    const fault = rows.filter((r) => r.id === "sim.fault");
+    expect(fault).toHaveLength(1);
+    expect(fault[0].children!.length).toBeLessThanOrEqual(6);
+    expect(rows.some((r) => ["sim.kill", "sim.slow", "sim.failure"].includes(r.id))).toBe(false);
+    expect(items(registry.build({ ...ctx, mode: "edit" })).some((r) => r.id === "sim.fault")).toBe(false);
+  }
+  const boundary = { ...base, target: "group" as const, groupId: "zone-b" };
+  held = true;
+  const denied = items(registry.build(boundary)).find((r) => r.id === "sim.boundary-down")!;
+  expect(denied.disabled).toBe(true);
+  denied.run!();
+  expect(controller.snapshot().nodes.worker.status).toBe("up");
+  held = false;
+  items(registry.build(boundary)).find((r) => r.id === "sim.boundary-down")!.run!();
+  expect(controller.snapshot().nodes.worker.status).toBe("down");
+  expect(items(registry.build(boundary)).find((r) => r.id === "sim.boundary-down")!.label).toBe("Restore");
+  controller.setNodeStatus("worker", "down");
+  const memberRestore = items(registry.build(base)).find((r) => r.id === "sim.kill")!;
+  expect(memberRestore).toMatchObject({ disabled: true, hint: "Restore Zone b first." });
+  memberRestore.run!();
+  items(registry.build(boundary)).find((r) => r.id === "sim.boundary-down")!.run!();
+  expect(controller.snapshot().nodes.worker.status).toBe("down");
+  expect(items(registry.build({ ...base, target: "edge", edgeId: "write" })).some((r) => r.id === "sim.fault")).toBe(
+    false,
+  );
+  const link = { ...base, target: "edge" as const, edgeId: "request" };
+  items(registry.build(link)).find((r) => r.id === "sim.cut-link")!.run!();
+  expect(items(registry.build(link)).find((r) => r.id === "sim.cut-link")!.label).toBe("Restore link");
+  controller.dispose();
 });

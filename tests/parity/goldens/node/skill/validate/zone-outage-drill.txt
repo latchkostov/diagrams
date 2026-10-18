@@ -1,0 +1,2 @@
+exit 0
+VALID <repo>/src/examples/zone-outage-drill.json: 6 nodes, 5 edges, 2 boundaries, 2 simulations

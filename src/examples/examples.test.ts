@@ -63,6 +63,7 @@ describe("example metadata and loading", () => {
 
 const showcases = [
   "where-the-time-goes",
+  "zone-outage-drill",
   "partitions-vs-subscriptions",
   "shared-api-quotas",
   "serverless-burst-buffer",

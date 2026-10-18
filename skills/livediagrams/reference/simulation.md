@@ -34,6 +34,22 @@ and is redelivered. After `maxDeliveryCount` attempts (3 by default), the broker
 edge and counts it as `deadLettered`. A dead-letter edge leaves the broker and has `"props": { "dlq": true }`,
 or ends at a node labelled DLQ or dead-letter. A broker without one drops the message.
 
+## Faults and drills
+
+A saved drill uses timeline `do: "fault"` actions. Four forms:
+
+- `{ "kind": "boundary", "boundary": "zone-b", "down": true }`: down every nested member; restore with false.
+- `{ "kind": "slow", "node": "api", "factor": 2 }`: 2, 5 or 10 times slower new attempts; clear with 1.
+- `{ "kind": "fail", "node": "api", "rate": 0.1 }`: 10% or 50% injected failures; clear with 0.
+- `{ "kind": "link", "edge": "cross-zone", "cut": true }`: a flow crossing two boundaries; restore with false.
+
+Example: `{ "atMs": 3000, "action": { "do": "fault", "drill": "zone-outage", "fault": { "kind": "boundary", "boundary": "zone-b", "down": true } } }`.
+Optional `drill` names: `zone-outage`, `region-connectivity`, `slow-dependency`, `error-spike` (the timeline's Add step presets).
+Faults are checkpointed overlays, so scrubbing replays them and clearing preserves configured settings.
+Broker deliveries wait behind a cut; pushed messages and Requests drop. Dependency outages and drill reports are not implemented.
+Boundary membership changes restart playback. The public `zone-outage-drill` example compares health checks with no health checks.
+WebMCP `set_simulation` accepts the same faults under `faults: [{ atSec, fault, drill? }]`, resolving element references.
+
 ## A saved simulation
 
 ```json

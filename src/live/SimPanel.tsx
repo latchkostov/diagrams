@@ -1,3 +1,6 @@
+import { DRILL_PRESETS, type DrillPreset } from "../model/faults";
+import { FaultStep } from "./FaultStep";
+import { defaultFault, drillFault, drillName } from "./faults";
 import { t as translate, useLocale } from "../i18n";
 import { flowEdges } from "../model/relations";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -43,7 +46,7 @@ const SHAPES: { kind: TrafficShape["kind"]; label: string }[] = [
   { kind: "ramp", label: "Ramp" },
   { kind: "spike", label: "Spike" },
 ];
-const ACTIONS: { value: TimelineAction["do"]; label: string }[] = [
+const ACTIONS: { value: Exclude<TimelineAction["do"], "fault">; label: string }[] = [
   { value: "note", label: "Note" },
   { value: "status", label: "Set status" },
   { value: "props", label: "Change prop" },
@@ -227,18 +230,38 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
                 onPick={(label, apply) => setPicker({ label, apply })}
               />
             ))}
-            <button
+            <select
               className="lv-add"
-              onClick={() =>
+              value=""
+              aria-label={translate("fault.addStep")}
+              onChange={(event) => {
+                const preset = event.target.value;
+                if (!preset) return;
                 edit((d) => {
                   const last = d.timeline?.at(-1)?.atMs ?? -2000;
-                  (d.timeline ??= []).push({ atMs: last + 2000, action: { do: "note", text: "", focus: [] } });
-                })
-              }
+                  const action: TimelineAction =
+                    preset === "note"
+                      ? { do: "note", text: "", focus: [] }
+                      : {
+                          do: "fault",
+                          fault: drillFault(preset as DrillPreset, diagram),
+                          drill: preset as DrillPreset,
+                        };
+                  (d.timeline ??= []).push({ atMs: last + 2000, action });
+                });
+              }}
               data-testid="sim-panel-add-step"
             >
-              <LiveIcon name="plus" size={13} /> Add step
-            </button>
+              <option value="">{translate("fault.addStep")}</option>
+              <option value="note">{translate("fault.note")}</option>
+              <optgroup label={translate("fault.presets")}>
+                {DRILL_PRESETS.map((preset) => (
+                  <option key={preset} value={preset}>
+                    {drillName(preset)}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </Disclosure>
 
           <Disclosure
@@ -930,7 +953,8 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
   const a = step.action;
   const setAction = (action: TimelineAction) => onChange({ ...step, action });
   const switchTo = (kind: TimelineAction["do"]) => {
-    const node = "node" in a ? a.node : (a.focus?.[0] ?? diagram.nodes[0]?.id ?? "");
+    const node = "node" in a ? a.node : ((a.do === "note" ? a.focus?.[0] : undefined) ?? diagram.nodes[0]?.id ?? "");
+    if (kind === "fault") setAction({ do: "fault", fault: defaultFault("boundary", diagram) });
     if (kind === "note") setAction({ do: "note", text: "", focus: node ? [node] : [] });
     if (kind === "status") setAction({ do: "status", node, status: "down" });
     if (kind === "props") setAction({ do: "props", node, props: { latencyMs: 1000 } });
@@ -963,6 +987,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           data-testid={`${t}-action`}
           name={`${t}-action`}
         >
+          <option value="fault">{translate("fault.action")}</option>
           {ACTIONS.map((x) => (
             <option key={x.value} value={x.value}>
               {x.label}
@@ -974,7 +999,19 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           <LiveIcon name="trash" size={13} />
         </button>
       </div>
-      {a.do === "note" ? (
+      {a.do === "fault" ? (
+        <>
+          {a.drill && <small>{translate("fault.drill", { name: drillName(a.drill) })}</small>}
+          <FaultStep
+            fault={a.fault}
+            diagram={diagram}
+            testId={t}
+            onChange={(fault) =>
+              setAction({ do: "fault", fault, ...(fault.kind === a.fault.kind && a.drill ? { drill: a.drill } : {}) })
+            }
+          />
+        </>
+      ) : a.do === "note" ? (
         <>
           <textarea
             rows={2}

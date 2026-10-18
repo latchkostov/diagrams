@@ -1,3 +1,4 @@
+import { boundaryAncestors, boundaryParents, faultActive, faultKey, type Fault } from "../model/faults";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { createSimulationRun } from "../sim/simulation";
 import { SIM_TICK_MS } from "../sim/scheduler";
@@ -143,6 +144,15 @@ interface Breakage {
   fails: boolean;
 }
 
+function affected(diagram: DiagramFile, fault: Fault): string[] {
+  if (fault.kind === "boundary") {
+    const parents = boundaryParents(diagram);
+    return diagram.nodes.filter((n) => boundaryAncestors(parents, n.group).includes(fault.boundary)).map((n) => n.id);
+  }
+  if (fault.kind === "link") return diagram.edges.filter((e) => e.id === fault.edge).map((e) => e.to);
+  return [fault.node];
+}
+
 /** The nodes `sim` takes down or makes fail (or that the diagram has down), with their state at time 0. */
 function breakable(diagram: DiagramFile, sim: Simulation): Map<string, Breakage> {
   const out = new Map<string, Breakage>();
@@ -156,6 +166,7 @@ function breakable(diagram: DiagramFile, sim: Simulation): Map<string, Breakage>
   for (const [id, props] of Object.entries(sim.setup?.props ?? {}))
     if (positive(props?.failureRate)) at(id).fails = true;
   for (const { action: a } of sim.timeline ?? []) {
+    if (a.do === "fault") for (const id of affected(diagram, a.fault)) at(id);
     if (a.do === "status") at(a.node);
     if (a.do === "props" && "failureRate" in a.props) at(a.node);
   }
@@ -192,13 +203,30 @@ function* play(
   const breaks = breakable(diagram, sim);
   const timeline = [...(sim.timeline ?? [])].sort((a, b) => a.atMs - b.atMs);
   let cursor = 0;
+  const baseBreaks = new Map([...breaks].map(([id, b]) => [id, { ...b }]));
+  const faults = new Map<string, Fault>();
   const apply = (time: number) => {
     for (; cursor < timeline.length && timeline[cursor].atMs <= time; cursor++) {
       const a = timeline[cursor].action;
-      const b = a.do === "status" || a.do === "props" ? breaks.get(a.node) : undefined;
-      if (!b) continue;
-      if (a.do === "status") b.down = stopped(a.status);
-      else if (a.do === "props" && "failureRate" in a.props) b.fails = positive(a.props.failureRate);
+      if (a.do === "fault") {
+        if (faultActive(a.fault)) faults.set(faultKey(a.fault), a.fault);
+        else faults.delete(faultKey(a.fault));
+      }
+      const b = a.do === "status" || a.do === "props" ? baseBreaks.get(a.node) : undefined;
+      if (!b && a.do !== "fault") continue;
+      if (b && a.do === "status") b.down = stopped(a.status);
+      else if (b && a.do === "props" && "failureRate" in a.props) b.fails = positive(a.props.failureRate);
+      if (!faults.size && a.do !== "fault") {
+        if (b && (a.do === "status" || a.do === "props")) Object.assign(breaks.get(a.node)!, b);
+        continue;
+      }
+      for (const [id, state] of breaks) Object.assign(state, baseBreaks.get(id));
+      for (const f of faults.values())
+        for (const id of affected(diagram, f)) {
+          const state = breaks.get(id);
+          if (state && (f.kind === "boundary" || f.kind === "link")) state.down = true;
+          else if (state && f.kind === "fail") state.fails = true;
+        }
     }
   };
   apply(0);

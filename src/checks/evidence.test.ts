@@ -254,6 +254,38 @@ describe("simulation evidence", () => {
       expect(shown(d).planned.map((p) => p.why)).toEqual(["fails"]);
     });
 
+    it.each(["boundary", "fail", "link"] as const)(
+      "recognizes an intentional %s fault without an expectation",
+      (kind) => {
+        const d = outage({ timeline: [] });
+        d.groups = [
+          { id: "a", label: "Zone a", x: 0, y: 0, width: 300, height: 300 },
+          { id: "b", label: "Zone b", x: 400, y: 0, width: 300, height: 300 },
+        ];
+        for (const n of d.nodes) n.group = n.id === "api" ? "b" : "a";
+        const edge = d.edges.find((e) => e.to === "api")!;
+        const fault =
+          kind === "boundary"
+            ? { kind, boundary: "b", down: true }
+            : kind === "link"
+              ? { kind, edge: edge.id, cut: true }
+              : { kind, node: "api", rate: 0.5 as const };
+        d.simulations![0].timeline = [{ atMs: 0, action: { do: "fault", fault } }];
+        const s = shown(d);
+        expect(s.result.findings).toEqual([]);
+        expect(s.planned).toEqual([
+          {
+            node: "api",
+            simulation: "Checkout rush",
+            what: "dropped",
+            count: expect.any(Number),
+            why: kind === "fail" ? "fails" : "down",
+          },
+        ]);
+        expect(s.planned[0].count).toBeGreaterThan(0);
+      },
+    );
+
     it("only for what its played timeline did: an outage after the losses, or past the minute, excuses nothing", () => {
       // The API fails every request (the design); the simulation's outage comes later, or never plays.
       for (const atMs of [20_000, 90_000]) {

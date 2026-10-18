@@ -1,3 +1,4 @@
+import { faultTarget } from "../model/faults";
 import type { DiagramFile } from "../model/types";
 import { catalog } from "../stencils/catalog";
 import { isDependency, relationOf } from "../model/relations";
@@ -36,7 +37,13 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const edges = d.edges.filter((e) => !focus || focus.has(e.id));
   const groups = d.groups?.filter((g) => !focus || focus.has(g.id) || nodes.some((n) => n.group === g.id)) ?? [];
   const notes = d.annotations?.filter((a) => !focus || focus.has(a.id)) ?? [];
-  const sims = d.simulations?.filter((s) => !focus || s.traffic.some((t) => focus.has(t.node))) ?? [];
+  const sims =
+    d.simulations?.filter(
+      (s) =>
+        !focus ||
+        s.traffic.some((t) => focus.has(t.node)) ||
+        s.timeline?.some((step) => step.action.do === "fault" && focus.has(faultTarget(step.action.fault))),
+    ) ?? [];
   // One shared routing/analysis pass, bounded to modest graphs; describing a large graph stays cheap.
   const topology = compileTopology(d);
   const connections = resolveCapabilities(d, topology);

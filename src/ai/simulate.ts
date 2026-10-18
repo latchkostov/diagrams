@@ -1,3 +1,4 @@
+import { canCutLink } from "../model/faults";
 import type { DiagramFile, Simulation, TrafficShape, TimelineStep } from "../model/types";
 import { simulationProblem, simulationReferenceWarnings } from "../interop/native";
 import { autoScale } from "../sim/scale";
@@ -84,6 +85,22 @@ export function buildSimulation(diagram: DiagramFile, spec: SimulationSpec): Sim
     } else timeline.push({ atMs, action: { do: "status", node, status: e.do === "pause" ? "paused" : e.do } });
     if (e.note !== undefined) timeline.push({ atMs, action: { do: "note", text: e.note, focus: [node] } });
   }
+  for (const step of spec.faults ?? []) {
+    const f = step.fault;
+    const fault =
+      f.kind === "boundary"
+        ? { ...f, boundary: resolveRef({ ...diagram, nodes: [], edges: [], annotations: [] }, f.boundary) }
+        : f.kind === "link"
+          ? { ...f, edge: resolveRef(diagram, f.edge) }
+          : { ...f, node: nodeRef(f.node) };
+    if (fault.kind === "link" && !canCutLink(diagram, fault.edge))
+      throw new Error("Cut link needs a flow between two boundaries.");
+    timeline.push({
+      atMs: step.atSec * 1000,
+      action: { do: "fault", fault, ...(step.drill ? { drill: step.drill } : {}) },
+    });
+    if (step.note !== undefined) timeline.push({ atMs: step.atSec * 1000, action: { do: "note", text: step.note } });
+  }
   const simulation: Simulation = {
     id,
     title: spec.title,
@@ -110,7 +127,7 @@ export function buildSimulation(diagram: DiagramFile, spec: SimulationSpec): Sim
   simulation.scale = autoScale(simulation, diagram);
   const problem = simulationProblem(simulation);
   if (problem) throw new Error(problem);
-  const warnings = simulationReferenceWarnings(simulation, new Set(diagram.nodes.map((n) => n.id)));
+  const warnings = simulationReferenceWarnings(simulation, new Set(diagram.nodes.map((n) => n.id)), diagram);
   if (warnings.length) throw new Error(warnings.join(" "));
   validated({ ...diagram, simulations: [...sims.filter((s) => s.id !== id), simulation] });
   return simulation;

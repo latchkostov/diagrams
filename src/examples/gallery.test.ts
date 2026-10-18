@@ -91,6 +91,7 @@ describe("example gallery", () => {
       "payments-ledger": ["partitions", "rateLimits", "routing"],
       "ev-charging-network": ["partitions", "rateLimits", "networkDevices"],
       "cell-based-bookings": [],
+      "zone-outage-drill": ["faultDrills"],
     };
     for (const [slug, tags] of Object.entries(expected)) {
       expect(publicItems.find((e) => e.slug === slug)?.shows, slug).toEqual(tags);

@@ -1,0 +1,14 @@
+---
+title: "Checkout #1 · 80 ms end to end"
+---
+sequenceDiagram
+  participant visitors as Visitors
+  participant entry as Entry load balancer
+  participant api_a as Checkout API a
+  participant orders_a as Orders a
+  visitors->>entry: Checkout (+0.00 s)
+  entry-->>visitors: reply (+0.02 s)
+  entry->>api_a: Checkout (+0.02 s)<br/>Healthy target a
+  api_a-->>entry: reply (+0.06 s)
+  api_a->>orders_a: Checkout (+0.06 s)<br/>Local write
+  orders_a-->>api_a: reply (+0.08 s)

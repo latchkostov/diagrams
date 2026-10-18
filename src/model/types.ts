@@ -147,8 +147,8 @@ export interface DiagramAnnotation extends DiagramBoxElement {
 }
 
 // ---------- Simulations (docs/SIMULATIONS.md) ----------
-// Traffic shapes follow load-testing tools (k6 / Gatling); timeline + expectations follow chaos
-// experiments (actions + steady-state hypothesis). Times are simulation ms from the start.
+// Traffic shapes follow load-testing tools (k6 / Gatling); timeline faults and expectations define
+// repeatable drills. Times are simulation ms from the start.
 
 export interface Simulation {
   id: string;
@@ -200,6 +200,7 @@ export interface TimelineStep {
 }
 
 export type TimelineAction =
+  | { do: "fault"; fault: import("./faults").Fault; drill?: import("./faults").DrillPreset }
   | { do: "status"; node: string; status: "up" | "paused" | "down" }
   | { do: "props"; node: string; props: Record<string, unknown> }
   | { do: "inject"; node: string; count: number; messageType?: string; spreadMs?: number }

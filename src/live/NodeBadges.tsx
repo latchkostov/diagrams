@@ -84,6 +84,7 @@ export function NodeBadges({
     }
     setPeaks({ inputs, values });
   }
+  const boundaryFault = state.snapshot.faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
   return (
     <div
@@ -105,6 +106,7 @@ export function NodeBadges({
             key={n.id}
             node={n}
             s={s}
+            showOutageLoss={boundaryFault}
             peak={peak}
             hovered={hovered === n.id}
             cap={capacity?.nodes[n.id]}
@@ -193,6 +195,7 @@ interface BadgeProps {
   assignment?: BrokerSpec;
   brokerSpec?: BrokerSpec;
   currentModel: boolean;
+  showOutageLoss: boolean;
 }
 
 const NodeBadge = memo(function NodeBadge({
@@ -207,6 +210,7 @@ const NodeBadge = memo(function NodeBadge({
   assignment,
   brokerSpec,
   currentModel,
+  showOutageLoss,
 }: BadgeProps) {
   useLocale();
   const domNode = useStore((store) => store.domNode);
@@ -305,6 +309,7 @@ const NodeBadge = memo(function NodeBadge({
       data-backlog={s.backlog}
       data-inflight={s.inFlight}
       data-failed={s.failed}
+      data-dropped={s.dropped}
       data-dlq={s.deadLettered}
       data-blocked={blocked}
       data-rejected={rejected}
@@ -319,6 +324,15 @@ const NodeBadge = memo(function NodeBadge({
       {s.status === "paused" && (
         <div className="lv-paused" title="Paused: messages wait here">
           <LiveIcon name="pause" size={9} /> paused
+        </div>
+      )}
+      {showOutageLoss && s.status === "down" && s.dropped > 0 && (
+        <div
+          className="lv-alert mono"
+          title={t("fault.droppedCount", { count: s.dropped })}
+          data-testid={`node-loss-${node.id}`}
+        >
+          {formatCount(s.dropped)}
         </div>
       )}
       {problems > 0 && s.status !== "down" && (

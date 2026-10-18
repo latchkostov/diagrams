@@ -1,3 +1,12 @@
+import {
+  boundaryAncestors,
+  boundaryParents,
+  canCutLink,
+  faultActive,
+  faultKey,
+  faultProblem,
+  type Fault,
+} from "../model/faults";
 import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget } from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
@@ -193,6 +202,10 @@ interface Node {
   stencil: string;
   role: SimRole;
   status: NodeStatus;
+  baseStatus: NodeStatus;
+  faultRate?: number;
+  slowFactor?: number;
+  boundaries: string[];
   rawProps: Record<string, unknown>;
   props: ResolvedProps;
   replicas: number;
@@ -238,6 +251,7 @@ interface Node {
   targets: Map<string, Edge>;
 }
 interface Edge {
+  cut?: boolean;
   endpointId?: string;
   id: string;
   from: Node;
@@ -312,6 +326,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let admission = emptyAdmission();
   let configuration: Record<string, Record<string, unknown>> | undefined;
   const edges: Edge[] = [];
+  let faults = new Map<string, Fault>();
+  let faultDiagram: DiagramFile;
   let trips: Trip[] = [];
   let drawn = 0;
   let drawnTrips = new Map<number, Trip>();
@@ -531,6 +547,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     extra?: Partial<TraceStep>,
   ): void {
     if (edge.deny) block(message, edge, extra);
+    else if (cut(edge)) cutPush(edge, message);
     else travel(edge, message, kind, delivery, 0, undefined, extra);
   }
 
@@ -544,6 +561,58 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function rename(message: Message, type: string | undefined): Message {
     return type === undefined || type === message.type ? message : { ...message, type, color: messageColor(type) };
+  }
+
+  function boundaryDown(node: Node): boolean {
+    return node.boundaries.some((boundary) => faults.has(faultKey({ kind: "boundary", boundary, down: true })));
+  }
+
+  function changeStatus(node: Node, status: NodeStatus): void {
+    if (node.status === status) return;
+    if (node.fleet) {
+      const f = node.fleet;
+      if (node.status === "paused") {
+        const duration = time - (f.pausedAt ?? 0);
+        for (const c of f.starts) c.at += duration;
+        for (const c of f.sampledDrains) c.at += duration;
+        for (const busy of f.busy.values()) if (busy.drainAt !== undefined) busy.drainAt += duration;
+        for (const work of nodeWork(node)) shiftWorkDeadlines(work, duration);
+        f.pausedAt = undefined;
+        if (f.keda) {
+          f.keda.createdAt += duration;
+          if (f.keda.lastActive !== undefined) f.keda.lastActive += duration;
+        }
+        shiftCloud(f, duration);
+        scheduleController(node);
+      }
+      f.paused = status === "paused";
+      if (f.paused) f.pausedAt = time;
+    }
+    node.status = status;
+    log("status", node, undefined, status);
+  }
+
+  const cut = (edge: Edge): boolean => edge.cut === true;
+
+  function faultProps(node: Node, props: ResolvedProps): ResolvedProps {
+    const slow = faults.get(faultKey({ kind: "slow", node: node.id, factor: 1 }));
+    if (slow?.kind !== "slow") return props;
+    return {
+      ...props,
+      latencyMs: props.latencyMs * slow.factor,
+      ...(props.resources
+        ? { resources: { ...props.resources, cpuMsPerMessage: props.resources.cpuMsPerMessage * slow.factor } }
+        : {}),
+    };
+  }
+
+  function cutPush(edge: Edge, message: Message): void {
+    if (edge.to.role === "processor") {
+      edge.to.failed++;
+      log("fail", edge.to, message, "link cut");
+      if (message.family.trace) step(message, "fail", edge.to.id, { edge: edge.id });
+    }
+    drop(edge.to, message, "link cut");
   }
 
   function latency(node: Node): number {
@@ -752,13 +821,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         else node.rawProps[key] = structuredClone(value);
       }
       const admissionChanged = ["api", "endpoints", "preset", "presetRevision"].some((key) => key in patch);
-      node.props = resolveProps(
-        node.role,
-        node.label,
-        node.rawProps,
-        node.stencil,
-        planning,
-        admissionChanged ? undefined : previous.admission,
+      node.props = faultProps(
+        node,
+        resolveProps(
+          node.role,
+          node.label,
+          node.rawProps,
+          node.stencil,
+          planning,
+          admissionChanged ? undefined : previous.admission,
+        ),
       );
       if (node.fleet) {
         if (scale > 1 && node.props.concurrency < previous.concurrency)
@@ -1026,7 +1098,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (node.role === "gateway") {
       // Health checks: targets that are down get nothing while any other target is up.
-      const healthy = node.props.healthChecks ? outgoing.filter((edge) => edge.to.status !== "down") : outgoing;
+      const healthy = node.props.healthChecks
+        ? outgoing.filter((edge) => edge.to.status !== "down" && !cut(edge))
+        : outgoing;
       const pool = healthy.length ? healthy : outgoing;
       deliver(pool[node.cursor++ % pool.length], { ...message, attempts: 0 }, "message");
     } else {
@@ -1120,7 +1194,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       return;
     }
-    if ((node.role === "processor" || node.props.admission) && random() < (work.errorRate ?? node.props.failureRate)) {
+    if (
+      (node.role === "processor" || node.props.admission || node.faultRate !== undefined) &&
+      random() < (node.faultRate ?? work.errorRate ?? node.props.failureRate)
+    ) {
       fail(node, work);
       return;
     }
@@ -1179,7 +1256,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.lease = outcome.lease;
     work.errorRate = outcome.errorRate;
     if (outcome.latencyMs !== undefined)
-      work.remaining = outcome.latencyMs * (1 + (random() * 2 - 1) * node.props.jitter);
+      work.remaining = outcome.latencyMs * (node.slowFactor ?? 1) * (1 + (random() * 2 - 1) * node.props.jitter);
     return true;
   }
 
@@ -1381,6 +1458,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           const edge = group.edges[index];
           const target = edge.to;
           if (
+            !cut(edge) &&
             accepts(edge, message) &&
             (edge.deny ||
               (free &&
@@ -1607,6 +1685,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       else if (trip.kind !== "reply") {
         trip.edge.delivered++;
         trip.edge.to.incoming--;
+        if (cut(trip.edge)) {
+          if (trip.delivery) returned(trip);
+          else cutPush(trip.edge, trip.message);
+          continue;
+        }
         log("deliver", trip.edge.to, trip.message);
         lineage.arrived(trip.message, trip.edge.to.id, trip.edge.id);
         arrive(trip.edge.to, {
@@ -2025,6 +2108,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         admission: { buckets: admission.buckets, inFlight: admission.inFlight },
         lineage: lineage.state,
         routeCounts,
+        faults,
       });
       const clock = {
         time,
@@ -2072,6 +2156,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         events.splice(0, events.length, ...copy.events);
         lineage.state = copy.lineage;
         routeCounts = copy.routeCounts;
+        faults = copy.faults;
         admission = emptyAdmission();
         reconfigureAdmission(
           admission,
@@ -2145,12 +2230,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     },
     load(diagram: DiagramFile): void {
       if (resourceBudgetExceeded(diagram)) throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
+      faultDiagram = diagram;
+      faults = new Map();
       planning = diagram.planning;
       configuration = undefined;
       topology++;
       nodes.clear();
       edges.length = 0;
       compiled = compileTopology(diagram, roleOf);
+      const parents = boundaryParents(diagram);
       for (const input of diagram.nodes) {
         const role = roleOf(input.stencil);
         const rawProps = { ...input.props };
@@ -2161,6 +2249,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           stencil: input.stencil,
           role,
           status,
+          baseStatus: status,
+          boundaries: boundaryAncestors(parents, input.group),
           rawProps,
           props: resolveProps(role, input.label, rawProps, input.stencil, planning),
           replicas: 1,
@@ -2310,6 +2400,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         };
       }
       const frame: SimFrame = { time, particles, nodes: nodeStates, inSystem, scale };
+      if (faults.size) frame.faults = structuredClone([...faults.values()]);
       if (routes) {
         const counts: Record<string, RouteCounts> = Object.create(null);
         for (const id of routes.keys()) {
@@ -2354,30 +2445,41 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         });
       }
     },
+    setFault(fault): void {
+      const problem = faultProblem(fault);
+      if (problem) throw new Error(problem);
+      if (
+        fault.kind === "boundary"
+          ? !faultDiagram.groups?.some((g) => g.id === fault.boundary)
+          : fault.kind === "link"
+            ? !canCutLink(faultDiagram, fault.edge)
+            : !nodes.has(fault.node)
+      )
+        return;
+      if (faultActive(fault)) faults.set(faultKey(fault), structuredClone(fault));
+      else faults.delete(faultKey(fault));
+      if (fault.kind === "link") {
+        const edge = edges.find((e) => e.id === fault.edge)!;
+        edge.cut = fault.cut;
+      } else if (fault.kind === "fail") {
+        nodes.get(fault.node)!.faultRate = fault.rate || undefined;
+      } else if (fault.kind === "boundary") {
+        for (const node of nodes.values()) changeStatus(node, boundaryDown(node) ? "down" : node.baseStatus);
+      } else if (fault.kind === "slow") {
+        const node = nodes.get(fault.node)!;
+        node.slowFactor = fault.factor;
+        node.props = faultProps(
+          node,
+          resolveProps(node.role, node.label, node.rawProps, node.stencil, planning, node.props.admission),
+        );
+        for (const group of groupsByConsumer.get(node.id) ?? []) refreshGroupLimit(group);
+      }
+    },
     setNodeStatus(nodeId: string, status: NodeStatus): void {
       const node = nodes.get(nodeId);
-      if (!node || node.status === status) return;
-      if (node.fleet) {
-        const f = node.fleet;
-        if (node.status === "paused") {
-          const duration = time - (f.pausedAt ?? 0);
-          for (const c of f.starts) c.at += duration;
-          for (const c of f.sampledDrains) c.at += duration;
-          for (const busy of f.busy.values()) if (busy.drainAt !== undefined) busy.drainAt += duration;
-          for (const work of nodeWork(node)) shiftWorkDeadlines(work, duration);
-          f.pausedAt = undefined;
-          if (f.keda) {
-            f.keda.createdAt += duration;
-            if (f.keda.lastActive !== undefined) f.keda.lastActive += duration;
-          }
-          shiftCloud(f, duration);
-          scheduleController(node);
-        }
-        f.paused = status === "paused";
-        if (f.paused) f.pausedAt = time;
-      }
-      node.status = status;
-      log("status", node, undefined, status);
+      if (!node) return;
+      node.baseStatus = status;
+      changeStatus(node, boundaryDown(node) ? "down" : status);
     },
     setNodeProps(nodeId: string, patch: NodeSimProps): void {
       setNodePropsBatch({ [nodeId]: patch });

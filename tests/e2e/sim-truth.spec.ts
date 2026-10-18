@@ -184,6 +184,7 @@ test.describe("the simulation tells the truth", () => {
     });
     await waitForStableViewport(page);
     await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.fault").click();
     await page.getByTestId("context-menu-item-sim.kill").click();
     await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
     const callout = page.getByTestId("trouble-callout");
@@ -292,12 +293,13 @@ test.describe("the trouble callout stays out of views nobody edits, heat map or 
   });
 
   test("paused, Revive in the callout clears it at once; Dismiss returns focus to the canvas", async ({ page }) => {
-    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&speed=4`);
+    // Keep this status/focus regression independent of real-time broker lag while operating menus.
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&paused=1`);
     await waitForStableViewport(page);
     await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.fault").click();
     await page.getByTestId("context-menu-item-sim.kill").click();
     await expect(page.getByTestId("trouble-callout")).toBeVisible();
-    await page.getByTestId("live-play").click();
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
     // Paused: time stands still, and the callout still follows the status.
     await page.getByTestId("trouble-action").click();
@@ -307,6 +309,7 @@ test.describe("the trouble callout stays out of views nobody edits, heat map or 
     await page.getByTestId("live-restart").click();
     await waitForStableViewport(page);
     await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.fault").click();
     await page.getByTestId("context-menu-item-sim.kill").click();
     await expect(page.getByTestId("trouble-callout")).toBeVisible();
     await page.getByTestId("trouble-dismiss").focus();
@@ -323,6 +326,7 @@ test("on a narrow canvas (1024, AI panel open) the callout keeps its words and b
   await expect(page.getByTestId("ai-panel")).toBeVisible();
   await waitForStableViewport(page);
   await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.fault").click();
   await page.getByTestId("context-menu-item-sim.kill").click();
   const callout = page.getByTestId("trouble-callout");
   await expect(callout).toBeVisible();
@@ -414,6 +418,7 @@ test("an outage hidden behind Inputs does not consume the callout's turn", async
   await page.getByTestId("capacity-close").click();
   await expect(page.getByTestId("capacity-panel")).toHaveCount(0);
   await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.fault").click();
   await page.getByTestId("context-menu-item-sim.kill").click();
   await expect(page.getByTestId("trouble-headline")).toHaveText("Payments service is down");
 });

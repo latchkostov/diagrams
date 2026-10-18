@@ -33,11 +33,13 @@ function scene(nodeCount: number, edgeCount: number) {
   const all = [...nodes, ...edges];
   Object.assign(root, {
     querySelectorAll: (sel: string) =>
-      sel.startsWith(".react-flow__node")
-        ? nodes
-        : sel.startsWith(".react-flow__edge")
-          ? edges
-          : all.filter((el) => [...el.attrs.keys()].some((k) => k.startsWith("data-live"))),
+      sel.startsWith(".grp")
+        ? []
+        : sel.startsWith(".react-flow__node")
+          ? nodes
+          : sel.startsWith(".react-flow__edge")
+            ? edges
+            : all.filter((el) => [...el.attrs.keys()].some((k) => k.startsWith("data-live"))),
   });
   const decorator = new Decorator(root as unknown as HTMLElement);
   let time = 0;

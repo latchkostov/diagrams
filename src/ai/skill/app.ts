@@ -11,3 +11,5 @@ export { parsePayload, PAYLOAD_LIMITS } from "../../export/viewer/payload";
 // Password-protected HTML (export-html.mjs --password): the app's own encryption, with password links' parameters.
 export { lockedFileName, lockPayload, unlockPayloadText, MIN_PASSWORD_LENGTH } from "../../export/lock";
 export { passwordStrength } from "../../interop/passwordStrength";
+
+export { canCutLink } from "../../model/faults";

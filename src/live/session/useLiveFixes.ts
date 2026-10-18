@@ -1,3 +1,4 @@
+import { boundaryOutage } from "../../model/faults";
 import { t } from "../../i18n";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
@@ -105,8 +106,10 @@ export function useLiveFixes({
   const runTroubleAction = useCallback(
     (action: TroubleAction) => {
       if (slowRef.current?.session.active && action.kind !== "events" && action.kind !== "inputs") return;
-      if (action.kind === "revive") controller.setNodeStatus(action.node, "up");
-      else if (action.kind === "add-consumer") addReader(action.node);
+      if (action.kind === "revive") {
+        if (boundaryOutage(controller.currentDiagram, action.node, controller.snapshot().faults)) return;
+        controller.setNodeStatus(action.node, "up");
+      } else if (action.kind === "add-consumer") addReader(action.node);
       else if (action.kind === "add-dlq") {
         if (editor && addDeadLetterQueue(editor, action.node)) {
           flash(t("liveSession.addedDeadLetter"));

@@ -1,3 +1,4 @@
+import { faultDrillFixture } from "./faultDrillFixture";
 import { kedaFixture } from "./kedaFixture";
 import { ImportRetryLab } from "./ImportRetryLab";
 import { LiveKeyboardLab } from "./LiveKeyboardLab";
@@ -439,6 +440,13 @@ const playgroundPresets: Preset[] = [
     description:
       "Three end-to-end encrypted sessions in this tab over an in-memory network (nothing leaves the page), and the public-matchmaking spike, which connects only on request.",
     render: () => <CollabLab />,
+  },
+  {
+    kind: "diagram",
+    id: "fault-drills",
+    title: t("examples.faultDrills"),
+    group: "Playground",
+    diagram: () => faultDrillFixture(),
   },
   {
     kind: "diagram",

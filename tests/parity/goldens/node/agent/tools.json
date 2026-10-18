@@ -10353,7 +10353,7 @@
     {
       "name": "set_simulation",
       "title": "Set a simulation",
-      "description": "Create or replace a simulation in plain units: who sends how much traffic, what breaks when, and what should hold true. Times are seconds.",
+      "description": "Create or replace a simulation in plain units: who sends how much traffic, what breaks when, and what should hold true. Times are seconds. Use faults for named drills: zone-outage, region-connectivity, slow-dependency or error-spike. Faults can take down a boundary, slow a node, inject failures or cut a flow between boundaries; use another fault step to restore it.",
       "annotations": {},
       "inputSchema": {
         "type": "object",
@@ -10365,7 +10365,7 @@
           "durationSec": { "type": "number", "minimum": 1, "maximum": 3600 },
           "traffic": {
             "type": "array",
-            "minItems": 1,
+            "minItems": 0,
             "maxItems": 20,
             "items": {
               "type": "object",
@@ -10382,6 +10382,65 @@
                 "peakSec": { "type": "number", "minimum": 0, "description": "spike: how long the peak lasts." },
                 "messageType": { "type": "string" },
                 "label": { "type": "string" }
+              }
+            }
+          },
+          "faults": {
+            "type": "array",
+            "maxItems": 50,
+            "description": "Saved drill timeline: boundary outages, node slowdown/failure overlays and cross-boundary flow partitions. Restore with down/cut false, factor 1 or rate 0. Targets are ids or exact labels from describe_diagram. Requests over cut links fail; brokers retain queued messages.",
+            "items": {
+              "type": "object",
+              "required": ["atSec", "fault"],
+              "additionalProperties": false,
+              "properties": {
+                "atSec": { "type": "number", "minimum": 0 },
+                "fault": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": ["kind", "boundary", "down"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": { "const": "boundary" },
+                        "boundary": { "type": "string", "minLength": 1 },
+                        "down": { "type": "boolean" }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": ["kind", "node", "factor"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": { "const": "slow" },
+                        "node": { "type": "string", "minLength": 1 },
+                        "factor": { "enum": [1, 2, 5, 10] }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": ["kind", "node", "rate"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": { "const": "fail" },
+                        "node": { "type": "string", "minLength": 1 },
+                        "rate": { "enum": [0, 0.1, 0.5] }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": ["kind", "edge", "cut"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": { "const": "link" },
+                        "edge": { "type": "string", "minLength": 1 },
+                        "cut": { "type": "boolean" }
+                      }
+                    }
+                  ]
+                },
+                "drill": { "enum": ["zone-outage", "region-connectivity", "slow-dependency", "error-spike"] },
+                "note": { "type": "string", "maxLength": 300 }
               }
             }
           },

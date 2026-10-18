@@ -1,0 +1,288 @@
+{
+  "layout": {
+    "status": 0,
+    "stdout": "<tmp>/laid.json: placed 6 nodes, fitted 2 boundaries.\n",
+    "nodes": { "visitors": [40, 100], "entry": [400, 100], "api-a": [766, -40], "orders-a": [1126, -40], "api-b": [766, 160], "orders-b": [1126, 160] },
+    "groups": { "zone-a": [726, -104, 660, 176], "zone-b": [726, 96, 660, 176] }
+  },
+  "shareLink": {
+    "status": 0,
+    "prefix": "https://www.livediagrams.dev/#d=",
+    "decoded": { "sha256": "7b609db7d02cc7508e9be0ce60c1e672166938d78405e5e0f70779289031c6e0", "bytes": 4851 },
+    "sameAsFile": true,
+    "warned": false
+  },
+  "exportHtml": {
+    "status": 0,
+    "stdout": "<tmp>/export.html (<size>, plays \"Zone outage: health checks\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stderr": "",
+    "payload": {
+      "version": 1,
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Zone outage drill",
+        "description": "Two availability zones serve the same checkout traffic. At 3 s zone b goes down; health checks route every new checkout to zone a. Compare the second drill to see requests lost without health checks.",
+        "direction": "LR",
+        "groups": [
+          { "id": "zone-a", "label": "Zone a", "tone": "aws", "x": 700, "y": 80, "width": 680, "height": 170 },
+          { "id": "zone-b", "label": "Zone b", "tone": "aws", "x": 700, "y": 440, "width": 680, "height": 170 }
+        ],
+        "nodes": [
+          {
+            "id": "visitors",
+            "stencil": "client.user",
+            "label": "Visitors",
+            "sublabel": "10 checkouts / s",
+            "x": 20,
+            "y": 290,
+            "props": { "ratePerSec": 10, "messageType": "Checkout" }
+          },
+          {
+            "id": "entry",
+            "stencil": "aws.elb",
+            "label": "Entry load balancer",
+            "sublabel": "Two zones · one entry",
+            "x": 360,
+            "y": 290,
+            "props": { "latencyMs": 0, "jitter": 0, "healthChecks": true }
+          },
+          {
+            "id": "api-a",
+            "stencil": "aws.ecs",
+            "label": "Checkout API a",
+            "sublabel": "Can carry both zones",
+            "group": "zone-a",
+            "x": 740,
+            "y": 120,
+            "props": { "replicas": 2, "concurrency": 8, "latencyMs": 20, "jitter": 0, "failureRate": 0 }
+          },
+          {
+            "id": "orders-a",
+            "stencil": "aws.dynamodb",
+            "label": "Orders a",
+            "sublabel": "Available local copy",
+            "group": "zone-a",
+            "x": 1100,
+            "y": 120,
+            "props": { "latencyMs": 0, "jitter": 0 }
+          },
+          {
+            "id": "api-b",
+            "stencil": "aws.ecs",
+            "label": "Checkout API b",
+            "sublabel": "Can carry both zones",
+            "group": "zone-b",
+            "x": 740,
+            "y": 480,
+            "props": { "replicas": 2, "concurrency": 8, "latencyMs": 20, "jitter": 0, "failureRate": 0 }
+          },
+          {
+            "id": "orders-b",
+            "stencil": "aws.dynamodb",
+            "label": "Orders b",
+            "sublabel": "Available local copy",
+            "group": "zone-b",
+            "x": 1100,
+            "y": 480,
+            "props": { "latencyMs": 0, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          {
+            "id": "visitors-entry",
+            "from": "visitors",
+            "to": "entry",
+            "label": "Checkout",
+            "kind": "sync",
+            "props": { "travelMs": 20 }
+          },
+          {
+            "id": "entry-api-a",
+            "from": "entry",
+            "to": "api-a",
+            "label": "Healthy target a",
+            "kind": "sync",
+            "props": { "travelMs": 20 }
+          },
+          {
+            "id": "api-orders-a",
+            "from": "api-a",
+            "to": "orders-a",
+            "label": "Local write",
+            "kind": "sync",
+            "props": { "travelMs": 20 }
+          },
+          {
+            "id": "entry-api-b",
+            "from": "entry",
+            "to": "api-b",
+            "label": "Healthy target b",
+            "kind": "sync",
+            "props": { "travelMs": 20 }
+          },
+          {
+            "id": "api-orders-b",
+            "from": "api-b",
+            "to": "orders-b",
+            "label": "Local write",
+            "kind": "sync",
+            "props": { "travelMs": 20 }
+          }
+        ],
+        "simulations": [
+          {
+            "id": "health-checks",
+            "title": "Zone outage: health checks",
+            "description": "Zone b fails at 3 s. Compare how the load balancer chooses its next target.",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 9000,
+            "traffic": [
+              {
+                "id": "checkouts",
+                "node": "visitors",
+                "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 8000 }
+              }
+            ],
+            "setup": { "props": { "entry": { "healthChecks": true } } },
+            "timeline": [
+              {
+                "atMs": 3000,
+                "action": {
+                  "do": "fault",
+                  "fault": { "kind": "boundary", "boundary": "zone-b", "down": true },
+                  "drill": "zone-outage"
+                }
+              },
+              {
+                "atMs": 3200,
+                "action": { "do": "note", "text": "Zone b is down. Health checks have shifted new checkouts to zone a. Nothing is lost." }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "api-a-loss",
+                "label": "Nothing lost at api-a",
+                "metric": { "node": "api-a", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "api-b-loss",
+                "label": "Nothing lost at api-b",
+                "metric": { "node": "api-b", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "orders-a-loss",
+                "label": "Nothing lost at orders-a",
+                "metric": { "node": "orders-a", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "orders-b-loss",
+                "label": "Nothing lost at orders-b",
+                "metric": { "node": "orders-b", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "surviving-zone",
+                "label": "Zone a continues serving checkouts",
+                "metric": { "node": "orders-a", "field": "processed" },
+                "op": ">=",
+                "value": 20,
+                "when": "end"
+              }
+            ]
+          },
+          {
+            "id": "no-health-checks",
+            "title": "Zone outage: no health checks",
+            "description": "Zone b fails at 3 s. Compare how the load balancer chooses its next target.",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 9000,
+            "traffic": [
+              {
+                "id": "checkouts",
+                "node": "visitors",
+                "shape": { "kind": "constant", "ratePerSec": 10, "durationMs": 8000 }
+              }
+            ],
+            "setup": { "props": { "entry": { "healthChecks": false } } },
+            "timeline": [
+              {
+                "atMs": 3000,
+                "action": {
+                  "do": "fault",
+                  "fault": { "kind": "boundary", "boundary": "zone-b", "down": true },
+                  "drill": "zone-outage"
+                }
+              },
+              {
+                "atMs": 3200,
+                "action": { "do": "note", "text": "Zone b is down. Without health checks the load balancer still sends half the checkouts there: watch the dropped count." }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "api-a-loss",
+                "label": "Nothing lost at api-a",
+                "metric": { "node": "api-a", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "api-b-loss",
+                "label": "Without health checks, checkouts are lost at api-b",
+                "metric": { "node": "api-b", "field": "dropped" },
+                "op": ">=",
+                "value": 10,
+                "when": "end"
+              },
+              {
+                "id": "orders-a-loss",
+                "label": "Nothing lost at orders-a",
+                "metric": { "node": "orders-a", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "orders-b-loss",
+                "label": "Nothing lost at orders-b",
+                "metric": { "node": "orders-b", "field": "dropped" },
+                "op": "==",
+                "value": 0,
+                "when": "end"
+              },
+              {
+                "id": "surviving-zone",
+                "label": "Zone a continues serving checkouts",
+                "metric": { "node": "orders-a", "field": "processed" },
+                "op": ">=",
+                "value": 20,
+                "when": "end"
+              }
+            ]
+          }
+        ]
+      },
+      "icons": {
+        "aws-dynamodb": { "sha256": "682c5f50891c32b946f08761514899c04263bb0452a64d26a8c4d2602d8264dc", "bytes": 6120 },
+        "aws-ecs": { "sha256": "4c1b2bc89e37f19c6dd2353c9af842de9c7c880b9b562e979b7b5ee541c210b1", "bytes": 2592 },
+        "aws-elb": { "sha256": "777ebfca0c9405a06395309d216150c7c3e85776c978410e4b9baa835b97bd3b", "bytes": 2092 },
+        "client-user": { "sha256": "dffa37eace31e4c87ed5e2b0f49618146f847912a7b23f4d30271aeed9508da0", "bytes": 418 }
+      },
+      "options": { "theme": "dark", "startSimulation": "health-checks", "exportedOn": "2026-01-01" }
+    }
+  }
+}

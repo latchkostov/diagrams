@@ -36,6 +36,7 @@ function showsLatency(d: DiagramFile): boolean {
 export function exampleShows(d: DiagramFile): string[] {
   return [
     ...(showsLatency(d) ? ["latency"] : []),
+    ...(d.simulations?.some((s) => s.timeline?.some((step) => step.action.do === "fault")) ? ["faultDrills"] : []),
     ...(d.nodes.some((n) => typeof n.props?.partitions === "number" && n.props.partitions > 1) ? ["partitions"] : []),
     ...(d.nodes.some(
       (n) =>

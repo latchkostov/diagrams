@@ -14,8 +14,10 @@ const en = {
   "latency.p50": "p50 {duration}",
   "latency.p95": "p95 {duration}",
   "latency.p99": "p99 {duration}",
-  "latency.sampling": "from {count, plural, one {# sampled message} other {# sampled messages}} · since restart",
-  "latency.typesLimited": "Recording limit reached: additional message types are included in the aggregate only.",
+  "latency.sampling":
+    "from {count, plural, one {# sampled message} other {# sampled messages}} · since restart",
+  "latency.typesLimited":
+    "Recording limit reached: additional message types are included in the aggregate only.",
   "latency.breakdown": "Waiting {wait} · work {work} · travel {travel}",
   "latency.scope":
     "Successful async arrivals at this node. Approximate percentiles exclude travel; travel is animation. Shares use the same sampled paths.",
@@ -40,7 +42,8 @@ const en = {
   "liveSession.savedSimulation": "Saved “{name}” to this diagram.",
   "liveSession.clearHighlight": "Clear highlight",
   "liveSession.waitingSlowMotion": "Waiting for the next message: slow motion starts when it comes…",
-  "liveSession.waitingSlowMotionAt": "Waiting for the next message at {name}: slow motion starts when it comes…",
+  "liveSession.waitingSlowMotionAt":
+    "Waiting for the next message at {name}: slow motion starts when it comes…",
   "inspector.resizePreview": "Resizable inspector: longer route paths",
   "inspector.flow": "Flow",
   "inspector.dependency": "Dependency",
@@ -130,10 +133,12 @@ const en = {
   "inspector.settings": "Settings",
   "inspector.settingsPasteIsTooLarge": "Settings paste is too large.",
   "inspector.couldNotImportSettings": "Could not import settings.",
-  "inspector.settingsReadOverThisEdgeOnePerLineMarks": "Settings read over this edge, one per line; ! marks a secret",
+  "inspector.settingsReadOverThisEdgeOnePerLineMarks":
+    "Settings read over this edge, one per line; ! marks a secret",
   "inspector.oneKeyPerLineMarksASecretAKey":
     "One key per line; ! marks a secret (a Key Vault reference). Pasting appsettings.json works too.",
-  "inspector.secretAKeyVaultReferenceClickForAPlain": "Secret (a Key Vault reference): click for a plain value",
+  "inspector.secretAKeyVaultReferenceClickForAPlain":
+    "Secret (a Key Vault reference): click for a plain value",
   "inspector.plainValueClickToMarkSecret": "Plain value: click to mark secret",
   "inspector.colour": "Colour",
   "inspector.size": "Size",
@@ -186,7 +191,8 @@ const en = {
   "inspector.units": "Units",
   "inspector.boxesInThePairOneCarriesTrafficTheOther":
     "Boxes in the pair: one carries traffic, the other takes over when it fails",
-  "inspector.boxesSharingTheTrafficTheirThroughputAddsUp": "Boxes sharing the traffic: their throughput adds up",
+  "inspector.boxesSharingTheTrafficTheirThroughputAddsUp":
+    "Boxes sharing the traffic: their throughput adds up",
   "inspector.timeThroughTheDevicePerMessage": "Time through the device, per message",
   "inspector.healthChecks": "Health checks",
   "inspector.targetsThatAreDownGetNoTraffic": "Targets that are down get no traffic",
@@ -218,7 +224,8 @@ const en = {
   "inspector.bulkStencil":
     "Stencil: {stencil}. {count, plural, one {Change the stencil of # node} other {Change the stencil of # nodes}}",
   "inspector.bulkBoundary": "{count, plural, one {Boundary of # node} other {Boundary of # nodes}}",
-  "inspector.bulkRelationship": "{count, plural, one {Relationship of # edge} other {Relationship of # edges}}",
+  "inspector.bulkRelationship":
+    "{count, plural, one {Relationship of # edge} other {Relationship of # edges}}",
   "inspector.bulkLabel": "{count, plural, one {Label of # edge} other {Label of # edges}}",
   "inspector.copyIdValue": "Copy id {id}",
   "inspector.throughputHint": "Per unit, with its usual inspection on. Default: the {model} datasheet figure",
@@ -239,7 +246,8 @@ const en = {
     "Drag to resize. Arrow keys resize; Shift takes larger steps. Home/End: minimum/maximum. Enter or double-click: reset.",
   "format.byteSize": "{size} {unit}",
   "format.importList": "{before} and {last}",
-  "cloud.dropboxFileMissing": "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.",
+  "cloud.dropboxFileMissing":
+    "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.",
   "fileToast.providerSaveFailed": "Couldn't save to {provider}. {error}",
   "fileToast.providerOpenFailed": "Couldn't open from {provider}. {error}",
   "fileToast.imageFailed": "Couldn't export the {format}. {error}",
@@ -322,7 +330,8 @@ const en = {
   "fileDialog.dropToOpen": "Drop to open",
   "fileDialog.dropHint": "Opens as your diagram. Examples are never overwritten.",
   "importDetail.value0DoesntHoldADockercomposeFile": "{value0} doesn't hold a docker-compose file.",
-  "importDetail.itHasNoServicesToDraw": "It has no services to draw (docker-compose files list them under services:).",
+  "importDetail.itHasNoServicesToDraw":
+    "It has no services to draw (docker-compose files list them under services:).",
   "importDetail.volume": "volume",
   "importDetail.notAServiceDefinition": "not a service definition",
   "importDetail.theresNothingToDrawEveryService":
@@ -338,7 +347,8 @@ const en = {
     "{value0} is the dead-letter route of {value1} ({value2} sends its failures there)",
   "importDetail.value0SendsToValue1WhichInputs":
     "{value0} sends to {value1}: which input's failures go there couldn't be told, so it's drawn as an ordinary message",
-  "importDetail.value0IsAQueueValue1Sends": "{value0} is a queue; {value1} sends to it through the exchange “{value2}”",
+  "importDetail.value0IsAQueueValue1Sends":
+    "{value0} is a queue; {value1} sends to it through the exchange “{value2}”",
   "importDetail.value0HasNoProducerInThese": "{value0} has no producer in these files",
   "importDetail.schemaRegistryAddedMessagesOnValue0":
     "Schema Registry added: messages on {value0} use Avro or Protobuf",
@@ -351,7 +361,8 @@ const en = {
   "importDetail.aValue0WithNoName": "a {value0} with no name",
   "importDetail.theseFilesHoldMoreThanValue0More":
     "These files hold more than {value0, plural, one {# resources} other {# resources}}; one import reads at most that many.",
-  "importDetail.theresNothingToDrawNoKubernetes": "There's nothing to draw: no Kubernetes resources were found.",
+  "importDetail.theresNothingToDrawNoKubernetes":
+    "There's nothing to draw: no Kubernetes resources were found.",
   "importDetail.foldedIntoItsOwner": "folded into its owner",
   "importDetail.shownThroughItsTopics": "shown through its topics",
   "importDetail.value0AServiceWithValue1In":
@@ -366,8 +377,10 @@ const en = {
     "{value0} scales from {value1, number} to {value2, plural, one {# replicas} other {# replicas}} (HorizontalPodAutoscaler)",
   "importDetail.settingsPastTheFirstValue0Number":
     "Settings past the first {value0, number} weren't read for connections (ConfigMaps shared by many workloads count each time)",
-  "importDetail.itsACLsArentDrawnNoWorkload": "its ACLs aren't drawn: no workload in these files uses its Secret",
-  "importDetail.value0KafkaUserMayValue1value2NotDrawn": "{value0} (KafkaUser) may {value1}{value2}: not drawn",
+  "importDetail.itsACLsArentDrawnNoWorkload":
+    "its ACLs aren't drawn: no workload in these files uses its Secret",
+  "importDetail.value0KafkaUserMayValue1value2NotDrawn":
+    "{value0} (KafkaUser) may {value1}{value2}: not drawn",
   "importDetail.shownAsItsWorkloadsFlows": "shown as its workloads' flows",
   "importDetail.noWorkloadUsesIt": "no workload uses it",
   "importDetail.notAComponent": "not a component",
@@ -379,10 +392,13 @@ const en = {
   "importDetail.value0IsntTerraformJSON": "{value0} isn't Terraform JSON.",
   "importDetail.value0IsTerraformJSONFormatValue1":
     "{value0} is Terraform JSON format {value1}; only format 1 is read.",
-  "importDetail.connectionsFromSubscriptionsMappingsAndGrants": "Connections from subscriptions, mappings and grants",
-  "importDetail.modulesNestedMoreThanValue0Deep": "modules nested more than {value0, number} deep aren't read",
+  "importDetail.connectionsFromSubscriptionsMappingsAndGrants":
+    "Connections from subscriptions, mappings and grants",
+  "importDetail.modulesNestedMoreThanValue0Deep":
+    "modules nested more than {value0, number} deep aren't read",
   "importDetail.noTypeOrName": "no type or name",
-  "importDetail.theresNothingToDrawNoTerraform": "There's nothing to draw: no Terraform resources were found.",
+  "importDetail.theresNothingToDrawNoTerraform":
+    "There's nothing to draw: no Terraform resources were found.",
   "importDetail.dataSource": "data source",
   "importDetail.anEmailSMSOrAppSubscription": "an email, SMS or app subscription",
   "importDetail.destroyedByThisPlan": "destroyed by this plan",
@@ -426,21 +442,24 @@ const en = {
   "library.duplicateTitle": "Duplicate {title}",
   "library.deleteTitle": "Delete {title}",
   "fileType.native": "Live Diagrams file",
-  "fileType.open": "Live Diagrams, draw.io, Mermaid, docker-compose, Kubernetes, AsyncAPI and Terraform JSON files",
+  "fileType.open":
+    "Live Diagrams, draw.io, Mermaid, docker-compose, Kubernetes, AsyncAPI and Terraform JSON files",
   "fileType.drawioDiagram": "draw.io diagram",
   "fileType.mermaidFlowchart": "Mermaid flowchart",
   "fileType.dockercomposeFile": "docker-compose file",
   "fileType.asyncAPIDocument": "AsyncAPI document",
   "fileType.kubernetesManifests": "Kubernetes manifests",
   "fileType.terraformPlanOrState": "Terraform plan or state",
-  "password.useAtLeastCountPluralOneCharacter": "Use at least {count, plural, one {# character} other {# characters}}.",
+  "password.useAtLeastCountPluralOneCharacter":
+    "Use at least {count, plural, one {# character} other {# characters}}.",
   "exportToast.drawio":
     "Exported a .drawio file. {private, select, yes {This diagram is private: keep it where your team controls access.} other {Open it at app.diagrams.net or in draw.io Desktop.}}",
   "exportToast.mermaid":
     "Mermaid flowchart copied. {private, select, yes {This diagram is private: keep it where your team controls access.} other {Paste it into GitHub, Notion, Obsidian or mermaid.live.}}",
   "htmlExport.exported":
     "Exported “{name}” ({size}). {locked, select, yes {Only people with the password can open it. Send the password separately.} other {Anyone who has it can open it.}}",
-  "library.keptInThisBrowserSaveOrExport": "Kept in this browser. Save or export a diagram to keep a copy elsewhere.",
+  "library.keptInThisBrowserSaveOrExport":
+    "Kept in this browser. Save or export a diagram to keep a copy elsewhere.",
   "library.browsersGiveEachSiteAbout10MB": "Browsers give each site about 10 MB for everything it keeps.",
   "library.noDiagramsYetStartANewOne":
     "No diagrams yet. Start a new one, or open a file from draw.io, Mermaid or Live Diagrams.",
@@ -457,7 +476,8 @@ const en = {
   "fileToast.exportingImage": "Exporting {format}…",
   "collab.connectionFailed": "Could not connect to this room. Check your connection or try again.",
   "collab.fileFallback": "You can send a diagram file instead. Your edits stay on this page.",
-  "collab.invalidLink": "This room link is damaged or incomplete. Ask for the link again, or open a new room.",
+  "collab.invalidLink":
+    "This room link is damaged or incomplete. Ask for the link again, or open a new room.",
   "collab.newRoom": "Open a new room",
   "collab.notSaved": "Not saved on this device · keep this page open",
   "fileToast.exportedValue0": "Exported {value0}.",
@@ -523,7 +543,8 @@ const en = {
   "cloud.labelSigninIsntSetUpForThisMore":
     "{label} sign-in isn't set up for this address (the redirect URI isn't registered).",
   "cloud.labelSigninExpiredPleaseTryAgain": "{label} sign-in expired. Please try again.",
-  "cloud.labelSigninIsBusyRightNowStatus": "{label} sign-in is busy right now ({status}). Try again in a moment.",
+  "cloud.labelSigninIsBusyRightNowStatus":
+    "{label} sign-in is busy right now ({status}). Try again in a moment.",
   "cloud.couldntReachLabelToActionCheckYour":
     "{action, select, read_the_file_details {Couldn't reach {label} to read the file details. Check your connection.} download_the_file {Couldn't reach {label} to download the file. Check your connection.} save_the_file {Couldn't reach {label} to save the file. Check your connection.} update_the_file {Couldn't reach {label} to update the file. Check your connection.} list_your_diagrams {Couldn't reach {label} to list your diagrams. Check your connection.} read_the_file {Couldn't reach {label} to read the file. Check your connection.} other {Couldn't reach {label} to complete the file operation. Check your connection.}}",
   "cloud.oneDriveRefusedToActionLiveDiagramsCan":
@@ -566,7 +587,8 @@ const en = {
   "embedDialog.inTheLink": "In the link",
   "fileDialog.play": "Play “{title}”",
   "fileDialog.detected": "Detected: {format}",
-  "fileDialog.pagesSubtitle": "“{name}” has {count, plural, one {# pages} other {# pages}}. Which one should open?",
+  "fileDialog.pagesSubtitle":
+    "“{name}” has {count, plural, one {# pages} other {# pages}}. Which one should open?",
   "fileDialog.options": "Options",
   "imageDialog.summary":
     "{kind, select, svg {SVG, scalable} other {PNG, {scale}× resolution{transparent, select, yes {, transparent background} other {}}}}{withTitle, select, yes {} other {, without the title}}",
@@ -597,7 +619,8 @@ const en = {
     "Required scaling sources and consumer-group routes are included automatically, even outside the selected boundaries.",
   "importDetail.scalingSourceOmitted":
     "Scaling was not imported: its broker or consumer-group route is missing. Include them and import again, or choose a supported preset.",
-  "importReport.boundariesDrawn": "Boundaries ({drawn, number} of {total, plural, one {# drawn} other {# drawn}})",
+  "importReport.boundariesDrawn":
+    "Boundaries ({drawn, number} of {total, plural, one {# drawn} other {# drawn}})",
   "importReport.pickLede":
     "It has {count, plural, one {# nodes} other {# nodes}}, more than a diagram reads well, so only some boundaries are drawn. The ones with the most flows come first; tick others to draw them as a new diagram.",
   "importReport.groupCounts":
@@ -605,7 +628,8 @@ const en = {
   "importReport.drawThese": "Draw these ({count, plural, one {# node} other {# nodes}})",
   "importReport.overLimit":
     "{count, plural, one {# nodes ticked} other {# nodes ticked}}, over the {limit} an import draws: untick some.",
-  "importReport.alreadyDrawn": "{count, plural, one {# nodes ticked} other {# nodes ticked}}: these are drawn.",
+  "importReport.alreadyDrawn":
+    "{count, plural, one {# nodes ticked} other {# nodes ticked}}: these are drawn.",
   "importReport.ticked": "{count, plural, one {# nodes ticked} other {# nodes ticked}}.",
   "importReport.stencilFor": "{stencil} for {name}",
   "importReport.anotherStencil": "Another stencil for {name}",
@@ -642,20 +666,25 @@ const en = {
   "fileDialog.import": "Import",
   "fileDialog.diagramText": "Diagram text",
   "fileDialog.openAShareLink": "Open a share link",
-  "fileDialog.itOpensInItsOwnSharedSlot": "It opens in its own “Shared” slot, so your diagrams stay as they are.",
+  "fileDialog.itOpensInItsOwnSharedSlot":
+    "It opens in its own “Shared” slot, so your diagrams stay as they are.",
   "fileDialog.chooseAPage": "Choose a page",
   "fileDialog.exportImage": "Export image",
-  "fileDialog.theWholeDiagramAtFullSizeWhatever": "The whole diagram at full size, whatever part of it is on screen.",
+  "fileDialog.theWholeDiagramAtFullSizeWhatever":
+    "The whole diagram at full size, whatever part of it is on screen.",
   "fileDialog.format": "Format",
   "fileDialog.title": "Title",
   "fileDialog.diagramTitleAndDescription": "Diagram title and description",
   "fileDialog.resolution": "Resolution",
   "fileDialog.background": "Background",
   "fileDialog.transparent": "Transparent",
-  "fileDialog.shareLinkCopiedAnyoneWithTheLink": "Share link copied. Anyone with the link can open the diagram.",
-  "fileDialog.couldntCopyAutomaticallySelectTheLinkAnd": "Couldn't copy automatically. Select the link and copy it.",
+  "fileDialog.shareLinkCopiedAnyoneWithTheLink":
+    "Share link copied. Anyone with the link can open the diagram.",
+  "fileDialog.couldntCopyAutomaticallySelectTheLinkAnd":
+    "Couldn't copy automatically. Select the link and copy it.",
   "fileDialog.embedCodeCopied": "Embed code copied.",
-  "fileDialog.couldntCopyAutomaticallySelectTheCodeAnd": "Couldn't copy automatically. Select the code and copy it.",
+  "fileDialog.couldntCopyAutomaticallySelectTheCodeAnd":
+    "Couldn't copy automatically. Select the code and copy it.",
   "fileDialog.theBrowserDidntAllowReadingTheClipboard":
     "The browser didn't allow reading the clipboard. Paste with Ctrl+V instead.",
   "fileDialog.unrecognisedFormat": "Unrecognised format",
@@ -664,12 +693,14 @@ const en = {
   "passwordLink.theDiagramIsEncryptedInThisBrowser":
     "The diagram is encrypted in this browser before it goes into the link.",
   "passwordLink.copyAgain": "Copy again",
-  "passwordLink.thisLinkIsLongSomeChatApps": "This link is long. Some chat apps and email clients cut long links off.",
+  "passwordLink.thisLinkIsLongSomeChatApps":
+    "This link is long. Some chat apps and email clients cut long links off.",
   "passwordLink.thisDiagramIsPasswordprotected": "This diagram is password-protected",
   "passwordLink.enterThePasswordYouWereGivenIts":
     "Enter the password you were given. It's checked in this browser; nothing is sent anywhere.",
   "passwordLink.password": "Password",
-  "passwordLink.linkWithPasswordCopiedSendThePassword": "Link with password copied. Send the password separately.",
+  "passwordLink.linkWithPasswordCopiedSendThePassword":
+    "Link with password copied. Send the password separately.",
   "passwordLink.encrypting": "Encrypting…",
   "passwordLink.unlocking": "Unlocking…",
   "password.show": "Show",
@@ -725,7 +756,8 @@ const en = {
     "Planning documents require diagrams/v2. Remove planning to retain legacy playback, or export with a current reader.",
   "planning.unsupportedPreset":
     "Node “{id}” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.",
-  "planning.delayInvalid": "Connection “{id}” needs a finite nonnegative networkDelayMs up to {limit, number}.",
+  "planning.delayInvalid":
+    "Connection “{id}” needs a finite nonnegative networkDelayMs up to {limit, number}.",
   "planning.connections": "Connections",
   "planning.consumes": "Consumes {name}",
   "planning.publishes": "Publishes to {name}",
@@ -749,7 +781,8 @@ const en = {
   "planning.configured": "Configured estimate · editable assumptions",
   "planning.summary":
     "{name} handles ~{capacity} ({replicas, plural, one {# replica} other {# replicas}} × {slots, number} slots ÷ {seconds} s) and receives {offered}.",
-  "planning.deviceSummary": "{name} handles ~{capacity} at its configured device size and receives {offered}.",
+  "planning.deviceSummary":
+    "{name} handles ~{capacity} at its configured device size and receives {offered}.",
   "planning.instant": "{name} has no finite processing limit in this model and receives {offered}.",
   "planning.contributor": "{name}: {rate}",
   "planning.via": "{name} through {via}: {rate}",
@@ -784,7 +817,8 @@ const en = {
   "planning.unsettled": "Feedback demand did not settle. These estimates cannot support a capacity fix.",
   "planning.requestRate": "{rate} req/s",
   "planning.model": "Planning model",
-  "planning.legacy": "Legacy playback. Upgrade explicitly to pin today's defaults; opening a file never upgrades it.",
+  "planning.legacy":
+    "Legacy playback. Upgrade explicitly to pin today's defaults; opening a file never upgrades it.",
   "planning.current":
     "Planning revision p1. Lesson values are assumptions; store slots and physical delay are metadata until their model ships.",
   "planning.preview": "Preview model upgrade",
@@ -794,14 +828,16 @@ const en = {
   "planning.unlimited": "no modeled limit",
   "planning.upgrade": "Upgrade and pin defaults",
   "planning.legacyPreview": "Preview legacy export",
-  "planning.losses": "Legacy export removes: {fields}. Pinned numeric values remain; P1 playback is preserved.",
+  "planning.losses":
+    "Legacy export removes: {fields}. Pinned numeric values remain; P1 playback is preserved.",
   "planning.downloadLegacy": "Download legacy file",
   "planning.loading": "Loading throughput explanation…",
   "planning.loadFailed": "The explanation could not be downloaded.",
   "planning.retry": "Retry",
   "live.sourceRateLimit":
     "Continuous traffic needs a higher sampling scale for these source rates. Open Inputs and increase Messages per dot, or lower the source rates.",
-  "live.sourceVolumeLimit": "Continuous traffic reached its 200,000 sampled-message budget. Restart to continue.",
+  "live.sourceVolumeLimit":
+    "Continuous traffic reached its 200,000 sampled-message budget. Restart to continue.",
   "common.close": "Close",
   "common.cancel": "Cancel",
   "common.retry": "Retry",
@@ -933,7 +969,8 @@ const en = {
   "share.embedPublic": "Embed on a public page…",
   "share.embedPublicDesc": "<b>Public:</b> anyone who can see the page can open it.",
   "privateDialog.title": "Private diagram",
-  "privateDialog.subtitle": "It stays on this device. To share it, export Interactive HTML or the diagram file.",
+  "privateDialog.subtitle":
+    "It stays on this device. To share it, export Interactive HTML or the diagram file.",
   "privateDialog.more": "How privacy works",
   "privateDialog.turnOff": "Make not private",
   "privateDialog.keep": "Keep private",
@@ -1066,7 +1103,6 @@ const en = {
   "cloud.busy": "{provider} is busy right now ({status}). Try again in a moment.",
   "cloud.storageFull": "Your {provider} is full, so the file couldn't be saved.",
   "cloud.fileMissing": "That {provider} file no longer exists, or it was moved out of the app folder.",
-
   "ai.theBrowserDidnTAllowCopyingTry": "The browser didn't allow copying. Try again.",
   "ai.theReplyDidnTChangeAnything": "The reply didn't change anything.",
   "ai.checkTheRequestOrAskYourAI": "Check the request, or ask your AI again.",
@@ -1092,7 +1128,8 @@ const en = {
   "ai.pasteTheReply": "Paste the reply",
   "ai.apply": " Apply",
   "ai.thisStencilChoiceIsStaleItsNode": "This stencil choice is stale: its node changed since.",
-  "ai.somethingChangedSinceThisTurnUseRevert": "Something changed since this turn. Use Revert to here instead.",
+  "ai.somethingChangedSinceThisTurnUseRevert":
+    "Something changed since this turn. Use Revert to here instead.",
   "ai.conversationCleared": "Conversation cleared.",
   "ai.undo": "Undo",
   "ai.aI": "AI",
@@ -1128,7 +1165,8 @@ const en = {
   "ai.copyFixUpPrompt": "Copy fix-up prompt",
   "ai.yourAICorrectsItsReplyPasteIt": "Your AI corrects its reply; paste it back below.",
   "ai.tryTheOnDeviceModel": "Try the on-device model",
-  "ai.chromeSBuiltInModelOnThis": "Chrome's built-in model, on this device: a request box at the panel's foot.",
+  "ai.chromeSBuiltInModelOnThis":
+    "Chrome's built-in model, on this device: a request box at the panel's foot.",
   "ai.waysToUseAIHere": "Ways to use AI here",
   "ai.yourBrowserSAIAssistant": "Your browser's AI assistant",
   "ai.copyExampleRequest": "Copy example request",
@@ -1165,7 +1203,8 @@ const en = {
   "ai.didnTCatchThatStillListening": "Didn't catch that. Still listening…",
   "ai.theSpeechServiceCouldnTBeReached":
     "The speech service couldn't be reached. Check your connection, or type instead.",
-  "ai.dictationDoesnTSupportYourBrowserS": "Dictation doesn't support your browser's language yet. Type instead.",
+  "ai.dictationDoesnTSupportYourBrowserS":
+    "Dictation doesn't support your browser's language yet. Type instead.",
   "ai.dictationStoppedUnexpectedlyTryAgain": "Dictation stopped unexpectedly. Try again.",
   "ai.dictationIsOffHereThisBrowserWould":
     "Dictation is off here: this browser would send your voice to its speech service, and this diagram is private.",
@@ -1191,7 +1230,8 @@ const en = {
   "ai.privateOff": "AI is off for this private diagram",
   "ai.emptyType":
     "Type a change below, or ask an AI agent. Each change appears here, and you can undo or revert any of them.",
-  "ai.emptyAgent": "Ask an AI agent to change it. Each change appears here, and you can undo or revert any of them.",
+  "ai.emptyAgent":
+    "Ask an AI agent to change it. Each change appears here, and you can undo or revert any of them.",
   "ai.emptyDevice":
     "Type a change below: Chrome's built-in model makes it on this device, and each change appears here, with Undo. AI agents and copied prompts are turned off here.",
   "ai.emptyDeviceOff":
@@ -1214,7 +1254,8 @@ const en = {
   "ai.localToolsOff": "The page's tools are off for this local-only diagram.",
   "ai.publishedTools":
     "This page publishes {count, plural, one {{count} tools} other {{count} tools}} for AI agents in this browser (WebMCP).",
-  "ai.agentRequestHint": "Your browser's assistant must support WebMCP to use them. Type your request there, not here.",
+  "ai.agentRequestHint":
+    "Your browser's assistant must support WebMCP to use them. Type your request there, not here.",
   "ai.noWebMCP": "No WebMCP in this browser. Agents that drive pages can read <link>llms.txt</link>.",
   "ai.listeningLocal": "Listening on this device…",
   "ai.listeningService": "Listening…",
@@ -1446,7 +1487,8 @@ const en = {
   "chrome.azureServicesAndMicrosoftProducts": "Azure services and Microsoft products",
   "chrome.amazonWebServices": "Amazon Web Services",
   "chrome.googleCloudServices": "Google Cloud services",
-  "chrome.kafkaPulsarRabbitMQNATSCDCAndStreamProcessors": "Kafka, Pulsar, RabbitMQ, NATS, CDC and stream processors",
+  "chrome.kafkaPulsarRabbitMQNATSCDCAndStreamProcessors":
+    "Kafka, Pulsar, RabbitMQ, NATS, CDC and stream processors",
   "chrome.databasesRuntimesOrchestrationAndToolingYouCanSelfHost":
     "Databases, runtimes, orchestration and tooling you can self-host",
   "chrome.hostedPlatformsDataObservabilityIdentityPaymentsMessagingAndAIAPIs":
@@ -1469,7 +1511,8 @@ const en = {
   "chrome.snapping": "Snapping",
   "chrome.minimap": "Minimap",
   "chrome.inspector": "Inspector",
-  "chrome.deleteValueItemsOtherValueItems": "Delete {count, plural, one {{count} items} other {{count} items}}",
+  "chrome.deleteValueItemsOtherValueItems":
+    "Delete {count, plural, one {{count} items} other {{count} items}}",
   "chrome.delete": "Delete",
   "chrome.editText": "Edit text",
   "chrome.request": "Request",
@@ -1580,8 +1623,10 @@ const en = {
   "chrome.movedTheTextOffANode": "Moved the text off a node.",
   "chrome.movedTheTextOffAnEdge": "Moved the text off an edge.",
   "chrome.theBoundary": "the boundary",
-  "chrome.addedValueOtherValueNodesToValue": "Added {count, plural, one {1 node} other {{count} nodes}} to {name}",
-  "chrome.tookValueOtherValueNodesOutOfValue": "Took {count, plural, one {1 node} other {{count} nodes}} out of {name}",
+  "chrome.addedValueOtherValueNodesToValue":
+    "Added {count, plural, one {1 node} other {{count} nodes}} to {name}",
+  "chrome.tookValueOtherValueNodesOutOfValue":
+    "Took {count, plural, one {1 node} other {{count} nodes}} out of {name}",
   "chrome.addedValueOtherValueNodesToValueAndTookValue":
     "Added {count, plural, one {1 node} other {{count} nodes}} to {name} and took {released, plural, one {{released}} other {{released}}} out",
   "chrome.fitViewValue": "Fit view ({combo})",
@@ -1632,14 +1677,16 @@ const en = {
     "Receives a message, does its work, then forwards the result to every outgoing connection.",
   "gallery.passesRequestsThroughToWhateverSitsBehindItWithoutHolding":
     "Passes requests through to whatever sits behind it, without holding on to them.",
-  "gallery.persistsWhatArrivesMessagesEndTheirJourneyHere": "Persists what arrives. Messages end their journey here.",
+  "gallery.persistsWhatArrivesMessagesEndTheirJourneyHere":
+    "Persists what arrives. Messages end their journey here.",
   "gallery.aTerminalConsumerMessagesEndHereWithoutBeingStoredLike":
     "A terminal consumer. Messages end here without being stored, like email delivery or monitoring.",
   "gallery.decorativeItIsnTPartOfTheMessageFlowSo":
     "Decorative. It isn't part of the message flow, so the simulation passes over it.",
   "gallery.microsoftIconTermsUseInArchitectureDiagramsUnaltered":
     "Microsoft icon terms: use in architecture diagrams, unaltered",
-  "gallery.aWSIconTermsUseInArchitectureDiagramsUnaltered": "AWS icon terms: use in architecture diagrams, unaltered",
+  "gallery.aWSIconTermsUseInArchitectureDiagramsUnaltered":
+    "AWS icon terms: use in architecture diagrams, unaltered",
   "gallery.apache20OrCCBY40": "Apache-2.0 or CC BY 4.0",
   "gallery.cCBY40AttributionRequired": "CC BY 4.0, attribution required",
   "gallery.cC0ArtworkTheLogoIsItsOwnerSTrademark": "CC0 artwork; the logo is its owner's trademark",
@@ -1675,7 +1722,8 @@ const en = {
   "broker.groupHint": "Same name: competing readers.",
   "broker.fanout": "One copy per named route.",
   "broker.current": "p2",
-  "broker.upgradePreview": "p2: broker allocation may change. Compare below; Undo restores the previous model.",
+  "broker.upgradePreview":
+    "p2: broker allocation may change. Compare below; Undo restores the previous model.",
   "broker.exportLoss": "Legacy export changes broker allocation.",
   "broker.wrapper": "Infrastructure. Model traffic on a topic.",
   "broker.named": "{kind}: {name}",
@@ -1691,18 +1739,22 @@ const en = {
   "stencil.kafkaClusterName": "Kafka Cluster",
   "stencil.kafkaClusterDescription": "A set of Kafka brokers hosting topics and partitions.",
   "stencil.subtitleCluster": "cluster",
-  "stencil.kafkaConnectDescription": "Source/sink connectors streaming data between Kafka and external systems.",
+  "stencil.kafkaConnectDescription":
+    "Source/sink connectors streaming data between Kafka and external systems.",
   "stencil.subtitleConnector": "connector",
   "stencil.kafkaSchemaRegistryName": "Schema Registry",
   "stencil.kafkaSchemaRegistryDescription": "Central store of Avro/Protobuf/JSON schemas for Kafka topics.",
   "stencil.subtitleSchemas": "schemas",
-  "stencil.kafkaKsqldbDescription": "Streaming SQL engine for filtering, joining and aggregating Kafka topics.",
+  "stencil.kafkaKsqldbDescription":
+    "Streaming SQL engine for filtering, joining and aggregating Kafka topics.",
   "stencil.subtitleStreamProcessor": "stream processor",
   "stencil.azureServiceBusQueueName": "Service Bus Queue",
-  "stencil.azureServiceBusQueueDescription": "Durable point-to-point queue with sessions, DLQ and competing consumers.",
+  "stencil.azureServiceBusQueueDescription":
+    "Durable point-to-point queue with sessions, DLQ and competing consumers.",
   "stencil.subtitleQueue": "queue",
   "stencil.azureServiceBusTopicName": "Service Bus Topic",
-  "stencil.azureServiceBusTopicDescription": "Pub/sub topic; each subscription receives its own copy of every message.",
+  "stencil.azureServiceBusTopicDescription":
+    "Pub/sub topic; each subscription receives its own copy of every message.",
   "stencil.azureEventHubsDescription": "Partitioned big-data event streaming service (Kafka-compatible).",
   "stencil.subtitleEventHub": "event hub",
   "stencil.azureEventGridDescription": "Serverless event routing with push delivery and filtering.",
@@ -1720,7 +1772,8 @@ const en = {
   "stencil.subtitleStream": "stream",
   "stencil.gcpPubsubDescription": "Global managed pub/sub messaging.",
   "stencil.natsSubjectName": "NATS Subject",
-  "stencil.natsSubjectDescription": "Lightweight subject-based pub/sub (optionally persisted with JetStream).",
+  "stencil.natsSubjectDescription":
+    "Lightweight subject-based pub/sub (optionally persisted with JetStream).",
   "stencil.subtitleSubject": "subject",
   "stencil.redisStreamName": "Redis Stream",
   "stencil.redisStreamDescription": "Append-only log with consumer groups inside Redis.",
@@ -1732,7 +1785,8 @@ const en = {
   "stencil.subtitleStreamApp": "stream app",
   "stencil.debeziumDescription": "Change data capture: turns database row changes into an event stream.",
   "stencil.pulsarTopicName": "Pulsar Topic",
-  "stencil.pulsarTopicDescription": "Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions.",
+  "stencil.pulsarTopicDescription":
+    "Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions.",
   "stencil.mqttBrokerName": "MQTT Broker",
   "stencil.mqttBrokerDescription":
     "Lightweight pub/sub for devices (Mosquitto, EMQX, HiveMQ); every subscriber to a topic gets a copy.",
@@ -1771,18 +1825,21 @@ const en = {
   "stencil.servicePythonDescription": "Microservice built with Python (FastAPI, Django, ...).",
   "stencil.serviceGoName": "Go Service",
   "stencil.serviceGoDescription": "Microservice written in Go.",
-  "stencil.flinkDescription": "Stateful stream and batch processing with event-time windows and exactly-once state.",
+  "stencil.flinkDescription":
+    "Stateful stream and batch processing with event-time windows and exactly-once state.",
   "stencil.subtitleStreamJob": "stream job",
   "stencil.gcpDataflowDescription": "Managed Apache Beam pipelines for streaming and batch data.",
   "stencil.subtitlePipeline": "pipeline",
-  "stencil.temporalDescription": "Durable workflow engine: code-defined workflows that survive crashes and retries.",
+  "stencil.temporalDescription":
+    "Durable workflow engine: code-defined workflows that survive crashes and retries.",
   "stencil.camundaDescription": "BPMN process orchestration across services, people and systems.",
   "stencil.subtitleProcess": "process",
   "stencil.airflowDescription": "Schedules and runs data pipelines defined as Python DAGs.",
   "stencil.gcpCloudRunDescription": "Serverless containers that scale to zero on Google Cloud.",
   "stencil.gcpCloudFunctionsDescription": "Event-driven serverless functions on Google Cloud.",
   "stencil.gcpGkeDescription": "Google Kubernetes Engine: managed Kubernetes clusters.",
-  "stencil.azureStaticWebAppsDescription": "Global static front-end hosting with an integrated serverless API.",
+  "stencil.azureStaticWebAppsDescription":
+    "Global static front-end hosting with an integrated serverless API.",
   "stencil.subtitleWebApp": "web app",
   "stencil.vercelDescription": "Front-end cloud: deploys web apps with edge and serverless functions.",
   "stencil.netlifyDescription": "Hosts web front ends with serverless and edge functions.",
@@ -1834,7 +1891,8 @@ const en = {
   "stencil.subtitleVectorIndex": "vector index",
   "stencil.azureDataFactoryDescription": "Managed ETL/ELT pipelines that move and transform data.",
   "stencil.azureSynapseDescription": "Analytics service combining a SQL data warehouse with Spark.",
-  "stencil.microsoftFabricDescription": "SaaS analytics platform with OneLake, warehousing and real-time intelligence.",
+  "stencil.microsoftFabricDescription":
+    "SaaS analytics platform with OneLake, warehousing and real-time intelligence.",
   "stencil.azureApiManagementDescription": "API gateway with policies, auth, quotas and a developer portal.",
   "stencil.subtitleGateway": "gateway",
   "stencil.azureFrontDoorDescription": "Global edge load balancer, CDN and WAF.",
@@ -1870,7 +1928,8 @@ const en = {
   "stencil.subtitleEdgeRouter": "edge router",
   "stencil.juniperMxDescription": "Universal routing platform for the data-centre and service-provider edge.",
   "stencil.genericSwitchName": "Switch",
-  "stencil.genericSwitchDescription": "Connects hosts on a network: access, core, or a data centre's leaf and spine.",
+  "stencil.genericSwitchDescription":
+    "Connects hosts on a network: access, core, or a data centre's leaf and spine.",
   "stencil.subtitleSwitch": "switch",
   "stencil.ciscoCatalystDescription": "Campus access and core switches (Catalyst 9200, 9300, 9500).",
   "stencil.subtitleCampusSwitch": "campus switch",
@@ -1887,18 +1946,23 @@ const en = {
   "stencil.genericNgfwDescription":
     "A firewall appliance in your rack: allows or denies each connection, inspects what it allows.",
   "stencil.subtitleAppliance": "appliance",
-  "stencil.paloaltoNgfwDescription": "PA-Series next-generation firewalls (PA-440 branch to PA-5440 data centre).",
-  "stencil.fortinetFortigateDescription": "Next-generation firewalls with SD-WAN built in (FortiGate 70G to 3700F).",
+  "stencil.paloaltoNgfwDescription":
+    "PA-Series next-generation firewalls (PA-440 branch to PA-5440 data centre).",
+  "stencil.fortinetFortigateDescription":
+    "Next-generation firewalls with SD-WAN built in (FortiGate 70G to 3700F).",
   "stencil.ciscoSecureFirewallDescription":
     "Firepower Threat Defense and ASA firewalls (Secure Firewall 1200, 3100 and 4200 series).",
-  "stencil.checkpointQuantumDescription": "Quantum Force security gateways (3920 branch to 19100 data centre).",
+  "stencil.checkpointQuantumDescription":
+    "Quantum Force security gateways (3920 branch to 19100 data centre).",
   "stencil.subtitleSecurityGateway": "security gateway",
   "stencil.juniperSrxDescription": "SRX firewalls and secure routers (SRX345 branch to SRX4600 data centre).",
   "stencil.subtitleFirewall": "firewall",
   "stencil.genericAdcDescription":
     "Application delivery controller: a hardware or virtual load balancer that health-checks its targets.",
-  "stencil.f5BigipDescription": "BIG-IP Local Traffic Manager on rSeries (r2600 to r10900), VELOS or virtual editions.",
-  "stencil.netscalerAdcDescription": "NetScaler (formerly Citrix ADC) on MPX, SDX or VPX (MPX 9210 to 17000Z).",
+  "stencil.f5BigipDescription":
+    "BIG-IP Local Traffic Manager on rSeries (r2600 to r10900), VELOS or virtual editions.",
+  "stencil.netscalerAdcDescription":
+    "NetScaler (formerly Citrix ADC) on MPX, SDX or VPX (MPX 9210 to 17000Z).",
   "stencil.grafanaDescription": "Dashboards and alerting over metrics, logs and traces.",
   "stencil.subtitleDashboards": "dashboards",
   "stencil.prometheusDescription": "Pull-based metrics collection and time-series database.",
@@ -1907,7 +1971,8 @@ const en = {
   "stencil.azureAppInsightsDescription": "APM and telemetry for apps, part of Azure Monitor.",
   "stencil.subtitleTelemetry": "telemetry",
   "stencil.opentelemetryName": "OpenTelemetry Collector",
-  "stencil.opentelemetryDescription": "Vendor-neutral pipeline that receives, processes and exports telemetry.",
+  "stencil.opentelemetryDescription":
+    "Vendor-neutral pipeline that receives, processes and exports telemetry.",
   "stencil.subtitleCollector": "collector",
   "stencil.splunkDescription": "Log search, SIEM and observability.",
   "stencil.subtitleLogs": "logs",
@@ -1918,7 +1983,8 @@ const en = {
   "stencil.newRelicDescription": "Hosted observability: APM, logs, infrastructure and browser monitoring.",
   "stencil.sentryDescription": "Error tracking and performance monitoring for apps.",
   "stencil.subtitleErrors": "errors",
-  "stencil.awsCloudwatchDescription": "AWS logs, metrics, alarms and dashboards; where Lambda writes by default.",
+  "stencil.awsCloudwatchDescription":
+    "AWS logs, metrics, alarms and dashboards; where Lambda writes by default.",
   "stencil.subtitleLogsMetrics": "logs · metrics",
   "stencil.azureKeyVaultDescription": "Managed secrets, keys and certificates.",
   "stencil.entraIdDescription": "Identity provider (formerly Azure AD): OAuth/OIDC tokens.",
@@ -1927,12 +1993,14 @@ const en = {
   "stencil.oktaDescription": "Cloud identity provider for SSO, MFA and user lifecycle.",
   "stencil.auth0Description": "Customer identity platform for login, social sign-in and tokens.",
   "stencil.keycloakDescription": "Open-source identity and access management (OIDC, SAML).",
-  "stencil.azureAppConfigDescription": "Central settings and feature flags; an entry can reference a Key Vault secret.",
+  "stencil.azureAppConfigDescription":
+    "Central settings and feature flags; an entry can reference a Key Vault secret.",
   "stencil.subtitleConfigStore": "config store",
   "stencil.azureManagedIdentityDescription":
     "An Entra identity for a workload, with no stored credentials (also AKS workload identity).",
   "stencil.subtitleWorkloadIdentity": "workload identity",
-  "stencil.awsSecretsManagerDescription": "Stores and rotates secrets such as database credentials and API keys.",
+  "stencil.awsSecretsManagerDescription":
+    "Stores and rotates secrets such as database credentials and API keys.",
   "stencil.subtitleSecrets": "secrets",
   "stencil.awsParameterStoreDescription":
     "Systems Manager parameters; /aws/reference/secretsmanager/ paths pass through to Secrets Manager.",
@@ -1943,7 +2011,8 @@ const en = {
     "A Google Cloud identity a workload runs as (GKE Workload Identity), granted IAM roles.",
   "stencil.subtitleServiceAccount": "service account",
   "stencil.gcpSecretManagerDescription": "Google Cloud's store for API keys, passwords and certificates.",
-  "stencil.k8sConfigmapDescription": "Non-secret settings mounted into pods as files or environment variables.",
+  "stencil.k8sConfigmapDescription":
+    "Non-secret settings mounted into pods as files or environment variables.",
   "stencil.k8sSecretName": "Kubernetes Secret",
   "stencil.k8sSecretDescription": "Secret values mounted into pods; often synced from a vault.",
   "stencil.subtitleSecret": "secret",
@@ -1959,14 +2028,17 @@ const en = {
   "stencil.clientIotDescription": "Sensor or edge device emitting telemetry.",
   "stencil.subtitleDevice": "device",
   "stencil.clientTeamName": "Team",
-  "stencil.clientTeamDescription": "A group of users, such as operators, support staff or a customer segment.",
+  "stencil.clientTeamDescription":
+    "A group of users, such as operators, support staff or a customer segment.",
   "stencil.subtitleUsers": "users",
   "stencil.genericExternalApiName": "External API",
   "stencil.genericExternalApiDescription": "A third-party HTTP API your system calls.",
-  "stencil.iterableDescription": "Customer engagement API for events, user profiles and cross-channel campaigns.",
+  "stencil.iterableDescription":
+    "Customer engagement API for events, user profiles and cross-channel campaigns.",
   "stencil.subtitleEngagementAPI": "engagement API",
   "stencil.brazeDescription": "Customer engagement API for user updates, events and messaging campaigns.",
-  "stencil.segmentDescription": "Customer data API collecting events and routing them to connected destinations.",
+  "stencil.segmentDescription":
+    "Customer data API collecting events and routing them to connected destinations.",
   "stencil.subtitleCustomerDataAPI": "customer data API",
   "stencil.shopifyDescription": "Commerce API for store products, orders and customer data.",
   "stencil.subtitleCommerceAPI": "commerce API",
@@ -2028,7 +2100,8 @@ const en = {
   "stencil.genericSearchIndexName": "Search Index",
   "stencil.genericSearchIndexDescription": "Full-text index for search queries.",
   "stencil.genericVectorDbName": "Vector DB",
-  "stencil.genericVectorDbDescription": "Stores embeddings for similarity search (pgvector, Weaviate, Qdrant).",
+  "stencil.genericVectorDbDescription":
+    "Stores embeddings for similarity search (pgvector, Weaviate, Qdrant).",
   "stencil.subtitleVectors": "vectors",
   "stencil.genericMlModelName": "ML Model",
   "stencil.genericMlModelDescription": "A trained model served for inference.",
@@ -2042,9 +2115,11 @@ const en = {
   "stencil.genericSecretStoreDescription": "Any secrets manager or vault.",
   "stencil.genericIdentityProviderName": "Identity Provider",
   "stencil.genericIdentityProviderDescription": "Issues OAuth 2.0 / OIDC tokens to users and workloads.",
-  "stencil.dbtDescription": "SQL transformations that build tested models (staging, marts) inside the warehouse.",
+  "stencil.dbtDescription":
+    "SQL transformations that build tested models (staging, marts) inside the warehouse.",
   "stencil.subtitleModels": "models",
-  "stencil.airbyteDescription": "Open-source ELT connectors that copy SaaS and database tables into a warehouse.",
+  "stencil.airbyteDescription":
+    "Open-source ELT connectors that copy SaaS and database tables into a warehouse.",
   "stencil.snowflakeSnowpipeDescription":
     "Loads rows into Snowflake tables continuously, e.g. from the Snowflake Kafka connector.",
   "stencil.subtitleLoader": "loader",
@@ -2055,7 +2130,8 @@ const en = {
   "stencil.gcpCloudStorageDescription": "Object storage buckets on Google Cloud.",
   "stencil.lookerDescription": "BI dashboards and a semantic model.",
   "stencil.tableauDescription": "BI dashboards and visual analytics.",
-  "stencil.awsRoute53Description": "DNS with health checks and latency, weighted or failover routing across regions.",
+  "stencil.awsRoute53Description":
+    "DNS with health checks and latency, weighted or failover routing across regions.",
   "stencil.azureTrafficManagerDescription": "DNS-based global traffic routing with endpoint health checks.",
   "stencil.subtitleGlobalRouting": "global routing",
   "stencil.gcpCloudLoadBalancingDescription": "Global anycast load balancer in front of regional backends.",
@@ -2065,13 +2141,16 @@ const en = {
     "Append-only log of domain events per aggregate; projections subscribe and catch up.",
   "stencil.subtitleEventStore": "event store",
   "stencil.genericProjectionName": "Projection",
-  "stencil.genericProjectionDescription": "Builds a read model from events. Rebuild it any time by replaying the log.",
+  "stencil.genericProjectionDescription":
+    "Builds a read model from events. Rebuild it any time by replaying the log.",
   "stencil.subtitleProjection": "projection",
   "stencil.genericSagaName": "Saga Orchestrator",
-  "stencil.genericSagaDescription": "Coordinates a multi-step transaction and runs compensating steps when one fails.",
+  "stencil.genericSagaDescription":
+    "Coordinates a multi-step transaction and runs compensating steps when one fails.",
   "stencil.subtitleSaga": "saga",
   "stencil.genericRateLimiterName": "Rate Limiter",
-  "stencil.genericRateLimiterDescription": "Caps throughput (token bucket); work over the limit waits its turn.",
+  "stencil.genericRateLimiterDescription":
+    "Caps throughput (token bucket); work over the limit waits its turn.",
   "stencil.subtitleRateLimit": "rate limit",
   "stencil.vendorGeneric": "Generic",
   "stencil.vendorClient": "Client",
@@ -2125,7 +2204,8 @@ const en = {
   "routing.mixHeading": "Traffic mix",
   "routing.dormantTable":
     "A route table is kept in the file, but this stencil doesn't route HTTP requests, so it doesn't change the run.",
-  "routing.dormantMix": "A traffic mix is kept in the file, but only a source sends one, so it doesn't change the run.",
+  "routing.dormantMix":
+    "A traffic mix is kept in the file, but only a source sends one, so it doesn't change the run.",
   "routing.markerCircle": "circle",
   "routing.markerSquare": "square",
   "routing.markerDiamond": "diamond",
@@ -2190,7 +2270,8 @@ const en = {
   "routing.undo": "Undo",
   "routing.noConnections": "Connect this node to a service first: rules send requests over its connections.",
   "routing.addMix": "Add traffic mix…",
-  "routing.addMixHint": "A traffic mix sends several request routes from this source, each with its share or rate.",
+  "routing.addMixHint":
+    "A traffic mix sends several request routes from this source, each with its share or rate.",
   "routing.mixMode": "Mix by",
   "routing.shares": "Share",
   "routing.rates": "Rate",
@@ -2232,7 +2313,8 @@ const en = {
   "routing.splitShare": "{share, number, percent} split",
   "routing.notFound": "no route: rejected 404",
   "routing.noTarget": "no eligible connection: rejected 404",
-  "routing.tableNotCopied": "The copy of {routers} has no route table: not all of its connections were copied.",
+  "routing.tableNotCopied":
+    "The copy of {routers} has no route table: not all of its connections were copied.",
   "routing.matchMore": "Host, headers and query",
   "routing.rateLimitFold": "Rate limit",
   "routing.ruleNamed": "rule {n, number} ({name})",
@@ -2250,7 +2332,8 @@ const en = {
   "examples.themeReliability": "Reliability",
   "autoscaling.cpuBudget":
     "Too much simultaneous CPU work. New messages are waiting. Reduce traffic or restart with smaller fleets or less startup jitter.",
-  "autoscaling.budget": "Resource lifecycle budget exceeded: {limit, number}. Reduce configured fleets or Capacity ×.",
+  "autoscaling.budget":
+    "Resource lifecycle budget exceeded: {limit, number}. Reduce configured fleets or Capacity ×.",
   "autoscaling.bindingInvalid":
     "This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.",
   "autoscaling.bindingRequired":
@@ -2322,7 +2405,8 @@ const en = {
   "autoscaling.rows": "Per-replica resources",
   "autoscaling.estimated": "Sampled per-replica values are estimates.",
   "autoscaling.page": "Page {page, number}",
-  "autoscaling.state": "{state, select, ready {Ready} starting {Starting} draining {Draining} other {Unknown}}",
+  "autoscaling.state":
+    "{state, select, ready {Ready} starting {Starting} draining {Draining} other {Unknown}}",
   "autoscaling.chart": "Replica count over simulation time: ready (solid), desired (dashed).",
   "autoscaling.upgrade": "Preview resources and HPA model",
   "autoscaling.model": "p3-a1 · resources and HPA",
@@ -2330,10 +2414,12 @@ const en = {
     "Preserves current workloads and saved actions. Resource costs are added only when you choose a lesson.",
   "autoscaling.checkTitle": "{name}: resource planning",
   "autoscaling.checkMemory": "Configured peak memory exceeds the limit. OOM/restart is not simulated.",
-  "autoscaling.checkInvalid": "HPA needs valid resource requests and a compatible workload. Review Advanced settings.",
+  "autoscaling.checkInvalid":
+    "HPA needs valid resource requests and a compatible workload. Review Advanced settings.",
   "autoscaling.checkMax":
     "HPA needs {needed, number} at target; maximum {max, number}. Startup and partition limits still apply.",
-  "autoscaling.checkWhy": "Configured resource assumptions; this is a steady-state estimate, not a burst guarantee.",
+  "autoscaling.checkWhy":
+    "Configured resource assumptions; this is a steady-state estimate, not a burst guarantee.",
   "autoscaling.whyLabel": "Why",
   "autoscaling.badge": "Ready: {ready, number} → Desired: {desired, number}",
   "autoscaling.modelRequired": "Resources and HPA require the p3-a1 model. Preview the model upgrade first.",
@@ -2347,7 +2433,8 @@ const en = {
   "autoscaling.drainingBadge": "Ready: {ready, number} · Draining: {draining, number}",
   "autoscaling.cpuName": "CPU",
   "autoscaling.hpaName": "Kubernetes HPA",
-  "autoscaling.range": "Replica range · Initial: {initial, number} · Minimum: {min, number} · Maximum: {max, number}",
+  "autoscaling.range":
+    "Replica range · Initial: {initial, number} · Minimum: {min, number} · Maximum: {max, number}",
   "autoscaling.cloudPreset":
     "{platform} · {variant, select, cpu {CPU target} alb {ALB requests} step {Step scaling} http {HTTP requests} event {Event rule} rules {Scale rules} other {Concurrency}}",
   "autoscaling.cloudReason":
@@ -2434,7 +2521,8 @@ const en = {
   "staticSkill.imageLabel": "Image",
   "staticSkill.image": "{label}: it tells you how to export one from the app.",
   "staticSkill.linkLabel": "Share link",
-  "staticSkill.link": "{label}: anyone who has the link can open the diagram, so private diagrams never get one.",
+  "staticSkill.link":
+    "{label}: anyone who has the link can open the diagram, so private diagrams never get one.",
   "staticSkill.claudeCommands": "Run these two commands in Claude Code:",
   "staticSkill.claudeApps": "Claude apps (claude.ai, desktop)",
   "staticSkill.settings": "Settings > Capabilities > Skills",
@@ -2518,8 +2606,10 @@ const en = {
   "collab.saveRoomData": "Save room data",
   "collab.targetRemoved": "The element you were editing was removed by a peer.",
   "collab.controlRemoved": "A peer changed the properties you were editing. Focus returned to the canvas.",
-  "collab.refusedKey": "Your last change was undone: a field name is too long for a room. Shorten it and try again.",
-  "collab.refusedText": "Your last change was undone: its text is too long for a room. Shorten it or save a file copy.",
+  "collab.refusedKey":
+    "Your last change was undone: a field name is too long for a room. Shorten it and try again.",
+  "collab.refusedText":
+    "Your last change was undone: its text is too long for a room. Shorten it or save a file copy.",
   "collab.refusedDepth":
     "Your last change was undone: a value is nested too deeply for a room. Simplify it or save a file copy.",
   "collab.refusedSize":
@@ -2541,5 +2631,36 @@ const en = {
   "collab.storageUnavailable": "Could not save on this device. Keep this page open and save a file copy.",
   "collab.labOnly":
     "Lab only: an invented room over a local test transport. Keep the recovery link to reopen your local copy or connect another tab. Local copies expire after 30 days; the oldest are evicted past 16 rooms or 64 MiB. Room keys are never stored by the app.",
+  "fault.droppedCount": "{count, plural, one {# message dropped} other {# messages dropped}}",
+  "fault.restoreBoundaryFirst": "Restore {boundary} first.",
+  "fault.marker": "{action}: {target}",
+  "fault.menu": "Fault",
+  "fault.takeDown": "Take down",
+  "fault.restore": "Restore",
+  "fault.slow": "Slow down",
+  "fault.fail": "Fail",
+  "fault.factor": "{factor}×",
+  "fault.rate": "{rate}%",
+  "fault.cut": "Cut link",
+  "fault.reconnect": "Restore link",
+  "fault.clear": "Clear slowdown and failures",
+  "fault.action": "Fault",
+  "fault.kind": "Fault kind",
+  "fault.target": "Target",
+  "fault.normal": "Normal",
+  "fault.noFailures": "No injected failures",
+  "fault.zoneOutage": "Zone outage",
+  "fault.regionConnectivity": "Region connectivity",
+  "fault.slowDependency": "Slow dependency",
+  "fault.errorSpike": "Error spike",
+  "fault.drill": "Drill: {name}",
+  "fault.addStep": "Add step",
+  "fault.note": "Note",
+  "fault.presets": "Drill presets",
+  "fault.boundary": "Boundary outage",
+  "fault.link": "Link partition",
+  "fault.magnitude": "Magnitude",
+  "fault.invalidTarget": "Fault target “{target}” is missing or cannot take this fault.",
+  "examples.faultDrills": "Fault drills",
 } as const;
 export default en;

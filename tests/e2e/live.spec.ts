@@ -134,6 +134,7 @@ async function openNodeMenu(page: Page, nodeId: string, actionId?: string, click
   await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
   await expect(page.getByTestId("context-menu")).toBeVisible();
   if (!actionId) return;
+  if (actionId === "sim.kill") await menuItem(page, "sim.fault").click();
   if (click) await menuItem(page, actionId).click();
   else await expect(menuItem(page, actionId)).toBeVisible();
 }
@@ -413,7 +414,7 @@ test.describe("live view", () => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "inventory", "sim.storm");
     await page.getByTestId("sim-panel-section-timeline-toggle").click();
-    await page.getByTestId("sim-panel-add-step").click();
+    await page.getByTestId("sim-panel-add-step").selectOption("note");
     const action = page.getByTestId("sim-panel-step-0-action");
     await expect(action).toHaveAccessibleName("Action");
     await action.selectOption("status");

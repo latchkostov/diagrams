@@ -122,7 +122,7 @@ export interface SimEvent {
   text: string;
 }
 
-export type SimFrame = Pick<SimSnapshot, "time" | "particles" | "nodes" | "inSystem" | "scale" | "routes">;
+export type SimFrame = Pick<SimSnapshot, "time" | "particles" | "nodes" | "inSystem" | "scale" | "routes" | "faults">;
 
 /** Converted message counts/rates; the tag makes this view explicit and prevents repeat conversion. */
 export type RealNodeMetrics = NodeSimState & { readonly units: "real" };
@@ -142,6 +142,8 @@ export interface SimulationUnits {
 
 /** Native engine snapshot: every message count/rate (nodes, edges, inSystem) is sampled. */
 export interface SimSnapshot {
+  /** Active runtime overlays, omitted for an ordinary run. Included in checkpoints. */
+  faults?: import("../model/faults").Fault[];
   /** Real messages per simulated message. Default 1. */
   scale?: number;
   /** Simulation clock in ms (scaled by speed). */
@@ -412,6 +414,7 @@ export interface SimEngine {
   setCapacityMultiplier(multiplier: number): void;
   /** Inject `count` sampled messages. For real counts use SimulationRun.inject. */
   inject(nodeId: string, count: number, opts?: InjectOptions): void;
+  setFault(fault: import("../model/faults").Fault): void;
   setNodeStatus(nodeId: string, status: NodeStatus): void;
   setNodeProps(nodeId: string, patch: NodeSimProps): void;
   /** Preflight ordered lifecycle edits without copying or mutating playback state. */
@@ -461,7 +464,7 @@ export interface ExpectationState {
 
 export interface TimelineMarker {
   atMs: number;
-  kind: "note" | "status" | "props" | "inject" | "trace" | "traffic";
+  kind: "note" | "status" | "props" | "inject" | "trace" | "traffic" | "fault";
   label: string;
 }
 

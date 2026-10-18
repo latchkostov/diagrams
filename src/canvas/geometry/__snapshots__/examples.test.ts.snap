@@ -10915,3 +10915,89 @@ exports[`public examples route cleanly (estimated card sizes) > where-the-time-g
   },
 ]
 `;
+
+exports[`public examples route cleanly (estimated card sizes) > zone-outage-drill.json 1`] = `
+[
+  {
+    "id": "visitors-entry",
+    "points": [
+      {
+        "x": 240,
+        "y": 326,
+      },
+      {
+        "x": 360,
+        "y": 326,
+      },
+    ],
+  },
+  {
+    "id": "entry-api-a",
+    "points": [
+      {
+        "x": 586,
+        "y": 319,
+      },
+      {
+        "x": 650,
+        "y": 319,
+      },
+      {
+        "x": 650,
+        "y": 156,
+      },
+      {
+        "x": 740,
+        "y": 156,
+      },
+    ],
+  },
+  {
+    "id": "api-orders-a",
+    "points": [
+      {
+        "x": 960,
+        "y": 156,
+      },
+      {
+        "x": 1100,
+        "y": 156,
+      },
+    ],
+  },
+  {
+    "id": "entry-api-b",
+    "points": [
+      {
+        "x": 586,
+        "y": 333,
+      },
+      {
+        "x": 650,
+        "y": 333,
+      },
+      {
+        "x": 650,
+        "y": 516,
+      },
+      {
+        "x": 740,
+        "y": 516,
+      },
+    ],
+  },
+  {
+    "id": "api-orders-b",
+    "points": [
+      {
+        "x": 960,
+        "y": 516,
+      },
+      {
+        "x": 1100,
+        "y": 516,
+      },
+    ],
+  },
+]
+`;
