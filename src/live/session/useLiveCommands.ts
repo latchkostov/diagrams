@@ -14,6 +14,7 @@ import { liveMutationGuard } from "../liveActions";
 import { initialRecordState, isCapturing, recordReducer } from "../record/recordModel";
 import { type SlowMotionView } from "../slowmo/useSlowMotion";
 import { createStormSimulation } from "../storm";
+import { useTraceState } from "./useTraceSpotlight";
 
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { SessionProps } from "../LiveSession";
@@ -68,11 +69,7 @@ export function useLiveSetup({
   }, []);
   useEffect(() => () => controller.dispose(), [controller]);
   const [events, setEvents] = useState<{ open: boolean; nodeId: string | null }>({ open: false, nodeId: null });
-  const [trace, setTrace] = useState<string | null>(null);
-  const traceRef = useRef(trace);
-  useLayoutEffect(() => {
-    traceRef.current = trace;
-  }, [trace]);
+  const { trace, traceRef, setTrace } = useTraceState();
   const [inject, setInject] = useState<InjectRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<number | undefined>(undefined);

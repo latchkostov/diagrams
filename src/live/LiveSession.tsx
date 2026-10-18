@@ -1,13 +1,11 @@
-import { ViewportPortal, useStore, useStoreApi } from "@xyflow/react";
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ViewportPortal, useStoreApi } from "@xyflow/react";
+import { Suspense, lazy, useEffect, useMemo } from "react";
 import { useCameraController } from "../canvas/camera";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { actionRegistry } from "../editor/actions";
 import { useSettings } from "../harness/settings";
 import { useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
-import type { MessageTrace } from "../sim/types";
-import { buildJourney, formatDuration as formatSpan } from "../trace/journey";
 import { BottleneckCallout, TroubleCallout } from "./CapacityLayer";
 import { CapacityPanel } from "./CapacityPanel";
 import { ControlBar } from "./ControlBar";
@@ -17,8 +15,7 @@ import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
 import { SimPanel } from "./SimPanel";
 import { TraceCard } from "./TraceCard";
-import { LiveContext, type LiveUi, type TraceChoice } from "./context";
-import { downstreamOfEdge, edgesWithin } from "./graph";
+import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";
 import { liveMutationGuard } from "./liveActions";
 import { Recorder } from "./record/Recorder";
@@ -35,12 +32,8 @@ import {
 import { useLiveContextMenu } from "./session/useLiveContextMenu";
 import { useLiveDiagramChanges, useLiveFixes } from "./session/useLiveFixes";
 import { useLiveKeyboard } from "./session/useLiveKeyboard";
+import { useSlowTraceCard, useTraceActions, useTraceSlowMotion, useTraceSpotlight } from "./session/useTraceSpotlight";
 import { SlowCaption } from "./slowmo/SlowBar";
-import { PACING } from "./slowmo/script";
-import type { SlowSource } from "./slowmo/session";
-import { useSlowMotion, type SlowMotionView } from "./slowmo/useSlowMotion";
-import { suggestedMessageType } from "./storm";
-import { roomUnderCard } from "./traceCardLayout";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
 
@@ -48,9 +41,6 @@ import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 
 // The live session: the simulation, its renderers and panels, slow motion and recording. It loads when live
 // view first turns on (or earlier, once the canvas is idle; see LiveView), never with the first view.
-
-const LOOK_AHEAD_LABEL = "30 s";
-const DEAD_LETTER_WAIT = "Nothing has dead-lettered yet: the next message that does will be traced.";
 
 /**
  * The live view: a "Live" toggle on the canvas, and while it's on, the simulation session
@@ -86,10 +76,7 @@ export function LiveSession({
   const {
     getDiagram,
     simulations,
-    simsRef,
     draft,
-    setDraft,
-    draftRef,
     controller,
     state,
     panel,
@@ -99,71 +86,14 @@ export function LiveSession({
     takePanelDraft,
     events,
     trace,
-    traceRef,
     setTrace,
     inject,
     setInject,
-    notice,
-    flash,
   } = setup;
 
-  useLiveDiagramChanges({ editor, controller, getDiagram, flash, draftRef, simulations, state, draft, privateDiagram });
+  useLiveDiagramChanges({ ...setup, editor, privateDiagram });
 
-  // ---------------------------------------------------------------- spotlight (notes, trace)
-
-  const note = state.run?.note;
-  const noteKey = note ? `${state.generation}:${note.atMs}:${note.text}` : "";
-  // The controller publishes fresh note objects each tick; keep the focus stable for camera effects.
-  const focusKey = JSON.stringify(note?.focus ?? []);
-  const noteFocus = useMemo(() => JSON.parse(focusKey) as string[], [focusKey]);
-  // A traced message lights the path it has taken so far (or the node it's awaited at).
-  const tracedNow = state.trace?.current;
-  const awaitedAt = state.trace?.pending?.next === "message" ? state.trace.pending.node : undefined;
-  const tracedDiagram = controller.currentDiagram;
-  const tracedPath = useMemo(() => {
-    if (tracedNow) {
-      const j = buildJourney(tracedNow, tracedDiagram);
-      return { nodes: new Set(j.nodes), edges: new Set(j.edges) };
-    }
-    return awaitedAt ? { nodes: new Set([awaitedAt]), edges: new Set<string>() } : null;
-  }, [tracedNow, awaitedAt, tracedDiagram]);
-  // Slow motion owns the camera and the spotlight while it's on (see useSlowMotion).
-  const slowRef = useRef<SlowMotionView | null>(null);
-  const [slowPath, setSlowPath] = useState<SlowMotionView["path"]>(null);
-  const spotlight = (() => {
-    const d = controller.currentDiagram;
-    if (slowPath) return { ...slowPath, kind: "trace" as const };
-    if (tracedPath) return { ...tracedPath, kind: "trace" as const };
-    if (trace) {
-      const r = downstreamOfEdge(d.edges, trace);
-      return { nodes: r.nodes, edges: r.edges, kind: "trace" as const };
-    }
-    if (noteFocus.length) {
-      const focus = new Set(noteFocus);
-      return { nodes: focus, edges: edgesWithin(d.edges, focus), kind: "focus" as const };
-    }
-    return null;
-  })();
-  const spotlightRef = useRef(spotlight);
-  useLayoutEffect(() => {
-    spotlightRef.current = spotlight;
-  }, [spotlight]);
-
-  // The camera (src/canvas/camera, panePolicy rows L1–L9): Live says what changed in its room, and the policy
-  // decides once the pane settles. A note's focus takes the view, and the whole diagram comes back when the
-  // story moves on. The side panel and the trace card cover the right of the pane: a fitted view refits into
-  // what they leave (a narrated one to the note's focus), a view moved by hand stays put.
-  const reducedMotion = useReducedMotion();
-  useEffect(() => {
-    camera.dispatch({ type: "narration", focus: noteFocus });
-  }, [camera, noteKey, noteFocus]);
-  useEffect(() => {
-    camera.dispatch({ type: "live.panel", open: panel.open });
-  }, [camera, panel.open]);
-  const cardOpen = !!state.trace;
-  useEffect(() => {
-    camera.dispatch({ type: "live.card", open: cardOpen });
-  }, [camera, cardOpen]);
+  const { slowRef, slowPath, setSlowPath, spotlightRef, reducedMotion } = useTraceSpotlight({ ...setup, camera });
 
   useLivePanelLayout(setup);
 
@@ -177,109 +107,31 @@ export function LiveSession({
     spotlightRef,
   });
 
-  const [sequence, setSequence] = useState<MessageTrace | null>(null);
-  // One way in for the ⋯ menu, the right-click and the palette (same words when there's nothing yet).
-  const startTrace = useCallback(
-    (which: TraceChoice) => {
-      if (which === "slowmo") return slowRef.current?.start({ kind: "next" });
-      // A new trace leaves slow motion first (live comes back where it was).
-      slowRef.current?.end();
-      if (which === "next") controller.traceNext();
-      else if (which === "slowest") {
-        if (!controller.traceSlowest()) flash("No message has finished its journey yet. Try again in a moment.");
-      } else if (controller.traceDeadLettered() === "waiting") flash(DEAD_LETTER_WAIT);
-    },
-    [controller, flash],
-  );
-  // The card grows down to the first node under it (its hops scroll), never over the diagram. Heading
-  // a side panel's column, its height is the panel's business (trace.css).
-  const cardRoom = useStore((s) => (state.trace && !panel.open ? roomUnderCard(s, presenting ? 392 : 352) : 0));
-  // "Nothing has dead-lettered yet" is out of date once one has: the trace card takes over.
-  const shownNotice = state.resourceError ?? (notice === DEAD_LETTER_WAIT && state.trace?.current ? null : notice);
-  const sendOne = useCallback(
-    (nodeId: string) => controller.sendOne(nodeId, suggestedMessageType(getDiagram(), nodeId)),
-    [controller, getDiagram],
-  );
-
-  // ---------------------------------------------------------------- commands
+  const { sequence, setSequence, startTrace, cardRoom, shownNotice, sendOne } = useTraceActions({
+    ...setup,
+    slowRef,
+    presenting,
+  });
 
   const { capacityError, setCapacityError, clearCapacityError } = useCapacityError();
 
-  const { selectSimulation, showSimulation, runDraft, saveSimulation, deleteSimulation, startStorm, showEvents } =
-    useLiveCommands({
-      setup,
-      editor,
-      onSaveDiagram,
-      slowRef,
-      setCapacityError,
-    });
+  const commands = useLiveCommands({ setup, editor, onSaveDiagram, slowRef, setCapacityError });
+  const { selectSimulation, showSimulation, runDraft, saveSimulation, deleteSimulation, showEvents } = commands;
 
   const { rec, dispatchRec, capturing } = useLiveRecordingState();
 
-  // ---------------------------------------------------------------- slow motion
-
-  const slow = useSlowMotion({
-    controller,
-    store,
-    camera,
-    presenting,
-    reducedMotion,
-    panelOpen: panel.open,
-    capturing,
-  });
-  useLayoutEffect(() => {
-    slowRef.current = slow;
-  });
-  if (slowPath !== slow.path) setSlowPath(slow.path);
-  const startSlow = slow.start;
-  /** The trace card's "Slow motion" (and the palette's): this message's journey, paced. */
-  const slowMotionTrace = useCallback(() => {
-    const t = controller.getState().trace;
-    const source: SlowSource = t?.rootId !== undefined ? { kind: "root", rootId: t.rootId } : { kind: "followed" };
-    startSlow(source);
-  }, [controller, startSlow]);
-  // While slow motion plays, the card is its event list: the replayed journey, the hop being told.
-  const slowState = slow.state;
+  const { slow, slowMotionTrace } = useTraceSlowMotion(
+    { controller, store, camera, presenting, reducedMotion, panelOpen: panel.open, capturing },
+    slowRef,
+    slowPath,
+    setSlowPath,
+  );
   useLiveSessionBridge({ setup, onSession, selectSimulation, editor, alwaysOn, slow });
-  const slowCard = useMemo(() => {
-    const script = slowState.script;
-    if (slowState.status !== "on" || !script || !slowState.trace) return null;
-    const notes = [
-      script.unfinished ? `Recorded for ${LOOK_AHEAD_LABEL} of simulated time: ${script.summary.toLowerCase()}.` : "",
-      script.duration > PACING.longScript
-        ? `This slow motion runs ${formatSpan(script.duration)}: → skips to the next hop.`
-        : "",
-    ].filter(Boolean);
-    return {
-      trace: { rootId: slowState.trace.rootId, current: slowState.trace },
-      card: {
-        playing: slowState.playing,
-        row: slowState.row,
-        activeRows: slowState.activeRows,
-        onToggle: () => slow.session.toggle(),
-        onSeek: (key: string) => slow.session.seekRow(key),
-        onExit: slow.end,
-        hiddenCopies: script.hiddenCopies,
-        note: notes.join(" ") || undefined,
-      },
-    };
-  }, [slowState, slow.session, slow.end]);
+  const slowCard = useSlowTraceCard(slow);
   const { openRecord, recordTarget, recordTitle } = useLiveRecording({ setup, dispatchRec, store });
 
-  const { showCapacity, planDiagram, capacity, openCapacity, closeCapacity, applyFix } = useCapacityInputs({
-    params,
-    controller,
-    state,
-    locale,
-    capacityOpen,
-    setPanel,
-    slowRef,
-    simsRef,
-    draftRef,
-    setDraft,
-    editor,
-    flash,
-  });
+  const capacityInputs = useCapacityInputs({ ...setup, params, locale, slowRef, editor });
+  const { showCapacity, planDiagram, capacity, openCapacity, closeCapacity, applyFix } = capacityInputs;
 
   const {
     addReader,
@@ -291,48 +143,36 @@ export function LiveSession({
     dismissTrouble,
     saveInputs,
   } = useLiveFixes({
+    ...setup,
+    ...commands,
     editor,
-    controller,
     slowRef,
     camera,
-    capacityOpen,
     presenting,
     capturing,
     showCapacity,
     capacity,
-    flash,
-    showEvents,
     openCapacity,
-    saveSimulation,
     setCapacityError,
     onSaveDiagram,
   });
 
-  const addEntry = useCapacityEntry({ editor, store, flash, camera });
+  const addEntry = useCapacityEntry({ ...setup, editor, store, camera });
 
   useLiveContextMenu({
+    ...setup,
+    ...commands,
+    ...capacityInputs,
     editor,
-    controller,
     store,
     slowRef,
-    traceRef,
-    setTrace,
-    setInject,
-    startStorm,
-    showEvents,
     slowMotionTrace,
     startTrace,
-    getDiagram,
-    flash,
     openRecord,
-    capacity,
-    applyFix,
-    openCapacity,
-    panel,
     onPanelChange,
   });
 
-  useLiveKeyboard({ controller, presenting, alwaysOn, onExit, editor, slowRef, traceRef, setTrace });
+  useLiveKeyboard({ ...setup, presenting, alwaysOn, onExit, editor, slowRef });
 
   const ui = useMemo<LiveUi>(
     () => ({
@@ -556,20 +396,6 @@ export function LiveSession({
       />
     </LiveContext.Provider>
   );
-}
-
-function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(
-    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    if (!mq) return;
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return reduced;
 }
 
 export { EditCapacity } from "./session/EditCapacity";
