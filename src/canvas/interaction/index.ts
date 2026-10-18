@@ -2,6 +2,29 @@
 //
 // How it fits together (it reads like src/canvas/camera)
 // - types.ts: the events (each with its cause), the commands, the policy state.
+// - menus.ts: menus(state, event) -> { state, closed, opened }. Pure: one surface open at a time (a context menu,
+//   quick-add, quick-add beside its outline, the shortcuts dialog), opened with what had focus, closed with a reason
+//   (pick, escape, outside, scroll, replaced, blur, resize, gesture, command, unmount).
+// - focusPolicy.ts: focusPolicy(state, event) -> { state, command }. Pure: where focus goes, as a table, with exactly
+//   one command per event (keep, a focus move, or a move of the canvas's Tab stop).
+// - controller.ts: the single writer. It runs the menus machine (and tells the camera menu.opened / menu.closed), feeds
+//   the focus policy and runs its moves through its port (the DOM), at the time each names: now, after the commit, on
+//   a frame, or once the target is mounted and measured. The pending move is data: a newer one replaces it, it never
+//   lands on an element that has left the document, and it waits on commits and rendered frames, never on a timer. A
+//   selection change is one selection.changed event with the cause its source declared, heard by the focus policy and
+//   the camera. It publishes data-interaction-state (idle | menu-open | focus-pending) on canvas-wrap and, in e2e
+//   builds, the journal (journal.ts, window.__interactionJournal).
+// - domPort.ts: the DOM behind the port; useInteraction.ts: the hooks CanvasView and the Inspector call.
+//
+// Adding menu, focus or selection behaviour
+// 1. Add an event to FocusEvent (types.ts) with its cause, or a cause to an existing event.
+// 2. Add a row to the table in focusPolicy.ts and its case, plus a row in focusPolicy.test.ts. The invariant
+//    cross-product and the event-sequence tests there, and the interleavings in controller.test.ts, must still pass.
+// 3. If it needs a new kind of target or timing, add it to FocusTarget / FocusWhen and resolve it in domPort.ts.
+// 4. Dispatch the event from the call site that knows the cause.
+// Never call .focus(), open or close a menu with a state setter, or wait a frame "for focus to settle" in
+// src/canvas: ESLint (eslint.config.js) rejects .focus() and menu setters outside this directory, apart from a short,
+// justified allowlist of focus that stays inside one component.
 export type {
   ElementHandle,
   FocusCommand,
@@ -27,10 +50,22 @@ export {
   createInteractionController,
   type InteractionCamera,
   type InteractionController,
+  type InteractionEntry,
   type InteractionPort,
+  type InteractionScheduler,
+  type Resolution,
 } from "./controller";
+export { focusPolicy, initialFocus } from "./focusPolicy";
 export { cameraMenuKind, initialMenus, menus } from "./menus";
-export { InteractionContext, useInteraction, useInteractionCore, useInteractionOrLocal } from "./useInteraction";
+export {
+  InteractionContext,
+  useInteraction,
+  useInteractionCamera,
+  useInteractionCore,
+  useInteractionOrLocal,
+  useSelectionEvents,
+} from "./useInteraction";
+
 /** What the canvas's hooks use to move focus: events in, the pending move and the Tab stop out. */
 export type FocusApi = Pick<
   import("./controller").InteractionController,

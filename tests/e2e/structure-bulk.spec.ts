@@ -1,4 +1,4 @@
-import { savedDiagram } from "./fixtures";
+import { savedDiagram, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -506,6 +506,7 @@ test.describe("keyboard selection between nodes (D14)", () => {
     await seed(page);
     await page.getByTestId("node-api").click();
     await expect.poll(() => focusedNode(page)).toBe("api");
+    const mark = await interactionJournalMark(page);
     // Both presses arrive before the frame that moves focus (as when the page was busy for a moment).
     await page.evaluate(() => {
       const target = document.activeElement ?? document.body;
@@ -515,6 +516,15 @@ test.describe("keyboard selection between nodes (D14)", () => {
         );
     });
     await expect.poll(() => focusedNode(page)).toBe("group:ship");
+    await waitForInteractionIdle(page);
+    expect((await interactionLog(page, mark)).filter((l) => !l.startsWith("selection.committed"))).toEqual([
+      "selection.changed:keyboard -> focus:node:worker@frame",
+      "selection.changed:keyboard -> focus:node:group:ship@frame",
+      "superseded: focus:node:worker@frame",
+      "focus.entered -> keep",
+      "focused: focus:node:group:ship@frame",
+      "focus.ran -> keep",
+    ]);
   });
 
   test("Tab steps through nodes in reading order, focus and selection together, and it's announced", async ({

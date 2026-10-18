@@ -121,6 +121,30 @@ const CAMERA_CALLS = "/^(setViewport|setViewportConstrained|fitView|fitBounds|se
 const CAMERA_MESSAGE =
   "Only the camera controller moves the viewport (src/canvas/camera). Dispatch a camera event with its cause instead, and add a policy row for new behaviour (src/canvas/camera/index.ts explains how).";
 
+/** The camera's viewport selectors, for the canvas block below (which replaces the camera block's rule there). */
+const CAMERA_RESTATED = [
+  {
+    selector: `CallExpression[callee.property.name=${CAMERA_CALLS}]:not([callee.object.name="editor"]):not([callee.object.property.name="editor"])`,
+    message: CAMERA_MESSAGE,
+  },
+  { selector: `CallExpression[callee.name=${CAMERA_CALLS}]`, message: CAMERA_MESSAGE },
+];
+const FOCUS_MESSAGE =
+  "Only the focus controller moves keyboard focus in the canvas (src/canvas/interaction). Dispatch an interaction event with its cause instead, and add a focus policy row for new behaviour (src/canvas/interaction/index.ts explains how).";
+const MENU_MESSAGE =
+  "Menus, the shortcuts dialog and the canvas's Tab stop change through the interaction controller (openMenu / closeMenu with a reason, focus events), never a state setter.";
+const INTERACTION_RULES = [
+  { selector: 'CallExpression[callee.property.name="focus"]', message: FOCUS_MESSAGE },
+  { selector: "CallExpression[callee.name=/^set(Menu|ShortcutsOpen|FocusId)$/]", message: MENU_MESSAGE },
+];
+/**
+ * Focus that stays inside one component, allowed outside src/canvas/interaction:
+ * - inspector/fields.tsx: a segmented control moves focus among its own radio buttons (the ARIA radio group's
+ *   arrow keys), and an inert note's Remove button hands focus to its own section as it removes itself.
+ * - SheetResizeHandle.tsx: the handle focuses itself on a press, so its arrow keys resize the sheet it belongs to.
+ */
+const FOCUS_LOCAL = ["src/canvas/inspector/fields.tsx", "src/canvas/SheetResizeHandle.tsx"];
+
 export default tseslint.config(
   {
     ignores: [
@@ -166,6 +190,20 @@ export default tseslint.config(
         { selector: `CallExpression[callee.name=${CAMERA_CALLS}]`, message: CAMERA_MESSAGE },
       ],
     },
+  },
+  {
+    // One writer for keyboard focus and menus in the canvas: src/canvas/interaction (see its index.ts). A later
+    // no-restricted-syntax replaces an earlier one for the same files, so this restates the camera's selectors.
+    files: ["src/canvas/**/*.{ts,tsx}"],
+    ignores: ["src/canvas/interaction/**", "src/canvas/camera/**", "src/**/*.test.*", ...FOCUS_LOCAL],
+    rules: { "no-restricted-syntax": ["error", ...CAMERA_RESTATED, ...INTERACTION_RULES] },
+  },
+  {
+    // The camera's own files move the viewport, never keyboard focus (useMoveHandlers closes menus through the
+    // callback the canvas hands it).
+    files: ["src/canvas/camera/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.*"],
+    rules: { "no-restricted-syntax": ["error", INTERACTION_RULES[0]] },
   },
   {
     files: ["tests/e2e/**/*.ts"],

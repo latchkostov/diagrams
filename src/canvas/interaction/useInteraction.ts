@@ -11,6 +11,7 @@ import type { useStoreApi } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { createInteractionController, type InteractionCamera, type InteractionController } from "./controller";
 import { createDomPort, domScheduler, type DomCanvas } from "./domPort";
+import { interactionJournal } from "./journal";
 
 /** The canvas's interaction controller, for what renders inside the canvas (the Inspector, its name fields). */
 export const InteractionContext = createContext<InteractionController | null>(null);
@@ -19,7 +20,8 @@ type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
 
 /**
  * The canvas's interaction controller: the single writer of its menus and of keyboard focus in it, with its DOM
- * port onto canvas-wrap, the diagram as last committed and React Flow's store.
+ * port onto canvas-wrap, the diagram as last committed and React Flow's store. It publishes data-interaction-state
+ * (idle | menu-open | focus-pending) on canvas-wrap and, in e2e builds, the journal (window.__interactionJournal).
  */
 export function useInteractionCore<P>(
   wrapper: RefObject<HTMLDivElement | null>,
@@ -43,6 +45,9 @@ export function useInteractionCore<P>(
         return (!!n && !n.hidden) || known().nodes.has(id);
       },
       hasEdge: (id) => store.getState().edgeLookup.has(id) || known().edges.has(id),
+      publish: (phase) => {
+        if (wrapper.current) wrapper.current.dataset.interactionState = phase;
+      },
     };
     return {
       /** Keyboard navigation's Tab order, for Undo's "the first selected node in Tab's order". */
@@ -52,7 +57,7 @@ export function useInteractionCore<P>(
         committed = next;
         ids = null;
       },
-      controller: createInteractionController<P>(createDomPort(canvas), domScheduler),
+      controller: createInteractionController<P>(createDomPort(canvas), domScheduler, { journal: interactionJournal }),
     };
   });
   useLayoutEffect(() => commit({ nodes, edges }), [commit, nodes, edges]);

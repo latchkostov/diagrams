@@ -282,6 +282,46 @@ export async function cameraJournalMark(page: Page): Promise<number> {
   return (await cameraJournal(page)).length;
 }
 
+/**
+ * Waits until nothing is open over the canvas and no focus move is waiting: `data-interaction-state="idle"` on
+ * canvas-wrap, which its interaction controller (src/canvas/interaction/controller.ts) holds while a menu or the
+ * shortcuts dialog is open (`menu-open`) and while a focus move waits for its commit, frame or target
+ * (`focus-pending`). A request waiting for a folded Inspector to open doesn't hold it.
+ */
+export async function waitForInteractionIdle(page: Page) {
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+}
+
+/** One decision or move result the canvas's interaction controller journaled (e2e builds only). */
+export interface InteractionJournalEntry {
+  seq: number;
+  /** "menu.closed:escape", "selection.changed:keyboard", "focus.result", ... */
+  event: string;
+  /** "focus:element@commit", "keep", ... */
+  command: string;
+  result?: "focused" | "fallback" | "kept" | "gone" | "superseded";
+}
+
+/** The interaction journal since `after` (a length from interactionJournalMark), as entries. */
+export async function interactionJournal(page: Page, after = 0): Promise<InteractionJournalEntry[]> {
+  const all = await page.evaluate(
+    () => (window as unknown as { __interactionJournal?: InteractionJournalEntry[] }).__interactionJournal ?? [],
+  );
+  return all.slice(after);
+}
+
+/** The interaction journal's length now: pass it to interactionJournal to read only what follows. */
+export async function interactionJournalMark(page: Page): Promise<number> {
+  return (await interactionJournal(page)).length;
+}
+
+/** The interaction journal since `after` as "event -> command" lines, and "result: command" for each move's end. */
+export async function interactionLog(page: Page, after = 0): Promise<string[]> {
+  return (await interactionJournal(page, after)).map((e) =>
+    e.result ? `${e.result}: ${e.command}` : `${e.event} -> ${e.command}`,
+  );
+}
+
 /** What moved the view, in order: "fit:pane", "reveal:placement" (commands that left the view as it was are left out). */
 export async function cameraMoves(page: Page, after = 0): Promise<string[]> {
   return (await cameraJournal(page, after))
