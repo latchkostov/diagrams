@@ -40,11 +40,24 @@ export interface CameraScheduler {
   frame(run: () => void): () => void;
 }
 
+/**
+ * Where a move stands in d3's schedule: `waiting` to start (on d3's next frame), `starting` (its start event is
+ * being reported now), `running`, or `ended` (landed, interrupted by another move, or cancelled before it started).
+ * `unknown` when the port can't read the schedule.
+ */
+export type MoveStatus = "waiting" | "starting" | "running" | "ended" | "unknown";
+
+/** A move the port issued: `done` resolves when it lands (never, when another move stops it). */
+export interface MoveHandle {
+  done: Promise<unknown>;
+  status(): MoveStatus;
+}
+
 /** React Flow and the DOM, as the controller sees them. Only the port touches the viewport. */
 export interface CameraPort {
   viewport(): Viewport;
-  /** Moves the view; resolves when the transition ends (input may interrupt it, leaving it unresolved). */
-  move(target: Viewport, o: { duration: number; linear: boolean }): Promise<unknown>;
+  /** Moves the view; `done` resolves when the transition ends (another move may stop it, leaving it unresolved). */
+  move(target: Viewport, o: { duration: number; linear: boolean }): MoveHandle;
   /** The overlay-aware fit's viewport, or null while the pane has no size. */
   fitTarget(request: FitRequest): Viewport | null;
   /** The smallest overlay-aware pan revealing `scope` from `base`, or null when it's in view and uncovered. */
@@ -125,11 +138,11 @@ export function createCameraController(
   let interrupts = 0;
   /** Re-applies the latest fit to newly committed geometry until its measured refinement runs. */
   let early: (() => void) | null = null;
-  let inFlight: { id: number; kind: "fit" | "pan"; target: Viewport } | null = null;
+  let inFlight: { id: number; kind: "fit" | "pan"; target: Viewport; status: () => MoveStatus } | null = null;
   let moves = 0;
   /**
-   * Our moves whose start React Flow hasn't reported yet: a start with no event is then ours. A move that hasn't
-   * started two frames after it was issued never will (d3 pre-empted it): it is forgotten.
+   * Only when the port can't read d3's schedule: our moves whose start React Flow hasn't reported yet, so a start
+   * with no event is taken for ours. A move that hasn't started two frames after it was issued never will.
    */
   const awaitingStart: number[] = [];
   /** A move with no duration starts (and ends) inside port.move. */
@@ -169,31 +182,42 @@ export function createCameraController(
   function move(target: Viewport, duration: number, o: { linear: boolean; kind: "fit" | "pan" }): Promise<unknown> {
     const id = ++moves;
     const ms = motion(duration);
-    inFlight = ms > 0 ? { id, kind: o.kind, target } : null;
-    if (ms > 0) {
-      awaitingStart.push(id);
-      scheduler.frame(() =>
-        scheduler.frame(() => {
-          const i = awaitingStart.indexOf(id);
-          if (i < 0) return;
-          awaitingStart.splice(i, 1);
-          if (inFlight?.id === id) inFlight = null;
-          publish();
-        }),
-      );
-    }
     issuing = true;
-    let done: Promise<unknown>;
+    let handle: MoveHandle;
     try {
-      done = port.move(target, { duration: ms, linear: o.linear });
+      handle = port.move(target, { duration: ms, linear: o.linear });
     } finally {
       issuing = false;
     }
-    void Promise.resolve(done).then(() => {
+    inFlight = ms > 0 ? { id, kind: o.kind, target, status: handle.status } : null;
+    if (ms > 0) watch(id);
+    void Promise.resolve(handle.done).then(() => {
       if (inFlight?.id === id) inFlight = null;
       publish();
     });
-    return done;
+    return handle.done;
+  }
+
+  /**
+   * Follows the move in flight on rendered frames until it ends: one another writer stopped (its promise never
+   * resolves) leaves nothing in flight. Without the schedule, a move that hasn't started two frames after it was
+   * issued never will.
+   */
+  function watch(id: number) {
+    let frames = 0;
+    const known = inFlight?.status() !== "unknown";
+    if (!known) awaitingStart.push(id);
+    const step = () => {
+      if (inFlight?.id !== id) return;
+      frames++;
+      if (known ? inFlight.status() !== "ended" : frames < 2) return void scheduler.frame(step);
+      const i = awaitingStart.indexOf(id);
+      if (!known && i < 0) return;
+      if (i >= 0) awaitingStart.splice(i, 1);
+      inFlight = null;
+      publish();
+    };
+    scheduler.frame(step);
   }
 
   const same = (a: Viewport, b: Viewport) =>
@@ -434,12 +458,17 @@ export function createCameraController(
     moveStarted(user: boolean) {
       if (user) return userMoved();
       if (issuing) return;
-      if (awaitingStart.length) {
+      const status = inFlight?.status();
+      // Ours, starting now. Or someone else's animated move that started before ours did: ours replaces it when
+      // it starts on this frame (d3 runs the newest transition).
+      if (status === "starting" || status === "waiting") return;
+      if (status === "unknown" && awaitingStart.length) {
         awaitingStart.shift();
         return;
       }
-      // Someone else's programmatic move (Live, slow motion, the minimap, the zoom buttons) took the view over.
-      // d3 interrupted our transition and React Flow never resolves its promise: forget it, without moving.
+      // Someone else's programmatic move (the minimap, the zoom buttons) took the view over. d3 interrupted our
+      // transition, or cancelled it before it started, and React Flow never resolves its promise: forget it,
+      // without moving.
       takenOver();
       // It stops our fits too, except React Flow's own opening fit before anything has run.
       if (firstFit || interrupts > 0) interrupt();

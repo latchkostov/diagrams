@@ -6,7 +6,7 @@ import { createCameraOwnership, type CameraOwnership } from "../cameraOwnership"
 import { useRoutingOptions, type RouteOptions } from "../edges/useEdgeRoute";
 import { useMeasuredTask } from "../useMeasuredTask";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { createCameraController, type CameraController, type CameraPort } from "./controller";
+import { createCameraController, type CameraController, type CameraPort, type MoveStatus } from "./controller";
 import {
   centerViewport,
   focusBoxes,
@@ -118,7 +118,13 @@ function createCanvasCamera(
   let ownPending = false;
   const port: CameraPort = {
     viewport: transform,
-    move: (target, o) => setViewport(target, { duration: o.duration, interpolate: o.linear ? "linear" : undefined }),
+    move(target, o) {
+      const done = setViewport(target, { duration: o.duration, interpolate: o.linear ? "linear" : undefined });
+      if (o.duration <= 0) return { done, status: () => "ended" };
+      // setViewport schedules its d3 transition synchronously: the newest on the zoom pane is this move.
+      const schedule = newestTransition(store.getState().domNode);
+      return { done, status: () => (schedule ? transitionStatus(schedule) : "unknown") };
+    },
     fitTarget: (request) => (root && routing ? overlayFitViewport(root, store.getState(), routing, request) : null),
     revealTarget(base, scope) {
       const el = root;
@@ -208,4 +214,31 @@ function createCanvasCamera(
       routing = options;
     },
   };
+}
+
+/** d3-transition's schedule for one transition (d3-transition/src/transition/schedule.js). */
+interface D3Schedule {
+  state: number;
+}
+
+/**
+ * The newest d3 transition on React Flow's zoom pane. React Flow never says when d3 stops a transition (another
+ * move interrupts it, or cancels it before it starts): its promise just never resolves. d3 keeps each element's
+ * transitions in `__transition`, by increasing id, until they end.
+ */
+function newestTransition(root: HTMLElement | null | undefined): D3Schedule | null {
+  const pane = root?.querySelector(".react-flow__renderer") as
+    (Element & { __transition?: Record<string, D3Schedule> }) | null;
+  const schedules = pane?.__transition;
+  if (!schedules) return null;
+  let newest: number | null = null;
+  for (const id of Object.keys(schedules)) if (newest === null || Number(id) > newest) newest = Number(id);
+  return newest === null ? null : schedules[newest];
+}
+
+/** d3's states: CREATED 0, SCHEDULED 1, STARTING 2, STARTED 3, RUNNING 4, ENDING 5, ENDED 6. */
+function transitionStatus(schedule: D3Schedule): MoveStatus {
+  if (schedule.state <= 1) return "waiting";
+  if (schedule.state === 2) return "starting";
+  return schedule.state >= 6 ? "ended" : "running";
 }
