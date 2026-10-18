@@ -2,39 +2,25 @@ import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 import type { EditorApi } from "../../editor/types";
 import { notify } from "../../interop/ui/toast";
-import type { DiagramFile, Simulation } from "../../model/types";
 import { addConsumer, addDeadLetterQueue } from "../addConsumer";
-import { capacityView } from "../capacityModel";
 import { capacitySaveCandidate, capacitySaveError } from "../capacityPersistence";
-import { LiveController } from "../controller";
 import { troubleLeads, type Trouble, type TroubleAction } from "../observedTrouble";
-import { type SlowMotionView } from "../slowmo/useSlowMotion";
 import { writeLiveParams } from "../urlParams";
 import { useObservedTrouble } from "../useObservedTrouble";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { CameraController } from "../../canvas/camera";
 import type { SessionProps } from "../LiveSession";
-import type { LiveState } from "../controller";
+import type { CapacityInputs } from "./useCapacityInputs";
+import type { LiveCommands } from "./useLiveCommands";
+import type { LiveSessionState } from "./useLiveSessionState";
+import type { TraceSpotlight } from "./useTraceSpotlight";
 export function useLiveDiagramChanges({
+  session,
   editor,
-  controller,
-  getDiagram,
-  flash,
-  draftRef,
-  simulations,
-  state,
-  draft,
   privateDiagram,
-}: Pick<SessionProps, "editor" | "privateDiagram"> & {
-  controller: LiveController;
-  getDiagram: () => DiagramFile;
-  flash: (text: string) => void;
-  draftRef: RefObject<Simulation | null>;
-  simulations: Simulation[];
-  state: LiveState;
-  draft: Simulation | null;
-}) {
+}: Pick<SessionProps, "editor" | "privateDiagram"> & { session: LiveSessionState }) {
+  const { controller, getDiagram, flash, draftRef, simulations, state, draft } = session;
   // ---------------------------------------------------------------- diagram edits while live
 
   const nodes = useStore((s) => s.nodes);
@@ -69,35 +55,29 @@ export function useLiveDiagramChanges({
 }
 
 export function useLiveFixes({
+  session,
+  commands,
+  spotlight,
+  capacity: capacityInputs,
   editor,
-  controller,
-  slowRef,
   camera,
-  capacityOpen,
   presenting,
   capturing,
-  showCapacity,
-  capacity,
-  flash,
-  showEvents,
-  openCapacity,
-  saveSimulation,
   setCapacityError,
   onSaveDiagram,
 }: Pick<SessionProps, "editor" | "presenting" | "onSaveDiagram"> & {
-  controller: LiveController;
-  slowRef: RefObject<SlowMotionView | null>;
+  session: LiveSessionState;
+  commands: LiveCommands;
+  spotlight: TraceSpotlight;
+  capacity: CapacityInputs;
   camera: CameraController;
-  capacityOpen: boolean;
   capturing: boolean;
-  showCapacity: boolean;
-  capacity: ReturnType<typeof capacityView> | null;
-  flash: (text: string) => void;
-  showEvents: (nodeId: string | null, open?: boolean) => void;
-  openCapacity: (open?: boolean) => void;
-  saveSimulation: (sim: Simulation) => boolean | undefined;
   setCapacityError: Dispatch<SetStateAction<string | null>>;
 }) {
+  const { controller, capacityOpen, flash } = session;
+  const { slowRef } = spotlight;
+  const { showEvents, saveSimulation } = commands;
+  const { showCapacity, capacity, openCapacity } = capacityInputs;
   /** A node added one gap downstream may land past the view's edge: bring it in, clear of an open panel (as addEntry). */
   const revealAdded = useCallback(
     () => camera.dispatch({ type: "live.added", panel: capacityOpen }),

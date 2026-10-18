@@ -5,24 +5,25 @@ import { notify } from "../../interop/ui/toast";
 import type { Simulation } from "../../model/types";
 import { capacitySaveError } from "../capacityPersistence";
 import { initialRecordState, isCapturing, recordReducer } from "../record/recordModel";
-import { type SlowMotionView } from "../slowmo/useSlowMotion";
 import { createStormSimulation } from "../storm";
-import type { useLiveSessionState } from "./useLiveSessionState";
+import type { LiveSessionState } from "./useLiveSessionState";
+import type { TraceSpotlight } from "./useTraceSpotlight";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { SessionProps } from "../LiveSession";
 export function useLiveCommands({
-  setup,
+  session,
   editor,
   onSaveDiagram,
-  slowRef,
+  spotlight,
   setCapacityError,
 }: Pick<SessionProps, "editor" | "onSaveDiagram"> & {
-  setup: ReturnType<typeof useLiveSessionState>;
-  slowRef: RefObject<SlowMotionView | null>;
+  session: LiveSessionState;
+  spotlight: TraceSpotlight;
   setCapacityError: Dispatch<SetStateAction<string | null>>;
 }) {
-  const { getDiagram, simsRef, draftRef, setDraft, controller, setTrace, setPanel, setEvents, flash } = setup;
+  const { slowRef } = spotlight;
+  const { getDiagram, simsRef, draftRef, setDraft, controller, setTrace, setPanel, setEvents, flash } = session;
   const selectSimulation = useCallback(
     (id: string | null) => {
       if (slowRef.current?.session.active) return;
@@ -146,15 +147,15 @@ export function useLiveRecordingState() {
 }
 
 export function useLiveRecording({
-  setup,
+  session,
   dispatchRec,
   store,
 }: {
-  setup: ReturnType<typeof useLiveSessionState>;
+  session: LiveSessionState;
   dispatchRec: ReturnType<typeof useLiveRecordingState>["dispatchRec"];
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
 }) {
-  const { setPanel, setEvents, getDiagram } = setup;
+  const { setPanel, setEvents, getDiagram } = session;
   /** Opens "Record video" (the panels and the event log close: they'd be in the video). */
   const openRecord = useCallback(() => {
     setPanel((p) => (p.open ? { ...p, open: false } : p));
@@ -172,3 +173,6 @@ export function useLiveRecording({
 
   return { openRecord, recordTarget, recordTitle };
 }
+
+export type LiveCommands = ReturnType<typeof useLiveCommands>;
+export type LiveRecording = ReturnType<typeof useLiveRecording>;

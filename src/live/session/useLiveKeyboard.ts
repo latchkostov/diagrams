@@ -1,12 +1,11 @@
 import { useEffect } from "react";
 import { isEditableTarget } from "../../editor/shortcuts";
 import { inCanvas } from "../../editor/useCanvasShortcuts";
-import { LiveController } from "../controller";
 import { isRecordingActive } from "../record/framing";
-import { type SlowMotionView } from "../slowmo/useSlowMotion";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { SessionProps } from "../LiveSession";
+import type { LiveSessionState } from "./useLiveSessionState";
+import type { TraceSpotlight } from "./useTraceSpotlight";
 /** Things that own Esc before live view does (checked before they react, in the capture phase). */
 const ESC_OWNERS = [
   '[role="menu"]',
@@ -18,20 +17,18 @@ const ESC_OWNERS = [
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 
 export function useLiveKeyboard({
-  controller,
+  session,
+  spotlight,
   presenting,
   alwaysOn,
   onExit,
   editor,
-  slowRef,
-  traceRef,
-  setTrace,
 }: Pick<SessionProps, "presenting" | "alwaysOn" | "onExit" | "editor"> & {
-  controller: LiveController;
-  slowRef: RefObject<SlowMotionView | null>;
-  traceRef: RefObject<string | null>;
-  setTrace: Dispatch<SetStateAction<string | null>>;
+  session: LiveSessionState;
+  spotlight: TraceSpotlight;
 }) {
+  const { controller, traceRef, setTrace } = session;
+  const { slowRef } = spotlight;
   // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc backs out
   // one level: a selection, a message trace, a highlighted path, then live view itself. Open menus,
   // dialogs, panels and inline editors get theirs first; presentation handles its own Esc (App).

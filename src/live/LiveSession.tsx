@@ -22,10 +22,10 @@ import { Recorder } from "./record/Recorder";
 import { useCapacityEntry, useCapacityError, useCapacityInputs } from "./session/useCapacityInputs";
 import { useFrameLoop } from "./session/useFrameLoop";
 import { useLiveCommands, useLiveRecording, useLiveRecordingState } from "./session/useLiveCommands";
-import { useLivePanelLayout, useLiveSessionBridge, useLiveSessionState } from "./session/useLiveSessionState";
 import { useLiveContextMenu } from "./session/useLiveContextMenu";
 import { useLiveDiagramChanges, useLiveFixes } from "./session/useLiveFixes";
 import { useLiveKeyboard } from "./session/useLiveKeyboard";
+import { useLivePanelLayout, useLiveSessionBridge, useLiveSessionState } from "./session/useLiveSessionState";
 import { useSlowTraceCard, useTraceActions, useTraceSlowMotion, useTraceSpotlight } from "./session/useTraceSpotlight";
 import { SlowCaption } from "./slowmo/SlowBar";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
@@ -66,7 +66,7 @@ export function LiveSession({
   const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
-  const setup = useLiveSessionState({ editor, diagram, params, simulations: simsProp });
+  const session = useLiveSessionState({ editor, diagram, params, simulations: simsProp });
   const {
     getDiagram,
     simulations,
@@ -83,13 +83,14 @@ export function LiveSession({
     setTrace,
     inject,
     setInject,
-  } = setup;
+  } = session;
 
-  useLiveDiagramChanges({ ...setup, editor, privateDiagram });
+  useLiveDiagramChanges({ session, editor, privateDiagram });
 
-  const { slowRef, slowPath, setSlowPath, spotlightRef, reducedMotion } = useTraceSpotlight({ ...setup, camera });
+  const spotlight = useTraceSpotlight({ session, camera });
+  const { slowRef, spotlightRef, reducedMotion } = spotlight;
 
-  useLivePanelLayout(setup);
+  useLivePanelLayout(session);
 
   const { setCanvas, setOverlay, rendererKind } = useFrameLoop({
     controller,
@@ -101,32 +102,38 @@ export function LiveSession({
     spotlightRef,
   });
 
-  const { sequence, setSequence, startTrace, cardRoom, shownNotice, sendOne } = useTraceActions({
-    ...setup,
-    slowRef,
-    presenting,
-  });
+  const tracing = useTraceActions({ session, spotlight, presenting });
+  const { sequence, setSequence, startTrace, cardRoom, shownNotice, sendOne } = tracing;
 
   const { capacityError, setCapacityError, clearCapacityError } = useCapacityError();
 
-  const commands = useLiveCommands({ setup, editor, onSaveDiagram, slowRef, setCapacityError });
+  const commands = useLiveCommands({ session, editor, onSaveDiagram, spotlight, setCapacityError });
   const { selectSimulation, showSimulation, runDraft, saveSimulation, deleteSimulation, showEvents } = commands;
 
   const { rec, dispatchRec, capturing } = useLiveRecordingState();
 
-  const { slow, slowMotionTrace } = useTraceSlowMotion(
-    { controller, store, camera, presenting, reducedMotion, panelOpen: panel.open, capturing },
-    slowRef,
-    slowPath,
-    setSlowPath,
-  );
-  useLiveSessionBridge({ setup, onSession, selectSimulation, editor, alwaysOn, slow });
+  const motion = useTraceSlowMotion({ session, spotlight, store, camera, presenting, capturing });
+  const { slow, slowMotionTrace } = motion;
+  useLiveSessionBridge({ session, onSession, commands, editor, alwaysOn, slow });
   const slowCard = useSlowTraceCard(slow);
-  const { openRecord, recordTarget, recordTitle } = useLiveRecording({ setup, dispatchRec, store });
+  const recording = useLiveRecording({ session, dispatchRec, store });
+  const { openRecord, recordTarget, recordTitle } = recording;
 
-  const capacityInputs = useCapacityInputs({ ...setup, params, locale, slowRef, editor });
+  const capacityInputs = useCapacityInputs({ session, params, locale, spotlight, editor });
   const { showCapacity, planDiagram, capacity, openCapacity, closeCapacity, applyFix } = capacityInputs;
 
+  const fixes = useLiveFixes({
+    session,
+    commands,
+    spotlight,
+    capacity: capacityInputs,
+    editor,
+    camera,
+    presenting,
+    capturing,
+    setCapacityError,
+    onSaveDiagram,
+  });
   const {
     addReader,
     runTroubleAction,
@@ -136,37 +143,24 @@ export function LiveSession({
     troubleShown,
     dismissTrouble,
     saveInputs,
-  } = useLiveFixes({
-    ...setup,
-    ...commands,
-    editor,
-    slowRef,
-    camera,
-    presenting,
-    capturing,
-    showCapacity,
-    capacity,
-    openCapacity,
-    setCapacityError,
-    onSaveDiagram,
-  });
+  } = fixes;
 
-  const addEntry = useCapacityEntry({ ...setup, editor, store, camera });
+  const { addEntry } = useCapacityEntry({ session, editor, store, camera });
 
   useLiveContextMenu({
-    ...setup,
-    ...commands,
-    ...capacityInputs,
+    session,
+    commands,
+    capacity: capacityInputs,
+    spotlight,
+    tracing,
+    motion,
+    recording,
     editor,
     store,
-    slowRef,
-    slowMotionTrace,
-    startTrace,
-    openRecord,
     onPanelChange,
   });
 
-  useLiveKeyboard({ ...setup, presenting, alwaysOn, onExit, editor, slowRef });
+  useLiveKeyboard({ session, spotlight, presenting, alwaysOn, onExit, editor });
 
   const ui = useMemo<LiveUi>(
     () => ({

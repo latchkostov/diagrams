@@ -3,19 +3,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { placeNextTo } from "../../canvas/placement";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { useLocale } from "../../i18n";
-import type { Simulation } from "../../model/types";
 import type { NodeStatus } from "../../sim/types";
 import { stencilRole } from "../../stencils/roles";
 import { capacityView, freePlaySimulation, inputsWithoutFix, withFix, type CapacityFix } from "../capacityModel";
 import { capacityOverlay, useCapacityOverlay } from "../capacityOverlay";
-import { LiveController } from "../controller";
-import { type SlowMotionView } from "../slowmo/useSlowMotion";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { CameraController } from "../../canvas/camera";
 import type { SessionProps } from "../LiveSession";
-import type { LiveState } from "../controller";
-import type { LivePanel } from "./useLiveSessionState";
+import type { LiveSessionState } from "./useLiveSessionState";
+import type { TraceSpotlight } from "./useTraceSpotlight";
 /** "Traffic into X": the first of these that starts traffic in the simulation (a source). */
 const ENTRY_STENCILS = ["client.user", "client.browser", "generic.webhook"];
 
@@ -27,30 +23,18 @@ export function useCapacityError() {
 }
 
 export function useCapacityInputs({
+  session,
   params,
-  controller,
-  state,
   locale,
-  capacityOpen,
-  setPanel,
-  slowRef,
-  simsRef,
-  draftRef,
-  setDraft,
+  spotlight,
   editor,
-  flash,
 }: Pick<SessionProps, "params" | "editor"> & {
-  controller: LiveController;
-  state: LiveState;
+  session: LiveSessionState;
   locale: ReturnType<typeof useLocale>;
-  capacityOpen: boolean;
-  setPanel: Dispatch<SetStateAction<LivePanel>>;
-  slowRef: RefObject<SlowMotionView | null>;
-  simsRef: RefObject<Simulation[]>;
-  draftRef: RefObject<Simulation | null>;
-  setDraft: Dispatch<SetStateAction<Simulation | null>>;
-  flash: (text: string) => void;
+  spotlight: TraceSpotlight;
 }) {
+  const { controller, state, capacityOpen, setPanel, simsRef, draftRef, setDraft, flash } = session;
+  const { slowRef } = spotlight;
   // ---------------------------------------------------------------- inputs & capacity
 
   const [forcedOverlay] = useState(params.capacity);
@@ -151,13 +135,14 @@ export function useCapacityInputs({
 export function useCapacityEntry({
   editor,
   store,
-  flash,
+  session,
   camera,
 }: Pick<SessionProps, "editor"> & {
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
-  flash: (text: string) => void;
+  session: LiveSessionState;
   camera: CameraController;
 }) {
+  const { flash } = session;
   /**
    * "Traffic into X" when nothing sends traffic yet: an upstream source one gap before the node,
    * connected to it (one undoable edit), then the cursor in its rate field.
@@ -203,5 +188,7 @@ export function useCapacityEntry({
     [editor, store, flash, camera],
   );
 
-  return addEntry;
+  return { addEntry };
 }
+
+export type CapacityInputs = ReturnType<typeof useCapacityInputs>;

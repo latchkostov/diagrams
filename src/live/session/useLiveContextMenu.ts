@@ -2,56 +2,42 @@ import { useStoreApi } from "@xyflow/react";
 import { useEffect } from "react";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { actionRegistry, builtinSections } from "../../editor/actions";
-import type { DiagramFile } from "../../model/types";
-import { type InjectRequest } from "../InjectDialog";
-import { capacityView, type CapacityFix } from "../capacityModel";
-import { type TraceChoice } from "../context";
-import { LiveController } from "../controller";
 import { liveActions, liveMutationGuard } from "../liveActions";
-import { type SlowMotionView } from "../slowmo/useSlowMotion";
 import { suggestedMessageType } from "../storm";
+import type { CapacityInputs } from "./useCapacityInputs";
+import type { LiveCommands, LiveRecording } from "./useLiveCommands";
+import type { LiveSessionState } from "./useLiveSessionState";
+import type { TraceActions, TraceSlowMotion, TraceSpotlight } from "./useTraceSpotlight";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { SessionProps } from "../LiveSession";
 export function useLiveContextMenu({
+  session,
+  commands,
+  capacity: capacityInputs,
+  spotlight,
+  tracing,
+  motion,
+  recording,
   editor,
-  controller,
   store,
-  slowRef,
-  traceRef,
-  setTrace,
-  setInject,
-  startStorm,
-  showEvents,
-  slowMotionTrace,
-  startTrace,
-  getDiagram,
-  flash,
-  openRecord,
-  capacity,
-  applyFix,
-  openCapacity,
-  panel,
   onPanelChange,
 }: Pick<SessionProps, "editor" | "onPanelChange"> & {
-  controller: LiveController;
+  session: LiveSessionState;
+  commands: LiveCommands;
+  capacity: CapacityInputs;
+  spotlight: TraceSpotlight;
+  tracing: TraceActions;
+  motion: TraceSlowMotion;
+  recording: LiveRecording;
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
-  slowRef: RefObject<SlowMotionView | null>;
-  traceRef: RefObject<string | null>;
-  setTrace: Dispatch<SetStateAction<string | null>>;
-  setInject: Dispatch<SetStateAction<InjectRequest | null>>;
-  startStorm: (nodeId: string) => void;
-  showEvents: (nodeId: string | null, open?: boolean) => void;
-  slowMotionTrace: () => void;
-  startTrace: (which: TraceChoice) => void;
-  getDiagram: () => DiagramFile;
-  flash: (text: string) => void;
-  openRecord: () => void;
-  capacity: ReturnType<typeof capacityView> | null;
-  applyFix: (fix: CapacityFix) => void;
-  openCapacity: (open?: boolean) => void;
-  panel: { open: boolean };
 }) {
+  const { controller, traceRef, setTrace, setInject, getDiagram, flash, panel } = session;
+  const { slowRef } = spotlight;
+  const { startStorm, showEvents } = commands;
+  const { startTrace } = tracing;
+  const { slowMotionTrace } = motion;
+  const { openRecord } = recording;
+  const { capacity, applyFix, openCapacity } = capacityInputs;
   // While live, the Simulation section leads every context menu.
   useEffect(() => {
     if (!editor) return;

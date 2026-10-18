@@ -1,10 +1,8 @@
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { DiagramFile } from "../../model/types";
 import type { MessageTrace } from "../../sim/types";
 import { buildJourney, formatDuration as formatSpan } from "../../trace/journey";
 import { type TraceChoice } from "../context";
-import { LiveController } from "../controller";
 import { downstreamOfEdge, edgesWithin } from "../graph";
 import { PACING } from "../slowmo/script";
 import type { SlowSource } from "../slowmo/session";
@@ -12,26 +10,14 @@ import { useSlowMotion, type SlowMotionView } from "../slowmo/useSlowMotion";
 import { suggestedMessageType } from "../storm";
 import { roomUnderCard } from "../traceCardLayout";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { CameraController } from "../../canvas/camera";
 import { useReducedMotion } from "../../lib/useReducedMotion";
-import type { LiveState } from "../controller";
+import type { LiveSessionState } from "./useLiveSessionState";
 const LOOK_AHEAD_LABEL = "30 s";
 const DEAD_LETTER_WAIT = "Nothing has dead-lettered yet: the next message that does will be traced.";
 
-export function useTraceSpotlight({
-  state,
-  controller,
-  trace,
-  camera,
-  panel,
-}: {
-  state: LiveState;
-  controller: LiveController;
-  trace: string | null;
-  camera: CameraController;
-  panel: { open: boolean };
-}) {
+export function useTraceSpotlight({ session, camera }: { session: LiveSessionState; camera: CameraController }) {
+  const { state, controller, trace, panel } = session;
   // ---------------------------------------------------------------- spotlight (notes, trace)
 
   const note = state.run?.note;
@@ -92,24 +78,16 @@ export function useTraceSpotlight({
 }
 
 export function useTraceActions({
-  controller,
-  flash,
-  slowRef,
-  state,
-  panel,
+  session,
+  spotlight,
   presenting,
-  notice,
-  getDiagram,
 }: {
-  controller: LiveController;
-  flash: (text: string) => void;
-  slowRef: RefObject<SlowMotionView | null>;
-  state: LiveState;
-  panel: { open: boolean };
+  session: LiveSessionState;
+  spotlight: TraceSpotlight;
   presenting: boolean;
-  notice: string | null;
-  getDiagram: () => DiagramFile;
 }) {
+  const { controller, flash, state, panel, notice, getDiagram } = session;
+  const { slowRef } = spotlight;
   const [sequence, setSequence] = useState<MessageTrace | null>(null);
   // One way in for the ⋯ menu, the right-click and the palette (same words when there's nothing yet).
   const startTrace = useCallback(
@@ -139,12 +117,20 @@ export function useTraceActions({
   return { sequence, setSequence, startTrace, cardRoom, shownNotice, sendOne };
 }
 
-export function useTraceSlowMotion(
-  { controller, store, camera, presenting, reducedMotion, panelOpen, capturing }: Parameters<typeof useSlowMotion>[0],
-  slowRef: RefObject<SlowMotionView | null>,
-  slowPath: SlowMotionView["path"],
-  setSlowPath: Dispatch<SetStateAction<SlowMotionView["path"]>>,
-) {
+export function useTraceSlowMotion({
+  session,
+  spotlight,
+  store,
+  camera,
+  presenting,
+  capturing,
+}: Pick<Parameters<typeof useSlowMotion>[0], "store" | "camera" | "presenting" | "capturing"> & {
+  session: LiveSessionState;
+  spotlight: TraceSpotlight;
+}) {
+  const { controller, panel } = session;
+  const panelOpen = panel.open;
+  const { slowRef, slowPath, setSlowPath, reducedMotion } = spotlight;
   // ---------------------------------------------------------------- slow motion
 
   const slow = useSlowMotion({
@@ -207,3 +193,7 @@ export function useTraceState() {
   }, [trace]);
   return { trace, traceRef, setTrace };
 }
+
+export type TraceSpotlight = ReturnType<typeof useTraceSpotlight>;
+export type TraceActions = ReturnType<typeof useTraceActions>;
+export type TraceSlowMotion = ReturnType<typeof useTraceSlowMotion>;

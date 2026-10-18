@@ -11,6 +11,7 @@ import type { SlowMotionView } from "../slowmo/useSlowMotion";
 import { useTraceState } from "./useTraceSpotlight";
 
 import type { SessionProps } from "../LiveSession";
+import type { LiveCommands } from "./useLiveCommands";
 export type LivePanel = { open: boolean; kind: "sims" | "capacity"; sim: Simulation | null };
 
 export function useLiveSessionState({
@@ -49,7 +50,7 @@ export function useLiveSessionState({
   });
   const state = useLiveState(controller);
 
-  const [panel, setPanel] = useState<{ open: boolean; kind: "sims" | "capacity"; sim: Simulation | null }>(() => ({
+  const [panel, setPanel] = useState<LivePanel>(() => ({
     open: params.panel === "capacity",
     kind: params.panel === "capacity" ? "capacity" : "sims",
     sim: null,
@@ -118,18 +119,19 @@ export function useLiveSessionState({
 }
 
 export function useLiveSessionBridge({
-  setup,
+  session,
   onSession,
-  selectSimulation,
+  commands,
   editor,
   alwaysOn,
   slow,
 }: Pick<SessionProps, "onSession" | "editor" | "alwaysOn"> & {
-  setup: ReturnType<typeof useLiveSessionState>;
-  selectSimulation: (id: string | null) => void;
+  session: LiveSessionState;
+  commands: LiveCommands;
   slow: SlowMotionView;
 }) {
-  const { controller, panel, setPanel, suspendedPanelRef, panelDraft } = setup;
+  const { controller, panel, setPanel, suspendedPanelRef, panelDraft } = session;
+  const { selectSimulation } = commands;
   // A page driving live view from outside (the host-supplied embed) gets the controller and the bar's switch.
   const closePanel = useCallback(() => {
     if (!panel.open) return;
@@ -152,12 +154,7 @@ export function useLiveSessionBridge({
   );
 }
 
-export function useLivePanelLayout({
-  panel,
-  setPanel,
-  suspendedPanelRef,
-  panelDraft,
-}: ReturnType<typeof useLiveSessionState>) {
+export function useLivePanelLayout({ panel, setPanel, suspendedPanelRef, panelDraft }: LiveSessionState) {
   // On a phone the side panel and the AI panel share one slot.
   useEffect(() => {
     if (!panel.open) return;
@@ -186,3 +183,5 @@ export function useLivePanelLayout({
     [],
   );
 }
+
+export type LiveSessionState = ReturnType<typeof useLiveSessionState>;
