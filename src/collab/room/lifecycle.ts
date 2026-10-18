@@ -471,6 +471,9 @@ export class RoomLifecycle {
   private async finish(a: Active, kind: RoomNotice): Promise<void> {
     if (a.leaving && !a.suspended) return;
     a.leaving = true;
+    // Before either save: a pending debounced copy would write the older projection over this one.
+    a.mirror?.();
+    a.mirror = undefined;
     // The room's canvas as it is now (with a Private paste that only the canvas knew).
     const diagram = a.slug ? (this.capture?.(a.slug) ?? a.session.doc.project().diagram) : undefined;
     let kept = false;
@@ -513,7 +516,11 @@ export class RoomLifecycle {
 
   /** The copy that couldn't be saved: what its canvas showed (Save a file copy exports this). */
   unsavedDiagram(): DiagramFile | undefined {
-    return this.held?.diagram;
+    const held = this.held;
+    if (!held?.diagram) return undefined;
+    // Private sticks: the cause of leaving, the canvas's flag or the entry's (a background room's projection has none).
+    const isPrivate = held.kind === "private" || held.diagram.private || !!this.deps.library.privacy(held.slug).private;
+    return isPrivate ? { ...held.diagram, private: true } : held.diagram;
   }
 
   /** Try again: the same save; true once it succeeds (the canvas then reloads from the copy). */

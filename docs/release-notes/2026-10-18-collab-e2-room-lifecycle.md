@@ -21,7 +21,7 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
 - **Leave room** disconnects only you; your copy stays in Your diagrams. Disconnecting never waits for the copy:
   if it can't be saved (storage full or blocked, or Private that couldn't be recorded), the room's canvas stays
   mounted behind a dialog that can't be dismissed, "Your copy couldn't be saved", with Save a file copy (that
-  canvas's document), Try again (the same save, Private first) and Discard changes (back to the stored copy). A page kept in the back/forward cache
+  canvas's document, Private whenever the room, the canvas or the entry says so), Try again (the same save, Private first) and Discard changes (back to the stored copy). A page kept in the back/forward cache
   leaves for the time being and rejoins with the same document when shown again.
 - **Private** diagrams never start or join a room, checked before anything is contacted. Privacy is also watched
   outside the canvas: marking the room's diagram Private (here or in another tab) leaves the room even while
@@ -44,7 +44,7 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
 
 ## Verification and network evidence
 
-- Vitest, `src/collab/room/lifecycle.test.ts` on the in-memory network (27 cases): the creator seeds once; a link
+- Vitest, `src/collab/room/lifecycle.test.ts` on the in-memory network (29 cases): the creator seeds once; a link
   never seeds; a second "creator" with an old copy can't revert a peer's edit; consent before any transport;
   Private refused before any transport; a Private paste keeps the copy Private; Private set in another tab leaves
   the room; reload rejoin; unsaved edits merged back after a reload; newer checkpoint state preserved when pending
@@ -52,7 +52,8 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
   never replayed; an invitation waits before resume; the copy written only when the room changed; Leave (also
   during a reload's rejoin); Leave after checkpoint recovery, and after another tab advanced it, keeps the recovered
   copy; a pending deletion survives a reload alongside a peer edit (and a second reload, with matching sync proofs);
-  a refused save holds the room's canvas until Try again saves it or Discard drops it; a Private paste whose Private
+  a Private exit's save isn't overwritten by a copy pending from before it; a background room made Private exports a
+  Private recovery copy; a refused save holds the room's canvas until Try again saves it or Discard drops it; a Private paste whose Private
   mark fails writes nothing public, and Try again saves it Private; a diagram marked Private while its room
   opens sends nothing; a reload's pending edits survive a second crash; the room's own link; back/forward cache; wipe. The privacy, merge and invitation cases
   fail with their fix removed.
@@ -60,7 +61,7 @@ Collaboration plan slice E2. Rooms now run in the real app, behind the same swit
   tracker emulated in the runner: start, consent with zero sockets and zero peer connections before Join, edits
   both ways, reload, hard drop; Leave and Don't join; a damaged link; Clear everything with a second tab that
   missed the wipe, whose encryption started before the wipe and was released after it, then the old link restores
-  nothing; an aborted wipe can't be dismissed, and Try again clears it; Reload page restarts at the plain address; a copy
+  nothing; an aborted wipe can't be dismissed, and Try again clears it; Reload page restarts at the plain address, out of the room; a copy
   that can't be saved holds the canvas behind a dialog that Escape and the backdrop don't close, whose file copy
   holds the room's edit, and Try again saves it. The wipe cases fail with their fix removed.
 - Real public network (local only, not CI): 24 of 24 joins through `tracker.openwebtorrent.com` and

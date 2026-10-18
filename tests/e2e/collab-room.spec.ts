@@ -299,9 +299,15 @@ test("an aborted recovery wipe does not report success, and Retry clears it", as
   expectNoErrors(consoleErrors.filter((e) => !/AbortError/.test(e)));
 });
 
-test("a failed recovery wipe's Reload page restarts the app at its plain address", async ({ page }) => {
+test("a failed recovery wipe's Reload page restarts the app at its plain address, out of the room", async ({
+  context,
+  page,
+}) => {
+  await emulateTracker([context]);
   await page.goto("./?view=canvas&example=kafka-order-pipeline");
   await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+  await startRoom(page);
+  await expect(page.getByTestId("room-chip")).toBeVisible();
   await page.evaluate(() => {
     const open = IDBFactory.prototype.open;
     // The recovery database exists but refuses to open: the wipe can't complete.
@@ -320,6 +326,10 @@ test("a failed recovery wipe's Reload page restarts the app at its plain address
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("clear-device-dialog")).toHaveCount(0);
   await expect.poll(() => new URL(page.url()).search).not.toContain("example=kafka-order-pipeline");
+  // The room this tab was in doesn't resume.
+  await expect(page.getByTestId("room-chip")).toHaveCount(0);
+  await expect(page.getByTestId("room-connecting")).toHaveCount(0);
+  expect(await page.evaluate(() => sessionStorage.getItem("diagrams.collab.room.v1"))).toBeNull();
 });
 
 test("a copy that can't be saved holds the room's canvas behind a dialog: file copy, Try again", async ({

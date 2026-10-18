@@ -128,7 +128,7 @@ export function RoomLayer({
  * canvas behind it can't change and nothing navigates, so its one document is what Save a file copy exports.
  */
 function UnsavedDialog({ room }: { room: RoomLifecycle }) {
-  const [failedAgain, setFailedAgain] = useState(false);
+  const [failures, setFailures] = useState(0);
   return (
     <Dialog
       title={t("collab.unsavedTitle")}
@@ -156,7 +156,7 @@ function UnsavedDialog({ room }: { room: RoomLifecycle }) {
           <button
             className="btn btn-primary"
             data-autofocus
-            onClick={() => setFailedAgain(!room.retrySave())}
+            onClick={() => !room.retrySave() && setFailures((n) => n + 1)}
             data-testid="room-unsaved-retry"
           >
             {t("common.tryAgain")}
@@ -165,8 +165,9 @@ function UnsavedDialog({ room }: { room: RoomLifecycle }) {
       }
     >
       <p>{t("collab.unsavedBody")}</p>
-      {failedAgain && (
-        <p className="ix-error" role="alert" data-testid="room-unsaved-again">
+      {failures > 0 && (
+        // A new element per failure, so each one is announced.
+        <p key={failures} className="ix-error" role="alert" data-testid="room-unsaved-again">
           {t("collab.unsavedAgain")}
         </p>
       )}

@@ -17,6 +17,7 @@ import { MemoryNetwork } from "../transport/memory";
 import type { CollabTransport } from "../transport/types";
 import { RoomLifecycle, type RoomLibrary } from "./lifecycle";
 import { memoryTabRoom } from "./tabRoom";
+import { serializeNative } from "../../interop/native";
 
 // The room lifecycle (Edit together, plan E2) on the in-memory network: who seeds the room, what a link may do
 // before consent, the copy in Your diagrams, and a reload.
@@ -668,6 +669,40 @@ describe("leaving and reloading", () => {
     await cSession.idle();
     expect(cSession.status).toBe("left");
     expect(c.room.getSnapshot().open?.unsaved).toBe(true);
+  });
+
+  it("a Private exit's save isn't overwritten by a copy still pending from before it", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 65);
+    const slug = await start(a);
+    edit(a, (d) => ({ ...d, title: "Room edit, its copy pending" }));
+    const pasted = { ...canaryDiagram(), title: "Private paste", private: true };
+    a.room.configure({ capture: (s) => (s === slug ? pasted : undefined) });
+    const open = a.room.getSnapshot().open!;
+    open.editor.refusal = "private";
+    await open.session.leave();
+    expect(a.library.read(slug)?.title).toBe("Private paste");
+    clock.advance(1000);
+    expect(a.library.read(slug)?.title).toBe("Private paste");
+    expect(a.library.privacy(slug).private).toBe(true);
+  });
+
+  it("a background room made Private exports a Private recovery copy", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 66);
+    const slug = await start(a);
+    // Its canvas isn't showing: no capture, only the room's projection (no flags of its own).
+    a.room.configure({ capture: () => undefined });
+    a.library.markPrivate = () => {
+      throw new DOMException("full", "QuotaExceededError");
+    };
+    a.library.flags.set(slug, { private: true });
+    a.library.changed();
+    await a.room.getSnapshot().open!.session.idle();
+    expect(a.room.getSnapshot().open?.unsaved).toBe(true);
+    expect(serializeNative(a.room.unsavedDiagram()!)).toContain('"private": true');
   });
 
   it("a diagram marked Private while its room opens sends nothing", async () => {

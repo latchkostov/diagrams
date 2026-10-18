@@ -68,11 +68,13 @@ export async function clearDevice(): Promise<void> {
   } catch {
     // No BroadcastChannel: the storage event and the check before every write still reach the other tabs.
   }
-  await wipeRecoveryDb(next);
+  // This tab's session keys go first (its room among them, which this tab's stopped writes can't clear), so neither
+  // a successful start over nor a Reload page after a failed wipe resumes anything.
   try {
     removeAppKeys(sessionStorage);
   } catch {
     // Blocked: nothing to drop.
   }
+  await wipeRecoveryDb(next);
   window.location.replace(window.location.pathname);
 }

@@ -806,8 +806,9 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
           )}
           <button
             className="btn btn-danger"
-            disabled={clearing}
-            onClick={clear}
+            // Not disabled while clearing: focus stays on it (a disabled button drops focus out of the dialog).
+            aria-disabled={clearing}
+            onClick={clearing ? undefined : clear}
             data-testid={failed ? "clear-device-retry" : "clear-device-confirm"}
           >
             {failed ? t("common.tryAgain") : t("clear.confirm")}
