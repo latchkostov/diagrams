@@ -1,3 +1,4 @@
+import { useRailPlacement } from "./placement/useRailPlacement";
 import { useDragPlacement } from "./placement/useDragPlacement";
 import { useConnectionPlacement } from "./placement/useConnectionPlacement";
 import { useQuickAddPlacement, paneQuickAdd } from "./placement/useQuickAddPlacement";
@@ -33,7 +34,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type DragEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type Ref,
@@ -65,7 +65,7 @@ import { fromFlow, toFlow, type DiagramMeta } from "./convert";
 
 import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } from "./DiagramContext";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
-import { ANNOTATION_DND_MIME, resolveAnnotationColor, annotationTitle, parseAnnotationDrag } from "./annotations";
+import { ANNOTATION_DND_MIME, resolveAnnotationColor, annotationTitle } from "./annotations";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
@@ -93,13 +93,11 @@ import { notify, toast } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
 import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
 
-import { connectHitAt, connectTarget } from "./gestures";
 import { ConnectionLine } from "./ConnectionLine";
 
 import { type Toward } from "./placement";
-import { landing } from "./landing";
+
 import { LandingOutline } from "./LandingOutline";
-import { type EdgeHover } from "./edgeHover";
 
 import { isConnectable } from "./annotations";
 import { railAnchor } from "./railAnchor";
@@ -810,74 +808,16 @@ function CanvasInner({
 
   const onPaneDoubleClick = paneQuickAdd({ readOnly, screenToFlowPosition, setMenu, pickNamed, editor });
 
-  // ---------------------------------------------------------------- dropping a stencil (D13)
-  // While a stencil is dragged over the canvas: over empty canvas, a faint outline where it will land; over
-  // a node, the node lights up (the drop goes after it, connected); held over an edge, the edge lights up
-  // (the drop goes in between, D8).
-  const railDrop = useRef<{ hover: EdgeHover; node: Element | null } | null>(null);
-  const endRailDrop = useCallback(() => {
-    const r = railDrop.current;
-    railDrop.current = null;
-    r?.hover.clear();
-    r?.node?.classList.remove("is-connect-target");
-    landing.set(null);
-  }, []);
-  useEffect(() => endRailDrop, [endRailDrop]);
-  /** The node a stencil dropped here would follow (one that takes edges), if any. */
-  const dropNodeAt = (x: number, y: number) => {
-    const el = document.elementFromPoint(x, y);
-    const t = connectTarget(connectHitAt(el, annotationKindOf), "");
-    return t.kind === "node" ? { id: t.id, el: el?.closest(".react-flow__node") ?? null } : null;
-  };
-  const onRailDragOver = (e: DragEvent) => {
-    if (!editGestures) return;
-    const r = (railDrop.current ??= { hover: insertHover(), node: null });
-    const over = dropNodeAt(e.clientX, e.clientY);
-    if (over?.el !== r.node) {
-      r.node?.classList.remove("is-connect-target");
-      over?.el?.classList.add("is-connect-target");
-      r.node = over?.el ?? null;
-    }
-    r.hover.at(e.clientX, e.clientY, !!over || e.ctrlKey || e.metaKey);
-    if (over) return landing.set(null);
-    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    const { width, height } = getNodeVariant(nodeVariant).size;
-    landing.set({
-      x: Math.round((p.x - width / 2) / 10) * 10,
-      y: Math.round((p.y - height / 2) / 10) * 10,
-      width,
-      height,
-    });
-  };
-
-  const onDrop = (e: DragEvent) => {
-    const into = railDrop.current?.hover.lit() ?? null;
-    endRailDrop();
-    const note = parseAnnotationDrag(e.dataTransfer.getData(ANNOTATION_DND_MIME));
-    if (note) {
-      e.preventDefault();
-      controller.placing();
-      editor.addAnnotation(note.kind, {
-        shape: note.shape,
-        at: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
-        aroundSelection: false,
-      });
-      return;
-    }
-    const id = e.dataTransfer.getData(STENCIL_DND_MIME);
-    if (!id) return;
-    e.preventDefault();
-    const after = editGestures ? dropNodeAt(e.clientX, e.clientY) : null;
-    controller.placing();
-    // Onto a node: after it, connected (as a rail click does with it selected).
-    if (after && editor.createConnected({ from: after.id, stencil: id })) return revealSelection();
-    const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    // Held over an edge: in between, where it was dropped.
-    if (into && !(e.ctrlKey || e.metaKey) && editor.insertNode(into, id, at)) return;
-    // Anywhere else: where it was dropped, moved clear if it landed on something.
-    const made = editor.addNode(id, at);
-    requestAnimationFrame(() => editor.keepClear({ nodeIds: [made] }));
-  };
+  const { onRailDragOver, endRailDrop, onDrop } = useRailPlacement({
+    editGestures,
+    insertHover,
+    annotationKindOf,
+    screenToFlowPosition,
+    nodeVariant,
+    controller,
+    editor,
+    revealSelection,
+  });
 
   // ---------------------------------------------------------------- derived
 
