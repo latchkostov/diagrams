@@ -219,7 +219,10 @@ function paths(el, seen = new Set()) {
 }
 // image.ts creates this export-only subtree imperatively; it never enters the editor tree.
 assert.match(readFileSync("src/interop/image.ts", "utf8"), /el.className = "export-header"/);
-elements.push({ tag: "div", classes: new Set(["export-header"]), parents: [] });
+const exportHeader = { tag: "div", classes: new Set(["export-header"]), parents: [] };
+elements.push(exportHeader);
+for (const [, tag] of readFileSync("src/interop/image.ts", "utf8").matchAll(/document\.createElement\("(\w+)"\)/g))
+  elements.push({ tag, classes: new Set(), parents: [exportHeader] });
 // These legacy selectors have no authored class producer. Keep the rules, and verify that remains
 // true rather than assuming a namespace can never occur on a future element.
 const inactive = ["insp-meta", "insp-relation", "start-theme"];
@@ -310,7 +313,9 @@ function candidates(s) {
 
 function overlap(a, b) {
   if (a.specificity !== b.specificity) return false;
-  if ([...a.classes, ...b.classes].some((c) => inactive.includes(c))) return false;
+  const inactiveScope = (s) =>
+    split(s.selector, /[\s>+~]/).some((p) => subject(p).classes.some((c) => inactive.includes(c)));
+  if (inactiveScope(a) || inactiveScope(b)) return false;
   if (a.tag && b.tag && a.tag !== b.tag) return false;
   const hasTag = (s, tag) =>
     !tag || s.classes.every((c) => !tags.has(c) || tags.get(c).has("*") || tags.get(c).has(tag));
