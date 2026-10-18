@@ -3,7 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
 import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
-import { waitForStableViewport } from "./fixtures";
+import { interactionJournalMark, liveKeyLevels, waitForStableViewport } from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -160,10 +160,16 @@ test.describe("message trace", () => {
     await expect(page.getByTestId("trace-status")).toHaveAttribute("data-status", "done");
 
     // Esc backs out one level at a time: the right-clicked node's selection, then the trace.
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(card(page)).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(card(page)).toHaveCount(0);
+    // liveKeys rows X5 / X6 (the canvas or live view clears the selection, by where focus is), then X7.
+    expect(await liveKeyLevels(page, mark)).toEqual([
+      expect.stringMatching(/^escape:(canvas|selection)$/),
+      "escape:trace",
+    ]);
     // Esc backed out of the trace only: live view is still on.
     await expect(page.getByTestId("live-controls")).toBeVisible();
     expectNoErrors(consoleErrors);

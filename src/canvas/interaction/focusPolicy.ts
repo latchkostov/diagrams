@@ -12,6 +12,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * |     | replaced, unmount)                  |                                 |                                                        |
  * | M3  | menu.closed                         | no invoker, or a dialog         | keep (a dialog gives focus back to its own opener)     |
  * | M4  | menu.opened                         |                                 | keep (the menu takes focus inside itself)              |
+ * | M5  | menu.closed(escape), a Live popover | it had an invoker               | focus the invoker now (else the canvas)                |
+ * | M6  | menu.closed(any other), Live popover|                                 | keep (a pick or a press leaves focus where it put it)  |
  * | K1  | selection.changed(keyboard)         | to a node                       | focus it next frame (it reveals itself); Tab stop := it|
  * | K2  | selection.changed(keyboard)         | to a connection                 | focus it next frame (it reveals itself)                |
  * | H1  | selection.changed(undo / redo)      | focus was on the canvas         | focus the selection once drawn (else the canvas)       |
@@ -27,12 +29,18 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | I2  | inspector.field                     | a request already taken         | keep                                                   |
  * | I3  | inspector.toggled(panel, selection) |                                 | keep                                                   |
  * | D1  | dialog.closed(checks)               |                                 | focus its opener now (else the canvas)                 |
+ * | D2  | dialog.closed(livePanel)            |                                 | focus its opener now (else the Live bar's opener)      |
+ * | D3  | dialog.closed(inject)               |                                 | focus its opener now (else the node it injects at)     |
  * | E1  | escape                              | from a node or a connection     | two frames later, back on it if focus was lost         |
  * | C1  | canvas.requested (the gallery)      |                                 | focus the canvas next frame                            |
  * | C2  | presenting                          |                                 | focus the canvas now if focus was lost                 |
  * | C3  | start.blank                         |                                 | focus the stencil search next frame                    |
  * | C4  | dependencies.hidden                 | focus was on a dependency       | focus the canvas now                                   |
  * | R1  | document.replaced (a peer's change) | focus was in the canvas         | next frame, the canvas if what had focus has gone      |
+ * | L1  | live.key (Space, Enter, Esc)        | any level (liveKeys.ts)         | keep (Live's levels never move focus themselves)       |
+ * | L2  | narration.waiting (presenting)      |                                 | focus the note's Continue now (else the canvas)        |
+ * | L3  | callout.closed                      | focus was inside it             | the canvas now, if focus was lost                      |
+ * | L4  | panel.field (a Live panel's field)  |                                 | focus it once the panel lists it, all of it selected   |
  * | F1  | focus.entered, focus.resolved       |                                 | keep; Tab stop := that node                            |
  * | F2  | focus.ran                           | the move goes again             | focus it again next frame, if not there already        |
  * | F3  | focus.done                          |                                 | keep; nothing pending                                  |
@@ -55,6 +63,10 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
   switch (event.type) {
     case "menu.closed":
       if (!event.invoker || event.kind === "dialog") return keep();
+      if (event.kind === "live")
+        return event.reason === "escape"
+          ? move({ target: { kind: "element", handle: event.invoker }, when: "now", fallback: canvas })
+          : keep();
       if (event.reason === "escape")
         return move({ target: { kind: "element", handle: event.invoker }, when: "commit", fallback: canvas });
       return move({ target: { kind: "element", handle: event.invoker }, when: "commit", onlyIfLost: true });
@@ -97,11 +109,30 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       );
     case "inspector.toggled":
       return keep();
-    case "dialog.closed":
+    case "dialog.closed": {
+      const back: FocusTarget =
+        event.dialog === "livePanel"
+          ? { kind: "panelOpener" }
+          : event.dialog === "inject" && event.node
+            ? { kind: "node", id: event.node }
+            : canvas;
       return move({
-        target: event.opener ? { kind: "element", handle: event.opener } : canvas,
+        target: event.opener ? { kind: "element", handle: event.opener } : back,
         when: "now",
-        fallback: canvas,
+        fallback: back,
+      });
+    }
+    case "live.key":
+      return keep();
+    case "narration.waiting":
+      return move({ target: { kind: "element", handle: event.resume }, when: "now", fallback: canvas });
+    case "callout.closed":
+      return event.hadFocus ? move({ target: canvas, when: "now", onlyIfLost: true }) : keep();
+    case "panel.field":
+      return move({
+        target: { kind: "panelField", panel: event.panel, field: event.field },
+        when: "ready",
+        select: "all",
       });
     case "escape":
       if (!event.from) return keep();
@@ -156,6 +187,8 @@ export function describeTarget(target: FocusTarget): string {
       return `${target.kind}:${target.id}`;
     case "field":
       return `field:${target.name}`;
+    case "panelField":
+      return `panelField:${target.field}`;
     default:
       return target.kind;
   }

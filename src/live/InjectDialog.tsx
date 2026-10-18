@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { domActive, useInteraction, type MenuCloseReason } from "../canvas/interaction";
 import { useLive } from "./context";
 import { knownMessageTypes, suggestedMessageType } from "./storm";
 import { LiveIcon } from "./icons";
@@ -21,16 +22,25 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
   const [spread, setSpread] = useState(1);
   const first = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLFormElement>(null);
-  const close = useRef(onClose);
+  const interaction = useInteraction();
+  /** Why it closed (a pick, Esc, a press outside), for the focus return; `unmount` if it went any other way. */
+  const reason = useRef<MenuCloseReason>("unmount");
+  const closeWith = (why: MenuCloseReason) => {
+    reason.current = why;
+    onClose();
+  };
+  const close = useRef(closeWith);
+  const port = useRef(interaction);
   useLayoutEffect(() => {
-    close.current = onClose;
-  }, [onClose]);
+    close.current = closeWith;
+    port.current = interaction;
+  });
   useEffect(() => {
     const el = panel.current;
     if (!el) return;
-    const prev = document.activeElement as HTMLElement | null;
-    // A context-menu item may already have been removed. Restore to the originating node then.
-    const origin = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(request.nodeId)}"]`);
+    // Focus goes back to what had it (focus policy row D3); a context-menu item may already have been removed,
+    // and then to the originating node.
+    const opener = domActive();
     const background = Array.from(document.body.children).filter(
       (child): child is HTMLElement => child instanceof HTMLElement && !child.contains(el),
     );
@@ -42,7 +52,7 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
       e.stopPropagation();
       if (e.key === "Escape") {
         e.preventDefault();
-        close.current();
+        close.current("escape");
       }
       if (e.key !== "Tab") return;
       const controls = Array.from(
@@ -64,8 +74,13 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
       background.forEach((child, i) => {
         child.inert = previous[i];
       });
-      const target = prev?.isConnected && prev !== document.body ? prev : origin;
-      if (target?.isConnected) target.focus();
+      port.current?.dispatch({
+        type: "dialog.closed",
+        dialog: "inject",
+        opener,
+        node: request.nodeId,
+        reason: reason.current,
+      });
     };
   }, [request.nodeId]);
 
@@ -73,7 +88,7 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
     const n = Math.max(1, Math.min(5000, Math.floor(count) || 1));
     ui.controller.inject(request.nodeId, n, { type: type.trim() || undefined, spreadMs: Math.max(0, spread) * 1000 });
     if (!ui.controller.isPlaying) ui.controller.setPlaying(true);
-    onClose();
+    closeWith("pick");
   };
 
   const left = Math.min(Math.max(12, request.x), window.innerWidth - 300);
@@ -81,7 +96,7 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
   return createPortal(
     <div
       className="lv-modal-layer"
-      onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+      onPointerDown={(e) => e.target === e.currentTarget && closeWith("outside")}
       onContextMenu={(e) => e.preventDefault()}
       data-editor-overlay
     >
@@ -145,7 +160,7 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
           />
         </label>
         <div className="lv-inject-actions">
-          <button type="button" className="btn" onClick={onClose} data-testid="live-inject-cancel">
+          <button type="button" className="btn" onClick={() => closeWith("pick")} data-testid="live-inject-cancel">
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" data-testid="live-inject-submit">

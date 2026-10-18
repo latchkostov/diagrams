@@ -7,7 +7,7 @@ import {
   type InteractionPort,
   type Resolution,
 } from "./controller";
-import type { FocusTarget, InteractionPhase } from "./types";
+import type { FocusTarget, InteractionPhase, LiveKeyContext, MenuCloseReason } from "./types";
 
 /** A stand-in element: in the document or not, and able to take focus or not. */
 interface El {
@@ -39,6 +39,8 @@ function harness() {
     inspector: { open: true, fields: new Map<string, string | undefined>() },
     order: (ids: readonly string[]) => [...ids].sort(),
     version: 0,
+    /** One of Live's side panels: open or not, and the fields it lists so far. */
+    panel: { open: false, fields: new Set<string>() },
   };
   /** Focus calls on elements that had left the document (must stay empty). */
   const removedFocus: string[] = [];
@@ -85,6 +87,16 @@ function harness() {
         }
         case "paletteSearch":
           return { state: "ready", el: els.get("search") ?? el("search") };
+        case "panelOpener": {
+          const opener = els.get("panel-opener");
+          return opener?.connected ? { state: "ready", el: opener } : { state: "gone" };
+        }
+        case "panelField": {
+          // Live's panel: gone when it's closed; parked until it lists the field.
+          if (!env.panel.open) return { state: "gone" };
+          if (!env.panel.fields.has(target.field)) return { state: "parked" };
+          return { state: "ready", el: els.get(target.field) ?? el(target.field) };
+        }
       }
     },
     focus(handle) {
@@ -486,6 +498,121 @@ describe("interaction controller: readiness and the journal", () => {
     stop();
     h.frame();
     expect(h.focused).toEqual([]);
+  });
+});
+
+describe("interaction controller: live view", () => {
+  const context = (patch: Partial<LiveKeyContext> = {}): LiveKeyContext => ({
+    key: "escape",
+    repeat: false,
+    slowMotion: false,
+    recording: false,
+    editable: false,
+    control: false,
+    owner: false,
+    selection: false,
+    canvasFocus: false,
+    trace: false,
+    presenting: false,
+    path: false,
+    alwaysOn: false,
+    waiting: false,
+    ...patch,
+  });
+
+  it("Esc backs out one level per press, each journaled, and never moves focus (L1)", () => {
+    const h = harness();
+    const levels = [
+      h.controller.liveKey(context({ selection: true, trace: true, path: true })),
+      h.controller.liveKey(context({ trace: true, path: true })),
+      h.controller.liveKey(context({ path: true })),
+      h.controller.liveKey(context()),
+    ];
+    expect(levels).toEqual(["selection", "trace", "path", "exit"]);
+    expect(h.journal.map((e) => `${e.event} ${e.command}`)).toEqual([
+      "live.key:escape:selection keep",
+      "live.key:escape:trace keep",
+      "live.key:escape:path keep",
+      "live.key:escape:exit keep",
+    ]);
+    expect(h.focused).toEqual([]);
+  });
+
+  it("a live key leaves a pending move pending (a field waiting for its panel)", () => {
+    const h = harness();
+    h.env.panel.open = true;
+    h.controller.dispatch({ type: "panel.field", panel: "capacity-panel", field: "rate" });
+    h.controller.liveKey(context({ key: "space" }));
+    h.env.panel.fields.add("rate");
+    h.commit();
+    expect(h.focused).toEqual(["rate"]);
+  });
+
+  it("a panel's field waits, parked, until the panel lists it, without holding readiness (L4)", () => {
+    const h = harness();
+    h.env.panel.open = true;
+    h.controller.dispatch({ type: "panel.field", panel: "capacity-panel", field: "rate" });
+    expect(h.controller.phase).toBe("idle");
+    h.frame();
+    expect(h.focused).toEqual([]);
+    h.env.panel.fields.add("rate");
+    h.commit();
+    expect(h.focused).toEqual(["rate"]);
+  });
+
+  it("a panel's field whose panel closed meanwhile gives up at the next commit", () => {
+    const h = harness();
+    h.env.panel.open = true;
+    h.controller.dispatch({ type: "panel.field", panel: "capacity-panel", field: "rate" });
+    h.env.panel.open = false;
+    h.commit();
+    h.env.panel.open = true;
+    h.env.panel.fields.add("rate");
+    h.commit();
+    expect(h.focused).toEqual([]);
+    expect(h.journal.at(-2)).toMatchObject({ event: "focus.result", result: "gone" });
+  });
+
+  it("a Live panel's Esc gives focus back to its opener, else the bar's panel opener (D2)", () => {
+    const h = harness();
+    const item = h.el("menu-item");
+    h.el("panel-opener");
+    h.controller.dispatch({ type: "dialog.closed", dialog: "livePanel", opener: item, reason: "escape" });
+    item.connected = false;
+    h.controller.dispatch({ type: "dialog.closed", dialog: "livePanel", opener: item, reason: "escape" });
+    expect(h.focused).toEqual(["menu-item", "panel-opener"]);
+    expect(h.journal.map((e) => e.event)).toContain("dialog.closed:livePanel:escape");
+  });
+
+  it("the inject dialog gives focus back to its opener, else the node it injects at (D3)", () => {
+    const h = harness();
+    h.env.nodes.set("inventory", { drawn: true });
+    h.controller.dispatch({ type: "dialog.closed", dialog: "inject", opener: null, node: "inventory", reason: "pick" });
+    expect(h.focused).toEqual(["node:inventory"]);
+  });
+
+  it("a Live popover's Esc gives focus back at once; any other close keeps it (M5, M6)", () => {
+    const h = harness();
+    const button = h.el("summary");
+    const closed = (reason: MenuCloseReason) =>
+      h.controller.dispatch({ type: "menu.closed", kind: "live", reason, invoker: button, platform: "other" });
+    closed("outside");
+    closed("pick");
+    expect(h.focused).toEqual([]);
+    closed("escape");
+    expect(h.focused).toEqual(["summary"]);
+    // Not one of the canvas's surfaces: nothing opened over the canvas.
+    expect(h.controller.menu).toBeNull();
+  });
+
+  it("a trouble callout that had focus gives it to the canvas only if focus was lost (L3)", () => {
+    const h = harness();
+    h.controller.dispatch({ type: "callout.closed", hadFocus: false });
+    h.controller.dispatch({ type: "callout.closed", hadFocus: true });
+    expect(h.focused).toEqual(["canvas"]);
+    h.env.active = h.el("elsewhere");
+    h.controller.dispatch({ type: "callout.closed", hadFocus: true });
+    expect(h.focused).toEqual(["canvas"]);
   });
 });
 

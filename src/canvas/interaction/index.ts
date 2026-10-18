@@ -14,6 +14,9 @@
 //   selection change is one selection.changed event with the cause its source declared, heard by the focus policy and
 //   the camera. It publishes data-interaction-state (idle | menu-open | focus-pending) on canvas-wrap and, in e2e
 //   builds, the journal (journal.ts, window.__interactionJournal).
+// - liveKeys.ts: liveKeys(context) -> level. Pure: which level takes Space, Enter or Esc in live view (Esc backs out
+//   one level: its owners first, then the selection, the message trace, the highlighted path, live view itself).
+//   Live's keyboard (src/live/session/useLiveKeyboard.ts) asks the controller (liveKey), which journals it.
 // - domPort.ts: the DOM behind the port; useInteraction.ts: the hooks CanvasView and the Inspector call.
 //
 // Adding menu, focus or selection behaviour
@@ -23,8 +26,8 @@
 // 3. If it needs a new kind of target or timing, add it to FocusTarget / FocusWhen and resolve it in domPort.ts.
 // 4. Dispatch the event from the call site that knows the cause.
 // Never call .focus(), open or close a menu with a state setter, or wait a frame "for focus to settle" in
-// src/canvas: ESLint (eslint.config.js) rejects .focus() and menu setters outside this directory, apart from a short,
-// justified allowlist of focus that stays inside one component.
+// src/canvas or src/live: ESLint (eslint.config.js) rejects .focus() and menu setters outside this directory, apart
+// from a short, justified allowlist of focus that stays inside one component.
 export type {
   ElementHandle,
   FocusCommand,
@@ -36,6 +39,9 @@ export type {
   FocusTarget,
   FocusWhen,
   InteractionPhase,
+  LiveKey,
+  LiveKeyAction,
+  LiveKeyContext,
   MenuCloseReason,
   MenuVia,
   MenusEvent,
@@ -56,6 +62,8 @@ export {
   type Resolution,
 } from "./controller";
 export { focusPolicy, initialFocus } from "./focusPolicy";
+export { liveKeys } from "./liveKeys";
+export { domActive, PANEL_OPENER_ATTR } from "./domPort";
 export { cameraMenuKind, initialMenus, menus } from "./menus";
 export {
   InteractionContext,

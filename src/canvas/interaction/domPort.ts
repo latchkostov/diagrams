@@ -1,6 +1,9 @@
 import type { InteractionPort, InteractionScheduler, Resolution } from "./controller";
 import type { ElementHandle, FocusTarget, InteractionPhase } from "./types";
 
+/** Marks the Live bar's control that opens its side panels, so a panel's Esc has somewhere to give focus back. */
+export const PANEL_OPENER_ATTR = "data-live-panel-opener";
+
 /** What has keyboard focus: null for nothing, or the page's body. */
 export function domActive(): ElementHandle | null {
   if (typeof document === "undefined") return null;
@@ -24,6 +27,9 @@ export interface DomCanvas {
 
 const nodeSelector = (id: string) => `.react-flow__node[data-id="${CSS.escape(id)}"]`;
 const edgeSelector = (id: string) => `.react-flow__edge[data-id="${CSS.escape(id)}"]`;
+
+/** Panels whose fields scroll into view as they take focus. */
+const SCROLLS = '[data-testid="inspector"], [data-testid="palette-search"], [data-testid="capacity-panel"]';
 
 /** React Flow keeps a node it hasn't measured yet hidden, and a hidden element can't take focus. */
 const shown = (el: Element) => !(el instanceof HTMLElement) || el.style.visibility !== "hidden";
@@ -80,6 +86,17 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         const el = canvas.root()?.parentElement?.querySelector('[data-testid="palette-search"]');
         return el ? { state: "ready", el } : { state: "gone" };
       }
+      case "panelOpener": {
+        const el = document.querySelector(`[${PANEL_OPENER_ATTR}]`);
+        return el ? { state: "ready", el } : { state: "gone" };
+      }
+      case "panelField": {
+        // The panel lists the field once its session catches up (a commit, see the panel's rendered()).
+        const panel = document.querySelector(`[data-testid="${CSS.escape(target.panel)}"]`);
+        if (!panel) return { state: "gone" };
+        const el = panel.querySelector(`[data-testid="${CSS.escape(target.field)}"]`);
+        return el ? { state: "ready", el } : { state: "parked" };
+      }
     }
   };
   return {
@@ -87,10 +104,10 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
     resolve,
     focus(handle, select) {
       const el = handle as HTMLElement;
-      // The Inspector's fields and the stencil search scroll into their panel; the canvas and its items never
-      // scroll (the camera reveals them), nor does a menu's invoker.
+      // The Inspector's fields, the stencil search and Live's panel fields scroll into their panel; the canvas and
+      // its items never scroll (the camera reveals them), nor does a menu's invoker.
       const text = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
-      if (el.closest('[data-testid="inspector"], [data-testid="palette-search"]')) el.focus();
+      if (el.closest(SCROLLS)) el.focus();
       else el.focus({ preventScroll: true });
       if (text && select === "end") el.setSelectionRange(el.value.length, el.value.length);
       else if (text && select === "all") el.select();

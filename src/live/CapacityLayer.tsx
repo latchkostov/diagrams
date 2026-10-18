@@ -3,6 +3,7 @@ import { assignmentLabel } from "../stencils/brokerVocabulary";
 import type { BrokerSpec } from "../model/brokers";
 import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { useNodes, useStore } from "@xyflow/react";
+import { useInteraction } from "../canvas/interaction";
 import type { FlowNode } from "../canvas/types";
 import type { CapacityFix, CapacityView, NodeHeat } from "./capacityModel";
 import { LiveIcon } from "./icons";
@@ -256,15 +257,13 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
   const placement = useFloatingPlacement(box, !!floating);
-  // Focus inside the callout when it goes (dismissed, revived, the trouble over) returns to the canvas, never <body>.
+  // Focus inside the callout when it goes (dismissed, revived, the trouble over) returns to the canvas, never <body>
+  // (focus policy row L3).
   const focused = useRef(false);
+  const interaction = useInteraction();
   useEffect(() => {
-    const wrap = box.current?.closest<HTMLElement>(".canvas-wrap");
-    return () => {
-      if (focused.current && (document.activeElement === document.body || !document.activeElement))
-        wrap?.focus({ preventScroll: true });
-    };
-  }, []);
+    return () => interaction?.dispatch({ type: "callout.closed", hadFocus: focused.current });
+  }, [interaction]);
   return (
     <div
       ref={box}

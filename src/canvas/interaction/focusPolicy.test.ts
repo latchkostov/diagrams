@@ -6,6 +6,8 @@ import type {
   FocusEvent,
   FocusMove,
   FocusState,
+  LiveKey,
+  LiveKeyAction,
   MenuCloseReason,
   Platform,
   SelectionCause,
@@ -138,6 +140,91 @@ describe("focusPolicy: the rules, row by row", () => {
       ["focus:element@now"],
     ],
     [
+      "M5 Esc in a Live popover gives focus back to its invoker at once",
+      state(),
+      [closed("escape", { kind: "live" })],
+      ["focus:element@now"],
+    ],
+    [
+      "M5 a Live popover opened with no invoker (the ⋯ menu): keep",
+      state(),
+      [closed("escape", { kind: "live", invoker: null })],
+      ["keep"],
+    ],
+    [
+      "M6 a pick, a press outside, its own button or the bar going: focus stays where it went",
+      state(),
+      [
+        closed("pick", { kind: "live" }),
+        closed("outside", { kind: "live" }),
+        closed("toggle", { kind: "live" }),
+        closed("unmount", { kind: "live" }),
+      ],
+      ["keep", "keep", "keep", "keep"],
+    ],
+    [
+      "M4 a Live popover opening: keep",
+      state(),
+      [{ type: "menu.opened", kind: "live", via: "keyboard", platform: "other" }],
+      ["keep"],
+    ],
+    [
+      "D2 a Live panel's Esc: focus goes to its opener",
+      state(),
+      [{ type: "dialog.closed", dialog: "livePanel", opener, reason: "escape" }],
+      ["focus:element@now"],
+    ],
+    [
+      "D2 no opener: the Live bar's panel opener",
+      state(),
+      [{ type: "dialog.closed", dialog: "livePanel", opener: null, reason: "escape" }],
+      ["focus:panelOpener@now"],
+    ],
+    [
+      "D3 the inject dialog closed: focus goes to its opener",
+      state(),
+      [{ type: "dialog.closed", dialog: "inject", opener, node: "inventory", reason: "pick" }],
+      ["focus:element@now"],
+    ],
+    [
+      "D3 no opener (the menu item it came from has gone): the node it injects at",
+      state(),
+      [{ type: "dialog.closed", dialog: "inject", opener: null, node: "inventory", reason: "escape" }],
+      ["focus:node:inventory@now"],
+    ],
+    [
+      "L1 Space, Enter and Esc in live view never move focus, at any level",
+      state(),
+      [
+        { type: "live.key", key: "escape", action: "selection" },
+        { type: "live.key", key: "escape", action: "trace" },
+        { type: "live.key", key: "escape", action: "path" },
+        { type: "live.key", key: "escape", action: "exit" },
+        { type: "live.key", key: "space", action: "toggle" },
+        { type: "live.key", key: "enter", action: "resume" },
+      ],
+      ["keep", "keep", "keep", "keep", "keep", "keep"],
+    ],
+    [
+      "L2 a pausing note while presenting: its Continue now",
+      state(),
+      [{ type: "narration.waiting", resume: node }],
+      ["focus:element@now"],
+    ],
+    [
+      "L3 a callout that had focus went: the canvas if lost",
+      state(),
+      [{ type: "callout.closed", hadFocus: true }],
+      ["focus:canvas@now"],
+    ],
+    ["L3 a callout without focus went: keep", state(), [{ type: "callout.closed", hadFocus: false }], ["keep"]],
+    [
+      "L4 a new entry point's rate: once its panel lists it",
+      state(),
+      [{ type: "panel.field", panel: "capacity-panel", field: "capacity-rate-n1" }],
+      ["focus:panelField:capacity-rate-n1@ready"],
+    ],
+    [
       "D1 no opener: the canvas",
       state(),
       [{ type: "dialog.closed", dialog: "checks", opener: null }],
@@ -208,6 +295,21 @@ describe("focusPolicy: the rules, row by row", () => {
     }
   });
 
+  it("D2 and D3 fall back to the panel opener and the node, never the canvas", () => {
+    const panel = focusPolicy(state(), { type: "dialog.closed", dialog: "livePanel", opener }).command as FocusMove;
+    const inject = focusPolicy(state(), { type: "dialog.closed", dialog: "inject", opener, node: "n" })
+      .command as FocusMove;
+    expect(panel.fallback).toEqual({ kind: "panelOpener" });
+    expect(inject.fallback).toEqual({ kind: "node", id: "n" });
+  });
+
+  it("L3 yields to a move someone else made; L4 selects the field's text and doesn't go again", () => {
+    const callout = focusPolicy(state(), { type: "callout.closed", hadFocus: true }).command as FocusMove;
+    const field = focusPolicy(state(), { type: "panel.field", panel: "p", field: "f" }).command as FocusMove;
+    expect(callout.onlyIfLost).toBe(true);
+    expect([field.select, field.again]).toEqual(["all", undefined]);
+  });
+
   it("K1 moves the Tab stop at once; F1 a node focused by a click moves it too", () => {
     expect(run(state(), [selected("keyboard", { target: { kind: "node", id: "b" } })]).state.roving).toBe("b");
     expect(run(state({ roving: "b" }), [{ type: "focus.entered", id: "c" }]).state.roving).toBe("c");
@@ -251,9 +353,27 @@ const REASONS: MenuCloseReason[] = [
   "resize",
   "gesture",
   "command",
+  "toggle",
   "unmount",
 ];
-const KINDS: SurfaceKind[] = ["context", "quickAdd", "connected", "dialog"];
+const KINDS: SurfaceKind[] = ["context", "quickAdd", "connected", "dialog", "live"];
+const LIVE_KEYS: LiveKey[] = ["space", "enter", "escape"];
+const LIVE_ACTIONS: LiveKeyAction[] = [
+  "slowmo",
+  "recording",
+  "editor",
+  "owner",
+  "canvas",
+  "selection",
+  "trace",
+  "presentation",
+  "path",
+  "exit",
+  "toggle",
+  "resume",
+  "repeat",
+  "none",
+];
 const PLATFORMS: Platform[] = ["mac", "other"];
 const CAUSES: SelectionCause[] = ["click", "box", "keyboard", "undo", "redo", "placement", "palette", "programmatic"];
 
@@ -279,6 +399,16 @@ function allEvents(platform: Platform): FocusEvent[] {
     { type: "inspector.toggled", cause: "selection" },
     { type: "dialog.closed", dialog: "checks", opener },
     { type: "dialog.closed", dialog: "checks", opener: null },
+    ...(["livePanel", "inject"] as const).flatMap((dialog) =>
+      [opener, null].flatMap((o) =>
+        REASONS.map((reason): FocusEvent => ({ type: "dialog.closed", dialog, opener: o, node: "n", reason })),
+      ),
+    ),
+    ...LIVE_KEYS.flatMap((key) => LIVE_ACTIONS.map((action): FocusEvent => ({ type: "live.key", key, action }))),
+    { type: "narration.waiting", resume: node },
+    { type: "callout.closed", hadFocus: true },
+    { type: "callout.closed", hadFocus: false },
+    { type: "panel.field", panel: "capacity-panel", field: "rate" },
     { type: "escape", from: node },
     { type: "escape", from: null },
     { type: "canvas.requested" },
@@ -340,6 +470,11 @@ describe("focusPolicy: invariants over every state × event", () => {
       // A move to something that can disappear says where focus goes instead, or only acts if focus was lost.
       if (d.command.type === "focus" && ["element", "selection"].includes(d.command.target.kind))
         expect(!!d.command.fallback || !!d.command.onlyIfLost).toBe(true);
+      // Live's keys never move focus, at any level; a Live popover gives focus back only on Esc.
+      if (e.type === "live.key") expect(d.command.type).toBe("keep");
+      if (e.type === "menu.closed" && e.kind === "live" && e.reason !== "escape") expect(d.command.type).toBe("keep");
+      // A dialog or panel closing always says where focus goes if its opener has gone.
+      if (e.type === "dialog.closed") expect((d.command as FocusMove).fallback).toBeDefined();
       // Inspector requests run once each.
       expect(d.state.fieldSeq).toBeGreaterThanOrEqual(s.fieldSeq);
     }
@@ -365,6 +500,9 @@ const arbEvent: fc.Arbitrary<FocusEvent> = fc.oneof(
     .integer({ min: 1, max: 6 })
     .map((seq): FocusEvent => ({ type: "inspector.field", seq, name: "label", owner: "a" })),
   fc.constantFrom<FocusEvent>(
+    { type: "live.key", key: "escape", action: "trace" },
+    { type: "dialog.closed", dialog: "livePanel", opener, reason: "escape" },
+    { type: "panel.field", panel: "capacity-panel", field: "rate" },
     { type: "focus.ran" },
     { type: "focus.done" },
     { type: "input" },

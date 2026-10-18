@@ -120,7 +120,9 @@ export const useInteraction = () => useContext(InteractionContext);
 export function useInteractionOrLocal(): { controller: InteractionController; local: boolean } {
   const shared = useInteraction();
   const [own] = useState(() =>
-    shared ? null : createInteractionController(createDomPort({ root: () => null }), domScheduler),
+    shared
+      ? null
+      : createInteractionController(createDomPort({ root: () => null }), domScheduler, { journal: interactionJournal }),
   );
   const controller = shared ?? own!;
   useLocalLifecycle(own);

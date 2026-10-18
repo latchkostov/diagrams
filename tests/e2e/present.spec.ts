@@ -11,6 +11,8 @@ import {
   waitForCameraIdle,
   cameraJournalMark,
   cameraMoves,
+  interactionJournalMark,
+  liveKeyLevels,
 } from "./fixtures";
 
 // Presenting, full screen: the button beside Exit presentation, F, the browser's own exit, and Esc's order.
@@ -179,8 +181,11 @@ test.describe("presenting full screen", () => {
     await page.keyboard.press("f");
     await expect.poll(() => fullscreen(page)).toBe(true);
 
+    const keys = await interactionJournalMark(page);
     await escToPage(page);
     await expect.poll(() => fullscreen(page)).toBe(false);
+    // Full screen is ahead of live view's chain: no live level heard this Esc.
+    expect(await liveKeyLevels(page, keys)).toEqual([]);
     // Only full screen: still in slow motion, still presenting.
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
     await expect(page.getByTestId("present-exit")).toBeVisible();

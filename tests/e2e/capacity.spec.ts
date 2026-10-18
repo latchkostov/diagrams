@@ -1,6 +1,7 @@
 import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, gotoLive, fitDiagram } from "./fixtures";
+import { interactionJournalMark, interactionLog } from "./fixtures";
 
 // Inputs & capacity: the presenter's what-if flow (Black Friday at 3×, the heat map, Apply fix),
 // undo, "Save to simulation" across a reload, the heat map in edit mode, and real units.
@@ -110,10 +111,18 @@ test.describe("inputs & capacity", () => {
     await page.getByTestId("capacity-reset").click();
     await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("1×");
     await expect(page.getByTestId("capacity-capacity-mult-value")).toHaveText("1×");
+    const mark = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("capacity-panel")).toHaveCount(0);
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await expect(page.getByTestId("live-capacity")).toBeFocused();
+    // The panel owns Esc (liveKeys row X4) and gives focus back to the bar button that opened it (row D2).
+    expect(await interactionLog(page, mark)).toEqual([
+      "live.key:escape:owner -> keep",
+      "dialog.closed:livePanel:escape -> focus:element@now",
+      "focused: focus:element@now",
+      "focus.ran -> keep",
+    ]);
     // The heat map stays on with the callout floating over the canvas.
     await expect(page.getByTestId("bottleneck-callout")).toBeVisible();
   });
@@ -296,10 +305,16 @@ const topology = async (page: Page) => ({
 async function addEntryIntoApi(page: Page): Promise<string> {
   await page.getByTestId("live-toggle").click();
   await page.getByTestId("live-capacity").click();
+  const mark = await interactionJournalMark(page);
   await page.getByTestId("capacity-add-entry-api").click();
   const rate = page.getByTestId(/^capacity-rate-(?!.*slider)/).first();
   await expect(rate).toBeFocused();
-  return ((await rate.getAttribute("data-testid")) ?? "").slice("capacity-rate-".length);
+  // Row L4: the rate field takes the cursor once the panel lists the new entry point, through the controller.
+  const id = ((await rate.getAttribute("data-testid")) ?? "").slice("capacity-rate-".length);
+  const log = await interactionLog(page, mark);
+  expect(log).toContain(`panel.field -> focus:panelField:capacity-rate-${id}@ready`);
+  expect(log).toContain(`focused: focus:panelField:capacity-rate-${id}@ready`);
+  return id;
 }
 
 test.describe("entry points (sixth review)", () => {

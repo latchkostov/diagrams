@@ -7,6 +7,7 @@ import { formatClock, formatCount, formatSpeed } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./Timeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
+import { useLivePopover } from "./useLivePopover";
 import { SlowBar } from "./slowmo/SlowBar";
 import type { ExpectationState } from "../sim/types";
 import { liveMutationGuard } from "./liveActions";
@@ -207,7 +208,8 @@ const TRACE_CHOICES: readonly (readonly [TraceChoice, string])[] = [
 function MoreMenu({ state }: { state: LiveState }) {
   const ui = useLive();
   const c = ui.controller;
-  const [open, setOpen] = useState(false);
+  // Its Esc leaves focus where it is (no invoker): the "⋯" button keeps it, an item's focus goes with the menu.
+  const { open, toggle, close } = useLivePopover();
   const [traceOpen, setTraceOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const waiting = !!state.run?.waiting;
@@ -217,21 +219,21 @@ function MoreMenu({ state }: { state: LiveState }) {
   const traffic = ui.action("sim.traffic");
   useEffect(() => {
     if (!open) return;
-    const outside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const outside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && close("outside");
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && close("escape");
     window.addEventListener("pointerdown", outside, true);
     window.addEventListener("keydown", esc);
     return () => {
       window.removeEventListener("pointerdown", outside, true);
       window.removeEventListener("keydown", esc);
     };
-  }, [open]);
+  }, [open, close]);
   const pick =
     (fn: () => void, keepOpen = false) =>
     () => {
       fn();
       if (!keepOpen) {
-        setOpen(false);
+        close("pick");
         setTraceOpen(false);
       }
     };
@@ -240,7 +242,7 @@ function MoreMenu({ state }: { state: LiveState }) {
     <div className="lv-more" ref={root}>
       <button
         className={`lv-btn${open ? " is-on" : ""}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         title="More"
@@ -358,17 +360,17 @@ function ExpectationSummary({
   failed: boolean;
   done: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  // Esc gives focus back to the summary button (focus policy row M5).
+  const { open, toggle, close } = useLivePopover(() => button.current);
   useEffect(() => {
     if (!open) return;
-    const outside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    const outside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && close("outside");
     const esc = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.stopPropagation();
-      setOpen(false);
-      button.current?.focus();
+      close("escape");
     };
     window.addEventListener("pointerdown", outside, true);
     window.addEventListener("keydown", esc, true);
@@ -376,14 +378,14 @@ function ExpectationSummary({
       window.removeEventListener("pointerdown", outside, true);
       window.removeEventListener("keydown", esc, true);
     };
-  }, [open]);
+  }, [open, close]);
   const tone = failed ? " is-fail" : done ? " is-pass" : "";
   return (
     <div className="lv-checks-more" ref={root}>
       <button
         ref={button}
         className={`lv-checks-sum${tone}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={`Expectations: ${passed} of ${expectations.length} hold${failed ? ", some failed" : ""}. Show each`}
