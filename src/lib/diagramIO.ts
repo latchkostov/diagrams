@@ -687,6 +687,23 @@ export function createLibraryDiagram(
   return createLibraryEntry(input, target, sessionId, provenance);
 }
 
+/**
+ * The library entry's privacy for a new document: a file's `"private": true` becomes the entry's switch, and copies
+ * inherit their source's privacy (a local-only example's provenance, or the Private switch). Shared by creation and by
+ * the retired-edits repair, which republishes an entry for an already stored document.
+ */
+function entryFlags(input: DiagramFile, provenance: PrivacyFlags & { sourceSlug?: string } = {}): PrivacyFlags {
+  const d = withPrivacyField(input, false);
+  const source = provenance.sourceSlug !== undefined ? getPrivacyFlags(provenance.sourceSlug) : {};
+  return {
+    localOnly:
+      provenance.localOnly ||
+      (provenance.sourceSlug !== undefined && privacyOf({ localOnly: source.localOnly, diagram: d }) === "local-only"),
+    private: provenance.private || source.private || input.private === true,
+    onDevice: provenance.onDevice || source.onDevice,
+  };
+}
+
 function createLibraryEntry(
   input: DiagramFile,
   target: SaveTarget | undefined,
@@ -702,15 +719,7 @@ function createLibraryEntry(
     while (entries.some((e) => e.slug === slug));
   // A file's `"private": true` becomes the entry's switch; the stored document never carries it.
   const d = withPrivacyField(input, false);
-  // Copies inherit their source's privacy: a local-only example's provenance, or the Private switch.
-  const source = provenance.sourceSlug !== undefined ? getPrivacyFlags(provenance.sourceSlug) : {};
-  const flags: PrivacyFlags = {
-    localOnly:
-      provenance.localOnly ||
-      (provenance.sourceSlug !== undefined && privacyOf({ localOnly: source.localOnly, diagram: d }) === "local-only"),
-    private: provenance.private || source.private || input.private === true,
-    onDevice: provenance.onDevice || source.onDevice,
-  };
+  const flags = entryFlags(input, provenance);
   const r = validateDiagram(d);
   if (!r.ok) throw new Error(r.error);
   const session: DocumentSession = {
@@ -954,9 +963,10 @@ function offerRetiredEdits(failed: readonly DiagramFile[]): void {
   );
 }
 
-/** The adopted copy holds exactly these edits and Your diagrams lists it: only then may the source go. */
+/** The adopted copy holds exactly these edits, at least as private, and Your diagrams lists it: only then may the source go. */
 function adoptionVerified(copy: string, edited: DiagramFile): boolean {
   if (!hasLibraryEntry(copy)) return false;
+  if (edited.private === true && getPrivacyFlags(copy).private !== true) return false;
   const stored = getCurrent(copy);
   return !!stored && JSON.stringify(stored) === JSON.stringify(withPrivacyField(edited, false));
 }
@@ -970,8 +980,11 @@ function ensureAdopted(copy: string, edited: DiagramFile): boolean {
   const document = getOriginal(copy);
   if (document && hasLibraryEntry(copy)) return true;
   try {
+    // The stored document no longer carries `private`: the entry's switch comes from the edits themselves.
     if (document)
-      commitWrites([[entryKey(copy), JSON.stringify(summarize(copy, document, Date.now(), undefined, {}))]]);
+      commitWrites([
+        [entryKey(copy), JSON.stringify(summarize(copy, document, Date.now(), undefined, entryFlags(edited)))],
+      ]);
     else createLibraryEntry(edited, undefined, undefined, {}, undefined, copy);
     return true;
   } catch {
@@ -988,6 +1001,8 @@ function adoptRetired(exclusive: boolean): string[] {
     const edited = raw === null ? undefined : readDiagram(key);
     if (raw === null || !edited) continue;
     const copy = retiredCopySlug(slug, raw);
+    // You deleted this copy: it isn't recreated, and the edits stay where they were.
+    if (isDeleted(copy)) continue;
     if (!ensureAdopted(copy, edited)) {
       failed.push(edited);
       continue;

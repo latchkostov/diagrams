@@ -1139,6 +1139,38 @@ describe("retired examples", () => {
     expect(storage.getItem(`${AUTOSAVE}keda-render-workers`)).not.toBeNull();
   });
 
+  it("interrupted adoption preserves private provenance", async () => {
+    const secret = JSON.stringify({ ...good, private: true });
+    storage.setItem(`${AUTOSAVE}aws-fanout`, secret);
+    const [slug] = await io.adoptRetiredExampleEdits();
+    expect(io.getPrivacyFlags(slug).private).toBe(true);
+    // The document was written without its `private` field, and the start stopped before publishing the entry.
+    unpublish(slug);
+    storage.setItem(`${AUTOSAVE}aws-fanout`, secret);
+    // Watch the moment the source goes: by then the republished entry must already be Private.
+    let privateWhenDeleted: boolean | undefined;
+    const original = storage.removeItem;
+    const remove = vi.spyOn(storage, "removeItem").mockImplementation((key: string) => {
+      if (key === `${AUTOSAVE}aws-fanout`) privateWhenDeleted = io.getPrivacyFlags(slug).private;
+      original(key);
+    });
+    expect(await io.adoptRetiredExampleEdits()).toEqual([slug]);
+    remove.mockRestore();
+    expect(io.getPrivacyFlags(slug).private).toBe(true);
+    expect(privateWhenDeleted).toBe(true);
+    expect(storage.getItem(`${AUTOSAVE}aws-fanout`)).toBeNull();
+  });
+
+  it("a copy you deleted isn't recreated from the retired edits", async () => {
+    storage.setItem(`${AUTOSAVE}aws-fanout`, JSON.stringify(good));
+    vi.stubGlobal("navigator", {});
+    const [slug] = await io.adoptRetiredExampleEdits();
+    io.deleteLibraryDiagram(slug);
+    expect(await io.adoptRetiredExampleEdits()).toEqual([]);
+    expect(io.listLibrary()).toEqual([]);
+    expect(storage.getItem(`${AUTOSAVE}aws-fanout`)).not.toBeNull();
+  });
+
   it("failed concurrent adoption preserves the peer's committed copy", async () => {
     storage.setItem(`${AUTOSAVE}aws-fanout`, JSON.stringify(good));
     vi.resetModules();
