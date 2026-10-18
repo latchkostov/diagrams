@@ -60,6 +60,11 @@ export interface ContextMenuProps {
   menuId?: string;
   /** The trigger toggles its own menu instead of dismissing it on pointer-down. */
   triggerRef?: RefObject<HTMLElement | null>;
+  /**
+   * Gives focus back to what had it when the menu opened, if the menu's closing left it on the page (default). The
+   * canvas's menus say false: its focus controller gives it back (src/canvas/interaction, rows M1 and M2).
+   */
+  returnFocus?: boolean;
 }
 
 export function ContextMenu({
@@ -75,10 +80,11 @@ export function ContextMenu({
   testId = "context-menu",
   menuId,
   triggerRef,
+  returnFocus = true,
 }: ContextMenuProps) {
   useLocale();
   const layer = useRef<HTMLDivElement>(null);
-  const invoker = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  const invoker = useRef(returnFocus && document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const closeRef = useRef(onClose);
   useLayoutEffect(() => {
     closeRef.current = onClose;
@@ -118,10 +124,11 @@ export function ContextMenu({
       window.removeEventListener("resize", resized);
       window.removeEventListener("blur", blurred);
       // Actions and outside clicks may deliberately focus another control. Let them win.
-      queueMicrotask(() => {
-        if (document.activeElement === document.body && previousFocus?.isConnected)
-          previousFocus.focus({ preventScroll: true });
-      });
+      if (previousFocus)
+        queueMicrotask(() => {
+          if (document.activeElement === document.body && previousFocus.isConnected)
+            previousFocus.focus({ preventScroll: true });
+        });
     };
   }, [triggerRef]);
 

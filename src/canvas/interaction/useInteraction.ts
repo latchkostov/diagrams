@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useState,
   useSyncExternalStore,
   type RefObject,
@@ -80,12 +81,14 @@ export function useSelectionEvents<P>(
   nodes: FlowNode[],
   edges: DiagramFlowEdge[],
 ) {
-  const ids = [
-    ...nodes.filter((n) => n.selected).map((n) => n.id),
-    ...edges.filter((e) => e.selected).map((e) => e.id),
-  ];
-  const key = JSON.stringify(ids);
-  useLayoutEffect(() => controller.selectionCommitted(key, ids.length === 0));
+  const { key, empty } = useMemo(() => {
+    const ids = [
+      ...nodes.filter((n) => n.selected).map((n) => n.id),
+      ...edges.filter((e) => e.selected).map((e) => e.id),
+    ];
+    return { key: JSON.stringify(ids), empty: ids.length === 0 };
+  }, [nodes, edges]);
+  useLayoutEffect(() => controller.selectionCommitted(key, empty));
 }
 
 /** Input, commits and the lifetime of a controller (the canvas's, or the Lab Inspector's own). */

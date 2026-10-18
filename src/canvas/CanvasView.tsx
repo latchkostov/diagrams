@@ -1153,9 +1153,10 @@ function CanvasInner({
                 root={wrapper}
                 items={menuItems}
                 onClose={closeMenu}
+                returnFocus={false}
               />
             ) : (
-              <ContextMenu {...menu} items={menuItems} onClose={closeMenu} />
+              <ContextMenu {...menu} items={menuItems} onClose={closeMenu} returnFocus={false} />
             ))}
           {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} />}
           {!readOnly && (
