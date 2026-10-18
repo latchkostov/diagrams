@@ -191,6 +191,9 @@ export type FocusEvent =
     }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */
   | { type: "inspector.toggled"; cause: "panel" | "selection" }
+  /** A modal takes its first field, or wraps Tab within its own controls. */
+  | { type: "dialog.opened"; first: ElementHandle }
+  | { type: "dialog.tab"; target: ElementHandle }
   /**
    * A dialog or panel closed, and focus goes back to what opened it. `checks`: the Checks card (Esc, its close
    * button). `livePanel`: one of Live's side panels (Esc), back to its opener, else the Live bar's panel opener.

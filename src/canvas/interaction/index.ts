@@ -64,7 +64,7 @@ export {
 } from "./controller";
 export { focusPolicy, initialFocus } from "./focusPolicy";
 export { liveKeys } from "./liveKeys";
-export { domActive, PANEL_OPENER_ATTR } from "./domPort";
+export { dialogTabTarget, domActive, PANEL_OPENER_ATTR } from "./domPort";
 export { cameraMenuKind, initialMenus, menus } from "./menus";
 export {
   InteractionContext,

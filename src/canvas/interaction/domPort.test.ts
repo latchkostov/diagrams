@@ -1,8 +1,36 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { createDomPort } from "./domPort";
+import { createDomPort, dialogTabTarget } from "./domPort";
 import { createInteractionController } from "./controller";
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("wraps only boundary Tabs, skipping disabled and hidden modal controls", () => {
+  const first = { hasAttribute: () => false, hidden: false };
+  const middle = { hasAttribute: () => false, hidden: false };
+  const last = { hasAttribute: () => false, hidden: false };
+  const panel = {
+    querySelectorAll: () => [
+      first,
+      middle,
+      last,
+      { hasAttribute: () => true },
+      { hasAttribute: () => false, hidden: true },
+    ],
+  } as unknown as HTMLElement;
+  const document = { activeElement: first as object };
+  vi.stubGlobal("document", document);
+  expect(dialogTabTarget(panel, true)).toBe(last);
+  expect(dialogTabTarget(panel, false)).toBeNull();
+  document.activeElement = middle;
+  expect(dialogTabTarget(panel, true)).toBeNull();
+  expect(dialogTabTarget(panel, false)).toBeNull();
+  document.activeElement = last;
+  expect(dialogTabTarget(panel, false)).toBe(first);
+  expect(dialogTabTarget(panel, true)).toBeNull();
+  document.activeElement = panel;
+  expect(dialogTabTarget(panel, false)).toBe(first);
+  expect(dialogTabTarget(panel, true)).toBe(last);
+});
 
 it("Undo to a hidden edge falls back once, while an edge waiting to mount remains pending", () => {
   vi.stubGlobal("CSS", { escape: (s: string) => s });

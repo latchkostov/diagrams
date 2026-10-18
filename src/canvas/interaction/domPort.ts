@@ -11,6 +11,19 @@ export function domActive(): ElementHandle | null {
   return el && el !== document.body ? el : null;
 }
 
+/** The injection form's enabled, own-visible controls; null leaves ordinary Tab traversal to the browser. */
+export function dialogTabTarget(panel: HTMLElement, backward: boolean): HTMLElement | null {
+  const controls = Array.from(
+    panel.querySelectorAll<HTMLElement>('button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+  ).filter((control) => !control.hasAttribute("disabled") && !control.hidden);
+  const first = controls[0] ?? panel;
+  const last = controls.at(-1) ?? panel;
+  const active = document.activeElement;
+  if (backward && (active === first || active === panel)) return last;
+  if (!backward && (active === last || active === panel)) return first;
+  return null;
+}
+
 /** What the DOM port reads from the canvas (absent outside one: the Lab's Inspector). */
 export interface DomCanvas {
   /** canvas-wrap. */

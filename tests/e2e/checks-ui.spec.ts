@@ -12,7 +12,7 @@ import {
   fitDiagram,
 } from "./fixtures";
 import { typingWork, median } from "./typing-work";
-import type { CheckResponse } from "../../src/checks/worker";
+import { installChecksMeasurement } from "./checks-measurement";
 
 // Architecture checks in the editor: the count under the title, the Checks card (from the count, the canvas
 // right-click, Ctrl+K and the View menu), fixes, Ignore and Turn off (kept in the file), markers while the card
@@ -305,7 +305,14 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
 const LONG = "Node 0.12, renamed to something wider than any card";
 
 /** The page's check-run counts and switch (dev and e2e builds: `window.__checks`, src/canvas/checks/useChecks.ts). */
-type CheckRunStats = { started: number; finished: number; held: boolean; skipped: number; pending(): boolean };
+type CheckRunStats = {
+  started: number;
+  finished: number;
+  held: boolean;
+  skipped: number;
+  pending(): boolean;
+  flush(): void;
+};
 const runStats = (page: Page) =>
   page.evaluate(() => {
     const stats = (window as unknown as { __checks: CheckRunStats }).__checks;
@@ -315,6 +322,8 @@ const runStats = (page: Page) =>
       held: stats.held,
       skipped: stats.skipped,
       pending: stats.pending(),
+      nativeChecks: window.__checkResults.nativeChecks,
+      cacheHits: window.__checkResults.cacheHits,
     };
   });
 const holdChecks = (page: Page, held: boolean) =>
@@ -325,31 +334,7 @@ performanceTest("typing a label is as responsive while checks run as with them h
   // A worker may finish before the sample's two paints, especially under uneven CPU load.
   // Queue its result until the CPU reading is taken: publishing findings belongs after the sample
   // in both modes. The real worker still computes, and posting/copying stays inside the sample.
-  await page.addInitScript(() => {
-    const results = {
-      held: false,
-      queued: [] as { worker: Worker; data: unknown }[],
-      release() {
-        this.held = false;
-        for (const { worker, data } of this.queued.splice(0))
-          worker.dispatchEvent(new MessageEvent("message", { data }));
-      },
-    };
-    Object.assign(window, { __checkResults: results });
-    const NativeWorker = window.Worker;
-    window.Worker = class extends NativeWorker {
-      constructor(url: string | URL, options?: WorkerOptions) {
-        super(url, options);
-        if (options?.name !== "checks") return;
-        this.addEventListener("message", (event: MessageEvent<CheckResponse>) => {
-          // A failed run must reach the real main-thread fallback inside the measurement.
-          if (!results.held || "error" in event.data) return;
-          event.stopImmediatePropagation();
-          results.queued.push({ worker: this, data: event.data });
-        });
-      }
-    };
-  });
+  await page.addInitScript(installChecksMeasurement);
   // 1,500 nodes in 100 pipelines, each with a loop of requests: every check runs, and capacity's fixed point
   // runs to its bound (the slowest case), in the worker.
   const nodes: object[] = [];
@@ -427,6 +412,14 @@ performanceTest("typing a label is as responsive while checks run as with them h
   };
 
   const findings = page.getByTestId("inspector-findings");
+  // This test measures the work when a run starts, not the debounce's quiet time (the scheduler's unit
+  // tests cover that). Start the scheduled idle callback explicitly, without paying 400 ms for every
+  // unmeasured prefix restoration. A run that already started on a busy machine is never queued twice.
+  const flush = (before: { started: number; skipped: number }) =>
+    page.evaluate((count) => {
+      const stats = (window as unknown as { __checks: CheckRunStats }).__checks;
+      if (stats.started + stats.skipped === count) stats.flush();
+    }, before.started + before.skipped);
   const painted = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const finished = () =>
     expect
@@ -437,18 +430,34 @@ performanceTest("typing a label is as responsive while checks run as with them h
       .toBe(false);
 
   /** Restore the exact input and fresh findings before either member of a pair. */
-  async function prepare(text: string) {
+  async function prepare(text: string, restoring = false) {
     await holdChecks(page, false);
+    const before = await runStats(page);
     if ((await label.inputValue()) !== text) {
       const due = nextDue();
-      await label.fill(text);
-      await label.press(TEXT_END);
-      await due;
+      await page.evaluate((value) => (window.__checkResults.restoring = value), restoring);
+      try {
+        await label.fill(text);
+        await label.press(TEXT_END);
+        await flush(before);
+        await due;
+      } finally {
+        await page.evaluate(() => (window.__checkResults.restoring = false));
+      }
     }
     await finished();
     await painted();
     await expect(label).toHaveValue(text);
     await expect(findings).toHaveAttribute("data-stale", "false");
+    if (restoring) {
+      const after = await runStats(page);
+      expect(after.cacheHits, "restore the identical prefix's real result outside the CPU sample").toBe(
+        before.cacheHits + 1,
+      );
+      expect(after.nativeChecks, "prefix restoration does not recompute an already checked diagram").toBe(
+        before.nativeChecks,
+      );
+    }
   }
 
   let publishedInSample = 0;
@@ -466,7 +475,10 @@ performanceTest("typing a label is as responsive while checks run as with them h
     try {
       // The run starts inside the sample, including document reads, copying/posting,
       // or the entire engine if it regresses onto the main thread. Replies publish afterwards.
-      cpu = await work.key(ch, () => due);
+      cpu = await work.key(ch, async () => {
+        await flush(before);
+        await due;
+      });
       publishedInSample += (await runStats(page)).finished - before.finished;
     } finally {
       await page.evaluate(() => {
@@ -475,7 +487,13 @@ performanceTest("typing a label is as responsive while checks run as with them h
     }
     await finished();
     await painted();
-    return { cpu, started: (await runStats(page)).started - before.started };
+    const after = await runStats(page);
+    expect(after.cacheHits, "measured inputs never reuse the restored result").toBe(before.cacheHits);
+    expect(
+      after.nativeChecks - before.nativeChecks,
+      "each measured running input posts to the real checks worker",
+    ).toBe(held ? 0 : 1);
+    return { cpu, started: after.started - before.started };
   }
 
   const held: number[] = [];
@@ -490,10 +508,14 @@ performanceTest("typing a label is as responsive while checks run as with them h
       const baseline = await sample(true, ch);
       expect(baseline.started, "checks held: none ran").toBe(0);
       held.push(baseline.cpu);
-      await prepare(prefix);
+      await prepare(prefix, true);
       const checking = await sample(false, ch);
       running.push(checking.cpu);
       runs += checking.started;
+      info.annotations.push({
+        type: "typing-cpu-pair",
+        description: JSON.stringify({ round, ch, held: baseline.cpu, running: checking.cpu }),
+      });
     }
   }
   await holdChecks(page, false);

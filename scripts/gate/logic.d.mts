@@ -16,6 +16,7 @@ export interface Step {
   name: string;
   args: string[];
   env: Record<string, string>;
+  related?: string[];
 }
 export interface Counts {
   passed: number;

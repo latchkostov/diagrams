@@ -198,11 +198,7 @@ export function useChecks(opts: {
   const sims = store.simulations;
   useEffect(() => {
     if (!import.meta.env.DEV && import.meta.env.VITE_E2E !== "1") return;
-    const pending = () => runs.pending();
-    checkRunStats.pending = pending;
-    return () => {
-      if (checkRunStats.pending === pending) checkRunStats.pending = () => false;
-    };
+    return installCheckRunControls(runs);
   }, [runs]);
   useEffect(() => runs.setRead(opts.read));
   useEffect(() => sims.setRead(opts.read));
@@ -246,9 +242,28 @@ export function useChecks(opts: {
  * on `window.__checks`, so a test can prove checks ran while it measured, and compare the same typing with them
  * held, paced alike (a key once a run is due). Pending includes work that has not started yet.
  */
-export const checkRunStats = { started: 0, finished: 0, held: false, skipped: 0, pending: () => false };
+export const checkRunStats = {
+  started: 0,
+  finished: 0,
+  held: false,
+  skipped: 0,
+  pending: () => false,
+  flush: () => {},
+};
 if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typeof window !== "undefined")
   (window as unknown as { __checks: typeof checkRunStats }).__checks = checkRunStats;
+
+/** DEV/E2E controls: run the real scheduled work without waiting out the quiet-time timer. */
+export function installCheckRunControls(runs: CheckRuns): () => void {
+  const pending = () => runs.pending();
+  const flush = () => runs.now();
+  checkRunStats.pending = pending;
+  checkRunStats.flush = flush;
+  return () => {
+    if (checkRunStats.pending === pending) checkRunStats.pending = () => false;
+    if (checkRunStats.flush === flush) checkRunStats.flush = () => {};
+  };
+}
 
 /** The runs behind useChecks: the scheduler, what to read, and which results are still wanted. */
 export class CheckRuns {

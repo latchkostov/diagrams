@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { domActive, useInteraction, type MenuCloseReason } from "../canvas/interaction";
+import { dialogTabTarget, useInteraction, type MenuCloseReason } from "../canvas/interaction";
 import { useLive } from "./context";
 import { knownMessageTypes, suggestedMessageType } from "./storm";
 import { LiveIcon } from "./icons";
@@ -38,16 +38,14 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
   useEffect(() => {
     const el = panel.current;
     if (!el) return;
-    // Focus goes back to what had it (focus policy row D3); a context-menu item may already have been removed,
-    // and then to the originating node.
-    const opener = domActive();
+    // This node action returns to its originating node (D3). Sampling activeElement here raced the closing
+    // context menu: it could be its removed item, the page, or the node its own cleanup had already focused.
     const background = Array.from(document.body.children).filter(
       (child): child is HTMLElement => child instanceof HTMLElement && !child.contains(el),
     );
     const previous = background.map((child) => child.inert);
     for (const child of background) child.inert = true;
-    first.current?.focus();
-    first.current?.select();
+    if (first.current) port.current?.dispatch({ type: "dialog.opened", first: first.current });
     const onKey = (e: KeyboardEvent) => {
       e.stopPropagation();
       if (e.key === "Escape") {
@@ -55,17 +53,10 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
         close.current("escape");
       }
       if (e.key !== "Tab") return;
-      const controls = Array.from(
-        el.querySelectorAll<HTMLElement>('button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
-      ).filter((control) => !control.hasAttribute("disabled") && !control.hidden);
-      const start = controls[0] ?? el;
-      const end = controls.at(-1) ?? el;
-      if (e.shiftKey && (document.activeElement === start || document.activeElement === el)) {
+      const target = dialogTabTarget(el, e.shiftKey);
+      if (target) {
         e.preventDefault();
-        end.focus();
-      } else if (!e.shiftKey && (document.activeElement === end || document.activeElement === el)) {
-        e.preventDefault();
-        start.focus();
+        port.current?.dispatch({ type: "dialog.tab", target });
       }
     };
     el.addEventListener("keydown", onKey);
@@ -77,7 +68,7 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
       port.current?.dispatch({
         type: "dialog.closed",
         dialog: "inject",
-        opener,
+        opener: null,
         node: request.nodeId,
         reason: reason.current,
       });
@@ -96,9 +87,15 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
   return createPortal(
     <div
       className="lv-modal-layer"
-      onPointerDown={(e) => e.target === e.currentTarget && closeWith("outside")}
+      onPointerDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        // Cancel the pending pointer focus before the controller restores the originating node.
+        e.preventDefault();
+        closeWith("outside");
+      }}
       onContextMenu={(e) => e.preventDefault()}
       data-editor-overlay
+      data-testid="live-inject-backdrop"
     >
       <form
         ref={panel}

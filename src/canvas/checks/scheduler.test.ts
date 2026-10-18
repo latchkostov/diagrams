@@ -2,7 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CheckResult } from "../../checks/types";
 import type { DiagramFile } from "../../model/types";
 import { createCheckScheduler, type IdleApi } from "./scheduler";
-import { CheckRuns, ChecksStore, FIRST_RUN_DELAY, NOTHING_TO_CHECK, summarizeResult } from "./useChecks";
+import {
+  CheckRuns,
+  ChecksStore,
+  FIRST_RUN_DELAY,
+  NOTHING_TO_CHECK,
+  summarizeResult,
+  installCheckRunControls,
+  checkRunStats,
+} from "./useChecks";
 
 // When the checks run: after edits pause, in idle time, one at a time with only the newest queued.
 
@@ -153,6 +161,41 @@ describe("CheckRuns", () => {
     edges: [],
   });
   const result = (title: string): CheckResult => ({ findings: [], ignored: [], off: [], ran: [title as never] });
+
+  it("the measurement control starts the real check once without advancing the quiet-time timer", async () => {
+    const idle = fakeIdle();
+    const run = vi.fn(async () => result("capacity"));
+    const read = vi.fn(() => diagram(1));
+    const runs = new CheckRuns(
+      () => {},
+      run,
+      (task) => createCheckScheduler(task, { idle: idle.api }),
+    );
+    runs.setRead(read);
+    const remove = installCheckRunControls(runs);
+    try {
+      runs.changed();
+      const at = Date.now();
+      expect(checkRunStats.pending()).toBe(true);
+      checkRunStats.flush();
+      idle.flush();
+      expect(Date.now()).toBe(at);
+      expect(read).toHaveBeenCalledOnce();
+      expect(run).toHaveBeenCalledOnce();
+      await vi.waitFor(() => expect(runs.pending()).toBe(false));
+      vi.runAllTimers();
+      idle.flush();
+      expect(run).toHaveBeenCalledOnce();
+      remove();
+      runs.changed();
+      expect(checkRunStats.pending()).toBe(false);
+      checkRunStats.flush();
+      expect(run).toHaveBeenCalledOnce();
+    } finally {
+      remove();
+      runs.stop();
+    }
+  });
 
   it("reports pending debounce and idle work before any run starts", async () => {
     const idle = fakeIdle();
