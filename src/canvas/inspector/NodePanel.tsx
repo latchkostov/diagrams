@@ -1,12 +1,9 @@
 import { useState, useSyncExternalStore, type CSSProperties, type FocusEvent } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
-import { Icon } from "../../components/Icon";
-import { StencilIcon } from "../../components/StencilIcon";
 import { stencilMenu } from "../../editor/builtinActions";
 import { routingIntent } from "../../editor/routingIntent";
 import { t } from "../../i18n";
 import { galleryRoleMeta as simRoleMeta } from "../../i18n/galleryRoles";
-import { stencilLabel, vendorLabel } from "../../i18n/stencils";
 import { managedKind } from "../../model/admissionPresets";
 import { brokerSpec, isClusterWrapper } from "../../model/brokers";
 import { routeTableCapable, trafficMixCapable } from "../../model/requestRouting";
@@ -18,10 +15,11 @@ import { getStencil } from "../../stencils/registry";
 import { inertNodeProps, nodeSimFields } from "../simFieldRules";
 import type { DiagramFlowNode } from "../types";
 import { AutoscalingWorkload } from "./AutoscalingWorkload";
-import { CopyId, Field, InertNote, Section } from "./controls";
+import { InertNote, Section } from "./controls";
 import { DeviceFields } from "./DeviceFields";
 import { Disclosure } from "./Disclosure";
 import { customCount, formatInert } from "./helpers";
+import { NodeIdentity } from "./NodeIdentity";
 import { PropsEditor } from "./PropsEditor";
 import { ADC_KEYS, DEVICE_KEYS, SIM_FIELDS, SIM_KEYS } from "./simFields";
 import { SimInput } from "./SimInput";
@@ -89,84 +87,16 @@ export function NodePanel({
 
   return (
     <>
-      <Section>
-        <Field label={t("inspector.stencil")} group>
-          <button
-            className="insp-stencil"
-            data-testid="inspector-field-stencil"
-            aria-label={t("inspector.stencilValue", {
-              stencil: stencilLabel(stencil),
-              vendor: vendorLabel(stencil.vendor),
-            })}
-            aria-haspopup="menu"
-            style={{ "--accent": stencil.accent } as CSSProperties}
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setPicker({ x: r.left, y: r.bottom + 4 });
-            }}
-          >
-            <span className="palette-tile">
-              <StencilIcon stencil={stencil} size={18} />
-            </span>
-            <span className="insp-stencil-name">
-              {stencilLabel(stencil)}
-              <small>{vendorLabel(stencil.vendor)}</small>
-            </span>
-            <Icon name="chevron-down" size={14} />
-          </button>
-        </Field>
-        <Field label={t("inspector.label")}>
-          <input
-            className="insp-input"
-            value={node.data.label}
-            onChange={(e) => editor.updateNode(node.id, { label: e.target.value }, naming.merge())}
-            {...nameKeys}
-            name="label"
-            data-testid="inspector-field-label"
-          />
-        </Field>
-        <Field label={t("inspector.subtitle")}>
-          <input
-            className="insp-input mono"
-            value={node.data.sublabel ?? ""}
-            placeholder={stencilLabel(stencil)}
-            onChange={(e) => editor.updateNode(node.id, { sublabel: e.target.value }, naming.merge())}
-            {...nameKeys}
-            name="sublabel"
-            data-testid="inspector-field-sublabel"
-          />
-        </Field>
-        {connection && (
-          <Field label={t("inspector.connection")}>
-            <input
-              className="insp-input"
-              value={connection.label}
-              placeholder={t("inspector.eGReserveStock")}
-              onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
-              {...nameKeys}
-              name="connection"
-              data-testid="inspector-field-connection"
-            />
-          </Field>
-        )}
-        <Field label={t("inspector.boundary")}>
-          <select
-            className="insp-input"
-            value={node.data.group ?? ""}
-            onChange={(e) => editor.updateNode(node.id, { group: e.target.value || undefined })}
-            name="group"
-            data-testid="inspector-field-group"
-          >
-            <option value="">{t("inspector.none")}</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.data.groupId}>
-                {g.data.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <CopyId id={node.id} />
-      </Section>
+      <NodeIdentity
+        node={node}
+        editor={editor}
+        groups={groups}
+        connection={connection}
+        stencil={stencil}
+        naming={naming}
+        nameKeys={nameKeys}
+        setPicker={setPicker}
+      />
 
       {routed && (
         <Section title={router ? t("routing.tableHeading") : t("routing.mixHeading")}>
