@@ -16,7 +16,7 @@ import {
 } from "../annotations";
 import type { AnnotationFlowNode } from "../types";
 import { CopyId, Field, Section, Segmented, SizeInput } from "./controls";
-import { bulkStep } from "./helpers";
+import { bulkStep } from "./MultiPanel";
 import { type InspectorProps } from "./types";
 
 export function AnnotationPanel({

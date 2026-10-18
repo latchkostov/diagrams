@@ -1,9 +1,8 @@
-import { useEffect, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Icon } from "../../components/Icon";
 import { t } from "../../i18n";
 import { ANNOTATION_LIMITS } from "../../model/annotations";
 import type { Side } from "../../model/types";
-import { MIXED } from "./helpers";
 
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
 
@@ -73,69 +72,6 @@ export function SizeInput({
       name={testId}
       data-testid={testId}
     />
-  );
-}
-
-/** A compact label-and-control row, so a mixed selection's panel fits one screen. */
-export function BulkRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="insp-bulk-row">
-      <span className="insp-label">{label}</span>
-      {children}
-    </div>
-  );
-}
-
-/** Colour swatches for several things: none ticked, and "Mixed" beside the label, while they differ. */
-export function BulkSwatches<T extends string>({
-  options,
-  value,
-  onPick,
-  testId,
-  itemTestId,
-  customButton,
-}: {
-  options: { id: T; colour: string; label: string }[];
-  value: T | typeof MIXED | undefined;
-  onPick: (v: T) => void;
-  testId: string;
-  itemTestId: string;
-  customButton?: ReactNode;
-}) {
-  return (
-    <div className="insp-bulk-row">
-      <span className="insp-label">
-        {t("inspector.colour")}
-        {value === MIXED && (
-          <em className="insp-mixed" data-testid={`${testId}-mixed`}>
-            {t("inspector.mixed")}
-          </em>
-        )}
-      </span>
-      <div
-        className="insp-tones insp-tones-compact"
-        data-testid={testId}
-        role="radiogroup"
-        aria-label={t("inspector.colour")}
-      >
-        {options.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            role="radio"
-            aria-checked={value === o.id}
-            className={`insp-tone${value === o.id ? " is-on" : ""}`}
-            style={{ "--tone": o.colour } as CSSProperties}
-            title={o.label}
-            aria-label={o.label}
-            data-color={o.id}
-            onClick={() => onPick(o.id)}
-            data-testid={`${itemTestId}-${o.id}`}
-          />
-        ))}
-        {customButton}
-      </div>
-    </div>
   );
 }
 

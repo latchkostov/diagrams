@@ -1,13 +1,34 @@
 import { Icon, type IconName } from "../../components/Icon";
-import type { AlignMode } from "../../editor/arrange";
+import { type AlignMode } from "../../editor/arrange";
 import { t } from "../../i18n";
-import { BulkAnnotations } from "./BulkAnnotations";
-import { BulkEdges } from "./BulkEdges";
-import { BulkGroups } from "./BulkGroups";
-import { BulkNodes } from "./BulkNodes";
 import { Field, Section } from "./controls";
-import { countLabel, countText } from "./helpers";
 import { type InspectorProps } from "./types";
+import { useState, type CSSProperties } from "react";
+import { ContextMenu } from "../../components/ContextMenu";
+import { StencilIcon } from "../../components/StencilIcon";
+import { stencilMenu } from "../../editor/builtinActions";
+import { stencilLabel } from "../../i18n/stencils";
+import { managedKind } from "../../model/admissionPresets";
+import { brokerSpec } from "../../model/brokers";
+import { BulkAdmissionFields } from "../../planning/lazy";
+import { assignmentLabel } from "../../stencils/brokerVocabulary";
+import { getStencil } from "../../stencils/registry";
+import { nodeSimFields } from "../simFieldRules";
+import { Disclosure } from "./Disclosure";
+import { SIM_FIELDS, showSim } from "./simFields";
+import { SimInput } from "./SimulationFields";
+import { relationDropdownItems } from "./EdgePanel";
+import { Dropdown } from "../../components/Dropdown";
+import { RELATION_CHOICES, applyChoice, choiceOf } from "../../editor/relationActions";
+import { ColorPickerModal } from "../../components/ColorPickerModal";
+import { type EditorApi } from "../../editor/types";
+import { toneLabel, colorLabel } from "../../i18n/chrome";
+import { isPresetGroupTone, resolveGroupTone, toneColor } from "../groupTones";
+import { type GroupFlowNode, type GroupTone, type AnnotationFlowNode } from "../types";
+import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, annotationColor, resolveAnnotationColor } from "../annotations";
+import { getLocale } from "../../i18n";
+import { formatList } from "../../i18n/list";
+import type { ReactNode } from "react";
 
 const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
   {
@@ -162,4 +183,418 @@ export function MultiPanel(p: InspectorProps) {
       </Section>
     </>
   );
+}
+
+/** The fields several nodes share (D11): Stencil, Boundary, and the simulation settings their roles have in common. */
+export function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
+  const ids = selectedNodes.map((n) => n.id);
+  const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
+  const stencilId = shared(selectedNodes, (n) => n.data.stencil);
+  const stencil = typeof stencilId === "string" ? getStencil(stencilId) : null;
+  const group = shared(selectedNodes, (n) => n.data.group ?? "");
+  const fields = selectedNodes.map((n) =>
+    nodeSimFields(getStencil(n.data.stencil).simRole, n.data.stencil, meta.planning, n.data.props),
+  );
+  const simKeys = fields[0].filter((k) => fields.every((keys) => keys.includes(k)));
+  const assignmentLabels = [
+    ...new Set(
+      selectedNodes.map((n) =>
+        assignmentLabel(brokerSpec(n.data.stencil, getStencil(n.data.stencil).simRole, meta.planning)),
+      ),
+    ),
+  ].join(" / ");
+  const mergeKey = ids.join(",");
+  const managed =
+    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") &&
+    selectedNodes.every((node) => !!managedKind(node.data.stencil));
+  return (
+    <>
+      <Section title={countLabel(ids.length, "node")}>
+        <BulkRow label={t("inspector.stencil")}>
+          <button
+            className="insp-stencil insp-stencil-compact"
+            data-testid="inspector-field-stencil"
+            data-mixed={stencil ? undefined : "true"}
+            aria-label={t("inspector.bulkStencil", {
+              stencil: stencil ? stencilLabel(stencil) : t("inspector.mixed"),
+              count: ids.length,
+            })}
+            aria-haspopup="menu"
+            style={stencil ? ({ "--accent": stencil.accent } as CSSProperties) : undefined}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setPicker({ x: r.left, y: r.bottom + 4 });
+            }}
+          >
+            <span className="palette-tile">
+              {stencil ? <StencilIcon stencil={stencil} size={16} /> : <Icon name="shapes" size={14} />}
+            </span>
+            <span className="insp-stencil-name">
+              {stencil ? stencilLabel(stencil) : <em className="insp-mixed">{t("inspector.mixed")}</em>}
+            </span>
+            <Icon name="chevron-down" size={14} />
+          </button>
+        </BulkRow>
+        <BulkRow label={t("inspector.boundary")}>
+          <select
+            className="insp-input"
+            value={group === MIXED ? MIXED_VALUE : (group ?? "")}
+            onChange={(e) =>
+              e.target.value !== MIXED_VALUE &&
+              editor.updateNodes(ids, { group: e.target.value || undefined }, bulkStep("group"))
+            }
+            name="group"
+            aria-label={t("inspector.bulkBoundary", { count: ids.length })}
+            data-testid="inspector-field-group"
+          >
+            {group === MIXED && (
+              <option value={MIXED_VALUE} disabled>
+                {t("inspector.mixed")}
+              </option>
+            )}
+            <option value="">{t("inspector.none")}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.data.groupId}>
+                {g.data.label}
+              </option>
+            ))}
+          </select>
+        </BulkRow>
+      </Section>
+      {(simKeys.length > 0 || managed) && (
+        <Disclosure id="multi-simulation" title={t("inspector.simulation")}>
+          {managed && (
+            <BulkAdmissionFields
+              nodes={selectedNodes.map((node) => ({
+                id: node.id,
+                stencil: node.data.stencil,
+                props: node.data.props ?? {},
+              }))}
+              set={(patches, key) =>
+                editor.setNodesProps(ids, (_props, id) => patches[id], { merge: `bulk:${mergeKey}:${key}` })
+              }
+            />
+          )}
+          {simKeys.map((k) => {
+            const value = shared(selectedNodes, (n) => showSim(SIM_FIELDS[k]!.kind, n.data.props?.[k]));
+            const first = selectedNodes[0].data.props?.[k];
+            return (
+              <SimInput
+                key={k}
+                name={k}
+                field={{
+                  ...SIM_FIELDS[k]!,
+                  ...(k === "partitions"
+                    ? { label: assignmentLabels, hint: t("broker.assignmentHint"), note: undefined }
+                    : {}),
+                  ...(value === MIXED ? { placeholder: t("inspector.mixed") } : {}),
+                }}
+                value={value === MIXED ? undefined : first}
+                onChange={(v) => editor.setNodesProps(ids, { [k]: v }, { merge: `bulk:${mergeKey}:${k}` })}
+              />
+            );
+          })}
+        </Disclosure>
+      )}
+      {picker && (
+        <ContextMenu
+          x={picker.x}
+          y={picker.y}
+          label={t("inspector.changeStencil")}
+          testId="stencil-picker"
+          searchable={t("inspector.searchStencils")}
+          items={stencilMenu(
+            "pick-stencil",
+            (s) => ({
+              checked: s.id === stencilId,
+              run: () => editor.updateNodes(ids, { stencil: s.id }, bulkStep("stencil")),
+            }),
+            stencil?.category ?? getStencil(selectedNodes[0].data.stencil).category,
+          )}
+          onClose={() => setPicker(null)}
+        />
+      )}
+    </>
+  );
+}
+
+/** The fields several edges share (D11): Relationship and Label. */
+export function BulkEdges({ editor, selectedEdges }: InspectorProps) {
+  const ids = selectedEdges.map((e) => e.id);
+  const choice = shared(selectedEdges, (e) => choiceOf(e.data));
+  const label = shared(selectedEdges, (e) => e.data?.label ?? "");
+  return (
+    <Section title={countLabel(ids.length, "edge")}>
+      <BulkRow label={t("inspector.relationship")}>
+        <Dropdown
+          value={choice === MIXED ? undefined : choice}
+          placeholder={choice === MIXED ? t("inspector.mixed") : undefined}
+          onChange={(nextId) => {
+            const next = RELATION_CHOICES.find((c) => c.id === nextId);
+            if (next) applyChoice(editor, ids, next);
+          }}
+          items={relationDropdownItems()}
+          name="relationship"
+          aria-label={t("inspector.bulkRelationship", { count: ids.length })}
+          testId="inspector-field-relation"
+        />
+      </BulkRow>
+      <BulkRow label={t("inspector.label")}>
+        <input
+          className="insp-input"
+          value={label === MIXED ? "" : (label ?? "")}
+          placeholder={label === MIXED ? t("inspector.mixed") : t("inspector.eGOrderplaced")}
+          onChange={(e) => editor.updateEdges(ids, { label: e.target.value }, { merge: `bulk:${ids.join(",")}:label` })}
+          name="edge-label"
+          aria-label={t("inspector.bulkLabel", { count: ids.length })}
+          data-testid="inspector-field-label"
+        />
+      </BulkRow>
+    </Section>
+  );
+}
+
+export function BulkGroups({ selectedGroups, editor }: { selectedGroups: GroupFlowNode[]; editor: EditorApi }) {
+  const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
+  const sharedTone = shared(selectedGroups, (g) => g.data.tone);
+  const isCustom = typeof sharedTone === "string" && !isPresetGroupTone(sharedTone) && sharedTone.startsWith("#");
+  const resolved = resolveGroupTone(sharedTone === MIXED ? undefined : sharedTone);
+
+  return (
+    <>
+      <BulkSwatches
+        testId="inspector-field-tone"
+        itemTestId="inspector-tone"
+        options={(Object.keys(toneColor) as GroupTone[]).map((t) => ({
+          id: t,
+          colour: toneColor[t],
+          label: toneLabel[t],
+        }))}
+        value={sharedTone}
+        onPick={(t) =>
+          editor.updateGroups(
+            selectedGroups.map((g) => g.data.groupId),
+            { tone: t },
+            bulkStep("tone"),
+          )
+        }
+        customButton={
+          <button
+            type="button"
+            className={`insp-tone-custom${isCustom ? " is-on" : ""}`}
+            title={t("chrome.customColour")}
+            aria-label={t("chrome.customColour")}
+            aria-haspopup="dialog"
+            onClick={(e) =>
+              setPickerAnchor({ rect: e.currentTarget.getBoundingClientRect(), merge: bulkStep("tone").merge })
+            }
+            data-testid="inspector-tone-custom-btn"
+          >
+            <span
+              className={`insp-tone-custom-swatch${!isCustom ? " insp-tone-custom-rainbow" : ""}`}
+              style={isCustom ? { backgroundColor: resolved } : undefined}
+            />
+            <Icon name="chevron-down" size={12} />
+          </button>
+        }
+      />
+      {pickerAnchor && (
+        <ColorPickerModal
+          currentColor={sharedTone === MIXED ? undefined : sharedTone}
+          defaultColor={resolved}
+          anchorRect={pickerAnchor.rect}
+          onSelect={(hex) =>
+            editor.updateGroups(
+              selectedGroups.map((g) => g.data.groupId),
+              { tone: hex },
+              pickerAnchor,
+            )
+          }
+          onReset={() => {
+            editor.updateGroups(
+              selectedGroups.map((g) => g.data.groupId),
+              { tone: undefined },
+              pickerAnchor,
+            );
+            setPickerAnchor(null);
+          }}
+          onClose={() => setPickerAnchor(null)}
+        />
+      )}
+    </>
+  );
+}
+
+export function BulkAnnotations({
+  selectedAnnotations,
+  editor,
+}: {
+  selectedAnnotations: AnnotationFlowNode[];
+  editor: EditorApi;
+}) {
+  const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
+  const sharedColor = shared(selectedAnnotations, (a) => annotationColor(a.data));
+  const isCustom = typeof sharedColor === "string" && sharedColor.startsWith("#");
+  const firstKind = selectedAnnotations[0]?.data.kind ?? "text";
+  const resolved = resolveAnnotationColor(sharedColor === MIXED ? undefined : sharedColor, firstKind);
+
+  return (
+    <>
+      <BulkSwatches
+        testId="inspector-field-color"
+        itemTestId="inspector-color"
+        options={ANNOTATION_COLOR_IDS.map((c) => ({
+          id: c,
+          colour: ANNOTATION_COLORS[c].hex,
+          label: colorLabel[c],
+        }))}
+        value={sharedColor}
+        onPick={(c) =>
+          editor.updateAnnotations(
+            selectedAnnotations.map((a) => a.id),
+            { color: c },
+            bulkStep("annotation-colour"),
+          )
+        }
+        customButton={
+          <button
+            type="button"
+            className={`insp-tone-custom${isCustom ? " is-on" : ""}`}
+            title={t("chrome.customColour")}
+            aria-label={t("chrome.customColour")}
+            aria-haspopup="dialog"
+            onClick={(e) =>
+              setPickerAnchor({ rect: e.currentTarget.getBoundingClientRect(), merge: bulkStep("colour").merge })
+            }
+            data-testid="inspector-color-custom-btn"
+          >
+            <span
+              className={`insp-tone-custom-swatch${!isCustom ? " insp-tone-custom-rainbow" : ""}`}
+              style={isCustom ? { backgroundColor: resolved.hex } : undefined}
+            />
+            <Icon name="chevron-down" size={12} />
+          </button>
+        }
+      />
+      {pickerAnchor && (
+        <ColorPickerModal
+          currentColor={sharedColor === MIXED ? undefined : sharedColor}
+          defaultColor={resolved.hex}
+          anchorRect={pickerAnchor.rect}
+          onSelect={(hex) =>
+            editor.updateAnnotations(
+              selectedAnnotations.map((a) => a.id),
+              { color: hex },
+              pickerAnchor,
+            )
+          }
+          onReset={() => {
+            editor.updateAnnotations(
+              selectedAnnotations.map((a) => a.id),
+              { color: undefined },
+              pickerAnchor,
+            );
+            setPickerAnchor(null);
+          }}
+          onClose={() => setPickerAnchor(null)}
+        />
+      )}
+    </>
+  );
+}
+
+/** A compact label-and-control row, so a mixed selection's panel fits one screen. */
+export function BulkRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="insp-bulk-row">
+      <span className="insp-label">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/** Colour swatches for several things: none ticked, and "Mixed" beside the label, while they differ. */
+export function BulkSwatches<T extends string>({
+  options,
+  value,
+  onPick,
+  testId,
+  itemTestId,
+  customButton,
+}: {
+  options: { id: T; colour: string; label: string }[];
+  value: T | typeof MIXED | undefined;
+  onPick: (v: T) => void;
+  testId: string;
+  itemTestId: string;
+  customButton?: ReactNode;
+}) {
+  return (
+    <div className="insp-bulk-row">
+      <span className="insp-label">
+        {t("inspector.colour")}
+        {value === MIXED && (
+          <em className="insp-mixed" data-testid={`${testId}-mixed`}>
+            {t("inspector.mixed")}
+          </em>
+        )}
+      </span>
+      <div
+        className="insp-tones insp-tones-compact"
+        data-testid={testId}
+        role="radiogroup"
+        aria-label={t("inspector.colour")}
+      >
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={value === o.id}
+            className={`insp-tone${value === o.id ? " is-on" : ""}`}
+            style={{ "--tone": o.colour } as CSSProperties}
+            title={o.label}
+            aria-label={o.label}
+            data-color={o.id}
+            onClick={() => onPick(o.id)}
+            data-testid={`${itemTestId}-${o.id}`}
+          />
+        ))}
+        {customButton}
+      </div>
+    </div>
+  );
+}
+
+/** What every item of a list shares: the one value, or MIXED when they differ (undefined when the list is empty). */
+export const MIXED = Symbol("mixed");
+
+export function shared<T, V>(items: readonly T[], read: (t: T) => V): V | typeof MIXED | undefined {
+  if (!items.length) return undefined;
+  const first = read(items[0]);
+  return items.every((i) => read(i) === first) ? first : MIXED;
+}
+
+/** A fresh undo tag per click: one bulk change is one undo step, and the next click is another. */
+let bulkSeq = 0;
+
+export const bulkStep = (what: string) => ({ merge: `bulk:${what}:${++bulkSeq}` });
+
+/** The value a select shows while the selection differs (a disabled "Mixed" option). */
+export const MIXED_VALUE = "__mixed";
+
+export const countLabel = (count: number, kind: "node" | "edge" | "boundary" | "annotation") =>
+  ({
+    node: () => t("inspector.nodes", { count }),
+    edge: () => t("inspector.edges", { count }),
+    boundary: () => t("inspector.boundaries", { count }),
+    annotation: () => t("inspector.annotations", { count }),
+  })[kind]();
+
+/** "15 nodes, 15 edges, 1 boundary" (zero boundaries and annotations are left out). */
+export function countText(nodes: number, edges: number, boundaries: number, annotations = 0): string {
+  const parts = [countLabel(nodes, "node"), countLabel(edges, "edge")]
+    .concat(boundaries ? [countLabel(boundaries, "boundary")] : [])
+    .concat(annotations ? [countLabel(annotations, "annotation")] : []);
+  return getLocale() === "en" ? parts.join(", ") : formatList(parts);
 }
