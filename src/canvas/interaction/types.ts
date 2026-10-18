@@ -9,14 +9,14 @@ export type ElementHandle = object;
 /** The platform, given to the policy by the call site (macOS Control-click opens a menu): never inferred. */
 export type Platform = "mac" | "other";
 
+/** The exclusive canvas surfaces: opening one replaces the previous one and holds interaction readiness. */
+export type CanvasSurfaceKind = "context" | "quickAdd" | "connected" | "dialog";
+
 /**
- * What can be open over the canvas, one at a time: a context menu (a node, an edge, a boundary, a note, the
- * selection or the pane), quick-add (a double-click, a dropped connection), quick-add beside its outline (Alt+arrow,
- * the "+"), or a dialog the canvas opens (the keyboard shortcuts). `live`: a popover on Live's bar (its "⋯" menu,
- * the expectations list). Live's popovers report opening and closing to the focus policy but are not one of the
- * canvas's surfaces: they don't replace a canvas menu or hold data-interaction-state (see liveKeys.ts).
+ * Focus notifications also cover independent popovers on Live's bar (its more menu and expectations list).
+ * They never enter the exclusive menus machine, replace a canvas surface or hold interaction readiness.
  */
-export type SurfaceKind = "context" | "quickAdd" | "connected" | "dialog" | "live";
+export type MenuFocusKind = CanvasSurfaceKind | "live";
 
 /**
  * Why a menu closed. `pick`: an item ran. `escape`: Esc in the menu or on the canvas. `outside`: a press outside it.
@@ -42,7 +42,7 @@ export type MenuCloseReason =
 export type MenuVia = "pointer" | "keyboard";
 
 export interface OpenSurface<P = unknown> {
-  kind: SurfaceKind;
+  kind: CanvasSurfaceKind;
   /** Counts opens: a close from an earlier menu's listeners never closes a later one. */
   seq: number;
   payload: P;
@@ -60,7 +60,7 @@ export interface MenusState<P = unknown> {
 export type MenusEvent<P = unknown> =
   | {
       type: "menu.open";
-      kind: SurfaceKind;
+      kind: CanvasSurfaceKind;
       payload: P;
       invoker: ElementHandle | null;
       via: MenuVia;
@@ -160,12 +160,12 @@ export type FocusCommand =
 export type FocusEvent =
   | {
       type: "menu.closed";
-      kind: SurfaceKind;
+      kind: MenuFocusKind;
       reason: MenuCloseReason;
       invoker: ElementHandle | null;
       platform: Platform;
     }
-  | { type: "menu.opened"; kind: SurfaceKind; via: MenuVia; platform: Platform }
+  | { type: "menu.opened"; kind: MenuFocusKind; via: MenuVia; platform: Platform }
   | {
       type: "selection.changed";
       cause: SelectionCause;

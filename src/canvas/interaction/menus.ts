@@ -1,4 +1,4 @@
-import type { MenusEvent, MenusState, MenusTransition, SurfaceKind } from "./types";
+import type { MenusEvent, MenusState, MenusTransition, CanvasSurfaceKind } from "./types";
 
 /**
  * The menus' lifecycle, as one pure function: one surface at a time, opened with what had focus, closed with a
@@ -40,7 +40,7 @@ export function initialMenus<P>(): MenusState<P> {
 }
 
 /** The camera's two kinds of menu (pane work waits while one is open); a dialog isn't one of them. */
-export function cameraMenuKind(kind: SurfaceKind | undefined): "context" | "quickAdd" | null {
+export function cameraMenuKind(kind: CanvasSurfaceKind | undefined): "context" | "quickAdd" | null {
   if (kind === "context") return "context";
   if (kind === "quickAdd" || kind === "connected") return "quickAdd";
   return null;

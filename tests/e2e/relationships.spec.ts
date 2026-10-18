@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLab, expectNoErrors, gotoLive } from "./fixtures";
 import { RELATION_GLYPHS } from "../../src/components/relationGlyphs";
+import { interactionJournalMark, interactionLog } from "./fixtures";
 
 /**
  * Relationships (docs/research/diagram-semantics.md): dependencies are dotted, carry a glyph and no
@@ -275,10 +276,14 @@ test.describe("relationships", () => {
 
   for (const action of ["edit", "delete"] as const)
     test(`Undo ${action} while Dependencies are hidden finishes focus recovery`, async ({ page, consoleErrors }) => {
-      await page.getByTestId("edge-label-api-to-appcfg").click();
+      const label = page.getByTestId("edge-label-api-to-appcfg");
+      const originalLabel = await label.textContent();
+      if (originalLabel === null) throw new Error("Expected the original dependency label");
+      await label.click();
       if (action === "edit") {
         await page.getByTestId("inspector-field-label").fill("Configuration lookup");
         await page.getByTestId("inspector-field-label").press("Enter");
+        await expect(label).toContainText("Configuration lookup");
       } else {
         await page.getByTestId("canvas-wrap").focus();
         await page.keyboard.press("Delete");
@@ -289,7 +294,16 @@ test.describe("relationships", () => {
       await expect(page.getByTestId("edge-api-to-appcfg")).toHaveCount(0);
       const wrap = page.getByTestId("canvas-wrap");
       await wrap.focus();
+      const mark = await interactionJournalMark(page);
       await page.keyboard.press("ControlOrMeta+z");
+      await expect
+        .poll(() => interactionLog(page, mark))
+        .toEqual(
+          expect.arrayContaining([
+            "selection.changed:undo -> focus:selection@measured",
+            "fallback: focus:selection@measured",
+          ]),
+        );
       await expect(wrap).toHaveAttribute("data-interaction-state", "idle");
       await expect(wrap).toBeFocused();
       // It is deliberately absent, not a target still awaiting React Flow's measurement.
@@ -297,6 +311,7 @@ test.describe("relationships", () => {
       await page.getByTestId("view-button").click();
       await page.getByTestId("dependencies-toggle").click();
       await expect(page.getByTestId("edge-api-to-appcfg")).toBeAttached();
+      if (action === "edit") await expect(label).toHaveText(originalLabel);
       expectNoErrors(consoleErrors);
     });
 

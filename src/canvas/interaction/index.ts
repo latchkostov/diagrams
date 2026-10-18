@@ -50,7 +50,8 @@ export type {
   OpenSurface,
   Platform,
   SelectionCause,
-  SurfaceKind,
+  CanvasSurfaceKind,
+  MenuFocusKind,
 } from "./types";
 export {
   createInteractionController,
