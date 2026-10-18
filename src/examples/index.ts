@@ -2,13 +2,14 @@ import type { DiagramFile } from "../model/types";
 import { diagramThumb } from "../lib/thumbnail";
 import type { ExampleTheme } from "./themes";
 import { exampleMetadata, type ExampleMetadata } from "./metadata";
+import { msg } from "../i18n";
 
 interface ExampleInfo extends ExampleMetadata {
   slug: string;
   /** Picker and start-card group. Local-only diagrams have none. */
   theme?: ExampleTheme;
   /** One short line for the start card (the diagram's description is longer). */
-  summary?: string;
+  summary?: string | (() => string);
   /** Shown on the start card before "All examples". */
   featured?: boolean;
 }
@@ -26,6 +27,9 @@ interface LocalExample extends ExampleInfo {
 }
 
 export type Example = PublicExample | LocalExample;
+
+export const exampleSummary = (example: Example) =>
+  (typeof example.summary === "function" ? example.summary() : example.summary) ?? example.description;
 
 // Work diagrams stay dev-only and eager so privacy checks work even before they are opened.
 const privateExamples: LocalExample[] = import.meta.env.DEV
@@ -54,6 +58,11 @@ const publicExamples: PublicExample[] = (
       slug: "ev-charging-network",
       theme: "streaming",
       summary: "Depot firewalls, Event Hubs, twins, firmware waves",
+    },
+    {
+      slug: "where-the-time-goes",
+      theme: "streaming",
+      summary: msg("examples.latencySummary"),
     },
     {
       slug: "kafka-order-pipeline",

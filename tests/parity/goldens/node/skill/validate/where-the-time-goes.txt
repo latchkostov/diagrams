@@ -1,0 +1,2 @@
+exit 0
+VALID <repo>/src/examples/where-the-time-goes.json: 4 nodes, 3 edges, 2 simulations

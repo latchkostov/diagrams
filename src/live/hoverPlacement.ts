@@ -1,3 +1,8 @@
+/** Largest vertical space that leaves the hovered node and its badge clear. */
+export function hoverRoom(pane: { top: number; bottom: number }, node: { top: number; bottom: number }) {
+  return Math.max(0, node.top - pane.top - 24, pane.bottom - node.bottom - 46);
+}
+
 /** Screen coordinates, after counter-scaling. Prefer below, flip above when it fits, then clamp. */
 export function hoverTop(pane: { top: number; bottom: number }, node: { top: number; bottom: number }, height: number) {
   const top = pane.top + 12,

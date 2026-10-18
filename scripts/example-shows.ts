@@ -1,10 +1,41 @@
 import type { ApiBehaviour } from "../src/model/admission";
 import type { AutoscalingConfig } from "../src/model/autoscaling";
 import type { DiagramFile } from "../src/model/types";
+import { stencilRole } from "../src/stencils/roles";
+
+/** A traffic spike must reach configured work without crossing a Request or dependency. */
+function showsLatency(d: DiagramFile): boolean {
+  const pending: string[] = [];
+  for (const simulation of d.simulations ?? [])
+    for (const traffic of simulation.traffic) if (traffic.shape.kind === "spike") pending.push(traffic.node);
+  if (!pending.length) return false;
+  const nodes = new Map(d.nodes.map((node) => [node.id, node]));
+  const outgoing = new Map<string, string[]>();
+  for (const edge of d.edges) {
+    if (edge.kind === "sync" || (edge.relation !== undefined && edge.relation !== "flow")) continue;
+    const next = outgoing.get(edge.from) ?? [];
+    next.push(edge.to);
+    outgoing.set(edge.from, next);
+  }
+  const seen = new Set<string>();
+  while (pending.length) {
+    const id = pending.pop();
+    if (id === undefined || seen.has(id)) continue;
+    seen.add(id);
+    const node = nodes.get(id);
+    if (node && typeof node.props?.latencyMs === "number" && node.props.latencyMs >= 250) {
+      const role = stencilRole(node.stencil);
+      if (role === "processor" || role === "gateway" || role === "store") return true;
+    }
+    for (const next of outgoing.get(id) ?? []) pending.push(next);
+  }
+  return false;
+}
 
 /** Metadata only: never modifies the diagram, simulation or exported content. */
 export function exampleShows(d: DiagramFile): string[] {
   return [
+    ...(showsLatency(d) ? ["latency"] : []),
     ...(d.nodes.some((n) => typeof n.props?.partitions === "number" && n.props.partitions > 1) ? ["partitions"] : []),
     ...(d.nodes.some(
       (n) =>

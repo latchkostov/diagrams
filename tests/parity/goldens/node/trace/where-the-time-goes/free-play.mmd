@@ -1,0 +1,12 @@
+---
+title: "OrderPlaced #1 · 330 ms end to end"
+---
+sequenceDiagram
+  participant checkout as Order intake
+  participant orders as Orders
+  participant billing as Billing
+  participant receipts as Receipts
+  checkout-)orders: OrderPlaced (+0.00 s)
+  orders-)billing: OrderPlaced (+0.01 s)
+  Note over checkout,receipts: ⏱ 300 ms at Billing: processing
+  billing-)receipts: OrderPlaced (+0.32 s)

@@ -15,6 +15,8 @@ export const MAX_HISTORY = 1000;
  * engine can count the family's live copies and find its recording without any lookup.
  */
 export interface Family {
+  /** Root birth in simulation ms, shared by every branch, independently of trace sampling. */
+  bornAt: number;
   root: number;
   /** Copies travelling, queued or in process (parked ones included). */
   alive: number;

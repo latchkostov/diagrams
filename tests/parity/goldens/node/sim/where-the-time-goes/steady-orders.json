@@ -1,0 +1,66 @@
+{
+  "run": {
+    "time": 9400,
+    "totalMs": 9400,
+    "done": true,
+    "scale": 100,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [{ "id": "no-loss", "label": "No orders dropped at Billing", "status": "pass", "value": 0 }],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "orders" },
+      { "atMs": 9400, "kind": "traffic", "label": "orders ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "checkout": { "replicas": [1, 1, 0] },
+        "orders": { "lag": { "billing": 0 }, "replicas": [1, 1, 0] },
+        "billing": { "replicas": [12, 12, 0] },
+        "receipts": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 9400,
+    "inSystem": 7,
+    "real": {
+      "checkout": { "processed": 18800, "throughput": 1960.030851198061, "replicas": [1, 1, 0] },
+      "orders": { "processed": 18700, "throughput": 1960.030851198061, "lag": { "billing": 0 }, "replicas": [1, 1, 0] },
+      "billing": { "processed": 18100, "inFlight": 600, "throughput": 1979.6692490111316, "replicas": [12, 12, 0] },
+      "receipts": { "processed": 18100, "throughput": 1999.5652557350827, "replicas": [1, 1, 0] }
+    },
+    "edges": { "intake-orders": 187, "orders-billing": 187, "billing-receipts": 181 }
+  },
+  "events": {
+    "total": 1480,
+    "byKind": { "inject": 188, "process": 737, "deliver": 555 },
+    "byNode": {
+      "checkout": { "inject": 188, "process": 188 },
+      "orders": { "deliver": 187, "process": 187 },
+      "billing": { "deliver": 187, "process": 181 },
+      "receipts": { "deliver": 181, "process": 181 }
+    },
+    "perSecond": [
+      "8dcd2a154417",
+      "2cdb91f282ce",
+      "f06c1417f96d",
+      "5afbd54342dd",
+      "978a3505f433",
+      "7397b56afcbc",
+      "81775ce4230e",
+      "ce6f1756c80a",
+      "3a34d77b1364",
+      "6622c3ca6210"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 181, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 181, "min": 330, "mean": 330, "p50": 330, "p90": 330, "max": 330 },
+    "waitMs": { "billing": { "count": 181, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
+    "processMs": { "billing": { "count": 181, "min": 300, "mean": 300, "p50": 300, "p90": 300, "max": 300 } }
+  }
+}

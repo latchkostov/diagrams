@@ -1,5 +1,5 @@
 import { msg } from "../i18n";
-import type { Example } from "./index";
+import { exampleSummary, type Example } from "./index";
 import { groupByTheme, type ExampleTheme } from "./themes";
 
 export const exampleFeatures = [
@@ -8,6 +8,7 @@ export const exampleFeatures = [
   { id: "networkDevices", label: msg("examples.networkDevices") },
   { id: "autoscaling", label: msg("examples.autoscaling") },
   { id: "routing", label: msg("examples.routing") },
+  { id: "latency", label: msg("examples.latency") },
 ];
 
 /** Every search word must match; labels are resolved in the current language. */
@@ -19,7 +20,7 @@ export function filterExamples(items: readonly Example[], query: string, feature
       const text = [
         e.slug,
         e.title,
-        e.summary,
+        exampleSummary(e),
         e.description,
         ...(e.shows ?? []).map((id) => exampleFeatures.find((f) => f.id === id)?.label() ?? id),
       ]

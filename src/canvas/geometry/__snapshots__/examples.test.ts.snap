@@ -10871,3 +10871,47 @@ exports[`public examples route cleanly (estimated card sizes) > webhook-ingestio
   },
 ]
 `;
+
+exports[`public examples route cleanly (estimated card sizes) > where-the-time-goes.json 1`] = `
+[
+  {
+    "id": "intake-orders",
+    "points": [
+      {
+        "x": 260,
+        "y": 236,
+      },
+      {
+        "x": 390,
+        "y": 236,
+      },
+    ],
+  },
+  {
+    "id": "orders-billing",
+    "points": [
+      {
+        "x": 650,
+        "y": 236,
+      },
+      {
+        "x": 740,
+        "y": 236,
+      },
+    ],
+  },
+  {
+    "id": "billing-receipts",
+    "points": [
+      {
+        "x": 960,
+        "y": 236,
+      },
+      {
+        "x": 1090,
+        "y": 236,
+      },
+    ],
+  },
+]
+`;

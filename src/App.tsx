@@ -12,7 +12,7 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { examples, getLoadedExample, loadExample } from "./examples";
+import { examples, exampleSummary, getLoadedExample, loadExample } from "./examples";
 import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
@@ -109,7 +109,7 @@ export function App() {
 
 function MainApp() {
   // A new language re-renders the app (the start card's lines, the picker's groups).
-  useLocale();
+  const locale = useLocale();
   const [url, setUrl] = useUrlState();
   const canvasRef = useRef<CanvasHandle>(null);
   useEffect(() => () => paletteHost.cancelRun(), []);
@@ -423,12 +423,13 @@ function MainApp() {
         items: items.map((e) => ({
           slug: e.slug,
           title: e.title,
-          description: e.summary ?? e.description,
+          description: exampleSummary(e),
           thumb: e.thumb,
           featured: e.featured,
         })),
       })),
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- example summaries resolve the current locale
+    [locale],
   );
   const start: StartOptions = {
     recent: library.entries

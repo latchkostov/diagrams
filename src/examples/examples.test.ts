@@ -62,6 +62,7 @@ describe("example metadata and loading", () => {
 });
 
 const showcases = [
+  "where-the-time-goes",
   "partitions-vs-subscriptions",
   "shared-api-quotas",
   "serverless-burst-buffer",
@@ -79,6 +80,20 @@ const freePlay = (slug: string) => {
 };
 
 describe("recent-feature showcases", () => {
+  it("shows the Billing spike's sampled latency and 78% waiting within ten seconds", () => {
+    const d = diagram("where-the-time-goes");
+    const run = createSimulationRun(d, d.simulations![0]);
+    run.step(3500);
+    expect(run.engine.frame().nodes.billing.latency!.p95).toBe(300);
+    run.step(5900);
+    const latency = run.engine.frame().nodes.billing.latency!;
+    expect(latency.p95).toBeGreaterThanOrEqual(3800);
+    expect(latency.p95).toBeLessThan(4300);
+    expect(Math.round((100 * latency.waitMs) / (latency.waitMs + latency.workMs + latency.travelMs))).toBe(78);
+    expect(latency.samples).toBeGreaterThan(100);
+    expect(exampleMetadata["where-the-time-goes"].shows).toContain("latency");
+    expect(run.engine.frame().nodes.orders.backlog).toBeGreaterThan(0);
+  });
   it.each(showcases)("%s validates, loads lazily and replays deterministically", async (slug) => {
     const d = await loadExample(slug);
     expect(validateDiagram(d)).toMatchObject({ ok: true });

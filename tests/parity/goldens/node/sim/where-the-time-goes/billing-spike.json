@@ -1,0 +1,75 @@
+{
+  "run": {
+    "time": 9400,
+    "totalMs": 9400,
+    "done": true,
+    "scale": 100,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [{ "id": "no-loss", "label": "No orders dropped at Billing", "status": "pass", "value": 0 }],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "orders" },
+      { "atMs": 3000, "kind": "note", "label": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes." },
+      { "atMs": 9400, "kind": "traffic", "label": "orders ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "checkout": { "replicas": [1, 1, 0] },
+        "orders": { "lag": { "billing": 0 }, "replicas": [1, 1, 0] },
+        "billing": { "replicas": [12, 12, 0] },
+        "receipts": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 9400,
+    "inSystem": 413,
+    "real": {
+      "checkout": { "processed": 62000, "throughput": 9963.517128774278, "replicas": [1, 1, 0] },
+      "orders": {
+        "processed": 61900,
+        "backlog": 40100,
+        "throughput": 9963.517128774278,
+        "lag": { "billing": 40100 },
+        "replicas": [1, 1, 0]
+      },
+      "billing": { "processed": 20800, "backlog": 200, "inFlight": 700, "throughput": 2438.3833027983374, "replicas": [12, 12, 0] },
+      "receipts": { "processed": 20700, "throughput": 2362.387791565026, "replicas": [1, 1, 0] }
+    },
+    "edges": { "intake-orders": 619, "orders-billing": 217, "billing-receipts": 207 }
+  },
+  "events": {
+    "total": 3317,
+    "byKind": { "inject": 620, "process": 1654, "deliver": 1043 },
+    "byNode": {
+      "checkout": { "inject": 620, "process": 620 },
+      "orders": { "deliver": 619, "process": 619 },
+      "billing": { "deliver": 217, "process": 208 },
+      "receipts": { "deliver": 207, "process": 207 }
+    },
+    "perSecond": [
+      "8dcd2a154417",
+      "2cdb91f282ce",
+      "f06c1417f96d",
+      "5afbd54342dd",
+      "a0d17008544d",
+      "27406ca3541d",
+      "756b354bbb72",
+      "e7b854154cc8",
+      "aaef0a3f41f3",
+      "52d9fc681ede"
+    ]
+  },
+  "notes": [
+    { "atMs": 3000, "text": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.", "focus": ["billing", "orders"] }
+  ],
+  "latency": {
+    "journeys": { "done": 126, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 126, "min": 330, "mean": 523.6507936507936, "p50": 330, "p90": 1150, "max": 1530 },
+    "waitMs": { "billing": { "count": 126, "min": 0, "mean": 18.88888888888889, "p50": 0, "p90": 100, "max": 110 } },
+    "processMs": { "billing": { "count": 126, "min": 300, "mean": 300, "p50": 300, "p90": 300, "max": 300 } }
+  }
+}

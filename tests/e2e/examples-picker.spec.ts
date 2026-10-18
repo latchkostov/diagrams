@@ -150,6 +150,7 @@ const BY_THEME: Record<string, string[]> = {
   streaming: [
     "delivery-dispatch",
     "ev-charging-network",
+    "where-the-time-goes",
     "kafka-order-pipeline",
     "keda-render-workers",
     "autoscaling-image-workers",

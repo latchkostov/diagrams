@@ -14,6 +14,7 @@ import { allDiagrams, examples } from "../lib/corpus";
 import { expectGolden, expectGoldenText, ROOT } from "../lib/golden";
 import { fingerprint } from "../lib/hash";
 import { stencilsDoc } from "../../../scripts/skill-gen";
+import { normalizeScriptOutput } from "../lib/scriptOutput";
 
 const SKILL = join(ROOT, "skills/livediagrams");
 // Frozen inputs for the existing aggregate outputs (including A1), independent of later showcase additions.
@@ -48,9 +49,9 @@ const diagramFile = (slug: string) =>
     : exampleFile(slug);
 
 /** Runs one of the skill's scripts; paths in its output are made relative to the repository. */
-function script(name: string, args: string[]) {
+function script(name: string, args: string[], temporary?: string) {
   const r = spawnSync(process.execPath, [join(SKILL, "scripts", name), ...args], { cwd: ROOT, encoding: "utf8" });
-  const clean = (s: string) => s.split(ROOT).join("<repo>").replace(/\\/g, "/").replace(/\r\n/g, "\n");
+  const clean = (s: string) => normalizeScriptOutput(s, ROOT, temporary);
   return { status: r.status, stdout: clean(r.stdout), stderr: clean(r.stderr) };
 }
 
@@ -126,31 +127,26 @@ describe("layout.mjs, share-link.mjs and export-html.mjs", () => {
   for (const { slug } of examples)
     it(slug, () => {
       const dir = mkdtempSync(join(tmpdir(), "parity-skill-"));
-      const cleanDir = dir.split(ROOT).join("<repo>").replace(/\\/g, "/");
       try {
-        const laid = script("layout.mjs", [exampleFile(slug), "--force", "--out", join(dir, "laid.json")]);
+        const laid = script("layout.mjs", [exampleFile(slug), "--force", "--out", join(dir, "laid.json")], dir);
         const layout = JSON.parse(readFileSync(join(dir, "laid.json"), "utf8")) as DiagramFile;
         const link = script("share-link.mjs", [exampleFile(slug)]);
         // The link's bytes depend on zlib's version; what it decodes to doesn't.
         const fragment = /#d=([A-Za-z0-9_-]+)/.exec(link.stdout)?.[1] ?? "";
         const decoded = inflateRawSync(Buffer.from(fragment, "base64url")).toString("utf8");
         const out = join(dir, "export.html");
-        const html = script("export-html.mjs", [
-          exampleFile(slug),
-          "--exported-on",
-          "2026-01-01",
-          "--theme",
-          "dark",
-          "--out",
-          out,
-        ]);
+        const html = script(
+          "export-html.mjs",
+          [exampleFile(slug), "--exported-on", "2026-01-01", "--theme", "dark", "--out", out],
+          dir,
+        );
         const file = readFileSync(out, "utf8");
         const payloadText = /<script type="application\/json" id="diagram">([\s\S]*?)<\/script>/.exec(file)?.[1] ?? "";
         const payload = JSON.parse(payloadText) as { icons: Record<string, string> };
         expectGolden(`skill/scripts/${slug}.json`, {
           layout: {
             status: laid.status,
-            stdout: laid.stdout.replace(cleanDir, "<tmp>"),
+            stdout: laid.stdout,
             nodes: Object.fromEntries(layout.nodes.map((n) => [n.id, [n.x, n.y]])),
             groups: Object.fromEntries((layout.groups ?? []).map((g) => [g.id, [g.x, g.y, g.width, g.height]])),
           },
@@ -163,9 +159,8 @@ describe("layout.mjs, share-link.mjs and export-html.mjs", () => {
           },
           exportHtml: {
             status: html.status,
-            stdout: html.stdout
-              .replace(cleanDir, "<tmp>") // The file's size includes the released viewer template (refreshed by `pnpm skill:release`).
-              .replace(/\d[\d,.]* [kMG]?B\b/, "<size>"),
+            // The size includes the released viewer template, refreshed by pnpm skill:release.
+            stdout: html.stdout.replace(/\d[\d,.]* [kMG]?B\b/, "<size>"),
             stderr: html.stderr,
             payload: {
               ...payload,

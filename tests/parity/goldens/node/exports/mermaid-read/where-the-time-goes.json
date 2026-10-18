@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Where the time goes",
+    "direction": "LR",
+    "nodes": [
+      { "id": "checkout", "stencil": "generic.service", "label": "Order intake", "sublabel": "2,000 orders/s", "x": 40, "y": 40 },
+      { "id": "orders", "stencil": "kafka.topic", "label": "Orders", "sublabel": "Kafka · billing consumer group", "x": 400, "y": 40 },
+      { "id": "billing", "stencil": "generic.service", "label": "Billing", "sublabel": "300 ms per order", "x": 800, "y": 40 },
+      { "id": "receipts", "stencil": "generic.service", "label": "Receipts", "sublabel": "Async completion", "x": 1160, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-checkout-orders", "from": "checkout", "to": "orders", "kind": "async" },
+      { "id": "e2-orders-billing", "from": "orders", "to": "billing", "kind": "async" },
+      { "id": "e3-billing-receipts", "from": "billing", "to": "receipts", "kind": "async" }
+    ]
+  }
+}

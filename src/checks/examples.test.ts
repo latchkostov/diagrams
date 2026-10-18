@@ -22,6 +22,7 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
+  "where-the-time-goes": [],
   "autoscaling-image-workers": [],
   "keda-render-workers": ["warning capacity:uploads", "suggestion capacity:worker"],
   "aks-app-config-key-vault": [],

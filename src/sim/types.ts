@@ -35,6 +35,8 @@ export interface Particle {
 
 /** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
 export interface NodeSimState {
+  /** Successful async root-to-node paths since restart. Sample counts and durations are never scaled. */
+  latency?: LatencyMetrics;
   resources?: import("./autoscaling").ResourceReadout;
   fleet?: import("./autoscaling").FleetReadout;
   id: string;
@@ -77,6 +79,25 @@ export interface NodeSimState {
   replicas?: number;
   activeReplicas?: number;
   idleReplicas?: number;
+}
+
+export interface LatencySummary {
+  readonly samples: number;
+  /** Approximate end-to-end percentiles in ms, excluding animation travel. Never composed per hop. */
+  readonly p50: number;
+  readonly p95: number;
+  readonly p99: number;
+  /** Totals over these same sampled paths; travel is animation, not physical network delay. */
+  readonly waitMs: number;
+  readonly workMs: number;
+  readonly travelMs: number;
+}
+
+/** Immutable value view, shared between frames until the next successful sample. */
+export interface LatencyMetrics extends LatencySummary {
+  readonly byType: Readonly<Record<string, LatencySummary>>;
+  /** Additional types contribute only to the total after the node or run recording limit. */
+  readonly typesLimited?: true;
 }
 
 export interface EdgeSimState {

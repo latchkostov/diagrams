@@ -1,0 +1,173 @@
+{
+  "trace": { "rootId": 1, "type": "OrderPlaced", "origin": "checkout", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 13, "endedAt": 330 },
+  "steps": [
+    { "t": 0, "kind": "emit", "id": 1, "type": "OrderPlaced", "node": "checkout" },
+    { "t": 0, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "checkout" },
+    { "t": 0, "kind": "send", "id": 1, "type": "OrderPlaced", "node": "checkout", "edge": "intake-orders", "via": "message", "until": 10 },
+    { "t": 10, "kind": "arrive", "id": 1, "type": "OrderPlaced", "node": "orders", "edge": "intake-orders" },
+    { "t": 10, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "orders" },
+    { "t": 10, "kind": "send", "id": 1, "type": "OrderPlaced", "node": "orders", "edge": "orders-billing", "via": "message", "until": 20 },
+    { "t": 20, "kind": "arrive", "id": 1, "type": "OrderPlaced", "node": "billing", "edge": "orders-billing" },
+    { "t": 20, "kind": "start", "id": 1, "type": "OrderPlaced", "node": "billing" },
+    { "t": 320, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "billing" },
+    { "t": 320, "kind": "send", "id": 1, "type": "OrderPlaced", "node": "billing", "edge": "billing-receipts", "via": "message", "until": 330 },
+    { "t": 330, "kind": "arrive", "id": 1, "type": "OrderPlaced", "node": "receipts", "edge": "billing-receipts" },
+    { "t": 330, "kind": "done", "id": 1, "type": "OrderPlaced", "node": "receipts" },
+    { "t": 330, "kind": "end", "id": 1, "type": "OrderPlaced", "node": "receipts", "reason": "received" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "OrderPlaced",
+    "origin": "checkout",
+    "startedAt": 0,
+    "totalMs": 330,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "OrderPlaced", "node": "checkout", "copy": false },
+      { "key": "3", "kind": "hop", "t": 10, "id": 1, "type": "OrderPlaced", "node": "orders", "from": "checkout", "edge": "intake-orders", "sync": false, "latencyMs": 10, "waitMs": 0, "travelMs": 10, "renamed": false, "copy": false },
+      { "key": "6", "kind": "hop", "t": 20, "id": 1, "type": "OrderPlaced", "node": "billing", "from": "orders", "edge": "orders-billing", "sync": false, "latencyMs": 10, "waitMs": 0, "travelMs": 10, "renamed": false, "copy": false },
+      { "key": "10", "kind": "hop", "t": 330, "id": 1, "type": "OrderPlaced", "node": "receipts", "from": "billing", "edge": "billing-receipts", "sync": false, "latencyMs": 310, "waitMs": 0, "processMs": 300, "travelMs": 10, "renamed": false, "copy": false }
+    ],
+    "visits": [
+      { "id": 1, "node": "checkout", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "orders", "at": 10, "done": 10, "left": 10 },
+      { "id": 1, "node": "billing", "at": 20, "start": 20, "done": 320, "left": 320 },
+      { "id": 1, "node": "receipts", "at": 330, "done": 330 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["checkout", "orders", "billing", "receipts"],
+    "edges": ["intake-orders", "orders-billing", "billing-receipts"],
+    "rowOf": { "0": "0", "3": "3", "6": "6", "10": "10" }
+  },
+  "sequence": {
+    "title": "OrderPlaced #1",
+    "summary": "330 ms end to end",
+    "participants": [
+      { "id": "checkout", "label": "Order intake" },
+      { "id": "orders", "label": "Orders" },
+      { "id": "billing", "label": "Billing" },
+      { "id": "receipts", "label": "Receipts" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 10, "from": "checkout", "to": "orders", "style": "async", "label": "OrderPlaced", "id": 1, "type": "OrderPlaced" },
+      { "kind": "arrow", "t": 10, "until": 20, "from": "orders", "to": "billing", "style": "async", "label": "OrderPlaced", "id": 1, "type": "OrderPlaced" },
+      { "kind": "gap", "t": 20, "ms": 300, "text": "300 ms at Billing: processing", "node": "billing" },
+      { "kind": "arrow", "t": 320, "until": 330, "from": "billing", "to": "receipts", "style": "async", "label": "OrderPlaced", "id": 1, "type": "OrderPlaced" }
+    ],
+    "totalMs": 330,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"OrderPlaced #1 · 330 ms end to end\"\n---\nsequenceDiagram\n  participant checkout as Order intake\n  participant orders as Orders\n  participant billing as Billing\n  participant receipts as Receipts\n  checkout-)orders: OrderPlaced (+0.00 s)\n  orders-)billing: OrderPlaced (+0.01 s)\n  Note over checkout,receipts: ⏱ 300 ms at Billing: processing\n  billing-)receipts: OrderPlaced (+0.32 s)\n",
+  "svg": {
+    "light": { "sha256": "bebf06f5fd88b1fb1a1bc69767928a5fa285cf1c11238e0ea4f58140ad0fb22f", "bytes": 6168, "width": 630, "height": 356, "headerHeight": 142 },
+    "dark": { "sha256": "7d1e03697db868838e73e98393c7116ab39d02caf0230cf4de1629067852f5fd", "bytes": 6167, "width": 630, "height": 356, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "OrderPlaced",
+    "origin": "checkout",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "checkout",
+        "anchor": { "edge": "intake-orders", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Order intake sends OrderPlaced",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#309bd5",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "OrderPlaced", "edge": "intake-orders", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 10, "caption": "OrderPlaced", "tone": "plain", "i": 1, "color": "#309bd5", "rowKey": "3" },
+      {
+        "kind": "append",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "orders",
+        "anchor": { "edge": "intake-orders", "end": 1 },
+        "start": 1800,
+        "duration": 450,
+        "realFrom": 10,
+        "realTo": 10,
+        "caption": "appended to Orders",
+        "i": 2,
+        "color": "#309bd5",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "OrderPlaced", "edge": "orders-billing", "reverse": false, "start": 2250, "duration": 1000, "realFrom": 10, "realTo": 20, "caption": "OrderPlaced", "tone": "plain", "i": 3, "color": "#309bd5", "rowKey": "6" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "billing",
+        "anchor": { "edge": "orders-billing", "end": 1 },
+        "start": 3250,
+        "duration": 1364.0967379910403,
+        "realFrom": 20,
+        "realTo": 320,
+        "caption": "Billing · processing · 300 ms",
+        "i": 4,
+        "color": "#309bd5",
+        "tone": "plain",
+        "short": "processing · 300 ms"
+      },
+      { "kind": "travel", "msg": 1, "type": "OrderPlaced", "edge": "billing-receipts", "reverse": false, "start": 4614.09673799104, "duration": 1000, "realFrom": 320, "realTo": 330, "caption": "OrderPlaced", "tone": "plain", "i": 5, "color": "#309bd5", "rowKey": "10" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "OrderPlaced",
+        "node": "receipts",
+        "anchor": { "edge": "billing-receipts", "end": 1 },
+        "start": 5614.09673799104,
+        "duration": 600,
+        "realFrom": 330,
+        "realTo": 330,
+        "caption": "Receipts · processing",
+        "i": 6,
+        "color": "#309bd5",
+        "tone": "plain",
+        "short": "processing"
+      },
+      { "kind": "end", "msg": 1, "type": "OrderPlaced", "node": "receipts", "start": 6214.09673799104, "duration": 1200, "realFrom": 330, "realTo": 330, "caption": "Done · 330 ms", "tone": "done", "i": 7, "color": "#309bd5" }
+    ],
+    "duration": 7414.09673799104,
+    "realTotal": 330,
+    "stops": [0, 800, 2250, 4614, 6214],
+    "nodes": ["checkout", "orders", "billing", "receipts"],
+    "edges": ["intake-orders", "orders-billing", "billing-receipts"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 330 ms",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "6": 2250, "10": 4614.09673799104 }
+  },
+  "slowMotionReduced": {
+    "duration": 12000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["append", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["process", 6000, 1500],
+      ["travel", 7500, 1500],
+      ["process", 9000, 1500],
+      ["end", 10500, 1500]
+    ]
+  }
+}

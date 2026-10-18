@@ -15,6 +15,11 @@ describe("example gallery", () => {
   });
   it("matches all words across title, summary, description, slug and translated feature labels", () => {
     expect(
+      filterExamples(publicItems, "backlog turns", "latency")
+        .flatMap((s) => s.items)
+        .map((e) => e.slug),
+    ).toEqual(["where-the-time-goes"]);
+    expect(
       filterExamples(publicItems, "  KAFKA order ")
         .flatMap((s) => s.items)
         .some((e) => e.slug === "kafka-order-pipeline"),
@@ -105,5 +110,18 @@ describe("example gallery", () => {
       expect(e.shows?.every((id) => exampleFeatures.some((f) => f.id === id))).toBe(true);
       expect(e.simulation).toBe(d.simulations?.[0]?.id);
     }
+  });
+  it("requires async work reachable from spiked traffic for the latency tag", async () => {
+    const diagram = structuredClone(await loadExample("where-the-time-goes"));
+    expect(exampleShows(diagram)).toContain("latency");
+    diagram.edges[0].kind = "sync";
+    expect(exampleShows(diagram)).not.toContain("latency");
+    diagram.edges[0].kind = "async";
+    diagram.edges[0].relation = "telemetry";
+    expect(exampleShows(diagram)).not.toContain("latency");
+    diagram.edges[0].relation = "flow";
+    diagram.edges = diagram.edges.filter((edge) => edge.id !== "orders-billing");
+    diagram.edges.push({ id: "loop", from: "orders", to: "checkout", kind: "async" });
+    expect(exampleShows(diagram)).not.toContain("latency");
   });
 });

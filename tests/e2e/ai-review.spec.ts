@@ -112,6 +112,8 @@ test("synthetic local example is excluded from tools and copied prompts, includi
       { ...exampleMetadata["kafka-order-pipeline"], slug: "kafka-order-pipeline", diagram: publicDiagram },
       { slug: "synthetic-local", localOnly: true, diagram: { format: "diagrams/v1", title: "Synthetic local", nodes: [{ id: "secret-fixture", label: "SYNTHETIC_SENSITIVE_CONTENT", stencil: "generic.service", x: 0, y: 0 }], edges: [] } }
     ];
+    export const exampleSummary = (example) =>
+      (typeof example.summary === "function" ? example.summary() : example.summary) ?? example.description;
     export const getLoadedExample = (slug) => examples.find((e) => e.slug === slug)?.diagram;
     export const loadExample = async (slug) => getLoadedExample(slug);
   `,
