@@ -12,10 +12,10 @@ import {
 } from "./fixtures";
 
 const item = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
-async function seed(page: Page) {
+async function seed(page: Page, diagram = faultDrillFixture()) {
   await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
     key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
-    diagram: faultDrillFixture(),
+    diagram,
   });
   await gotoLive(page, "./?view=canvas&example=kafka-order-pipeline&live=1&traffic=0&paused=1");
   await waitForCameraIdle(page);
@@ -33,6 +33,8 @@ test("boundary Fault takes every member down, greys the boundary, restores it an
   consoleErrors,
 }) => {
   await seed(page);
+  await faultMenu(page, "node-worker");
+  await item(page, "sim.kill").click();
   await faultMenu(page, "group-label-zone-b");
   await expect(item(page, "sim.boundary-down")).toHaveText("Take down");
   await item(page, "sim.boundary-down").click();
@@ -47,8 +49,13 @@ test("boundary Fault takes every member down, greys the boundary, restores it an
   await faultMenu(page, "group-label-zone-b");
   await expect(item(page, "sim.boundary-down")).toHaveText("Restore");
   await item(page, "sim.boundary-down").click();
-  await expect(page.getByTestId("node-badge-worker")).toHaveAttribute("data-status", "up");
+  await expect(page.getByTestId("node-badge-worker")).toHaveAttribute("data-status", "down");
+  await expect(page.getByTestId("node-badge-store")).toHaveAttribute("data-status", "up");
   await expect.poll(() => boundary.evaluate((el) => getComputedStyle(el).filter)).toBe("none");
+  await faultMenu(page, "node-worker");
+  await expect(item(page, "sim.kill")).not.toHaveAttribute("aria-disabled", "true");
+  await item(page, "sim.kill").click();
+  await expect(page.getByTestId("node-badge-worker")).toHaveAttribute("data-status", "up");
   await faultMenu(page, "group-label-zone-b");
   await item(page, "sim.boundary-down").click();
   await page.getByTestId("live-toggle").click();
@@ -110,7 +117,11 @@ test("Cut link fails pushed Requests, retains broker deliveries and restores the
 test("Add step offers all four named drill presets with editable targets and persists the fault timeline", async ({
   page,
 }) => {
-  await seed(page);
+  const diagram = faultDrillFixture();
+  const worker = diagram.nodes.find((node) => node.id === "worker");
+  if (!worker) throw new Error("The fault drill fixture has no worker node");
+  worker.stencil = "nginx";
+  await seed(page, diagram);
   await page.getByTestId("node-worker").click({ button: "right" });
   await item(page, "sim.storm").click();
   await page.getByTestId("sim-panel-section-timeline-toggle").click();
@@ -119,6 +130,8 @@ test("Add step offers all four named drill presets with editable targets and per
     await page.getByTestId("sim-panel-add-step").selectOption(preset);
     await expect(page.getByTestId(`sim-panel-step-${i + 1}-action`)).toHaveValue("fault");
     await expect(page.getByTestId(`sim-panel-step-${i + 1}-fault-target`)).toHaveAccessibleName("Target");
+    if (preset === "slow-dependency" || preset === "error-spike")
+      await expect(page.getByTestId(`sim-panel-step-${i + 1}-fault-target`)).toHaveValue("worker");
   }
   await page.getByTestId("sim-panel-step-1-fault-target").selectOption("zone-b");
   await page.getByTestId("sim-panel-step-2-fault-target").selectOption("request");

@@ -40,3 +40,11 @@ nodes/boundaries (the initial implementation made 250,000); it uses no wall-cloc
 The Linux load run exposed an existing real-time assumption in the paused Revive/focus test: while operating menus
 at 4×, broker lag could become the next valid callout after the down node was restored. The test now starts paused,
 so it isolates status restoration and focus with every assertion preserved. No product behavior or timeout changes.
+
+An already-open Restore action also rechecks the enclosing outage when activated. A scheduled boundary fault cannot
+let a cached menu or palette command change a member's underlying status. A unit table covers both surfaces, and the
+browser restoration regression preserves a member that was already down before its zone failed.
+
+Node presets keep processors as their first choice, then prefer a gateway or store before falling back to diagram
+order. A gateway-only application therefore gets a working slow/error drill instead of silently targeting its
+client. The unit table covers gateways and stores, and the preset browser regression exercises the gateway case.

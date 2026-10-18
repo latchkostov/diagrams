@@ -20,12 +20,14 @@ export function faultTargets(diagram: DiagramFile, kind: Fault["kind"]): { id: s
 
 export function defaultFault(kind: Fault["kind"], diagram: DiagramFile): Fault {
   const target = faultTargets(diagram, kind);
-  const node =
-    target.find((n) => stencilRole(diagram.nodes.find((d) => d.id === n.id)?.stencil ?? "") === "processor")?.id ??
-    target[0]?.id ??
-    "";
   if (kind === "boundary") return { kind, boundary: target[0]?.id ?? "", down: true };
   if (kind === "link") return { kind, edge: target[0]?.id ?? "", cut: true };
+  const roles = new Map(diagram.nodes.map((node) => [node.id, stencilRole(node.stencil)]));
+  const node =
+    target.find((n) => roles.get(n.id) === "processor")?.id ??
+    target.find((n) => roles.get(n.id) === "gateway" || roles.get(n.id) === "store")?.id ??
+    target[0]?.id ??
+    "";
   if (kind === "slow") return { kind, node, factor: 5 };
   return { kind, node, rate: 0.5 };
 }

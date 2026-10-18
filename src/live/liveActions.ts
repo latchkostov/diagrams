@@ -193,7 +193,10 @@ export function liveActions(host: LiveActionsHost): Action[] {
             disabled: !!restoreHint,
             hint: restoreHint,
             label: status(node) === "down" ? t("fault.restore") : t("fault.takeDown"),
-            run: () => c.setNodeStatus(node, status(node) === "down" ? "up" : "down"),
+            run: () => {
+              if (boundaryRestoreHint(c.currentDiagram, node, c.snapshot().faults)) return;
+              c.setNodeStatus(node, status(node) === "down" ? "up" : "down");
+            },
           },
           ...(["processor", "gateway", "store"].includes(role(node)) || props(node).admission
             ? [

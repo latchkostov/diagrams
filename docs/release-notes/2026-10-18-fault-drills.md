@@ -5,10 +5,11 @@ members), **Slow down → 2× / 5× / 10×** and **Fail → 10% / 50%** on proce
 on flows crossing two boundaries. Slowdown/failure overlays can be cleared together. No top-bar or live-bar buttons
 were added. Outage boundaries turn grey with a dashed border and × marker. Existing node down/up actions now live
 inside Fault, replacing their Kill/Revive wording. A member’s Restore action explains when its boundary must be
-restored first.
+restored first. Already-open actions recheck this boundary guard when activated.
 
 Timeline **Add step** offers four named presets: **Zone outage**, **Region connectivity**, **Slow dependency** and
-**Error spike**. Their target, magnitude and time remain editable; restoration is another fault step. Faults overlay
+**Error spike**. Node presets prefer a processor, gateway or store before falling back to diagram order. Their target,
+magnitude and time remain editable; restoration is another fault step. Faults overlay
 current settings, compose across nested boundaries and survive checkpoints. Slowdown affects new attempts, including
 managed service latency and resource CPU work; repeated choices replace the factor. Boundary membership/ancestry
 changes restart playback as topology changes; ordinary moves and boundary renames preserve it. Seeking a saved drill
@@ -40,6 +41,6 @@ Five shared goldens change intentionally:
   uses ECS, ELB, DynamoDB and a user stencil.
 - `node/i18n/catalogs.json`: 31 new messages, including the gallery feature label, their namespace hashes and fallback counts.
 
-The production entry remains under its unchanged 123.5 kB gzip budget (107.1 kB). The downloadable skill grows to
+The production entry remains under its unchanged 123.5 kB gzip budget (107.3 kB). The downloadable skill grows to
 about 803 kB with fault playback and its contract; its separate zip ceiling increases from 800 to 805 kB. No plugin
 version changes.

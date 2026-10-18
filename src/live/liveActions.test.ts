@@ -161,3 +161,53 @@ it("keeps faults in one short contextual submenu, with guarded boundary and link
   expect(items(registry.build(link)).find((r) => r.id === "sim.cut-link")!.label).toBe("Restore link");
   controller.dispose();
 });
+
+it.each(["menu", "palette"] as const)(
+  "rechecks enclosing outages when an already-open %s Restore action runs",
+  (surface) => {
+    const controller = new LiveController(faultDrillFixture());
+    const host: LiveActionsHost = {
+      controller,
+      slowMotionActive: () => false,
+      openInject: vi.fn(),
+      startStorm: vi.fn(),
+      showEvents: vi.fn(),
+      trace: vi.fn(),
+      tracing: () => null,
+      traceNext: vi.fn(),
+      traceSlowest: vi.fn(),
+      traceDeadLettered: vi.fn(),
+      slowMotion: vi.fn(),
+      slowMotionTrace: vi.fn(),
+      canReplayTrace: () => false,
+      endTrace: vi.fn(),
+      tracingMessage: () => false,
+      saveTweaks: vi.fn(),
+      messageType: () => "Job",
+      openRecord: vi.fn(),
+    };
+    const registry = new ActionRegistry();
+    registry.register(liveActions(host));
+    try {
+      controller.setNodeStatus("worker", "down");
+      const restore = items(
+        registry.build({
+          target: "node",
+          nodeId: "worker",
+          mode: "live",
+          surface,
+          editor: {} as EditorApi,
+          selection: { nodeIds: ["worker"], edgeIds: [], groupIds: [] },
+        }),
+      ).find((row) => row.id === "sim.kill")!;
+      expect(restore.label).toBe("Restore");
+      expect(restore.disabled).not.toBe(true);
+      controller.setFault({ kind: "boundary", boundary: "zone-b", down: true });
+      restore.run!();
+      controller.setFault({ kind: "boundary", boundary: "zone-b", down: false });
+      expect(controller.snapshot().nodes.worker.status).toBe("down");
+    } finally {
+      controller.dispose();
+    }
+  },
+);
