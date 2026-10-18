@@ -642,7 +642,8 @@ export function LiveSession({
     let down: { x: number; y: number } | null = null;
     const hit = (e: MouseEvent) => {
       const target = e.target as Element | null;
-      if (target?.closest(".react-flow__node, [data-editor-overlay], button, input, select")) return undefined;
+      if (target?.closest(".react-flow__node, .fe-label, [data-editor-overlay], button, input, select"))
+        return undefined;
       const r = root.getBoundingClientRect();
       return rendererRef.current?.hitTest(e.clientX - r.left, e.clientY - r.top);
     };
