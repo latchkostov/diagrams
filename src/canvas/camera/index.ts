@@ -9,7 +9,11 @@
 //   move lands. It publishes data-camera-state (idle | pending | deferred | animating) on canvas-wrap and, in e2e
 //   and development builds, the command journal (journal.ts, window.__cameraJournal).
 // - geometry.ts: where a fit, a reveal or a centring would put the view (pure reads).
-// - use*.ts: the hooks CanvasView calls; they only dispatch events.
+// - use*.ts: the hooks CanvasView calls; they only dispatch events. useStandaloneCamera: the same controller for a
+//   React Flow that isn't the canvas (the Lab's live stages), with Live's geometry only.
+// - Live view (src/live/LiveSession.tsx) and slow motion (src/live/slowmo/useSlowMotion.ts) dispatch their own
+//   events (narration, live.panel, live.card, live.added, slowmo, slowmo.take, slowmo.follow); slow motion lends the
+//   controller its geometry (SlowmoCamera) and owns the view as `slowmo` while it runs.
 //
 // Adding camera behaviour
 // 1. Add an event to CameraEvent (types.ts) with its cause, or a cause to an existing event.
@@ -19,7 +23,7 @@
 // 4. Dispatch the event from the call site that knows the cause.
 // Never add an effect that moves the view, a timer that waits for "the pane to settle", or a ref flag that
 // remembers who owns the view: the policy state is the only memory. ESLint (eslint.config.js) rejects viewport
-// calls (setViewport, fitView, setCenter, zoomTo, ...) outside this directory.
+// calls (setViewport, fitView, setCenter, zoomTo, ...) outside this directory, Live and slow motion included.
 export { CameraContext, useCameraController, useCameraCore, type CameraCore } from "./useCameraCore";
 export { createCameraController, type CameraController, type CameraPort, type JournalEntry } from "./controller";
 export { decide, initialPolicy } from "./panePolicy";

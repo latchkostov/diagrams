@@ -153,15 +153,9 @@ export default tseslint.config(
     rules: { "local/no-literal-ui-text": "error" },
   },
   {
-    // One writer for the canvas viewport: src/canvas/camera (see its index.ts). Live and slow motion still move
-    // the view themselves until they are folded into the controller (docs/backlog/2026-10-17-camera-live-slowmo.md).
+    // One writer for the canvas viewport: src/canvas/camera (see its index.ts), Live and slow motion included.
     files: ["src/**/*.{ts,tsx}"],
-    ignores: [
-      "src/canvas/camera/**",
-      "src/live/LiveSession.tsx",
-      "src/live/slowmo/useSlowMotion.ts",
-      "src/**/*.test.*",
-    ],
+    ignores: ["src/canvas/camera/**", "src/**/*.test.*"],
     rules: {
       "no-restricted-syntax": [
         "error",

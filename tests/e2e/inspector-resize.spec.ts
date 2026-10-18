@@ -7,6 +7,9 @@ import {
   gotoCanvas,
   gotoLive,
   waitForStableViewport,
+  waitForCameraIdle,
+  cameraJournalMark,
+  cameraMoves,
   pauseClock,
   STORAGE_KEYS,
   savedDiagram,
@@ -59,10 +62,11 @@ async function open(page: Page, viewport = 1920, live = false, simulation?: stri
       `./?view=canvas&example=kafka-order-pipeline&live=1&${simulation ? `sim=${simulation}` : "paused=1"}`,
     );
   else await gotoCanvas(page, "kafka-order-pipeline");
-  await waitForStableViewport(page);
+  const settled = live ? waitForCameraIdle : waitForStableViewport;
+  await settled(page);
   await page.getByTestId("node-kong").dblclick();
   await expect(page.getByTestId("routes-table")).toBeVisible();
-  await waitForStableViewport(page);
+  await settled(page);
 }
 
 test("drag uses the extra table space, captures the pointer and saves only at release", async ({ page }) => {
@@ -176,8 +180,12 @@ test("a completed resize keeps a fitted diagram in the canvas", async ({ page })
 test("Live preserves its camera after an Inspector resize", async ({ page }) => {
   await open(page, 1920, true);
   await page.getByTestId("fit-view-button").click();
-  await waitForStableViewport(page);
+  await waitForCameraIdle(page);
+  const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
+  // The fitted view refits for the resized pane with Live's fit (panePolicy L5).
+  await waitForCameraIdle(page);
+  expect(await cameraMoves(page, mark)).toEqual(["liveFit:pane"]);
   await expect
     .poll(async () => {
       const pane = await page.getByTestId("canvas-wrap").boundingBox();

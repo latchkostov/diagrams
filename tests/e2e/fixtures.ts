@@ -251,8 +251,9 @@ export async function waitForSelectionSettled(page: Page) {
  * Waits until the canvas camera has nothing queued, deferred or moving: `data-camera-state="idle"` on canvas-wrap,
  * which its controller (src/canvas/camera/controller.ts) holds for the whole lifetime of pending pane work, a
  * pointer-up's Inspector change, a reveal waiting for measurement, a fit's refinement and a move in flight. Work
- * deferred by an open menu reads `deferred`, never idle. Live's own panel and narration fits aren't the canvas
- * camera's yet: Live specs keep waitForStableViewport.
+ * deferred by an open menu reads `deferred`, never idle. Live's panel, trace card and narration fits and slow
+ * motion's camera are the controller's too. A pan or zoom by hand isn't camera work: wait for it with
+ * waitForStableViewport.
  */
 export async function waitForCameraIdle(page: Page) {
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-camera-state", "idle");
