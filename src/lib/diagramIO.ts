@@ -693,11 +693,13 @@ function createLibraryEntry(
   sessionId: string = randomHex(4),
   provenance: PrivacyFlags & { sourceSlug?: string } = {},
   promotion?: { conversation: string | null; beforePublish: (slug: string) => void },
+  fixedSlug?: string,
 ): string {
   const entries = readIndex();
-  let slug: string;
-  do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
-  while (entries.some((e) => e.slug === slug));
+  let slug = fixedSlug ?? "";
+  if (!fixedSlug)
+    do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
+    while (entries.some((e) => e.slug === slug));
   // A file's `"private": true` becomes the entry's switch; the stored document never carries it.
   const d = withPrivacyField(input, false);
   // Copies inherit their source's privacy: a local-only example's provenance, or the Private switch.
@@ -918,23 +920,63 @@ export const emptyDiagram = (): DiagramFile => ({
   edges: [],
 });
 
+/** A library slug derived from a retired slug and its stored edits: tabs adopting the same edits write one entry. */
+function retiredCopySlug(slug: string, raw: string): string {
+  let a = 0x811c9dc5;
+  let b = 0x01000193;
+  for (const ch of `${slug}:${raw}`) {
+    const c = ch.codePointAt(0)!;
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x5bd1e995) >>> 0;
+  }
+  return LIBRARY_SLUG_PREFIX + (a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0")).slice(0, 12);
+}
+
+/** When Your diagrams can't take them, the edits stay where they are and the person can download them now. */
+function offerRetiredEdits(edited: DiagramFile): void {
+  const title = edited.title.trim() || UNTITLED;
+  notify(
+    `Your edits to "${title}", an example that has been replaced, couldn't be moved to Your diagrams: this browser's storage is full. Download them now, or free up space (File → Your diagrams…) and reload.`,
+    {
+      kind: "error",
+      duration: 60_000,
+      action: {
+        label: "Download edits",
+        testId: "retired-edits-download",
+        run: () =>
+          void import("../interop/files").then(({ downloadText }) =>
+            downloadText(JSON.stringify(edited, null, 2), `${title}.diagram.json`, "application/json"),
+          ),
+      },
+    },
+  );
+}
+
 /**
  * Edits saved under a retired example's slug (an example autosave from before copies existed) become one of your
- * diagrams, so retiring an example never loses them; the old key is removed once the copy is stored. Returns the
- * new entries' slugs. Runs once at startup (src/main.tsx).
+ * diagrams, so retiring an example never loses them; the old key is removed once the copy is stored. The copy's slug
+ * is derived from the edits, so tabs starting together, or a retry after an interrupted cleanup, find the same entry
+ * instead of adding another. When storage is full, the edits stay put and a notice offers them as a download.
+ * Returns the entries' slugs. Runs once at startup, after the storage lifecycle (src/main.tsx).
  */
 export function adoptRetiredExampleEdits(): string[] {
   const adopted: string[] = [];
   for (const slug of Object.keys(RETIRED_EXAMPLES)) {
     const key = AUTOSAVE_PREFIX + slug;
-    const edited = readDiagram(key);
-    if (!edited) continue;
-    try {
-      adopted.push(createLibraryDiagram(edited));
-    } catch {
-      continue; // Storage is full: keep the edits where they are and try again next time.
+    const raw = safeStorage.getItem(key);
+    const edited = raw === null ? undefined : readDiagram(key);
+    if (raw === null || !edited) continue;
+    const copy = retiredCopySlug(slug, raw);
+    if (safeStorage.getItem(slotKey(copy)!) === null) {
+      try {
+        createLibraryEntry(edited, undefined, undefined, {}, undefined, copy);
+      } catch {
+        offerRetiredEdits(edited);
+        continue;
+      }
     }
     safeStorage.removeItem(key);
+    adopted.push(copy);
   }
   if (adopted.length) changed();
   return adopted;

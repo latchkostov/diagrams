@@ -20,11 +20,9 @@ import { registerScenarioPlanner } from "./lib/scenarioPlanner";
 import { redirectRetiredExample } from "./examples/retired";
 import { adoptRetiredExampleEdits } from "./lib/diagramIO";
 
-// A retired example’s address opens its replacement before anything reads the URL, and edits saved under its old
-// slug become one of your diagrams (src/examples/retired.ts).
+// A retired example’s address opens its replacement before anything reads the URL (src/examples/retired.ts).
 const redirected = redirectRetiredExample(window.location.href);
 if (redirected) window.history.replaceState(window.history.state, "", redirected);
-adoptRetiredExampleEdits();
 
 // Scenario sizing plays simulations, so in the editor it runs in the checks worker; agent tools, Copy prompt and a
 // fix’s re-check read the worker’s results (src/lib/scenarioPlanner.ts). Registered before anything can check.
@@ -32,6 +30,9 @@ registerScenarioPlanner((d) => import("./canvas/checks/runner").then((m) => m.pl
 
 // This page takes part in Clear everything on this device (the exported HTML viewer, its own entry, doesn't).
 startStorageLifecycle();
+// Inside the storage lifecycle, so a device clear in another tab can't be undone by a late recovery: edits saved
+// under a retired example's slug become one of your diagrams.
+adoptRetiredExampleEdits();
 
 const render = () =>
   createRoot(document.getElementById("root")!).render(

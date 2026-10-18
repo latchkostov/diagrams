@@ -408,6 +408,12 @@ for (const viewport of [
       test(`${n.slug}: “${n.text}” brings its cards into view`, async ({ page }) => {
         test.slow();
         await page.clock.install();
+        // The overview first: free play fits the whole diagram, so its cards' width is the zoom to beat.
+        await gotoLive(page, `./?view=canvas&example=${n.slug}&live=1`);
+        await pauseClock(page);
+        await page.clock.runFor(1000);
+        await waitForStableViewport(page);
+        const overview = (await boxOf(page, `rf__node-${n.focus[0]}`)).width;
         await gotoLive(page, `./?view=canvas&example=${n.slug}&live=1&sim=${n.sim}`);
         await pauseClock(page);
         await page.clock.runFor(1000);
@@ -432,6 +438,9 @@ for (const viewport of [
           // The camera fitted the note's focus: on a desktop, cards render at 60% or more (220 px cards).
           if (viewport.width >= 1280) expect(card.width, id).toBeGreaterThanOrEqual(132);
         }
+        // On a phone too, the close-up is at least twice the overview's zoom (docs/EXAMPLES.md).
+        const close = (await boxOf(page, `rf__node-${n.focus[0]}`)).width;
+        if (viewport.width < 1280) expect(close / overview).toBeGreaterThanOrEqual(2);
       });
   });
 

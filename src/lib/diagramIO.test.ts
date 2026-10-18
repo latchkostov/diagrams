@@ -4,6 +4,12 @@ import type { SaveTarget } from "./diagramIO";
 import type { FileHandle } from "../interop/files";
 import { writeHandle } from "../interop/files";
 
+// Downloads are observed, not performed (Node has no document).
+vi.mock("../interop/files", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../interop/files")>()),
+  downloadText: vi.fn(),
+}));
+
 // Node has no localStorage: a Map-backed stand-in (installed before diagramIO is imported).
 class MemoryStorage {
   private m = new Map<string, string>();
@@ -1029,5 +1035,64 @@ describe("retired examples", () => {
     storage.quotaBytes = 10;
     expect(io.adoptRetiredExampleEdits()).toEqual([]);
     expect(storage.getItem("diagrams.autosave.v1:iot-telemetry")).not.toBeNull();
+  });
+
+  it("retired edits remain recoverable when adoption hits quota", async () => {
+    const edits = { ...good, title: "My plant telemetry", nodes: [{ ...good.nodes[0], id: "kept", label: "Kept" }] };
+    storage.setItem("diagrams.autosave.v1:iot-telemetry", JSON.stringify(edits));
+    // Every write the migration attempts is refused: the library entry and its document alike.
+    storage.beforeWrite = (key) => {
+      if (key.startsWith("diagrams.doc.") || key.startsWith("diagrams.entry."))
+        throw new DOMException("full", "QuotaExceededError");
+    };
+    expect(io.adoptRetiredExampleEdits()).toEqual([]);
+    expect(io.listLibrary()).toEqual([]);
+    // The notice says why, and offers the edits as a file.
+    const notice = toast.toast.current;
+    expect(notice?.kind).toBe("error");
+    expect(notice?.text).toMatch(/My plant telemetry/);
+    expect(notice?.text).toMatch(/storage is full/);
+    expect(notice?.action?.label).toBe("Download edits");
+    notice?.action?.run();
+    const files = await import("../interop/files");
+    await vi.waitFor(() => expect(files.downloadText).toHaveBeenCalledTimes(1));
+    const [text, name, mime] = vi.mocked(files.downloadText).mock.calls[0];
+    expect(JSON.parse(text)).toMatchObject({ title: "My plant telemetry", nodes: [{ id: "kept", label: "Kept" }] });
+    expect(name).toBe("My plant telemetry.diagram.json");
+    expect(mime).toBe("application/json");
+    // And they stay under the old key, so the next start tries again once there's room.
+    storage.beforeWrite = undefined;
+    const [slug] = io.adoptRetiredExampleEdits();
+    expect(io.getCurrent(slug)?.title).toBe("My plant telemetry");
+  });
+
+  it("two tabs adopting the same edits at once keep one copy", async () => {
+    storage.setItem("diagrams.autosave.v1:aws-fanout", JSON.stringify(good));
+    vi.resetModules();
+    const other = await import("./diagramIO");
+    let second: string[] = [];
+    // The other tab starts while this one is still writing: both have read the edits.
+    storage.beforeWrite = (key) => {
+      if (!key.startsWith("diagrams.doc.") || second.length) return;
+      storage.beforeWrite = undefined;
+      second = other.adoptRetiredExampleEdits();
+    };
+    const first = io.adoptRetiredExampleEdits();
+    expect(second).toEqual(first);
+    expect(io.listLibrary().map((e) => e.slug)).toEqual(first);
+  });
+
+  it("a retry after an interrupted cleanup reuses the copy", () => {
+    storage.setItem("diagrams.autosave.v1:keda-render-workers", JSON.stringify(good));
+    // The copy is stored, but removing the old key fails (the tab closes, or storage refuses).
+    const remove = vi.spyOn(storage, "removeItem").mockImplementationOnce(() => {
+      throw new Error("interrupted");
+    });
+    const [slug] = io.adoptRetiredExampleEdits();
+    remove.mockRestore();
+    expect(storage.getItem("diagrams.autosave.v1:keda-render-workers")).not.toBeNull();
+    expect(io.adoptRetiredExampleEdits()).toEqual([slug]);
+    expect(io.listLibrary().map((e) => e.slug)).toEqual([slug]);
+    expect(storage.getItem("diagrams.autosave.v1:keda-render-workers")).toBeNull();
   });
 });
