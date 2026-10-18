@@ -1,7 +1,13 @@
+import {
+  useAutosave,
+  useDocumentHandle,
+  useDocumentLoad,
+  useDocumentSave,
+  type CanvasHandle,
+} from "./document/useCanvasDocument";
 import { useCaptionContrast } from "./useCaptionContrast";
 import { ConnectedQuickAddMenu } from "./ConnectedQuickAddMenu";
 import { connectedMenuPlacement, type ConnectedMenuAnchor } from "./geometry/connectedMenuPlacement";
-import { retainConversation } from "../lib/exampleConversations";
 import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
 import { pipsByNode } from "./nodes/dependencyRows";
@@ -10,7 +16,6 @@ import { edgeMarks } from "./edgeMarks";
 import {
   useCallback,
   useEffect,
-  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -55,17 +60,11 @@ import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import {
   DRAFT_SLUG,
-  copyEditedExample,
-  emptyDiagram,
-  getAutosave,
   getDiagramIdentity,
-  releaseExampleSaveTarget,
-  getOriginal,
   isLibrarySlug,
   setDiagramPrivate,
   setOnDeviceAllowed,
   UNTITLED,
-  writeAutosave,
 } from "../lib/diagramIO";
 import { privacyOf } from "../lib/localOnly";
 import { PRIVACY_REQUEST, usePrivacyFlags } from "../lib/usePrivacy";
@@ -109,7 +108,7 @@ import type { FlowSelection } from "../editor/historySelection";
 import { useEditor } from "../editor/useEditor";
 import { inCanvas, useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
-import type { EditorApi, NewNode, Selection, XYBox } from "../editor/types";
+import type { NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { flushSync } from "react-dom";
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
@@ -222,15 +221,7 @@ const HINT_KEY = "diagrams.firstRunHint.v1";
 const ROOMY = 1680;
 const CRAMPED = 1280;
 
-export interface CanvasHandle {
-  getDocumentVersion: EditorApi["getDocumentVersion"];
-  /** Current canvas as a diagrams/v1 file. */
-  getDiagram: () => DiagramFile;
-  /** Writes pending edits to storage now (before reading or replacing this diagram's stored copy). */
-  flush: () => void;
-  /** Renames the diagram as a normal, undoable edit. */
-  setTitle: (title: string) => void;
-}
+export type { CanvasHandle } from "./document/useCanvasDocument";
 
 interface Props {
   /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
@@ -284,11 +275,6 @@ export function CanvasView(props: Props) {
   );
 }
 
-const normalize = (d: DiagramFile) => {
-  const f = toFlow(d);
-  return JSON.stringify(fromFlow(f.meta, f.nodes, f.edges));
-};
-
 const isDiagramNode = (n: FlowNode): n is DiagramFlowNode => n.type === "diagram";
 const isGroupNode = (n: FlowNode): n is GroupFlowNode => n.type === "boundary";
 const isAnnotationNode = (n: FlowNode): n is AnnotationFlowNode => n.type === "annotation";
@@ -337,18 +323,7 @@ function CanvasInner({
   /** The node under the pointer (Shift+2 with nothing selected zooms to it). */
   const hovered = useRef<string | undefined>(undefined);
 
-  const [{ original, flow, originalJson, loadedJson, identity }] = useState(() => {
-    const original = initial ?? getOriginal(slug) ?? emptyDiagram();
-    const flow = toFlow((initial ? undefined : getAutosave(slug)) ?? original);
-    return {
-      original,
-      flow,
-      originalJson: normalize(original),
-      loadedJson: JSON.stringify(fromFlow(flow.meta, flow.nodes, flow.edges)),
-      // The document this canvas loaded: late writes (an unmount flush) never land on a replacement.
-      identity: initial ? undefined : getDiagramIdentity(slug),
-    };
-  });
+  const { original, flow, originalJson, loadedJson, identity } = useDocumentLoad(initial, slug);
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
   useCaptionContrast(wrapper, nodes, theme, meta.color);
@@ -503,60 +478,22 @@ function CanvasInner({
   );
   const { beginGesture, endGesture } = history;
 
-  const renameHistoryTitle = history.renameTitle;
-  const latest = useRef({ meta, nodes, edges, slug, revision: history.stateKey });
-  useLayoutEffect(() => {
-    latest.current = { meta, nodes, edges, slug, revision: history.stateKey };
+  const { latest, exampleCopyFailed, flushSave } = useDocumentSave({
+    meta,
+    nodes,
+    edges,
+    slug,
+    saveRevision: history.stateKey,
+    loadedJson,
+    originalJson,
+    onExampleCopy,
+    readOnly,
+    room,
+    identity,
+    renameHistoryTitle: history.renameTitle,
+    original,
+    setMeta,
   });
-  const lastSaved = useRef(loadedJson);
-  const saveBaseline = useRef(originalJson);
-  const copyCallback = useRef(onExampleCopy);
-  useLayoutEffect(() => {
-    copyCallback.current = onExampleCopy;
-  });
-  const copiedExample = useRef<{ slug: string; identity: string } | null>(null);
-  const exampleCopyFailed = useRef(false);
-  /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
-  const flushSave = useCallback(
-    (override?: DiagramFile): boolean | undefined => {
-      if (readOnly || room) return undefined;
-      // Measurements, selection and viewport changes are not document edits. In particular,
-      // opening a previously edited example must not promote it before a new edit occurs.
-      if (!override && latest.current.revision === lastSaved.current) return undefined;
-      const { meta, nodes, edges, slug } = latest.current;
-      let d = override ?? fromFlow(meta, nodes, edges);
-      let json = JSON.stringify(d);
-      if (json === lastSaved.current) return undefined;
-      const mod = json !== saveBaseline.current;
-      // Only the editable app promotes examples; embeds and exported viewers never save.
-      if (mod && identity && copyCallback.current && !copiedExample.current) {
-        try {
-          const copy = copyEditedExample(slug, d, identity);
-          if (copy) {
-            const sourceTitle = d.title;
-            const canvasTitle = sourceTitle.trim() ? copy.title : sourceTitle;
-            renameHistoryTitle(sourceTitle, canvasTitle);
-            copiedExample.current = { slug: copy.slug, identity: getDiagramIdentity(copy.slug) };
-            saveBaseline.current = JSON.stringify({ ...d, title: copy.title });
-            d = { ...d, title: canvasTitle };
-            json = JSON.stringify(d);
-            latest.current = { ...latest.current, slug: copy.slug, meta: toFlow(d).meta };
-            setMeta((current) => ({ ...current, title: canvasTitle }));
-            copyCallback.current(slug, copy.slug, original.title);
-          }
-        } catch {
-          if (!exampleCopyFailed.current) notify(tr("library.storageFull"), { kind: "error" });
-          exampleCopyFailed.current = true;
-          return mod;
-        }
-      }
-      const destination = copiedExample.current?.slug ?? slug;
-      if (writeAutosave(destination, mod ? d : null, copiedExample.current?.identity ?? identity))
-        lastSaved.current = json;
-      return mod;
-    },
-    [readOnly, room, identity, renameHistoryTitle, original.title],
-  );
   const firstExampleEdit = onExampleCopy !== undefined;
   const saveRevision = history.stateKey;
 
@@ -727,60 +664,18 @@ function CanvasInner({
     goTo: controller.goTo,
   });
 
-  // ---------------------------------------------------------------- autosave
-  // Debounced while editing, and flushed whenever the canvas could go away before the timer fires:
-  // on unmount (switching diagrams), on page hide (reload, close, navigation) and when the tab is
-  // hidden (mobile browsers may discard it). Writes the latest state, never a stale closure, and
-  // drops the save again once the diagram matches the original.
-  useEffect(() => {
-    if (readOnly) return;
-    const t = setTimeout(
-      () => {
-        const mod = flushSave();
-        if (mod !== undefined) setModified(mod);
-      },
-      firstExampleEdit && !exampleCopyFailed.current ? 0 : 300,
-    );
-    return () => clearTimeout(t);
-  }, [saveRevision, readOnly, flushSave, firstExampleEdit]);
-  useEffect(() => {
-    if (readOnly) return;
-    const onPageHide = () => void flushSave();
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") flushSave();
-    };
-    window.addEventListener("pagehide", onPageHide);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.removeEventListener("pagehide", onPageHide);
-      document.removeEventListener("visibilitychange", onVisibility);
-      flushSave();
-      releaseExampleSaveTarget(latest.current.slug);
-    };
-  }, [readOnly, flushSave]);
+  useAutosave({
+    saveRevision,
+    readOnly,
+    flushSave,
+    firstExampleEdit,
+    exampleCopyFailed,
+    latest,
+    conversationIdentity: initial ? undefined : documentId,
+    setModified,
+  });
 
-  // Release after the unmount flush: promotion still needs this tab's conversation snapshot.
-  const conversationIdentity = initial ? undefined : documentId;
-  useEffect(
-    () => (conversationIdentity ? retainConversation(conversationIdentity) : undefined),
-    [conversationIdentity],
-  );
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      getDiagram: () => ({ ...fromFlow(meta, nodes, edges), ...(room && privacy !== null ? { private: true } : {}) }),
-      flush: () => {
-        const mod = flushSave();
-        if (mod !== undefined) setModified(mod);
-      },
-      setTitle: (title: string) => editor.updateMeta({ title }),
-      getDocumentVersion: editor.getDocumentVersion,
-    }),
-    [meta, nodes, edges, flushSave, editor, room, privacy],
-  );
-
-  useEffect(() => onTitleChange?.(meta.title), [meta.title, onTitleChange]);
+  useDocumentHandle({ ref, meta, nodes, edges, flushSave, editor, room, privacy, setModified, onTitleChange });
 
   useEffect(() => {
     if (focusRequest === undefined) return;
