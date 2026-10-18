@@ -1,3 +1,4 @@
+import { useQuickAddPlacement, paneQuickAdd } from "./placement/useQuickAddPlacement";
 import {
   useCanvasNaming,
   usePlacementSettling,
@@ -19,7 +20,7 @@ import {
 } from "./document/useCanvasDocument";
 import { useCaptionContrast } from "./useCaptionContrast";
 import { ConnectedQuickAddMenu } from "./ConnectedQuickAddMenu";
-import { connectedMenuPlacement, type ConnectedMenuAnchor } from "./geometry/connectedMenuPlacement";
+import { type ConnectedMenuAnchor } from "./geometry/connectedMenuPlacement";
 import { dependencyVisibility } from "./dependencyVisibility";
 import { edgeMarks } from "./edgeMarks";
 import {
@@ -101,7 +102,7 @@ import { ConnectionLine } from "./ConnectionLine";
 
 import { useSmartGuides } from "./useSmartGuides";
 import { GROUP_PREFIX } from "./types";
-import { towardOf, type Toward } from "./placement";
+import { type Toward } from "./placement";
 import { insertLine, landing } from "./landing";
 import { LandingOutline } from "./LandingOutline";
 import { edgeHover, nearestEdge, type EdgeHover } from "./edgeHover";
@@ -117,7 +118,6 @@ import {
   CameraContext,
   FIT,
   FIT_PRESENT,
-  panForConnectedMenu,
   useCameraCore,
   useModeFit,
   useMoveHandlers,
@@ -196,7 +196,7 @@ export function CanvasView(props: Props) {
 
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
-type MenuState = {
+export type MenuState = {
   connected?: ConnectedMenuAnchor;
   x: number;
   y: number;
@@ -207,8 +207,6 @@ type MenuState = {
   searchable?: string;
   testId?: string;
 };
-/** About how wide quick-add is (its CSS keeps it 224–320 px): room kept for it beside the outline. */
-const QUICK_ADD_W = 300;
 
 // Built-in actions live for the app's lifetime; HMR re-registers them by id.
 actionRegistry.register(builtinActions());
@@ -641,75 +639,22 @@ function CanvasInner({
     revealSelection,
   });
 
-  // ---------------------------------------------------------------- the next node (D3)
-  // Alt+arrow and the "+" on a selected node: quick-add opens under an outline of where the node will land,
-  // and the pick arrives there, connected (→ and ↓ from the node, ← and ↑ into it), ready to name.
-  // Alt+Shift+arrow skips the menu: a copy of the node lands there, connected the same way.
-  const growTo = useCallback(
-    (fromId: string, toward?: Toward) => {
-      if (readOnly || live || presenting) return;
-      const dir = toward ?? towardOf(meta.direction === "TB" ? "TB" : "LR");
-      const spot = editor.nextSpot(fromId, dir);
-      const from = getNode(fromId);
-      const wrap = wrapper.current;
-      if (!spot || !from || !wrap) return;
-      hideTip();
-      setEditing(null);
-      // Quick-add opens beside the outline of where the node will land (left of it when growing left, so it
-      // never covers the node it grows from). First the view pans, if it must, to show the node, the outline
-      // and the menu's room; the menu opens where the outline will be.
-      const [tx, ty, k] = store.getState().transform;
-      const r = wrap.getBoundingClientRect();
-      const menuLeft = dir === "left";
-      const card = {
-        x: from.position.x,
-        y: from.position.y,
-        width: from.measured?.width ?? spot.width,
-        height: from.measured?.height ?? spot.height,
-      };
-      const connected = { spot, card, left: menuLeft, width: QUICK_ADD_W };
-      const view = { x: tx, y: ty, zoom: k };
-      const next = panForConnectedMenu(controller, connected, view, r);
-      const { position } = connectedMenuPlacement(connected, next ?? view, r);
-      landing.set(spot);
-      setMenu({
-        connected,
-        alignment: "physical-left",
-        ...position,
-        get label() {
-          return tr("canvas.addAConnectedNode");
-        },
-        testId: "quick-add",
-        get searchable() {
-          return tr("canvas.addANode");
-        },
-        items: () =>
-          quickAddMenu((s) => {
-            pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
-            pushRecentStencil(s.id);
-          }, getRecentStencils()),
-      });
-    },
-    [readOnly, live, presenting, meta.direction, editor, getNode, hideTip, store, controller, pickNamed],
-  );
-  const cloneTo = useCallback(
-    (fromId: string, toward: Toward) => {
-      if (readOnly || live || presenting) return;
-      setMenu(null);
-      hideTip();
-      pickNamed(
-        () => editor.createConnected({ from: fromId, clone: true, toward }),
-        editor.getNode(fromId)?.label ?? "",
-      );
-    },
-    [readOnly, live, presenting, editor, hideTip, pickNamed],
-  );
-  // The outline goes with its menu.
-  useEffect(() => {
-    if (!menu) landing.set(null);
-  }, [menu]);
-  useEffect(() => () => landing.set(null), []);
-  const growFromChip = useCallback((id: string) => growTo(id), [growTo]);
+  const { growTo, cloneTo, growFromChip } = useQuickAddPlacement({
+    readOnly,
+    live,
+    presenting,
+    meta,
+    editor,
+    getNode,
+    wrapper,
+    hideTip,
+    setEditing,
+    store,
+    controller,
+    pickNamed,
+    menu,
+    setMenu,
+  });
   const revealIds = useRevealIds(controller, editor);
   const checksHost = useMemo(
     () => ({
@@ -1202,31 +1147,7 @@ function CanvasInner({
     hideTip();
   }, [hideTip]);
 
-  /** Double-click on empty canvas: stencil search at the cursor. */
-  const onPaneDoubleClick = (e: ReactMouseEvent) => {
-    if (readOnly) return;
-    if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
-    const point = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    setMenu({
-      alignment: "physical-left",
-      x: e.clientX,
-      y: e.clientY,
-      get label() {
-        return tr("canvas.addANodeText");
-      },
-      testId: "quick-add",
-      get searchable() {
-        return tr("canvas.addANode");
-      },
-      // Quick-add opens the new node's name (decision 3), so what's typed next names it instead of reaching the
-      // canvas's one-key shortcuts (T, L, C).
-      items: () =>
-        quickAddMenu((s) => {
-          pickNamed(() => editor.addNamed(s.id, point), s.label);
-          pushRecentStencil(s.id);
-        }, getRecentStencils()),
-    });
-  };
+  const onPaneDoubleClick = paneQuickAdd({ readOnly, screenToFlowPosition, setMenu, pickNamed, editor });
 
   // ---------------------------------------------------------------- dropping a stencil (D13)
   // While a stencil is dragged over the canvas: over empty canvas, a faint outline where it will land; over
