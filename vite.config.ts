@@ -8,7 +8,7 @@ import { skillAssetsPlugin } from "./scripts/skill-assets";
 import { securityHeaders } from "./scripts/security-headers";
 import { interactiveViewer } from "./scripts/interactive-viewer";
 import { deploymentSwitches } from "./scripts/deployment-env";
-import { selfHostPreviewHeaders } from "./scripts/self-host-headers";
+import { selfHostBuildHeaders, selfHostPreviewHeaders } from "./scripts/self-host-headers";
 import { i18n } from "./scripts/i18n-plugin";
 import { schemaAssets } from "./scripts/schema-assets";
 
@@ -163,6 +163,7 @@ export default defineConfig({
     deploymentSwitches(),
     // `vite preview` with a self-hosted copy's headers, for PREVIEW_HEADERS=self-host (the e2e suite).
     selfHostPreviewHeaders(),
+    selfHostBuildHeaders(),
   ],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
   define: {

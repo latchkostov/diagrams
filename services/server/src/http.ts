@@ -1,16 +1,19 @@
 import { createServer } from "node:http";
 import type { Duplex } from "node:stream";
+import type { Socket } from "node:net";
 import { WebSocketServer, WebSocket } from "ws";
-import type { Clock } from "../../../src/collab/clock";
+import { realClock, type Clock } from "../../../src/collab/clock";
 import { RELAY_CLOSE, RELAY_SUBPROTOCOL } from "../../../src/collab/transport/relayProtocol";
-import { createAdmission, type Admission } from "./admission";
+import { createAdmission, type Admission, type Principal, type Refusal } from "./admission";
 import { attachConnection } from "./collab/connection";
 import { OutboundBudget } from "./collab/outbound";
 import { MemoryRoomRegistry, type RoomRegistry } from "./collab/rooms";
 import { readConfig, type ServerConfig } from "./config";
 import { createLog, type Logger } from "./log";
+import { Metrics, type RefusalReason } from "./metrics";
+import { createStaticHandler, requestPath } from "./static";
 
-/** S1 reserves the application routes; static hosting and richer operational endpoints follow in S2. */
+/** Config and static files are validated before accepting traffic. No diagram content is inspected. */
 export function createRelayServer(
   opts: {
     config?: ServerConfig;
@@ -24,38 +27,74 @@ export function createRelayServer(
   const admission = opts.admission ?? createAdmission(config);
   const rooms = opts.rooms ?? new MemoryRoomRegistry(config.roomCap, config.maxRooms);
   const log = opts.log ?? createLog();
-  const outbound = new OutboundBudget(config);
+  const metrics = new Metrics();
+  const outbound = new OutboundBudget(
+    config,
+    (n) => {
+      metrics.bytesOut += n;
+    },
+    () => refuse("buffers", RELAY_CLOSE.rate),
+  );
+  const clock = opts.clock ?? realClock;
   let draining = false;
+  let ready = false;
+  let staticHandler: Awaited<ReturnType<typeof createStaticHandler>> | undefined;
+  const sockets = new Set<Socket>();
+  let closing: Promise<void> | undefined;
   let nextPeer = 0n;
-  let bytesIn = 0;
-  const refusals = new Map<string, number>();
-  const refuse = (reason: string, code: number) => {
-    refusals.set(reason, (refusals.get(reason) ?? 0) + 1);
+  let admitted = 0;
+  const refuse = (reason: RefusalReason, code: number) => {
+    metrics.refuse(reason);
     log("refused", code);
   };
   const server = createServer((req, res) => {
-    const path = req.url;
+    const path = requestPath(req.url ?? "/");
     res.setHeader("Cache-Control", "no-store");
-    if (req.method !== "GET") {
-      res.writeHead(405).end();
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      res.writeHead(405, { Allow: "GET, HEAD" }).end();
       return;
     }
     if (path === "/healthz" || path === "/readyz") {
-      res.writeHead(path === "/readyz" && draining ? 503 : 200, { "Content-Type": "text/plain" }).end("ok\n");
+      const healthy = path === "/healthz" || (ready && !draining);
+      res
+        .writeHead(healthy ? 200 : 503, { "Content-Type": "text/plain; charset=utf-8" })
+        .end(healthy ? "ok\n" : "not ready\n");
       return;
     }
     if (path === "/metrics" && config.metrics) {
-      const text = [
-        `rooms_active ${rooms.size}`,
-        `sockets_active ${wss.clients.size}`,
-        `bytes_in_total ${bytesIn}`,
-        ...[...refusals].map(([reason, n]) => `refusals_total{reason="${reason}"} ${n}`),
-      ];
-      res.writeHead(200, { "Content-Type": "text/plain; version=0.0.4" }).end(`${text.join("\n")}\n`);
+      res
+        .writeHead(200, { "Content-Type": "text/plain; version=0.0.4; charset=utf-8" })
+        .end(metrics.render(rooms, wss.clients.size, outbound.bufferedBytes, config));
       return;
     }
-    const reserved = path?.startsWith(`${config.base}api/`) || path?.startsWith(`${config.base}collab/`);
-    res.writeHead(reserved ? 501 : 404).end();
+    const reserved =
+      path === `${config.base}api` ||
+      path === `${config.base}collab` ||
+      path?.startsWith(`${config.base}api/`) ||
+      path?.startsWith(`${config.base}collab/`);
+    if (reserved || path === "/metrics") {
+      res.writeHead(reserved ? 501 : 404).end();
+      return;
+    }
+    if (staticHandler) {
+      void staticHandler(req, res).catch(() => {
+        log("http-error");
+        if (!res.headersSent) res.writeHead(500, { "Cache-Control": "no-store" });
+        res.end();
+      });
+      return;
+    }
+    res.writeHead(path ? 404 : 400).end();
+  });
+  server.maxHeadersCount = 100;
+  server.headersTimeout = 15_000;
+  server.requestTimeout = 30_000;
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.once("close", () => sockets.delete(socket));
+  });
+  server.on("close", () => {
+    ready = false;
   });
   const wss = new WebSocketServer({
     noServer: true,
@@ -64,11 +103,24 @@ export function createRelayServer(
     autoPong: false,
     handleProtocols: (protocols) => (protocols.has(RELAY_SUBPROTOCOL) ? RELAY_SUBPROTOCOL : false),
   });
+  wss.on("close", () => {
+    ready = false;
+  });
   const rejectUpgrade = (socket: Duplex, status: number) => {
-    const reason = { 403: "Forbidden", 404: "Not Found", 429: "Too Many Requests", 503: "Service Unavailable" }[status];
+    const reason = {
+      400: "Bad Request",
+      403: "Forbidden",
+      404: "Not Found",
+      429: "Too Many Requests",
+      503: "Service Unavailable",
+    }[status];
     socket.write(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
     socket.destroy();
   };
+  wss.on("wsClientError", (_error, socket) => {
+    refuse("protocol", RELAY_CLOSE.badFrame);
+    rejectUpgrade(socket, 400);
+  });
   server.on("upgrade", (req, socket, head) => {
     if (
       req.url !== `${config.base}collab/v1` ||
@@ -80,9 +132,9 @@ export function createRelayServer(
       rejectUpgrade(socket, 404);
       return;
     }
-    const principal = draining
+    const principal: Principal | Refusal = draining
       ? { code: RELAY_CLOSE.restart, reason: "draining" }
-      : wss.clients.size >= config.maxSockets
+      : admitted >= config.maxSockets
         ? { code: RELAY_CLOSE.rate, reason: "socket-cap" }
         : !outbound.canTrack
           ? { code: RELAY_CLOSE.rate, reason: "buffers" }
@@ -93,7 +145,11 @@ export function createRelayServer(
       return;
     }
     // Reserve the IP through handshake failure too; ws may reject malformed upgrade headers.
-    socket.once("close", () => admission.release(principal));
+    admitted++;
+    socket.once("close", () => {
+      admitted--;
+      admission.release(principal);
+    });
     wss.handleUpgrade(req, socket, head, (ws) => {
       ws.on("error", () => {});
       outbound.track(ws);
@@ -107,9 +163,19 @@ export function createRelayServer(
         log,
         outbound,
         onBytes: (n) => {
-          bytesIn += n;
+          metrics.bytesIn += n;
         },
-        onRefusal: (code) => refuse(String(code), code),
+        onRefusal: (code) =>
+          refuse(
+            code === RELAY_CLOSE.badFrame
+              ? "protocol"
+              : code === RELAY_CLOSE.full
+                ? "room-cap"
+                : code === RELAY_CLOSE.tooBig
+                  ? "size"
+                  : "rate",
+            code,
+          ),
       });
       wss.emit("connection", ws, req);
     });
@@ -120,6 +186,7 @@ export function createRelayServer(
     wss,
     outbound,
     async listen(): Promise<string> {
+      if (config.static) staticHandler = await createStaticHandler(config.staticDir, config.base);
       await new Promise<void>((resolve, reject) => {
         server.once("error", reject);
         server.listen(config.port, config.host, () => {
@@ -129,15 +196,44 @@ export function createRelayServer(
       });
       const address = server.address();
       if (!address || typeof address === "string") throw new Error("Expected TCP listener");
+      ready = !draining;
       return `http://127.0.0.1:${address.port}`;
     },
     drain() {
+      if (draining) return;
       draining = true;
+      log("draining");
       for (const ws of wss.clients) if (ws.readyState === WebSocket.OPEN) outbound.close(ws, RELAY_CLOSE.restart);
+    },
+    /** Signals use this bounded shutdown; drain() alone supports a readiness-removal grace phase. */
+    shutdown(): Promise<void> {
+      if (closing) return closing;
+      this.drain();
+      closing = (async () => {
+        const cancel = clock.after(config.drainTimeoutMs, () => {
+          for (const ws of wss.clients) ws.terminate();
+          for (const socket of sockets) socket.destroy();
+        });
+        try {
+          await Promise.all([
+            new Promise<void>((resolve) => wss.close(() => resolve())),
+            new Promise<void>((resolve) => server.close(() => resolve())),
+          ]);
+          log("stopped");
+        } finally {
+          cancel();
+        }
+      })();
+      return closing;
     },
     async close(): Promise<void> {
       draining = true;
       for (const ws of wss.clients) ws.terminate();
+      for (const socket of sockets) socket.destroy();
+      if (closing) {
+        await closing;
+        return;
+      }
       await Promise.all([
         new Promise<void>((resolve) => wss.close(() => resolve())),
         new Promise<void>((resolve) => server.close(() => resolve())),

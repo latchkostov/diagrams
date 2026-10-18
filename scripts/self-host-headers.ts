@@ -177,6 +177,26 @@ export function selfHostHeadersFor(url: string, o: SelfHostOptions = {}): Record
   };
 }
 
+/** Runtime data only: the Node host never needs Vite or the policy generator installed. */
+export function selfHostHeaderManifest(o: SelfHostOptions = {}) {
+  return {
+    version: 1,
+    app: selfHostHeadersFor("/", o),
+    embed: selfHostHeadersFor("/?embed=1", o),
+    script: { ...EMBED_SCRIPT_HEADERS },
+  };
+}
+
+export function selfHostBuildHeaders(): Plugin {
+  return {
+    name: "self-host-build-headers",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: "headers.json", source: JSON.stringify(selfHostHeaderManifest()) });
+    },
+  };
+}
+
 /**
  * `vite preview` with a self-hosted copy's headers instead of the public site's, when PREVIEW_HEADERS=self-host
  * (the e2e suite's self-hosting projects), embeds framed by PREVIEW_FRAME_ANCESTORS (space-separated origins).

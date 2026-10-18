@@ -1,4 +1,5 @@
 import { RELAY_LIMITS } from "../../../src/collab/transport/relayProtocol";
+import { fileURLToPath } from "node:url";
 
 export interface ServerConfig {
   host: string;
@@ -10,6 +11,9 @@ export interface ServerConfig {
   trustProxyHops: number;
   logIps: boolean;
   metrics: boolean;
+  static: boolean;
+  staticDir: string;
+  drainTimeoutMs: number;
   roomCap: number;
   maxPayload: number;
   bytesPerWindow: number;
@@ -48,6 +52,8 @@ export function readConfig(env: Record<string, string | undefined> = process.env
   if (!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(base)) throw new Error("Invalid LD_BASE");
   const host = env.LD_HOST ?? "0.0.0.0";
   if (!host || /[\s/]/.test(host)) throw new Error("Invalid LD_HOST");
+  if (env.LD_STATIC !== undefined && !["on", "off"].includes(env.LD_STATIC)) throw new Error("Invalid LD_STATIC");
+  if (env.LD_STATIC_DIR === "") throw new Error("Invalid LD_STATIC_DIR");
   return {
     host,
     port: integer("PORT", 8080, 0, 65535),
@@ -58,6 +64,9 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     trustProxyHops: integer("TRUST_PROXY_HOPS", 1),
     logIps: flag("LOG_IPS"),
     metrics: flag("METRICS"),
+    static: env.LD_STATIC !== "off",
+    staticDir: env.LD_STATIC_DIR ?? fileURLToPath(new URL("../../../dist/", import.meta.url)),
+    drainTimeoutMs: integer("DRAIN_TIMEOUT_MS", 10_000, 1, 2_147_483_647),
     roomCap: integer("ROOM_CAP", RELAY_LIMITS.roomCap, 1, 64),
     maxPayload: integer("MAX_PAYLOAD", RELAY_LIMITS.maxPayload, RELAY_LIMITS.minPayload, RELAY_LIMITS.maxPayload),
     bytesPerWindow: integer("BYTES_PER_WINDOW", RELAY_LIMITS.bytesPerWindow),
@@ -69,8 +78,8 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     maxRooms: integer("MAX_ROOMS", RELAY_LIMITS.maxRooms),
     maxSockets: integer("MAX_SOCKETS", RELAY_LIMITS.maxSockets),
     socketsPerIp: integer("SOCKETS_PER_IP", RELAY_LIMITS.socketsPerIp),
-    helloTimeoutMs: integer("HELLO_TIMEOUT_MS", RELAY_LIMITS.helloTimeoutMs),
-    pingIntervalMs: integer("PING_INTERVAL_MS", RELAY_LIMITS.pingIntervalMs),
+    helloTimeoutMs: integer("HELLO_TIMEOUT_MS", RELAY_LIMITS.helloTimeoutMs, 1, 2_147_483_647),
+    pingIntervalMs: integer("PING_INTERVAL_MS", RELAY_LIMITS.pingIntervalMs, 1, 2_147_483_647),
     missedPongs: integer("MISSED_PONGS", RELAY_LIMITS.missedPongs),
     idleTimeoutMs: integer("IDLE_TIMEOUT_MS", RELAY_LIMITS.idleTimeoutMs),
   };

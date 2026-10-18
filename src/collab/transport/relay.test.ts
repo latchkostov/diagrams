@@ -14,7 +14,7 @@ import { FrameTooLargeError, type CollabTransport } from "./types";
 import { startServer } from "../../../services/server/test/harness";
 
 const relay = createRelayServer({
-  config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0" }),
+  config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC: "off" }),
   log: createLog(() => {}),
 });
 let origin: string;

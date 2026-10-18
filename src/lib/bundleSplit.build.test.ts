@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { build, type Rollup } from "vite";
 import { beforeAll, describe, expect, it } from "vitest";
+import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
 
 // What the production build loads up front, checked on the real build: the code that only some sessions
 // use stays out of the startup JavaScript (the entry and the chunks it preloads), and out of the canvas's
@@ -163,6 +164,10 @@ const canvasChunk = () => {
 };
 
 describe("production bundle split", () => {
+  it("emits the generated self-host header policy as runtime data", () => {
+    const manifest = assets.find((asset) => asset.fileName === "headers.json");
+    expect(JSON.parse(String(manifest?.source))).toEqual(selfHostHeaderManifest());
+  });
   it("omits collaboration, Yjs and tracker code from every production chunk", () => {
     const collab = NOT_AT_STARTUP.filter(([what]) => ["collaboration", "Yjs"].includes(what));
     expect(found(bundled(chunks), collab)).toEqual([]);
