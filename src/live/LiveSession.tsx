@@ -1,43 +1,32 @@
-import { useCameraController } from "../canvas/camera";
-import { useLocale } from "../i18n";
-import { edgeSemanticSignature } from "../model/relations";
-import { planningHost } from "../planning/host";
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ViewportPortal, useStore, useStoreApi } from "@xyflow/react";
-import type { DiagramFile, Simulation } from "../model/types";
-import type { MessageTrace, NodeStatus } from "../sim/types";
-import type { EditorApi } from "../editor/types";
-import { actionRegistry, builtinSections } from "../editor/actions";
-import { isEditableTarget } from "../editor/shortcuts";
-import { inCanvas } from "../editor/useCanvasShortcuts";
-import { useSettings } from "../harness/settings";
-import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
+import { aiDock, collapseDock } from "../ai/ui/dock";
+import { useCameraController } from "../canvas/camera";
 import { useAllRoutes, useRoutingOptions } from "../canvas/edges/useEdgeRoute";
-import { LiveController } from "./controller";
-import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
-import { Decorator, type DecorationStats } from "./decorations";
-import { createFrameClock } from "./frameClock";
-import { downstreamOfEdge, edgesWithin } from "./graph";
-import { liveActions, liveMutationGuard } from "./liveActions";
-import { DEFAULT_TOKENS, readParticleTokens, type Rect } from "./particleRenderer";
-import { createLiveRenderer, pickRenderer, type LiveRenderer, type RendererKind } from "./liveRenderer";
-import { createStormSimulation, suggestedMessageType } from "./storm";
-import { writeLiveParams } from "./urlParams";
+import { placeNextTo } from "../canvas/placement";
+import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
+import { actionRegistry, builtinSections } from "../editor/actions";
+import type { EditorApi } from "../editor/types";
+import { useSettings } from "../harness/settings";
+import { useLocale } from "../i18n";
+import { notify } from "../interop/ui/toast";
+import { edgeSemanticSignature } from "../model/relations";
+import type { DiagramFile, Simulation } from "../model/types";
+import { useLiveSessionHost } from "../palette/host";
+import { planningHost } from "../planning/host";
+import type { MessageTrace, NodeStatus } from "../sim/types";
+import { stencilRole } from "../stencils/roles";
+import { buildJourney, formatDuration as formatSpan } from "../trace/journey";
+import { BottleneckCallout, CapacityLayer, TroubleCallout } from "./CapacityLayer";
+import { CapacityPanel } from "./CapacityPanel";
 import { ControlBar } from "./ControlBar";
-import { NodeBadges } from "./NodeBadges";
-import { NoteCallout } from "./NoteCallout";
 import { EventLog } from "./EventLog";
 import { InjectDialog, type InjectRequest } from "./InjectDialog";
+import { NodeBadges } from "./NodeBadges";
+import { NoteCallout } from "./NoteCallout";
 import { SimPanel } from "./SimPanel";
-import { LiveIcon } from "./icons";
-import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
-import { CapacityPanel } from "./CapacityPanel";
-import { BottleneckCallout, CapacityLayer, TroubleCallout } from "./CapacityLayer";
+import { TraceCard } from "./TraceCard";
 import { addConsumer, addDeadLetterQueue } from "./addConsumer";
-import { troubleLeads, type Trouble, type TroubleAction } from "./observedTrouble";
-import { useObservedTrouble } from "./useObservedTrouble";
-import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
-import { useLiveSessionHost } from "../palette/host";
 import {
   capacityView,
   emptyInputs,
@@ -46,24 +35,32 @@ import {
   withFix,
   type CapacityFix,
 } from "./capacityModel";
+import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { capacitySaveCandidate, capacitySaveError } from "./capacityPersistence";
-import { notify } from "../interop/ui/toast";
-import { stencilRole } from "../stencils/roles";
-import { placeNextTo } from "../canvas/placement";
+import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
+import { LiveController } from "./controller";
+import { Decorator, type DecorationStats } from "./decorations";
+import { createFrameClock } from "./frameClock";
+import { downstreamOfEdge, edgesWithin } from "./graph";
+import { LiveIcon } from "./icons";
+import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
+import { liveActions, liveMutationGuard } from "./liveActions";
+import { createLiveRenderer, pickRenderer, type LiveRenderer, type RendererKind } from "./liveRenderer";
+import { troubleLeads, type Trouble, type TroubleAction } from "./observedTrouble";
+import { DEFAULT_TOKENS, readParticleTokens, type Rect } from "./particleRenderer";
 import { Recorder } from "./record/Recorder";
 import { initialRecordState, isCapturing, recordReducer } from "./record/recordModel";
-import { isRecordingActive } from "./record/framing";
-import { TraceCard } from "./TraceCard";
-import { useSlowMotion, type SlowMotionView } from "./slowmo/useSlowMotion";
+import { useLiveKeyboard } from "./session/useLiveKeyboard";
 import { SlowCaption } from "./slowmo/SlowBar";
-import type { SlowSource } from "./slowmo/session";
 import { PACING } from "./slowmo/script";
-import { formatDuration as formatSpan } from "../trace/journey";
+import type { SlowSource } from "./slowmo/session";
+import { useSlowMotion, type SlowMotionView } from "./slowmo/useSlowMotion";
+import { createStormSimulation, suggestedMessageType } from "./storm";
 import { roomUnderCard } from "./traceCardLayout";
+import { writeLiveParams } from "./urlParams";
+import { useObservedTrouble } from "./useObservedTrouble";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
-import { buildJourney } from "../trace/journey";
-import { aiDock, collapseDock } from "../ai/ui/dock";
 
 import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 
@@ -73,15 +70,6 @@ import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 const UI_MS = 125;
 /** "Traffic into X": the first of these that starts traffic in the simulation (a source). */
 const ENTRY_STENCILS = ["client.user", "client.browser", "generic.webhook"];
-/** Things that own Esc before live view does (checked before they react, in the capture phase). */
-const ESC_OWNERS = [
-  '[role="menu"]',
-  '[role="dialog"]',
-  '[data-testid="sim-panel"]',
-  '[data-testid="capacity-panel"]',
-].join(",");
-/** A selection is cleared before Esc backs out of a trace or live view. */
-const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 const LOOK_AHEAD_LABEL = "30 s";
 const DEAD_LETTER_WAIT = "Nothing has dead-lettered yet: the next message that does will be traced.";
 
@@ -1021,57 +1009,7 @@ export function LiveSession({
     openCapacity,
   ]);
 
-  // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc backs out
-  // one level: a selection, a message trace, a highlighted path, then live view itself. Open menus,
-  // dialogs, panels and inline editors get theirs first; presentation handles its own Esc (App).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
-      // Slow motion has its own keys (useSlowMotion): Space, ← →, and Esc back to live.
-      const slowing = slowRef.current?.session.active;
-      if (slowing && (e.key === " " || (e.key === "Escape" && !document.querySelector(SELECTED)))) return;
-      const t = e.target;
-      if (e.key === "Escape") {
-        // A recording owns Esc (it stops the recording, see Recorder).
-        if (isRecordingActive()) return;
-        if (isEditableTarget(t) || document.querySelector(ESC_OWNERS)) return;
-        if (document.querySelector(SELECTED)) {
-          // The canvas clears its selection when it has focus; otherwise clear it here (no dead end).
-          if (!inCanvas(t) || (t instanceof Element && t.closest('[data-testid="trace-card"]')))
-            editor?.clearSelection();
-          return;
-        }
-        // The trace comes before presentation: stop App from also leaving presentation.
-        if (controller.getState().trace) {
-          e.stopPropagation();
-          controller.endTrace();
-          return;
-        }
-        if (presenting) return;
-        if (traceRef.current) setTrace(null);
-        else if (!alwaysOn) onExit();
-        return;
-      }
-      if (
-        isEditableTarget(t) ||
-        (t instanceof Element && t.closest('button, select, a, [data-editor-overlay], [role="separator"]'))
-      )
-        return;
-      const waiting = controller.getState().run?.waiting;
-      if (e.key === " " || e.code === "Space") {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.repeat) return;
-        if (waiting) controller.resume();
-        else controller.togglePlaying();
-      } else if (e.key === "Enter" && waiting) {
-        e.preventDefault();
-        controller.resume();
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [controller, presenting, alwaysOn, onExit, editor]);
+  useLiveKeyboard({ controller, presenting, alwaysOn, onExit, editor, slowRef, traceRef, setTrace });
 
   const ui = useMemo<LiveUi>(
     () => ({
