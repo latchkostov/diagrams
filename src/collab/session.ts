@@ -17,7 +17,7 @@ import {
   type PeerPresence,
   type PresenceState,
 } from "./presence";
-import { DOC, frame, fragment, isEmptyUpdate, PRESENCE, Reassembler, unframe } from "./protocol";
+import { DOC, frame, fragment, isEmptyUpdate, PRESENCE, Reassembler, unframe, LIVE } from "./protocol";
 import { secureRandom, type RandomBytes } from "./random";
 import type { CollabTransport, Connectivity, PeerId } from "./transport/types";
 import { RoomRecovery } from "./recovery";
@@ -54,6 +54,7 @@ export type RejectReason =
   | "request-throttled"
   | "proof-throttled"
   | "presence-throttled"
+  | "live-throttled"
   | "queue-full"
   | "too-many-partials"
   | "internal"
@@ -145,6 +146,9 @@ export class CollabSession {
   private readonly proofs: RateLimit;
   /** Presence frames per sender (cursors are frequent): its own bound, so they never ride free. */
   private readonly presenceRate: RateLimit;
+  /** Shared Live frames per sender, likewise. */
+  private readonly liveRate: RateLimit;
+  private readonly liveListeners = new Set<(sender: string, from: PeerId, payload: Uint8Array) => void>();
   /** Bytes of frames waiting in the inbox: in total and per transport peer. */
   private queuedBytes = 0;
   private readonly queuedFrom = new Map<PeerId, number>();
@@ -178,6 +182,7 @@ export class CollabSession {
     this.requests = new RateLimit(clock, COLLAB_LIMITS.syncRequestsPerWindow);
     this.proofs = new RateLimit(clock, COLLAB_LIMITS.syncProofsPerWindow);
     this.presenceRate = new RateLimit(clock, COLLAB_LIMITS.presenceFramesPerWindow);
+    this.liveRate = new RateLimit(clock, COLLAB_LIMITS.liveFramesPerWindow);
     this.reassembler = new Reassembler(clock);
     this.presence = new PresenceTable(clock);
   }
@@ -495,6 +500,19 @@ export class CollabSession {
       .catch(() => {});
   }
 
+  /** A shared Live message (src/collab/room/liveShare.ts): to everyone, or to one transport peer. False: too large. */
+  sendLive(payload: Uint8Array, to?: PeerId): boolean {
+    if (1 + payload.length + 48 > COLLAB_LIMITS.maxLiveFrameBytes) return false;
+    this.send("live", frame(LIVE.message, payload), to);
+    return true;
+  }
+
+  /** Shared Live messages from others, with their sender (as presence names them) and transport peer. */
+  onLive(listener: (sender: string, from: PeerId, payload: Uint8Array) => void): () => void {
+    this.liveListeners.add(listener);
+    return () => this.liveListeners.delete(listener);
+  }
+
   private sendPresence(to?: PeerId): void {
     this.send("presence", frame(PRESENCE.state, encodePresence(this.me)), to);
   }
@@ -560,6 +578,12 @@ export class CollabSession {
     if (this.quarantined.has(opened.sender)) return this.reject("quarantined");
     let msg = unframe(opened.plaintext);
     if (!msg) return this.reject("malformed");
+    if (opened.channel === "live") {
+      if (!this.liveRate.take(opened.sender, 1)) return this.reject("live-throttled");
+      if (msg.type !== LIVE.message) return this.reject("malformed");
+      for (const listener of this.liveListeners) listener(opened.sender, from, msg.payload);
+      return;
+    }
     if (opened.channel === "presence") {
       if (!this.presenceRate.take(opened.sender, 1)) return this.reject("presence-throttled");
       const state = msg.type === PRESENCE.state ? parsePresence(msg.payload) : undefined;

@@ -31,7 +31,17 @@ export interface PresenceState {
   selection?: string[];
   /** Where their pointer is over the canvas, in flow coordinates (absent: not over it). */
   cursor?: { x: number; y: number };
+  /** Shared Live (src/collab/room/liveShare.ts): the room's creator says so; they drive Live for the room. */
+  host?: true;
+  /** The host's Live run others can watch: its id, its title, and whether it's playing. */
+  live?: { run: string; title: string; playing: boolean };
+  /** The host's view while in Live, for "Follow the host's view": its centre in flow coordinates, and its zoom. */
+  view?: { x: number; y: number; zoom: number };
 }
+
+/** The longest Live run id and title presence carries. */
+const MAX_RUN_CHARS = 64;
+const MAX_TITLE_CHARS = 120;
 
 /** Ids a presence frame carries at most: the rest of a big selection isn't drawn for others. */
 export const MAX_SELECTION = 32;
@@ -87,7 +97,8 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
   const o = v as Record<string, unknown>;
   const keys = Object.keys(o);
   if (!["alias", "colour", "status"].every((k) => keys.includes(k))) return undefined;
-  if (keys.some((k) => !["alias", "colour", "status", "selection", "cursor"].includes(k))) return undefined;
+  if (keys.some((k) => !["alias", "colour", "status", "selection", "cursor", "host", "live", "view"].includes(k)))
+    return undefined;
   if (typeof o.alias !== "string") return undefined;
   // Control and bidirectional-override characters could disguise one alias as another.
   const alias = o.alias.replace(CONTROL, "").trim().slice(0, COLLAB_LIMITS.maxAliasChars);
@@ -114,6 +125,25 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
     if (ck.length !== 2 || !ok(c.x) || !ok(c.y)) return undefined;
     state.cursor = { x: c.x as number, y: c.y as number };
   }
+  if (o.host !== undefined) {
+    if (o.host !== true) return undefined;
+    state.host = true;
+  }
+  if (o.live !== undefined) {
+    const l = o.live as Record<string, unknown> | null;
+    if (typeof l !== "object" || l === null || Array.isArray(l) || Object.keys(l).length !== 3) return undefined;
+    if (typeof l.run !== "string" || !l.run || l.run.length > MAX_RUN_CHARS || /[^\w.:-]/.test(l.run)) return undefined;
+    if (typeof l.title !== "string" || typeof l.playing !== "boolean") return undefined;
+    const title = l.title.replace(CONTROL, "").trim().slice(0, MAX_TITLE_CHARS);
+    state.live = { run: l.run, title, playing: l.playing };
+  }
+  if (o.view !== undefined) {
+    const w = o.view as Record<string, unknown> | null;
+    if (typeof w !== "object" || w === null || Array.isArray(w) || Object.keys(w).length !== 3) return undefined;
+    const ok = (n: unknown) => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= MAX_COORD;
+    if (!ok(w.x) || !ok(w.y) || typeof w.zoom !== "number" || !(w.zoom >= 0.01 && w.zoom <= 100)) return undefined;
+    state.view = { x: w.x as number, y: w.y as number, zoom: w.zoom };
+  }
   return state;
 }
 
@@ -122,7 +152,24 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
  * ones others see named).
  */
 export function encodePresence(s: PresenceState): Uint8Array {
-  const base = { alias: s.alias, colour: s.colour, status: s.status };
+  const base = {
+    alias: s.alias,
+    colour: s.colour,
+    status: s.status,
+    ...(s.host ? { host: true } : {}),
+    ...(s.live
+      ? { live: { run: s.live.run, title: s.live.title.slice(0, MAX_TITLE_CHARS), playing: s.live.playing } }
+      : {}),
+    ...(s.view
+      ? {
+          view: {
+            x: Math.round(s.view.x * 10) / 10,
+            y: Math.round(s.view.y * 10) / 10,
+            zoom: Math.round(s.view.zoom * 1000) / 1000,
+          },
+        }
+      : {}),
+  };
   const cursor = s.cursor && { x: Math.round(s.cursor.x * 10) / 10, y: Math.round(s.cursor.y * 10) / 10 };
   let ids = (s.selection ?? []).slice(0, MAX_SELECTION);
   for (;;) {

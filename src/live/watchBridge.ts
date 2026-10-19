@@ -1,0 +1,98 @@
+import { useEffect, useSyncExternalStore } from "react";
+import type { DiagramFile } from "../model/types";
+import type { LiveController } from "./controller";
+
+// The seam between a running live session and Edit together's shared Live (src/collab/room/liveShare.ts, Watch
+// together). The room's code loads with the room, apart from the live view: it finds the session here, and, while
+// this person follows someone else's run, paces the run's frames (src/live/simClock.ts) and keeps the editor's own
+// edits out of it (the driver's ops bring them, on their ticks). Nothing else changes in the live view.
+
+export interface WatchedSession {
+  controller: LiveController;
+  /** The diagram as the editor has it now. */
+  getDiagram(): DiagramFile;
+  /** The canvas's viewport and pane size (its React Flow store): the view a host shares. */
+  store: CameraStore;
+  /** The canvas's camera (src/canvas/camera): a follower's opt-in "Follow the host's view" goes through it. */
+  camera: HostViewCamera;
+  /** The diagram's identity (Your diagrams'): the room shares and follows Live only on its own diagram. */
+  documentId?: string;
+  /** The diagram stays on this device now (Private, local-only): nothing of its Live leaves it. */
+  isPrivate(): boolean;
+}
+
+/** What the room asks of the canvas's camera: follow the host's view, and who has the view now. */
+export interface HostViewCamera {
+  dispatch(event: { type: "host.view"; view: { x: number; y: number; zoom: number } | null }): void;
+  readonly state: { owner: string };
+  subscribe(listener: () => void): () => void;
+}
+
+/** The parts of React Flow's store the room reads and moves: the viewport and the pane's size. */
+export interface CameraStore {
+  getState(): {
+    transform: [number, number, number];
+    width: number;
+    height: number;
+  };
+  subscribe(listener: () => void): () => void;
+}
+
+export interface Follower {
+  /** Wall ms the run advances this frame, given the frame clock's proposal. */
+  pace(proposedMs: number): number;
+}
+
+let session: WatchedSession | null = null;
+const listeners = new Set<() => void>();
+let follower: Follower | null = null;
+const followListeners = new Set<() => void>();
+
+export const watchBridge = {
+  session: (): WatchedSession | null => session,
+  subscribe(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+  /** Set by the room while this person follows: their frames go at its pace, and their edits wait for the driver. */
+  get follower(): Follower | null {
+    return follower;
+  },
+  setFollower(next: Follower | null): void {
+    if (follower === next) return;
+    follower = next;
+    for (const l of followListeners) l();
+  },
+  subscribeFollowing(listener: () => void): () => void {
+    followListeners.add(listener);
+    return () => followListeners.delete(listener);
+  },
+};
+
+const following = () => follower !== null;
+
+/**
+ * Following someone's shared run: the live view's sync with the editor's document (diagram edits, saved
+ * simulations) waits while it's true (the host's ops bring those changes, on their ticks), and catches up when
+ * following ends.
+ */
+export function useFollowing(): boolean {
+  return useSyncExternalStore(watchBridge.subscribeFollowing, following);
+}
+
+/** Publishes a live session (the hook below, or a test); returns its withdrawal. */
+export function publishWatched(watched: WatchedSession): () => void {
+  session = watched;
+  for (const l of listeners) l();
+  return () => {
+    if (session !== watched) return;
+    session = null;
+    watchBridge.setFollower(null);
+    for (const l of listeners) l();
+  };
+}
+
+/** The live session publishes itself while it's mounted on an editable canvas. */
+export function useWatchBridge(watched: WatchedSession | null): void {
+  useEffect(() => (watched ? publishWatched(watched) : undefined), [watched]);
+}

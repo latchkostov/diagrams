@@ -69,6 +69,8 @@ export interface LiveViewProps {
    * Ids can be made from its words (a storm's is named after its node), and the address bar is kept in history.
    */
   privateDiagram?: boolean;
+  /** The canvas's document (Your diagrams' identity): Watch together shares a room's Live only on its own. */
+  documentId?: string;
   /**
    * Read-only embeds expose live playback only when explicitly requested in the URL; the exported HTML viewer
    * passes `initial` instead (its file has no URL of its own to read).

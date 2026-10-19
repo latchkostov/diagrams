@@ -8,7 +8,7 @@ import { ReplayWindow } from "./replay";
 //   offset  bytes  field
 //   0       2      magic "LD"
 //   2       1      version (1)
-//   3       1      channel (1 document, 2 presence)
+//   3       1      channel (1 document, 2 presence, 3 shared Live)
 //   4       4      key epoch, u32 big-endian
 //   8       16     sender id: random per session
 //   24      8      counter, u64 big-endian, from 1, strictly increasing per sender and channel
@@ -25,8 +25,8 @@ import { ReplayWindow } from "./replay";
 export const HEADER_BYTES = 32;
 const TAG_BYTES = 16;
 const VERSION = 1;
-const CHANNEL_CODE: Record<Channel, number> = { doc: 1, presence: 2 };
-const CODE_CHANNEL: Record<number, Channel | undefined> = { 1: "doc", 2: "presence" };
+const CHANNEL_CODE: Record<Channel, number> = { doc: 1, presence: 2, live: 3 };
+const CODE_CHANNEL: Record<number, Channel | undefined> = { 1: "doc", 2: "presence", 3: "live" };
 export const SENDER_ID_BYTES = 16;
 
 export type Rejection =
@@ -49,7 +49,11 @@ export type Opened =
   | { ok: false; reason: Rejection };
 
 const maxFrame = (channel: Channel) =>
-  channel === "doc" ? COLLAB_LIMITS.maxDocFrameBytes : COLLAB_LIMITS.maxPresenceFrameBytes;
+  channel === "doc"
+    ? COLLAB_LIMITS.maxDocFrameBytes
+    : channel === "live"
+      ? COLLAB_LIMITS.maxLiveFrameBytes
+      : COLLAB_LIMITS.maxPresenceFrameBytes;
 
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 
@@ -96,7 +100,7 @@ class KeyCache {
 
 /** Seals frames for one session: its own sender id and counters. */
 export class Sealer {
-  private counters: Record<Channel, number> = { doc: 0, presence: 0 };
+  private counters: Record<Channel, number> = { doc: 0, presence: 0, live: 0 };
   private keys: KeyCache;
   readonly senderHex: string;
 

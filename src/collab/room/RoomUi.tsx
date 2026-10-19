@@ -30,6 +30,7 @@ import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
 import { interactionJournal } from "../../canvas/interaction/journal";
 import { RECONNECT_MS } from "./timing";
 import { hasTrackers, roomEndpoints, serviceHosts } from "./endpoints";
+import { roomWatch, type WatchState, type WatchTogether } from "./watch";
 import "./room.css";
 
 // The room's controls (collaboration plan §2.2–2.6): the consent dialogs (start and join), what a joiner sees while
@@ -518,8 +519,8 @@ export function RoomChip({ room, here, onShow }: { room: RoomLifecycle; here: bo
 }
 
 /**
- * The chip is a button now, so what changes in the room is said here, quietly: the room's state as it changes, and
- * who joined or left ("Heron left"). Never a focus move or a toast.
+ * The chip is a button now, so what changes in the room is said here, quietly: the room's state as it changes, who
+ * joined or left ("Heron left"), and following the host's Live. Never a focus move or a toast.
  */
 function RoomAnnouncer({ session }: { session: CollabSession }) {
   const { state, peers } = useRoomState(session);
@@ -534,12 +535,50 @@ function RoomAnnouncer({ session }: { session: CollabSession }) {
       if (joined.length || left.length) setNote([...joined, ...left].join(" "));
     });
   }, [session]);
+  // Following the host's Live: its phase as it changes (joining, catching up, following, their connection dropped).
+  const following = followingAnnouncement(useWatch().state);
   return (
     <span className="sr-only" role="status" data-testid="room-announce">
       {CHIP_TEXT[state](peers)}
       {note && `. ${note}`}
+      {following && `. ${following}`}
     </span>
   );
+}
+
+const noSubscribe = () => () => {};
+
+/** Watch together for the open room (the room owns it: ./watch.ts bindWatch): the host's show, and following. */
+function useWatch(): { watch?: WatchTogether; state?: WatchState } {
+  const watch = useSyncExternalStore(roomWatch.subscribe, roomWatch.get);
+  const state = useSyncExternalStore(watch?.subscribe ?? noSubscribe, () => watch?.getState());
+  return { watch, state };
+}
+
+/** What's said (quietly) as following changes: its phase, not every step of a catch-up. */
+function followingAnnouncement(w: WatchState | undefined): string {
+  const f = w?.following;
+  if (!f) return "";
+  const alias = w.host?.alias ?? "";
+  return f.phase === "catching-up" ? t("collab.announceCatchingUp", { alias }) : (followingText(w) ?? "");
+}
+
+/** The chip's words while following the host's Live, else undefined. */
+function followingText(w: WatchState | undefined): string | undefined {
+  const f = w?.following;
+  if (!f) return undefined;
+  const alias = w.host?.alias ?? "";
+  const seconds = (ms: number) => `${Math.floor(ms / 60_000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
+  switch (f.phase) {
+    case "joining":
+      return t("collab.chipJoining", { alias });
+    case "catching-up":
+      return t("collab.chipCatchingUp", { at: seconds(f.progress?.at ?? 0), of: seconds(f.progress?.of ?? 0) });
+    case "host-dropped":
+      return t("collab.chipHostDropped", { alias });
+    default:
+      return t("collab.chipFollowing", { alias });
+  }
 }
 
 function OpenChip({
@@ -555,16 +594,19 @@ function OpenChip({
 }) {
   const session = open.session;
   const { state, peers } = useRoomState(session);
+  const { watch, state: watching } = useWatch();
   const elsewhere = !here && !!open.slug;
   const text = elsewhere
     ? t("collab.chipElsewhere", { title: session.doc.project().diagram?.title ?? "" })
-    : CHIP_TEXT[state](peers);
+    : (followingText(watching) ?? CHIP_TEXT[state](peers));
   const data = {
     "data-testid": "room-chip",
     "data-state": elsewhere ? "elsewhere" : state,
     "data-peers": peers,
     "data-present": session.peers().length,
     "data-role": open.role,
+    // Watch together: following the host's Live (its phase), hosting, or neither.
+    "data-watch": watching?.following?.phase ?? (watching?.hosting ? "host" : watching?.show ? "offered" : "none"),
     // For diagnostics (the Nightly network smoke classifies a failure by it): never shown.
     "data-connectivity": session.connectivity,
   };
@@ -594,6 +636,7 @@ function OpenChip({
       ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: retry }]
       : []),
     ...(elsewhere ? [{ type: "item" as const, testId: "room-show", title: t("collab.show"), onSelect: onShow }] : []),
+    ...watchEntries(watch, watching),
     {
       type: "item",
       testId: "room-copy-link",
@@ -628,6 +671,30 @@ function OpenChip({
       )}
     />
   );
+}
+
+/** Watch together's rows in the chip's menu: watch the host's Live, or (following) stop and follow their view. */
+function watchEntries(watch: WatchTogether | undefined, w: WatchState | undefined): MenuEntry[] {
+  if (!watch || !w || w.hosting) return [];
+  const alias = w.host?.alias ?? "";
+  if (w.following)
+    return [
+      { type: "item", testId: "room-watch-stop", title: t("collab.watchStop"), onSelect: () => watch.watchOnMyOwn() },
+      {
+        type: "item",
+        testId: "room-follow-view",
+        title: t("collab.followView", { alias }),
+        checked: w.followView,
+        checkbox: true,
+        onSelect: () => watch.setFollowView(!w.followView),
+      },
+      { type: "separator" },
+    ];
+  if (!w.show) return [];
+  return [
+    { type: "item", testId: "room-watch", title: t("collab.watchMenu", { alias }), onSelect: () => watch.watch() },
+    { type: "separator" },
+  ];
 }
 
 /** Who is here: you, then each peer by the name they gave (unverified), in their colour. */

@@ -876,3 +876,45 @@ describe("panePolicy: event sequences", () => {
     );
   });
 });
+
+describe("panePolicy: Watch together's Follow the host's view (host.view)", () => {
+  const view = { x: 10, y: 20, zoom: 1.5 };
+  it("H1 opted in: the host has the view, and it follows theirs", () => {
+    for (const owner of ["fit", "manual", "narration", "host"] as const) {
+      const d = decide(state({ owner, mode: "live" }), { type: "host.view", view });
+      expect(d.state.owner).toBe("host");
+      expect(d.commands).toEqual([{ type: "follow", view }]);
+    }
+  });
+
+  it("never while slow motion has the view, or presenting", () => {
+    for (const s of [state({ slowmo: true, owner: "slowmo", mode: "live" }), state({ mode: "present" })]) {
+      const d = decide(s, { type: "host.view", view });
+      expect(d.commands).toEqual([]);
+      expect(d.state.owner).toBe(s.owner);
+    }
+  });
+
+  it("H2 turned off: the view stays where it is, now this person's; a pan or zoom of theirs ends it too", () => {
+    const following = decide(state({ mode: "live" }), { type: "host.view", view }).state;
+    const off = decide(following, { type: "host.view", view: null });
+    expect(off.state.owner).toBe("manual");
+    expect(off.commands).toEqual([]);
+    expect(decide(following, { type: "user.moved" }).state.owner).toBe("manual");
+    // Off when it wasn't on changes nothing.
+    const fit = state({ owner: "fit" });
+    expect(decide(fit, { type: "host.view", view: null }).state).toEqual(fit);
+  });
+
+  it("H3 keyboard navigation or a focus reveal takes the view back: following the host's view ends", () => {
+    const following = decide(state({ mode: "live" }), { type: "host.view", view }).state;
+    for (const cause of ["navigation", "focus"] as const) {
+      const d = decide(following, { type: "reveal.requested", cause });
+      expect(d.state.owner).toBe("manual");
+      expect(d.commands).toEqual([{ type: "reveal", cause, withEdges: false }]);
+    }
+    // Not following the host: a reveal leaves the owner as it was (Z3).
+    const fit = state({ owner: "fit" });
+    expect(decide(fit, { type: "reveal.requested", cause: "navigation" }).state.owner).toBe("fit");
+  });
+});

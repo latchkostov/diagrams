@@ -290,6 +290,21 @@ What the production feature adds to the model above.
   - Clear everything on this device stops an open room, then empties both.
 - **No crypto review yet.** The key schedule, envelope and link format have had internal tests and reviews only. That
   is disclosed in the user docs ([EDIT-TOGETHER.md](../EDIT-TOGETHER.md)), and is one reason Private stays blocked.
+- **Watch together (shared Live P2, cooperative).** A room has a third encrypted channel, `live`, for the host's run:
+  - what travels: its start (the simulation, its seed-free settings and what-ifs), its ops on their ticks, beacons
+    and state digests;
+  - the channel's own sender subkeys and rate bound (`liveFramesPerWindow`);
+  - JSON checked in full before use (every nested op, with bounded numbers, sizes and depth; parts reassembled within
+    byte and time bounds), each op applied through the live controller's remote-op API (`applyRemote`), logged as
+    the host's; what a follower keeps of a run is bounded too (1 MiB or 20,000 entries, 32 waiting digests), and a
+    seek's synchronous work is judged by the controller from the tick it reached.
+
+  Only Live on the room's own diagram is attached: a session on any other diagram, or one that becomes Private, sends
+  nothing and is detached at once (every send checks). Presence carries `host`, the shown run's title and the host's
+  view centre. All of it is cooperative: any member
+  holds the key and could send Live frames or claim `host`. Followers trust the lowest sender id claiming it. Signed
+  roles (P4) are what will make this enforceable. Nothing of a run reaches a server.
+
 - **Monitoring.** A report-only Nightly smoke runs over the real network. It classifies failures as trackers
   unreachable, ICE/NAT or app error, and alerts after three failed nights. It never runs in PR CI.
 

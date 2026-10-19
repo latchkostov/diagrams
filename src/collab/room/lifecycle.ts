@@ -162,6 +162,11 @@ export class RoomLifecycle {
     this.capture = page.capture;
   }
 
+  /** Shows the open room's diagram (Watch together goes there before following). */
+  showRoomDiagram(): void {
+    if (this.active?.slug) this.navigate?.(this.active.slug);
+  }
+
   subscribe = (fn: () => void): (() => void) => {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);

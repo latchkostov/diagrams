@@ -36,6 +36,41 @@ The diagram arrives from someone already in the room, and your own diagrams aren
 - **Reloading** the tab keeps you in the room. The tab remembers the room until you leave or close the tab.
 - **Recordings, presentations, prints and image exports** never show the others' outlines, pointers or names.
 
+## Watch Live together
+
+Whoever started the room is its **host**, and the only one whose Live is shown to the room. Only Live on the
+room's own diagram is shown or followed. Open Live on any other diagram, a Private one included, and nothing of it
+reaches the room: not its simulation's name, not its run.
+
+- **The offer.** When the host turns on Live, everyone else gets a short note: "Sam is showing Live: Black
+  Friday", with **Watch**. Nothing happens on its own: someone in the middle of an edit stays where they are. The
+  chip's menu offers **Watch Sam's Live** too.
+- **Watching.** Your page opens the room's diagram if it isn't already showing it, goes into Live and plays the
+  host's run, about half a second behind them. Whatever the
+  host does reaches you on the same simulated moment: play, pause, speed, scrubbing, another simulation, a tweak
+  (Replicas, a slowdown, a fault, an injection) and a change in Inputs & capacity. The chip says "Following Sam".
+  Each browser runs the same simulation itself, and the host's checks every few seconds catch any drift, so your
+  run matches theirs exactly.
+- **Your own view.** The view stays yours: the host panning or zooming doesn't move it. To follow it anyway, turn on
+  **Follow Sam's view** in the chip's menu. Your own pan or zoom turns it off again, and so does moving to a node
+  with the keyboard. Hover, the inspector, traces
+  and the event log are your own too.
+- **Joining late, and new runs.** If you start watching in the middle of a run, your page replays it from the start
+  to catch up ("Catching up… 0:42 of 3:10"). The same happens when the host restarts, picks another simulation or
+  plays a finished run again. A long run catches up a few moments at a time, so the page stays responsive.
+- **Watch on my own.** This, in the chip's menu, keeps your run where it is and makes it yours to change. Changing
+  the run yourself (a tweak, play or pause) does the same.
+- **If the host's connection drops,** your run waits where it is: "Sam's connection dropped. Waiting…". It goes on
+  when they're back, and asks the host for the run again if it missed anything meanwhile (a restart included).
+  Nobody else takes over. If the host leaves the room, or stops showing Live, you keep watching on your own.
+- **When it can't follow.** A browser that drifts from the host's run twice, can't get the run from the host, or
+  finds the host on a newer release of Live Diagrams gets a message, and you watch on your own. A run too large to
+  send (a very long one) isn't shown; the host is told, and their next run is shown.
+- **Trust, for now.** Watching is cooperative. Everyone in the room shares one key, so a page that's been modified
+  could send Live commands, or claim to be the host. A normal page only follows the room's creator, checks every
+  message in full before using it, and ignores one that isn't exactly what Live sends, or that asks for more work
+  than Live ever does. Signed roles are planned.
+
 ## Leave
 
 Choose **Leave room** in the chip's menu. Your copy stays in **Your diagrams**, and the others carry on. A room

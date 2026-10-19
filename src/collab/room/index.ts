@@ -9,11 +9,14 @@ import {
   writeAutosave,
 } from "../../lib/diagramIO";
 import { onClearDevice } from "../../lib/clearDevice";
+import { canCollaborate } from "../../lib/localOnly";
 import { IndexedDbRecoveryStore } from "../recoveryStore";
 import { createTrackerTransport } from "../transport/tracker";
 import { roomEndpoints } from "./endpoints";
 import { RoomLifecycle } from "./lifecycle";
 import { sessionTabRoom } from "./tabRoom";
+import { watchNotices } from "./watchNotices";
+import { bindWatch } from "./watch";
 
 // Rooms in the app (Edit together): the one lifecycle this page has, wired to the real things. App.tsx loads this
 // module only when the page has a room to open or the person asks for one (src/lib/roomEntry.ts), so local
@@ -73,6 +76,32 @@ document.addEventListener("visibilitychange", () => {
   room.setAway(hidden);
 });
 onClearDevice(() => room.wipe());
+
+// Watch together lasts as long as the room's session, whatever's on screen (presenting hides the chip).
+bindWatch(
+  room,
+  {
+    read: () => {
+      const slug = room.getSnapshot().open?.slug;
+      if (!slug) return { eligible: false };
+      const diagram = getCurrent(slug);
+      return {
+        documentId: getDiagramIdentity(slug),
+        eligible: canCollaborate({ ...getPrivacyFlags(slug), diagram }) && !diagram?.private,
+      };
+    },
+    show: () => room.showRoomDiagram(),
+    subscribe: (fn) => {
+      const stop = room.subscribe(fn);
+      window.addEventListener(DIAGRAMS_CHANGED, fn);
+      return () => {
+        stop();
+        window.removeEventListener(DIAGRAMS_CHANGED, fn);
+      };
+    },
+  },
+  watchNotices,
+);
 
 export { RoomChip, RoomConnecting, RoomLayer } from "./RoomUi";
 export type { RoomSnapshot, OpenRoom } from "./lifecycle";
