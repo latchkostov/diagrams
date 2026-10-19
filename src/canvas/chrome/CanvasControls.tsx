@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useId,
   useLayoutEffect,
   useMemo,
@@ -14,7 +13,6 @@ import {
   ControlButton,
   Controls,
   MiniMap,
-  useReactFlow,
   useStore,
   type ReactFlowState,
 } from "@xyflow/react";
@@ -81,63 +79,21 @@ export function CanvasControls({
   onShortcuts: () => void;
 }) {
   const locale = useLocale();
-  const { zoomIn, zoomOut } = useReactFlow();
-  const minZoomReached = useStore((s: ReactFlowState) => s.transform[2] <= s.minZoom);
-  const maxZoomReached = useStore((s: ReactFlowState) => s.transform[2] >= s.maxZoom);
   const [collapsed, setCollapsed] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const viewGroupRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  const menuOpen = menuPos !== null;
 
-  const undoTitle = tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) });
-  const redoTitle = tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) });
-
-  const handleZoomIn = useCallback(() => {
-    void zoomIn();
-    zoomedByButton();
-  }, [zoomIn, zoomedByButton]);
-
-  const handleZoomOut = useCallback(() => {
-    void zoomOut();
-    zoomedByButton();
-  }, [zoomOut, zoomedByButton]);
-
-  const openViewMenu = useCallback(() => {
-    const el = viewGroupRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setAnchor({ x: r.right + 6, y: r.top });
-    setMenuOpen(true);
-  }, []);
-
-  const closeViewMenu = useCallback(() => {
-    setMenuOpen(false);
-  }, []);
-
-  const toggleViewMenu = useCallback(
-    (e: ReactMouseEvent) => {
-      e.stopPropagation();
-      if (menuOpen) closeViewMenu();
-      else openViewMenu();
-    },
-    [menuOpen, closeViewMenu, openViewMenu],
-  );
-
-  const onFitContextMenu = useCallback(
-    (e: ReactMouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openViewMenu();
-    },
-    [openViewMenu],
-  );
+  const openViewMenu = () => {
+    const r = viewGroupRef.current?.getBoundingClientRect();
+    if (r) setMenuPos({ x: r.right + 6, y: r.top });
+  };
 
   const viewMenuItems = useMemo((): MenuNode[] => {
     if (!menuOpen) return [];
     const sel = editor.getSelection();
     const hasSelection = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length > 0;
-
     return [
       {
         type: "item",
@@ -161,39 +117,31 @@ export function CanvasControls({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuild when menu opens or locale changes
   }, [menuOpen, editor, locale]);
 
+  const collapseLabel = collapsed ? tr("chrome.expandToolbar") : tr("chrome.collapseToolbar");
+  const viewMenuLabel = tr("view.menu");
+
   return (
     <>
       <Controls
         className={collapsed ? "is-collapsed" : undefined}
-        showZoom={false}
         showInteractive={false}
         showFitView={false}
         position="bottom-left"
+        onZoomIn={zoomedByButton}
+        onZoomOut={zoomedByButton}
       >
-        <div className="react-flow__controls-collapsible" inert={collapsed || undefined}>
-          <div className="react-flow__controls-collapsible-inner">
-            <ControlButton
-              className="react-flow__controls-zoomin"
-              onClick={handleZoomIn}
-              disabled={maxZoomReached}
-              title={tr("chrome.zoomIn")}
-              aria-label={tr("chrome.zoomIn")}
-              data-testid="zoom-in-button"
-            >
-              <Icon name="plus" size={14} />
-            </ControlButton>
-            <ControlButton
-              className="react-flow__controls-zoomout"
-              onClick={handleZoomOut}
-              disabled={minZoomReached}
-              title={tr("chrome.zoomOut")}
-              aria-label={tr("chrome.zoomOut")}
-              data-testid="zoom-out-button"
-            >
-              <Icon name="minus" size={14} />
-            </ControlButton>
+        <div className="rf-ctrl-body" inert={collapsed || undefined}>
+          <div className="rf-ctrl-inner">
             {/* Our fit keeps content clear of the title card, minimap and live bar; flyout offers Zoom tools. */}
-            <div ref={viewGroupRef} className="react-flow__controls-split" onContextMenu={onFitContextMenu}>
+            <div
+              ref={viewGroupRef}
+              className="rf-ctrl-split"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openViewMenu();
+              }}
+            >
               <ControlButton
                 onClick={fit}
                 title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
@@ -204,10 +152,14 @@ export function CanvasControls({
               </ControlButton>
               <button
                 type="button"
-                className={`react-flow__controls-flyout${menuOpen ? " is-open" : ""}`}
-                onClick={toggleViewMenu}
-                title={tr("view.menu")}
-                aria-label={tr("view.menu")}
+                className={`rf-ctrl-flyout${menuOpen ? " is-open" : ""}`}
+                onClick={(e: ReactMouseEvent) => {
+                  e.stopPropagation();
+                  if (menuOpen) setMenuPos(null);
+                  else openViewMenu();
+                }}
+                title={viewMenuLabel}
+                aria-label={viewMenuLabel}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-controls={menuOpen ? menuId : undefined}
@@ -218,11 +170,11 @@ export function CanvasControls({
                 </svg>
               </button>
             </div>
-            <div className="react-flow__controls-divider" role="separator" data-testid="toolbar-divider-history" />
+            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-history" />
             <ControlButton
               onClick={editor.undo}
               disabled={!editor.canUndo()}
-              title={undoTitle}
+              title={tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
               aria-label={tr("ai.undo")}
               data-testid="undo-button"
             >
@@ -231,13 +183,13 @@ export function CanvasControls({
             <ControlButton
               onClick={editor.redo}
               disabled={!editor.canRedo()}
-              title={redoTitle}
+              title={tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
               aria-label={tr("shortcuts.redo")}
               data-testid="redo-button"
             >
               <Icon name="redo" size={14} />
             </ControlButton>
-            <div className="react-flow__controls-divider" role="separator" data-testid="toolbar-divider-shortcuts" />
+            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-shortcuts" />
             <ControlButton
               onClick={onShortcuts}
               title={tr("canvas.keyboardShortcuts")}
@@ -246,32 +198,32 @@ export function CanvasControls({
             >
               <Icon name="keyboard" size={14} />
             </ControlButton>
-            <div className="react-flow__controls-divider" role="separator" data-testid="toolbar-divider-collapse" />
+            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-collapse" />
           </div>
         </div>
         <ControlButton
           onClick={() => {
-            setMenuOpen(false);
+            setMenuPos(null);
             setCollapsed((c) => !c);
           }}
-          title={collapsed ? tr("chrome.expandToolbar") : tr("chrome.collapseToolbar")}
-          aria-label={collapsed ? tr("chrome.expandToolbar") : tr("chrome.collapseToolbar")}
+          title={collapseLabel}
+          aria-label={collapseLabel}
           aria-expanded={!collapsed}
           data-testid="collapse-toolbar-button"
         >
           <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} size={14} />
         </ControlButton>
       </Controls>
-      {menuOpen && anchor && (
+      {menuPos && (
         <ContextMenu
-          x={anchor.x}
-          y={anchor.y}
-          label={tr("view.menu")}
+          x={menuPos.x}
+          y={menuPos.y}
+          label={viewMenuLabel}
           testId="view-tools-menu"
           menuId={menuId}
           triggerRef={viewGroupRef}
           items={viewMenuItems}
-          onClose={closeViewMenu}
+          onClose={() => setMenuPos(null)}
         />
       )}
     </>

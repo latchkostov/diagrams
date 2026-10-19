@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(-5.38376px, 156.236px) scale(1.13459)",
+    "viewport": "translate(-5.38376px, 48.7358px) scale(1.13459)",
     "nodes": {
       "publisher": { "kind": "node", "box": "translate(360px, 40px) 241×72", "text": "Northwind events 6 events/s to both brokers" },
       "log": { "kind": "node", "box": "translate(200px, 200px) 220×72", "text": "Order log 3 partitions" },
@@ -25,7 +25,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-170.384px, 156.236px) scale(1.13459)",
+    "viewport": "translate(-170.384px, 48.7358px) scale(1.13459)",
     "nodes": {
       "publisher": { "kind": "node", "box": "translate(360px, 40px) 241×72", "text": "Northwind events 6 events/s to both brokers" },
       "log": { "kind": "node", "box": "translate(200px, 200px) 220×72", "text": "Order log 3 partitions" },

@@ -142,7 +142,24 @@
   background: var(--surface);
 }
 
-.react-flow__controls-collapsible {
+.react-flow__controls-zoomin,
+.react-flow__controls-zoomout {
+  overflow: hidden;
+  transition:
+    height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.16s ease,
+    border-bottom-width 0.2s ease;
+}
+
+.react-flow__controls.is-collapsed .react-flow__controls-zoomin,
+.react-flow__controls.is-collapsed .react-flow__controls-zoomout {
+  height: 0;
+  opacity: 0;
+  border-bottom-width: 0;
+  pointer-events: none;
+}
+
+.rf-ctrl-body {
   display: grid;
   grid-template-rows: 1fr;
   opacity: 1;
@@ -151,13 +168,13 @@
     opacity 0.16s ease;
 }
 
-.react-flow__controls.is-collapsed .react-flow__controls-collapsible {
+.react-flow__controls.is-collapsed .rf-ctrl-body {
   grid-template-rows: 0fr;
   opacity: 0;
   pointer-events: none;
 }
 
-.react-flow__controls-collapsible-inner {
+.rf-ctrl-inner {
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -171,12 +188,12 @@
 }
 
 .react-flow__controls-button:last-child,
-.react-flow__controls-split .react-flow__controls-button,
-.react-flow__controls-button:has(+ .react-flow__controls-divider) {
+.rf-ctrl-split .react-flow__controls-button,
+.react-flow__controls-button:has(+ .rf-ctrl-sep) {
   border-bottom: 0;
 }
 
-.react-flow__controls-divider {
+.rf-ctrl-sep {
   width: 18px;
   height: 1px;
   margin: 2px auto;
@@ -184,14 +201,14 @@
   flex: none;
 }
 
-.react-flow__controls-split {
+.rf-ctrl-split {
   position: relative;
   display: flex;
   width: 30px;
   height: 30px;
 }
 
-.react-flow__controls-flyout {
+.rf-ctrl-flyout {
   position: absolute;
   inset-inline-end: 0;
   bottom: 0;
@@ -208,8 +225,8 @@
   border-start-start-radius: 4px;
 }
 
-.react-flow__controls-flyout:hover,
-.react-flow__controls-flyout.is-open {
+.rf-ctrl-flyout:hover,
+.rf-ctrl-flyout.is-open {
   color: var(--accent);
   background: var(--accent-soft);
 }

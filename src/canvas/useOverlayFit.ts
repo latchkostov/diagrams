@@ -1,5 +1,6 @@
 import { useEffect, useState, type RefObject } from "react";
 import { useStoreApi, type ReactFlowState } from "@xyflow/react";
+import { t as tr, useLocale } from "../i18n";
 import { intersects, type Rect } from "./geometry/rect";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 
@@ -163,6 +164,7 @@ export function useCovered(
  * `zoom-out-button`), `canvas-attribution`.
  */
 export function useOverlayTestIds(root: RefObject<HTMLElement | null>) {
+  useLocale();
   useEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -171,8 +173,17 @@ export function useOverlayTestIds(root: RefObject<HTMLElement | null>) {
     // A toast stacks above the minimap rather than over it (src/interop/ui/toastStack.ts).
     minimap?.setAttribute("data-toast-avoid", "");
     el.querySelector(".react-flow__panel.react-flow__controls")?.setAttribute("data-testid", "canvas-controls");
-    el.querySelector(".react-flow__controls-zoomin")?.setAttribute("data-testid", "zoom-in-button");
-    el.querySelector(".react-flow__controls-zoomout")?.setAttribute("data-testid", "zoom-out-button");
+    for (const [cls, id, label] of [
+      [".react-flow__controls-zoomin", "zoom-in-button", tr("chrome.zoomIn")],
+      [".react-flow__controls-zoomout", "zoom-out-button", tr("chrome.zoomOut")],
+    ] as const) {
+      const btn = el.querySelector(cls);
+      if (btn) {
+        btn.setAttribute("data-testid", id);
+        btn.setAttribute("title", label);
+        btn.setAttribute("aria-label", label);
+      }
+    }
     el.querySelector(".react-flow__panel.react-flow__attribution")?.setAttribute("data-testid", "canvas-attribution");
   });
 }
