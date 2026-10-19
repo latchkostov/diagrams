@@ -8,6 +8,7 @@ import { createSimulationRun } from "./simulation";
 import { autoScale } from "./scale";
 import { realSnapshot } from "./units";
 import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { assertLedgerInvariants, type LedgerInvariantState } from "./resourceInvariants";
 import { SampledLedger } from "./ledger";
 import type { SimSnapshot } from "./types";
 
@@ -517,4 +518,38 @@ it("bounds scripted traffic after live multiplier changes and restores its budge
   run.restore(checkpoint);
   run.step(500);
   expect(inject.mock.calls.reduce((sum, [, count]) => sum + count, 0)).toBe(SOURCE_VOLUME_CAP);
+});
+
+it("preserves held reservations immediately after a 4-to-1 shrink", () => {
+  const d = waitingFixture();
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    scale: 4,
+    verifyLedger(s) {
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
+    },
+  });
+  e.load(d);
+  e.inject("source", 4);
+  e.step(100);
+  const held = () =>
+    [...state.ledger.reservations.values()].filter((r) => r.owner === "caller" && r.scope === "thread");
+  const ids = held().map((r) => r.id);
+  expect(held().reduce((sum, r) => sum + r.weight, 0)).toBe(4);
+  e.setNodeProps("caller", { concurrency: 1 });
+  const processed = e.snapshot().nodes.caller.processed;
+  const nextReservation = state.ledger.nextReservation;
+  for (let i = 0; i < 5; i++) {
+    e.step(10);
+    expect(held().map((r) => r.id)).toEqual(ids);
+    expect(state.ledger.nextReservation).toBe(nextReservation);
+    const retained = held().reduce((sum, r) => sum + r.weight, 0);
+    expect(retained).toBe(4);
+    const t = realSnapshot(e.snapshot()).nodes.caller.threads!;
+    expect(t.working + t.waiting).toBe(retained);
+    expect(t.slots).toBe(1);
+    expect(t.queued).toBe(12);
+    expect(e.snapshot().nodes.caller.processed).toBe(processed);
+  }
 });

@@ -73,6 +73,10 @@ export class SampledLedger {
 
   constructor(private readonly onRelease: (reservation: Reservation) => void = () => {}) {}
 
+  get<Group = unknown>(id: number | undefined): Reservation<Group> | undefined {
+    return id === undefined ? undefined : (this.state.reservations.get(id) as Reservation<Group> | undefined);
+  }
+
   reserve<Group = unknown>(
     scope: Pick<Reservation, "owner" | "scope" | "startActive"> &
       Partial<Pick<Reservation, "edge" | "keys" | "phase" | "startedAt">>,

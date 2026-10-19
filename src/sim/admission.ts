@@ -324,8 +324,10 @@ export function attemptAdmission(
   slots = policy.slots,
   extra: readonly Requirement[] = [],
   partialOccupancy = false,
-  retained?: CallerOccupancy,
-): { lease: AdmissionLease; latencyMs?: number; errorRate?: number } | { rejected: string } {
+  retained?: { request: AdmissionLease; thread?: AdmissionLease },
+):
+  | { leases: ReturnType<typeof separateAdmission>; lease: AdmissionLease; latencyMs?: number; errorRate?: number }
+  | { rejected: string } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
   const call = compiled.calls.get(endpointId);
@@ -337,7 +339,7 @@ export function attemptAdmission(
     const bucket = bucketAt(state, key, quota, now);
     if (bucket.tokens + 1e-9 < weight * cost) return { rejected: `${quota.id}: ${quota.unit}` };
   }
-  let occupancy = retained?.weight ?? weight;
+  let occupancy = retained?.request.weight ?? weight;
   if (partialOccupancy && !retained) {
     if (slots !== undefined) occupancy = Math.min(occupancy, slots - (state.inFlight.get(compiled.slots) ?? 0));
     for (const [key, limit] of call.limits) occupancy = Math.min(occupancy, limit - (state.inFlight.get(key) ?? 0));
@@ -350,9 +352,21 @@ export function attemptAdmission(
   for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
   const reservation = reserveCallerOccupancy(weight, occupancy);
-  for (const key of keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
+  const lease = { keys, threadKey: slots === undefined ? undefined : compiled.slots, ...reservation };
+  const leases = separateAdmission(lease);
+  if (retained) {
+    // Quotas and policy validation succeeded before any existing occupancy changes.
+    // Request residence and execution can have different retained weights after a shrink.
+    releaseAdmission(state, retained.request);
+    releaseAdmission(state, retained.thread);
+    leases.request.weight = retained.request.weight;
+    if (retained.thread) leases.thread.weight = retained.thread.weight;
+  }
+  for (const part of [leases.request, leases.thread])
+    for (const key of part.keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + part.weight);
   return {
-    lease: { keys, threadKey: slots === undefined ? undefined : compiled.slots, ...reservation },
+    leases,
+    lease,
     latencyMs: call.latencyMs,
     errorRate: call.errorRate,
   };
