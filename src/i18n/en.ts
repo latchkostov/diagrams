@@ -2515,6 +2515,10 @@ const en = {
   "collab.newViewOnly": "New people can view only",
   "collab.youViewOnly": "You can view this room. The host or a co-host can let you edit.",
   "collab.nowEditing": "You can edit this room now.",
+  "collab.waitVerifying": "Connected. Checking who's here…",
+  "collab.waitDocument": "Connected. Waiting for the diagram…",
+  "collab.unsupportedBrowser":
+    "This browser can't join this room: it can't check the room's signatures. Update it, or open the link in another browser.",
   "collab.refusedViewOnly":
     "Your change was undone: you can view this room, not edit it. Ask the host to let you edit.",
   "collab.watchTooLarge": "This run is too large to share with the room. The next one is shared.",

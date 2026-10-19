@@ -10,7 +10,14 @@ import { randomAlias } from "../presence";
 import { secureRandom, type RandomBytes } from "../random";
 import type { RecoveryStore } from "../recoveryStore";
 import { CollabSession, PrivateDiagramError } from "../session";
-import { loadIdentity, newIdentity, storeIdentity, type Identity, type StoredIdentity } from "../signing";
+import {
+  loadIdentity,
+  newIdentity,
+  SigningUnsupportedError,
+  storeIdentity,
+  type Identity,
+  type StoredIdentity,
+} from "../signing";
 import type { CollabTransport } from "../transport/types";
 import { recordRoom, roomValue, type RoomRole, type TabRoomRecord, type TabRoomStore } from "./tabRoom";
 import { clonedRoster, memberId, newRoster, RoomRoster, type RosterRecord } from "./roomRoster";
@@ -68,7 +75,7 @@ export interface RoomDeps {
   signedRooms?: boolean;
 }
 
-export type RoomNotice = "left" | "private" | "failed" | "storage-full";
+export type RoomNotice = "left" | "private" | "failed" | "storage-full" | "unsupported";
 
 export interface OpenRoom {
   role: RoomRole;
@@ -374,7 +381,15 @@ export class RoomLifecycle {
         if (o.record) this.deps.tab.clear();
         this.set({
           opening: undefined,
-          notice: this.notice(error instanceof PrivateDiagramError ? "private" : "failed", o.slug),
+          // A browser that can't sign can't join a signed room: said plainly, not as a failure to connect.
+          notice: this.notice(
+            error instanceof PrivateDiagramError
+              ? "private"
+              : error instanceof SigningUnsupportedError
+                ? "unsupported"
+                : "failed",
+            o.slug,
+          ),
         });
       }
       return;
