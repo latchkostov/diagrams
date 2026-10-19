@@ -17,7 +17,7 @@ it.each(["generic.database", "generic.external-api", "generic.queue", "generic.t
     d.nodes.push({ ...d.nodes[1], id: "unused", props: { latencyMs: 10_000, jitter: 0 } });
     d.edges.push({ id: "unused-call", from: "partner", to: "unused", kind: "sync" });
     const plan = analyzeCapacity(d);
-    expect(plan.nodes.caller.waits?.holdMs ?? 10).toBe(
+    expect(plan.nodes.caller.waits?.threadHoldMs ?? 10).toBe(
       10 + (plan.resolved.partner.admission?.api.latencyMs ?? plan.resolved.partner.latencyMs),
     );
     expect(plan.nodes.partner.waits).toBeUndefined();
@@ -41,7 +41,7 @@ it.each(["generic.service", "aws.lambda"])("uses hold time in every capacity lan
     resources: { ...resourceLesson(), cpuMsPerMessage: 1 },
   });
   const plan = analyzeCapacity(d).nodes.caller;
-  expect(plan.waits?.holdMs).toBe(260);
+  expect(plan.waits?.threadHoldMs).toBe(260);
   expect(plan.capacity).toBeCloseTo(4000 / 260);
   if (stencil === "generic.service") {
     expect(plan.resourcePlan?.initialCapacity).toBeCloseTo(plan.capacity);
@@ -65,7 +65,7 @@ it.each(["generic.service", "azure.functions"])(
     d.edges[0].props!.endpointId = "slow";
     const plan = analyzeCapacity(d).nodes.caller;
     expect(plan.capacity).toBeCloseTo(4000 / 300);
-    expect(plan.waits).toMatchObject({ workMs: 50, holdMs: 300 });
+    expect(plan.waits).toMatchObject({ workMs: 50, threadHoldMs: 300 });
     expect(plan.waits?.ceiling).toBeCloseTo(4000 / 300);
     if (stencil === "generic.service") expect(plan.resourcePlan?.initialCapacity).toBeCloseTo(plan.capacity);
   },

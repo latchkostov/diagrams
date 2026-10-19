@@ -14,7 +14,11 @@ const TroubleCallout = lazyComponent(() => import("./TroubleCallout").then((m) =
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";
 const EventLog = lazyComponent(() => import("./EventLog").then((m) => m.EventLog));
-const InjectDialog = lazyComponent(() => import("./InjectDialog").then((m) => m.InjectDialog));
+import { InjectLoading } from "./InjectLoading";
+const InjectDialog = lazyComponent(
+  () => import("./InjectDialog").then((m) => m.InjectDialog),
+  (props, status) => <InjectLoading {...props} status={status} />,
+);
 import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
 import { SimPanelFrame } from "./SimPanelFrame";

@@ -4,14 +4,18 @@ import { SimInput } from "../canvas/inspector/SimulationFields";
 import { SIM_LIMITS } from "../model/simLimits";
 import { t } from "../i18n";
 import type { EditorApi } from "../editor/types";
-import type { EdgeSimProps } from "../sim/types";
-import { callPolicy } from "../sim/callPolicy";
+import { effectiveCallerPolicy } from "../editor/callerPolicy";
+import { planningHost } from "./host";
+import { useSyncExternalStore } from "react";
+import { stencilRole } from "../stencils/roles";
+
+const noSubscribe = () => () => {};
+const noState = () => null;
 
 /** Connection settings load when their disclosure opens, preserving the canvas download budget. */
 export function CallWaitFields({
   editor,
   edgeId,
-  caller: value,
   stencil,
   advanced = false,
 }: {
@@ -21,9 +25,11 @@ export function CallWaitFields({
   stencil: string;
   advanced?: boolean;
 }) {
-  const caller = value as EdgeSimProps["caller"];
-  const policy = callPolicy(stencil, caller);
-  const set = (patch: EdgeSimProps["caller"]) => editor.setEdgeProps(edgeId, { caller: { ...caller, ...patch } });
+  const live = useSyncExternalStore(planningHost.subscribe, planningHost.get);
+  useSyncExternalStore(live?.controller.subscribe ?? noSubscribe, live?.controller.getState ?? noState);
+  const effective = effectiveCallerPolicy(editor, edgeId, live);
+  if (!effective?.editable) return null;
+  const { caller, policy, set } = effective;
   if (!advanced)
     return (
       <Field label={t("threads.whileWaiting")}>
@@ -53,22 +59,24 @@ export function CallWaitFields({
           hint: t("threads.poolHint"),
         }}
         value={caller?.poolConnections}
-        onChange={(v) => set({ poolConnections: typeof v === "number" ? v : undefined })}
+        onChange={(v) => set({ poolConnections: typeof v === "number" ? Math.round(v) : undefined })}
       />
-      <SimInput
-        name="replyMs"
-        field={{
-          label: t("threads.replyHandling"),
-          kind: "number",
-          unit: "ms",
-          min: 0,
-          max: SIM_LIMITS.timeMs,
-          placeholder: "10",
-          hint: t("threads.replyHint"),
-        }}
-        value={caller?.replyMs}
-        onChange={(v) => set({ replyMs: typeof v === "number" ? v : undefined })}
-      />
+      {stencilRole(stencil) === "processor" && (
+        <SimInput
+          name="replyMs"
+          field={{
+            label: t("threads.replyHandling"),
+            kind: "number",
+            unit: "ms",
+            min: 0,
+            max: SIM_LIMITS.timeMs,
+            placeholder: "10",
+            hint: t("threads.replyHint"),
+          }}
+          value={caller?.replyMs}
+          onChange={(v) => set({ replyMs: typeof v === "number" ? v : undefined })}
+        />
+      )}
     </>
   );
 }

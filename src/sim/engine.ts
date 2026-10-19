@@ -86,7 +86,14 @@ import {
   type CompiledTable,
 } from "./routeMatching";
 import { routeTableCapable } from "../model/requestRouting";
-import { quotaRequirements, attemptQuotas, reconfigureQuotas, type QuotaRequirement } from "./admission";
+import {
+  quotaRequirements,
+  attemptQuotas,
+  reconfigureQuotas,
+  separateAdmission,
+  reserveContinuation,
+  type QuotaRequirement,
+} from "./admission";
 import { QUOTA_UNITS } from "../model/admission";
 import { occupancyFraction, reserveCallerOccupancy, type CallerOccupancy } from "./callerOccupancy";
 import { callPolicy, replyCpuMs, type CallPolicy } from "./callPolicy";
@@ -187,6 +194,7 @@ interface Work {
   terminating?: boolean;
   retryAdmissionAt?: number;
   lease?: AdmissionLease;
+  threadLease?: AdmissionLease;
   errorRate?: number;
   message: Message;
   via?: Edge;
@@ -728,6 +736,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (status === "up")
       for (const call of [...node.calls.values()]) {
         if (call.ready !== undefined) settleCall(call, call.ready);
+        else if (call.held && !call.blockingRemaining && call.outstanding.size) freeCallThread(call);
         else if (node.fleet) {
           const at =
             call.work.replica === undefined
@@ -801,7 +810,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function startSlot(node: Node, work: Work): void {
     if (!node.waits || node.role !== "processor" || scale === 1) return;
-    const reservation = work.lease;
+    const reservation = work.threadLease ?? work.lease;
     const clock = reservation ? node.slotElapsed * occupancyFraction(reservation) : node.slotClock;
     const credit = reservation ? 0 : node.slotCredit / Math.max(1, Math.ceil(slots(node) / scale) - busy(node));
     work.slotStart = {
@@ -835,7 +844,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const release = popDue(releases);
       const call = calls.get(release.call!);
       if (call) {
-        settleCall(call, call.ready!);
+        if (call.outstanding.size && !call.blockingRemaining && call.ready === undefined) freeCallThread(call);
+        else settleCall(call, call.ready!);
         if (call.local && !node.fleet) admitPending(node);
       }
     }
@@ -1223,13 +1233,23 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function acknowledge(work: Work): void {
-    releaseAdmission(admission, work.lease);
-    work.lease = undefined;
+    endAdmission(work);
     if (work.delivery) {
       work.delivery.group.active--;
       work.delivery.group.activeByNode[work.delivery.edge.to.id]--;
     }
     release(work);
+  }
+
+  function endThreadAdmission(work: Work): void {
+    releaseAdmission(admission, work.threadLease);
+    work.threadLease = undefined;
+  }
+
+  function endAdmission(work: Work): void {
+    endThreadAdmission(work);
+    releaseAdmission(admission, work.lease);
+    work.lease = undefined;
   }
 
   /** Slots a partitioned group may fill at `node`: its assignment. Queues and subscription fan-out use the node pool. */
@@ -1421,8 +1441,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     } else {
       work.slotted = false;
       endResources(node, work);
-      releaseAdmission(admission, work.lease);
-      work.lease = undefined;
+      endThreadAdmission(work);
       release(work);
       suspendDelivery(work);
     }
@@ -1499,6 +1518,40 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     else call.node.waitingOn.delete(edge.id);
   }
 
+  /** Finish sampled work and blocking residence before moving a mixed join off-thread. */
+  function freeCallThread(call: Call): void {
+    const { node, work } = call;
+    if (node.status === "paused") return;
+    const start = work.slotStart;
+    if (start && node.status === "up") {
+      const end =
+        call.slotEnd ??
+        start.clock +
+          (call.durationMs ?? 0) +
+          (node.fleet
+            ? 0
+            : STEP * (1 - (start.reservation ? occupancyFraction(start.reservation) : slotFraction(node))));
+      if (end > callerClock(node, work) + 1e-9) {
+        if (call.slotEnd === undefined) {
+          call.slotEnd = end;
+          scheduleCallerRelease(call, end);
+        }
+        return;
+      }
+      if (call.slotEnd !== undefined && !start.reservation) node.slotCredit += Math.max(0, node.slotClock - end);
+      work.replyDelayMs = Math.max(0, node.slotElapsed - start.elapsed - (call.durationMs ?? 0));
+    }
+    call.held = false;
+    node.heldCalls--;
+    if (work.delivery) node.heldBrokerCalls--;
+    work.slotted = false;
+    work.slotStart = undefined;
+    endResources(node, work);
+    endThreadAdmission(work);
+    release(work);
+    suspendDelivery(work);
+  }
+
   function settleCall(call: Call, ok: boolean): void {
     const { node, work } = call;
     if (call.ready === false) ok = false;
@@ -1526,9 +1579,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             : STEP *
               (1 - (work.slotStart.reservation ? occupancyFraction(work.slotStart.reservation) : slotFraction(node))));
       if (end > callerClock(node, work) + 1e-9) {
+        call.ready = ok;
         if (call.slotEnd === undefined) {
           call.slotEnd = end;
-          call.ready = ok;
           scheduleCallerRelease(call, end);
         }
         return;
@@ -1564,8 +1617,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.role === "processor" && (call.replies ?? 0) > 0 && node.status !== "down" && !work.terminating) {
       work.slotted = false;
       endResources(node, work);
-      releaseAdmission(admission, work.lease);
-      work.lease = undefined;
+      endThreadAdmission(work);
       release(work);
       work.remaining = call.replyMs ?? 0;
       work.cpuRemaining = undefined;
@@ -1632,19 +1684,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         releaseCallEdge(call, edge!);
         if (edge!.policy?.blocking) call.blockingRemaining--;
-        if (call.held && call.outstanding.size && call.blockingRemaining === 0) {
-          call.held = false;
-          call.node.heldCalls--;
-          if (call.work.delivery) call.node.heldBrokerCalls--;
-          call.work.slotted = false;
-          call.work.slotStart = undefined;
-          endResources(call.node, call.work);
-          releaseAdmission(admission, call.work.lease);
-          call.work.lease = undefined;
-          release(call.work);
-          suspendDelivery(call.work);
-        }
-        if (call.work.slotStart)
+        if (call.work.slotStart && edge!.policy?.blocking)
           // Propagate only logical wait: nested callers must not charge a child's
           // extra sampled residence a second time at the parent.
           call.durationMs = Math.max(
@@ -1654,6 +1694,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               (call.work.replyDelayMs ?? 0) -
               (event.sampledDelayMs ?? 0),
           );
+        if (call.held && call.outstanding.size && call.blockingRemaining === 0) freeCallThread(call);
         call.work.message.visualAt = Math.max(call.work.message.visualAt ?? 0, event.visualAt ?? time);
         if (call.work.outputMessage)
           call.work.outputMessage.visualAt = Math.max(call.work.outputMessage.visualAt ?? 0, event.visualAt ?? time);
@@ -1784,8 +1825,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         // Retaining the pool does not retain the previous attempt's completed residence.
         if (node.status === "up") startSlot(node, work);
       } else {
-        releaseAdmission(admission, work.lease);
-        work.lease = undefined;
+        endAdmission(work);
         release(work);
         travel(
           work.delivery.edge,
@@ -1796,8 +1836,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         );
       }
     } else {
-      releaseAdmission(admission, work.lease);
-      work.lease = undefined;
+      endAdmission(work);
       answer(work, false);
       if (node.props.admission && node.status !== "down") gone(node, work.message, "end", "processing failed");
       else drop(node, work.message, node.status === "down" ? "node down" : "processing failed", work.via);
@@ -1880,8 +1919,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (work.slotStart) work.slotStart.workMs += work.remaining;
       return true;
     }
-    releaseAdmission(admission, work.lease);
-    work.lease = undefined;
+    endAdmission(work);
     const outcome = attemptAdmission(
       admission,
       node.id,
@@ -1918,7 +1956,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       start.workClock += shift;
       start.reservation = outcome.lease;
     }
-    work.lease = outcome.lease;
+    const leases = separateAdmission(outcome.lease);
+    work.lease = leases.request;
+    work.threadLease = leases.thread;
     work.errorRate = outcome.errorRate;
     if (outcome.latencyMs !== undefined)
       work.remaining = outcome.latencyMs * (node.slowFactor ?? 1) * (1 + (random() * 2 - 1) * node.props.jitter);
@@ -2311,6 +2351,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         const queue = node.resume.length ? node.resume : node.pending;
         const next = queue.peek()!;
+        if (next.continuation && node.props.admission && !next.threadLease && node.status === "up") {
+          const policy = node.props.admission;
+          const ceiling =
+            policy.fixedSlotsPerReplica === undefined
+              ? policy.slots
+              : Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica);
+          next.threadLease = reserveContinuation(admission, node.id, policy, scale, ceiling ?? Infinity, scale > 1);
+          if (!next.threadLease) break;
+        }
         if (node.status === "up" && !startResources(node, next)) break;
         const work = queue.shift()!;
         if (work.continuation) wakeDelivery(work);

@@ -1,6 +1,6 @@
 import { revisionAtLeast } from "../model/revisions";
 import { profileOf } from "../stencils/profiles";
-import { ThreadMeter, CallPill } from "./lazyWaitingVisuals";
+import { ThreadMeter, CallPills } from "./lazyWaitingVisuals";
 import { nodeFaultLabels } from "../model/faultWords";
 import { useInteraction } from "../canvas/interaction";
 import { compileTopology } from "../sim/topology";
@@ -82,14 +82,17 @@ export function NodeBadges({
   }
   const boundaryFault = state.snapshot.faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
+  const activeCalls = Object.entries(state.snapshot.edges).flatMap(([id, edge]) =>
+    edge.calls && (edge.calls.held || edge.calls.inFlight)
+      ? [{ id, held: edge.calls.held, inFlight: edge.calls.inFlight }]
+      : [],
+  );
   return (
     <div
       className={`lv-badges${presenting ? " is-presenting" : ""}`}
       style={{ "--inv": inv.toFixed(3) } as CSSProperties}
     >
-      {Object.entries(state.snapshot.edges).map(
-        ([id, edge]) => edge.calls && <CallPill key={id} id={id} calls={edge.calls} />,
-      )}
+      {activeCalls.length > 0 && <CallPills calls={activeCalls} />}
       {nodes.map((n) => {
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];

@@ -216,3 +216,143 @@ test("a fixed execution pool fills its meter using its effective capacity", asyn
   await expect(meter).toHaveAttribute("aria-valuenow", "4");
   await expect(page.getByTestId("thread-chip-caller")).toContainText("4 of 4 executions busy");
 });
+
+async function seedOverride(page: import("@playwright/test").Page) {
+  const d = waitingFixture();
+  d.edges[1].props = { ...d.edges[1].props, caller: { wait: "non-blocking", replyMs: 30 } };
+  d.simulations = [
+    {
+      id: "override",
+      title: "Override",
+      scale: 1,
+      durationMs: 60000,
+      traffic: [{ id: "load", node: "source", shape: { kind: "constant", ratePerSec: 100, durationMs: 60000 } }],
+      setup: {
+        edges: { call: { caller: { wait: "blocking" } } },
+        props: { source: { ratePerSec: 100 } },
+      },
+    },
+  ];
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+}
+
+test("the trouble fix updates the active waiting override and undo restores playback", async ({ page }) => {
+  await seedOverride(page);
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=override");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(11000);
+  await page.getByTestId("live-play").click();
+  await page.getByTestId("trouble-action").click();
+  await page.clock.runFor(400);
+  await expect
+    .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller?.wait)
+    .toBe("non-blocking");
+  expect((await savedDiagram(page)).edges[1].props?.caller).toEqual({ wait: "non-blocking", replyMs: 30 });
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(1000);
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("thread-meter-caller")).toHaveAttribute("data-waiting", "0");
+  await page.getByTestId("undo-button").click();
+  await page.clock.runFor(400);
+  await expect
+    .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller?.wait)
+    .toBe("blocking");
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(1000);
+  await expect
+    .poll(async () => Number(await page.getByTestId("thread-meter-caller").getAttribute("data-waiting")))
+    .toBeGreaterThan(0);
+});
+
+test("menu and inspector read and change the active caller override", async ({ page }) => {
+  await seedOverride(page);
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=override");
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").click({ button: "right" });
+  await page.getByTestId("context-menu-item-edge.simulation").hover();
+  await expect(page.getByTestId("context-menu-item-edge.wait")).toHaveText("Free the thread while waiting");
+  await page.getByTestId("context-menu-item-edge.wait").click();
+  await expect
+    .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller?.wait)
+    .toBe("non-blocking");
+  await page.getByTestId("undo-button").click();
+  await page.getByTestId("edge-call").dblclick();
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await expect(page.getByTestId("inspector-field-wait")).toContainText("Holds a thread");
+  await page.getByTestId("inspector-field-wait").click();
+  await page.getByTestId("context-menu-item-non-blocking").click();
+  await expect
+    .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller?.wait)
+    .toBe("non-blocking");
+});
+
+test("typing a fractional connection pool always saves a valid integer", async ({ page }) => {
+  await seed(page, false, false, true);
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").dblclick();
+  await page.getByTestId("inspector-section-edge-advanced").click();
+  await page.getByTestId("inspector-field-poolConnections").fill("1.5");
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
+    .toMatchObject({ poolConnections: 2 });
+  await page.reload();
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
+    .toMatchObject({ poolConnections: 2 });
+});
+
+test("call pills avoid labels, nodes and each other in a vertical join", async ({ page }) => {
+  const d = waitingFixture();
+  d.direction = "TB";
+  d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
+  d.nodes[1].x = d.nodes[2].x = 330;
+  d.nodes[1].y = 0;
+  d.nodes[2].y = 200;
+  d.edges[1].label = "Score application";
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(1000);
+  await page.getByTestId("live-play").click();
+  const pill = await page.getByTestId("call-pill-call").boundingBox();
+  expect(pill).not.toBeNull();
+  const boxes = await page.getByTestId("edge-label-call").boundingBox();
+  expect(boxes).not.toBeNull();
+  const overlap = (a: NonNullable<typeof pill>, b: NonNullable<typeof pill>) =>
+    Math.min(a.x + a.width, b.x + b.width) > Math.max(a.x, b.x) &&
+    Math.min(a.y + a.height, b.y + b.height) > Math.max(a.y, b.y);
+  if (!pill || !boxes) throw new Error("Missing call pill or label");
+  expect(overlap(pill, boxes)).toBe(false);
+  for (const id of ["caller", "partner"]) {
+    const node = await page.getByTestId(`node-${id}`).boundingBox();
+    if (!node) throw new Error(`Missing node ${id}`);
+    expect(overlap(pill, node)).toBe(false);
+  }
+});
+
+test("unsupported gateway callers hide reply handling", async ({ page }) => {
+  const d = waitingFixture();
+  d.nodes[1].stencil = "nginx";
+  d.edges[1].props = { ...d.edges[1].props, caller: { wait: "non-blocking" } };
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").dblclick();
+  await page.getByTestId("inspector-section-edge-advanced").click();
+  await expect(page.getByTestId("inspector-field-poolConnections")).toBeVisible();
+  await expect(page.getByTestId("inspector-field-replyMs")).toHaveCount(0);
+});

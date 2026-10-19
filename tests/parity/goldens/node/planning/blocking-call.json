@@ -22,7 +22,7 @@
     "explanations": {
       "caller": {
         "resources": { "perReplica": 61.53846153846154, "initial": 4, "min": 4, "max": 12, "initialCapacity": 246.15384615384616, "maxCapacity": 738.4615384615385, "targetReplicas": 4, "cpuRequestPct": 50, "memoryPeakMiB": 160, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 5000, "cpuUnbounded": false },
-        "waits": { "workMs": 10, "callMs": 250, "holdMs": 260, "slots": 64, "ceiling": 246.15384615384616 },
+        "waits": { "workMs": 10, "callMs": 250, "threadHoldMs": 260, "memoryResidenceMs": 260, "slots": 64, "ceiling": 246.15384615384616 },
         "id": "caller",
         "role": "processor",
         "status": "up",
@@ -269,8 +269,8 @@
       },
       "explanations": {
         "caller": {
-          "resources": { "perReplica": 181.8181818181818, "initial": 4, "min": 4, "max": 12, "initialCapacity": 727.2727272727273, "maxCapacity": 2181.818181818182, "targetReplicas": 6, "cpuRequestPct": 96.25, "memoryPeakMiB": 160, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 5000, "cpuUnbounded": false },
-          "waits": { "workMs": 10, "callMs": 10, "holdMs": 20, "replyMs": 10, "replies": 1, "slots": 64, "ceiling": 3200 },
+          "resources": { "perReplica": 181.8181818181818, "initial": 4, "min": 4, "max": 12, "initialCapacity": 727.2727272727273, "maxCapacity": 2181.818181818182, "targetReplicas": 6, "cpuRequestPct": 96.25, "memoryPeakMiB": 222.5, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 5000, "cpuUnbounded": false },
+          "waits": { "workMs": 10, "callMs": 10, "threadHoldMs": 20, "memoryResidenceMs": 270, "replyMs": 10, "replies": 1, "slots": 64, "ceiling": 3200 },
           "id": "caller",
           "role": "processor",
           "status": "up",

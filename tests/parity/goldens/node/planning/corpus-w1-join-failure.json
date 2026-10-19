@@ -15,7 +15,7 @@
     },
     "explanations": {
       "caller": {
-        "waits": { "workMs": 10, "callMs": 500, "holdMs": 510, "slots": 4, "ceiling": 7.8431372549019605 },
+        "waits": { "workMs": 10, "callMs": 500, "threadHoldMs": 510, "memoryResidenceMs": 510, "slots": 4, "ceiling": 7.8431372549019605 },
         "id": "caller",
         "role": "processor",
         "status": "up",
@@ -191,7 +191,7 @@
       },
       "explanations": {
         "caller": {
-          "waits": { "workMs": 10, "callMs": 500, "holdMs": 510, "slots": 4, "ceiling": 7.8431372549019605 },
+          "waits": { "workMs": 10, "callMs": 500, "threadHoldMs": 510, "memoryResidenceMs": 510, "slots": 4, "ceiling": 7.8431372549019605 },
           "id": "caller",
           "role": "processor",
           "status": "up",

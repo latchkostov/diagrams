@@ -105,7 +105,9 @@ interface ConsumerGroup {
 }
 type Rates = Map<string, Map<string, number>>;
 const RATE_CAP = 1e12;
-const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string): number => {
+const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string): number =>
+  Math.min(entry.wait?.poolCeiling ?? Infinity, uncappedServiceRate(entry, replicas, endpointId));
+const uncappedServiceRate = (entry: Entry, replicas: number, endpointId?: string): number => {
   if (!entry.up) return 0;
   const timing = resolvedTiming(entry.props, entry.wait?.callMs, endpointId);
   if (entry.props.admission) {
@@ -116,7 +118,7 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
         ? Infinity
         : replicas * entry.props.admission.fixedSlotsPerReplica,
     );
-    const time = timing.holdMs;
+    const time = timing.threadHoldMs;
     const admission = slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
     return entry.props.resources
       ? Math.min(admission, replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, time))
@@ -124,10 +126,10 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
   }
   if (entry.role === "processor") {
     if (entry.props.resources)
-      return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, timing.holdMs);
+      return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, timing.threadHoldMs);
     const slots = replicas * entry.props.concurrency;
-    const holdMs = timing.holdMs;
-    return !slots ? 0 : holdMs ? (slots * 1000) / holdMs : Infinity;
+    const threadHoldMs = timing.threadHoldMs;
+    return !slots ? 0 : threadHoldMs ? (slots * 1000) / threadHoldMs : Infinity;
   }
   // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
   const device = entry.role === "gateway" ? entry.props.device : undefined;
@@ -642,7 +644,12 @@ export function analyzeCapacity(
   const nodes: Record<string, NodeCapacity> = Object.create(null);
   for (const [id, entry] of entries) {
     const offered = total(rates.get(id));
-    let timing = resolvedTiming(entry.props, entry.wait?.callMs);
+    let timing = resolvedTiming(
+      entry.props,
+      entry.wait?.callMs,
+      undefined,
+      entry.wait ? entry.wait.memoryResidenceMs - entry.wait.workMs : undefined,
+    );
     if (entry.wait && offered > 0) {
       let work = timing.workMs * total(external.get(id));
       let weight = total(external.get(id));
@@ -651,7 +658,12 @@ export function analyzeCapacity(
         work += resolvedTiming(entry.props, 0, edge.endpointId).workMs * rate;
         weight += rate;
       }
-      if (weight > 0) timing = { workMs: work / weight, holdMs: work / weight + entry.wait.callMs };
+      if (weight > 0)
+        timing = {
+          workMs: work / weight,
+          threadHoldMs: work / weight + entry.wait.callMs,
+          memoryResidenceMs: work / weight + entry.wait.memoryResidenceMs - entry.wait.workMs,
+        };
     }
     let capacity = Math.min(
       entry.wait?.poolCeiling ?? Infinity,
@@ -685,7 +697,7 @@ export function analyzeCapacity(
               ...entry.wait,
               ...timing,
               slots: entry.active * entry.props.concurrency,
-              ceiling: (entry.active * entry.props.concurrency * 1000) / timing.holdMs,
+              ceiling: (entry.active * entry.props.concurrency * 1000) / timing.threadHoldMs,
             },
           }
         : {}),
@@ -741,7 +753,12 @@ export function analyzeCapacity(
                     ),
             },
             offered: nodes[id].offered,
-            timing: resolvedTiming(entry.props, entry.wait?.callMs),
+            timing: resolvedTiming(
+              entry.props,
+              entry.wait?.callMs,
+              undefined,
+              entry.wait ? entry.wait.memoryResidenceMs - entry.wait.workMs : undefined,
+            ),
             endpoints: tableRouter(entry)
               ? [
                   ...(incoming.get(id) ?? []).flatMap((e) =>

@@ -15,7 +15,7 @@
     },
     "explanations": {
       "caller": {
-        "waits": { "workMs": 10, "callMs": 10, "holdMs": 20, "replyMs": 10, "replies": 1, "poolCeiling": 8, "slots": 4, "ceiling": 200 },
+        "waits": { "workMs": 10, "callMs": 10, "threadHoldMs": 20, "memoryResidenceMs": 270, "replyMs": 10, "replies": 1, "poolCeiling": 8, "slots": 4, "ceiling": 200 },
         "id": "caller",
         "role": "processor",
         "status": "up",
@@ -146,7 +146,7 @@
       },
       "explanations": {
         "caller": {
-          "waits": { "workMs": 10, "callMs": 10, "holdMs": 20, "replyMs": 10, "replies": 1, "poolCeiling": 8, "slots": 4, "ceiling": 200 },
+          "waits": { "workMs": 10, "callMs": 10, "threadHoldMs": 20, "memoryResidenceMs": 270, "replyMs": 10, "replies": 1, "poolCeiling": 8, "slots": 4, "ceiling": 200 },
           "id": "caller",
           "role": "processor",
           "status": "up",

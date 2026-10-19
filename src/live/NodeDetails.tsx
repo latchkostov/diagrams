@@ -190,7 +190,7 @@ export function NodeDetails({
       )}
       {s.threads && Number.isFinite(s.threads.slots) && wait && (
         <ThreadCeiling
-          wait={{ ...wait, slots: s.threads.slots, ceiling: (s.threads.slots * 1000) / wait.holdMs }}
+          wait={{ ...wait, slots: s.threads.slots, ceiling: (s.threads.slots * 1000) / wait.threadHoldMs }}
           noun={threadNoun}
         />
       )}

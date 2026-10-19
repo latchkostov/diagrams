@@ -115,15 +115,15 @@ export function admissionPlan(
         result.set(entry.id, 0);
         continue;
       }
-      const latency = overrideWork(entry.timing, call.latencyMs).holdMs;
-      seconds += (rate * latency) / 1000;
+      const timing = overrideWork(entry.timing, call.latencyMs);
+      seconds += (rate * timing.threadHoldMs) / 1000;
       for (const { key, quota, cost } of transaction.requirements) {
         if (cost > (quota.burst ?? quota.amount)) result.set(entry.id, 0);
         add(key, (quota.amount * 1000) / quota.windowMs, rate * cost, entry.id);
       }
       for (const [key, limit] of call.limits) {
         if (limit === 0) result.set(entry.id, 0);
-        add(key, limit, (rate * latency) / 1000, entry.id);
+        add(key, limit, (rate * timing.memoryResidenceMs) / 1000, entry.id);
       }
     }
     const slots = Math.min(entry.policy.slots ?? Infinity, entry.policy.api.maxInFlight ?? Infinity);

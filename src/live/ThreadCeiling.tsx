@@ -6,13 +6,13 @@ export function ThreadCeiling({ wait, noun }: { wait: NonNullable<NodeCapacity["
   return (
     <p className="lv-thread-ceiling" data-testid="thread-ceiling">
       <b>{t("threads.ceilingLabel")}</b>{" "}
-      {Number.isFinite(wait.holdMs)
+      {Number.isFinite(wait.threadHoldMs)
         ? wait.replyMs !== undefined && wait.callMs === wait.replyMs
           ? t("threads.freeCeiling", {
               rate: formatNumber(wait.ceiling, { maximumFractionDigits: 2 }),
               slots: wait.slots,
               noun,
-              seconds: formatNumber(wait.holdMs / 1000),
+              seconds: formatNumber(wait.threadHoldMs / 1000),
               work: wait.workMs,
               reply: wait.replyMs,
             })
@@ -20,7 +20,7 @@ export function ThreadCeiling({ wait, noun }: { wait: NonNullable<NodeCapacity["
               rate: formatNumber(wait.ceiling, { maximumFractionDigits: 2 }),
               slots: wait.slots,
               noun,
-              seconds: formatNumber(wait.holdMs / 1000),
+              seconds: formatNumber(wait.threadHoldMs / 1000),
               work: wait.workMs,
               call: wait.callMs,
             })

@@ -1,6 +1,5 @@
 import { revisionAtLeast } from "../model/revisions";
-import { holdsCallerThread } from "../stencils/freeCallerProfiles";
-import type { EdgeSimProps } from "../sim/types";
+import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingEdits";
 import { routingIntent } from "./routingIntent";
@@ -857,18 +856,17 @@ export function builtinActions(): Action[] {
       when: (ctx) =>
         isFlowEdgeTarget(ctx) &&
         ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" &&
-        revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w1"),
+        revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w1") &&
+        !!effectiveCallerPolicy(ctx.editor, ctx.edgeId!)?.editable,
       children: (ctx) => {
-        const edge = ctx.editor.getEdge(ctx.edgeId!)!;
-        const caller = edge.props?.caller as EdgeSimProps["caller"];
-        const blocking = holdsCallerThread(ctx.editor.getNode(edge.from)?.stencil ?? "", caller?.wait);
+        const effective = effectiveCallerPolicy(ctx.editor, ctx.edgeId!)!;
+        const blocking = effective.policy.blocking;
         return [
           {
             type: "item",
             id: "edge.wait",
             label: blocking ? t("threads.freeAction") : t("threads.holdAction"),
-            run: () =>
-              ctx.editor.setEdgeProps(edge.id, { caller: { ...caller, wait: blocking ? "non-blocking" : "blocking" } }),
+            run: () => effective.set({ wait: blocking ? "non-blocking" : "blocking" }),
           },
         ];
       },

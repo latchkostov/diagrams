@@ -10,7 +10,8 @@ import type { EdgeSimProps } from "./types";
 export interface WaitCapacity {
   workMs: number;
   callMs: number;
-  holdMs: number;
+  threadHoldMs: number;
+  memoryResidenceMs: number;
   replyMs?: number;
   replies?: number;
   poolCeiling?: number;
@@ -52,20 +53,24 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
     const props = resolved[id];
     const { workMs } = resolvedTiming(props);
     const reply = replies.get(id);
-    const waiting = (callMs.get(id) ?? 0) + (reply?.ms ?? 0);
-    const holdMs = workMs + waiting;
+    // Playback executes a combined continuation on its 10 ms clock.
+    const replyMs = reply ? Math.ceil(reply.ms / 10) * 10 : 0;
+    const waiting = (callMs.get(id) ?? 0) + replyMs;
+    const threadHoldMs = workMs + waiting;
+    const memoryResidenceMs = workMs + (response.get(id) ?? 0) + replyMs;
     if (waiting > 0 || response.has(id))
       result.set(id, {
         workMs,
         callMs: waiting,
-        holdMs,
+        threadHoldMs,
+        memoryResidenceMs,
         ...(reply
-          ? { replyMs: reply.ms, replies: reply.count, ...(reply.pool < Infinity ? { poolCeiling: reply.pool } : {}) }
+          ? { replyMs, replies: reply.count, ...(reply.pool < Infinity ? { poolCeiling: reply.pool } : {}) }
           : {}),
       });
     for (const parent of parents.get(id) ?? []) {
       const endpointMs = resolvedTiming(props, 0, parent.endpoint).workMs;
-      const duration = endpointMs + (response.get(id) ?? 0) + (reply?.ms ?? 0) + parent.delay;
+      const duration = endpointMs + (response.get(id) ?? 0) + replyMs + parent.delay;
       response.set(parent.node, Math.max(response.get(parent.node) ?? 0, duration));
       if (parent.policy.blocking) callMs.set(parent.node, Math.max(callMs.get(parent.node) ?? 0, duration));
       else {
@@ -83,6 +88,12 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
     }
   }
   for (const [id, count] of remaining)
-    if (count) result.set(id, { workMs: resolved[id].latencyMs, callMs: Infinity, holdMs: Infinity });
+    if (count)
+      result.set(id, {
+        workMs: resolved[id].latencyMs,
+        callMs: Infinity,
+        threadHoldMs: Infinity,
+        memoryResidenceMs: Infinity,
+      });
   return { nodes: result, converged: queue.length === remaining.size };
 }

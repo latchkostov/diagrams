@@ -2,6 +2,7 @@ import { nodeFaultLabel } from "../../model/faultWords";
 import { faultTrouble } from "../faultTrouble";
 import { boundaryOutage } from "../../model/faultRuntime";
 import { t } from "../../i18n";
+import { effectiveCallerPolicy } from "../../editor/callerPolicy";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EditorApi } from "../../editor/types";
@@ -142,11 +143,7 @@ export function useLiveFixes({
           revealAdded();
         }
       } else if (action.kind === "free-thread") {
-        const edge = editor?.getEdge(action.edge);
-        if (edge)
-          editor?.setEdgeProps(edge.id, {
-            caller: { ...(edge.props?.caller as object | undefined), wait: "non-blocking" },
-          });
+        if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ wait: "non-blocking" });
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },
@@ -176,6 +173,7 @@ export function useLiveFixes({
   // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
   const troubleActionHere = (t: Trouble) =>
     !presenting &&
+    (t.action.kind !== "free-thread" || !!(editor && effectiveCallerPolicy(editor, t.action.edge)?.editable)) &&
     (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq" && t.action.kind !== "free-thread"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
