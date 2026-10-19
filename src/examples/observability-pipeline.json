@@ -979,12 +979,11 @@
       }
     },
     {
-      "id": "logs--siem",
-      "from": "logs",
+      "id": "ch-sink--siem",
+      "from": "ch-sink",
       "to": "siem",
       "kind": "async",
       "props": {
-        "group": "siem",
         "share": 0.02
       }
     },

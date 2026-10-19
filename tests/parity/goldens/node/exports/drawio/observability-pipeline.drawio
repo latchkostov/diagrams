@@ -416,8 +416,8 @@
             <mxGeometry relative="1" as="geometry" />
           </mxCell>
         </object>
-        <object id="dg-e-logs--siem" label="" dg_id="logs--siem" dg_kind="async" dg_props="{&quot;group&quot;:&quot;siem&quot;,&quot;share&quot;:0.02}">
-          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-logs" target="dg-n-siem">
+        <object id="dg-e-ch-sink--siem" label="" dg_id="ch-sink--siem" dg_kind="async" dg_props="{&quot;share&quot;:0.02}">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-ch-sink" target="dg-n-siem">
             <mxGeometry relative="1" as="geometry" />
           </mxCell>
         </object>

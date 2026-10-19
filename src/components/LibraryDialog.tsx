@@ -43,18 +43,29 @@ export function LibraryDialog({
 }) {
   useLocale();
   const [renaming, setRenaming] = useState<string | null>(null);
+  // Autosaves and other tabs update recency while this dialog is open. Keep existing rows
+  // still under the pointer (and on their page); reopening restores most-recent-first order.
+  const [order, setOrder] = useState(() => entries.map((e) => e.slug));
+  const known = new Set(order);
+  const bySlug = new Map(entries.map((e) => [e.slug, e]));
+  const nextOrder = [
+    ...entries.filter((e) => !known.has(e.slug)).map((e) => e.slug),
+    ...order.filter((s) => bySlug.has(s)),
+  ];
+  if (nextOrder.length !== order.length || nextOrder.some((s, i) => s !== order[i])) setOrder(nextOrder);
+  const ordered = nextOrder.map((s) => bySlug.get(s)!);
   const [page, setPage] = useState(() =>
     Math.floor(
       Math.max(
         0,
-        entries.findIndex((e) => e.slug === current),
+        ordered.findIndex((e) => e.slug === current),
       ) / PAGE_SIZE,
     ),
   );
   const lastPage = Math.max(0, Math.ceil(entries.length / PAGE_SIZE) - 1);
   if (page > lastPage) setPage(lastPage);
   const shownPage = Math.min(page, lastPage);
-  const visible = entries.slice(shownPage * PAGE_SIZE, (shownPage + 1) * PAGE_SIZE);
+  const visible = ordered.slice(shownPage * PAGE_SIZE, (shownPage + 1) * PAGE_SIZE);
   const content = useRef<HTMLDivElement>(null);
   const focus = useRef<HTMLElement | null>(null);
   const previous = useRef(visible);

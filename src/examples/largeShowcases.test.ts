@@ -6,6 +6,7 @@ import type { SimSnapshot } from "../sim/types";
 import { loadExample } from "./index";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { NOTE_FIT } from "../canvas/camera/geometry";
+import type { KedaConfig } from "../model/autoscaling";
 
 // The large public showcases (docs/EXAMPLES.md): each tells its saved stories on a realistic, invented system.
 // Public fixtures only: this shallow glob never descends into local-only examples.
@@ -284,15 +285,40 @@ describe("large showcases", () => {
   });
 
   it("Recommendations: KEDA wakes the batch scorer from zero, no further than the partitions", () => {
-    const { samples } = play("recommendations-feature-store", "sunday-picks");
+    // Four partitions bind before the controller's sixteen-pod maximum. The same run with
+    // idle consumers allowed proves that there is enough demand to exceed this ceiling.
+    const input = structuredClone(diagram("recommendations-feature-store"));
+    input.nodes.find((n) => n.id === "pick-requests")!.props!.partitions = 4;
+    const sample = () => {
+      const run = createSimulationRun(input, simulation("recommendations-feature-store", "sunday-picks"));
+      const samples: { time: number; snap: SimSnapshot }[] = [];
+      for (let t = 0; t < 100; t++) {
+        run.step(100);
+        samples.push({ time: run.state().time, snap: run.engine.snapshot() });
+      }
+      return samples;
+    };
+    const samples = sample();
     expect(most(between(samples, 0, 1000), "batch-scorer", "replicas")).toBe(0);
     const busy = most(
       samples.map((s) => s.snap),
       "batch-scorer",
       "replicas",
     );
-    expect(busy).toBeGreaterThan(4);
-    expect(busy).toBeLessThanOrEqual(16);
+    expect(busy).toBe(4);
+    const scaling = input.nodes.find((n) => n.id === "batch-scorer")!.props!.autoscaling as KedaConfig;
+    if (scaling.controller.kind !== "keda") throw new Error("Expected KEDA");
+    const trigger = scaling.controller.triggers[0];
+    if (trigger.type !== "kafka") throw new Error("Expected Kafka");
+    trigger.allowIdleConsumers = true;
+    const unbounded = sample();
+    expect(
+      most(
+        unbounded.map((s) => s.snap),
+        "batch-scorer",
+        "replicas",
+      ),
+    ).toBeGreaterThan(busy);
   });
 
   it("Video: the premiere spike doubles the 4K encoders' p95, and the growth is waiting", () => {
@@ -312,11 +338,21 @@ describe("large showcases", () => {
   });
 
   it("Video: corrupt 4K sources dead-letter to triage while HD and audio carry on", () => {
-    const { end } = play("video-on-demand-pipeline", "corrupt-source");
+    const { end, samples } = play("video-on-demand-pipeline", "corrupt-source");
     expect(end.nodes["uhd-q"].deadLettered).toBeGreaterThan(0);
     expect(end.nodes["encode-dlq"].processed).toBe(end.nodes["uhd-q"].deadLettered);
     expect(end.nodes.triage.processed).toBe(end.nodes["uhd-q"].deadLettered);
-    for (const id of ["hd-enc", "audio-enc"]) expect(end.nodes[id].failed, id).toBe(0);
+    // Check progress inside the fault window, rather than accepting an idle healthy branch
+    // or processing that resumes only after the 4K encoder is restored at 23 seconds.
+    const during = between(samples, 9000, 23000);
+    expect(during.at(-1)!.nodes["uhd-enc"].failed).toBeGreaterThan(during[0].nodes["uhd-enc"].failed);
+    for (const id of ["hd-enc", "audio-enc"]) {
+      expect(end.nodes[id].failed, id).toBe(0);
+      // Uploads arrive once per second; compare both halves of the corruption window.
+      const middle = during[Math.floor(during.length / 2)];
+      expect(middle.nodes[id].processed, id).toBeGreaterThan(during[0].nodes[id].processed);
+      expect(during.at(-1)!.nodes[id].processed, id).toBeGreaterThan(middle.nodes[id].processed);
+    }
     const night = play("video-on-demand-pipeline", "premiere-night").end;
     // The CDN's route table: 97% of segments to the edge cache, the rest to the origin bucket.
     const segments = night.nodes["edge-cache"].processed + night.nodes.streaming.processed;
@@ -333,6 +369,13 @@ describe("large showcases", () => {
     expect(lag(storm, "spans", "tempo")).toBeLessThan(10);
     expect(most(storm, "gateways", "replicas")).toBeGreaterThan(3);
     expect(end.nodes.ingesters.dropped).toBe(0);
+  });
+
+  it("Observability: SIEM receives a sample while ClickHouse receives every log", () => {
+    const { end } = play("observability-pipeline", "log-storm");
+    expect(end.nodes.siem.processed).toBeGreaterThan(0);
+    expect(end.nodes.siem.processed).toBeLessThan(end.nodes.clickhouse.processed / 8);
+    expect(end.nodes.clickhouse.processed).toBe(end.nodes["ch-sink"].processed);
   });
 
   it("Observability: the Loki outage drill holds logs in Kafka and loses none", () => {
