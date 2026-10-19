@@ -23,7 +23,7 @@ import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
 import { SimPanelFrame } from "./SimPanelFrame";
 import { SimPanel } from "./lazySimPanel";
-import { TraceCard } from "./TraceCard";
+const TraceCard = lazyComponent(() => import("./TraceCard").then((m) => m.TraceCard));
 import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";
 import { liveMutationGuard } from "./liveActions";

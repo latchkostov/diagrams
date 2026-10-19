@@ -466,8 +466,10 @@ export interface EngineOptions {
   /** Optional per-step diagnostic; excluded from ordinary playback. */
   verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
   verifyLedger?: (state: import("./resourceInvariants").LedgerInvariantState) => void;
-  /** R2 supplies write-once attempt outcomes to this opt-in diagnostic. */
+  /** Per-step write-once attempt diagnostic; excluded from ordinary playback. */
   verifyOutcomes?: (state: import("./resourceInvariants").OutcomeInvariantState) => void;
+  /** Test-only I7 probe: release sampled holds at logical completion. */
+  ledgerHold?: "none";
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */

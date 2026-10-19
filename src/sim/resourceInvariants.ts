@@ -3,7 +3,7 @@ import type { AutoscalingConfig, ComputeResources } from "../model/autoscaling";
 import { MAX_CPU_PARTS, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";
 import type { ResourceWork } from "./resourceWork";
-import type { LedgerState } from "./ledger";
+import type { LedgerState, ThreadTail } from "./ledger";
 
 export interface LedgerInvariantState {
   time: number;
@@ -22,7 +22,6 @@ export interface LedgerInvariantState {
 }
 export interface OutcomeInvariantState {
   time: number;
-  /** Populated by the attempts migration (R2); R1 has no attempt outcomes. */
   attempts: Iterable<{
     id: number;
     node: string;
@@ -82,12 +81,18 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
 }
 
 /** R2's attempt oracle: an outcome can be committed only after it is decided, once per attempt. */
+const observedOutcomes = new WeakMap<object, { outcome?: string; committed: boolean }>();
 export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
   const seen = new Set<number>();
   for (const attempt of state.attempts) {
     if (seen.has(attempt.id) || (attempt.committed && !attempt.outcome) || (attempt.outcome?.at ?? 0) > state.time)
       throw new Error(`Outcome @${state.time}: invalid attempt ${attempt.id} at ${attempt.node}`);
     seen.add(attempt.id);
+    const before = observedOutcomes.get(attempt);
+    const outcome = attempt.outcome && JSON.stringify(attempt.outcome);
+    if ((before?.outcome !== undefined && before.outcome !== outcome) || (before?.committed && !attempt.committed))
+      throw new Error(`Outcome @${state.time}: attempt ${attempt.id} changed after settlement`);
+    observedOutcomes.set(attempt, { outcome, committed: attempt.committed });
   }
 }
 
@@ -95,6 +100,7 @@ interface Work extends ResourceWork {
   slotted?: boolean;
   delivery?: unknown;
   held?: boolean;
+  reservation?: ThreadTail<unknown>["reservation"];
 }
 export interface ResourceState {
   time: number;
@@ -113,6 +119,8 @@ export interface ResourceState {
       admission?: { slots?: number; api: { maxInFlight?: number } };
     };
     working: readonly Work[];
+    threadTails?: ReadonlyMap<number, ThreadTail<unknown>>;
+    tailWeightTotal?: number;
     pending: Iterable<Work>;
     /** The node's own queue, without staged deliveries. */
     queue?: Iterable<Work>;
@@ -142,6 +150,9 @@ export function assertResourceInvariants(state: ResourceState) {
     const queued = [...node.pending];
     const all = [...node.working, ...queued];
     const fail = (ok: boolean, message: string) => check(ok, `${node.id} @${state.time}: ${message}`);
+    let tails = 0;
+    for (const tail of node.threadTails?.values() ?? []) tails += tail.reservation.weight;
+    fail(Math.abs((node.tailWeightTotal ?? 0) - tails) < 1e-8, "thread tail aggregate disagrees");
     for (const g of node.groups ?? []) fail(g.pending.length >= 0 && g.active >= 0, "negative broker lag");
     if (!node.props.resources) {
       fail(
@@ -281,7 +292,10 @@ export function assertResourceInvariants(state: ResourceState) {
     const previousAttempts = reservationAttempts.get(f);
     const acquired = new Set<number>();
     for (const work of node.working) {
-      if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
+      if (work.reservation) {
+        fail(work.reservation.scope === "thread" && work.reservation.releaseAt !== undefined, "invalid thread tail");
+        fail(!!work.cpuParts?.length, "resource-backed thread tail has no CPU ownership");
+      } else if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
       if (work.replica !== undefined) {
         reservations.set(work.replica, (reservations.get(work.replica) ?? 0) + 1);
         if (previousAttempts && previousAttempts.get(work) !== work.replica) acquired.add(work.replica);
@@ -352,7 +366,9 @@ export function assertResourceInvariants(state: ResourceState) {
       memory += (f.ready + f.draining - f.busy.size) * r.baselineMemoryMiB;
       fail(
         Math.abs(
-          memory - ((f.ready + f.draining) * r.baselineMemoryMiB + node.working.length * r.memoryMiBPerMessage),
+          memory -
+            ((f.ready + f.draining) * r.baselineMemoryMiB +
+              node.working.filter((w) => !w.reservation).length * r.memoryMiBPerMessage),
         ) < 1e-6,
         "memory differs from baseline + in-flight work",
       );

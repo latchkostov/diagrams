@@ -1,4 +1,6 @@
 import { popDue, pushDue, removeDue, type Due } from "./dueHeap";
+import type { AdmissionLease } from "./admission";
+import type { ResourceWork } from "./resourceWork";
 import type { CpuPart } from "./sampledResources";
 
 export type ReservationScope = "thread" | "request" | "pool";
@@ -17,6 +19,14 @@ export interface Reservation {
   heldMs: number;
   releaseAt?: number;
   cpuTail?: CpuPart[];
+}
+/** Capacity-only ownership after a non-blocking dispatch. Never a second resident request. */
+export interface ThreadTail<Group> extends ResourceWork {
+  reservation: Reservation;
+  group?: Group;
+  threadLease?: AdmissionLease;
+  /** Managed admission has its own fractional clock and cannot earn shared slot credit. */
+  admissionClock: boolean;
 }
 export interface LedgerOwner {
   reservations: Set<number>;
@@ -44,9 +54,10 @@ export class SampledLedger {
     cap = Infinity,
   ): Reservation | undefined {
     const weight = Math.min(represented, room, cap);
-    // Decimal scales leave usable fractions of a connection. Ignore only floating
-    // point residue, which would otherwise create a near-zero, effectively immortal lease.
-    if (!Number.isFinite(represented) || !Number.isFinite(weight) || !(weight > 1e-9)) return;
+    // A partial dot needs at least one real request's room. Tiny fractional
+    // leftovers must not create leases whose residence is effectively permanent.
+    if (!Number.isFinite(represented) || !Number.isFinite(weight) || weight < Math.min(1, represented) || !(weight > 0))
+      return;
     const reservation: Reservation = {
       ...scope,
       id: this.state.nextReservation++,
@@ -65,18 +76,33 @@ export class SampledLedger {
     return reservation;
   }
 
-  retire(reservation: Reservation, clock: { activeMs: number; time?: number; sampledDelayMs?: number }): number {
+  retire(
+    reservation: Reservation,
+    clock: {
+      activeMs: number;
+      time?: number;
+      sampledDelayMs?: number;
+      /** Local thread work can carry fractional service credit from the preceding reservation. */
+      logicalHoldMs?: number;
+    },
+  ): number {
     if (this.state.reservations.get(reservation.id) !== reservation || reservation.releaseAt !== undefined) return 0;
+    if (reservation.startTime !== undefined && !Number.isFinite(clock.time))
+      throw new Error("A wall-time reservation requires the wall clock");
     const elapsed =
       reservation.startTime === undefined
         ? clock.activeMs - reservation.startActive
         : clock.time! - reservation.startTime;
-    reservation.heldMs = Math.max(0, elapsed - (clock.sampledDelayMs ?? 0));
+    reservation.heldMs = Math.max(0, clock.logicalHoldMs ?? elapsed - (clock.sampledDelayMs ?? 0));
     // Translate the remaining residence into the owner's clock at retirement.
     // Never add a child's elapsed delay to the owner's immutable admission clock:
     // the child can run while that clock is frozen. Pool callers supply wall-time
     // elapsed/delay together to preserve the pre-ledger reply deadline in R1.
-    const remaining = reservation.heldMs * (1 / (reservation.weight / reservation.represented) - 1);
+    const fraction = reservation.weight / reservation.represented;
+    const remaining =
+      clock.logicalHoldMs === undefined
+        ? reservation.heldMs * (1 / fraction - 1)
+        : Math.max(0, reservation.startActive + reservation.heldMs / fraction - clock.activeMs);
     reservation.releaseAt = clock.activeMs + remaining;
     if (reservation.weight === reservation.represented || remaining <= 1e-9) {
       this.release(reservation);

@@ -28,8 +28,8 @@ function probe(diagram: DiagramFile, scale: number, seed: number): Probe {
     scale,
     maxParticles: 0,
     verifyLedger(s) {
-      assertLedgerInvariants(s);
-      state = s;
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
     },
     verifyOutcomes: assertOutcomeInvariants,
   });
@@ -149,6 +149,7 @@ function commands(scaleOne: boolean) {
 function idle(p: Probe): void {
   const state = p.state();
   expect(p.engine.metrics().inSystem).toBe(0);
+  for (const node of state.nodes) expect((node as typeof node & { residentWeight: number }).residentWeight).toBe(0);
   expect(state.ledger.reservations.size).toBe(0);
   expect(state.ledger.owners.size).toBe(0);
   expect([...state.admissionInFlight.values()].every((value) => Math.abs(value) < 1e-8)).toBe(true);
@@ -166,13 +167,20 @@ function drain(p: Probe): void {
   // allowance on already-idle ticks obscures the transitions these commands test.
   for (let batch = 0; batch < 200; batch++) {
     p.engine.step(1000);
-    if (!p.engine.metrics().inSystem && !p.state().ledger.reservations.size && !p.state().logical.length) break;
+    if (
+      !p.engine.metrics().inSystem &&
+      !p.state().ledger.reservations.size &&
+      !p.state().logical.length &&
+      !p.state().partBudget.used &&
+      Object.values(p.engine.snapshot().nodes).every((n) => !n.inFlight)
+    )
+      break;
   }
   idle(p);
 }
 
 it.each([false, true])(
-  "I3/I5/I6: command interleavings are deterministic and release all leases (scaleOne=%s)",
+  "I2/I3/I5/I6: command interleavings are write-once, deterministic and release all leases (scaleOne=%s)",
   (scaleOne) => {
     fc.assert(
       fc.property(arbWaitDiagram, commands(scaleOne), fc.integer(), ({ diagram, scale }, sequence, seed) => {

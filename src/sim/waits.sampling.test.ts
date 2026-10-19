@@ -85,9 +85,14 @@ it.each(["reply", "local"])("sampled managed retries preserve endpoint residence
   };
   const first = untilFailed(1),
     second = untilFailed(2);
-  expect(first / (100 + (failure === "reply" ? 250 : 0))).toBeGreaterThanOrEqual(10);
-  expect((second - first) / first).toBeGreaterThan(0.95);
-  e.step(1000);
+  // Outcomes follow the first wave; endpoint capacity still covers both cohorts.
+  expect(first / (100 + (failure === "reply" ? 250 : 0))).toBeLessThan(2);
+  expect(second - first).toBe(100 + (failure === "reply" ? 260 : 10));
+  expect(e.snapshot().nodes.caller.inFlight).toBeGreaterThan(0);
+  e.step(2 * first);
+  expect(e.snapshot().nodes.caller.inFlight).toBeGreaterThan(0);
+  e.step(20 * first);
+  expect(e.snapshot().nodes.caller.inFlight).toBe(0);
   expect(e.snapshot().inSystem).toBe(0);
 });
 
@@ -148,8 +153,11 @@ it("retained caller retries use their renewed admission reservation", () => {
     endpoints: [{ id: "one", method: "GET", path: "/", behaviour: { maxInFlight: 1 } }],
   });
   const second = untilFailed(2);
-  expect((second - first) / first).toBeGreaterThan(1.8);
-  e.step(1000);
+  expect((second - first) / first).toBeLessThan(1.2);
+  // The smaller renewed endpoint extends only the retained hold, not its answer.
+  e.step(5 * first);
+  expect(e.snapshot().nodes.caller.inFlight).toBeGreaterThan(0);
+  e.step(20 * first);
   expect(e.snapshot().inSystem).toBe(0);
   expect(e.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
 });

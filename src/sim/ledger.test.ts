@@ -10,22 +10,34 @@ const pool = (owner = "caller", startActive = 0) => ({ owner, scope: "pool" as c
 
 it("gates in real units, including non-divisible pools and continuation caps", () => {
   const ledger = new SampledLedger();
-  expect(ledger.reserve(pool(), 10, 0.9)?.weight).toBe(0.9);
+  expect(ledger.reserve(pool(), 10, 0.9)).toBeUndefined();
   expect(ledger.reserve(pool(), 10, 8, 3)?.weight).toBe(3);
   expect(ledger.reserve(pool(), 10, 8)?.weight).toBe(8);
   expect(ledger.reserve(pool(), 0.5, 0.5)?.weight).toBe(0.5);
   expect(ledger.reserve(pool(), 1, 1, 0)).toBeUndefined();
-  expect(ledger.audit()).toEqual({ thread: 0, request: 0, pool: 12.4 });
-  expect(ledger.state.nextReservation).toBe(5);
+  expect(ledger.audit()).toEqual({ thread: 0, request: 0, pool: 11.5 });
+  expect(ledger.state.nextReservation).toBe(4);
 });
 
-it("admits positive fractional room but rejects nonfinite inputs and float residue", () => {
+it("tiny fractional reservations cannot become effectively permanent", () => {
   const ledger = new SampledLedger();
   for (const value of [NaN, Infinity, -Infinity, 0, -1]) expect(ledger.reserve(pool(), value, 1)).toBeUndefined();
   for (const value of [NaN, -Infinity, 0, -1]) expect(ledger.reserve(pool(), 1, value, value)).toBeUndefined();
-  expect(ledger.reserve(pool(), 1.01, 2 - 1.01)?.weight).toBe(0.99);
-  expect(ledger.reserve(pool(), 1.5, 2 - 1.5)?.weight).toBe(0.5);
+  for (const room of [0.99, 0.5, 1e-3, 1e-8]) expect(ledger.reserve(pool(), 10, room)).toBeUndefined();
+  expect(ledger.reserve(pool(), 0.5, 0.5)?.weight).toBe(0.5);
   expect(ledger.reserve(pool(), 1.1, 1 - 0.9 - 0.1)).toBeUndefined();
+});
+
+it("wall-time reservations require the wall clock before mutating or scheduling a release", () => {
+  const ledger = new SampledLedger();
+  const r = ledger.reserve({ ...pool(), startTime: 0 }, 10, 1)!;
+  expect(() => ledger.retire(r, { activeMs: 100 })).toThrow("requires the wall clock");
+  expect(r.releaseAt).toBeUndefined();
+  expect(r.heldMs).toBe(0);
+  expect(ledger.state.owners.get("caller")!.heap).toHaveLength(0);
+  ledger.retire(r, { activeMs: 100, time: 100 });
+  ledger.releaseDue("caller", 1000);
+  expect(ledger.state.reservations.size).toBe(0);
 });
 
 it("retires once, releases idempotently, and cancels the indexed release", () => {
