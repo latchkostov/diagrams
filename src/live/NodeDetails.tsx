@@ -1,9 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, type CSSProperties } from "react";
 import { useStore } from "@xyflow/react";
-import { revisionAtLeast } from "../model/revisions";
-import { waitingPlan } from "../sim/waitingPlan";
-import { resolveProps } from "../sim/defaults";
-import { stencilRole } from "../stencils/roles";
+import { waitingDetails } from "./waitingDetails";
 import { profileOf } from "../stencils/profiles";
 import { t, useLocale } from "../i18n";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
@@ -45,22 +42,7 @@ export function NodeDetails({
   configuration,
 }: BadgeProps) {
   useLocale();
-  const wait = useMemo(() => {
-    if (!revisionAtLeast(diagram.planning?.revision, "p3-w1")) return undefined;
-    const resolved = Object.fromEntries(
-      diagram.nodes.map((n) => [
-        n.id,
-        resolveProps(
-          stencilRole(n.stencil),
-          n.label,
-          configuration[n.id] ?? n.props ?? {},
-          n.stencil,
-          diagram.planning,
-        ),
-      ]),
-    );
-    return waitingPlan(diagram, resolved).nodes.get(node.id);
-  }, [diagram, configuration, node.id]);
+  const wait = waitingDetails(diagram, configuration)?.nodes.get(node.id);
   const edge = diagram.edges.find((e) => e.id === s.threads?.waitingOn[0]?.[0]);
   const waitingLabel = diagram.nodes.find((n) => n.id === edge?.to)?.label ?? edge?.to ?? "";
   const threadNoun = t("threads.noun", {

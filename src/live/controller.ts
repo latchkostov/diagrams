@@ -114,6 +114,7 @@ export interface LookAhead {
 type TraceIntent = { kind: "idle" } | { kind: "root"; rootId: number } | { kind: "pending"; request: TraceRequest };
 
 export type DiagramUpdate = "none" | "patched" | "reloaded" | "refused";
+export type SimulationSelection = "rejected" | "selected" | "selected-refused";
 
 /** Shared simulation content, excluding props/scripts that the controller patches separately. */
 export function structuralKey(d: DiagramFile): string {
@@ -685,7 +686,9 @@ export class LiveController {
   private recoverBudget(error: unknown): boolean {
     if (!(error instanceof LifecycleBudgetError) && !(error instanceof WorkBudgetError)) return false;
     this.resourceError = error instanceof WorkBudgetError ? t("liveSession.workBudget") : error.message;
-    if (error instanceof WorkBudgetError) {
+    // A replay slice exits on refusal: abandon its target and queued ops until a rebuild.
+    // Queued Continue runs after the target clears, so lifecycle refusals there stay retryable.
+    if (error instanceof WorkBudgetError || this.replayTarget !== null) {
       this.needsRestart = true;
       this.cancelReplay();
     }
@@ -839,12 +842,12 @@ export class LiveController {
   }
 
   /** Switch between free play (null) and a saved simulation. Rebuilds, keeps play / pause, clears inputs. */
-  selectSimulation(sim: Simulation | null): boolean {
+  selectSimulation(sim: Simulation | null): SimulationSelection {
     const problem = sim && (simulationProblem(sim) ?? faultTimelineProblem(this.diagram, sim));
     if (problem) {
       this.resourceError = problem;
       this.publish();
-      return false;
+      return "rejected";
     }
     if (sim && revisionAtLeast(this.diagram.planning?.revision, "p3-a1")) {
       const candidate = {
@@ -856,7 +859,7 @@ export class LiveController {
       if (error) {
         this.resourceError = error;
         this.publish();
-        return false;
+        return "rejected";
       }
     }
     this.cancelReplay();
@@ -867,7 +870,7 @@ export class LiveController {
     const result = this.build();
     this.record({ kind: "select", simulation: sim });
     this.publish();
-    return result === "ok";
+    return result === "ok" ? "selected" : "selected-refused";
   }
 
   // ---------------------------------------------------------------- inputs & capacity

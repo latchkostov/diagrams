@@ -144,7 +144,12 @@ export function ControlBar({ state }: { state: LiveState }) {
               >
                 {formatClock(run.time)}
               </span>
-              <Timeline sim={state.simulation} run={run} onSeek={(ms) => c.seek(ms)} disabled={lookingAhead} />
+              <Timeline
+                sim={state.simulation}
+                run={run}
+                onSeek={(ms) => c.seek(ms)}
+                disabled={lookingAhead || state.needsRestart}
+              />
               {expectations.length > 0 && (
                 <div
                   className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`}

@@ -772,7 +772,7 @@ describe("A1 round 3 controller boundaries", () => {
     }));
     const c = new LiveController(d);
     const sim: Simulation = { id: "valid", title: "Valid", traffic: [], durationMs: 10_000 };
-    expect(c.selectSimulation(sim)).toBe(true);
+    expect(c.selectSimulation(sim)).toBe("selected");
     c.step(100);
     const before = c.snapshot();
     expect(
@@ -781,7 +781,7 @@ describe("A1 round 3 controller boundaries", () => {
         id: "draft",
         timeline: [{ atMs: 1000, action: { do: "props", node: "worker-0", props: { replicas: 1001 } } }],
       }),
-    ).toBe(false);
+    ).toBe("rejected");
     expect(c.getState().simulation).toEqual(sim);
     expect(c.snapshot()).toEqual(before);
     expect(c.getState().resourceError).toContain("100");

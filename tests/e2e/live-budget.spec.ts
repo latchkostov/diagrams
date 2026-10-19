@@ -1,6 +1,9 @@
 import { test, expect, gotoLab, waitForLiveSession, expectNoErrors } from "./fixtures";
 
-test("a refused build shows its recovery notice and disables Play", async ({ page, consoleErrors }) => {
+test("a refused simulation recovers with valid sampling and disables seeking until rebuilt", async ({
+  page,
+  consoleErrors,
+}) => {
   await gotoLab(page, "custom-json");
   await page.getByTestId("lab-json-toggle").click();
   await page.getByTestId("lab-json-input").fill(
@@ -17,6 +20,8 @@ test("a refused build shows its recovery notice and disables Play", async ({ pag
           id: "budget",
           title: "Budget",
           scale: 10,
+          durationMs: 2000,
+          timeline: [{ atMs: 500, action: { do: "note", text: "Traffic underway" } }],
           traffic: [{ id: "rate", node: "source", shape: { kind: "constant", ratePerSec: 300_000, durationMs: 1000 } }],
         },
       ],
@@ -33,7 +38,20 @@ test("a refused build shows its recovery notice and disables Play", async ({ pag
   await page.getByTestId("scale-override").selectOption("1");
   await expect(page.getByTestId("live-notice")).toContainText("restart with more messages per dot");
   await expect(page.getByTestId("live-play")).toBeDisabled();
-  await page.getByTestId("live-sim-picker").selectOption("");
+  await expect(page.getByTestId("live-timeline-input")).toBeDisabled();
+  await expect(page.getByTestId("live-marker-0")).toBeDisabled();
+  await page.getByTestId("live-restart").click();
+  await expect(page.getByTestId("live-notice")).toContainText("restart with more messages per dot");
+  await expect(page.getByTestId("live-play")).toBeDisabled();
+  await page.getByTestId("scale-override").selectOption("10");
+  await expect(page.getByTestId("live-notice")).toHaveCount(0);
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("budget");
   await expect(page.getByTestId("live-play")).toBeEnabled();
+  await expect(page.getByTestId("live-timeline-input")).toBeEnabled();
+  await expect(page.getByTestId("live-marker-0")).toBeEnabled();
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("live-done")).toBeVisible();
+  await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "2000");
+  await expect(page.getByTestId("node-badge-source")).toHaveAttribute("data-processed", "300000");
   expectNoErrors(consoleErrors);
 });

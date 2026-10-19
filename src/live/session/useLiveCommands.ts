@@ -66,7 +66,7 @@ export function useLiveCommands({
 
   const runDraft = useCallback(
     (sim: Simulation) => {
-      if (!controller.selectSimulation(sim)) return;
+      if (controller.selectSimulation(sim) === "rejected") return;
       const saved = simsRef.current.some((s) => s.id === sim.id && JSON.stringify(s) === JSON.stringify(sim));
       setDraft(saved ? null : sim);
       draftRef.current = saved ? null : sim;
