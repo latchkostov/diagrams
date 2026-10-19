@@ -137,15 +137,14 @@ second slice, built on P1's control log. The owner's defaults apply.
 
 - **Parity:** `node/i18n/catalogs.json` is re-recorded for the 16 new English messages. Every locale gains them as
   English fallbacks; nothing else changed.
-- **Bundle,** gzip, against master (with #189):
+- **Bundle,** gzip, against master (with #189 and #194):
 
   |                   | master    | now       | change   |
   | ----------------- | --------- | --------- | -------- |
-  | live session      | 133,321 B | 129,618 B | −3,703 B |
-  | canvas first view | 382,737 B | 380,984 B | −1,753 B |
-  | startup           | 176,313 B | 176,323 B | +10 B    |
+  | live session      | 133,323 B | 129,626 B | −3,697 B |
+  | canvas first view | 382,752 B | 380,981 B | −1,771 B |
+  | startup           | 176,323 B | 176,317 B | −6 B     |
 
-  Startup's code is unchanged. The entry now names two more lazy chunks (Record video and the shortcuts sheet),
-  and the chunks' content hashes moved; that's the 10 bytes. Every budget is as it was. The live session grew
-  about 1.1 KB on the last round (the remote-op API, origins, the sync boundary) and the canvas about 0.6 KB (the
-  shortcuts sheet's frame).
+  Every budget is as it was. Since the first round, the live session gained about 1.1 KB (the remote-op API,
+  origins, the sync boundary) and the canvas about 0.6 KB (the shortcuts sheet's frame), both inside what the lazy
+  Record video and shortcuts sheet freed.
