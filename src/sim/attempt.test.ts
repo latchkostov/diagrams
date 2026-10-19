@@ -14,6 +14,146 @@ import { resourceLesson } from "../model/autoscaling";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
 import type { EngineOptions } from "./types";
+import { realSnapshot } from "./units";
+
+it("a saturated non-blocking caller preserves master's local-work throughput at scales 1 and 10", () => {
+  const run = (scale: number) => {
+    const d = waitingFixture();
+    d.nodes[1].props = { concurrency: 1, latencyMs: 100, jitter: 0 };
+    d.nodes[2].props = { api: { latencyMs: 0 }, jitter: 0 };
+    d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking" } };
+    const e = createEngine({ scale, seed: 7, maxParticles: 0, verifyLedger: assertLedgerInvariants });
+    e.load(d);
+    e.inject("source", 1000);
+    e.step(20_000);
+    return realSnapshot(e.snapshot()).nodes.caller.processed;
+  };
+  const baseline = run(1);
+  const sampled = run(10);
+  // I1, S=1, N=10, no faults; the master probe is checked alongside this regression.
+  const tolerance = 10 * (Math.ceil(1 / 10) + 1) + 0.02 * baseline;
+  expect(baseline).toBe(180);
+  expect(Math.abs(sampled - baseline)).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(sampled - 180)).toBeLessThanOrEqual(tolerance);
+});
+
+it.each([1, 10])("pause → reply → down fails an unexecuted continuation, preserving the join (scale %s)", (scale) => {
+  const d = waitingFixture();
+  d.edges[0].kind = "sync";
+  d.edges[0].props = { travelMs: 10, networkDelayMs: 10 };
+  d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking", replyMs: 1000 } };
+  const outcomes = new Map<number, { ok: boolean; at: number }>();
+  const e = createEngine({
+    scale,
+    seed: 7,
+    maxParticles: 0,
+    verifyOutcomes(s) {
+      assertOutcomeInvariants(s);
+      for (const a of s.attempts) if (a.node === "caller" && a.outcome) outcomes.set(a.id, a.outcome);
+    },
+  });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(50);
+  e.setNodeStatus("caller", "paused");
+  e.step(300);
+  expect([...outcomes.values()].map((o) => o.ok)).toEqual([true]);
+  const joined = [...outcomes.values()][0];
+  e.setNodeStatus("caller", "down");
+  e.step(2000);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 0, failed: 1 });
+  expect(e.snapshot().nodes.result.processed).toBe(0);
+  expect(e.snapshot().edges.input.calls?.failed).toBe(1);
+  expect(e.snapshot().inSystem).toBe(0);
+  expect([...outcomes.values()]).toEqual([joined, { ok: false, code: undefined, at: 350 }]);
+});
+
+it("managed admission rejections commit a failed outcome without becoming processing failures", () => {
+  const d = waitingFixture();
+  d.nodes[1].stencil = "generic.external-api";
+  d.nodes[1].props = { api: { maxInFlight: 1, latencyMs: 100 }, jitter: 0 };
+  const outcomes = new Map<number, boolean>();
+  const e = createEngine({
+    seed: 7,
+    verifyOutcomes(s) {
+      assertOutcomeInvariants(s);
+      for (const a of s.attempts) if (a.node === "caller" && a.committed) outcomes.set(a.id, a.outcome!.ok);
+    },
+  });
+  e.load(d);
+  e.inject("source", 2);
+  e.step(1000);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 1, rejected: 1, failed: 0 });
+  expect([...outcomes.values()].sort()).toEqual([false, true]);
+});
+
+it.each(["pause", "down", "drain", "scale", "checkpoint"])(
+  "sampled non-blocking local-work reservations survive their logical dispatch: %s",
+  (action) => {
+    const d = waitingFixture();
+    d.nodes[1].props = {
+      concurrency: 1,
+      replicas: 2,
+      latencyMs: 100,
+      jitter: 0,
+      ...(action === "scale"
+        ? {}
+        : {
+            resources: {
+              ...resourceLesson(),
+              cpuMsPerMessage: 0,
+              terminationGraceMs: 10,
+              startup: { delayMs: 0, jitterFraction: 0 },
+            },
+          }),
+    };
+    d.nodes[2].props = { api: { latencyMs: 2000 }, jitter: 0 };
+    d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking" } };
+    let state!: LedgerInvariantState;
+    const e = createEngine({
+      scale: 10,
+      seed: 7,
+      maxParticles: 0,
+      verifyResources: assertResourceInvariants,
+      verifyOutcomes: assertOutcomeInvariants,
+      verifyLedger(s) {
+        assertLedgerInvariants(s);
+        state = s;
+      },
+    });
+    e.load(d);
+    e.inject("source", 1);
+    e.step(200);
+    const threads = () => [...state.ledger.reservations.values()].filter((r) => r.scope === "thread");
+    expect(e.snapshot().edges.call.delivered).toBe(1);
+    expect(threads()).toHaveLength(1);
+    expect(e.snapshot().nodes.caller.threads?.working).toBeGreaterThan(0);
+    if (action === "pause") {
+      const at = threads()[0].releaseAt;
+      e.setNodeStatus("caller", "paused");
+      e.step(1000);
+      expect(threads()[0].releaseAt).toBe(at);
+      e.setNodeStatus("caller", "up");
+    } else if (action === "down") e.setNodeStatus("caller", "down");
+    else if (action === "drain") e.setNodeProps("caller", { replicas: 1 });
+    else if (action === "scale") e.setScale(1);
+    else {
+      const checkpoint = e.checkpoint();
+      e.step(3000);
+      const expected = e.snapshot();
+      e.restore(checkpoint);
+      e.step(3000);
+      expect(e.snapshot()).toEqual(expected);
+    }
+    e.step(action === "down" || action === "drain" ? 10 : 1000);
+    expect(threads()).toHaveLength(0);
+    e.step(30_000);
+    expect(state.ledger.reservations.size).toBe(0);
+    expect(state.partBudget.used).toBe(0);
+    expect(e.snapshot().inSystem).toBe(0);
+    expect(e.snapshot().nodes.caller.failed).toBe(action === "down" ? 1 : 0);
+  },
+);
 
 it("settleOnce writes exactly one outcome, including its code and logical time", () => {
   fc.assert(

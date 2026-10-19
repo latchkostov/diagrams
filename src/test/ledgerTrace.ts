@@ -1,7 +1,18 @@
 import { ledgerFixture } from "../lab/ledgerFixture";
 import type { createEngine } from "../sim/engine";
 
-const sampledCases = [
+interface LedgerTraceCase {
+  name: string;
+  scale: number;
+  nested: boolean;
+  pause: number;
+  resume: number;
+  until: number;
+  count: number;
+  pool?: number;
+}
+
+const sampledCases: LedgerTraceCase[] = [
   { name: "reply-during-pause", scale: 10, nested: false, pause: 10, resume: 610, until: 6000, count: 5 },
   { name: "nested-reply-during-pause", scale: 10, nested: true, pause: 150, resume: 1350, until: 8000, count: 5 },
   { name: "reply-deadline-during-pause", scale: 10, nested: false, pause: 10, resume: 2000, until: 6000, count: 5 },
@@ -22,9 +33,24 @@ export const ledgerTraceCases = [
   ...sampledCases.map((scenario) => ({ ...scenario, name: `scale-1-${scenario.name}`, scale: 1 })),
 ];
 
+export const divisibleTimingCases: LedgerTraceCase[] = [2, 10].flatMap((scale) =>
+  [false, true].map((pause) => ({
+    name: `divisible-${scale}${pause ? "-pause" : ""}`,
+    scale,
+    pool: scale,
+    nested: false,
+    pause: pause ? 50 : -1,
+    resume: pause ? 250 : -1,
+    until: 2000,
+    count: 5,
+  })),
+);
+
 export function ledgerTrace(factory: typeof createEngine, scenario: (typeof ledgerTraceCases)[number]) {
   const diagram = ledgerFixture(scenario.nested);
   if (scenario.scale < 2) diagram.edges[1].props!.caller = { poolConnections: 2, wait: "non-blocking" };
+  if (scenario.pool !== undefined)
+    diagram.edges[1].props!.caller = { poolConnections: scenario.pool, wait: "non-blocking" };
   const engine = factory({ seed: 7, scale: scenario.scale, maxParticles: 0 });
   engine.load(diagram);
   engine.inject("caller", scenario.count);

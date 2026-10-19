@@ -174,37 +174,53 @@ it("aggregates invisible echoes and keeps drained checkpoints small", () => {
   expect(e.snapshot().edges["call-0"].active).toBe(0);
 });
 
-it("sampled callers preserve non-divisible pool capacity", () => {
-  const check = (capacity: number, scale: number) => {
-    const d = waitingFixture();
-    d.nodes[1].props!.concurrency = capacity;
-    const run = (weight: number) => {
-      const e = createEngine({ scale: weight, maxParticles: 0 });
-      e.load(d);
-      expect(e.snapshot().scale).toBe(weight);
-      const dots = Math.ceil(capacity / scale);
-      e.inject("source", 400 * dots * scale);
-      for (let i = 0; i < 100; i++) {
-        e.step((300 * scale * dots) / capacity);
-        const t = realSnapshot(e.snapshot()).nodes.caller.threads!;
-        expect(t.working + t.waiting).toBeLessThanOrEqual(capacity + 1e-9);
-      }
-      return realSnapshot(e.snapshot()).nodes.caller.processed;
-    };
-    const sampled = run(scale),
-      baseline = run(1);
-    // Whole dots finish at different instants. Compare a long run within one pool of dots
-    // and 1%, rather than requiring sub-message equality at an arbitrary instant.
-    expect(Math.abs(sampled - baseline)).toBeLessThanOrEqual(Math.ceil(capacity / scale) * scale);
-    expect(Math.abs(sampled / baseline - 1)).toBeLessThan(0.01);
+function checkNonDivisiblePoolCapacity(capacity: number, scale: number) {
+  const d = waitingFixture();
+  d.nodes[1].props!.concurrency = capacity;
+  const run = (weight: number) => {
+    const e = createEngine({ scale: weight, maxParticles: 0 });
+    e.load(d);
+    expect(e.snapshot().scale).toBe(weight);
+    const dots = Math.ceil(capacity / scale);
+    e.inject("source", 400 * dots * scale);
+    for (let i = 0; i < 100; i++) {
+      e.step((300 * scale * dots) / capacity);
+      const t = realSnapshot(e.snapshot()).nodes.caller.threads!;
+      expect(t.working + t.waiting).toBeLessThanOrEqual(capacity + 1e-9);
+    }
+    return realSnapshot(e.snapshot()).nodes.caller.processed;
   };
-  check(3, 2);
-  check(1, 10);
-  check(4, 3);
-  fc.assert(fc.property(fc.integer({ min: 1, max: 12 }), fc.integer({ min: 1, max: 20 }), check), {
-    numRuns: propertyRuns(30),
-  });
-});
+  const sampled = run(scale),
+    baseline = run(1);
+  // Whole dots finish at different instants. Compare a long run within one pool of dots
+  // and 1%, rather than requiring sub-message equality at an arbitrary instant.
+  expect(Math.abs(sampled - baseline)).toBeLessThanOrEqual(Math.ceil(capacity / scale) * scale);
+  expect(Math.abs(sampled / baseline - 1)).toBeLessThan(0.01);
+}
+
+it.each([
+  [3, 2],
+  [1, 10],
+  [4, 3],
+])("sampled callers preserve non-divisible pool capacity: %s slots at scale %s", checkNonDivisiblePoolCapacity);
+
+it.each(Array.from({ length: 12 }, (_, i) => i + 1))(
+  "sampled callers preserve non-divisible pool capacity: generated scales for %s slots",
+  (capacity) => {
+    // Each run advances 100 * 300 * scale * ceil(capacity / scale) / capacity ms.
+    // Bound that work to 60,000 simulated ms per engine; keep the extreme 1/10 case above.
+    // Partition by capacity so the expanded corpus cannot exhaust one test's
+    // hang backstop. All twelve capacities run: 36 usual / 180 fivefold cases.
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: Math.min(20, 2 * capacity) }), (scale) =>
+        checkNonDivisiblePoolCapacity(capacity, scale),
+      ),
+      {
+        numRuns: propertyRuns(3),
+      },
+    );
+  },
+);
 
 it("uses the saved sampling weight for saved and manual real-count injections", () => {
   const d = waitingFixture();

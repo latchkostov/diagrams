@@ -99,6 +99,7 @@ import {
 import { QUOTA_UNITS } from "../model/admission";
 import { occupancyFraction, reserveCallerOccupancy, type CallerOccupancy } from "./callerOccupancy";
 import { callPolicy, replyCpuMs, type CallPolicy } from "./callPolicy";
+import { retryDisposition, type RetryDisposition } from "./retryPolicy";
 
 import type {
   RouteCounts,
@@ -180,6 +181,7 @@ interface Delivery {
 }
 interface Work {
   attempt?: Attempt<Message>;
+  localThread?: number;
   /** R2 carries a mixed call's retained residence into its continuation. */
   holdDebt?: number;
   /** Owns its preceding thread while awaiting the ordinary continuation phase. */
@@ -257,6 +259,8 @@ interface Node {
   staged: number;
   working: Work[];
   calls: Map<number, Call>;
+  /** R2's minimum independent reservation for sampled non-blocking local work. */
+  threadTails: Map<number, Work>;
   heldCalls: number;
   freeFlight: number;
   localCalls: number;
@@ -319,6 +323,7 @@ interface Logical {
   call?: number;
   ok?: boolean;
   grace?: number;
+  thread?: number;
   visualAt?: number;
 }
 interface Edge {
@@ -421,6 +426,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let faultIndex: ReturnType<typeof faultTopology>;
   const faultEdges = new Map<string, Edge>();
   const ledger = new SampledLedger((reservation) => {
+    if (reservation.scope === "thread") {
+      const node = nodes.get(reservation.owner)!;
+      const work = node.threadTails.get(reservation.id);
+      if (work) {
+        node.threadTails.delete(reservation.id);
+        endResources(node, work);
+        endThreadAdmission(work);
+        if (!work.slotStart?.reservation && node.status === "up")
+          node.slotCredit += Math.max(0, node.activeMs - reservation.releaseAt!) * occupancyFraction(reservation);
+        if (node.status === "up" && !node.fleet) admitPending(node);
+      }
+      return;
+    }
     if (reservation.scope !== "pool") return;
     const edge = faultEdges.get(reservation.edge!)!;
     const fraction = occupancyFraction(reservation);
@@ -442,7 +460,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let outcomeChecks = new Map<number, Attempt<Message>>();
   let nextLogical = 1;
   const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
-  const busy = (node: Node) => node.working.length + node.heldCalls;
+  const busy = (node: Node) => node.working.length + node.heldCalls + node.threadTails.size;
   let drawn = 0;
   let drawnTrips = new Map<number, Trip>();
   let sourceRate = 0;
@@ -768,6 +786,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
         }
       }
+    if (status === "up") for (const [id, work] of node.threadTails) scheduleThreadGrace(id, work);
     log("status", node, undefined, status);
   }
 
@@ -1410,6 +1429,54 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (opts.verifyOutcomes) outcomeChecks.set(a.id, a);
   }
 
+  /** All terminal paths use the same write-once commitment, preserving their own effects. */
+  function commitAttempt(a: Attempt<Message>, ok: boolean, code?: number): boolean {
+    decide(a, ok, code);
+    if (a.committed) return false;
+    a.committed = true;
+    return true;
+  }
+
+  function scheduleThreadGrace(id: number, work: Work): void {
+    const at = Math.min(...(work.cpuParts ?? []).map((p) => p.drainAt ?? Infinity));
+    if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, thread: id });
+  }
+
+  /** Dispatch at logical completion; the remaining sampled local residence owns capacity only. */
+  function retireLocalThread(node: Node, work: Work): void {
+    const start = work.slotStart;
+    if (!start) return;
+    const fraction = start.reservation ? occupancyFraction(start.reservation) : slotFraction(node);
+    const reservation =
+      opts.ledgerHold === "none"
+        ? undefined
+        : ledger.reserve({ scope: "thread", owner: node.id, startActive: start.elapsed }, scale, scale * fraction);
+    if (reservation) {
+      const tail: Work = {
+        message: work.message,
+        remaining: 0,
+        slotted: true,
+        cpuParts: work.cpuParts,
+        cpuRemaining: work.cpuRemaining,
+        threadLease: work.threadLease,
+        slotStart: start,
+      };
+      node.threadTails.set(reservation.id, tail);
+      work.localThread = reservation.id;
+      work.cpuParts = work.cpuRemaining = work.threadLease = undefined;
+      const duration = Math.min(
+        node.activeMs - start.elapsed,
+        Math.ceil((Math.max(start.workMs, callerClock(node, work) - start.workClock) - 1e-6) / STEP) * STEP,
+      );
+      ledger.retire(reservation, {
+        activeMs: node.activeMs,
+        logicalHoldMs: Math.max(0, duration - (start.workClock - start.clock)),
+      });
+      if (node.threadTails.has(reservation.id)) scheduleThreadGrace(reservation.id, tail);
+    }
+    work.slotStart = undefined;
+  }
+
   /** Choose each branch once, then join Requests before publishing Messages or replying upstream. */
   function beginCall(node: Node, work: Work, ok = true): boolean {
     if (!node.waits) return false;
@@ -1436,7 +1503,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const requests = outgoing.filter((edge) => edge.sync);
     if (!requests.length && !work.slotStart) return false;
     const nonblocking = requests.length > 0 && requests.every((e) => !e.policy?.blocking);
-    if (nonblocking) work.slotStart = undefined;
+    if (nonblocking) retireLocalThread(node, work);
     let durationMs: number | undefined;
     if (work.slotStart) {
       const elapsed = node.activeMs - work.slotStart.elapsed;
@@ -1661,21 +1728,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (node.status === "paused") return;
     ok = a.outcome!.ok;
+    const retry =
+      !ok || ((call.replies ?? 0) > 0 && (node.status === "down" || releaseNow))
+        ? retryFor(node, work, !releaseNow)
+        : "none";
     let retainHold = false;
     if (call.held && work.slotStart && node.status === "up" && !releaseNow && opts.ledgerHold !== "none") {
       // R2 keeps the existing clocks. Only capacity waits for this stretched end;
       // the logical outcome and its effects are independent of it.
-      const retaining =
-        !ok &&
-        work.delivery &&
-        node.props.retry === "inplace" &&
-        work.message.attempts + 1 < work.delivery.broker.props.maxDeliveryCount &&
-        canRetain(node, work);
       const end =
         call.slotEnd ??
         work.slotStart.clock +
           (call.durationMs ?? node.activeMs - work.slotStart.elapsed) +
-          (node.fleet || (retaining && !node.props.admission)
+          (node.fleet || (retry === "inplace" && !node.props.admission)
             ? 0
             : STEP *
               (1 - (work.slotStart.reservation ? occupancyFraction(work.slotStart.reservation) : slotFraction(node))));
@@ -1686,7 +1751,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
       }
     }
-    a.committed = true;
+    commitAttempt(a, ok);
     for (const id of call.outstanding) {
       const edge = faultEdges.get(id)!;
       releaseCallEdge(call, edge);
@@ -1706,14 +1771,30 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       );
     }
     if (node.role === "processor" && (call.replies ?? 0) > 0 && node.status !== "down" && !releaseNow) {
+      const local = work.localThread === undefined ? undefined : ledger.state.reservations.get(work.localThread);
+      const tail = local && node.threadTails.get(local.id);
+      if (tail) {
+        // The continuation may use its own reservation, carrying the unspent
+        // local residence forward without admitting unrelated work early.
+        work.holdDebt = Math.max(0, local.releaseAt! - node.activeMs) * occupancyFraction(local);
+        work.cpuParts = tail.cpuParts;
+        work.cpuRemaining = tail.cpuRemaining;
+        work.threadLease = tail.threadLease;
+        node.threadTails.delete(local.id);
+        ledger.release(local);
+        retainHold = true;
+      }
+      work.localThread = undefined;
       if (retainHold) {
         // A continuation takes over its own thread reservation. Waiting behind
         // that tail would make its logical outcome depend on ledger residence.
-        work.holdDebt = Math.max(0, call.slotEnd! - callerClock(node, work));
+        if (!tail) work.holdDebt = Math.max(0, call.slotEnd! - callerClock(node, work));
         calls.delete(call.id);
         node.calls.delete(call.id);
-        node.heldCalls--;
-        if (work.delivery) node.heldBrokerCalls--;
+        if (call.held) {
+          node.heldCalls--;
+          if (call.brokerHeld) node.heldBrokerCalls--;
+        }
         work.slotStart = undefined;
         work.waitingCall = undefined;
       } else {
@@ -1743,30 +1824,30 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       } else node.resume.push(work);
       return;
     }
+    if (node.role === "processor" && (call.replies ?? 0) > 0) {
+      // The join is settled, but its continuation has never run. Termination is
+      // a failed work attempt; it must not rewrite that settled join.
+      work.attempt = undefined;
+      commitAttempt(attempt(node, work), false);
+      ok = false;
+    }
     wakeDelivery(work);
     // Acknowledge the logical request now, but retain its admission leases until
     // the release clock expires. Retrying work instead takes ownership below.
     const leases = { request: work.lease, thread: work.threadLease };
-    const retry =
-      !ok &&
-      !releaseNow &&
-      work.delivery &&
-      node.props.retry === "inplace" &&
-      canRetain(node, work) &&
-      work.message.attempts + 1 < work.delivery.broker.props.maxDeliveryCount;
-    if (retainHold && !retry) {
+    if (retainHold && retry !== "inplace") {
       work.lease = undefined;
       work.threadLease = undefined;
     }
     if (ok) complete(node, work);
-    else fail(node, work, !releaseNow);
+    else fail(node, work, retry);
     // Logical acknowledgement releases the broker's delivery slot now. Its
     // retained thread must not later look like a queued pushed request.
     if (call.brokerHeld && !work.held) {
       node.heldBrokerCalls--;
       call.brokerHeld = false;
     }
-    if (retainHold && !retry) {
+    if (retainHold && retry !== "inplace") {
       work.lease = leases.request;
       work.threadLease = leases.thread;
     }
@@ -1794,6 +1875,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     while (logical.length && logical[0].end <= time) {
       const event = popDue(logical);
       const edge = event.edge;
+      if (event.thread !== undefined) {
+        const reservation = ledger.state.reservations.get(event.thread);
+        if (reservation) {
+          const node = nodes.get(reservation.owner)!;
+          const work = node.threadTails.get(reservation.id)!;
+          if (node.status !== "paused" && work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time))
+            ledger.release(reservation);
+        }
+        continue;
+      }
       if (event.call !== undefined) {
         const call = calls.get(event.call);
         if (event.grace !== undefined) {
@@ -1941,7 +2032,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     accepting.forEach((group, i) => group.pending.push(copies[i]));
   }
 
-  function fail(node: Node, work: Work, allowRetry = true): void {
+  function retryFor(node: Node, work: Work, allowRetry = true): RetryDisposition {
+    return retryDisposition({
+      delivery: !!work.delivery,
+      inplace: node.props.retry === "inplace",
+      attempts: work.message.attempts,
+      maxDeliveryCount: work.delivery?.broker.props.maxDeliveryCount ?? 0,
+      retain: () => allowRetry && canRetain(node, work),
+    });
+  }
+
+  function fail(node: Node, work: Work, retry: RetryDisposition): void {
     // A queued retained attempt can fail again while down. Retention belongs only to this attempt.
     work.retained = false;
     node.failed++;
@@ -1952,12 +2053,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       log("retry", work.delivery.broker, work.message, `attempt ${work.message.attempts}`);
       if (work.message.family.trace && work.message.attempts < work.delivery.broker.props.maxDeliveryCount)
         step(work.message, "retry", work.delivery.broker.id, { attempt: work.message.attempts });
-      if (
-        node.props.retry === "inplace" &&
-        work.message.attempts < work.delivery.broker.props.maxDeliveryCount &&
-        allowRetry &&
-        canRetain(node, work)
-      ) {
+      if (retry === "inplace") {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.waitRemaining = node.props.retryBackoffMs;
         if (node.props.resources) {
@@ -1992,22 +2088,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function settleWork(node: Node, work: Work, ok: boolean, allowRetry = true): void {
     if (waits()) {
       const a = attempt(node, work);
-      decide(a, ok);
-      if (a.committed) return;
-      a.committed = true;
+      if (!commitAttempt(a, ok)) return;
       ok = a.outcome!.ok;
     }
     if (ok) complete(node, work);
-    else fail(node, work, allowRetry);
+    else fail(node, work, retryFor(node, work, allowRetry));
     if (work.retained) work.attempt = undefined;
   }
 
   function finish(node: Node, work: Work): void {
-    if (node.frees && !work.continuation && work.slotStart) {
-      const end = work.slotStart.clock + Math.ceil(work.slotStart.workMs / STEP) * STEP;
-      if (!work.slotStart.reservation) node.slotCredit += Math.max(0, node.slotClock - end);
-      work.slotStart = undefined;
-    }
     if (work.continuation) {
       wakeDelivery(work);
       const ok = work.continuation.ok && node.status !== "down";
@@ -2125,6 +2214,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         refuse(node, work, outcome.rejected, quotaReason(outcome.rejected) ? 429 : undefined, work.route?.rule);
         return false;
       }
+      if (waits() && !commitAttempt(attempt(node, work), false)) return false;
       node.rejected++;
       node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + 1;
       log("reject", node, work.message, outcome.rejected);
@@ -2278,9 +2368,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function refuse(node: Node, work: Work, reason: string, code: number | undefined, rule?: string): void {
     if (waits()) {
       const a = attempt(node, work);
-      decide(a, false, code);
-      if (a.committed) return;
-      a.committed = true;
+      if (!commitAttempt(a, false, code)) return;
     }
     const message = work.message;
     node.rejected++;
@@ -2397,6 +2485,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function* nodeWork(node: Node): IterableIterator<Work> {
     yield* node.working;
+    yield* node.threadTails.values();
     for (const call of node.calls.values()) if (call.held) yield call.work;
     yield* queuedWork(node);
   }
@@ -2457,8 +2546,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     };
   }
   function resourceWork(node: Node): Work[] {
-    return node.heldCalls
-      ? [...node.working, ...[...node.calls.values()].filter((c) => c.held).map((c) => c.work)]
+    return node.heldCalls || node.threadTails.size
+      ? [
+          ...node.working,
+          ...[...node.calls.values()].filter((c) => c.held).map((c) => c.work),
+          ...node.threadTails.values(),
+        ]
       : node.working;
   }
   function reconcileResources(node: Node, desired: number): boolean {
@@ -2477,6 +2570,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           : (f.busy.get(call.work.replica)?.drainAt ?? Infinity);
       if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
     }
+    for (const [id, work] of node.threadTails) scheduleThreadGrace(id, work);
     return true;
   }
   function startResources(node: Node, work: Work): boolean {
@@ -3075,6 +3169,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.staged = 0;
       node.working.length = 0;
       node.calls.clear();
+      node.threadTails.clear();
       node.slotClock = node.activeMs = node.slotCredit = 0;
       node.slotReleases = [];
       node.reservationReleases = [];
@@ -3348,6 +3443,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           activeMs: 0,
           slotCredit: 0,
           slotReleases: [],
+          threadTails: new Map(),
           reservationReleases: [],
           heldCalls: 0,
           freeFlight: 0,
@@ -3505,7 +3601,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             ? {
                 threads: {
                   slots: slots(node) / scale,
-                  working: (node.working.length + node.localCalls) * slotFraction(node),
+                  working: (node.working.length + node.localCalls + node.threadTails.size) * slotFraction(node),
                   waiting: (node.heldCalls - node.localCalls) * slotFraction(node),
                   waitingOn: topWaiting(node).map(([id, count]) => [id, count * slotFraction(node)]),
                   queued: backlog,
