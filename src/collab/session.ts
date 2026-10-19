@@ -23,8 +23,18 @@ import {
   type Channel,
   type RoomKeys,
 } from "./keys";
-import { commitEpoch, EpochChain, scopeOf, signStart, type ChainData, type EpochStart } from "./epochs";
-import { Buckets, Lobby, unwrap, wrapFor, wrapSigned, type LobbyBody, type LobbyMessage, type Wrap } from "./lobby";
+import { commitEpoch, EpochChain, MAX_EPOCHS, scopeOf, signStart, type ChainData, type EpochStart } from "./epochs";
+import {
+  Buckets,
+  chainMessages,
+  Lobby,
+  unwrap,
+  wrapFor,
+  wrapSigned,
+  type LobbyBody,
+  type LobbyMessage,
+  type Wrap,
+} from "./lobby";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import {
@@ -350,7 +360,11 @@ export class CollabSession {
   /** Scopes this session has sealed content under: it never moves to one again (nor back to an older epoch). */
   private readonly sealedScopes = new Set<string>();
   /** At the door, a member answered (someone's here and has been asked): waiting to be let in, not for an answer. */
-  lobbyAnswered = false;
+  private readonly answeredBy = new Set<PeerId>();
+  /** At the door, a member here answered (someone's here and has been asked): until they've all gone. */
+  get lobbyAnswered(): boolean {
+    return this.answeredBy.size > 0;
+  }
   /** Counts changes to the roster and to bindings: a held update that didn't count is checked again after one. */
   private authRevision = 0;
   private outbox: Promise<void> = Promise.resolve();
@@ -808,6 +822,8 @@ export class CollabSession {
         },
         leave: (peer) => {
           this.memberPeers.delete(peer);
+          // The last member who answered a knock gone: waiting for an answer again (the no-answer wait restarts).
+          this.answeredBy.delete(peer);
           this.asked.delete(peer);
           this.lobby?.forget(peer);
           for (const [key, k] of this.knocks) if (k.peer === peer) this.knocks.delete(key);
@@ -832,8 +848,16 @@ export class CollabSession {
       for (const q of this.held.values()) q.stop();
       this.held.clear();
     });
-    this.stops.push(this.clock.every(COLLAB_LIMITS.partialTtlMs, () => this.reassembler.expire()));
-    this.stops.push(() => this.reassembler.clear());
+    this.stops.push(
+      this.clock.every(COLLAB_LIMITS.partialTtlMs, () => {
+        this.reassembler.expire();
+        this.lobby?.expire();
+      }),
+    );
+    this.stops.push(() => {
+      this.reassembler.clear();
+      this.lobby?.clear();
+    });
     this.stops.push(
       this.clock.every(COLLAB_LIMITS.presenceHeartbeatMs, () => {
         this.sendPresence();
@@ -1003,21 +1027,34 @@ export class CollabSession {
   // ---------------------------------------------------------------- knock-to-join (P5)
 
   /** A lobby message, signed and sealed, in order with everything else this session sends. */
-  private sendLobby(body: LobbyBody | (() => Promise<LobbyBody>), to?: PeerId): void {
+  private sendLobby(
+    body: LobbyBody | LobbyBody[] | (() => Promise<LobbyBody | LobbyBody[]>),
+    to?: PeerId,
+  ): Promise<boolean> {
     const lobby = this.lobby;
-    if (!lobby || this.status === "left") return;
-    this.outbox = this.outbox.then(async () => {
+    if (!lobby || this.status === "left") return Promise.resolve(false);
+    const job = this.outbox.then(async () => {
       try {
-        for (const f of await lobby.seal(typeof body === "function" ? await body() : body)) {
-          if (this.status === "left") return;
-          this.transport.send(f, to);
-          this.stats.framesSent++;
-          this.stats.bytesSent += f.length;
-        }
+        const made = typeof body === "function" ? await body() : body;
+        for (const message of Array.isArray(made) ? made : [made]) this.sendFrames(await lobby.seal(message), to);
+        return true;
       } catch {
         this.reject("too-large");
+        return false;
       }
     });
+    this.outbox = job.then(() => {});
+    return job;
+  }
+
+  /** Lobby frames already sealed, to one peer or everyone. */
+  private sendFrames(frames: Uint8Array[], to?: PeerId): void {
+    for (const f of frames) {
+      if (this.status === "left") return;
+      this.transport.send(f, to);
+      this.stats.framesSent++;
+      this.stats.bytesSent += f.length;
+    }
   }
 
   /** Who this is, and the proof it holds this epoch's secret. */
@@ -1058,8 +1095,9 @@ export class CollabSession {
   /** At the door, told no: only the host's or a co-host's no counts (checked on the chain it carries). */
   private async lobbyDeny(m: LobbyMessage, deny: Extract<LobbyBody, { t: "deny" }>): Promise<void> {
     const room = this.signed;
-    if (!this.knocking || !room || deny.to !== room.key) return;
-    const chain = new EpochChain(room.hostKey, this.keys.roomId);
+    if (!this.knocking || !room?.knock || deny.to !== room.key) return;
+    // The chain came before it (in pieces), and checks like any: the no counts only from a host or co-host there.
+    const chain = room.knock.chain;
     await chain.add(deny.chain, () => this.verifies.take(m.sender, 1));
     const deepest = chain.deepest();
     const s = deepest && chain.rosterOf(deepest)?.state();
@@ -1073,8 +1111,8 @@ export class CollabSession {
     const room = this.signed!;
     // At the door: a member's hello means someone's here and has been asked; knock to them (once a window or so).
     if (this.knocking) {
-      if (hello.scope && !this.lobbyAnswered) {
-        this.lobbyAnswered = true;
+      if (hello.scope && !this.answeredBy.has(m.from)) {
+        this.answeredBy.add(m.from);
         this.updateStatus();
         this.emit();
       }
@@ -1144,14 +1182,16 @@ export class CollabSession {
       return;
     }
     const known = this.knocks.get(k.key);
+    const from = known?.peer;
     for (const [key, other] of this.knocks) if (other.peer === k.peer && key !== k.key) this.knocks.delete(key);
-    this.knocks.delete(k.key);
-    this.knocks.set(k.key, { ...k, at: this.clock.now() });
-    for (const key of this.knocks.keys()) {
-      if (this.knocks.size <= MAX_KNOCKS) break;
-      this.knocks.delete(key);
+    // A knock said again keeps its place (the cards don't move under the host's pointer); only its time is new.
+    if (known) Object.assign(known, { ...k, at: this.clock.now() });
+    else this.knocks.set(k.key, { ...k, at: this.clock.now() });
+    while (this.knocks.size > MAX_KNOCKS) {
+      const oldest = [...this.knocks.values()].reduce((a, b) => (b.at < a.at ? b : a));
+      this.knocks.delete(oldest.key);
     }
-    if (!known || known.peer !== k.peer) this.emit();
+    if (!known || from !== k.peer) this.emit();
   }
 
   /** Knocks not said again for a while go (the newcomer left, or stopped waiting). */
@@ -1277,7 +1317,9 @@ export class CollabSession {
     const knock = this.knocks.get(key);
     if (!room?.knock || !knock) return;
     this.knocks.delete(key);
-    this.sendLobby({ t: "deny", to: key, chain: room.knock.chain.data(room.current) }, knock.peer);
+    // The chain (in pieces a lobby message holds) so the newcomer can check who said it, then the no.
+    const pieces = chainMessages(room.knock.chain.data(room.current), []).map((m) => ({ ...m, more: true as const }));
+    void this.sendLobby([...pieces, { t: "deny", to: key, chain: { starts: [], logs: [] } }], knock.peer);
     this.emit();
   }
 
@@ -1312,7 +1354,7 @@ export class CollabSession {
           } catch {
             this.reject("bad-agreement");
           }
-      return { t: "bundle", chain: room.knock!.chain.data(current), wraps };
+      return chainMessages(room.knock!.chain.data(current), wraps);
     }, peer);
   }
 
@@ -1326,6 +1368,8 @@ export class CollabSession {
     const chain = room?.knock?.chain;
     if (!room || !chain) return;
     await chain.add(bundle.chain, () => this.verifies.take(m.sender, 1));
+    // One piece of a long chain: the rest (and the wraps) follow; only then does this session look where to go.
+    if (bundle.more) return;
     for (const w of bundle.wraps) {
       const start = chain.byScope(w.scope);
       const roster = start && chain.rosterOf(start);
@@ -1375,7 +1419,7 @@ export class CollabSession {
     }
     if (ahead.every((st) => !chain.rosterOf(st)!.state().members.has(room.key))) {
       this.knocking = true;
-      this.lobbyAnswered = false;
+      this.answeredBy.clear();
       this.memberPeers.clear();
       this.sayHello();
       this.updateStatus();
@@ -1389,23 +1433,22 @@ export class CollabSession {
    * can't be agreed with is left out of the wraps), sent to everyone, and this session re-keyed. False when this
    * person may not, or it changes nothing.
    */
-  async remove(key: string): Promise<boolean> {
-    const room = this.signed;
-    if (!room?.knock || !room.current || !(await this.appendRoster("remove", { who: key }))) return false;
-    const removal = room.roster
-      .removals()
-      .filter((r) => r.by === room.key && r.who === key)
-      .at(-1);
-    return !!removal && (await this.nextEpoch(removal));
+  /** The room has been through as many epochs as it can (each a removal): to remove anyone else, start a new room. */
+  get atRemovalLimit(): boolean {
+    const current = this.signed?.current;
+    return !!current && current.epoch + 1 >= MAX_EPOCHS;
   }
 
-  /** The next epoch after this person's removal: made in full, then handed out, then moved to. */
-  private async nextEpoch(removal: RosterEntry): Promise<boolean> {
-    const room = this.signed!;
-    const chain = room.knock!.chain;
-    const current = room.current;
-    const next = room.roster.next(removal);
-    if (!current || !next) return false;
+  async remove(key: string): Promise<boolean> {
+    const room = this.signed;
+    const chain = room?.knock?.chain;
+    const current = room?.current;
+    if (!room?.knock || !chain || !current || this.leaving || this.atRemovalLimit) return false;
+    // Prepared in full before anything changes or is sent: the removal (signed, not kept), the next epoch's start,
+    // its secret wrapped for everyone left, and every message that carries them, sealed.
+    const removal = await room.draft("remove", { who: key });
+    const next = removal && room.roster.nextAfter(removal);
+    if (!removal || !next) return false;
     const secret = newEpochSecret();
     const epoch = current.epoch + 1;
     const start = await signStart(room.identity, this.keys.roomId, {
@@ -1414,7 +1457,7 @@ export class CollabSession {
       prev: removal.sig,
     });
     const scope = scopeOf(start);
-    const mine = { identity: room.identity, agreement: room.knock!.agreement };
+    const mine = { identity: room.identity, agreement: room.knock.agreement };
     const wraps: Wrap[] = [];
     for (const [key, x] of next.xs) {
       if (key === room.key) continue;
@@ -1424,12 +1467,28 @@ export class CollabSession {
         this.reject("bad-agreement");
       }
     }
-    // Everything's ready: only now does anything change.
+    const data = chain.data(current);
+    data.logs[data.logs.length - 1] = { scope: scopeOf(current), entries: [...room.roster.log(), removal] };
+    data.starts.push(start);
+    data.logs.push({ scope, entries: [] });
+    let frames: Uint8Array[];
+    try {
+      frames = (await Promise.all(chainMessages(data, wraps).map((m) => this.lobby!.seal(m)))).flat();
+    } catch {
+      this.reject("too-large");
+      return false;
+    }
+    // Everything's ready: only now does anything change (nothing could, meanwhile, that makes it not count).
+    await room.roster.add([removal]);
+    if (!room.roster.has(removal.sig) || room.current !== current) return false;
     await chain.addStarts([start]);
     if (!chain.rosterOf(start) || !(await chain.learn(start, secret))) return false;
     for (const w of wraps) this.keepWrap(w);
-    // Everyone hears of it (the one removed too: their page sees it's out, and can't read what follows).
-    this.sendLobby({ t: "bundle", chain: chain.data(start), wraps });
+    // Everyone hears of it (the one removed too: their page sees it's out, and can't read what follows), then this
+    // session moves.
+    const sent = this.outbox.then(() => this.sendFrames(frames));
+    this.outbox = sent;
+    await sent;
     await this.rekey(start, secret);
     return true;
   }

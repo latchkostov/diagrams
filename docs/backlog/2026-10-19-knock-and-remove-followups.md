@@ -19,8 +19,10 @@ former co-host's backdated entries now end at the next removal.
   short fingerprint of their key would help a host tell two "Anonymous Wren"s apart.
 - **A former host's fork.** Remove is host-only, so no co-host can start an epoch. A former host (handed over, not
   removed) can still sign as the host it was: fork its own entries, and in an epoch with no successor yet, a removal
-  and a start of its own that a newcomer it reaches first could follow. Removing a former host closes it; a
-  host-signed handover that also re-keys would close it outright.
+  and a start of its own that a newcomer it reaches first could follow. Removing a former host closes it. A handover
+  that also moves the room to a new epoch (the new host signing a start with no removal) would close it outright, but
+  isn't a small change: a new kind of start and its validation, and every handover (Leave hands the room on too) would
+  spend one of the room's 32 epochs, so the epoch budget (or a compacted chain, above) comes first.
 - **The door's fragments.** People at the door make way for members in the lobby's fragment budget, but at the door
   only the room's host is known as a member: a co-host's admission bundle can wait behind someone flooding the door
   (until their partials expire, 30 s; the newcomer's next knock asks again).

@@ -100,7 +100,8 @@ export async function wrapSigned(roomId: string, wrap: Wrap): Promise<boolean> {
 
 export type LobbyBody =
   | { t: "hello"; x: string; alias: string; scope?: string; proof?: string }
-  | { t: "bundle"; chain: ChainData; wraps: Wrap[] }
+  /** `more`: one piece of a chain too long for one message; the rest follows (the last carries the wraps). */
+  | { t: "bundle"; chain: ChainData; wraps: Wrap[]; more?: true }
   | { t: "deny"; to: string; chain: ChainData };
 
 export interface LobbyMessage {
@@ -165,7 +166,8 @@ export function parseBody(v: unknown): LobbyBody | undefined {
     case "bundle": {
       const chain = parseChainData(v.chain);
       const wraps = parseWraps(v.wraps, MAX_WRAPS);
-      return chain && wraps ? { t: "bundle", chain, wraps } : undefined;
+      if (v.more !== undefined && v.more !== true) return undefined;
+      return chain && wraps ? { t: "bundle", chain, wraps, ...(v.more ? { more: true as const } : {}) } : undefined;
     }
     case "deny": {
       const chain = parseChainData(v.chain);
@@ -174,6 +176,36 @@ export function parseBody(v: unknown): LobbyBody | undefined {
     default:
       return undefined;
   }
+}
+
+/** A chain piece's JSON at most: well inside a lobby message, whatever the wraps add. */
+const MAX_PIECE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * A chain (in epoch order, each start with its log) as bundles a lobby message holds: one, or bounded pieces in
+ * order, each its epochs' starts and logs whole (one epoch's log is far inside a piece), the last with the wraps. A
+ * receiver takes each as it comes (ancestor order: ./epochs.ts) and follows the room on the last.
+ */
+export function chainMessages(data: ChainData, wraps: Wrap[]): Extract<LobbyBody, { t: "bundle" }>[] {
+  const pieces: ChainData[] = [];
+  let piece: ChainData = { starts: [], logs: [] };
+  let size = 0;
+  data.starts.forEach((start, i) => {
+    const log = data.logs[i];
+    const n = JSON.stringify(start).length + (log ? JSON.stringify(log).length : 0);
+    if (piece.starts.length && size + n > MAX_PIECE_BYTES) {
+      pieces.push(piece);
+      piece = { starts: [], logs: [] };
+      size = 0;
+    }
+    piece.starts.push(start);
+    if (log) piece.logs.push(log);
+    size += n;
+  });
+  pieces.push(piece);
+  return pieces.map((chain, i) =>
+    i < pieces.length - 1 ? { t: "bundle", chain, wraps: [], more: true } : { t: "bundle", chain, wraps },
+  );
 }
 
 const frameBytes = (roomId: string, head: Uint8Array, message: Uint8Array) =>
@@ -411,6 +443,12 @@ export class Lobby {
   private refuse(reason: string): undefined {
     this.refused = reason;
     return undefined;
+  }
+
+  /** Half-delivered messages past their time go (the session calls this on the room clock). */
+  expire(): void {
+    this.reassembler.expire();
+    for (const sender of this.partKeys.keys()) if (!this.reassembler.holds(sender)) this.partKeys.delete(sender);
   }
 
   clear(): void {

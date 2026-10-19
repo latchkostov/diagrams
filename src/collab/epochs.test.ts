@@ -108,16 +108,16 @@ describe("epochs", () => {
     await chain.addStarts([start]);
     const r0 = chain.rosterOf(start)!;
     for (const o of others) await r0.append(host, "join", { who: o.key, x: (await newAgreement()).x });
+    // Two removals in one slot, signed once (a misbehaving host's, or a former host's later on): the one that sorts
+    // later is the removal the start names, kept first; the other, sorting first, is the fork that takes the slot.
     const deps = r0.heads();
-    const removal = (await r0.append(host, "remove", { who: others[0].key }))!;
-    // The host's own fork of its removal's slot, sorting first (it takes the slot): a misbehaving host's, or a former
-    // host's later on.
-    let fork;
-    for (let i = 0; !fork; i++) {
-      const who = others[1 + (i % 2)].key;
-      const e = await signEntry(host, ROOM, scopeOf(start), { n: removal.n, op: "remove", who, deps });
-      if (e.sig < removal.sig) fork = e;
-    }
+    const n = Math.max(...deps.map((d) => r0.entry(d)!.n)) + 1;
+    const [fork, removal] = (
+      await Promise.all(
+        [others[0], others[1]].map((o) => signEntry(host, ROOM, scopeOf(start), { n, op: "remove", who: o.key, deps })),
+      )
+    ).sort((a, b) => (a.sig < b.sig ? -1 : 1));
+    expect(await r0.add([removal])).toMatchObject({ added: 1 });
     const kc = await commitEpoch(newEpochSecret(seededBytes(51)), ROOM, 1);
     const next = await signStart(host, ROOM, { epoch: 1, kc, prev: removal.sig });
     // After the start: it stays placed.

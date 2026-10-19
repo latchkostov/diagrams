@@ -55,6 +55,8 @@ hands Remove over with the room.
   handed the new key, if they're still in the room.
 - **One room, one key.** As only the host removes, the room only ever moves to one new key at a time, even when a
   connection drops: everyone ends up on the same key.
+- **A room can remove up to 31 people** over its life (each removal is a new key). After that, Remove says the room
+  has reached its removal limit and changes nothing: start a new room to remove anyone else.
 - **What it doesn't undo:** the person removed keeps what they saw before (the diagram as it was then, a copy they
   saved). Removing someone changes who gets what happens next.
 

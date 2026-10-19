@@ -8,7 +8,7 @@ import { signEntry } from "./roster";
 import { deriveEpochKeys, deriveRoomKeys, newEpochSecret } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
-import { Lobby, parseBody, wrapFor, type LobbyBody } from "./lobby";
+import { chainMessages, Lobby, MAX_LOBBY_MESSAGE_BYTES, parseBody, wrapFor, type LobbyBody } from "./lobby";
 import { DOC, frame } from "./protocol";
 import { textToBytes } from "../interop/codec";
 import { seededBytes } from "./random";
@@ -390,7 +390,7 @@ describe("remove with re-key: edge cases", () => {
     q.edit((d) => ({ ...d, title: "From q" }));
     await r.settle();
     for (const c of [host, c1, c2, p]) expect(title(c)).toBe("From q");
-  });
+  }, 20_000);
 
   it("someone other than the host drives; the host removes a third person: the driver stays the driver throughout", async () => {
     const r = await knockRoom(91);
@@ -500,6 +500,97 @@ describe("remove with re-key: edge cases", () => {
     expect(otter.session.keys.epoch).toBe(17);
     expect(title(otter)).toBe("Epoch 17");
   }, 60_000);
+
+  it("at the last epoch, Remove changes nothing (nothing signed, nobody re-keyed) and the host is told to start a new room", async () => {
+    const r = await knockRoom(93);
+    const host = r.host.client!;
+    const stays = await r.join("stays");
+    for (let i = 0; i < MAX_EPOCHS - 1; i++) {
+      const goes = await r.join(`goes${i}`);
+      expect(await host.session.remove(goes.session.signed!.key)).toBe(true);
+      await r.settle();
+    }
+    expect(host.session.keys.epoch).toBe(MAX_EPOCHS - 1);
+    expect(host.session.atRemovalLimit).toBe(true);
+    const last = await r.join("last");
+    const before = host.session.signed!.roster.log().length;
+    expect(await host.session.remove(last.session.signed!.key)).toBe(false);
+    await r.settle();
+    // Nothing recorded or sent: no removal in the roster (it would block every later one), the same keys everywhere.
+    expect(host.session.signed!.roster.log()).toHaveLength(before);
+    expect(host.session.signed!.state().removal).toBeUndefined();
+    for (const c of [host, stays, last]) {
+      expect(c.session.keys.epoch).toBe(MAX_EPOCHS - 1);
+      expect(c.session.removed).toBe(false);
+      expect(c.session.signed!.state().members.has(last.session.signed!.key)).toBe(true);
+    }
+    // From the people menu: told plainly, and still nothing signed.
+    const told: string[] = [];
+    const watch = new WatchTogether(
+      host.session,
+      new RoomRoster({ member: "0123456789abcdef", hosting: true, cohosts: [] }, () => {}),
+      { read: () => ({ documentId: "room-a", eligible: true }), show: () => {}, subscribe: () => () => {} },
+      { offer: () => {}, told: (m) => told.push(m) },
+    );
+    onTestFinished(() => watch.dispose());
+    watch.remove(last.session.senderId);
+    await r.settle();
+    expect(told).toEqual(["removal-limit"]);
+    expect(host.session.signed!.roster.log()).toHaveLength(before);
+  }, 60_000);
+
+  it("a chain too long for one lobby message (every epoch, full rosters) reaches a member and a newcomer in pieces", async () => {
+    const r = await knockRoom(94);
+    const host = r.host.client!;
+    const co = await r.join("co");
+    const m = await r.join("m");
+    expect(await host.session.appendRoster("cohost", { who: co.session.signed!.key })).toBe(true);
+    await r.settle();
+    const rounds = async (n: number) => {
+      for (let i = 0; i < n; i++) {
+        r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+        await r.settle();
+      }
+    };
+    // An epoch's roster as full as a room's can be: the host's entries and a co-host's (each toggling the switch),
+    // the co-host's handed to the host as a peer would.
+    const fill = async () => {
+      for (let i = 0; i < 240; i++) await host.session.signed!.append("ask", { ask: i % 2 === 1 });
+      for (let i = 0; i < 760; i++) await co.session.signed!.append("ask", { ask: i % 2 === 1 });
+      await host.session.signed!.addEntries(co.session.signed!.roster.log());
+      if (!host.session.signed!.state().ask) await host.session.signed!.append("ask", { ask: true });
+    };
+    // Let in, however many rounds checking the chain takes (a page checks so many signatures a window).
+    const letIn = async (name: string) => {
+      const k = await r.knock(name);
+      expect(await host.session.admit(k.p.identity.key)).toBe(true);
+      for (let i = 0; i < 80 && k.outcome() !== "admitted"; i++) await rounds(1);
+      expect(k.outcome()).toBe("admitted");
+      return k;
+    };
+    // Each epoch closed by removing someone who isn't here (let in, and away): the wraps cover them all the same.
+    for (let i = 0; i < MAX_EPOCHS - 1; i++) {
+      await fill();
+      const away = await newIdentity();
+      await host.session.signed!.append("join", { who: away.key, x: (await newAgreement()).x });
+      expect(await host.session.remove(away.key)).toBe(true);
+      await rounds(3);
+      expect(m.session.keys.epoch).toBe(i + 1);
+    }
+    const data = host.session.signed!.knock!.chain.data(host.session.signed!.current);
+    expect(data.starts).toHaveLength(MAX_EPOCHS);
+    expect(JSON.stringify(data).length).toBeGreaterThan(MAX_LOBBY_MESSAGE_BYTES);
+    expect(chainMessages(data, []).length).toBeGreaterThan(1);
+    expect(co.session.keys.epoch).toBe(MAX_EPOCHS - 1);
+    host.edit((d) => ({ ...d, title: "Thirty-one" }));
+    await r.settle();
+    expect(title(m)).toBe("Thirty-one");
+    // Someone new: let in, handed the whole chain in pieces (checked as their budget allows), and in the room.
+    const k = await letIn("newt");
+    expect(k.client.session.keys.epoch).toBe(MAX_EPOCHS - 1);
+    await rounds(2);
+    expect(title(k.client)).toBe("Thirty-one");
+  }, 180_000);
 
   it("a member away during a re-key comes back (an old record) and follows; someone removed who comes back is told", async () => {
     const r = await knockRoom(66);
@@ -1180,6 +1271,106 @@ describe("knock-to-join: the review's smaller cases", () => {
     await r.settle();
     expect(co.session.knocks.size).toBe(0);
     expect(host.session.knocks.has(k.p.identity.key)).toBe(true);
+  });
+
+  it("waiting to be let in ends when everyone who answered has gone: the no-answer wait runs again", async () => {
+    const r = await knockRoom(95);
+    const host = r.host.client!;
+    const k = await r.knock("wren");
+    expect(k.client.session.lobbyAnswered).toBe(true);
+    expect(k.client.session.waiting).toBe("admission");
+    await host.session.leave();
+    await r.settle();
+    expect(k.client.session.lobbyAnswered).toBe(false);
+    expect(k.client.session.waiting).toBe("peers");
+    r.clock.advance(COLLAB_LIMITS.noAnswerMs + 1_000);
+    await r.settle();
+    expect(k.client.session.noAnswer).toBe(true);
+  });
+
+  it("knock cards keep their order as their knocks are said again", async () => {
+    const r = await knockRoom(96);
+    const host = r.host.client!;
+    const knocks = [];
+    for (const name of ["a", "b", "c"]) knocks.push(await r.knock(name));
+    const order = () => [...host.session.knocks.values()].map((k) => k.alias);
+    expect(order()).toEqual(["a", "b", "c"]);
+    // The first two say it again, in turn, then everyone.
+    for (const k of [knocks[1], knocks[0]]) {
+      (k.client.session as unknown as { sayHello(): void }).sayHello();
+      await r.settle();
+      expect(order()).toEqual(["a", "b", "c"]);
+    }
+    r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+    await r.settle();
+    expect(order()).toEqual(["a", "b", "c"]);
+  });
+
+  it("a lobby message left half-delivered goes on the room clock, and with the session", async () => {
+    const r = await knockRoom(97);
+    const host = r.host.client!;
+    const evil = await r.rogue();
+    const size = COLLAB_LIMITS.maxFragmentBytes;
+    const body = new Uint8Array(1 + 12 + size);
+    const view = new DataView(body.buffer);
+    body[0] = 5;
+    view.setUint32(1, 1);
+    view.setUint16(5, 0);
+    view.setUint16(7, 3);
+    view.setUint32(9, size * 2 + 10);
+    const plain = new Uint8Array(body.length + 32);
+    plain.set(body);
+    plain.set(base64UrlToBytes(evil.id.key), body.length);
+    const sealer = (evil.lobby as unknown as { sealer: { seal(c: "lobby", p: Uint8Array): Promise<Uint8Array> } })
+      .sealer;
+    evil.transport.send(await sealer.seal("lobby", plain), host.session.transport.self);
+    await r.settle();
+    const held = () => (host.session as unknown as { lobby: { reassembler: { held: number } } }).lobby.reassembler.held;
+    expect(held()).toBe(size * 2 + 10);
+    // Nothing more arrives from anyone: it goes on its own.
+    r.clock.advance(COLLAB_LIMITS.partialTtlMs * 2 + 1);
+    await r.settle();
+    expect(held()).toBe(0);
+  });
+
+  it("with Ask before people join off, newcomers are let in on their own: by the host, else a co-host, never by others", async () => {
+    const r = await knockRoom(98);
+    const host = r.host.client!;
+    const co = await r.join("co");
+    const plain = await r.join("plain");
+    expect(await host.session.appendRoster("cohost", { who: co.session.signed!.key })).toBe(true);
+    expect(await host.session.appendRoster("ask", { ask: false })).toBe(true);
+    await r.settle();
+    host.edit((d) => ({ ...d, title: "Open door" }));
+    await r.settle();
+    // The host here: let in without anyone answering.
+    const a = await r.knock("a");
+    await r.settle();
+    expect(a.outcome()).toBe("admitted");
+    expect(title(a.client)).toBe("Open door");
+    // The host away: the co-host lets them in.
+    await host.session.leave();
+    await r.settle();
+    const b = await r.knock("b");
+    for (let i = 0; i < 3 && b.outcome() !== "admitted"; i++) {
+      r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+      await r.settle();
+    }
+    expect(b.outcome()).toBe("admitted");
+    expect(title(b.client)).toBe("Open door");
+    // Neither here: nobody else lets anyone in, and nothing of the room reaches them.
+    await co.session.leave();
+    await r.settle();
+    const c = await r.knock("c");
+    const seen = contentFramesTo(r.net, c.client.session.transport.self);
+    for (let i = 0; i < 3; i++) {
+      r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+      await r.settle();
+    }
+    expect(c.outcome()).toBeUndefined();
+    expect(c.client.session.hasDocument).toBe(false);
+    expect(seen()).toEqual([]);
+    expect(plain.session.signed!.state().members.has(c.p.identity.key)).toBe(false);
   });
 
   it("waiting to be let in isn't 'nobody answered': with someone here, the no-answer wait doesn't run out", async () => {

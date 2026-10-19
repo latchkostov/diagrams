@@ -110,7 +110,8 @@ export type WatchMessage =
   | "declined"
   | "driving"
   | "host"
-  | "rebased";
+  | "rebased"
+  | "removal-limit";
 
 export interface WatchNotices {
   /** A run to watch: offered once (never automatic). */
@@ -584,7 +585,10 @@ export class WatchTogether {
   /** Knock-to-join: Remove someone (the host alone; never the host). The room moves to a new epoch. */
   remove(sender: string): void {
     const key = this.keyOf(sender);
-    if (key && sender !== this.me && this.isHosting) void this.session.remove(key);
+    if (!key || sender === this.me || !this.isHosting) return;
+    // A room that has been through all its epochs removes no one (nothing is signed): it says to start a new room.
+    if (this.session.atRemovalLimit) this.notices.told("removal-limit", "");
+    else void this.session.remove(key);
   }
 
   /** Knock-to-join: "Ask before people join" (the host's or a co-host's switch). */

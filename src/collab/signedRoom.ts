@@ -218,6 +218,14 @@ export class SignedRoom {
     return this.roster.add(list, budget);
   }
 
+  /** A new entry by this member, signed but not kept yet (a removal, until its epoch's successor is ready). */
+  draft(
+    op: RosterOp,
+    fields: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean } = {},
+  ): Promise<RosterEntry | undefined> {
+    return this.roster.draft(this.identity, op, fields);
+  }
+
   /** A new entry by this member; undefined when it may not make it now, or it changes nothing. */
   append(
     op: RosterOp,

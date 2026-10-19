@@ -71,6 +71,15 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   - Answering the last card while presenting leaves focus on the canvas; a co-host who stops being one loses their
     cards; "Ask before people join" in an open menu follows the room's setting; a bundle with nothing new tells
     nobody; a stored record's chain and wraps are checked in full.
+- **A fifth review** (three P1s):
+  - Remove is one transaction: the removal, the next epoch's start, its wraps and every message carrying them are
+    made before anything is kept or sent. At the room's last epoch Remove changes nothing and the host is told: "This
+    room has reached its removal limit. Start a new room to remove anyone else."
+  - A long chain (every epoch, full rosters: over a lobby message's 4 MiB) travels in pieces, so members, members
+    catching up and newcomers all get it.
+  - Smaller: waiting to be let in ends when everyone who answered leaves (the no-answer wait and Retry come back);
+    knock cards keep their order; half-delivered lobby messages expire on the room clock; tests for Ask before people
+    join off (the host, a co-host, neither).
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.
@@ -91,8 +100,8 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   client can still do, and what it adds to the crypto review's scope.
 
 Bundles: all new code is in the room's lazy chunk; startup, canvas first view and the Live session don't grow. i18n:
-twelve new strings (`collab.knockingTitle`, `collab.knockingHint`, `collab.knockPrompt`, `collab.admit`,
-`collab.deny`, `collab.admitNamed`, `collab.denyNamed`, `collab.removePerson`, `collab.askBeforeJoin`,
+thirteen new strings (`collab.knockingTitle`, `collab.knockingHint`, `collab.knockPrompt`, `collab.admit`,
+`collab.deny`, `collab.admitNamed`, `collab.denyNamed`, `collab.removePerson`, `collab.removalLimit`, `collab.askBeforeJoin`,
 `collab.deniedNotice`, `collab.removedNotice`, `collab.unsupportedStart`) and two changed
 (`share.editTogetherDesc`, `collab.startLead`: the link lets people knock, not join), so the catalogs golden is
 re-recorded.

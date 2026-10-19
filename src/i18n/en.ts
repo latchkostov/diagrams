@@ -2524,6 +2524,7 @@ const en = {
   "collab.deny": "Deny",
   "collab.admitNamed": "Admit {alias}",
   "collab.denyNamed": "Deny {alias}",
+  "collab.removalLimit": "This room has reached its removal limit. Start a new room to remove anyone else.",
   "collab.removePerson": "Remove from room",
   "collab.askBeforeJoin": "Ask before people join",
   "collab.deniedNotice": "The host didn't let you in to this room.",

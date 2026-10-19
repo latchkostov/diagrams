@@ -116,6 +116,17 @@ export class Reassembler {
     for (const [k, p] of this.partial) if (now - p.at > COLLAB_LIMITS.partialTtlMs) this.drop(k);
   }
 
+  /** Whether a half-delivered message from `sender` is held. */
+  holds(sender: string): boolean {
+    for (const p of this.partial.values()) if (p.sender === sender) return true;
+    return false;
+  }
+
+  /** Bytes reserved for half-delivered messages. */
+  get held(): number {
+    return this.reserved;
+  }
+
   /** Forgets everything (leaving). */
   clear(): void {
     this.partial.clear();

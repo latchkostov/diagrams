@@ -575,13 +575,32 @@ export class SignedRoster {
     op: RosterOp,
     fields: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean } = {},
   ): Promise<RosterEntry | undefined> {
+    const entry = await this.draft(identity, op, fields);
+    if (!entry) return undefined;
+    await this.add([entry]);
+    return this.entries.has(entry.sig) ? entry : undefined;
+  }
+
+  /**
+   * A new entry by `identity`, on everything this roster holds, signed but not kept (a removal is kept only once its
+   * epoch's successor is ready: ../session.ts); undefined when append would refuse it.
+   */
+  async draft(
+    identity: Identity,
+    op: RosterOp,
+    fields: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean } = {},
+  ): Promise<RosterEntry | undefined> {
     if (!this.may(identity.key, op) || !this.roomFor(identity.key) || !this.changes(op, fields)) return undefined;
     const deps = this.heads();
     let top = 0;
     for (const d of deps) top = Math.max(top, this.entries.get(d)!.n);
-    const entry = await signEntry(identity, this.roomId, this.epoch, { n: top + 1, op, ...fields, deps });
-    await this.add([entry]);
-    return this.entries.has(entry.sig) ? entry : undefined;
+    return signEntry(identity, this.roomId, this.epoch, { n: top + 1, op, ...fields, deps });
+  }
+
+  /** The state the next epoch would start from after a removal drafted here (its past all here), not yet kept. */
+  nextAfter(removal: RosterEntry): RosterState | undefined {
+    if (removal.op !== "remove" || !removal.deps.every((d) => this.known(d))) return undefined;
+    return afterRemoval({ ...fold(this.base, [...this.past(removal), removal]), removal });
   }
 
   /** Whether an entry would change the roles as they stand (else it isn't worth a place in the roster). */

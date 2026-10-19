@@ -119,6 +119,35 @@ test.describe("Knock-to-join and Remove", () => {
     }
   });
 
+  test("with Ask before people join off, a newcomer is let in on their own: no card, nobody clicks", async ({
+    browser,
+    context,
+    page,
+  }) => {
+    test.slow();
+    const other = await browser.newContext();
+    try {
+      await emulateTracker([context, other]);
+      const link = await hostRoom(page);
+      await chip(page).click();
+      await expect(page.getByTestId("room-ask-join")).toHaveAttribute("aria-checked", "true");
+      await page.getByTestId("room-ask-join").click();
+      await chip(page).click();
+      await expect(page.getByTestId("room-ask-join")).toHaveAttribute("aria-checked", "false");
+      await page.keyboard.press("Escape");
+      const guest = await other.newPage();
+      await guest.goto(link);
+      await guest.getByTestId("room-join-alias").fill("Wren");
+      await guest.getByTestId("room-join-accept").click();
+      await expect(guest.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+      await expect(chip(guest)).toHaveAttribute("data-knocking", "false");
+      await expect(page.getByTestId("room-knock-card")).toHaveCount(0);
+      await expect(chip(page)).toHaveAttribute("data-peers", "1", { timeout: pageLoadTimeout() });
+    } finally {
+      await other.close();
+    }
+  });
+
   test("presenting: answering the last card from the keyboard leaves focus on the canvas", async ({
     browser,
     context,

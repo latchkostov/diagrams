@@ -487,7 +487,8 @@ host removes), which makes the epochs a single line.
   message's fragments all have one signer. Messages are bounded (4 MiB, fragmented as document messages), and the
   lobby puts fragments back together under limits of its own (a message's declared length past 4 MiB is refused
   before anything is reserved; two messages in progress per sender, 16 MiB in all, and people at the door make way
-  for members: fourth review P1, two sender ids at the door reserved 64 MiB and blocked admissions). What the
+  for members: fourth review P1, two sender ids at the door reserved 64 MiB and blocked admissions; a message left
+  half-delivered goes on the room clock, and everything held goes with the session). What the
   lobby keeps is bounded before anything is decrypted or verified (second review P1s: invalid frames under fresh
   sender ids each kept a bucket, and one link holder's 64 sender ids from one connection took every sender slot for
   the session's life): a budget per transport peer (512 frames per 10 s, two senders' worth) is taken before a frame
@@ -522,11 +523,19 @@ host removes), which makes the epochs a single line.
   by a co-host who has since been removed or demoted knocks again and waits for an answer; a current host or co-host
   gains nothing from a late entry they couldn't do directly. Arrival time isn't used: an honest concurrent admission
   routinely arrives after the next epoch was adopted.
-- **Remove with re-key.** The remover signs `remove`, draws the next epoch's secret, signs its start, wraps the secret
-  for every member left (absent ones too: everyone keeps the wraps and hands them to a member who comes back on an
-  old epoch; a member whose key can't be agreed with is left out), and only then, with everything prepared, places the
-  start, broadcasts the bundle, and re-keys its session in place (review P1: a failing wrap left chain and keys
-  inconsistent): the same document, sender id and Live run; a new sealer and opener (frames from any other epoch are
+- **Remove with re-key, one transaction.** The host signs `remove` (not kept yet), draws the next epoch's secret,
+  signs its start, wraps the secret for every member left (absent ones too: everyone keeps the wraps and hands them to
+  a member who comes back on an old epoch; a member whose key can't be agreed with is left out), and seals every
+  message that carries them; only then, with everything prepared, does it keep the removal, place the start, send
+  the messages and re-key its session in place (review P1: a failing wrap left chain and keys inconsistent; fifth
+  review P1: the removal was recorded and sent before the successor was checked, so at the last epoch it stuck, the
+  person stayed in under the old key, and no later removal could be made). At the last epoch (31) Remove signs and
+  sends nothing, and the host is told the room has reached its removal limit and to start a new room. A chain
+  travels in pieces a lobby message holds (2 MiB of JSON each, whole epochs in ancestor order, the wraps in the
+  last): a receiver takes each as it comes and acts on the last, so a chain of every supported epoch with full
+  rosters (over 4 MiB) reaches a member, a member catching up and a newcomer (fifth review P1: it was one message
+  over the lobby's limit, refused silently, and the room moved on without them); a deny sends the chain the same way
+  first. The re-key itself: the same document, sender id and Live run; a new sealer and opener (frames from any other epoch are
   refused before decryption), bindings reset (they're signed per epoch), presence ordering restarted for the members
   left (their counters restart under the new keys) and dropped for the one removed (review P1), and the local copy
   re-written under the new epoch's storage key. Members follow on the bundle; a removed member's page sees the
