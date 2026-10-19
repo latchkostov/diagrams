@@ -467,8 +467,17 @@ export class RoomLifecycle {
 
   // ---------------------------------------------------------------- leaving
 
+  private leavingListeners = new Set<() => void>();
+
+  /** Calls `fn` as this person leaves the room on purpose, before the session goes (a handover goes first). */
+  onLeaving = (fn: () => void): (() => void) => {
+    this.leavingListeners.add(fn);
+    return () => this.leavingListeners.delete(fn);
+  };
+
   /** Leave room: only this person disconnects. The copy stays in Your diagrams. */
   async leave(): Promise<void> {
+    for (const fn of this.leavingListeners) fn();
     this.attempt++;
     // Leaving while the room still opens (a reload's rejoin, a join waiting for its keys) forgets it too.
     this.deps.tab.clear();

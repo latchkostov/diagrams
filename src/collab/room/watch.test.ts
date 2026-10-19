@@ -37,6 +37,7 @@ function fakeSession(initial: PeerPresence[] = []) {
   let peers = initial;
   const changes = new Set<() => void>();
   const session = {
+    senderId: "aaaa0000",
     presenceRevision: 0,
     peers: () => peers,
     setPresence: (p: Record<string, unknown>) => presence.push(p),
@@ -249,5 +250,181 @@ describe("Watch together's lifetime", () => {
     vi.advanceTimersByTime(2_000);
     expect(sent).toEqual([]);
     expect(presence.every((p) => p.live === undefined)).toBe(true);
+  });
+});
+
+/** A room of fake sessions: presence and the live channel between them, delivered at once. */
+class FakeRoom {
+  private sessions: {
+    me: { sender: string; state: Record<string, unknown> };
+    changes: Set<() => void>;
+    live: Set<(sender: string, from: string, payload: Uint8Array) => void>;
+    session: { presenceRevision: number };
+  }[] = [];
+
+  join(sender: string, alias: string): CollabSession {
+    const entry = {
+      me: { sender, state: { alias, colour: 0, status: "active" } as Record<string, unknown> },
+      changes: new Set<() => void>(),
+      live: new Set<(sender: string, from: string, payload: Uint8Array) => void>(),
+      session: undefined as unknown as { presenceRevision: number },
+    };
+    const others = () => this.sessions.filter((s) => s !== entry);
+    const notifyOthers = () => {
+      for (const s of others()) {
+        s.session.presenceRevision++;
+        for (const fn of s.changes) fn();
+      }
+    };
+    const session = {
+      senderId: sender,
+      presenceRevision: 0,
+      peers: () => others().map((s) => ({ ...s.me.state, sender: s.me.sender, seen: 0 }) as unknown as PeerPresence),
+      setPresence: (p: Record<string, unknown>) => {
+        entry.me.state = { ...entry.me.state, ...p };
+        notifyOthers();
+      },
+      onChange: (fn: () => void) => {
+        entry.changes.add(fn);
+        return () => entry.changes.delete(fn);
+      },
+      sendLive: (payload: Uint8Array) => {
+        for (const s of others()) for (const fn of s.live) fn(sender, sender, payload);
+        return true;
+      },
+      onLive: (fn: (sender: string, from: string, payload: Uint8Array) => void) => {
+        entry.live.add(fn);
+        return () => entry.live.delete(fn);
+      },
+      get me() {
+        return entry.me.state;
+      },
+    };
+    entry.session = session;
+    this.sessions.push(entry);
+    notifyOthers();
+    return session as unknown as CollabSession;
+  }
+
+  leave(session: CollabSession): void {
+    this.sessions = this.sessions.filter((s) => (s.session as unknown) !== session);
+    for (const s of this.sessions) {
+      s.session.presenceRevision++;
+      for (const fn of s.changes) fn();
+    }
+  }
+}
+
+describe("Hosts and requests (P3)", () => {
+  const [H, A, B] = ["00aa00aa", "11bb11bb", "22cc22cc"];
+  const people = () => {
+    const r = new FakeRoom();
+    const told = { host: vi.fn(), a: vi.fn(), b: vi.fn() };
+    const host = new WatchTogether(r.join(H, "Sam"), "creator", room(), { offer: vi.fn(), told: told.host });
+    const a = new WatchTogether(r.join(A, "Heron"), "joiner", room(), { offer: vi.fn(), told: told.a });
+    vi.advanceTimersByTime(10);
+    const b = new WatchTogether(r.join(B, "Lynx"), "joiner", room(), { offer: vi.fn(), told: told.b });
+    stops.push(() => [host, a, b].forEach((w) => w.dispose()));
+    return { r, host, a, b, told };
+  };
+
+  it("asking to drive: the host's card; Not now tells the asker, and nothing changes", () => {
+    const { host, a, told } = people();
+    a.askToDrive();
+    expect(a.getState().asked).toBe("drive");
+    expect(host.getState().prompts).toEqual([{ from: A, alias: "Heron", what: "drive" }]);
+    host.answer(host.getState().prompts[0], false);
+    expect(host.getState().prompts).toEqual([]);
+    expect(a.getState().asked).toBeUndefined();
+    expect(told.a).toHaveBeenCalledWith("declined", "Sam");
+    expect(host.getState().roster.driver).toBe(H);
+  });
+
+  it("Let them: the host's roster names the new driver, for everyone; Take back returns it", () => {
+    const { host, a, b } = people();
+    a.askToDrive();
+    host.answer(host.getState().prompts[0], true);
+    expect(a.getState().asked).toBeUndefined();
+    for (const w of [host, a, b]) expect(w.getState().roster.driver).toBe(A);
+    host.takeBack();
+    for (const w of [host, a, b]) expect(w.getState().roster.driver).toBe(H);
+  });
+
+  it("an unanswered request counts as declined after a minute", () => {
+    const { host, a, told } = people();
+    a.askToDrive();
+    vi.advanceTimersByTime(60_000);
+    expect(host.getState().prompts).toEqual([]);
+    expect(a.getState().asked).toBeUndefined();
+    expect(told.a).toHaveBeenCalledWith("declined", expect.any(String));
+  });
+
+  it("a host leaving on purpose hands the room to the earliest co-host", () => {
+    const { r, host, a, b, told } = people();
+    host.setCohost(B, true);
+    expect(a.getState().roster.cohosts).toEqual([B]);
+    host.leaving();
+    r.leave(host.session);
+    expect(b.getState().hosting).toBe(true);
+    expect(a.getState().hosting).toBe(false);
+    expect(told.b).toHaveBeenCalledWith("host", "");
+    expect(a.getState().roster.host).toBe(B);
+  });
+
+  it("with no co-host, to whoever has been here longest", () => {
+    const { r, host, a, b } = people();
+    host.leaving();
+    r.leave(host.session);
+    expect(a.getState().hosting).toBe(true);
+    expect(b.getState().hosting).toBe(false);
+  });
+
+  it("Make host: the old host becomes the first co-host, and who drives stays as it was", () => {
+    const { host, a, b } = people();
+    host.makeHost(B);
+    expect(b.getState().hosting).toBe(true);
+    expect(host.getState().hosting).toBe(false);
+    expect(a.getState().roster).toMatchObject({ host: B, cohosts: [H], driver: H });
+  });
+
+  it("Show my Live to the room: the host's card names the simulation", () => {
+    const { host, a } = people();
+    show(live("room-a", false, shared), false);
+    a.showToRoom();
+    expect(a.getState().asked).toBe("show");
+    expect(host.getState().prompts[0]).toMatchObject({ from: A, what: "show" });
+  });
+
+  it("a host already in Live with a run it can't describe from its start: it starts over at the same moment", async () => {
+    const r = new FakeRoom();
+    const told = vi.fn();
+    const a = live("room-a", false, shared);
+    a.controller.setPlaying(true);
+    for (let i = 0; i < 300; i++) a.controller.advance(16);
+    // Two Inputs changes: the log keeps only the latest, so the run's start can't be told.
+    a.controller.setInputs({ props: {}, rates: {}, traffic: 2 });
+    a.controller.setInputs({ props: {}, rates: {}, traffic: 3 });
+    a.controller.flush();
+    const run = a.controller.runId;
+    const tick = a.controller.tick;
+    show(a, false);
+    const host = new WatchTogether(r.join(H, "Sam"), "creator", room(), { offer: vi.fn(), told });
+    await settle();
+    expect(told).toHaveBeenCalledWith("rebased", "");
+    expect(a.controller.runId).not.toBe(run);
+    expect(a.controller.tick).toBe(tick);
+    expect(host.getState().driving).toBe(true);
+    expect(host.getState().show).toMatchObject({ title: "Steady checkouts" });
+    host.dispose();
+  });
+
+  it("a co-host sees requests too, and the host applies a co-host's yes", () => {
+    const { host, a, b } = people();
+    host.setCohost(B, true);
+    a.askToDrive();
+    expect(b.getState().prompts).toHaveLength(1);
+    b.answer(b.getState().prompts[0], true);
+    expect(host.getState().prompts).toEqual([]);
+    expect(a.getState().roster.driver).toBe(A);
   });
 });

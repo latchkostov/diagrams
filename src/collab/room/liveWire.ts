@@ -128,6 +128,8 @@ const num = (v: unknown, min: number, max: number) =>
   typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
 const str = (v: unknown, max = LIMITS.id) => typeof v === "string" && v.length > 0 && v.length <= max;
 const RUN = /^[\w.:-]{1,64}$/;
+/** A sender id (presence's): hex. */
+const sender = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{8,64}$/.test(v);
 
 /** A JSON value no deeper than `depth`, with no more than `keys` keys or items at any level. */
 function plain(v: unknown, depth: number): boolean {
@@ -256,6 +258,24 @@ const clockOf = (v: Record<string, unknown>): HostClock => ({
 export function parseMessage(v: unknown): LiveMessage | undefined {
   if (!isRecord(v) || typeof v.t !== "string") return undefined;
   if (v.t === "hello") return { t: "hello" };
+  // Hosts and requests: sender ids, a title, a yes or no.
+  const what = (w: unknown): w is "drive" | "show" => w === "drive" || w === "show";
+  if (v.t === "ask")
+    return what(v.what) && (v.title === undefined || (typeof v.title === "string" && v.title.length <= 200))
+      ? { t: "ask", what: v.what, ...(typeof v.title === "string" ? { title: v.title } : {}) }
+      : undefined;
+  if (v.t === "answer")
+    return sender(v.to) && what(v.what) && typeof v.yes === "boolean"
+      ? { t: "answer", to: v.to, what: v.what, yes: v.yes }
+      : undefined;
+  if (v.t === "host")
+    return sender(v.to) &&
+      Array.isArray(v.cohosts) &&
+      v.cohosts.length <= 8 &&
+      v.cohosts.every(sender) &&
+      (v.driver === undefined || sender(v.driver))
+      ? { t: "host", to: v.to, cohosts: v.cohosts as string[], ...(sender(v.driver) ? { driver: v.driver } : {}) }
+      : undefined;
   if (typeof v.run !== "string" || !RUN.test(v.run)) return undefined;
   const run = v.run;
   switch (v.t) {
@@ -291,6 +311,10 @@ export function parseMessage(v: unknown): LiveMessage | undefined {
         : undefined;
     case "stop":
       return { t: "stop", run };
+    case "handoff":
+      return sender(v.to) && int(v.tick, 0, LIMITS.seekMs / 10) && int(v.seq, 0, 1e9)
+        ? { t: "handoff", run, to: v.to, tick: v.tick as number, seq: v.seq as number }
+        : undefined;
     default:
       return undefined;
   }

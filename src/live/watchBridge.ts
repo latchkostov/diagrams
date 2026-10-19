@@ -23,7 +23,12 @@ export interface WatchedSession {
 
 /** What the room asks of the canvas's camera: follow the host's view, and who has the view now. */
 export interface HostViewCamera {
-  dispatch(event: { type: "host.view"; view: { x: number; y: number; zoom: number } | null }): void;
+  dispatch(
+    event:
+      | { type: "host.view"; view: { x: number; y: number; zoom: number } | null }
+      // Following a shared run: a note's focus moves the view only while this person hasn't moved it.
+      | { type: "watching"; on: boolean },
+  ): void;
   readonly state: { owner: string };
   subscribe(listener: () => void): () => void;
 }

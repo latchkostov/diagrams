@@ -918,3 +918,21 @@ describe("panePolicy: Watch together's Follow the host's view (host.view)", () =
     expect(decide(fit, { type: "reveal.requested", cause: "navigation" }).state.owner).toBe("fit");
   });
 });
+
+describe("panePolicy: a note's focus while following a shared run (L10)", () => {
+  it("doesn't move a view this person moved; takes one they haven't, as in solo Live", () => {
+    const watching = decide(state({ mode: "live" }), { type: "watching", on: true }).state;
+    const moved = decide(watching, { type: "user.moved" }).state;
+    const note = decide(moved, { type: "narration", focus: ["payments"] });
+    expect(note.state.owner).toBe("manual");
+    expect(note.state.pending).toBeNull();
+    expect(note.state.live.focus).toEqual(["payments"]);
+    // Not moved by hand: the note takes the view.
+    expect(decide({ ...watching, owner: "fit" }, { type: "narration", focus: ["payments"] }).state.owner).toBe(
+      "narration",
+    );
+    // Not following: as before (L1).
+    const solo = decide({ ...moved, watching: false }, { type: "narration", focus: ["payments"] });
+    expect(solo.state.owner).toBe("narration");
+  });
+});

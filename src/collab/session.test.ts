@@ -927,6 +927,17 @@ describe("presence", () => {
     expect(parsePresence(bytes)?.selection?.length).toBeGreaterThan(0);
   });
 
+  it("carries the host's roster: co-hosts and the driver, as sender ids, bounded", () => {
+    const parse = (o: unknown) => parsePresence(textToBytes(JSON.stringify(o)));
+    const base = { alias: "a", colour: 0, status: "active" };
+    const roster = { ...base, host: true, cohosts: ["0011aabb", "2233ccdd"], driver: "2233ccdd" };
+    expect(parse(roster)).toEqual(roster);
+    expect(parsePresence(encodePresence(roster as never))).toEqual(roster);
+    expect(parse({ ...base, cohosts: ["not hex"] })).toBeUndefined();
+    expect(parse({ ...base, cohosts: Array.from({ length: 9 }, (_, i) => `0000000${i}`) })).toBeUndefined();
+    expect(parse({ ...base, driver: 7 })).toBeUndefined();
+  });
+
   it("a goodbye sealed ahead drops a person at once when their page goes", async () => {
     const { a, b, settle } = await room3();
     await b.session.idle();

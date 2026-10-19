@@ -121,3 +121,41 @@ span.room-chip {
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* Watch together's requests under the chip (the host and co-hosts): non-modal, never taking focus. */
+.room-prompts {
+  position: fixed;
+  inset-inline-end: 16px;
+  z-index: 30;
+  display: grid;
+  gap: 8px;
+  inline-size: min(360px, calc(100vw - 32px));
+}
+
+.room-prompt,
+.room-driving {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l, 12px);
+  background: var(--surface);
+  box-shadow: var(--node-shadow);
+}
+
+.room-prompt p,
+.room-driving p {
+  margin: 0 0 8px;
+}
+
+/* "Sam is driving": by the live bar a follower used. */
+.room-driving {
+  position: fixed;
+  z-index: 40;
+  inline-size: max-content;
+  max-inline-size: min(360px, calc(100vw - 16px));
+}
+
+/* Following someone's Live: the live bar's controls are inert (using one says who drives). */
+body[data-watching] [data-testid="live-controls"] :is(button, select) {
+  opacity: 0.6;
+  cursor: default;
+}

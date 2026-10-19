@@ -38,8 +38,8 @@ The diagram arrives from someone already in the room, and your own diagrams aren
 
 ## Watch Live together
 
-Whoever started the room is its **host**, and the only one whose Live is shown to the room. Only Live on the
-room's own diagram is shown or followed. Open Live on any other diagram, a Private one included, and nothing of it
+Whoever started the room is its **host**. One person at a time **drives** Live for the room: the host, unless
+they let someone else (see **Hosts and requests** below). Only Live on the room's own diagram is shown or followed. Open Live on any other diagram, a Private one included, and nothing of it
 reaches the room: not its simulation's name, not its run.
 
 - **The offer.** When the host turns on Live, everyone else gets a short note: "Sam is showing Live: Black
@@ -58,18 +58,44 @@ reaches the room: not its simulation's name, not its run.
 - **Joining late, and new runs.** If you start watching in the middle of a run, your page replays it from the start
   to catch up ("Catching up… 0:42 of 3:10"). The same happens when the host restarts, picks another simulation or
   plays a finished run again. A long run catches up a few moments at a time, so the page stays responsive.
-- **Watch on my own.** This, in the chip's menu, keeps your run where it is and makes it yours to change. Changing
-  the run yourself (a tweak, play or pause) does the same.
+- **Watch on my own.** This, in the chip's menu, keeps your run where it is and makes it yours to change. While you
+  follow, the live bar's buttons don't act: using one says "Sam is driving", with **Ask to drive** and **Watch on my
+  own**. A change you make another way (a key, a right-click tweak) is put back the same way.
+- **Notes and your view.** A narration note that focuses part of the diagram moves your view, as it does on your
+  own, unless you've moved the view yourself.
 - **If the host's connection drops,** your run waits where it is: "Sam's connection dropped. Waiting…". It goes on
   when they're back, and asks the host for the run again if it missed anything meanwhile (a restart included).
   Nobody else takes over. If the host leaves the room, or stops showing Live, you keep watching on your own.
 - **When it can't follow.** A browser that drifts from the host's run twice, can't get the run from the host, or
-  finds the host on a newer release of Live Diagrams gets a message, and you watch on your own. A run too large to
+  finds the host on a different version of Live Diagrams gets a message, and you watch on your own. A run too large to
   send (a very long one) isn't shown; the host is told, and their next run is shown.
 - **Trust, for now.** Watching is cooperative. Everyone in the room shares one key, so a page that's been modified
   could send Live commands, or claim to be the host. A normal page only follows the room's creator, checks every
   message in full before using it, and ignores one that isn't exactly what Live sends, or that asks for more work
   than Live ever does. Signed roles are planned.
+
+## Hosts and requests
+
+- **Ask to drive.** While you follow, choose **Ask to drive** in the chip's menu (or in "Sam is driving"). The host,
+  and any co-host, get a card under the chip: "Heron asks to drive Live", with **Let them** or **Not now**. A
+  request nobody answers in a minute counts as declined, and you're told either way. When they let you, the run
+  passes to you at the moment it's at: you drive the same run on, and the host follows it like everyone else.
+- **Show your own Live.** If you're in Live on your own, on the room's diagram, choose **Show my Live to the room…**.
+  The host is asked "Heron wants to show 'Retry storm'", with **Show everyone** or **Not now**. Yes makes you the
+  driver of a new run that starts from your simulation, unsaved drafts included.
+- **The host's menu.** In the chip's menu the host sees each person with a menu: **Make co-host** (or **Not a
+  co-host**), **Let them drive** (or **Take back Live**) and **Make host**. Making someone host makes you their
+  first co-host; who drives stays as it was. The people list says who's the host, a co-host and driving.
+- **Co-hosts** see requests and can answer them too. The host keeps the roster; with no host here, a co-host's yes
+  still passes the run on.
+- **When the host leaves.** **Leave room** hands the room to the earliest co-host, or, with none, to whoever has
+  been here longest, and the run to whoever drives next. A dropped connection hands nothing over: everyone
+  following waits, as above, and nobody is promoted.
+- **Already in Live when the room opens.** If the host's run has changed in ways its start can't describe (Inputs
+  changed since it began, say), it starts over at the same moment, so the room watches the same run. The host is
+  told.
+- **Still cooperative.** Roles are what each person's page says: a modified page could ignore a "Not now", or claim
+  to be the host. A normal page follows these rules. Signed roles, which make them hold, come next.
 
 ## Leave
 

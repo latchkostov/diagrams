@@ -18,18 +18,12 @@ export function ShortcutsShell({ onClose, status }: { onClose: () => void; statu
   useEffect(() => {
     const element = panel.current;
     if (!element) return;
+    // Keys stay in the frame; Tab can't leave it either: everything else on the page is inert while it shows.
     const onKeyDown = (e: KeyboardEvent) => {
       e.stopPropagation();
       if (e.key === "Escape") {
         e.preventDefault();
         close.current();
-      } else if (e.key === "Tab") {
-        const controls = Array.from(element.querySelectorAll<HTMLElement>("button"));
-        e.preventDefault();
-        if (!controls.length) return element.focus();
-        const i = controls.indexOf(document.activeElement as HTMLElement);
-        const next = e.shiftKey ? (i <= 0 ? controls.length - 1 : i - 1) : i + 1 >= controls.length ? 0 : i + 1;
-        controls[next].focus();
       }
     };
     element.addEventListener("keydown", onKeyDown);
