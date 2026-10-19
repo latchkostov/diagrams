@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import type { DiagramEdge, DiagramFile, Simulation } from "../model/types";
 import type { AutoscalingConfig, ExecutableController } from "../model/autoscaling";
 import { replicaRange } from "../model/autoscaling";
@@ -491,6 +492,10 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
       ],
     };
   };
+  // CPU targets cannot repair W1's held-thread ceiling. The busy-thread suggestion arrives in PR 4.
+  const waitingCallers = revisionAtLeast(d.planning?.revision, "p3-w1")
+    ? new Set(d.edges.filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow")).map((e) => e.from))
+    : new Set<string>();
   for (const w of watched) {
     const o = first.get(w.id)!;
     const a = nodes.get(w.id)!.props!.autoscaling as AutoscalingConfig;
@@ -516,7 +521,7 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
         to,
         fix: [{ node: w.id, props: { autoscaling: withRange(a, "maxReplicas", to) } }],
       });
-    } else if (!o.maxed && o.below) {
+    } else if (!o.maxed && o.below && !waitingCallers.has(w.id)) {
       // Lower the target under what the backlog-bound fleet showed, so the controller acts on it.
       const to = Math.max(1, Math.floor(o.below.metric * 0.9));
       const autoscaling = to < o.below.target ? withTarget(a, o.below.metricKind, to) : undefined;
@@ -635,7 +640,7 @@ export function planScaling(
   d: DiagramFile,
   counter: { ticks: number; runs: number; messages?: number } = { ticks: 0, runs: 0 },
 ): ScalingPlan[] {
-  if (d.planning?.revision !== "p3-a1" || !d.simulations?.length) return [];
+  if (!revisionAtLeast(d.planning?.revision, "p3-a1") || !d.simulations?.length) return [];
   const key = simulationContent(d);
   const hit = cache.get(key);
   if (hit) return hit;

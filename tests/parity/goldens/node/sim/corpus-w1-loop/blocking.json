@@ -1,0 +1,50 @@
+{
+  "run": {
+    "time": 2000,
+    "totalMs": 2000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Applications" },
+      { "atMs": 100, "kind": "traffic", "label": "Applications ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1, "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 2000,
+    "inSystem": 13,
+    "real": {
+      "source": { "processed": 12, "throughput": 1.7081710822106215, "replicas": [1, 1, 0] },
+      "caller": { "backlog": 12, "inFlight": 1, "replicas": [1, 1, 0] },
+      "partner": { "replicas": [1, 1, 0] },
+      "result": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 12, "call": 1, "output": 0 }
+  },
+  "events": {
+    "total": 37,
+    "byKind": { "inject": 12, "process": 12, "deliver": 13 },
+    "byNode": { "source": { "inject": 12, "process": 12 }, "caller": { "deliver": 13 } },
+    "perSecond": ["65d5fb3c9326", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 0, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": null,
+    "waitMs": {},
+    "processMs": {}
+  }
+}

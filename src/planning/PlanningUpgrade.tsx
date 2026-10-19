@@ -1,6 +1,7 @@
+import { revisionAtLeast } from "../model/revisions";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { EditorApi } from "../editor/types";
-import { upgradePlanning, upgradeAutoscaling, legacyExport } from "./migration";
+import { upgradePlanning, upgradeAutoscaling, upgradeWaits, legacyExport } from "./migration";
 import { analyzeCapacity } from "../sim/capacity";
 import { planningSimulation } from "../sim/capacityPlanning";
 import { explanationSimulation } from "./explanation";
@@ -23,28 +24,31 @@ export function PlanningUpgrade({
 }) {
   useLocale();
   const previewButton = useRef<HTMLButtonElement>(null);
-  const [preview, setPreview] = useState<"a1" | "legacy" | null>(initialPreview ? "a1" : null);
+  const [preview, setPreview] = useState<"a1" | "waits" | "legacy" | null>(initialPreview ? "a1" : null);
   const upgradeButton = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
     if (initialPreview && (takePreviewFocus?.() ?? true)) upgradeButton.current?.focus();
   }, [initialPreview, takePreviewFocus]);
   const a1 = preview === "a1";
+  const waits = preview === "waits";
   const d = preview ? editor.getDiagram() : undefined;
   const next =
-    d && a1
-      ? upgradeAutoscaling(d)
-      : d && d.planning?.revision !== "p3" && d.planning?.revision !== "p3-a1"
-        ? upgradePlanning(d)
-        : undefined;
+    d && waits
+      ? upgradeWaits(d)
+      : d && a1
+        ? upgradeAutoscaling(d)
+        : d && !revisionAtLeast(d.planning?.revision, "p3")
+          ? upgradePlanning(d)
+          : undefined;
   const before = d && next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
   const after = next ? analyzeCapacity(next, planningSimulation(next, explanationSimulation(next))) : undefined;
   const legacy = preview === "legacy" && d?.planning ? legacyExport(d) : undefined;
   const capacity = (value: number) => (Number.isFinite(value) ? formatRate(value) : t("admission.unknownShort"));
   const upgradeContent = d && next && before && after && (
     <div data-testid="planning-upgrade-preview">
-      <p>{a1 ? t("autoscaling.upgradeHint") : t("admission.model")}</p>
+      <p>{waits ? t("threads.upgradeHint") : a1 ? t("autoscaling.upgradeHint") : t("admission.model")}</p>
       <ul>
-        {d.nodes.map((n) => (
+        {(waits ? d.nodes.filter((n) => after.nodes[n.id].waits) : d.nodes).map((n) => (
           <li key={n.id}>
             {t("planning.upgradeNode", {
               name: n.label,
@@ -58,7 +62,13 @@ export function PlanningUpgrade({
         className="btn btn-primary"
         data-testid="planning-upgrade"
         onClick={() => {
-          editor.applyDiagram(a1 ? upgradeAutoscaling(editor.getDiagram()) : upgradePlanning(editor.getDiagram()));
+          editor.applyDiagram(
+            waits
+              ? upgradeWaits(editor.getDiagram())
+              : a1
+                ? upgradeAutoscaling(editor.getDiagram())
+                : upgradePlanning(editor.getDiagram()),
+          );
           setPreview(null);
           previewButton.current?.focus();
         }}
@@ -71,17 +81,33 @@ export function PlanningUpgrade({
     <section className="insp-section" data-testid="planning-model">
       <h3 className="insp-section-title">{t("planning.model")}</h3>
       <p className="insp-note">
-        {planning?.revision === "p3-a1"
-          ? t("autoscaling.model")
-          : planning?.revision === "p3"
-            ? t("admission.model")
-            : planning?.revision === "p2"
-              ? t("broker.current")
-              : planning
-                ? t("planning.current")
-                : t("planning.legacy")}
+        {planning?.revision === "p3-w1"
+          ? t("threads.model")
+          : planning?.revision === "p3-a1"
+            ? t("autoscaling.model")
+            : planning?.revision === "p3"
+              ? t("admission.model")
+              : planning?.revision === "p2"
+                ? t("broker.current")
+                : planning
+                  ? t("planning.current")
+                  : t("planning.legacy")}
       </p>
-      {planning?.revision !== "p3-a1" && (
+      {planning?.revision !== "p3-w1" && (
+        <button
+          className="link-btn"
+          data-testid="waits-upgrade-preview"
+          aria-expanded={waits}
+          aria-controls="planning-waits-content"
+          onClick={() => setPreview(waits ? null : "waits")}
+        >
+          {t("threads.upgrade")}
+        </button>
+      )}
+      <div id="planning-waits-content" hidden={!waits}>
+        {waits && upgradeContent}
+      </div>
+      {!revisionAtLeast(planning?.revision, "p3-a1") && (
         <button
           className="link-btn"
           data-testid="autoscaling-upgrade-preview"
@@ -105,9 +131,7 @@ export function PlanningUpgrade({
         aria-expanded={preview === "legacy"}
         aria-controls="planning-legacy-content"
       >
-        {planning?.revision === "p3" || planning?.revision === "p3-a1"
-          ? t("planning.legacyPreview")
-          : t("planning.preview")}
+        {revisionAtLeast(planning?.revision, "p3") ? t("planning.legacyPreview") : t("planning.preview")}
       </button>
       <div id="planning-a1-content" hidden={!a1}>
         {a1 && upgradeContent}
@@ -116,6 +140,7 @@ export function PlanningUpgrade({
         {preview === "legacy" && upgradeContent}
         {legacy && (
           <div data-testid="planning-legacy-preview">
+            {d?.planning?.revision === "p3-w1" && <p>{t("threads.exportLoss")}</p>}
             <p>
               {d?.planning?.revision === "p3"
                 ? t("broker.exportLoss")

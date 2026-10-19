@@ -1,4 +1,5 @@
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
+import { revisionAtLeast } from "../../model/revisions";
 import { useState, useSyncExternalStore, type FocusEvent, type CSSProperties } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
 import { stencilMenu } from "../../editor/builtinActions";
@@ -58,8 +59,7 @@ export function NodePanel({
   const [routingPinned, setRoutingPinned] = useState(false);
   const broker = brokerSpec(node.data.stencil, role, meta.planning);
   const simFields = nodeSimFields(role, node.data.stencil, meta.planning, props);
-  const managed =
-    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") && !!managedKind(node.data.stencil);
+  const managed = revisionAtLeast(meta.planning?.revision, "p3") && !!managedKind(node.data.stencil);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;

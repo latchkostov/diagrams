@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "./revisions";
 import type { DiagramFile } from "./types";
 /** Lifecycle objects are independent of the particle budget. Reject the whole configuration, never a partial run. */
 export const MAX_LIFECYCLE_REPLICAS = 100_000;
@@ -17,7 +18,7 @@ export type ResourceCandidate = Pick<DiagramFile, "planning" | "simulations"> & 
   edges?: DiagramFile["edges"];
 };
 export function resourceBudgetExceeded(d: ResourceCandidate, capacityMultiplier = 4): boolean {
-  if (d.planning?.revision !== "p3-a1") return false;
+  if (!revisionAtLeast(d.planning?.revision, "p3-a1")) return false;
   const known = new Set(d.nodes.map((n) => n.id));
   const nodes = new Map<string, { enabled: boolean; count: number }>();
   let multiplier = Math.max(4, capacityMultiplier); // Includes the largest free-play Capacity × control.

@@ -2695,6 +2695,84 @@ exports[`public examples route cleanly (estimated card sizes) > black-friday-com
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > blocking-call.json 1`] = `
+[
+  {
+    "id": "submit",
+    "points": [
+      {
+        "x": 248,
+        "y": 216,
+      },
+      {
+        "x": 320,
+        "y": 216,
+      },
+    ],
+  },
+  {
+    "id": "consume",
+    "points": [
+      {
+        "x": 540,
+        "y": 216,
+      },
+      {
+        "x": 660,
+        "y": 216,
+      },
+    ],
+  },
+  {
+    "id": "call",
+    "points": [
+      {
+        "x": 919,
+        "y": 216,
+      },
+      {
+        "x": 1010,
+        "y": 216,
+      },
+    ],
+  },
+  {
+    "id": "publish",
+    "points": [
+      {
+        "x": 789.5,
+        "y": 252,
+      },
+      {
+        "x": 789.5,
+        "y": 336,
+      },
+      {
+        "x": 770,
+        "y": 336,
+      },
+      {
+        "x": 770,
+        "y": 420,
+      },
+    ],
+  },
+  {
+    "id": "save",
+    "points": [
+      {
+        "x": 880,
+        "y": 456,
+      },
+      {
+        "x": 1010,
+        "y": 456,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > branch-to-datacentre.json 1`] = `
 [
   {

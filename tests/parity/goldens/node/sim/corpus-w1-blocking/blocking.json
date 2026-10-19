@@ -1,0 +1,61 @@
+{
+  "run": {
+    "time": 2000,
+    "totalMs": 2000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Applications" },
+      { "atMs": 100, "kind": "traffic", "label": "Applications ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1, "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 2000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 12, "throughput": 1.7081710822106215, "replicas": [1, 1, 0] },
+      "caller": { "processed": 12, "throughput": 2.883852946317172, "replicas": [1, 1, 0] },
+      "partner": { "processed": 12, "throughput": 2.883852946317172, "replicas": [1, 1, 0] },
+      "result": { "processed": 12, "throughput": 2.9128361502738294, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 12, "call": 12, "output": 12 }
+  },
+  "events": {
+    "total": 96,
+    "byKind": { "inject": 12, "process": 48, "deliver": 36 },
+    "byNode": {
+      "source": { "inject": 12, "process": 12 },
+      "caller": { "deliver": 12, "process": 12 },
+      "partner": { "deliver": 12, "process": 12 },
+      "result": { "deliver": 12, "process": 12 }
+    },
+    "perSecond": ["f1bc16677b8c", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 12, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 12, "min": 280, "mean": 510.8333333333333, "p50": 510, "p90": 740, "max": 750 },
+    "waitMs": {
+      "caller": { "count": 12, "min": 0, "mean": 230.83333333333334, "p50": 230, "p90": 460, "max": 470 },
+      "partner": { "count": 12, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "caller": { "count": 12, "min": 260, "mean": 260, "p50": 260, "p90": 260, "max": 260 },
+      "partner": { "count": 12, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 }
+    }
+  }
+}

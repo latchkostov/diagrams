@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "./revisions";
 import type { PlanningModel, SimRole } from "./types";
 
 /** Small behavioural metadata shared by profiles, playback, planning and inspector chrome. */
@@ -73,9 +74,7 @@ export function brokerSpec(
   planning?: PlanningModel,
 ): BrokerSpec | undefined {
   if (role !== "topic" && role !== "stream") return undefined;
-  return (planning?.revision === "p2" || planning?.revision === "p3" || planning?.revision === "p3-a1") &&
-    stencil &&
-    Object.hasOwn(BROKERS, stencil)
+  return revisionAtLeast(planning?.revision, "p2") && stencil && Object.hasOwn(BROKERS, stencil)
     ? BROKERS[stencil]
     : log;
 }

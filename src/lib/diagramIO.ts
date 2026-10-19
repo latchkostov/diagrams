@@ -930,7 +930,7 @@ export function createDiagram(seed: Partial<DiagramFile> = {}): string {
 
 export const emptyDiagram = (): DiagramFile => ({
   format: "diagrams/v2",
-  planning: { revision: "p3-a1" },
+  planning: { revision: "p3-w1" },
   title: UNTITLED,
   nodes: [],
   edges: [],

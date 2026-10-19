@@ -104,10 +104,19 @@ export function upgradeAutoscaling(d: DiagramFile): DiagramFile {
   return next;
 }
 
+/** W1 inherits pinned A1 behavior and opts every saved run into logical, blocking calls. */
+export function upgradeWaits(d: DiagramFile): DiagramFile {
+  if (d.planning?.revision === "p3-w1") return structuredClone(d);
+  const next = upgradeAutoscaling(d);
+  next.planning = { ...next.planning!, revision: "p3-w1" };
+  return next;
+}
+
 /** The same traversal strips metadata and records losses, including saved setup and timeline props. */
 export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: string[] } {
   const diagram = normalizePersistence(d);
   const losses: string[] = [];
+  if (d.planning?.revision === "p3-w1") losses.push("requests hold caller threads");
   if (diagram.planning) losses.push("planning.revision");
   // Request routing has no older equivalent: its routes, mixes, tables and caller addresses are listed and dropped.
   if (diagram.planning?.requestRoutes) losses.push("planning.requestRoutes");

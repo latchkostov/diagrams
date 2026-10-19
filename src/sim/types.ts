@@ -44,6 +44,7 @@ export interface Particle {
 
 /** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
 export interface NodeSimState {
+  threads?: { slots: number; working: number; waiting: number; waitingOn: [string, number][]; queued: number };
   /** Successful async root-to-node paths since restart. Sample counts and durations are never scaled. */
   latency?: LatencyMetrics;
   resources?: import("./autoscaling").ResourceReadout;
@@ -112,6 +113,7 @@ export interface LatencyMetrics extends LatencySummary {
 }
 
 export interface EdgeSimState {
+  calls?: { inFlight: number; held: number; timedOut: number; failed: number; late: number };
   id: string;
   /** Total messages that have finished travelling this edge. */
   delivered: number;

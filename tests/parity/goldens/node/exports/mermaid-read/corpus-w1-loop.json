@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Blocking request join",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Applications", "x": 40, "y": 40 },
+      { "id": "caller", "stencil": "generic.service", "label": "Decision service", "x": 406, "y": 100 },
+      { "id": "partner", "stencil": "client.partner", "label": "Partner scoring API", "x": 40, "y": 160 },
+      { "id": "result", "stencil": "generic.database", "label": "Case store", "x": 766, "y": 100 }
+    ],
+    "edges": [
+      { "id": "e1-source-caller", "from": "source", "to": "caller", "kind": "async" },
+      { "id": "e2-caller-caller", "from": "caller", "to": "caller", "kind": "sync" },
+      { "id": "e3-caller-result", "from": "caller", "to": "result", "kind": "async" }
+    ]
+  }
+}

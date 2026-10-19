@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../../model/revisions";
 import { t } from "../../i18n";
 import type { DiagramAnnotation, DiagramFile, DiagramNode, Side } from "../../model/types";
 import { resolveAnnotationColor, textSizePx } from "../../canvas/annotations";
@@ -107,7 +108,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
   // Root cell carries diagram-level fields (description, direction, simulations, checks, color).
   // A1 must retain its execution opt-in; earlier revisions keep their established export bytes.
   lines.push(
-    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_color", isColorValue(d.color) ? d.color : undefined)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}${attr("dg_private", d.private ? "true" : undefined)}${attr("dg_checks", json(d.checks))}${attr("dg_planning", d.planning?.revision === "p3-a1" ? json(d.planning) : undefined)}>`,
+    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_color", isColorValue(d.color) ? d.color : undefined)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}${attr("dg_private", d.private ? "true" : undefined)}${attr("dg_checks", json(d.checks))}${attr("dg_planning", revisionAtLeast(d.planning?.revision, "p3-a1") ? json(d.planning) : undefined)}>`,
     `          <mxCell />`,
     `        </object>`,
     `        <mxCell id="1" parent="0" />`,

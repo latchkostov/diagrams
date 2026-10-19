@@ -1,0 +1,67 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "sync-cycle:caller",
+          "rule": "sync-cycle",
+          "severity": "warning",
+          "title": "Requests go round in a circle",
+          "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop.",
+          "targets": ["caller", "call"],
+          "fix": {
+            "label": "Make Decision service → Decision service a message",
+            "ops": [{ "op": "update", "target": "call", "kind": "async" }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "sync-cycle:caller",
+          "rule": "sync-cycle",
+          "severity": "warning",
+          "title": "Requests go round in a circle",
+          "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop.",
+          "targets": ["caller", "call"],
+          "fix": {
+            "label": "Make Decision service → Decision service a message",
+            "ops": [{ "op": "update", "target": "call", "kind": "async" }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "sync-cycle:caller",
+          "rule": "sync-cycle",
+          "severity": "warning",
+          "title": "Requests go round in a circle",
+          "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop.",
+          "targets": ["caller", "call"],
+          "fix": {
+            "label": "Make Decision service → Decision service a message",
+            "ops": [{ "op": "update", "target": "call", "kind": "async" }]
+          }
+        }
+      ],
+      "summary": "1 warning, 0 suggestions.",
+      "simulations": "Played 1 saved simulation (at most 60 s each).",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

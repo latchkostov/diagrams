@@ -1,0 +1,15 @@
+---
+title: Blocking request join
+---
+flowchart LR
+  source(["Applications"])
+  caller["Decision service"]
+  partner(["Partner scoring API"])
+  result[("Case store")]
+  sibling(["Partner scoring API"])
+  source -.-> caller
+  caller --> partner
+  caller -.-> result
+  caller --> sibling
+  linkStyle 0,2 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"source":["source","client.user"],"caller":["caller","generic.service"],"partner":["partner","generic.external-api"],"result":["result","generic.database"],"sibling":["sibling","generic.external-api"]},"edges":["input","call","output","sibling-call"],"relations":{}}

@@ -1,0 +1,61 @@
+{
+  "run": {
+    "time": 2000,
+    "totalMs": 2000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Applications" },
+      { "atMs": 100, "kind": "traffic", "label": "Applications ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1, "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 2000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 12, "throughput": 1.7081710822106215, "replicas": [1, 1, 0] },
+      "caller": { "processed": 12, "throughput": 1.9974482893745653, "replicas": [1, 1, 0] },
+      "partner": { "processed": 6, "throughput": 1.118747137823657, "replicas": [1, 1, 0] },
+      "result": { "processed": 6, "throughput": 0.8875322449410475, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 12, "call": 6, "output": 6 }
+  },
+  "events": {
+    "total": 72,
+    "byKind": { "inject": 12, "process": 36, "deliver": 24 },
+    "byNode": {
+      "source": { "inject": 12, "process": 12 },
+      "caller": { "deliver": 12, "process": 12 },
+      "partner": { "deliver": 6, "process": 6 },
+      "result": { "deliver": 6, "process": 6 }
+    },
+    "perSecond": ["96854825c986", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 12, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 12, "min": 30, "mean": 155, "p50": 270, "p90": 280, "max": 280 },
+    "waitMs": {
+      "caller": { "count": 12, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "partner": { "count": 6, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "caller": { "count": 12, "min": 10, "mean": 140, "p50": 260, "p90": 270, "max": 270 },
+      "partner": { "count": 6, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 }
+    }
+  }
+}

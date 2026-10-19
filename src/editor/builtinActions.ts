@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingEdits";
 import { routingIntent } from "./routingIntent";
@@ -675,7 +676,7 @@ export function builtinActions(): Action[] {
         const d = node && ctx.editor.getDiagram();
         return (
           !!node &&
-          d?.planning?.revision === "p3-a1" &&
+          revisionAtLeast(d?.planning?.revision, "p3-a1") &&
           node.props?.routeTable === undefined &&
           routeTableCapable(node.stencil, getStencil(node.stencil).simRole)
         );
@@ -702,7 +703,7 @@ export function builtinActions(): Action[] {
         const d = node && ctx.editor.getDiagram();
         return (
           !!node &&
-          d?.planning?.revision === "p3-a1" &&
+          revisionAtLeast(d?.planning?.revision, "p3-a1") &&
           node.props?.trafficMix === undefined &&
           trafficMixCapable(getStencil(node.stencil).simRole)
         );

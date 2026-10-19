@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "./revisions";
 import { checkAutoscaling } from "./autoscalingSchema";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS, type ResourceCandidate } from "./resourceBudget";
 import { t } from "../i18n/core";
@@ -32,7 +33,7 @@ export function createResourceValidator({ fragment = false } = {}) {
       !initialized || simulations !== candidate.simulations || revision !== candidate.planning?.revision;
     const check = (props: Record<string, unknown> | undefined, node: string) => {
       if (
-        candidate.planning?.revision !== "p3-a1" &&
+        !revisionAtLeast(candidate.planning?.revision, "p3-a1") &&
         (props?.resources !== undefined || props?.autoscaling !== undefined)
       )
         return t("autoscaling.modelRequired");

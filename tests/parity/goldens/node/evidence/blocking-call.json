@@ -1,0 +1,21 @@
+{
+  "evidence": {
+    "played": [{ "id": "blocking", "title": "Blocking: CPU says all is well", "playedMs": 20000, "capped": false }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    { "id": "capacity:caller", "rule": "capacity", "severity": "warning", "target": "caller", "elements": ["caller"] }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:caller", "rule": "capacity", "severity": "warning", "title": "Decision service can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["caller"] }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "simulations": "Played 1 saved simulation (at most 60 s each)."
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "run": {
+    "time": 2000,
+    "totalMs": 2000,
+    "done": true,
+    "scale": 10,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Applications" },
+      { "atMs": 100, "kind": "traffic", "label": "Applications ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1, "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 2000,
+    "inSystem": 16,
+    "real": {
+      "source": { "processed": 400, "throughput": 56.933343944089714, "replicas": [1, 1, 0] },
+      "caller": { "processed": 280, "backlog": 80, "inFlight": 40, "throughput": 128.88363803320695, "replicas": [1, 1, 0] },
+      "partner": { "processed": 280, "inFlight": 40, "throughput": 128.88363803320695, "replicas": [1, 1, 0] },
+      "result": { "processed": 280, "throughput": 130.1789401298561, "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 40, "call": 32, "output": 28 }
+  },
+  "events": {
+    "total": 264,
+    "byKind": { "inject": 40, "process": 124, "deliver": 100 },
+    "byNode": {
+      "source": { "inject": 40, "process": 40 },
+      "caller": { "deliver": 40, "process": 28 },
+      "partner": { "deliver": 32, "process": 28 },
+      "result": { "deliver": 28, "process": 28 }
+    },
+    "perSecond": ["d101b28f9e08", "366ee8ef2a0e", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 28, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 28, "min": 280, "mean": 1057.857142857143, "p50": 1060, "p90": 1840, "max": 1840 },
+    "waitMs": {
+      "caller": { "count": 28, "min": 0, "mean": 777.8571428571429, "p50": 780, "p90": 1560, "max": 1560 },
+      "partner": { "count": 28, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "caller": { "count": 28, "min": 260, "mean": 260, "p50": 260, "p90": 260, "max": 260 },
+      "partner": { "count": 28, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 }
+    }
+  }
+}

@@ -5,7 +5,7 @@ import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveState } from "./controller";
 import { SPEEDS } from "./controller";
 import { useLive, type TraceChoice } from "./context";
-import { formatClock, formatCount, formatSpeed } from "./format";
+import { formatClock, formatCount, formatSpeed, formatScale } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./Timeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
@@ -63,7 +63,7 @@ export function ControlBar({ state }: { state: LiveState }) {
         <button
           className="lv-btn lv-play"
           onClick={() => (waiting ? c.resume() : c.togglePlaying())}
-          disabled={lookingAhead}
+          disabled={lookingAhead || state.needsRestart}
           title={waiting ? "Continue (Space)" : state.playing ? "Pause (Space)" : done ? "Play again" : "Play (Space)"}
           aria-label={state.playing && !waiting ? "Pause" : "Play"}
           data-testid="live-play"
@@ -144,7 +144,12 @@ export function ControlBar({ state }: { state: LiveState }) {
               >
                 {formatClock(run.time)}
               </span>
-              <Timeline sim={state.simulation} run={run} onSeek={(ms) => c.seek(ms)} disabled={lookingAhead} />
+              <Timeline
+                sim={state.simulation}
+                run={run}
+                onSeek={(ms) => c.seek(ms)}
+                disabled={lookingAhead || state.needsRestart}
+              />
               {expectations.length > 0 && (
                 <div
                   className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`}
@@ -178,7 +183,7 @@ export function ControlBar({ state }: { state: LiveState }) {
 
       <span
         className="lv-stat mono"
-        title={`Messages travelling, queued or being processed${state.scale > 1 ? ` (real messages; 1 dot ≈ ${formatCount(state.scale)})` : ""}`}
+        title={`Messages travelling, queued or being processed${state.scale > 1 ? ` (real messages; 1 dot ≈ ${formatScale(state.scale)})` : ""}`}
         data-testid="live-in-system"
         data-count={state.snapshot.inSystem}
       >
@@ -298,7 +303,7 @@ function MoreMenu({ state }: { state: LiveState }) {
             <button
               role="menuitem"
               onClick={pick(() => c.step(), true)}
-              disabled={waiting || !!state.run?.done || slowStatus === "capturing"}
+              disabled={state.needsRestart || waiting || !!state.run?.done || slowStatus === "capturing"}
               data-testid="live-step"
             >
               <LiveIcon name="step" size={14} />

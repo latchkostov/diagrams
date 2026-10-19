@@ -91,6 +91,7 @@ describe("example gallery", () => {
       "observability-pipeline",
       "autoscaling-basics",
       "cloud-run-timetable-api",
+      "blocking-call",
     ]);
     expect(
       filterExamples(publicItems, "", "routing")

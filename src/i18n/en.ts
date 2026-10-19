@@ -26,6 +26,7 @@ const en = {
   "liveSession.incomingTraffic": "Incoming traffic",
   "liveSession.deadLetterWait": "Nothing has dead-lettered yet: the next message that does will be traced.",
   "liveSession.lookAhead": "30 s",
+  "liveSession.workBudget": "Too much traffic for this sampling; restart with more messages per dot.",
   "liveSession.noFinishedMessage": "No message has finished its journey yet. Try again in a moment.",
   "liveSession.recordedFor": "Recorded for {duration} of simulated time: {summary}.",
   "liveSession.longReplay": "This slow motion runs {duration}: → skips to the next hop.",
@@ -2633,5 +2634,25 @@ const en = {
   "fault.failCommand": "Fault › Fail › {rate}%",
   "fault.workBudget": "Fault timeline affects too many nodes. Remove repeated outages or use smaller boundaries.",
   "fault.repairTarget": "Choose an available fault target, or remove the fault step.",
+  "threads.sampling":
+    "One held dot holds that many threads. Dot weight is reduced to fit whole dots in caller pools; Auto keeps at least four where possible.",
+  "threads.model": "Requests hold caller threads until their replies.",
+  "threads.upgrade": "Upgrade model: requests wait",
+  "threads.upgradeHint":
+    "Requests will wait for every reply before sending Messages or replying upstream. Callers hold their threads; failures return to callers. Capacity includes the call time, excluding animation travel. Saved simulations use the same model.",
+  "threads.heading": "Threads",
+  "threads.executions": "Executions",
+  "threads.noun": "{kind, select, execution {executions} other {threads}}",
+  "threads.busy": "{busy, number} of {slots, number} {noun} busy",
+  "threads.waiting": "{working, number} working · {count, plural, one {# waiting} other {# waiting}} on {name}",
+  "threads.noneWaiting": "{count, plural, one {# working · none waiting} other {# working · none waiting}}",
+  "threads.ceilingLabel": "Ceiling",
+  "threads.ceiling":
+    "{rate} req/s = {slots, number} {noun} ÷ {seconds} s per request ({work, number} ms work + {call, number} ms call)",
+  "threads.cycle": "Waiting calls form a loop; a finite ceiling cannot be calculated.",
+  "threads.exportLoss": "Exporting to an older model discards request waits, deadlines and connection pools.",
+  "examples.blockingSummary": "Threads wait, the queue grows, and CPU scaling stays quiet",
+  "examples.requestsWait": "Requests that wait",
+  "threads.unknownPool": "{busy, number} {noun} busy · capacity unknown",
 } as const;
 export default en;

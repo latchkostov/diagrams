@@ -8,7 +8,7 @@ If nothing fits, use a `generic.*` stencil and say what it is in the label or su
 
 ## Most used in the examples
 
-`service.go`, `kafka.topic`, `service.java`, `redis.cache`, `aws.sqs`, `aws.lambda`, `service.node`, `postgres`, `client.browser`, `aws.dynamodb`, `service.python`, `generic.webhook`, `aws.s3`, `client.mobile`, `azure.service-bus.queue`, `kafka.connect`, `client.team`, `service.dotnet`, `generic.batch-job`, `generic.external-api`, `aws.ecs`, `cisco.isr`, `stripe`, `azure.functions`, `flink`, `grafana`, `snowflake`, `aws.eventbridge`, `airflow`, `aws.api-gateway`
+`service.go`, `kafka.topic`, `service.java`, `redis.cache`, `aws.sqs`, `aws.lambda`, `service.node`, `postgres`, `client.browser`, `aws.dynamodb`, `service.python`, `generic.webhook`, `aws.s3`, `client.mobile`, `azure.service-bus.queue`, `kafka.connect`, `client.team`, `service.dotnet`, `generic.external-api`, `generic.batch-job`, `aws.ecs`, `cisco.isr`, `stripe`, `azure.functions`, `flink`, `grafana`, `snowflake`, `aws.eventbridge`, `airflow`, `aws.api-gateway`
 
 ## Azure
 

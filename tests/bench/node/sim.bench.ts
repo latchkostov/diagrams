@@ -1,3 +1,4 @@
+import { waitingFixture } from "../../../src/lab/waitingFixture";
 // The simulation, without the browser (docs/BENCHMARKS.md § Metrics): loading a diagram into the engine, the live
 // view's per-frame main-thread work (LiveController.advance and snapshot, as LiveSession's tick does them, with a
 // publish every UI_MS) at three message rates, the engine's own step, frame() and snapshot(), and playing a saved
@@ -204,4 +205,20 @@ s.gating("the same seed plays the same run", () => {
   const a = play();
   const b = play();
   s.count("determinism-checksum-delta", Math.abs(a - b), { limit: 0, op: "==", why: "same seed, same counters" });
+});
+
+s.timing("W1 idle step with 10,000 open calls", () => {
+  const d = waitingFixture();
+  d.nodes[1].props = { replicas: 10, concurrency: 1000, latencyMs: 10, jitter: 0 };
+  d.nodes[2].props = { ...d.nodes[2].props, status: "paused" };
+  const e = createEngine({ seed: 1, maxParticles: 0 });
+  e.load(d);
+  e.inject("source", 10_000);
+  e.step(1000);
+  s.time(
+    "engineStep",
+    measure(() => e.step(FRAME_MS)),
+    workloadInfo("pipeline", 4, d),
+    "w1-10000-open-calls",
+  );
 });
