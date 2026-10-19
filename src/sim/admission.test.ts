@@ -75,7 +75,7 @@ describe("P3 managed admission", () => {
             id: "shared",
             policy: resolveNodeProps(d, d.nodes[0]).admission!,
             offered: 2,
-            latencyMs: 1000,
+            timing: { workMs: 1000, holdMs: 1000 },
             endpoints: [{ rate: 2 }],
           },
         ],
@@ -100,7 +100,15 @@ describe("P3 managed admission", () => {
       const endpoint = scope === "endpoint" ? "a" : undefined;
       expect(
         admissionCapacities(
-          [{ id: "api", policy, offered: 10, latencyMs: 0, endpoints: [{ id: endpoint, rate: 10 }] }],
+          [
+            {
+              id: "api",
+              policy,
+              offered: 10,
+              timing: { workMs: 0, holdMs: 0 },
+              endpoints: [{ id: endpoint, rate: 10 }],
+            },
+          ],
           planning,
         ).get("api"),
       ).toBe(0);
@@ -118,7 +126,7 @@ describe("P3 managed admission", () => {
         id: "api",
         policy: { api: { maxInFlight: 10 }, endpoints: endpoints.items },
         offered: 10000,
-        latencyMs: 1000,
+        timing: { workMs: 1000, holdMs: 1000 },
         endpoints: Array.from({ length: 10000 }, (_, i) => ({ id: String(i % 500), rate: 1 })),
       },
     ]);
@@ -175,7 +183,7 @@ describe("P3 managed admission", () => {
       id: String(i),
       policy,
       offered: 10,
-      latencyMs: 100,
+      timing: { workMs: 100, holdMs: 100 },
       endpoints: [{ rate: 10 }],
     }));
     expect([...admissionCapacities(entries, d.planning).values()]).toEqual([1, 1]);
@@ -231,7 +239,13 @@ describe("P3 managed admission", () => {
     expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toHaveProperty("lease");
     expect([
       ...admissionCapacities(
-        [a, b].map((policy, i) => ({ id: String(i), policy, offered: 10, latencyMs: 1000, endpoints: [{ rate: 10 }] })),
+        [a, b].map((policy, i) => ({
+          id: String(i),
+          policy,
+          offered: 10,
+          timing: { workMs: 1000, holdMs: 1000 },
+          endpoints: [{ rate: 10 }],
+        })),
       ).values(),
     ]).toEqual([1, 1]);
   });
@@ -495,7 +509,7 @@ describe("P3 managed admission", () => {
       id: String(i),
       policy: { api: { quotas: [q(amount, { sharedGroup: "account" })] }, endpoints: [] },
       offered: 2,
-      latencyMs: 100,
+      timing: { workMs: 100, holdMs: 100 },
       endpoints: [{ rate: 2 }],
     }));
     expect([...admissionCapacities(entries).values()]).toEqual([0, 0]);
@@ -507,7 +521,13 @@ describe("P3 managed admission", () => {
     };
     expect(
       admissionCapacities([
-        { id: "api", policy, offered: 10, latencyMs: 100, endpoints: [{ id: "get", rate: 10 }, { rate: 0 }] },
+        {
+          id: "api",
+          policy,
+          offered: 10,
+          timing: { workMs: 100, holdMs: 100 },
+          endpoints: [{ id: "get", rate: 10 }, { rate: 0 }],
+        },
       ]).get("api"),
     ).toBe(100);
   });
@@ -615,7 +635,15 @@ describe("P3 managed admission", () => {
     const planning = { revision: "p3" as const, sharedAllocations: [{ id: "account", maxInFlight: 2 }] };
     expect(
       admissionCapacities(
-        [{ id: "api", policy, offered: 10, latencyMs: 1000, endpoints: [{ id: "get", rate: 10 }] }],
+        [
+          {
+            id: "api",
+            policy,
+            offered: 10,
+            timing: { workMs: 1000, holdMs: 1000 },
+            endpoints: [{ id: "get", rate: 10 }],
+          },
+        ],
         planning,
       ).get("api"),
     ).toBe(2);

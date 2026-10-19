@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../../model/revisions";
 import { type ReactNode, type CSSProperties, useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
 import { galleryRoleMeta as simRoleMeta } from "../../i18n/galleryRoles";
@@ -112,7 +113,7 @@ export function NodeSimulation({
           readDiagram={readDiagram}
           nodeId={node.id}
           stencil={node.data.stencil}
-          enabled={(meta.planning?.revision === "p3-a1" || meta.planning?.revision === "p3-w1") && role === "processor"}
+          enabled={revisionAtLeast(meta.planning?.revision, "p3-a1") && role === "processor"}
           props={props}
           set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
         >
@@ -126,13 +127,7 @@ export function NodeSimulation({
                       ...SIM_FIELDS[k]!,
                       label: assignmentLabel(broker),
                       hint: t("broker.assignmentHint"),
-                      note:
-                        meta.planning?.revision === "p2" ||
-                        meta.planning?.revision === "p3" ||
-                        meta.planning?.revision === "p3-a1" ||
-                        meta.planning?.revision === "p3-w1"
-                          ? undefined
-                          : SIM_FIELDS[k]!.note,
+                      note: revisionAtLeast(meta.planning?.revision, "p2") ? undefined : SIM_FIELDS[k]!.note,
                     }
                   : k === "replicas"
                     ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }

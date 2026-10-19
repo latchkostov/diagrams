@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { autoscalingProblem, checkAutoscaling } from "../model/autoscalingSchema";
 import type { ComputeResources, AutoscalingConfig } from "../model/autoscaling";
 import { resourceWorkload } from "../model/autoscaling";
@@ -108,15 +109,9 @@ export function resolveProps(
     !!planning && compatible
       ? resolvePreset(
           stencil,
-          props.preset ??
-            (planning.revision === "p3" || planning.revision === "p3-a1" || planning.revision === "p3-w1"
-              ? admissionPresetFor(stencil)
-              : undefined),
+          props.preset ?? (revisionAtLeast(planning.revision, "p3") ? admissionPresetFor(stencil) : undefined),
           props.presetRevision ??
-            ((planning.revision === "p3" || planning.revision === "p3-a1" || planning.revision === "p3-w1") &&
-            !props.preset
-              ? ADMISSION_REVISION
-              : undefined),
+            (revisionAtLeast(planning.revision, "p3") && !props.preset ? ADMISSION_REVISION : undefined),
           props.size,
         )
       : undefined;
@@ -135,7 +130,7 @@ export function resolveProps(
   const ha = device?.ha ?? "standalone";
   const broker = brokerSpec(stencil, role, planning);
   const managed =
-    (planning?.revision === "p3" || planning?.revision === "p3-a1" || planning?.revision === "p3-w1") &&
+    revisionAtLeast(planning?.revision, "p3") &&
     ((compatible &&
       (profile?.family === "serverless" ||
         profile?.family === "external-api" ||
@@ -186,7 +181,7 @@ export function resolveProps(
   const metadata = (key: string) =>
     typeof props[key] === "number" && Number.isFinite(props[key]) && props[key] > 0 ? props[key] : undefined;
   const a1 =
-    (planning?.revision === "p3-a1" || planning?.revision === "p3-w1") &&
+    revisionAtLeast(planning?.revision, "p3-a1") &&
     role === "processor" &&
     resourceWorkload(
       stencil,
@@ -200,7 +195,7 @@ export function resolveProps(
     validResources = false;
   }
   const problem =
-    (planning?.revision === "p3-a1" || planning?.revision === "p3-w1") && (props.resources || props.autoscaling)
+    revisionAtLeast(planning?.revision, "p3-a1") && (props.resources || props.autoscaling)
       ? a1
         ? autoscalingProblem(props.resources, props.autoscaling)
         : "Native managed allocation owns scaling; HPA requires a service workload."

@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { EditorApi } from "../editor/types";
 import { upgradePlanning, upgradeAutoscaling, upgradeWaits, legacyExport } from "./migration";
@@ -36,7 +37,7 @@ export function PlanningUpgrade({
       ? upgradeWaits(d)
       : d && a1
         ? upgradeAutoscaling(d)
-        : d && d.planning?.revision !== "p3" && d.planning?.revision !== "p3-a1" && d.planning?.revision !== "p3-w1"
+        : d && !revisionAtLeast(d.planning?.revision, "p3")
           ? upgradePlanning(d)
           : undefined;
   const before = d && next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
@@ -106,7 +107,7 @@ export function PlanningUpgrade({
       <div id="planning-waits-content" hidden={!waits}>
         {waits && upgradeContent}
       </div>
-      {planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1" && (
+      {!revisionAtLeast(planning?.revision, "p3-a1") && (
         <button
           className="link-btn"
           data-testid="autoscaling-upgrade-preview"
@@ -130,9 +131,7 @@ export function PlanningUpgrade({
         aria-expanded={preview === "legacy"}
         aria-controls="planning-legacy-content"
       >
-        {planning?.revision === "p3" || planning?.revision === "p3-a1" || planning?.revision === "p3-w1"
-          ? t("planning.legacyPreview")
-          : t("planning.preview")}
+        {revisionAtLeast(planning?.revision, "p3") ? t("planning.legacyPreview") : t("planning.preview")}
       </button>
       <div id="planning-a1-content" hidden={!a1}>
         {a1 && upgradeContent}

@@ -194,7 +194,7 @@ export default defineConfig({
             // Headless simulation imports the model directly; browsers need no extra startup request.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\]native|model[/\\](?:admissionSchema|admission|ids|relations|jsonSchema|simProps))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\]native|model[/\\](?:admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // The headless core stays separate in source, but shares the browser's existing runtime request.

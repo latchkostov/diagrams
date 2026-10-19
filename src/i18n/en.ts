@@ -2732,7 +2732,7 @@ const en = {
     "Fault timeline affects too many nodes. Remove repeated outages or use smaller boundaries.",
   "fault.repairTarget": "Choose an available fault target, or remove the fault step.",
   "threads.sampling":
-    "One held dot holds that many threads. Auto keeps at least four dots per caller pool where possible.",
+    "One held dot holds that many threads. Dot weight is reduced to fit whole dots in caller pools; Auto keeps at least four where possible.",
   "threads.model": "Requests hold caller threads until their replies.",
   "threads.upgrade": "Upgrade model: requests wait",
   "threads.upgradeHint":
@@ -2751,5 +2751,6 @@ const en = {
   "threads.exportLoss": "Exporting to an older model discards request waits, deadlines and connection pools.",
   "examples.blockingSummary": "Threads wait, the queue grows, and CPU scaling stays quiet",
   "examples.requestsWait": "Requests that wait",
+  "threads.unknownPool": "{busy, number} {noun} busy · capacity unknown",
 } as const;
 export default en;

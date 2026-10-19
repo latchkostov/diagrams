@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { waitingPlan, type WaitCapacity } from "../sim/waitingPlan";
 import { stencilRole } from "../stencils/roles";
 import { profileOf } from "../stencils/profiles";
@@ -66,7 +67,7 @@ export function NodeBadges({
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
   const holds = useMemo(() => {
-    if (diagram.planning?.revision !== "p3-w1") return new Map<string, WaitCapacity>();
+    if (!revisionAtLeast(diagram.planning?.revision, "p3-w1")) return new Map<string, WaitCapacity>();
     const resolved = Object.fromEntries(
       diagram.nodes.map((n) => [
         n.id,
@@ -146,12 +147,7 @@ export function NodeBadges({
             cap={capacity?.nodes[n.id]}
             assignment={assignments.consumers.get(n.id)?.spec}
             brokerSpec={assignments.brokers.get(n.id)}
-            currentModel={
-              diagram.planning?.revision === "p2" ||
-              diagram.planning?.revision === "p3" ||
-              diagram.planning?.revision === "p3-a1" ||
-              diagram.planning?.revision === "p3-w1"
-            }
+            currentModel={revisionAtLeast(diagram.planning?.revision, "p2")}
             concurrency={props?.concurrency ?? 0}
             units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
             groups={
@@ -564,7 +560,11 @@ const NodeBadge = memo(function NodeBadge({
               <b>
                 {profileOf(node.data.stencil)?.family === "serverless" ? t("threads.executions") : t("threads.heading")}
               </b>
-              <p>{t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })}</p>
+              <p>
+                {Number.isFinite(s.threads.slots)
+                  ? t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })
+                  : t("threads.unknownPool", { busy: threadBusy, noun: threadNoun })}
+              </p>
               <p>
                 {s.threads.waiting
                   ? t("threads.waiting", {
@@ -576,7 +576,7 @@ const NodeBadge = memo(function NodeBadge({
               </p>
             </div>
           )}
-          {s.threads && wait && (
+          {s.threads && Number.isFinite(s.threads.slots) && wait && (
             <ThreadCeiling
               wait={{ ...wait, slots: s.threads.slots, ceiling: (s.threads.slots * 1000) / wait.holdMs }}
               noun={threadNoun}

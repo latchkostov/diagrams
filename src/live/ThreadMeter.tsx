@@ -31,7 +31,14 @@ export function ThreadMeter({
   noun: string;
 }) {
   const busy = threads.working + threads.waiting;
+  const known = Number.isFinite(threads.slots);
   const fraction = (count: number) => `${Math.min(100, Math.max(0, (count / Math.max(1, threads.slots)) * 100))}%`;
+  if (!known)
+    return (
+      <span className="sr-only" data-testid={`thread-meter-${id}`}>
+        {t("threads.unknownPool", { busy, noun })}
+      </span>
+    );
   return (
     <div
       className="lv-threads"

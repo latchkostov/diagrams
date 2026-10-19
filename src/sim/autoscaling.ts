@@ -397,11 +397,12 @@ export function reconcileFleet(
   if (lifecycleChanged) f.replicaIndexDirty = true;
 }
 /** Readiness jitter stops fragmenting idle work; active sampled boundaries keep their CPU budgets. */
-export function compactReadyRanges(f: Fleet, working: readonly SampledWork[]) {
+export function compactReadyRanges(f: Fleet, working: readonly SampledWork[] | (() => readonly SampledWork[])) {
   if (!f.rangesDirty) return;
   f.rangesDirty = false;
   if (f.ranges.length - f.rangeHead < 2) return;
-  const boundaries = new Set(working.flatMap((w) => (w.cpuParts ?? []).flatMap((p) => [p.first, p.last + 1])));
+  const owners = typeof working === "function" ? working() : working;
+  const boundaries = new Set(owners.flatMap((w) => (w.cpuParts ?? []).flatMap((p) => [p.first, p.last + 1])));
   const ranges = f.ranges
     .slice(f.rangeHead)
     .filter((c) => c.first <= c.last)
@@ -416,7 +417,11 @@ export function compactReadyRanges(f: Fleet, working: readonly SampledWork[]) {
   f.rangeHead = 0;
 }
 /** Constant idle-tick work. Startup heaps are visited only at due deadlines. Grace checks visit busy identities only. */
-export function advanceFleet(f: Fleet, now: number, working: readonly SampledWork[] = []): boolean {
+export function advanceFleet(
+  f: Fleet,
+  now: number,
+  working: readonly SampledWork[] | (() => readonly SampledWork[]) = [],
+): boolean {
   let changed = false;
   while (f.starts.length && f.starts[0].at <= now) {
     const c = popDue(f.starts);

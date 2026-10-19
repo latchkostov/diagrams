@@ -1,14 +1,15 @@
 {
   "withIcons": {
-    "sha256": "06e3663004e04d2142635c06d2717e9f2b0c70f8af5a0259fe6c8567b8eca72e",
-    "bytes": 5881,
+    "sha256": "048bd8ed1919f65a686fe59dc7e4fd1d53fc755245ba944a68acda4db4624d0a",
+    "bytes": 5936,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.adc": "net-adc 5a4604d3be814648", "generic.database": "generic-database e85b3d97d2e8de44", "generic.external-api": "generic-external-api 8115696d1b46c6c6" }
   },
   "readBack": [
     {
       "warnings": [],
       "diagram": {
-        "format": "diagrams/v1",
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-w1" },
         "title": "Blocking request join",
         "nodes": [
           {

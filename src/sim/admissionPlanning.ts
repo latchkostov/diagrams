@@ -7,12 +7,13 @@ import {
   type Requirement,
 } from "./admissionPolicy";
 import type { PlanningModel } from "../model/types";
+import { overrideWork, type ResolvedTiming } from "./timing";
 
 type ManagedEntry = {
   id: string;
   policy: AdmissionPolicy;
   offered: number;
-  latencyMs: number;
+  timing: ResolvedTiming;
   /**
    * Workload rows: requests per second by endpoint (undefined: no endpoint) and, at a managed table router, by the
    * matched route action, whose quota buckets join the call's in one transaction (`rule`).
@@ -34,7 +35,7 @@ type Transaction =
 const readoutKey = (router: string, action: string, route: string) => JSON.stringify([router, action, route]);
 
 /** Common workload multiplier: account and endpoint constraints apply to the same offered workload.
- * Steady-state estimate excludes bursts, cold starts, retries and caller waits. */
+ * Steady-state estimate excludes bursts, cold starts and retries. */
 export function admissionCapacities(entries: ManagedEntry[], planning?: PlanningModel): Map<string, number> {
   return admissionPlan(entries, planning).capacities;
 }
@@ -114,7 +115,7 @@ export function admissionPlan(
         result.set(entry.id, 0);
         continue;
       }
-      const latency = call.latencyMs ?? entry.latencyMs;
+      const latency = overrideWork(entry.timing, call.latencyMs).holdMs;
       seconds += (rate * latency) / 1000;
       for (const { key, quota, cost } of transaction.requirements) {
         if (cost > (quota.burst ?? quota.amount)) result.set(entry.id, 0);

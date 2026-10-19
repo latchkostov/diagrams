@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import type { Fault } from "../model/faults";
 import { faultTimelineProblem } from "../model/faultRuntime";
 import { simulationProjection } from "../sim/simulationContent";
@@ -814,7 +815,7 @@ export class LiveController {
       this.publish();
       return false;
     }
-    if (sim && (this.diagram.planning?.revision === "p3-a1" || this.diagram.planning?.revision === "p3-w1")) {
+    if (sim && revisionAtLeast(this.diagram.planning?.revision, "p3-a1")) {
       const candidate = {
         ...this.diagram,
         simulations: [...(this.diagram.simulations ?? []).filter((s) => s.id !== sim.id), sim],
@@ -863,7 +864,7 @@ export class LiveController {
     const props = simulation?.setup?.props ?? freePlayProps(this.diagram, inputs);
     const previous = this.sim?.setup?.props ?? this.freeApplied;
     if (
-      (this.diagram.planning?.revision === "p3-a1" || this.diagram.planning?.revision === "p3-w1") &&
+      revisionAtLeast(this.diagram.planning?.revision, "p3-a1") &&
       resourceBudgetExceeded(
         {
           ...this.diagram,

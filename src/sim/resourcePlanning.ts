@@ -6,6 +6,7 @@ import {
   type ExecutableController,
 } from "../model/autoscaling";
 import type { ResolvedProps } from "./defaults";
+import { resolvedTiming, type ResolvedTiming } from "./timing";
 
 /** Steady-state replicas each A3 policy's own target asks for at `offered` real messages/s. */
 function cloudNeeded(
@@ -53,13 +54,19 @@ function cloudNeeded(
 }
 
 /** Configured arithmetic, not a promise about a burst or the current ready fleet. */
-export function resourcePlan(p: ResolvedProps, offered: number, assigned: number, multiplier = 1) {
+export function resourcePlan(
+  p: ResolvedProps,
+  offered: number,
+  assigned: number,
+  multiplier = 1,
+  timing: ResolvedTiming = resolvedTiming(p),
+) {
   const r = p.resources;
   if (!r) return undefined;
   const c = p.autoscaling?.mode === "on" ? p.autoscaling.controller : undefined;
   const range = c ? replicaRange(c, multiplier) : undefined;
   const fixed = Math.max(1, Math.min(10_000, Math.round(p.replicas * multiplier)));
-  const perReplica = resourceCapacity(r, p.concurrency, p.latencyMs);
+  const perReplica = resourceCapacity(r, p.concurrency, timing.holdMs);
   const metrics = c && "settings" in c ? c.settings.metrics : [];
   const targetValue = (m: (typeof metrics)[number]) =>
     m.target.kind === "averageValue"
@@ -68,7 +75,7 @@ export function resourcePlan(p: ResolvedProps, offered: number, assigned: number
           m.target.percentOfRequest) /
         100;
   const cpuMilli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
-  const residenceSeconds = Math.max(p.latencyMs / 1000, (r.cpuMsPerMessage * p.concurrency) / cpuMilli);
+  const residenceSeconds = Math.max(timing.holdMs / 1000, (r.cpuMsPerMessage * p.concurrency) / cpuMilli);
   const needed = [
     ...metrics.flatMap((m) => {
       const target = targetValue(m);

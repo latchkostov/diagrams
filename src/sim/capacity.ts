@@ -1,4 +1,6 @@
+import { revisionAtLeast } from "../model/revisions";
 import { waitingPlan, type WaitCapacity } from "./waitingPlan";
+import { resolvedTiming } from "./timing";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
 import { replicaRange, resourceCapacity } from "../model/autoscaling";
 import { englishAssignmentLabel, recordAssignment, type ConsumerAssignment, type BrokerSpec } from "../model/brokers";
@@ -103,6 +105,7 @@ type Rates = Map<string, Map<string, number>>;
 const RATE_CAP = 1e12;
 const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string): number => {
   if (!entry.up) return 0;
+  const timing = resolvedTiming(entry.props, entry.wait?.callMs, endpointId);
   if (entry.props.admission) {
     const slots = Math.min(
       entry.props.admission.slots ?? Infinity,
@@ -111,11 +114,7 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
         ? Infinity
         : replicas * entry.props.admission.fixedSlotsPerReplica,
     );
-    const time =
-      entry.wait?.holdMs ??
-      entry.props.admission.endpoints.find((e) => e.id === endpointId)?.behaviour?.latencyMs ??
-      entry.props.admission.api.latencyMs ??
-      entry.props.latencyMs;
+    const time = timing.holdMs;
     const admission = slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
     return entry.props.resources
       ? Math.min(admission, replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, time))
@@ -123,12 +122,9 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
   }
   if (entry.role === "processor") {
     if (entry.props.resources)
-      return (
-        replicas *
-        resourceCapacity(entry.props.resources, entry.props.concurrency, entry.wait?.holdMs ?? entry.props.latencyMs)
-      );
+      return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, timing.holdMs);
     const slots = replicas * entry.props.concurrency;
-    const holdMs = entry.wait?.holdMs ?? entry.props.latencyMs;
+    const holdMs = timing.holdMs;
     return !slots ? 0 : holdMs ? (slots * 1000) / holdMs : Infinity;
   }
   // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
@@ -419,11 +415,7 @@ export function analyzeCapacity(
             assigned,
             id,
             count,
-            broker.props.broker?.partitioned &&
-              (diagram.planning?.revision === "p2" ||
-                diagram.planning?.revision === "p3" ||
-                diagram.planning?.revision === "p3-a1" ||
-                diagram.planning?.revision === "p3-w1")
+            broker.props.broker?.partitioned && revisionAtLeast(diagram.planning?.revision, "p2")
               ? broker.props.broker
               : undefined,
           );
@@ -624,9 +616,27 @@ export function analyzeCapacity(
       break;
     }
   }
+  const incoming = new Map<string, CompiledEdge[]>();
+  for (const edge of compiled.edges) {
+    if (edge.deny || edge.dlq) continue;
+    const list = incoming.get(edge.to) ?? [];
+    list.push(edge);
+    incoming.set(edge.to, list);
+  }
   const nodes: Record<string, NodeCapacity> = Object.create(null);
   for (const [id, entry] of entries) {
     const offered = total(rates.get(id));
+    let timing = resolvedTiming(entry.props, entry.wait?.callMs);
+    if (entry.wait && offered > 0) {
+      let work = timing.workMs * total(external.get(id));
+      let weight = total(external.get(id));
+      for (const edge of incoming.get(id) ?? []) {
+        const rate = connections[edge.id] ?? 0;
+        work += resolvedTiming(entry.props, 0, edge.endpointId).workMs * rate;
+        weight += rate;
+      }
+      if (weight > 0) timing = { workMs: work / weight, holdMs: work / weight + entry.wait.callMs };
+    }
     let capacity = entry.props.admission ? (entry.up ? Infinity : 0) : serviceRate(entry);
     if (brokerRole(entry.role)) {
       const limits = (groups.get(id) ?? []).map((group) => {
@@ -662,7 +672,7 @@ export function analyzeCapacity(
       label: entry.input.label,
       role: entry.role,
       ...(!entry.up ? { status: entry.down ? ("down" as const) : ("paused" as const) } : {}),
-      resourcePlan: resourcePlan(entry.props, offered, entry.active, capacityMultiplier),
+      resourcePlan: resourcePlan(entry.props, offered, entry.active, capacityMultiplier, timing),
       capacity,
       offered,
       utilization: ratio(offered, capacity),
@@ -673,13 +683,6 @@ export function analyzeCapacity(
       ...(entry.role === "gateway" && entry.props.device ? { device: true } : {}),
       ...(entry.props.admission ? { managed: true } : {}),
     };
-  }
-  const incoming = new Map<string, CompiledEdge[]>();
-  for (const edge of compiled.edges) {
-    if (edge.deny || edge.dlq) continue;
-    const list = incoming.get(edge.to) ?? [];
-    list.push(edge);
-    incoming.set(edge.to, list);
   }
   // A managed table router's admission workload, by endpoint and matched action: what its table forwards from each
   // connection's traffic classes (no 404s, no deny shares), each row's transaction carrying its rule's buckets.
@@ -718,7 +721,7 @@ export function analyzeCapacity(
                     ),
             },
             offered: nodes[id].offered,
-            latencyMs: entry.props.latencyMs,
+            timing: resolvedTiming(entry.props, entry.wait?.callMs),
             endpoints: tableRouter(entry)
               ? [
                   ...(incoming.get(id) ?? []).flatMap((e) =>
@@ -789,13 +792,9 @@ export function analyzeCapacity(
     if (constraint) {
       const broker = constraint.broker;
       const desired = [...constraint.allocations.keys()].reduce((sum, id) => sum + entries.get(id)!.replicas, 0);
-      suggestion =
-        diagram.planning?.revision === "p2" ||
-        diagram.planning?.revision === "p3" ||
-        diagram.planning?.revision === "p3-a1" ||
-        diagram.planning?.revision === "p3-w1"
-          ? `${broker.input.sublabel ?? broker.input.label}: ${englishAssignmentLabel(broker.props.broker)} → ${desired}`
-          : `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
+      suggestion = revisionAtLeast(diagram.planning?.revision, "p2")
+        ? `${broker.input.sublabel ?? broker.input.label}: ${englishAssignmentLabel(broker.props.broker)} → ${desired}`
+        : `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
     }
   } else if (bottleneck && bottleneck.utilization >= 1) {
     if (bottleneck.managed) suggestion = `${bottleneck.label}: Increase allocation or Reduce calls.`;

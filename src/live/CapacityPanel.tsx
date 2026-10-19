@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { replicaRange } from "../model/autoscaling";
 import {
   createContext,
@@ -47,7 +48,7 @@ import {
   type NodeHeat,
 } from "./capacityModel";
 import { BottleneckCallout } from "./CapacityLayer";
-import { formatCount, formatRate } from "./format";
+import { formatRate, formatScale } from "./format";
 import { LiveIcon } from "./icons";
 import { usePanelEscape } from "./usePanelEscape";
 
@@ -247,10 +248,7 @@ export const CapacityPanel = memo(function CapacityPanel({
                       className={`cap-preset${on ? " is-on" : ""}`}
                       aria-pressed={on}
                       title={
-                        diagram.planning?.revision === "p2" ||
-                        diagram.planning?.revision === "p3" ||
-                        diagram.planning?.revision === "p3-a1" ||
-                        diagram.planning?.revision === "p3-w1"
+                        revisionAtLeast(diagram.planning?.revision, "p2")
                           ? p.id === "double-partitions"
                             ? `2 × ${assignmentLabels}`
                             : p.id === "normal"
@@ -261,11 +259,7 @@ export const CapacityPanel = memo(function CapacityPanel({
                       onClick={() => set(applyPreset(p.id, inputs, diagram, base))}
                       data-testid={`capacity-preset-${p.id}`}
                     >
-                      {p.id === "double-partitions" &&
-                      (diagram.planning?.revision === "p2" ||
-                        diagram.planning?.revision === "p3" ||
-                        diagram.planning?.revision === "p3-a1" ||
-                        diagram.planning?.revision === "p3-w1")
+                      {p.id === "double-partitions" && revisionAtLeast(diagram.planning?.revision, "p2")
                         ? `2 × ${assignmentLabels}`
                         : p.label}
                       {p.id === "black-friday" && <small>5×</small>}
@@ -993,9 +987,9 @@ function ScaleIndicator({
     <div className="cap-scale" data-testid="scale-indicator" data-scale={scale}>
       <span className="cap-scale-dot" aria-hidden />
       <span>
-        1 dot ≈ <b className="mono">{formatCount(scale)}</b> {scale === 1 ? "message" : "messages"}
+        1 dot ≈ <b className="mono">{formatScale(scale)}</b> {scale === 1 ? "message" : "messages"}
         <small>
-          {diagram.planning?.revision === "p3-w1"
+          {revisionAtLeast(diagram.planning?.revision, "p3-w1")
             ? t("threads.sampling")
             : "Dots are sampled; counters count every message."}
         </small>
@@ -1008,10 +1002,10 @@ function ScaleIndicator({
           data-testid="scale-override"
           name="scale-override"
         >
-          <option value="auto">Auto ({formatCount(auto)})</option>
+          <option value="auto">Auto ({formatScale(auto)})</option>
           {options.map((v) => (
             <option key={v} value={String(v)}>
-              {formatCount(v)}
+              {formatScale(v)}
               {v === auto ? " (auto)" : base?.scale === v && inputs.scale === undefined ? " (saved)" : ""}
             </option>
           ))}

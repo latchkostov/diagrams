@@ -4,6 +4,7 @@ import type { EngineOptions } from "./types";
 import { createEngine } from "./engine";
 import { waitingPlan } from "./waitingPlan";
 import { resolveProps } from "./defaults";
+import { resourceLesson } from "../model/autoscaling";
 
 it("never visits held work during idle ticks, even with 10,000 open calls", () => {
   const d = waitingFixture();
@@ -68,4 +69,41 @@ it("reads each diagram connection once per planning pass, including a large shar
   const small = reads(125),
     large = reads(1000);
   expect(large).toBeLessThanOrEqual(small * 9);
+});
+
+it("does not visit thousands of held calls on each sampled resource admission", () => {
+  const d = waitingFixture();
+  d.nodes[1].props = {
+    concurrency: 6000,
+    latencyMs: 10,
+    jitter: 0,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 0 },
+  };
+  d.nodes[2].props = { ...d.nodes[2].props, status: "paused" };
+  let visits = 0;
+  const options: EngineOptions = {
+    scale: 2,
+    maxParticles: 0,
+    verifyResources(state) {
+      const node = [...state.nodes].find((node) => node.id === "caller")! as unknown as { calls: Map<number, unknown> };
+      const original = node.calls.values.bind(node.calls);
+      node.calls.values = function* () {
+        for (const call of original()) {
+          visits++;
+          yield call;
+        }
+      } as typeof node.calls.values;
+      options.verifyResources = undefined;
+    },
+  };
+  const e = createEngine(options);
+  e.load(d);
+  e.inject("caller", 2000);
+  e.step(20);
+  expect(e.snapshot().nodes.caller.threads?.waiting).toBe(2000);
+  visits = 0;
+  e.inject("caller", 100);
+  e.step(20);
+  expect(e.snapshot().nodes.caller.threads?.waiting).toBe(2100);
+  expect(visits).toBe(0);
 });

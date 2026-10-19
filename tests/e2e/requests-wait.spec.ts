@@ -76,3 +76,24 @@ test("an empty caller pool keeps the busy chip quiet", async ({ page }) => {
   await expect(page.getByTestId("thread-meter-caller")).toBeVisible();
   await expect(page.getByTestId("thread-chip-caller")).toHaveCount(0);
 });
+
+test("a fixed execution pool fills its meter using its effective capacity", async ({ page }) => {
+  const d = waitingFixture();
+  d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
+  d.nodes[1].stencil = "azure.functions";
+  d.nodes[1].props = { ...d.nodes[1].props, scaling: "fixed", maxConcurrency: 1000 };
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(1000);
+  await page.getByTestId("live-play").click();
+  const meter = page.getByTestId("thread-meter-caller");
+  await expect(meter).toHaveAttribute("aria-valuemax", "4");
+  await expect(meter).toHaveAttribute("aria-valuenow", "4");
+  await expect(page.getByTestId("thread-chip-caller")).toContainText("4 of 4 executions busy");
+});

@@ -1,5 +1,5 @@
 {
-  "run": { "time": 60000, "scale": 10, "traffic": true },
+  "run": { "time": 60000, "scale": 8, "traffic": true },
   "checkpoints": [
     {
       "atMs": 0,
@@ -15,250 +15,250 @@
     },
     {
       "atMs": 10000,
-      "inSystem": 163,
+      "inSystem": 220,
       "nodes": {
-        "source": { "processed": 400, "throughput": 40.39815253084028, "replicas": [1, 1, 0] },
+        "source": { "processed": 500, "throughput": 50.24771657031149, "replicas": [1, 1, 0] },
         "applications": {
-          "processed": 396,
-          "backlog": 76,
-          "throughput": 40.39795963091118,
-          "lag": { "decisions": 76 },
+          "processed": 495,
+          "backlog": 110,
+          "throughput": 50.24747663901869,
+          "lag": { "decisions": 110 },
           "replicas": [1, 1, 0]
         },
-        "caller": { "processed": 248, "backlog": 62, "inFlight": 7, "throughput": 25.924367950235677, "replicas": [4, 4, 0] },
-        "partner": { "processed": 248, "inFlight": 6, "throughput": 25.924367950235677, "replicas": [1, 1, 0] },
+        "caller": { "processed": 296, "backlog": 77, "inFlight": 8, "throughput": 31.80704027047434, "replicas": [4, 4, 0] },
+        "partner": { "processed": 296, "inFlight": 8, "throughput": 31.80704027047434, "replicas": [1, 1, 0] },
         "decisions": {
-          "processed": 245,
-          "throughput": 25.437998401799867,
+          "processed": 292,
+          "throughput": 30.967040919835547,
           "lag": { "save": 0 },
           "replicas": [1, 1, 0]
         },
-        "store": { "processed": 243, "backlog": 1, "throughput": 26.620113595888185, "replicas": [1, 1, 0] }
+        "store": { "processed": 288, "throughput": 30.559265931742345, "replicas": [1, 1, 0] }
       }
     },
     {
       "atMs": 20000,
-      "inSystem": 304,
+      "inSystem": 411,
       "nodes": {
-        "source": { "processed": 800, "throughput": 40.39998660412771, "replicas": [1, 1, 0] },
+        "source": { "processed": 1000, "throughput": 50.249997813114526, "replicas": [1, 1, 0] },
         "applications": {
-          "processed": 796,
-          "backlog": 217,
-          "throughput": 40.399986595370066,
-          "lag": { "decisions": 217 },
+          "processed": 995,
+          "backlog": 304,
+          "throughput": 50.24999780222167,
+          "lag": { "decisions": 304 },
           "replicas": [1, 1, 0]
         },
-        "caller": { "processed": 507, "backlog": 62, "inFlight": 7, "throughput": 25.66820943376407, "replicas": [4, 4, 0] },
-        "partner": { "processed": 507, "inFlight": 6, "throughput": 25.66820943376407, "replicas": [1, 1, 0] },
+        "caller": { "processed": 602, "backlog": 79, "inFlight": 8, "throughput": 30.182517492287513, "replicas": [4, 4, 0] },
+        "partner": { "processed": 602, "inFlight": 7, "throughput": 30.182517492287513, "replicas": [1, 1, 0] },
         "decisions": {
-          "processed": 504,
-          "throughput": 25.186867941425163,
+          "processed": 600,
+          "throughput": 31.179288487667744,
           "lag": { "save": 0 },
           "replicas": [1, 1, 0]
         },
-        "store": { "processed": 502, "inFlight": 1, "throughput": 26.357473572798437, "replicas": [1, 1, 0] }
+        "store": { "processed": 596, "backlog": 1, "throughput": 30.969374627176784, "replicas": [1, 1, 0] }
       }
     },
     {
       "atMs": 30000,
-      "inSystem": 444,
+      "inSystem": 603,
       "nodes": {
-        "source": { "processed": 1200, "throughput": 40.39998668739452, "replicas": [1, 1, 0] },
+        "source": { "processed": 1500, "throughput": 50.2499979166828, "replicas": [1, 1, 0] },
         "applications": {
-          "processed": 1196,
-          "backlog": 357,
-          "throughput": 40.39998668739412,
-          "lag": { "decisions": 357 },
+          "processed": 1495,
+          "backlog": 494,
+          "throughput": 50.249997916682304,
+          "lag": { "decisions": 494 },
           "replicas": [1, 1, 0]
         },
-        "caller": { "processed": 767, "backlog": 61, "inFlight": 7, "throughput": 26.40782318903377, "replicas": [4, 4, 0] },
-        "partner": { "processed": 767, "inFlight": 6, "throughput": 26.40782318903377, "replicas": [1, 1, 0] },
-        "decisions": { "processed": 763, "throughput": 24.93625450804622, "lag": { "save": 0 }, "replicas": [1, 1, 0] },
-        "store": { "processed": 762, "throughput": 27.090229055328006, "replicas": [1, 1, 0] }
+        "caller": { "processed": 912, "backlog": 76, "inFlight": 8, "throughput": 32.45173949989264, "replicas": [4, 4, 0] },
+        "partner": { "processed": 912, "inFlight": 7, "throughput": 32.45173949989264, "replicas": [1, 1, 0] },
+        "decisions": { "processed": 907, "throughput": 30.57988032205071, "lag": { "save": 0 }, "replicas": [1, 1, 0] },
+        "store": { "processed": 904, "throughput": 31.1792885936179, "replicas": [1, 1, 0] }
       }
     },
     {
       "atMs": 40000,
-      "inSystem": 585,
+      "inSystem": 796,
       "nodes": {
-        "source": { "processed": 1600, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
+        "source": { "processed": 2000, "throughput": 50.24999791668725, "replicas": [1, 1, 0] },
         "applications": {
-          "processed": 1596,
-          "backlog": 498,
-          "throughput": 40.399986687398226,
-          "lag": { "decisions": 498 },
+          "processed": 1995,
+          "backlog": 689,
+          "throughput": 50.24999791668725,
+          "lag": { "decisions": 689 },
           "replicas": [1, 1, 0]
         },
-        "caller": { "processed": 1026, "backlog": 61, "inFlight": 7, "throughput": 26.145060957983997, "replicas": [4, 4, 0] },
-        "partner": { "processed": 1026, "inFlight": 6, "throughput": 26.145060957983997, "replicas": [1, 1, 0] },
+        "caller": { "processed": 1217, "backlog": 80, "inFlight": 8, "throughput": 29.777127594563275, "replicas": [4, 4, 0] },
+        "partner": { "processed": 1217, "inFlight": 7, "throughput": 29.777127594563275, "replicas": [1, 1, 0] },
         "decisions": {
-          "processed": 1022,
-          "throughput": 24.68813463002218,
+          "processed": 1216,
+          "throughput": 31.809152004295463,
           "lag": { "save": 0 },
           "replicas": [1, 1, 0]
         },
-        "store": { "processed": 1021, "backlog": 1, "throughput": 26.820676772458977, "replicas": [1, 1, 0] }
+        "store": { "processed": 1211, "backlog": 1, "throughput": 30.57988032205552, "replicas": [1, 1, 0] }
       }
     },
     {
       "atMs": 50000,
-      "inSystem": 727,
+      "inSystem": 987,
       "nodes": {
-        "source": { "processed": 2000, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
+        "source": { "processed": 2500, "throughput": 50.24999791668725, "replicas": [1, 1, 0] },
         "applications": {
-          "processed": 1996,
-          "backlog": 639,
-          "throughput": 40.399986687398226,
-          "lag": { "decisions": 639 },
+          "processed": 2495,
+          "backlog": 879,
+          "throughput": 50.24999791668725,
+          "lag": { "decisions": 879 },
           "replicas": [1, 1, 0]
         },
-        "caller": { "processed": 1285, "backlog": 61, "inFlight": 7, "throughput": 25.884913254813924, "replicas": [4, 4, 0] },
-        "partner": { "processed": 1285, "inFlight": 7, "throughput": 25.884913254813924, "replicas": [1, 1, 0] },
+        "caller": { "processed": 1527, "backlog": 76, "inFlight": 8, "throughput": 32.092190829735344, "replicas": [4, 4, 0] },
+        "partner": { "processed": 1527, "inFlight": 7, "throughput": 32.092190829735344, "replicas": [1, 1, 0] },
         "decisions": {
-          "processed": 1281,
-          "throughput": 24.44248358603054,
+          "processed": 1522,
+          "throughput": 30.18251758816009,
           "lag": { "save": 0 },
           "replicas": [1, 1, 0]
         },
-        "store": { "processed": 1280, "inFlight": 1, "throughput": 26.553806579613184, "replicas": [1, 1, 0] }
+        "store": { "processed": 1520, "throughput": 31.809152004295463, "replicas": [1, 1, 0] }
       }
     },
     {
       "atMs": 60000,
-      "inSystem": 866,
+      "inSystem": 1182,
       "nodes": {
-        "source": { "processed": 2400, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
+        "source": { "processed": 3000, "throughput": 50.24999791668725, "replicas": [1, 1, 0] },
         "applications": {
-          "processed": 2396,
-          "backlog": 779,
-          "throughput": 40.399986687398226,
-          "lag": { "decisions": 779 },
+          "processed": 2995,
+          "backlog": 1074,
+          "throughput": 50.24999791668725,
+          "lag": { "decisions": 1074 },
           "replicas": [1, 1, 0]
         },
-        "caller": { "processed": 1545, "backlog": 61, "inFlight": 7, "throughput": 26.622370689623352, "replicas": [4, 4, 0] },
-        "partner": { "processed": 1545, "inFlight": 6, "throughput": 26.622370689623352, "replicas": [1, 1, 0] },
+        "caller": { "processed": 1832, "backlog": 81, "inFlight": 8, "throughput": 29.36354817986237, "replicas": [4, 4, 0] },
+        "partner": { "processed": 1832, "inFlight": 8, "throughput": 29.36354817986237, "replicas": [1, 1, 0] },
         "decisions": {
-          "processed": 1541,
-          "throughput": 25.194293435849495,
+          "processed": 1832,
+          "throughput": 32.451739499896995,
           "lag": { "save": 0 },
           "replicas": [1, 1, 0]
         },
-        "store": { "processed": 1540, "throughput": 27.28460841463679, "replicas": [1, 1, 0] }
+        "store": { "processed": 1826, "backlog": 1, "throughput": 30.18251758816009, "replicas": [1, 1, 0] }
       }
     }
   ],
   "final": {
     "atMs": 60000,
-    "inSystem": 866,
+    "inSystem": 1182,
     "real": {
-      "source": { "processed": 24000, "throughput": 403.9998668739822, "replicas": [1, 1, 0] },
+      "source": { "processed": 24000, "throughput": 401.999983333498, "replicas": [1, 1, 0] },
       "applications": {
         "processed": 23960,
-        "backlog": 7790,
-        "throughput": 403.9998668739822,
-        "lag": { "decisions": 7790 },
+        "backlog": 8592,
+        "throughput": 401.999983333498,
+        "lag": { "decisions": 8592 },
         "replicas": [1, 1, 0]
       },
-      "caller": { "processed": 15450, "backlog": 610, "inFlight": 70, "throughput": 266.2237068962335, "replicas": [4, 4, 0] },
-      "partner": { "processed": 15450, "inFlight": 60, "throughput": 266.2237068962335, "replicas": [1, 1, 0] },
+      "caller": { "processed": 14656, "backlog": 648, "inFlight": 64, "throughput": 234.90838543889896, "replicas": [4, 4, 0] },
+      "partner": { "processed": 14656, "inFlight": 64, "throughput": 234.90838543889896, "replicas": [1, 1, 0] },
       "decisions": {
-        "processed": 15410,
-        "throughput": 251.94293435849494,
+        "processed": 14656,
+        "throughput": 259.61391599917596,
         "lag": { "save": 0 },
         "replicas": [1, 1, 0]
       },
-      "store": { "processed": 15400, "throughput": 272.8460841463679, "replicas": [1, 1, 0] }
+      "store": { "processed": 14608, "backlog": 8, "throughput": 241.4601407052807, "replicas": [1, 1, 0] }
     },
-    "edges": { "submit": 2396, "consume": 1613, "call": 1551, "publish": 1541, "save": 1540 }
+    "edges": { "submit": 2995, "consume": 1921, "call": 1840, "publish": 1832, "save": 1827 }
   },
   "events": {
-    "total": 19608,
-    "byKind": { "process": 10967, "deliver": 8641 },
+    "total": 23732,
+    "byKind": { "process": 13317, "deliver": 10415 },
     "byNode": {
-      "source": { "process": 2400 },
-      "applications": { "deliver": 2396, "process": 2396 },
-      "caller": { "deliver": 1613, "process": 1545 },
-      "partner": { "deliver": 1551, "process": 1545 },
-      "decisions": { "deliver": 1541, "process": 1541 },
-      "store": { "deliver": 1540, "process": 1540 }
+      "source": { "process": 3000 },
+      "applications": { "deliver": 2995, "process": 2995 },
+      "caller": { "deliver": 1921, "process": 1832 },
+      "partner": { "deliver": 1840, "process": 1832 },
+      "decisions": { "deliver": 1832, "process": 1832 },
+      "store": { "deliver": 1827, "process": 1826 }
     },
     "perSecond": [
-      "4c2d90b479fb",
-      "b9f6e166e446",
-      "aa55cdd15b9e",
-      "ebe832034f67",
-      "5d372fb03272",
-      "8277da1c1276",
-      "fcb2850387e0",
-      "5e10548eba90",
-      "68aad25cadcd",
-      "3745314efc26",
-      "74dc4f1e480b",
-      "84be872cb6b2",
-      "5d832465fcc3",
-      "cb4ba9a234dc",
-      "8308293a589b",
-      "59ef8c2d511a",
-      "21bcca718e93",
-      "99d424d93942",
-      "bf7ac86c67c6",
-      "0046412b6565",
-      "fd1ad8033e85",
-      "e1e5a63f60ab",
-      "6a2434e67225",
-      "c84a86202c25",
-      "dbca03c2ca86",
-      "cbffb654d57e",
-      "bd09a83e820b",
-      "7fbc51326b17",
-      "4441a971868f",
-      "032cb10fbb87",
-      "64ab43df210d",
-      "4e8213be23d9",
-      "f4927ecdeab8",
-      "a9f0eee2038c",
-      "8efee3d41e79",
-      "16edd684674c",
-      "cc5f54e7bfd2",
-      "184cbb7a2b03",
-      "8efd0b32d058",
-      "75ee558f40b4",
-      "ca0d2f85482e",
-      "376282017a1b",
-      "33812f66e738",
-      "401a9c5d557d",
-      "165b2f074781",
-      "e2431952f552",
-      "300f4042af16",
-      "6eaed6159266",
-      "35d0339d25df",
-      "632d4793dbca",
-      "ccd73464b883",
-      "50873a9c5ebe",
-      "3c7d14f92d0e",
-      "c20b4ef3489b",
-      "ed4da33a525e",
-      "b25619b216dc",
-      "84eec9d3c014",
-      "d41e7a1ed68f",
-      "17174034807c",
-      "d4e2fceb1c9e",
-      "b389f93a4318"
+      "42f6b011d741",
+      "e5b3db686d1d",
+      "4486a9d3f271",
+      "a9bfbd51de69",
+      "004c386f9c0f",
+      "334c3b3203f5",
+      "7aed8d2c4ad3",
+      "60b24a8a8b30",
+      "c73f3e818a15",
+      "e637ba8048df",
+      "494ee1545f01",
+      "9c7543baca9a",
+      "143671d082db",
+      "5a44db6a9b7c",
+      "4a6f6363b1de",
+      "9706a26829ed",
+      "9b5ad6c11b96",
+      "e6af7a93b300",
+      "ded005b25f6a",
+      "99118b84ea9b",
+      "e34fdd7c9605",
+      "7b5966914a26",
+      "fd291a45af9a",
+      "d39dbb162c69",
+      "0e2c0d51f0f9",
+      "f55fc2933953",
+      "a133db2955af",
+      "5bb81240391a",
+      "5637a62e78d8",
+      "e7ae7f79efe7",
+      "aee785d85965",
+      "5d382ccadc60",
+      "986c0361dddc",
+      "392698c7d6d9",
+      "1a45223e9a63",
+      "0b7e3234b47c",
+      "012486ece425",
+      "bbcf5728373a",
+      "2b2b3a3c36c9",
+      "9942c8b59c94",
+      "805b0feada0b",
+      "31796c4d01b9",
+      "c7a6a7934597",
+      "7e233f1b47c4",
+      "fcbc7c3bd5b2",
+      "5bf05549fc46",
+      "88be60282709",
+      "b4e1a844d0bd",
+      "8dc8da8c1ba0",
+      "f469e8a44c20",
+      "e4064b20066d",
+      "6da9c1a7ce5f",
+      "f3d486ef940d",
+      "cee9a62fdefe",
+      "d36d57a69f38",
+      "e3547988a831",
+      "d61107cbe92b",
+      "d45e86651e90",
+      "96d50d620027",
+      "81969d069f3b",
+      "77fd8959099a"
     ]
   },
   "notes": [],
   "latency": {
-    "journeys": { "done": 243, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
-    "endToEndMs": { "count": 243, "min": 690, "mean": 2292.0576131687244, "p50": 2300, "p90": 3630, "max": 3920 },
+    "journeys": { "done": 202, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 202, "min": 680, "mean": 1892.8712871287128, "p50": 1880, "p90": 2880, "max": 3180 },
     "waitMs": {
-      "caller": { "count": 243, "min": 0, "mean": 1493.7448559670781, "p50": 1610, "p90": 2380, "max": 2480 },
-      "partner": { "count": 243, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "store": { "count": 243, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+      "caller": { "count": 202, "min": 0, "mean": 1212.8712871287128, "p50": 1200, "p90": 2200, "max": 2500 },
+      "partner": { "count": 202, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "store": { "count": 202, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
     },
     "processMs": {
-      "caller": { "count": 243, "min": 270, "mean": 270, "p50": 270, "p90": 270, "max": 270 },
-      "partner": { "count": 243, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 },
-      "store": { "count": 243, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+      "caller": { "count": 202, "min": 260, "mean": 260, "p50": 260, "p90": 260, "max": 260 },
+      "partner": { "count": 202, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 },
+      "store": { "count": 202, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
     }
   }
 }

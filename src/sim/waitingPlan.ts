@@ -1,6 +1,9 @@
+import { revisionAtLeast } from "../model/revisions";
 import type { DiagramFile } from "../model/types";
 import type { ResolvedProps } from "./defaults";
-import { compileTopology } from "./topology";
+import { callEligible, compileTopology } from "./topology";
+import { stencilRole } from "../stencils/roles";
+import { resolvedTiming } from "./timing";
 
 export interface WaitCapacity {
   workMs: number;
@@ -11,8 +14,9 @@ export interface WaitCapacity {
 /** Reverse topological evaluation, O(nodes + connections), including deep graphs and cycles. */
 export function waitingPlan(diagram: DiagramFile, resolved: Record<string, ResolvedProps>) {
   const result = new Map<string, WaitCapacity>();
-  if (diagram.planning?.revision !== "p3-w1") return { nodes: result, converged: true };
+  if (!revisionAtLeast(diagram.planning?.revision, "p3-w1")) return { nodes: result, converged: true };
   const topology = compileTopology(diagram);
+  const roles = new Map(diagram.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
   const delays = new Map(
     diagram.edges.map((e) => [e.id, typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0]),
   );
@@ -22,7 +26,7 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
   const queue: string[] = [];
   for (const node of diagram.nodes) remaining.set(node.id, 0);
   for (const edge of topology.edges) {
-    if (!edge.sync || edge.dlq || edge.deny || edge.share === 0) continue;
+    if (!callEligible(roles.get(edge.from)!, edge) || edge.deny || edge.share === 0) continue;
     remaining.set(edge.from, (remaining.get(edge.from) ?? 0) + 1);
     const list = parents.get(edge.to) ?? [];
     list.push({ node: edge.from, delay: 2 * Math.max(0, delays.get(edge.id) ?? 0), endpoint: edge.endpointId });
@@ -32,13 +36,12 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
   for (let head = 0; head < queue.length; head++) {
     const id = queue[head];
     const props = resolved[id];
-    const workMs = props.admission?.api.latencyMs ?? props.latencyMs;
+    const { workMs } = resolvedTiming(props);
     const waiting = callMs.get(id) ?? 0;
     const holdMs = workMs + waiting;
     if (waiting > 0) result.set(id, { workMs, callMs: waiting, holdMs });
     for (const parent of parents.get(id) ?? []) {
-      const endpointMs =
-        props.admission?.endpoints.find((e) => e.id === parent.endpoint)?.behaviour?.latencyMs ?? workMs;
+      const endpointMs = resolvedTiming(props, 0, parent.endpoint).workMs;
       callMs.set(parent.node, Math.max(callMs.get(parent.node) ?? 0, endpointMs + waiting + parent.delay));
       const count = remaining.get(parent.node)! - 1;
       remaining.set(parent.node, count);

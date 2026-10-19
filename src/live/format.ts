@@ -1,5 +1,11 @@
 // Number formatting for live badges, chips and the control bar. Short, stable widths: a badge that
 // jumps between "999" and "1000" every frame is hard to read on a projector.
+import { formatNumber } from "../i18n/number";
+
+/** Dot weights can be fractional when a caller pool is not divisible by the requested sample size. */
+export function formatScale(scale: number): string {
+  return Number.isInteger(scale) ? formatCount(scale) : formatNumber(scale, { maximumFractionDigits: 3 });
+}
 
 /** 0 → "0", 999 → "999", 1234 → "1.2k", 15300 → "15k", 2_500_000 → "2.5M". */
 export function formatCount(n: number): string {

@@ -125,7 +125,7 @@ export function createSimulationRun(
   const problem = faultTimelineProblem(diagram, simulation);
   if (problem) throw new FaultTimelineError(problem);
   const seed = simulation.seed ?? opts.seed ?? 1;
-  const scale = resolveScale(simulation.scale);
+  let scale = resolveScale(simulation.scale);
   let multipliers = {
     traffic: resolveMultiplier(simulation.multipliers?.traffic),
     capacity: resolveMultiplier(simulation.multipliers?.capacity),
@@ -273,12 +273,13 @@ export function createSimulationRun(
   function restart(): void {
     seedEngine(engine, seed);
     engine.load(diagram);
-    engine.setScale(scale);
     multipliers = {
       traffic: resolveMultiplier(simulation.multipliers?.traffic),
       capacity: resolveMultiplier(simulation.multipliers?.capacity),
     };
     engine.setNodePropsBatch(simulation.setup?.props ?? {}, multipliers.capacity);
+    engine.setScale(resolveScale(simulation.scale));
+    scale = engine.frame().scale ?? 1;
     injectionCredits.clear();
     manual.clear();
     epoch++;

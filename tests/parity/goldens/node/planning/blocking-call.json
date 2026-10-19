@@ -21,7 +21,7 @@
     },
     "explanations": {
       "caller": {
-        "resources": { "perReplica": 200, "initial": 4, "min": 4, "max": 12, "initialCapacity": 800, "maxCapacity": 2400, "targetReplicas": 4, "cpuRequestPct": 50, "memoryPeakMiB": 160, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 5000, "cpuUnbounded": false },
+        "resources": { "perReplica": 61.53846153846154, "initial": 4, "min": 4, "max": 12, "initialCapacity": 246.15384615384616, "maxCapacity": 738.4615384615385, "targetReplicas": 4, "cpuRequestPct": 50, "memoryPeakMiB": 160, "memoryRisk": false, "baselineAboveTarget": false, "partitionLimited": false, "startupMs": 5000, "cpuUnbounded": false },
         "waits": { "workMs": 10, "callMs": 250, "holdMs": 260, "slots": 64, "ceiling": 246.15384615384616 },
         "id": "caller",
         "role": "processor",

@@ -1,3 +1,5 @@
+import { revisionAtLeast } from "../model/revisions";
+import { callerPoolScale } from "./sampling";
 import { faultProblem, type Fault } from "../model/faults";
 import { faultTopology, faultActive, faultKey } from "../model/faultRuntime";
 import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget } from "./resourceWork";
@@ -52,6 +54,8 @@ import {
 import { mulberry32 } from "./rng";
 import {
   acceptsType,
+  callEligible,
+  emittedType,
   allocateGroupReplicas,
   compileTopology,
   deadLetterRoutes,
@@ -223,6 +227,7 @@ interface Node {
   working: Work[];
   calls: Map<number, Call>;
   heldCalls: number;
+  heldBrokerCalls: number;
   waitingOn: Map<string, number>;
   waits: boolean;
   incoming: number;
@@ -313,6 +318,11 @@ interface Trip {
   code?: number;
   echo?: boolean;
 }
+interface EchoExpiry {
+  id: number;
+  end: number;
+  counts: Map<Edge, number>;
+}
 interface Injection {
   node: Node;
   type: string;
@@ -367,11 +377,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let faultIndex: ReturnType<typeof faultTopology>;
   const faultEdges = new Map<string, Edge>();
   let trips: Trip[] = [];
+  let echoExpiries: EchoExpiry[] = [];
+  let echoByTime = new Map<number, EchoExpiry>();
   let logical: Logical[] = [];
   let calls = new Map<number, Call>();
   let nextCall = 1;
   let nextLogical = 1;
-  const waits = () => planning?.revision === "p3-w1";
+  const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
   const busy = (node: Node) => node.working.length + node.heldCalls;
   let drawn = 0;
   let drawnTrips = new Map<number, Trip>();
@@ -381,7 +393,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let accumulator = 0;
   let speed = 1;
   let traffic = false;
-  let scale = resolveScale(opts.scale);
+  let requestedScale = resolveScale(opts.scale);
+  let scale = requestedScale;
   let capacityMultiplier = 1;
   let nextMessage = 1;
   let nextParticle = 1;
@@ -630,7 +643,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       edge.active++;
       edge.to.incoming++;
-      pushDue(trips, trip);
+      keepEcho(trip);
       pushDue(logical, {
         id: nextLogical++,
         end: time + edge.networkDelayMs,
@@ -737,8 +750,43 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function slots(node: Node): number {
+    if (node.waits && node.props.admission) {
+      const p = node.props.admission;
+      return Math.min(
+        p.slots ?? Infinity,
+        p.api.maxInFlight ?? Infinity,
+        p.fixedSlotsPerReplica === undefined ? Infinity : node.activeReplicas * p.fixedSlotsPerReplica,
+      );
+    }
     if (node.props.admission) return node.props.admission.slots ?? node.props.admission.api.maxInFlight ?? Infinity;
     return node.role === "processor" ? node.activeReplicas * node.props.concurrency : node.props.concurrency;
+  }
+
+  function samplingScale(requested: number): number {
+    if (!waits()) return requested;
+    const pools: number[] = [];
+    for (const node of nodes.values()) {
+      if (!node.waits || node.role !== "processor") continue;
+      const p = node.props.admission;
+      pools.push(p?.fixedSlotsPerReplica ?? node.props.concurrency);
+      if (p) pools.push(p.slots ?? Infinity, p.api.maxInFlight ?? Infinity);
+    }
+    return callerPoolScale(requested, pools);
+  }
+
+  /** Invisible decoration owns counts only, never messages or their connected graph. */
+  function keepEcho(trip: Trip): void {
+    if (trip.drawn) pushDue(trips, trip);
+    else {
+      const end = Math.ceil(trip.end / STEP) * STEP;
+      let expiry = echoByTime.get(end);
+      if (!expiry) {
+        expiry = { id: trip.id, end, counts: new Map() };
+        echoByTime.set(end, expiry);
+        pushDue(echoExpiries, expiry);
+      }
+      expiry.counts.set(trip.edge, (expiry.counts.get(trip.edge) ?? 0) + 1);
+    }
   }
 
   /** A network device's throughput ceiling in real messages/s: per unit, times the units carrying traffic. */
@@ -882,7 +930,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function setNodePropsBatch(patches: Record<string, NodeSimProps>, multiplier?: number): void {
     const next = resolveMultiplier(multiplier, capacityMultiplier);
     const multiplierChanged = next !== capacityMultiplier;
-    if (planning?.revision === "p3-a1" || planning?.revision === "p3-w1")
+    if (revisionAtLeast(planning?.revision, "p3-a1"))
       validateAllocationActions(
         nodes.values(),
         Object.entries(patches).map(([node, props]) => ({ node, props })),
@@ -1094,7 +1142,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         echo: true,
       };
       edge.active++;
-      pushDue(trips, echo);
+      keepEcho(echo);
       if (visible) drawnTrips.set(echo.id, echo);
     }
     pushDue(trips, trip);
@@ -1187,6 +1235,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.fleet && work.replica !== undefined && node.fleet.busy.get(work.replica)?.drainAt !== undefined)
       return false;
     if (work.slotted && (!node.fleet || work.replica !== undefined || work.cpuParts?.length)) return true;
+    if (node.waits && (busy(node) + 1) * scale > slots(node) + 1e-9) return false;
     if (node.fleet ? (scale === 1 ? node.fleet.active : busy(node) * scale) >= slots(node) : busy(node) >= slots(node))
       return false;
     return !work.delivery || !!work.held || hold(work.delivery.group, node, work);
@@ -1222,7 +1271,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         drawn++;
         drawnTrips.set(trip.id, trip);
       }
-      pushDue(trips, trip);
+      keepEcho(trip);
       if (work.message.family.trace)
         step(work.message, "send", edge.to.id, { edge: edge.id, via: "reply", until: time + edge.networkDelayMs });
       return;
@@ -1232,11 +1281,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   /** Choose each branch once, then join Requests before publishing Messages or replying upstream. */
   function beginCall(node: Node, work: Work): boolean {
-    if (!node.waits || isBroker(node) || node.role === "store" || node.role === "sink") return false;
+    if (!node.waits) return false;
     let message = work.message;
     if (node.role === "processor" || node.role === "none") {
-      const emits = node.props.emits;
-      message = rename(message, typeof emits === "string" ? emits : (emits?.[message.type] ?? emits?.["*"]));
+      message = rename(message, emittedType(node.props.emits, message.type));
     }
     let outgoing = work.route
       ? [work.route.edge]
@@ -1273,6 +1321,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.waitingCall = call.id;
     if (call.held) {
       node.heldCalls++;
+      if (work.delivery) node.heldBrokerCalls++;
       work.slotted = true;
     } else {
       work.slotted = false;
@@ -1317,7 +1366,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     calls.delete(call.id);
     node.calls.delete(call.id);
-    if (call.held) node.heldCalls--;
+    if (call.held) {
+      node.heldCalls--;
+      if (work.delivery) node.heldBrokerCalls--;
+    }
     for (const id of call.outstanding) releaseCallEdge(call, faultEdges.get(id)!);
     work.waitingCall = undefined;
     if (ok) complete(node, work);
@@ -1864,6 +1916,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const group of groupsByConsumer.get(node.id) ?? []) held += group.heldByNode.get(node.id) ?? 0;
     let working = 0;
     for (const work of node.working) if (work.delivery) working++;
+    working += node.heldBrokerCalls;
     return Math.max(0, node.pending.length - (held - working)) * scale;
   }
   function cloudReads(node: Node): CloudReads {
@@ -1876,7 +1929,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         return count * scale;
       },
       waiting: () => waitingRequests(node),
-      inFlight: () => node.working.length * scale,
+      inFlight: () => busy(node) * scale,
       broker: (t) => readBrokerMetric(t),
     };
   }
@@ -1916,7 +1969,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const eligible = work.delivery?.broker.props.broker?.partitioned
         ? Math.min(node.activeReplicas, work.delivery.group.allocations.get(node.id) ?? 0)
         : node.activeReplicas;
-      work.cpuParts = sampledParts(f, eligible, work.cpuRemaining, resourceWork(node));
+      work.cpuParts = sampledParts(f, eligible, work.cpuRemaining, () => resourceWork(node));
       if (!work.cpuParts) return false;
       creditSampledMemory(node, Math.max(0, (work.cpuBackoffUntil ?? time) - time));
     }
@@ -1947,8 +2000,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       while (
         node.pending.length &&
         (node.status === "down" ||
-          (node.fleet && scale === 1 ? node.fleet.active : busy(node)) <
-            slots(node) / (node.fleet || node.waits ? scale : 1))
+          (node.waits
+            ? busy(node) + 1 <= slots(node) / scale + 1e-9
+            : (node.fleet && scale === 1 ? node.fleet.active : busy(node)) < slots(node) / (node.fleet ? scale : 1)))
       ) {
         // Brokers without consumers retain their messages until a new diagram is loaded.
         if (isBroker(node) && !node.groups.length) break;
@@ -2022,6 +2076,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (let i = 0; i < count; i++) emit(node, node.props.messageType, false);
       }
     drainLogical();
+    while (echoExpiries.length && echoExpiries[0].end <= time) {
+      const expiry = popDue(echoExpiries);
+      echoByTime.delete(expiry.end);
+      for (const [edge, count] of expiry.counts) edge.active -= count;
+    }
     while (trips.length && trips[0].end <= time) {
       const trip = popDue(trips);
       drawnTrips.delete(trip.id);
@@ -2073,7 +2132,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const node of nodes.values()) {
       const f = node.fleet;
       if (!f || node.status !== "up") continue;
-      if (advanceFleet(f, time, f.starts[0]?.at <= time ? resourceWork(node) : node.working)) fleetChanges.add(node.id);
+      if (advanceFleet(f, time, () => resourceWork(node))) fleetChanges.add(node.id);
     }
     if (fleetChanges.size) assignReplicas(fleetChanges);
     let resourceClock = false;
@@ -2246,7 +2305,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             STEP,
             cloud && cloud.kind !== "ecs"
               ? {
-                  inFlight: node.working.length * scale,
+                  inFlight: busy(node) * scale,
                   waiting: cloud.kind === "appService" ? waitingRequests(node) : 0,
                 }
               : undefined,
@@ -2294,7 +2353,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                 f.changes = [];
               } else if (decision.reason !== "activation" && decision.reason !== "request")
                 commitScalingChange(f, previous, time);
-              if (advanceFleet(f, time, node.working) || node.replicas !== f.ready) fleetChanges.add(node.id);
+              if (advanceFleet(f, time, () => resourceWork(node)) || node.replicas !== f.ready)
+                fleetChanges.add(node.id);
             }
           }
         }
@@ -2352,6 +2412,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function reset(): void {
+    scale = samplingScale(requestedScale);
     partBudget = createCpuPartBudget();
     admission = emptyAdmission();
     reconfigureAdmission(
@@ -2369,6 +2430,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     nextParticle = 1;
     nextInjection = 1;
     trips = [];
+    echoExpiries = [];
+    echoByTime.clear();
     logical = [];
     calls.clear();
     nextCall = 1;
@@ -2396,6 +2459,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.working.length = 0;
       node.calls.clear();
       node.heldCalls = 0;
+      node.heldBrokerCalls = 0;
       node.waitingOn.clear();
       node.incoming = 0;
       node.cursor = 0;
@@ -2433,7 +2497,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   const engine: SimEngine = {
     tracer: lineage,
     validateLifecycleActions(actions) {
-      if ((planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1") || !actions.length) return;
+      if (!revisionAtLeast(planning?.revision, "p3-a1") || !actions.length) return;
       validateAllocationActions(nodes.values(), actions, capacityMultiplier);
     },
     checkpoint() {
@@ -2468,6 +2532,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         latencyBudget,
         edges,
         trips,
+        echoExpiries,
+        echoByTime,
         drawnTrips,
         logical,
         calls,
@@ -2497,6 +2563,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         randomCalls,
         topology,
         scale,
+        requestedScale,
         capacityMultiplier,
         sinceFault,
       };
@@ -2524,6 +2591,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         faultEdges.clear();
         for (const edge of edges) faultEdges.set(edge.id, edge);
         trips = copy.trips;
+        echoExpiries = copy.echoExpiries;
+        echoByTime = copy.echoByTime;
         logical = copy.logical;
         calls = copy.calls;
         drawnTrips = copy.drawnTrips;
@@ -2559,6 +2628,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           seed,
           randomCalls,
           scale,
+          requestedScale,
           capacityMultiplier,
           sinceFault,
         } = clock);
@@ -2640,6 +2710,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           working: [],
           calls: new Map(),
           heldCalls: 0,
+          heldBrokerCalls: 0,
           waitingOn: new Map(),
           waits: false,
           incoming: 0,
@@ -2685,7 +2756,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (waits()) {
           const delay = props?.networkDelayMs;
           edge.networkDelayMs = typeof delay === "number" && Number.isFinite(delay) ? Math.max(0, delay) : 0;
-          if (edge.sync && !edge.dlq) from.waits = true;
+          if (callEligible(from.role, edge)) from.waits = true;
         }
         if (props && routes) {
           // A caller's address belongs to a Request out of a source or service; on a router's edges it's dormant.
@@ -2936,7 +3007,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             ? "volume"
             : undefined,
     setScale(value): void {
-      const next = resolveScale(value);
+      requestedScale = resolveScale(value);
+      const next = samplingScale(requestedScale);
       if (next === scale) return;
       scale = next;
       // A processor's time per sampled dot follows the scale, and so does what may be on the way to it.

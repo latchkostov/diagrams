@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { replicaRange } from "../model/autoscaling";
 import { resolveProps } from "./defaults";
 import type { DiagramFile, Simulation, TrafficShape } from "../model/types";
@@ -54,7 +55,7 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
   let power = 1;
   while (power * 10 <= required) power *= 10;
   let scale = Math.min(Number.MAX_SAFE_INTEGER, [1, 2, 5, 10].find((value) => value * power >= required)! * power);
-  if (diagram.planning?.revision === "p3-w1") {
+  if (revisionAtLeast(diagram.planning?.revision, "p3-w1")) {
     const callers = new Set(
       diagram.edges.filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow")).map((e) => e.from),
     );

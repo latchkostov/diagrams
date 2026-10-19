@@ -1,4 +1,5 @@
 import { DOCUMENTATION_LIMITS, validDocumentation } from "../model/documentation";
+import { revisionAtLeast } from "../model/revisions";
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
 import { changeNodeStencil } from "../model/changeNodeStencil";
 import { t } from "../i18n";
@@ -484,11 +485,7 @@ export function createEditor(
 
   /** Inserts a payload moved by `offset`, selected. Returns old flow id → new flow id (null: refused). */
   const insert = (p: ClipboardPayload, offset: XY): Map<string, string> | null => {
-    if (
-      p.planning?.revision === "p3-a1" &&
-      deps().meta.planning?.revision !== "p3-a1" &&
-      deps().meta.planning?.revision !== "p3-w1"
-    ) {
+    if (revisionAtLeast(p.planning?.revision, "p3-a1") && !revisionAtLeast(deps().meta.planning?.revision, "p3-a1")) {
       explainModelRequired();
       return null;
     }
@@ -509,7 +506,7 @@ export function createEditor(
       remapped.edges.some((e) => hasEdgeRouting(e.props));
     if (routed) {
       const planning = deps().meta.planning;
-      if (planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1") {
+      if (!planning || !revisionAtLeast(planning.revision, "p3-a1")) {
         explainModelRequired();
         return null;
       }

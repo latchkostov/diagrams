@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import type { DiagramEdge, DiagramFile, Simulation } from "../model/types";
 import type { AutoscalingConfig, ExecutableController } from "../model/autoscaling";
 import { replicaRange } from "../model/autoscaling";
@@ -492,10 +493,9 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
     };
   };
   // CPU targets cannot repair W1's held-thread ceiling. The busy-thread suggestion arrives in PR 4.
-  const waitingCallers =
-    d.planning?.revision === "p3-w1"
-      ? new Set(d.edges.filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow")).map((e) => e.from))
-      : new Set<string>();
+  const waitingCallers = revisionAtLeast(d.planning?.revision, "p3-w1")
+    ? new Set(d.edges.filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow")).map((e) => e.from))
+    : new Set<string>();
   for (const w of watched) {
     const o = first.get(w.id)!;
     const a = nodes.get(w.id)!.props!.autoscaling as AutoscalingConfig;
@@ -640,7 +640,7 @@ export function planScaling(
   d: DiagramFile,
   counter: { ticks: number; runs: number; messages?: number } = { ticks: 0, runs: 0 },
 ): ScalingPlan[] {
-  if ((d.planning?.revision !== "p3-a1" && d.planning?.revision !== "p3-w1") || !d.simulations?.length) return [];
+  if (!revisionAtLeast(d.planning?.revision, "p3-a1") || !d.simulations?.length) return [];
   const key = simulationContent(d);
   const hit = cache.get(key);
   if (hit) return hit;

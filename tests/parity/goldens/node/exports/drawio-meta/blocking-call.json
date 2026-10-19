@@ -1,14 +1,15 @@
 {
   "withIcons": {
-    "sha256": "04b71ae3f96f4b358ee465502c47c6e444a4c3a0e3688e4231059d025eff3b46",
-    "bytes": 11391,
+    "sha256": "5f1e0a86098572ef08c967482148a856636ed3334a86b57867facacb13d6da47",
+    "bytes": 11446,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.database": "generic-database e85b3d97d2e8de44", "generic.external-api": "generic-external-api 8115696d1b46c6c6", "generic.service": "generic-service 6ec0da29f56c9e80", "generic.topic": "generic-topic 7f5daeea368c1577" }
   },
   "readBack": [
     {
       "warnings": [],
       "diagram": {
-        "format": "diagrams/v1",
+        "format": "diagrams/v2",
+        "planning": { "revision": "p3-w1" },
         "title": "A blocking call caps throughput",
         "description": "Decision service holds 64 threads while Partner scoring API replies. The queue grows while CPU stays below its scaling target. More CPU is not what this service needs.",
         "nodes": [
