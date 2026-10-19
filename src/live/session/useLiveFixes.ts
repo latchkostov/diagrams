@@ -19,6 +19,7 @@ import type { CapacityInputs } from "./useCapacityInputs";
 import type { LiveCommands } from "./useLiveCommands";
 import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";
+import { watchBridge } from "../watchBridge";
 export function useLiveDiagramChanges({
   session,
   editor,
@@ -32,6 +33,8 @@ export function useLiveDiagramChanges({
   useEffect(() => {
     if (!editor) return;
     const timer = window.setTimeout(() => {
+      // Following someone's shared run, an edit reaches the run as the driver's op, on its tick.
+      if (watchBridge.follower) return;
       const result = controller.updateDiagram(getDiagram());
       if (result === "reloaded") flash(t("liveSession.restarted"));
     }, 200);

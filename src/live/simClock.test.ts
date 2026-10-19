@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createFollowClock, FOLLOW_RATE, OWN_CLOCK } from "./simClock";
+import { SIM_TICK_MS } from "../sim/scheduler";
+import { createFollowClock, FOLLOW_RATE, OWN_CLOCK, TICK_MS } from "./simClock";
 
 describe("sim clocks", () => {
+  it("count the simulation's own tick", () => {
+    expect(TICK_MS).toBe(SIM_TICK_MS);
+  });
+
   it("alone, a run moves exactly as the frame clock proposes", () => {
     expect(OWN_CLOCK.pace(16, { tick: 0, speed: 1 })).toBe(16);
     expect(OWN_CLOCK.pace(1000, { tick: 500, speed: 8 })).toBe(1000);

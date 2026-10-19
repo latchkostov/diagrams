@@ -1,7 +1,6 @@
-import { randomDraws } from "./engine";
-import type { SimEngine, SimSnapshot } from "./types";
+import type { SimSnapshot } from "./types";
 
-// A run's state, digested (shared Live design, P1): two engines that ran the same ticks with the same ops agree on
+// A run's state, digested (shared Live design, P1; LiveController.digestInputs gives the inputs): two engines that ran the same ticks with the same ops agree on
 // it, bit for bit, in any JS engine. A follower compares it with the driver's every few simulated seconds and
 // rebuilds when they differ; tests compare it across Chromium, Firefox and WebKit (tests/engines).
 //
@@ -61,9 +60,4 @@ export function snapshotDigest(snapshot: SimSnapshot, draws: number): number {
     for (const [group, lag] of Object.entries(node.lag)) hash = mixNumber(mixText(hash, group), lag);
   }
   return hash >>> 0;
-}
-
-/** The digest of an engine's run now. */
-export function runDigest(engine: SimEngine): number {
-  return snapshotDigest(engine.snapshot(), randomDraws(engine));
 }

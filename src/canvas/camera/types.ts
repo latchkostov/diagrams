@@ -116,6 +116,11 @@ export type CameraEvent =
    * it, and leaves pending work as it is: a peer's change never moves your view or steals your focus.
    */
   | { type: "remote.changed"; kind: "doc" | "presence" }
+  /**
+   * Watch together's "Follow the host's view", which this person turned on: the host's view (in this pane), or null
+   * when they turn it off. Their own pan or zoom takes the view back (user.moved).
+   */
+  | { type: "host.view"; view: Viewport | null }
   /** The pane has its new size and the selection is measured: pending work may run. */
   | ({ type: "pane.settled" } & SettledFacts);
 

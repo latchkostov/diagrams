@@ -15,11 +15,16 @@ import { COLLAB_LIMITS } from "./limits";
 //
 //   1 state          <JSON {alias, colour, status}>
 //
+// Shared Live channel (src/collab/room/liveShare.ts):
+//
+//   1 message        <JSON>  the driver's start, ops, beacons, digests and log slices; a follower's request
+//
 // Peers never forward each other's updates (no loops); anti-entropy (a periodic sync-request) heals drops and
 // partitions instead, since a CRDT state vector names exactly what is missing.
 
 export const DOC = { syncRequest: 1, syncReply: 2, update: 3, bye: 4, fragment: 5, syncProof: 6, syncAck: 7 } as const;
 export const PRESENCE = { state: 1 } as const;
+export const LIVE = { message: 1 } as const;
 
 export function frame(type: number, payload?: Uint8Array): Uint8Array {
   const out = new Uint8Array(1 + (payload?.length ?? 0));

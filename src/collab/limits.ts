@@ -36,6 +36,8 @@ export const COLLAB_LIMITS = {
   maxPartialBytes: 64 * 1024 * 1024,
   /** A presence frame (alias, colour, status). */
   maxPresenceFrameBytes: 4 * 1024,
+  /** A shared Live frame: one start, op, beacon or digest, or a slice of a run's log. */
+  maxLiveFrameBytes: 16 * 1024,
   /** Distinct senders (sessions) a room tracks replay state and presence for. A new sender past this is refused. */
   maxSenders: 64,
   /** Out-of-order counters a sender's replay window accepts. Older ones are refused as stale. */
@@ -81,6 +83,11 @@ export const COLLAB_LIMITS = {
    * and selections, with room to spare. Past it they are dropped (and counted), unlike document frames' byte bucket.
    */
   presenceFramesPerWindow: 200,
+  /**
+   * Shared Live frames one sender may deliver per window: beacons at 2 Hz, digests, a slider's ops at up to 10 Hz
+   * and a late joiner's log slices, with room to spare. Past it they are dropped (and counted).
+   */
+  liveFramesPerWindow: 600,
   /** A session sends its cursor at most this often (15 times a second). */
   cursorIntervalMs: 67,
   /** A peer's cursor that hasn't moved for this long is hidden (and while they're away). */

@@ -21,6 +21,7 @@ import { TraceCard } from "./TraceCard";
 import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";
 import { liveMutationGuard } from "./liveActions";
+import { useWatchBridge } from "./watchBridge";
 import { useCapacityEntry, useCapacityError, useCapacityInputs } from "./session/useCapacityInputs";
 import { useFrameLoop } from "./session/useFrameLoop";
 import { useLiveCommands, useLiveRecording, useLiveRecordingState } from "./session/useLiveCommands";
@@ -130,6 +131,11 @@ export function LiveSession({
   const motion = useTraceSlowMotion({ session, spotlight, store, camera, presenting, capturing });
   const { slow, slowMotionTrace } = motion;
   useLiveSessionBridge({ session, onSession, commands, editor, alwaysOn, slow });
+  const watched = useMemo(
+    () => (editor && !alwaysOn ? { controller, getDiagram: session.getDiagram, store, camera } : null),
+    [editor, alwaysOn, controller, session.getDiagram, store, camera],
+  );
+  useWatchBridge(watched);
   const slowCard = useSlowTraceCard(slow);
   const recording = useLiveRecording({ session, dispatchRec, store });
   const { openRecord, recordTarget, recordTitle } = recording;

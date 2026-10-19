@@ -13,6 +13,7 @@ import { type SlowMotionView } from "../slowmo/useSlowMotion";
 
 import type { RefObject } from "react";
 import type { DecorationInput } from "../decorations";
+import { watchBridge } from "../watchBridge";
 const UI_MS = 125;
 
 export function useFrameLoop({
@@ -131,7 +132,8 @@ export function useFrameLoop({
     const tick = (now: number) => {
       const step = clock.step(now);
       const dt = step.visual;
-      advanceFrame(controller, clock, step.sim);
+      // Following someone's shared run: their clock sets the pace (src/live/watchBridge.ts).
+      advanceFrame(controller, clock, watchBridge.follower ? watchBridge.follower.pace(step.sim) : step.sim);
       const gen = controller.getState().generation;
       if (gen !== generation) {
         generation = gen;

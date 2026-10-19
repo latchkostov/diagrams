@@ -34,6 +34,8 @@ import { ConnectedQuickAddMenu } from "./ConnectedQuickAddMenu";
 
 import { edgeMarks } from "./edgeMarks";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -76,7 +78,6 @@ import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
 import { ContextMenu } from "../components/ContextMenu";
-import { ShortcutsDialog } from "../components/ShortcutsDialog";
 import { actionRegistry } from "../editor/actions";
 import { builtinActions } from "../editor/builtinActions";
 import { useEditorPrefs } from "../editor/prefs";
@@ -130,6 +131,11 @@ import {
 import type { EditorRoom } from "../editor/room";
 import { remoteTargetRemoved } from "../editor/remoteSnapshot";
 import { targetRemoved } from "./menus/menuTargets";
+
+/** The keyboard shortcuts sheet (?) loads when it's first opened: it isn't part of the canvas's first view. */
+const ShortcutsDialog = lazy(() =>
+  import("../components/ShortcutsDialog").then((m) => ({ default: m.ShortcutsDialog })),
+);
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -1252,7 +1258,11 @@ function CanvasInner({
             ) : (
               <ContextMenu {...menu} items={menuItems} onClose={closeMenu} returnFocus={false} />
             ))}
-          {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} />}
+          {shortcutsOpen && (
+            <Suspense fallback={null}>
+              <ShortcutsDialog onClose={closeShortcuts} />
+            </Suspense>
+          )}
           {!readOnly && (
             <div
               className="sr-only"
