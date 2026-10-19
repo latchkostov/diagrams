@@ -119,6 +119,8 @@ export interface ResourceState {
       admission?: { slots?: number; api: { maxInFlight?: number } };
     };
     working: readonly Work[];
+    threadTails?: ReadonlyMap<number, ThreadTail<unknown>>;
+    tailWeightTotal?: number;
     pending: Iterable<Work>;
     /** The node's own queue, without staged deliveries. */
     queue?: Iterable<Work>;
@@ -148,6 +150,9 @@ export function assertResourceInvariants(state: ResourceState) {
     const queued = [...node.pending];
     const all = [...node.working, ...queued];
     const fail = (ok: boolean, message: string) => check(ok, `${node.id} @${state.time}: ${message}`);
+    let tails = 0;
+    for (const tail of node.threadTails?.values() ?? []) tails += tail.reservation.weight;
+    fail(Math.abs((node.tailWeightTotal ?? 0) - tails) < 1e-8, "thread tail aggregate disagrees");
     for (const g of node.groups ?? []) fail(g.pending.length >= 0 && g.active >= 0, "negative broker lag");
     if (!node.props.resources) {
       fail(

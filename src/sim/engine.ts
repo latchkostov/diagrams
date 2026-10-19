@@ -262,9 +262,11 @@ interface Node {
   calls: Map<number, Call>;
   /** R2's minimum independent reservation for sampled non-blocking local work. */
   threadTails: Map<number, ThreadTail<Group>>;
+  tailWeightTotal: number;
   admitting: boolean;
   admissionDirty: boolean;
   residentWeight: number;
+  residentCount: number;
   heldCalls: number;
   freeFlight: number;
   localCalls: number;
@@ -432,9 +434,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   const ledger = new SampledLedger((reservation) => {
     if (reservation.scope === "thread") {
       const node = nodes.get(reservation.owner)!;
-      const work = node.threadTails.get(reservation.id);
+      const work = takeThreadTail(node, reservation.id);
       if (work) {
-        node.threadTails.delete(reservation.id);
         endResources(node, work);
         endThreadAdmission(work);
         if (!work.admissionClock && node.status === "up")
@@ -464,20 +465,35 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let outcomeChecks = new Map<number, Attempt<Message>>();
   let nextLogical = 1;
   const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
-  const tailWeight = (node: Node) => {
-    let weight = 0;
-    for (const tail of node.threadTails.values()) weight += tail.reservation.weight;
-    return weight;
-  };
+  function addThreadTail(node: Node, tail: ThreadTail<Group>): void {
+    node.threadTails.set(tail.reservation.id, tail);
+    node.tailWeightTotal += tail.reservation.weight;
+  }
+  /** Release and continuation takeover both remove capacity from this aggregate. */
+  function takeThreadTail(node: Node, id: number): ThreadTail<Group> | undefined {
+    const tail = node.threadTails.get(id);
+    if (!tail) return;
+    node.threadTails.delete(id);
+    node.tailWeightTotal = node.threadTails.size ? node.tailWeightTotal - tail.reservation.weight : 0;
+    return tail;
+  }
+  function resetThreadTails(node: Node): void {
+    node.threadTails.clear();
+    node.tailWeightTotal = 0;
+  }
   /** Admission counts live dots; meters apply their fraction. Tails always retain their real weight. */
   const threadOccupancy = (node: Node, activeFraction = 1) =>
-    (node.working.length + node.heldCalls) * activeFraction + tailWeight(node) / scale;
+    (node.working.length + node.heldCalls) * activeFraction + node.tailWeightTotal / scale;
   /** Each represented request lives in work, a call, or the continuation queue, never in a tail. */
   function residentRequests(node: Node): number {
     return waits() ? node.residentWeight : (node.working.length + node.heldCalls) * scale;
   }
-  function leaveResident(node: Node, work: Work): void {
-    node.residentWeight -= work.residentWeight ?? 0;
+  /** Terminal request cleanup is independent of any retained thread/lease capacity. */
+  function finishResident(node: Node, work: Work): void {
+    if (work.residentWeight === undefined) return;
+    // Fractional scales can leave subtraction roundoff. The last owner releases
+    // the whole aggregate, so a drained node is exactly empty at every scale.
+    node.residentWeight = --node.residentCount ? node.residentWeight - work.residentWeight : 0;
     work.residentWeight = undefined;
   }
 
@@ -868,7 +884,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const active = node.working.length + node.heldCalls;
     if (!node.waits || node.role !== "processor" || scale === 1) return 1;
     return active
-      ? occupancyFraction(reserveCallerOccupancy(scale, Math.max(0, slots(node) - tailWeight(node)) / active))
+      ? occupancyFraction(reserveCallerOccupancy(scale, Math.max(0, slots(node) - node.tailWeightTotal) / active))
       : node.threadTails.size
         ? occupancyFraction(reserveCallerOccupancy(scale, slots(node) / node.threadTails.size))
         : 1;
@@ -879,6 +895,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (work.residentWeight === undefined) {
         work.residentWeight = scale;
         node.residentWeight += scale;
+        node.residentCount++;
       }
       attempt(node, work);
     }
@@ -1043,21 +1060,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         continue;
       }
       const owners = new Map<Group, Set<number>>();
+      const sampled = new Map<Group, (Work | ThreadTail<Group>)[]>();
       for (const work of resourceWork(node)) {
         const group = "reservation" in work ? work.group : work.delivery?.group;
-        if (!group || work.replica === undefined || node.fleet.busy.get(work.replica)?.drainAt === undefined) continue;
+        if (!group) continue;
+        if (work.cpuParts?.length) {
+          const owned = sampled.get(group) ?? [];
+          owned.push(work);
+          sampled.set(group, owned);
+        }
+        if (work.replica === undefined || node.fleet.busy.get(work.replica)?.drainAt === undefined) continue;
         const pods = owners.get(group) ?? new Set<number>();
         pods.add(work.replica);
         owners.set(group, pods);
       }
       for (const group of groupsByConsumer.get(id) ?? [])
-        group.drainOwners.set(
-          id,
-          (owners.get(group)?.size ?? 0) +
-            sampledOwners(
-              resourceWork(node).filter((w) => ("reservation" in w ? w.group : w.delivery?.group) === group),
-            ),
-        );
+        group.drainOwners.set(id, (owners.get(group)?.size ?? 0) + sampledOwners(sampled.get(group) ?? []));
     }
     for (const group of affected) {
       const broker = group.edges[0].from;
@@ -1312,7 +1330,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
-  function acknowledge(work: Work): void {
+  function acknowledge(node: Node, work: Work): void {
+    finishResident(node, work);
     endAdmission(work);
     if (work.delivery) {
       work.delivery.group.active--;
@@ -1497,7 +1516,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         cpuRemaining: work.cpuRemaining,
         threadLease: work.threadLease,
       };
-      node.threadTails.set(reservation.id, tail);
+      addThreadTail(node, tail);
       work.localThread = tail;
       work.cpuParts = work.cpuRemaining = work.threadLease = undefined;
       const duration = Math.min(
@@ -1816,7 +1835,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         work.cpuParts = tail.cpuParts;
         work.cpuRemaining = tail.cpuRemaining;
         work.threadLease = tail.threadLease;
-        node.threadTails.delete(local.id);
+        takeThreadTail(node, local.id);
         ledger.release(local);
         retainHold = true;
       }
@@ -2079,7 +2098,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function fail(node: Node, work: Work, retry: RetryDisposition): void {
-    if (retry !== "inplace") leaveResident(node, work);
+    if (retry !== "inplace") finishResident(node, work);
     // A queued retained attempt can fail again while down. Retention belongs only to this attempt.
     work.retained = false;
     node.failed++;
@@ -2173,7 +2192,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.status === "down") {
       if (work.delivery || node.role === "processor") settleWork(node, work, false);
       else {
-        acknowledge(work);
+        acknowledge(node, work);
         answer(work, false);
         drop(node, work.message, "node down", work.via);
       }
@@ -2192,8 +2211,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function complete(node: Node, work: Work): void {
-    leaveResident(node, work);
-    acknowledge(work);
+    acknowledge(node, work);
     answer(work, true);
     if (isBroker(node)) {
       publish(node, work.message);
@@ -2256,7 +2274,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.rejected++;
       node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + 1;
       log("reject", node, work.message, outcome.rejected);
-      acknowledge(work);
+      acknowledge(node, work);
       answer(work, false);
       gone(node, work.message, "reject", outcome.rejected);
       return false;
@@ -2383,7 +2401,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.route = { edge, rule, weight: weights[index] / total, quotas: node.quotas.get(action.key) ?? [] };
     if (edge.deny) {
       // A deny rule blocks at the sender, as today: blocked on purpose, no admission bucket debited.
-      acknowledge(work);
+      acknowledge(node, work);
       answer(work, true);
       block(message, edge, { rule, weight: work.route.weight, edge: edge.id });
       return false;
@@ -2408,7 +2426,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const a = attempt(node, work);
       if (!commitAttempt(a, false, code)) return;
     }
-    leaveResident(node, work);
     const message = work.message;
     node.rejected++;
     node.rejectionReasons[reason] = (node.rejectionReasons[reason] ?? 0) + 1;
@@ -2416,7 +2433,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.routeRejections[key] = (node.routeRejections[key] ?? 0) + 1;
     if (message.request) countRoute(message.request).rejected++;
     log("reject", node, message, reason);
-    acknowledge(work);
+    acknowledge(node, work);
     answer(work, false, code);
     gone(node, message, "reject", reason, rule === undefined ? undefined : { rule });
   }
@@ -3223,8 +3240,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.staged = 0;
       node.working.length = 0;
       node.calls.clear();
-      node.threadTails.clear();
+      resetThreadTails(node);
       node.residentWeight = 0;
+      node.residentCount = 0;
       node.slotClock = node.activeMs = node.slotCredit = 0;
       node.slotReleases = [];
       node.reservationReleases = [];
@@ -3499,9 +3517,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           slotCredit: 0,
           slotReleases: [],
           threadTails: new Map(),
+          tailWeightTotal: 0,
           admitting: false,
           admissionDirty: false,
           residentWeight: 0,
+          residentCount: 0,
           reservationReleases: [],
           heldCalls: 0,
           freeFlight: 0,

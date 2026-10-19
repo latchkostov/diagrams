@@ -28,8 +28,8 @@ function probe(diagram: DiagramFile, scale: number, seed: number): Probe {
     scale,
     maxParticles: 0,
     verifyLedger(s) {
-      assertLedgerInvariants(s);
-      state = s;
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
     },
     verifyOutcomes: assertOutcomeInvariants,
   });
@@ -149,6 +149,7 @@ function commands(scaleOne: boolean) {
 function idle(p: Probe): void {
   const state = p.state();
   expect(p.engine.metrics().inSystem).toBe(0);
+  for (const node of state.nodes) expect((node as typeof node & { residentWeight: number }).residentWeight).toBe(0);
   expect(state.ledger.reservations.size).toBe(0);
   expect(state.ledger.owners.size).toBe(0);
   expect([...state.admissionInFlight.values()].every((value) => Math.abs(value) < 1e-8)).toBe(true);
