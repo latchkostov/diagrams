@@ -190,4 +190,42 @@ test.describe("Hosts and requests", () => {
       await b.close();
     }
   });
+
+  test("signed roles: new people can view only, a viewer's edit is undone, and Can edit lets them edit", async ({
+    browser,
+    context,
+    page,
+  }) => {
+    test.slow();
+    const other = await browser.newContext();
+    try {
+      await emulateTracker([context, other]);
+      const link = await hostRoom(page);
+      // A signed room: the link names the host's key.
+      expect(link).toMatch(/#room=v2\.0\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
+      await expect(chip(page)).toHaveAttribute("data-signed", "true");
+      await chip(page).click();
+      await page.getByTestId("room-new-view-only").click();
+      await expect(page.getByTestId("room-menu")).toHaveCount(0);
+      const guest = await join(other, link, "Wren");
+      await expect(chip(guest)).toHaveAttribute("data-can-edit", "false");
+      // The guest deletes a node: it comes back at once, and a note says why. The host never loses it.
+      await guest.getByTestId("node-orders").click();
+      await guest.keyboard.press("Delete");
+      await expect(guest.getByTestId("toast").filter({ hasText: "you can view this room" })).toBeVisible();
+      await expect(guest.getByTestId("node-orders")).toBeVisible();
+      await expect(page.getByTestId("node-orders")).toBeVisible();
+      // The people list says so; the host lets them edit.
+      await chip(page).click();
+      await expect(page.getByTestId("room-person").filter({ hasText: "Wren" })).toHaveAttribute("data-viewing", "true");
+      await page.getByTestId("room-person-row").filter({ hasText: "Wren" }).click();
+      await page.getByTestId("room-let-edit").click();
+      await expect(chip(guest)).toHaveAttribute("data-can-edit", "true");
+      await guest.getByTestId("node-orders").click();
+      await guest.keyboard.press("Delete");
+      await expect(page.getByTestId("node-orders")).toHaveCount(0);
+    } finally {
+      await other.close();
+    }
+  });
 });

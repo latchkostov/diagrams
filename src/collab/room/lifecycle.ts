@@ -10,9 +10,10 @@ import { randomAlias } from "../presence";
 import { secureRandom, type RandomBytes } from "../random";
 import type { RecoveryStore } from "../recoveryStore";
 import { CollabSession, PrivateDiagramError } from "../session";
+import { loadIdentity, newIdentity, storeIdentity, type Identity, type StoredIdentity } from "../signing";
 import type { CollabTransport } from "../transport/types";
 import { recordRoom, roomValue, type RoomRole, type TabRoomRecord, type TabRoomStore } from "./tabRoom";
-import { clonedRoster, newRoster, RoomRoster, type RosterRecord } from "./roomRoster";
+import { clonedRoster, memberId, newRoster, RoomRoster, type RosterRecord } from "./roomRoster";
 
 // A room's life in the app (Edit together; collaboration plan E2). React-free, so the lifecycle is tested on the
 // in-memory network; src/collab/room/index.ts wires it to the page (tracker transport, Your diagrams, the address
@@ -63,6 +64,8 @@ export interface RoomDeps {
    * then takes an id of its own. Absent, no other tab is asked.
    */
   memberTaken?(member: string): Promise<boolean>;
+  /** New rooms are signed rooms (P4) when this browser can sign; false: rooms without roles, as v1 links open. */
+  signedRooms?: boolean;
 }
 
 export type RoomNotice = "left" | "private" | "failed" | "storage-full";
@@ -136,6 +139,28 @@ interface OpenRequest {
   doc?: CollabDoc;
   /** Reopening: this tab's roles as they were. */
   roster?: RosterRecord;
+  /** A new signed room's creator: the identity its link's host key is. */
+  identity?: Identity;
+}
+
+/** A signed room's identity for this tab: as its record kept it (checked), else a new one. */
+async function identityFor(
+  roster: RosterRecord | undefined,
+  made?: Identity,
+): Promise<{ identity: Identity; stored: StoredIdentity }> {
+  const kept = roster?.signed && (await loadIdentity(roster.signed.identity));
+  if (kept && roster?.signed) return { identity: kept, stored: roster.signed.identity };
+  const identity = made ?? (await newIdentity());
+  return { identity, stored: await storeIdentity(identity) };
+}
+
+/** Whether this browser can sign (Ed25519 in WebCrypto): new rooms are signed rooms then, else rooms without roles. */
+async function signingIdentity(): Promise<Identity | undefined> {
+  try {
+    return await newIdentity();
+  } catch {
+    return undefined;
+  }
 }
 
 const sameRoom = (a: RoomLink, b: RoomLink) =>
@@ -263,7 +288,16 @@ export class RoomLifecycle {
   async start(o: { slug: string; diagram: DiagramFile; alias?: string }): Promise<OpenRoom | undefined> {
     this.invite = undefined;
     await this.leaveActive("left");
-    return this.open({ link: newRoom(this.random), role: "creator", slug: o.slug, initial: o.diagram, alias: o.alias });
+    // A signed room (P4) when this browser can sign: the creator's identity is its root, named in its link.
+    const identity = this.deps.signedRooms === false ? undefined : await signingIdentity();
+    return this.open({
+      link: newRoom(this.random, identity?.key),
+      role: "creator",
+      slug: o.slug,
+      initial: o.diagram,
+      alias: o.alias,
+      identity,
+    });
   }
 
   /** On load: this tab's room before a reload, reopened without asking again. */
@@ -279,10 +313,15 @@ export class RoomLifecycle {
     let roster = record.roster;
     if (roster && this.deps.memberTaken) {
       const asked = this.attempt;
-      const taken = await this.deps.memberTaken(roster.member);
+      const taken = await this.deps.memberTaken(memberId(roster));
       // Left (or another room opened) while the other tabs were asked: nothing to resume.
       if (asked !== this.attempt || this.active) return;
-      if (taken) roster = clonedRoster(roster, this.random);
+      if (taken) {
+        // A signed room's copy signs as someone new: the other tab keeps its identity, and its roles.
+        const identity = roster.signed ? await storeIdentity(await newIdentity()) : undefined;
+        if (asked !== this.attempt || this.active) return;
+        roster = clonedRoster(roster, this.random, identity);
+      }
     }
     await this.open({ link, role: record.role, slug, alias: record.alias, record, roster });
   }
@@ -295,6 +334,8 @@ export class RoomLifecycle {
       : {};
     let transport: CollabTransport | undefined;
     let session: CollabSession | undefined;
+    let roster = o.roster ?? o.record?.roster ?? newRoster(o.role, this.random);
+    let stored: StoredIdentity | undefined;
     // The entry's flags as they are now: another tab may mark it Private while the keys and recovery load.
     const allowed = () => !o.slug || canCollaborate(this.deps.library.privacy(o.slug));
     try {
@@ -303,6 +344,16 @@ export class RoomLifecycle {
       const keys = await deriveRoomKeys(o.link);
       if (token !== this.attempt) return;
       if (!allowed()) throw new PrivateDiagramError();
+      // A signed room: this tab's identity (kept across reloads with the roster it knew), checked before anything.
+      let signed: { identity: Identity; log: readonly unknown[] } | undefined;
+      if (o.link.hostKey) {
+        const id = await identityFor(roster, o.identity);
+        if (token !== this.attempt) return;
+        stored = id.stored;
+        const log = roster.signed?.identity.key === id.stored.key ? roster.signed.log : [];
+        roster = { ...roster, signed: { identity: id.stored, log } };
+        signed = { identity: id.identity, log };
+      }
       transport = this.deps.transport(keys);
       session = await CollabSession.open({
         room: o.link,
@@ -315,6 +366,7 @@ export class RoomLifecycle {
         clock: this.deps.clock,
         random: this.deps.random,
         presence: o.alias ? { alias: o.alias } : undefined,
+        signed,
       });
     } catch (error) {
       transport?.close();
@@ -335,7 +387,7 @@ export class RoomLifecycle {
     const a: Active = {
       link: o.link,
       role: o.role,
-      roster: new RoomRoster(o.roster ?? o.record?.roster ?? newRoster(o.role, this.random), () => {
+      roster: new RoomRoster(roster, () => {
         if (this.active === a && !a.leaving) this.record(a);
       }),
       session,
@@ -355,6 +407,14 @@ export class RoomLifecycle {
       suspended: false,
     };
     this.active = a;
+    // A signed room's roster, as verified: kept with the tab's record, so a reload keeps its roles.
+    const signedRoom = session.signed;
+    if (signedRoom && stored) {
+      const identity = stored;
+      const keep = () => a.roster.update({ signed: { identity, log: signedRoom.roster.log() } });
+      a.stops.push(signedRoom.roster.subscribe(keep));
+      keep();
+    }
     if (o.record?.pending) this.mergePending(a, o.record.pending);
     a.stops.push(session.onChange(() => this.changed(a)));
     a.stops.push(

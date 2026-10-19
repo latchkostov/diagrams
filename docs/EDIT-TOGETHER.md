@@ -71,10 +71,11 @@ reaches the room: not its simulation's name, not its run.
 - **When it can't follow.** A browser that drifts from the host's run twice, can't get the run from the host, or
   finds the host on a different version of Live Diagrams gets a message, and you watch on your own. A run too large to
   send (a very long one) isn't shown; the host is told, and their next run is shown.
-- **Trust, for now.** Watching is cooperative. Everyone in the room shares one key, so a page that's been modified
-  could send Live commands, or claim to be the host. A normal page only follows the room's creator, checks every
-  message in full before using it, and ignores one that isn't exactly what Live sends, or that asks for more work
-  than Live ever does. Signed roles are planned.
+- **Only the driver moves the run.** Every Live command is signed by whoever sent it (see **Signed roles** below),
+  and every page in the room ignores a command from anyone but the driver: the driver the roster names while
+  they're here, otherwise the host. A page also checks every message in full before using it, and ignores one that
+  isn't exactly what Live sends, or that asks for more work than Live ever does. In a room opened from an older link
+  (below) this is cooperative: a modified page could send Live commands there.
 
 ## Hosts and requests
 
@@ -85,22 +86,65 @@ reaches the room: not its simulation's name, not its run.
 - **Show your own Live.** If you're in Live on your own, on the room's diagram, choose **Show my Live to the room…**.
   The host is asked "Heron wants to show 'Retry storm'", with **Show everyone** or **Not now**. Yes makes you the
   driver of a new run that starts from your simulation, unsaved drafts included.
-- **The host's menu.** In the chip's menu the host sees each person with a menu: **Make co-host** (or **Not a
-  co-host**), **Let them drive** (or **Take back Live**) and **Make host**. Making someone host makes you their
-  first co-host; who drives stays as it was. The people list says who's the host, a co-host and driving.
-- **Co-hosts** see requests and can answer them too. The host keeps the roster; while the host is away, the last
-  roster stands, so co-hosts still get requests and their yes still passes the run on.
-- **A reload keeps the roles.** Who hosts now, the co-hosts and who drives survive anyone's reload: a host who was
-  handed the room still hosts after reloading, and one who handed it on doesn't take it back. A duplicated tab is a
-  new person in the room, with no role.
+- **The people menu.** In the chip's menu the host and co-hosts see each person with a menu: **Make co-host** (or
+  **Not a co-host**), **Let them drive** (or **Take back Live**), **Can edit** for someone who can only view, and,
+  for the host, **Make host**. Making someone host makes you their first co-host; who drives stays as it was. The
+  people list says who's the host, a co-host, driving, or can only view.
+- **Co-hosts** see requests and can answer them too, and change roles as the host does, except who hosts. Their
+  changes count while the host is away, too.
+- **A reload keeps the roles.** Who hosts now, the co-hosts, who drives and who can edit survive anyone's reload: a
+  host who was handed the room still hosts after reloading, and one who handed it on doesn't take it back. A
+  duplicated tab is a new person in the room, with no role.
 - **When the host leaves.** **Leave room** hands the room to the earliest co-host, or, with none, to whoever has
   been here longest, and the run to whoever drives next. A dropped connection hands nothing over: everyone
   following waits, as above, and nobody is promoted.
 - **Already in Live when the room opens.** If the host's run has changed in ways its start can't describe (Inputs
   changed since it began, say), it starts over at the same moment, so the room watches the same run. The host is
   told.
-- **Still cooperative.** Roles are what each person's page says: a modified page could ignore a "Not now", or claim
-  to be the host. A normal page follows these rules. Signed roles, which make them hold, come next.
+
+## Who can edit
+
+- **Everyone, by default.** New people can edit a moment after they join: the host's page (or, with the host away,
+  a co-host's) lets them in. With neither here, new people can view until one of them is back; the room chip says
+  "can view" meanwhile, and its menu says who can let them edit.
+- **New people can view only.** The host or a co-host can turn this on in the chip's menu. From then on, people who
+  join can see the diagram, its changes and everyone's pointers, and watch Live, but not edit: a change they try is
+  undone at once, and a note says why. The people list says "can view". **Can edit** in the people menu lets them
+  edit. People who could already edit keep that.
+- **Editing, once given, stays.** Someone who can edit can't be made a viewer again yet; that comes with removing
+  people from a room. That's also why a change made at the same moment elsewhere (the switch turned on, someone's
+  co-hosting taken back) never undoes a "Can edit" that was already given.
+
+## Signed roles
+
+Rooms started now are **signed rooms**. Who hosts, the co-hosts, who drives Live, who can edit and the "view only"
+switch are a list of changes, each signed by the person who made it, and every page in the room checks them. The
+room's link names the host's public key, so a page trusts only changes it can trace back to the host. Every message
+a person sends (an edit, a Live command, their presence) is signed by them too.
+
+- **Each change says what its maker had seen.** Whether it counts depends only on that: the maker must have been
+  the host or a co-host there. So everyone ends up with the same roles whatever order changes reach them in, and a
+  change that counted always counts.
+- **What this holds, as long as the others run Live Diagrams as published:**
+  - a viewer's edits reach nobody;
+  - only the host and co-hosts let people edit, so nobody else can get round "New people can view only";
+  - only the driver moves the shared Live run, and handing it over only counts to someone the host or a co-host let
+    drive;
+  - only the host and co-hosts change roles, and only the host hands the room on;
+  - nobody can send edits, Live commands or role changes as someone else.
+- **What a modified page can still do:**
+  - change its own copy of the diagram, show anything on its own screen, and keep or forward what it was sent
+    (anyone who can see the diagram can copy it);
+  - if it can edit, change anything, as any editor can (people who can edit are trusted to);
+  - send a lot of messages: every page bounds what it takes from one person, but can't stop them sending;
+  - claim another editor's place in the change history (attribution between editors is best-effort);
+  - if it was a co-host, keep making role changes that claim to come from before its co-hosting was taken back:
+    that can't be told apart from a change made at the same moment, so it counts. Starting a new room, or removing
+    people (coming later), is what cuts it off.
+- **Older links.** A link made before signed rooms opens as before, as a room without roles, for one more release.
+  There, roles are what each page says, and a modified page could ignore them.
+- **Not yet independently reviewed.** The signing design hasn't had an independent review either. It only adds
+  protection to what rooms had, and Private diagrams stay out of rooms whatever the review finds.
 
 ## Leave
 
@@ -135,11 +179,14 @@ run a relay server for them. A self-hosted copy can configure its own (a TURN se
 - **On this device.** While you're in a room, the app keeps an encrypted copy of the room's diagram in this
   browser's storage, so a reload loses nothing. It keeps the room's link in this tab only. **File ▸ Privacy ▸ Clear
   everything on this device…** removes both.
-- **Anyone with the link can edit.** There are no roles yet, and nobody can be removed from a room. If a link
-  leaks, everyone should leave, and the people who should edit should start a new room.
-- **Not yet independently reviewed.** The encryption design (its keys, messages and link format) hasn't had an
-  independent cryptographic review yet. That is one reason Private diagrams stay out of rooms. For anything
-  sensitive, use a file or a link with a password.
+- **Anyone with the link can see the diagram.** Whether they can edit is the host's choice (**Who can edit**, above),
+  but nobody can be removed from a room yet. If a link leaks, everyone should leave, and the people who should edit
+  should start a new room.
+- **Your signing key** stays in this tab, beside the room's link, and goes nowhere else. Leaving the room or closing
+  the tab removes it.
+- **Not yet independently reviewed.** The encryption and signing design (its keys, messages, signatures and link
+  format) hasn't had an independent cryptographic review yet. That is one reason Private diagrams stay out of rooms.
+  For anything sensitive, use a file or a link with a password.
 
 The details are in the [threat model](research/collaboration-threat-model.md) and the
 [privacy audit](PRIVACY-AUDIT.md).

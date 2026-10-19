@@ -75,6 +75,12 @@ export class EditorBinding {
       this.flushRemote();
       return false;
     }
+    // A signed room's viewer (P4): the step is undone here, and never sent (nobody would apply it anyway).
+    if (!this.session.canEdit) {
+      this.refused = "view-only";
+      this.pull(true);
+      return false;
+    }
     this.writing = true;
     let result;
     try {

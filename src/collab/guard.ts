@@ -197,3 +197,15 @@ export function checkCommands(
   if (size > COLLAB_LIMITS.maxStepBytes) return { ok: false, problem: "too-large" };
   return { ok: true, bytes: size };
 }
+
+/**
+ * The Yjs clients whose structs an update carries (its deletions aside: an editor may delete anyone's), or undefined
+ * when it doesn't decode. A signed room (P4) accepts a direct update only when that's its sender's own client.
+ */
+export function structClients(update: Uint8Array): Set<number> | undefined {
+  try {
+    return new Set(Y.parseUpdateMeta(update).from.keys());
+  } catch {
+    return undefined;
+  }
+}

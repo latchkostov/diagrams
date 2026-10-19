@@ -221,3 +221,25 @@ describe("ReplayWindow", () => {
     }
   });
 });
+
+describe("deferred opening (signed rooms)", () => {
+  const cached = (opener: Opener) => (opener as unknown as { keys: { keys: Map<string, unknown> } }).keys.keys.size;
+
+  it("keeps a sender's subkey only once its frame is accepted: frames under invented senders keep nothing", async () => {
+    const keys = await deriveRoomKeys(room);
+    const opener = new Opener(keys, B);
+    const invented = seededBytes(9);
+    for (let i = 0; i < 40; i++) {
+      const sealer = new Sealer(keys, invented(16));
+      const opened = await opener.open(await sealer.seal("doc", textToBytes("never signed")), true);
+      expect(reason(opened)).toBe("ok");
+    }
+    expect(cached(opener)).toBe(0);
+    expect(opener.senderCount).toBe(0);
+    // Accepted: its sender counts, and its subkey is kept.
+    const opened = await opener.open(await new Sealer(keys, C).seal("doc", textToBytes("signed")), true);
+    expect(opened.ok && opener.accept(opened)).toBe(true);
+    expect(cached(opener)).toBe(1);
+    expect(opener.senderCount).toBe(1);
+  });
+});

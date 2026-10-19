@@ -14,6 +14,7 @@ import { IndexedDbRecoveryStore } from "../recoveryStore";
 import { createTrackerTransport } from "../transport/tracker";
 import { roomEndpoints } from "./endpoints";
 import { RoomLifecycle } from "./lifecycle";
+import { memberId } from "./roomRoster";
 import { sessionTabRoom } from "./tabRoom";
 import { watchNotices } from "./watchNotices";
 import { bindWatch } from "./watch";
@@ -34,7 +35,8 @@ let store: IndexedDbRecoveryStore | undefined;
  */
 const members = typeof BroadcastChannel === "function" ? new BroadcastChannel("diagrams-room-members") : undefined;
 members?.addEventListener("message", (e: MessageEvent<{ t?: string; member?: string }>) => {
-  const member = room.getSnapshot().open?.roster.get().member;
+  const roster = room.getSnapshot().open?.roster.get();
+  const member = roster && memberId(roster);
   if (e.data?.t === "who" && member && e.data.member === member) members.postMessage({ t: "mine", member });
 });
 const memberTaken = (member: string) =>

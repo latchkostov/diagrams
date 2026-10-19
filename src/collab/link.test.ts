@@ -6,6 +6,7 @@ import { seededBytes } from "./random";
 const secret = seededBytes(42)(32);
 const key = bytesToBase64Url(secret);
 const BASE = "https://www.livediagrams.dev/";
+const hostKey = bytesToBase64Url(seededBytes(7)(32));
 
 const problem = (input: string): RoomLinkProblem | "ok" => {
   try {
@@ -35,7 +36,12 @@ describe("room links", () => {
   it.each([
     ["no fragment", BASE, "missing"],
     ["a share link", `${BASE}#d=abc`, "missing"],
-    ["a newer version", `${BASE}#room=v2.0.${key}`, "newer"],
+    ["a newer version", `${BASE}#room=v3.0.${key}`, "newer"],
+    ["a v2 link without its host key", `${BASE}#room=v2.0.${key}`, "damaged"],
+    ["a v1 link with a host key", `${BASE}#room=v1.0.${key}.${hostKey}`, "damaged"],
+    ["a short host key", `${BASE}#room=v2.0.${key}.${hostKey.slice(1)}`, "damaged"],
+    ["a long host key", `${BASE}#room=v2.0.${key}.${hostKey}A`, "damaged"],
+    ["a second host key", `${BASE}#room=v2.0.${key}.${hostKey}.${hostKey}`, "damaged"],
     ["no version", `${BASE}#room=${key}`, "damaged"],
     ["a short secret", `${BASE}#room=v1.0.${key.slice(1)}`, "damaged"],
     ["a long secret", `${BASE}#room=v1.0.${key}A`, "damaged"],
@@ -53,6 +59,23 @@ describe("room links", () => {
     ["the secret in the query, and a fragment too", `${BASE}?room=v1.0.${key}#room=v1.0.${key}`, "in-query"],
   ])("refuses %s", (_name, input, expected) => {
     expect(problem(input)).toBe(expected);
+  });
+
+  it("v2 (a signed room) round-trips its host key beside the secret and epoch; v1 has none", () => {
+    const url = formatRoomLink(BASE, { epoch: 3, secret, hostKey });
+    expect(url).toBe(`${BASE}#room=v2.3.${key}.${hostKey}`);
+    const room = parseRoomLink(url);
+    expect(room).toMatchObject({ epoch: 3, hostKey });
+    expect([...room.secret]).toEqual([...secret]);
+    expect(parseRoomLink(`${BASE}#room=v1.3.${key}`).hostKey).toBeUndefined();
+    expect(() => formatRoomLink(BASE, { epoch: 0, secret, hostKey: "short" })).toThrow();
+  });
+
+  it("refuses a v2 host key that isn't its one canonical spelling", () => {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const twin = alphabet[alphabet.indexOf(hostKey.at(-1)!) ^ 1];
+    expect(problem(`${BASE}#room=v2.0.${key}.${hostKey.slice(0, 42)}${twin}`)).toBe("damaged");
+    expect(problem(`${BASE}#room=v2.0.${key}.${hostKey}`)).toBe("ok");
   });
 
   it("accepts the largest epoch", () => {

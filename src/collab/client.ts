@@ -5,7 +5,7 @@ import type { Clock } from "./clock";
 import type { CollabDoc } from "./doc";
 import type { RoomLink } from "./link";
 import type { RandomBytes } from "./random";
-import { CollabSession } from "./session";
+import { CollabSession, type SessionOptions } from "./session";
 import type { CollabTransport } from "./transport/types";
 
 // One person in a room without the canvas: a session, a plain in-memory editor (an EditorPort holding a
@@ -73,6 +73,8 @@ export interface RoomClientOptions {
   clientId?: number;
   initial?: DiagramFile;
   doc?: CollabDoc;
+  /** A signed room's member (P4). */
+  signed?: SessionOptions["signed"];
 }
 
 export async function openRoomClient(o: RoomClientOptions): Promise<RoomClient> {
@@ -86,6 +88,7 @@ export async function openRoomClient(o: RoomClientOptions): Promise<RoomClient> 
     random: o.random,
     clientId: o.clientId,
     presence: { alias: o.name },
+    signed: o.signed,
   });
   const client = new RoomClient(o.name, session);
   if (o.initial) client.diagram = session.doc.project().diagram;

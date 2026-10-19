@@ -2,10 +2,14 @@ import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
 
 // Room links (collaboration C0): what an invitation carries, and how a page reads it without trusting it.
 //
-//   https://<app>/#room=v1.<epoch>.<secret>
+//   https://<app>/#room=v1.<epoch>.<secret>              a room without roles (cooperative: P3)
+//   https://<app>/#room=v2.<epoch>.<secret>.<hostKey>    a signed room (meeting hosts design §2, P4)
 //
 // - The room secret is 32 random bytes, base64url without padding (exactly 43 characters). Every key the room
 //   uses, and its public discovery id, is derived from it (./keys.ts); nothing else is needed to join.
+// - <hostKey> (v2) is the room's root: the creator's Ed25519 public key, base64url (43 characters, ./signing.ts).
+//   Every role in the room is a signed entry that traces back to it (./roster.ts). The key schedule is v1's.
+// - v1 links keep opening, as rooms without roles, for one more release (owner decision 12).
 // - <epoch> is the key epoch, a decimal integer (0 for a new room). A future rotation hands out a new secret
 //   under a higher epoch; frames from any other epoch are refused before decryption (./envelope.ts).
 // - It lives only in the fragment, which browsers never send to a server, nor in a Referer header (the Fetch
@@ -18,16 +22,19 @@ import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
 
 export const ROOM_PARAM = "room";
 export const ROOM_LINK_VERSION = "v1";
+export const SIGNED_LINK_VERSION = "v2";
 export const ROOM_SECRET_BYTES = 32;
 /** Epochs are u32 (the envelope header stores one). */
 export const MAX_EPOCH = 0xffff_ffff;
-/** Longer than any valid v1 value: a fragment value past this is refused unread. */
-const MAX_VALUE_CHARS = 128;
+/** Longer than any valid value: a fragment value past this is refused unread. */
+const MAX_VALUE_CHARS = 192;
 
 export interface RoomLink {
   epoch: number;
   /** The room secret. Treat as a key: never log it, never put it anywhere but a fragment. */
   secret: Uint8Array;
+  /** A signed room's root key (v2 links): the creator's public key, base64url. Absent: a room without roles. */
+  hostKey?: string;
 }
 
 export type RoomLinkProblem =
@@ -55,9 +62,9 @@ export class RoomLinkError extends Error {
   }
 }
 
-const VALUE = /^v1\.(0|[1-9][0-9]{0,9})\.([A-Za-z0-9_-]{43})$/;
+const VALUE = /^(v1|v2)\.(0|[1-9][0-9]{0,9})\.([A-Za-z0-9_-]{43})(?:\.([A-Za-z0-9_-]{43}))?$/;
 
-/** Splits a fragment (without '#') into raw key/value pairs. No percent-decoding: v1 values never need it. */
+/** Splits a fragment (without '#') into raw key/value pairs. No percent-decoding: room values never need it. */
 function fragmentPairs(fragment: string): [string, string][] {
   if (!fragment) return [];
   return fragment.split("&").map((part) => {
@@ -66,24 +73,41 @@ function fragmentPairs(fragment: string): [string, string][] {
   });
 }
 
-/** Parses one `room` value (`v1.<epoch>.<secret>`). Throws RoomLinkError. */
+/** 32 bytes in their one canonical spelling (43 characters carry 258 bits; the last 2 must be zero), or undefined. */
+function canonical32(text: string): Uint8Array | undefined {
+  try {
+    const bytes = base64UrlToBytes(text);
+    return bytes.length === ROOM_SECRET_BYTES && bytesToBase64Url(bytes) === text ? bytes : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Parses one `room` value (`v1.<epoch>.<secret>`, `v2.<epoch>.<secret>.<hostKey>`). Throws RoomLinkError. */
 export function parseRoomValue(value: string): RoomLink {
   if (value.length > MAX_VALUE_CHARS) throw new RoomLinkError("damaged");
   const version = /^(v\d+)\./.exec(value)?.[1];
-  if (version && version !== ROOM_LINK_VERSION) throw new RoomLinkError("newer");
+  if (version && version !== ROOM_LINK_VERSION && version !== SIGNED_LINK_VERSION) throw new RoomLinkError("newer");
   const m = VALUE.exec(value);
-  if (!m) throw new RoomLinkError("damaged");
-  const epoch = Number(m[1]);
+  // A v1 value has no host key; a v2 value must.
+  if (!m || (m[1] === SIGNED_LINK_VERSION) !== (m[4] !== undefined)) throw new RoomLinkError("damaged");
+  const epoch = Number(m[2]);
   if (!Number.isSafeInteger(epoch) || epoch > MAX_EPOCH) throw new RoomLinkError("damaged");
-  let secret: Uint8Array;
-  try {
-    secret = base64UrlToBytes(m[2]);
-  } catch {
-    throw new RoomLinkError("damaged");
-  }
-  // 43 characters carry 258 bits; the last 2 must be zero, so every secret has exactly one spelling.
-  if (secret.length !== ROOM_SECRET_BYTES || bytesToBase64Url(secret) !== m[2]) throw new RoomLinkError("damaged");
-  return { epoch, secret };
+  const secret = canonical32(m[3]);
+  if (!secret) throw new RoomLinkError("damaged");
+  if (m[4] === undefined) return { epoch, secret };
+  if (!canonical32(m[4])) throw new RoomLinkError("damaged");
+  return { epoch, secret, hostKey: m[4] };
+}
+
+/** A room's link value: `v1.<epoch>.<secret>`, or `v2.<epoch>.<secret>.<hostKey>` for a signed room. */
+export function formatRoomValue(room: RoomLink): string {
+  if (room.secret.length !== ROOM_SECRET_BYTES) throw new Error("A room secret is 32 bytes.");
+  if (!Number.isSafeInteger(room.epoch) || room.epoch < 0 || room.epoch > MAX_EPOCH)
+    throw new Error("A room epoch is a u32.");
+  if (room.hostKey !== undefined && !canonical32(room.hostKey)) throw new Error("A host key is 32 bytes.");
+  const base = `${room.epoch}.${bytesToBase64Url(room.secret)}`;
+  return room.hostKey ? `${SIGNED_LINK_VERSION}.${base}.${room.hostKey}` : `${ROOM_LINK_VERSION}.${base}`;
 }
 
 /**
@@ -112,10 +136,7 @@ export const hasRoomFragment = (hash: string) =>
 /** The link for `room` on `base` (an app URL without query or fragment: appBaseUrl()). */
 export function formatRoomLink(base: string, room: RoomLink): string {
   if (base.includes("#") || base.includes("?")) throw new Error("A room link's base must have no query or fragment.");
-  if (room.secret.length !== ROOM_SECRET_BYTES) throw new Error("A room secret is 32 bytes.");
-  if (!Number.isSafeInteger(room.epoch) || room.epoch < 0 || room.epoch > MAX_EPOCH)
-    throw new Error("A room epoch is a u32.");
-  return `${base}#${ROOM_PARAM}=${ROOM_LINK_VERSION}.${room.epoch}.${bytesToBase64Url(room.secret)}`;
+  return `${base}#${ROOM_PARAM}=${formatRoomValue(room)}`;
 }
 
 interface LocationLike {

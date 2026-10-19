@@ -305,17 +305,135 @@ What the production feature adds to the model above.
   attached: a session on any other diagram, or one that becomes Private, sends
   nothing and is detached at once (every send checks). Presence carries `host`, the shown run's title and the host's
   view centre. All of it is cooperative: any member
-  holds the key and could send Live frames or claim `host`. Followers trust the lowest sender id claiming it. Signed
-  roles (P4) are what will make this enforceable. Nothing of a run reaches a server.
+  holds the key and could send Live frames or claim `host`. Followers trust the lowest sender id claiming it. In
+  signed rooms (below) this holds against honest copies; it stays cooperative in rooms opened from v1 links. Nothing
+  of a run reaches a server.
 
 - **Monitoring.** A report-only Nightly smoke runs over the real network. It classifies failures as trackers
   unreachable, ICE/NAT or app error, and alerts after three failed nights. It never runs in PR CI.
 
+## Signed rooms (P4, 2026-10-19)
+
+Meeting hosts design §2, owner decisions 12 to 14: rooms started now are signed. **Not yet independently reviewed**
+(decision 13): shipped disclosed as such, since it only adds checks to what rooms had; Private diagrams stay blocked
+whatever the review finds.
+
+- **The link.** `#room=v2.<epoch>.<secret>.<hostKey>`: v1's secret and key schedule (unchanged), plus the creator's
+  Ed25519 public key (43 characters), the roster's root. Parsing is strict, as v1's (one canonical spelling per key).
+  v1 links open as rooms without roles for one more release (decision 12).
+- **Identities.** Each tab has an Ed25519 key pair (WebCrypto, `src/collab/signing.ts`), its private half kept as a
+  JWK in the tab's `sessionStorage` record beside the room value (the same class of secret), never sent. The
+  creator's is the root. A reload keeps it; a duplicated tab (the `BroadcastChannel` check) makes a new one.
+- **Bindings.** Presence carries the member's key, its Yjs client id and the key's signature over both with the
+  session's sender id, the room id and the epoch. The first key a sender binds is the one it keeps (a later claim is
+  refused); its client id can change under a new binding by the same key.
+- **Signed frames.** Every frame's message carries its sender's signature over a label, the room id, the 32-byte
+  header (channel, epoch, sender, counter) and the message, inside the AES-GCM envelope. In a signed room the
+  opener records a frame's counter only after the signature verifies under the sender's bound key, so a frame
+  forged under another sender id (anyone with the link can seal one) can't use up that sender's counters.
+- **The roster** (`src/collab/roster.ts`) is a causal set of signed entries (admit, co-host, un-co-host, drive,
+  host, policy), each over a label, the room id, the key epoch, its fields and its `deps`: the entries its signer
+  had seen (its roster's heads, at most 32). Its Lamport counter must be exactly one more than its deps' (else
+  refused), and it's kept only once all of its past is here (up to 256 entries wait for theirs).
+  - **Causal authority.** An entry counts if and only if its signer had the authority in its own causal past: the
+    host for a handover, the host or a co-host for everything else. That past is fixed when the entry is made, so
+    whether an entry counts never changes: a concurrent "Not a co-host" or "view only" can't revoke an admission
+    that was valid (review P1), and every peer agrees on which entries count whatever order they arrive in.
+  - **Permanent admissions.** Who can edit is the host plus everyone a counting admit, co-host or host entry names:
+    it only grows (design rule 3). The rest (host, co-hosts, driver, the switch) is a projection: the counting
+    entries folded by (counter, signer key, signature), each applied only if its signer still had the authority at
+    its place in the fold (this resolves P3's partition-ordering item).
+  - **No backdating past the switch.** Only the host and co-hosts admit; a plain editor's admission never counts.
+    So an editor can't get round "view only" by signing an admission whose deps claim it came first (review P1):
+    admitting always takes host or co-host authority. The switch only decides whether leads' pages admit newcomers
+    on their own.
+  - **Epochs.** Every entry is bound to the key epoch: a new epoch (P5's Remove with re-key) starts its roster from
+    the host's state, and nothing of the old one carries over. That is the only way to cut off a former co-host who
+    signs entries claiming to predate the "Not a co-host" (indistinguishable from a concurrent honest entry).
+  - **Slots and forks.** Each signer has one slot per sequence number (one more than its entries in the entry's
+    past), at most 256. An honest signer's entries form a chain, one per slot. Two entries by one signer in one slot
+    (siblings on the same past: a fork, which only a misbehaving signer makes) can't both count: the first in the
+    roster's order holds the slot wherever it's placed (one that sorts before a slot's holder makes the roster be
+    placed again from scratch, in order), and the other is kept only as a known entry that changes nothing (16 per
+    signer, 256 in all; past that, a signer's further forks are refused). So what one key stores is bounded whatever
+    it signs, and peers holding the same entries agree (review round 2: a revoked co-host's flood of siblings takes
+    one slot).
+  - **Bounds.** 1,024 counting entries, of which entries by anyone but the host (in the entry's past) take at most
+    768: the host can always act. One entry per signature (canonical base64url only: an alias is refused). Past the
+    768 (reachable only with many co-hosts each signing hundreds of entries), which non-host entries got in can
+    differ between peers: the one overflow that isn't deterministic.
+  - **Ingestion.** Entries are taken in order, each placed as soon as its past is here, so a whole roster (a
+    newcomer's, a reload's) places in one go however long; only entries genuinely missing their past wait (256), and
+    an entry already known is never verified again (review round 2).
+  - **Replication.** `DOC.roster`: in full to each peer that appears (a past before what follows it), each new entry
+    to everyone, and a summary each anti-entropy round that a peer whose roster differs answers with its entries
+    (four times a window at most). It's kept in the tab's record and checked again as a reload opens.
+- **Authorisation, by bytes and the roster only** (design rule 1): a direct update counts from an editor whose
+  update's structs all carry its own bound client id; a sync reply only from an editor; viewers never serve sync.
+  Roles only add editors (rule 3), so no honest peer refuses what another honest peer applied.
+- **Held, not rolled back** (rule 2). A document frame that doesn't count yet (its sender's binding or grant still
+  on the way) is held per sender (4 MiB, 30 s), never applied; once it counts it's applied, updates and sync replies
+  in order, or past the bounds it's dropped with its sender quarantined. Per sender, frames waiting for its binding
+  are kept apart from its verified updates that don't count yet. Roster and sync messages never wait behind a held
+  update (one may carry the very grant it waits for, review P1): a frame arriving behind blocked updates is opened
+  and, if it's one of those, handled at once, without rescanning them. The blocked updates are checked again only
+  when the roster or a binding changes, from the first, each update's clients decoded once (review round 2). A
+  newcomer in a room where new people may edit is admitted by the host if here, else the earliest co-host here;
+  with neither, they view until one is back (a page only edits once the roster says it may, so an honest
+  newcomer's edits never need holding).
+- **Bindings by frame order.** A binding counts from its presence frame's counter: an older frame never replaces a
+  newer binding. A deferred frame's sender subkey is cached only once its frame is accepted (review P1).
+- **Live.** A shared run's messages count only from its driver (the roster's while here, else the host), or, for the
+  run it drove, from the last driver for 30 s after the roster moved on, until its handoff. A handoff counts only to
+  the driver the roster names: one that arrives before its grant waits for it (30 s); one to anyone else grants
+  nothing, and nothing renews the last driver's moment (review P1). A follower whose driver was superseded twice
+  before its handoff came (neither the roster's driver nor the last one) follows the roster's driver, asking it for
+  its run (review round 2). A yes to a request, a handover and who drives
+  are roster entries; the P3 `host` message and a yes in an `answer` change nothing.
+- **Bounds.** Signature verifications per sender per window (`verifiesPerWindow`, 2,048: frames and roster
+  entries), checked after the cheaper per-channel bounds; a binding is verified once; a roster entry once.
+
+What it holds, against peers running an honest copy: a viewer's edits reach nobody; only the driver moves the shared
+run; only the host and co-hosts change roles, and only the host hands the room on; nobody sends edits, Live commands
+or roster entries as another member. What a modified client can still do: edit its own copy and show anything
+locally, and keep or forward what it receives; vandalise if it can edit (editors are trusted to edit); claim another
+editor's client id in a struct through a sync reply (attribution between editors stays best-effort); flood within the
+bounds; bind a newcomer's sender id first if it sees it before the newcomer's first presence (that newcomer's frames
+are then refused: a denial of service, not an impersonation); fill the roster with entries that change nothing,
+within the bounds, if it's a host or co-host; as a former co-host, sign entries whose deps claim they predate the
+"Not a co-host" (they count, as a concurrent honest one would, until a new epoch). Making an editor a viewer again,
+and removing anyone, need a new epoch (P5).
+
+**What this adds to the crypto review's scope** (design §2): the v2 link; the identity key in `sessionStorage`; the
+roster's causal authority (deps and their Lamport counters, authority evaluated in each entry's own past, permanent
+admissions, the projection's fold and its tie-break, admission limited to leads, what a former co-host can still
+sign until a new epoch) and its storage bounds; canonical signature encoding; binding session
+keys to the sender id and Yjs client id (and re-binding the client id); signing inside the AEAD (what the signature
+covers, verification before the replay window records a counter); the holding buffer and its quarantine; replay of
+signed Live commands across runs (bounded by the run id and the driver check) and epochs (the epoch is signed); and
+the algorithm (Ed25519 in WebCrypto) against ECDSA P-256 (decision 14). Still to come with P5: the lobby and content
+key split, the per-recipient key wrap, epoch transitions with offline members, and the knock path.
+
+Tests: `src/collab/signing.test.ts`, `roster.test.ts` (forged, re-roomed and re-epoched entries refused; signature
+aliases refused; a counter that isn't its past's refused; an editor's and a backdated admission refused; admissions
+concurrent with "Not a co-host" and with "view only" kept; an entry waits for its past; order independence after a
+partition; bounds), `signedSession.test.ts` (a viewer's and a modified copy's edits ignored by everyone; an edit that
+raced its grant held then applied; viewers don't serve sync; no admission without a lead here; a forged frame refused
+without using up the sender's counters; a forged roster entry refused; convergence; a lost grant recovered by
+anti-entropy; only the held sender supplying its own grant; a held update read once; bindings by frame order; the
+verification bound), `envelope.test.ts` (no subkey kept for a deferred frame not accepted),
+`room/signedWatch.test.ts` (only the driver's run messages count; an early handoff waits for its grant; a handoff
+to someone no grant names grants nothing; alternating handoffs never renew; roster changes overtaking handoffs; a yes
+or a handover in a message changes nothing), the roster's import of a log longer than the waiting bound (import,
+reload, replay) and a revoked co-host's sibling flood, and a held update decoded once across authorisation changes
+and `room/lifecycle.test.ts` (a reload keeps verified roles; a changed record entry doesn't count; a v1 link opens
+without roles; a duplicated tab signs as someone new).
+
 ## Residual risks and open items for C1
 
 1. **Independent review** of the key schedule, envelope and link format before any Private-diagram promise.
-2. **Roles and attribution:** one shared key means any member can write and impersonate another session. C2's
-   signed grants and per-session signing keys address it.
+2. **Roles and attribution:** one shared key means any member can write and impersonate another session. Signed
+   rooms (P4, above) address it against honest copies; v1 rooms stay cooperative for one more release.
 3. **Removal and rotation:** the epoch field and per-epoch keys are in place; the transition (new generation from
    the visible state, fresh links, refusing old-epoch writes) is not built. End session is not built.
 4. **IP exposure:** peers see each other's IPs on direct paths, trackers see everyone's. Disclosed before joining
