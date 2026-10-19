@@ -253,8 +253,21 @@ test("arrow keys scroll Live reading regions without panning the bundle's camera
   await expect(detail).toBeVisible();
   await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   await detail.focus();
+  await expect(detail).toBeFocused();
+  // Native arrow scrolling can outlive the instant Home below. Check that the
+  // readout owns this key, so the regression fails without waiting for that race.
+  await detail.evaluate((el) => {
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        el.setAttribute("data-arrow-default-prevented", String(event.defaultPrevented));
+      },
+      { once: true },
+    );
+  });
   const before = await node.boundingBox();
   await page.keyboard.press("ArrowDown");
+  await expect(detail).toHaveAttribute("data-arrow-default-prevented", "true");
   await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   await waitForCameraIdle(page);
   expect(await node.boundingBox()).toEqual(before);

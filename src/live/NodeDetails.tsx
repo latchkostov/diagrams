@@ -157,10 +157,15 @@ export function NodeDetails({
                       ? region.scrollTop + page
                       : event.key === "PageUp"
                         ? region.scrollTop - page
-                        : null;
+                        : event.key === "ArrowDown"
+                          ? region.scrollTop + 40
+                          : event.key === "ArrowUp"
+                            ? region.scrollTop - 40
+                            : null;
               if (top === null) return;
-              // Keep paging in this transformed region. Native smooth Home/End scrolls can
-              // overlap when the next key arrives before the previous scroll has settled.
+              // Keep keyboard scrolling in this transformed region. A native smooth arrow
+              // scroll can deliver compositor deltas even after an instant Home/End, moving
+              // the readout away from the position the user just requested.
               event.preventDefault();
               region.scrollTo({ top, behavior: "instant" });
             }

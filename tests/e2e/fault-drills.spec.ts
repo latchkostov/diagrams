@@ -341,6 +341,9 @@ for (const theme of ["light", "dark"]) {
     for (const id of ["request", "delivery"]) {
       await page.getByTestId(`edge-label-${id}`).click();
       await waitForCameraIdle(page);
+      // Camera idle precedes Live's idle-opacity fade. Save the settled visual
+      // baseline, never an intermediate opacity that restoration cannot match.
+      await expect.poll(async () => (await style(id)).opacity).toBe("0.4");
       const restored = await style(id);
       await faultMenu(page, `edge-label-${id}`);
       await item(page, "sim.cut-link").click();
