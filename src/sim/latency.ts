@@ -1,4 +1,5 @@
 import type { LatencyMetrics, LatencySummary } from "./types";
+import { POWERS } from "./latencyBounds";
 
 /** Fixed logarithmic buckets: upper-bound estimates within 12%, up to ~26 minutes.
  * The final bucket covers longer runs and reports the observed maximum. No samples are retained. */
@@ -9,9 +10,23 @@ export const LATENCY_TYPES = 64;
 export const LATENCY_TYPE_HISTOGRAMS = 1024;
 export const createLatencyBudget = () => ({ remaining: LATENCY_TYPE_HISTOGRAMS });
 type LatencyBudget = ReturnType<typeof createLatencyBudget>;
-const RATIO = 1.12;
-const LOG_RATIO = Math.log(RATIO);
-const BOUNDS = Array.from({ length: LATENCY_BUCKETS }, (_, i) => (i === 0 ? 0 : RATIO ** (i - 1)));
+// Bucket i (1…127) holds latencies in (1.12^(i-2), 1.12^(i-1)] ms; bucket 0 holds zero. The bounds are literals
+// (./latencyBounds.ts) and the bucket is found by comparing against them, never with Math.log: the same latency
+// lands in the same bucket in every JS engine (shared Live, docs/PARITY.md).
+const BOUNDS = Array.from({ length: LATENCY_BUCKETS }, (_, i) => (i === 0 ? 0 : POWERS[i - 1]));
+
+/** The bucket a positive latency falls in: the first power of 1.12 at or above it (the last bucket past them all). */
+export function latencyBucket(latency: number): number {
+  if (!(latency > 0)) return 0;
+  let lo = 0,
+    hi = POWERS.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (POWERS[mid] >= latency) hi = mid;
+    else lo = mid + 1;
+  }
+  return Math.min(LATENCY_BUCKETS - 1, lo + 1);
+}
 
 interface Histogram {
   buckets: number[];
@@ -60,8 +75,7 @@ export function recordLatency(
   budget?: LatencyBudget,
 ) {
   const latency = wait + work;
-  const bucket =
-    latency <= 0 ? 0 : Math.min(LATENCY_BUCKETS - 1, Math.max(1, Math.ceil(Math.log(latency) / LOG_RATIO) + 1));
+  const bucket = latencyBucket(latency);
   const add = (h: Histogram) => {
     h.buckets[bucket]++;
     h.samples++;

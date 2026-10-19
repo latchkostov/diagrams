@@ -1,0 +1,16 @@
+## Shared Live P1 follow-ups (control log and determinism)
+
+- **The live session's bundle budget is nearly used.** It's at 134,562 of 135,000 B gzip after P1, which added
+  about 1.2 KB for the controller's log and 0.3 KB for the simulator. #189 (requests that wait) and P2 will need
+  room. Raise the budget deliberately in the PR that needs it, or move the digest and the op listener into P2's
+  room chunk.
+- **Free play's rate changes still start over.** A free-play run has no checkpoints, so a new entry rate or dot
+  scale rebuilds it from 0 and starts a new log (as before). Shared Live's driver should send that as a `rebuild`
+  op, so followers start over together.
+- **Inputs and diagram patches rewrite history.** A scrub back past a Traffic ×, a props what-if or a diagram
+  props edit replays the run with the current values from the start, as before; the log records them (`inputs`,
+  `base`, `commit`, `patch`) but doesn't reapply them. P2's followers must apply the same rule.
+- **The Nightly engine check plays 60 s per simulation.** It covers all 77 saved example runs and the corpus isn't
+  included. If WebKit or Firefox differ on a longer run, extend `UNTIL_MS` or add the corpus.
+- **Where the sim clock plugs in.** `useFrameLoop` still advances by the frame clock directly. P2 passes each
+  frame's step through `createFollowClock` while following.

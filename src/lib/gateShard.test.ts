@@ -256,8 +256,38 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
         .every((step: { if: string }) => step.if === "always()"),
     ).toBe(true);
   }
-  expect(jobs.report.needs).toEqual(["e2e", "native-unit", "native-e2e", "properties"]);
+  expect(jobs.report.needs).toEqual(["e2e", "native-unit", "native-e2e", "properties", "engines"]);
   expect(jobs["native-unit"].strategy.matrix.os).toEqual(["windows-latest", "macos-latest"]);
+});
+
+it("Nightly reports an engine-determinism-only failure, with its results", () => {
+  const { jobs } = parse(readFileSync(".github/workflows/nightly.yml", "utf8"));
+  const needs: Record<string, string> = {
+    e2e: "success",
+    "native-unit": "success",
+    "native-e2e": "success",
+    properties: "success",
+    engines: "failure",
+  };
+  const condition = jobs.report.if.replace(/needs\.([a-z0-9-]+)\.result/g, (_: string, job: string) =>
+    JSON.stringify(needs[job]),
+  );
+  expect(runInNewContext(condition, { always: () => true })).toBe(true);
+  needs.engines = "success";
+  expect(
+    runInNewContext(
+      jobs.report.if.replace(/needs\.([a-z0-9-]+)\.result/g, (_: string, job: string) => JSON.stringify(needs[job])),
+      { always: () => true },
+    ),
+  ).toBe(false);
+  const steps = jobs.engines.steps as { run?: string; uses?: string; if?: string; with?: Record<string, string> }[];
+  expect(steps.some((step) => step.run?.includes("playwright install --with-deps chromium firefox webkit"))).toBe(true);
+  expect(steps.find((step) => step.run?.includes("pnpm test:engines"))?.run).toContain("--reporter=list,json");
+  const artifact = steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
+  expect(artifact?.with).toMatchObject({ name: "nightly-results-engines", path: "tests/.output/engines-results.json" });
+  expect(jobs.report.steps.find((step: { run?: string }) => step.run?.includes("e2e-failures.mjs")).run).toContain(
+    "results/nightly-results-engines/engines-results.json",
+  );
 });
 
 it("Nightly reports a property-only failure", () => {

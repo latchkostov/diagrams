@@ -3,6 +3,7 @@ import { publicExamplesOnly } from "./scripts/public-examples-only";
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { exampleMetadataPlugin } from "./scripts/example-metadata";
 import { skillAssetsPlugin } from "./scripts/skill-assets";
 import { securityHeaders } from "./scripts/security-headers";
@@ -11,6 +12,7 @@ import { deploymentSwitches } from "./scripts/deployment-env";
 import { selfHostBuildHeaders, selfHostPreviewHeaders } from "./scripts/self-host-headers";
 import { i18n } from "./scripts/i18n-plugin";
 import { schemaAssets } from "./scripts/schema-assets";
+import { engineVersion } from "./scripts/engine-version";
 import { viewerBundleFixture } from "./scripts/viewer-bundle";
 
 /**
@@ -172,6 +174,8 @@ export default defineConfig({
     "import.meta.env.VITE_E2E": JSON.stringify(E2E_BUILD ? "1" : ""),
     // A plain constant, not import.meta.env: env keys land in the entry chunk's env object.
     __BUILD_SHA__: JSON.stringify(BUILD_SHA),
+    // The simulation engine's version (src/sim/version.ts): shared Live follows only the same engine.
+    __ENGINE_VERSION__: JSON.stringify(engineVersion(fileURLToPath(new URL(".", import.meta.url)))),
   },
   build: {
     // Icons are many small SVGs; serving them as cached files keeps them out of the main JS chunk.
