@@ -130,3 +130,10 @@ it("removes the hidden editor from preview tab order", () => {
   const html = renderToString(<MarkdownEditor value="Runbook" onChange={() => {}} testId="doc" />);
   expect(html).toMatch(/<textarea[^>]*tabindex="-1"/i);
 });
+
+it.each([2001, 50_001])("bounds rendering of legacy documentation beyond %i characters", (length) => {
+  const source = "**x** ".repeat(length) + "TAIL";
+  const html = renderToString(<MarkdownView text={source} />);
+  expect(html).toContain(source);
+  expect(html.match(/<[^/][^>]*>/g)).toHaveLength(2);
+});

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseMarkdown, parseInline, sanitizeUrl } from "./markdownParser";
 
 describe("markdownParser", () => {
@@ -348,3 +348,13 @@ it.each(["~~~[x](https://example.com)~", "*a\nb*", "a  \nb", "**a** \nb"])(
     else expect(tokens[1]).toEqual({ type: "br" });
   },
 );
+
+it("skips delimiter indexes for plain text while preserving emoji replacement", () => {
+  const indexes = vi.spyOn(globalThis, "Int32Array");
+  try {
+    expect(parseInline("plain :rocket:")).toEqual([{ type: "text", text: "plain 🚀" }]);
+    expect(indexes).not.toHaveBeenCalled();
+  } finally {
+    indexes.mockRestore();
+  }
+});

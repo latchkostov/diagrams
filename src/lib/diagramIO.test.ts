@@ -64,6 +64,38 @@ beforeEach(async () => {
 });
 
 describe("diagramIO storage goes through the shared validator", () => {
+  it.each(["legacy", "library"])("loads oversized %s originals and autosaves losslessly", (kind) => {
+    const legacy = {
+      ...good,
+      description: "d".repeat(2001),
+      nodes: [{ ...good.nodes[0], description: "n".repeat(50_001) }],
+    };
+    const slug = kind === "legacy" ? io.LEGACY_SLUG : io.createLibraryDiagram(good);
+    const key = kind === "legacy" ? "diagrams.imported.v1" : `diagrams.doc.v1:${slug.slice(3)}`;
+    const stored = kind === "legacy" ? legacy : { ...JSON.parse(storage.getItem(key)!), diagram: legacy };
+    storage.setItem(key, JSON.stringify(stored));
+    const edited = { ...legacy, title: "Autosaved edit" };
+    storage.setItem(
+      `diagrams.autosave.v1:${slug}`,
+      JSON.stringify(kind === "legacy" ? edited : { ...stored, diagram: edited }),
+    );
+    expect(io.getOriginal(slug)).toEqual(legacy);
+    expect(io.getAutosave(slug)).toEqual(edited);
+    expect(io.getCurrent(slug)).toEqual(edited);
+    expect(io.writeAutosave(slug, { ...edited, title: "Next edit" })).toBe(true);
+    expect(io.getCurrent(slug)).toEqual({ ...edited, title: "Next edit" });
+    expect(io.parseDiagram(JSON.stringify(legacy))).toMatchObject({ ok: true, diagram: legacy });
+  });
+  it("keeps the whole-document size cap exclusive to imports", () => {
+    const diagram = { ...good, description: "d".repeat(8_000_001) };
+    const raw = JSON.stringify(diagram);
+    storage.setItem("diagrams.imported.v1", raw);
+    storage.setItem("diagrams.autosave.v1:imported", raw);
+    expect(io.getOriginal(io.LEGACY_SLUG)).toEqual(diagram);
+    expect(io.getAutosave(io.LEGACY_SLUG)).toEqual(diagram);
+    expect(io.parseDiagram(raw)).toMatchObject({ ok: false, error: expect.stringContaining("too large") });
+  });
+
   it("an autosave finishing during deletion cannot re-list the deleted diagram", () => {
     const slug = io.createLibraryDiagram(good);
     let undo: (() => boolean) | undefined;

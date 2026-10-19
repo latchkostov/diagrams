@@ -251,6 +251,11 @@ function scanInline(text: string, budget: Budget, depth: number): InlineToken[] 
     emit(budget, tokens, { type: "text", text });
     return tokens;
   }
+  if (!/[\n`*_~[\\^]|==|https?:\/\//i.test(text)) {
+    spend(budget, text.length);
+    emit(budget, tokens, { type: "text", text: replaceEmojis(text) });
+    return tokens;
+  }
   const pairs = delimiterPairs(text, budget);
   const markers = ["`", "***", "___", "**", "__", "~~", "~", "^", "==", "*", "_"];
   // Index each delimiter once. A lookup never rescans the remaining paragraph.
@@ -473,10 +478,11 @@ function parseListBlock(
       if (items.length > 0) {
         if (depth + 1 >= MARKDOWN_LIMITS.depth) {
           const raw = lines.slice(i).join("\n");
-          emit(budget, items, { text: raw, tokens: [{ type: "text", text: raw }] });
+          emit(budget, items, { text: raw, tokens: inline(raw, budget, MARKDOWN_LIMITS.depth) });
           i = lines.length;
           break;
         }
+        if (++budget.tokens > MARKDOWN_LIMITS.tokens) throw new OutputExceeded();
         const subResult = parseListBlock(lines, i, indent, budget, depth + 1);
         const parent = items[items.length - 1];
         if (!parent.subList) parent.subList = subResult.list;

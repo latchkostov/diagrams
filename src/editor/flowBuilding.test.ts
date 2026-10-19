@@ -989,7 +989,7 @@ it("keeps accepted documentation copyable and rejects oversized editor updates",
   expect(t.api.getDiagram().nodes[0].description).toBe(description);
 });
 
-it("keeps diagram descriptions within their native boundary", () => {
+it("keeps diagram descriptions within their authoring boundary", () => {
   const t = setup();
   const description = "x".repeat(2000);
   t.api.updateMeta({ description });

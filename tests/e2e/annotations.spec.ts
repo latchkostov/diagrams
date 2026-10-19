@@ -891,6 +891,12 @@ test("node documentation remains copyable at the length limit", async ({ page })
   await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 1));
   await page.keyboard.press("ControlOrMeta+b");
   await expect(field).toHaveValue(source);
+  expect(
+    await field.evaluate(
+      (el: HTMLTextAreaElement) =>
+        new Promise((resolve) => requestAnimationFrame(() => resolve([el.selectionStart, el.selectionEnd]))),
+    ),
+  ).toEqual([0, 1]);
   await page.keyboard.press("Escape");
   await page.getByTestId("node-api").click();
   await page.keyboard.press("ControlOrMeta+c");

@@ -149,24 +149,28 @@ it("indents and unindents every selected line while retaining the selection and 
 
 // All transformations share the native textarea length constraint.
 describe("length-limited Markdown edits", () => {
-  it.each(["b", "i", "k", "e", "x", "h", "Enter", "]"])("refuses %s without changing content or selection", (key) => {
-    const value = "- " + "a".repeat(9994) + "TAIL";
-    const ta = fakeTextarea(value, key === "Enter" ? value.length : 2, key === "Enter" ? value.length : 3);
-    ta.maxLength = 10_000;
-    const change = vi.fn();
-    const event = {
-      key,
-      ctrlKey: key !== "Enter",
-      metaKey: false,
-      altKey: false,
-      shiftKey: key === "x" || key === "h",
-      nativeEvent: { isComposing: false },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as KeyboardEvent<HTMLTextAreaElement>;
-    expect(handleMarkdownKeyDown(event, ta, value, change)).toBe(true);
-    expect(change).not.toHaveBeenCalled();
-    expect(ta.selectionStart).toBe(key === "Enter" ? value.length : 2);
-    expect(value).toHaveLength(10_000);
-  });
+  it.each(["b", "i", "k", "e", "x", "h", "Enter", "]"])(
+    "rejected %s formatting preserves both selection endpoints after scheduling settles",
+    async (key) => {
+      const value = "- " + "a".repeat(9994) + "TAIL";
+      const ta = fakeTextarea(value, key === "Enter" ? value.length : 2, key === "Enter" ? value.length : 3);
+      ta.maxLength = 10_000;
+      const change = vi.fn();
+      const event = {
+        key,
+        ctrlKey: key !== "Enter",
+        metaKey: false,
+        altKey: false,
+        shiftKey: key === "x" || key === "h",
+        nativeEvent: { isComposing: false },
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as KeyboardEvent<HTMLTextAreaElement>;
+      expect(handleMarkdownKeyDown(event, ta, value, change)).toBe(true);
+      expect(change).not.toHaveBeenCalled();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+      expect([ta.selectionStart, ta.selectionEnd]).toEqual(key === "Enter" ? [value.length, value.length] : [2, 3]);
+      expect(value).toHaveLength(10_000);
+    },
+  );
 });

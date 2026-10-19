@@ -43,12 +43,17 @@ function astDepth(value: unknown): number {
   return 1 + Math.max(0, ...Object.values(value).map(astDepth));
 }
 
+function astCount(value: unknown): number {
+  if (!value || typeof value !== "object") return 0;
+  return (Array.isArray(value) ? 0 : 1) + Object.values(value).reduce<number>((sum, child) => sum + astCount(child), 0);
+}
+
 describe("untrusted Markdown", () => {
   it("bounds total output across flat blocks and recursive inline tokens", async () => {
-    const inputs = ["---\n".repeat(1_000_000), "> " + "**x** ".repeat(20_000)];
+    const inputs = ["---\n".repeat(1_000_000), "> " + "**x** ".repeat(20_000), "- parent\n  - child\n".repeat(511)];
     const results = await parseInWorker(inputs);
     for (const { ast } of results) {
-      expect(ast).toHaveLength(1);
+      expect(astCount(ast)).toBeLessThanOrEqual(MARKDOWN_LIMITS.tokens);
       expect(ast[0].type).toBe("paragraph");
     }
   });
