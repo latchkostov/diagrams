@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../../model/revisions";
 import { Icon, type IconName } from "../../components/Icon";
 import { type AlignMode } from "../../editor/arrange";
 import { t } from "../../i18n";
@@ -205,8 +206,7 @@ export function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProp
   ].join(" / ");
   const mergeKey = ids.join(",");
   const managed =
-    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") &&
-    selectedNodes.every((node) => !!managedKind(node.data.stencil));
+    revisionAtLeast(meta.planning?.revision, "p3") && selectedNodes.every((node) => !!managedKind(node.data.stencil));
   return (
     <>
       <Section title={countLabel(ids.length, "node")}>

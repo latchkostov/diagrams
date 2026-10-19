@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "source": [40, 40], "partner": [40, 160], "caller": [406, 100], "result": [766, 100] },
+    "TB": { "source": [40, 40], "partner": [330, 40], "caller": [180, 200], "result": [180, 360] }
+  },
+  "tidy": { "source": [0, 0], "caller": [340, 60], "partner": [0, 120], "result": [670, 60] },
+  "arrange": {
+    "alignLeft": { "source": [0, 0], "caller": [0, 0], "partner": [0, 0], "result": [0, 220] },
+    "alignMiddle": { "source": [0, 110], "caller": [330, 110], "partner": [660, 110], "result": [660, 110] },
+    "distributeH": { "source": [0, 0], "caller": [218, 0], "partner": [436, 0], "result": [660, 220] },
+    "distributeV": { "source": [0, 0], "caller": [330, 73], "partner": [660, 147], "result": [660, 220] },
+    "spreadH": { "source": [0, 0], "caller": [330, 0], "partner": [660, 0], "result": [926, 0] },
+    "boundaryAround": { "x": -40, "y": -64, "width": 966, "height": 396 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "source": [40, 40], "caller": [406, 100], "partner": [40, 160], "result": [766, 100] },
+    "groups": {}
+  }
+}

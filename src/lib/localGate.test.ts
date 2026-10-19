@@ -530,6 +530,48 @@ it("passes 500 related paths by file without expanding the command line", async 
   }
 });
 
+it("the JSON launcher runs only related tests, forwards options and rejects invalid path lists", async () => {
+  mkdirSync("tests/.output", { recursive: true });
+  const dir = mkdtempSync(resolve("tests/.output/gate-launcher-"));
+  const launcher = resolve("scripts/gate/related.mjs");
+  const paths = join(dir, "changed paths.json");
+  const report = join(dir, "results.json");
+  const configFile = join(dir, "vitest.config.mjs");
+  writeFileSync(configFile, `export default { root: ${JSON.stringify(dir)}, test: { include: ["*.test.mjs"] } };`);
+  writeFileSync(join(dir, "source with spaces مثال.mjs"), "export const value = 42;");
+  writeFileSync(
+    join(dir, "selected.test.mjs"),
+    `
+    import { expect, it } from "vitest";
+    import { value } from "./source with spaces مثال.mjs";
+    it("selected through JSON", () => expect(value).toBe(42));
+  `,
+  );
+  writeFileSync(
+    join(dir, "unrelated.test.mjs"),
+    `import { it } from "vitest"; it("unrelated", () => { throw new Error("Unrelated test ran"); });`,
+  );
+  const changed = Array.from({ length: 500 }, (_, i) => join(dir, `missing ${i} مثال.mjs`));
+  changed.push(join(dir, "source with spaces مثال.mjs"));
+  const run = (args: string[] = []) =>
+    command(process.execPath, [launcher, paths, "--config", configFile, "--maxWorkers=1", ...args]);
+  try {
+    writeFileSync(paths, JSON.stringify(changed));
+    const result = await run(["--reporter=json", "--outputFile", report]);
+    expect(result.code, result.text).toBe(0);
+    expect(JSON.parse(readFileSync(report, "utf8"))).toMatchObject({ numPassedTests: 1, numFailedTests: 0 });
+    const filtered = await run(["--testNamePattern=does not match", "--reporter=json", "--outputFile", report]);
+    expect(filtered.code, filtered.text).toBe(0);
+    expect(JSON.parse(readFileSync(report, "utf8"))).toMatchObject({ numPassedTests: 0, numPendingTests: 1 });
+    for (const invalid of ["not JSON", "{}", "[]", '["ok", 1]']) {
+      writeFileSync(paths, invalid);
+      expect((await run()).code, invalid).not.toBe(0);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+});
+
 it("subsets include dependencies, no-docker keeps Node parity and cannot stamp", () => {
   expect(names(["--only", "e2e"])).toEqual(["e2e-build", "preview-build", "internal-build", "locked-build", "e2e-1"]);
   expect(names(["--only", "size"])).toEqual(["build", "size"]);

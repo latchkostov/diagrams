@@ -22,6 +22,7 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
+  "blocking-call": ["warning capacity:caller"],
   "where-the-time-goes": [],
   "zone-outage-drill": [],
   "recommendations-feature-store": [],

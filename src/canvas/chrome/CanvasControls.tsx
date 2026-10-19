@@ -1,12 +1,4 @@
-import {
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-  type RefObject,
-} from "react";
+import { useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -16,13 +8,12 @@ import {
   useStore,
   type ReactFlowState,
 } from "@xyflow/react";
-import { ContextMenu } from "../../components/ContextMenu";
 import { Icon } from "../../components/Icon";
-import type { MenuNode } from "../../editor/actions";
 import type { EditorApi } from "../../editor/types";
 import { formatCombo, shortcutKeys } from "../../editor/shortcuts";
 import { getStencil } from "../../stencils/registry";
 import { t as tr, useLocale } from "../../i18n";
+import { platform, toolbarViewMenu, type CanvasMenus, type MenuState } from "../menus/useCanvasMenus";
 import { resolveAnnotationColor } from "../annotations";
 import { resolveGroupTone } from "../groupTones";
 import type { AnnotationFlowNode, DiagramFlowNode, FlowNode, GroupFlowNode } from "../types";
@@ -72,50 +63,47 @@ export function CanvasControls({
   fit,
   zoomedByButton,
   onShortcuts,
+  menus,
+  menu,
 }: {
   editor: EditorApi;
   fit: () => void;
   zoomedByButton: () => void;
   onShortcuts: () => void;
+  menus: CanvasMenus;
+  menu: MenuState | null;
 }) {
   const locale = useLocale();
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // Deliberately session-only: each new canvas starts expanded; no preference is stored.
   const [collapsed, setCollapsed] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const viewGroupRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
-  const menuOpen = menuPos !== null;
+  const menuOpen = menu?.menuId === menuId;
 
-  const openViewMenu = () => {
-    const r = viewGroupRef.current?.getBoundingClientRect();
-    if (r) setMenuPos({ x: r.right + 6, y: r.top });
+  // Controls does not forward button props. Retag its zoom buttons after expansion remounts them.
+  useLayoutEffect(() => {
+    const root = bodyRef.current?.parentElement;
+    for (const [selector, testId, label] of [
+      [".react-flow__controls-zoomin", "zoom-in-button", tr("chrome.zoomIn")],
+      [".react-flow__controls-zoomout", "zoom-out-button", tr("chrome.zoomOut")],
+    ] as const) {
+      const button = root?.querySelector(selector);
+      button?.setAttribute("data-testid", testId);
+      button?.setAttribute("title", label);
+      button?.setAttribute("aria-label", label);
+    }
+  }, [collapsed, locale]);
+
+  const openViewMenu = (via: "pointer" | "keyboard") => {
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (!r) return;
+    menus.openMenu(
+      "context",
+      { ...toolbarViewMenu(editor), x: r.right + 6, y: r.top, triggerRef, menuId },
+      { via, platform: platform(), invoker: triggerRef.current },
+    );
   };
-
-  const viewMenuItems = useMemo((): MenuNode[] => {
-    if (!menuOpen) return [];
-    const sel = editor.getSelection();
-    const hasSelection = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length > 0;
-    return [
-      {
-        type: "item",
-        id: "toolbar-view:zoom-100",
-        label: tr("shortcuts.zoom100"),
-        icon: "zoom",
-        shortcut: shortcutKeys("zoom-100"),
-        run: () => editor.zoomTo100(),
-      },
-      {
-        type: "item",
-        id: "toolbar-view:zoom-selection",
-        label: tr("shortcuts.zoomSelection"),
-        icon: "zoom",
-        shortcut: shortcutKeys("zoom-selection"),
-        disabled: !hasSelection,
-        title: hasSelection ? undefined : tr("menu.selectSomethingFirst"),
-        run: () => void editor.zoomToSelection(),
-      },
-    ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuild when menu opens or locale changes
-  }, [menuOpen, editor, locale]);
 
   const collapseLabel = collapsed ? tr("chrome.expandToolbar") : tr("chrome.collapseToolbar");
   const viewMenuLabel = tr("view.menu");
@@ -124,26 +112,29 @@ export function CanvasControls({
     <>
       <Controls
         className={collapsed ? "is-collapsed" : undefined}
+        showZoom={!collapsed}
         showInteractive={false}
         showFitView={false}
         position="bottom-left"
         onZoomIn={zoomedByButton}
         onZoomOut={zoomedByButton}
       >
-        <div className="rf-ctrl-body" inert={collapsed || undefined}>
+        <div ref={bodyRef} className="rf-ctrl-body" inert={collapsed || undefined}>
           <div className="rf-ctrl-inner">
             {/* Our fit keeps content clear of the title card, minimap and live bar; flyout offers Zoom tools. */}
             <div
-              ref={viewGroupRef}
               className="rf-ctrl-split"
               onContextMenu={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                openViewMenu();
+                openViewMenu("pointer");
               }}
             >
               <ControlButton
-                onClick={fit}
+                onClick={() => {
+                  menus.closeMenu("command");
+                  fit();
+                }}
                 title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
                 aria-label={tr("menu.fitView")}
                 data-testid="fit-view-button"
@@ -151,12 +142,13 @@ export function CanvasControls({
                 <Icon name="fit" size={14} />
               </ControlButton>
               <button
+                ref={triggerRef}
                 type="button"
                 className={`rf-ctrl-flyout${menuOpen ? " is-open" : ""}`}
-                onClick={(e: ReactMouseEvent) => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  if (menuOpen) setMenuPos(null);
-                  else openViewMenu();
+                  if (menuOpen) menus.closeMenu("toggle");
+                  else openViewMenu(e.detail === 0 ? "keyboard" : "pointer");
                 }}
                 title={viewMenuLabel}
                 aria-label={viewMenuLabel}
@@ -203,7 +195,7 @@ export function CanvasControls({
         </div>
         <ControlButton
           onClick={() => {
-            setMenuPos(null);
+            menus.closeMenu("command");
             setCollapsed((c) => !c);
           }}
           title={collapseLabel}
@@ -214,18 +206,6 @@ export function CanvasControls({
           <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} size={14} />
         </ControlButton>
       </Controls>
-      {menuPos && (
-        <ContextMenu
-          x={menuPos.x}
-          y={menuPos.y}
-          label={viewMenuLabel}
-          testId="view-tools-menu"
-          menuId={menuId}
-          triggerRef={viewGroupRef}
-          items={viewMenuItems}
-          onClose={() => setMenuPos(null)}
-        />
-      )}
     </>
   );
 }

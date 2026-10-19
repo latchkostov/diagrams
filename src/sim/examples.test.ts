@@ -23,12 +23,14 @@ describe("saved example simulations with the real stencil registry", () => {
     it(`${label} has the expected number of presentations and valid node references`, () => {
       expect(diagram.simulations?.length).toBe(SIMULATIONS[path] ?? 2);
       const ids = new Set(diagram.nodes.map((node) => node.id));
+      const edgeIds = new Set(diagram.edges.map((edge) => edge.id));
       for (const node of diagram.nodes) expect(getStencil(node.stencil).id).toBe(node.stencil);
       for (const simulation of diagram.simulations ?? []) {
         expect(simulation.seed).toBeTypeOf("number");
         for (const profile of simulation.traffic) expect(ids.has(profile.node)).toBe(true);
         for (const id of Object.keys(simulation.setup?.props ?? {})) expect(ids.has(id)).toBe(true);
         for (const id of Object.keys(simulation.setup?.status ?? {})) expect(ids.has(id)).toBe(true);
+        for (const id of Object.keys(simulation.setup?.edges ?? {})) expect(edgeIds.has(id)).toBe(true);
         for (const step of simulation.timeline ?? []) {
           if (step.action.do === "note") {
             for (const id of step.action.focus ?? []) expect(ids.has(id)).toBe(true);
@@ -62,9 +64,10 @@ describe("saved example simulations with the real stencil registry", () => {
           (simulation.expectations ?? []).map((e) => ({
             id: e.id,
             status:
-              path === "../examples/zone-outage-drill.json" &&
-              simulation.id === "no-health-checks" &&
-              e.id === "api-b-loss"
+              (path === "../examples/blocking-call.json" && simulation.id === "blocking" && e.id === "lag") ||
+              (path === "../examples/zone-outage-drill.json" &&
+                simulation.id === "no-health-checks" &&
+                e.id === "api-b-loss")
                 ? "fail"
                 : "pass",
           })),

@@ -1,3 +1,5 @@
+import { upgradeWaits } from "../planning/migration";
+import { waitingFixture } from "../lab/waitingFixture";
 import { describe, expect, it } from "vitest";
 import { fromFlow, toFlow } from "../canvas/convert";
 import type { DiagramFile, DiagramNode } from "../model/types";
@@ -98,4 +100,19 @@ it("a generated copy name preserves tagged steps, undo, redo and redo branches",
   expect(redone?.meta.title).toBe("Creation (copy 2)");
   // Observing or saving this rewritten snapshot must not create another step.
   if (redone) expect(ctl.commit(redone, undefined, 20)).toBe(false);
+});
+
+it("restores the entire previous model and saved runs in one request-model undo step", () => {
+  const d = waitingFixture();
+  d.planning = { revision: "p3-a1" };
+  d.simulations = [{ id: "saved", title: "Saved", traffic: [] }];
+  const before = snap(d),
+    next = snap(upgradeWaits(d));
+  const ctl = new HistoryController(before, 0);
+  ctl.replace(before, undefined, next, undefined, { nodes: [], edges: [] }, 10);
+  expect(ctl.history.entries).toHaveLength(2);
+  expect(present(ctl.history).value.meta.planning?.revision).toBe("p3-w1");
+  const undone = ctl.step("undo", { nodes: [], edges: [] })!;
+  expect(fromFlow(undone.meta, undone.nodes, undone.edges)).toEqual(fromFlow(before.meta, before.nodes, before.edges));
+  expect(ctl.step("redo", { nodes: [], edges: [] })?.meta.planning?.revision).toBe("p3-w1");
 });

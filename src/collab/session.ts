@@ -3,8 +3,8 @@ import { canCollaborate, type CanvasPrivacyState } from "../lib/localOnly";
 import type { DiagramFile } from "../model/types";
 import { realClock, type Clock } from "./clock";
 import { CollabDoc, REMOTE } from "./doc";
-import { Opener, Sealer, SENDER_ID_BYTES, type Rejection } from "./envelope";
-import type { GuardProblem } from "./guard";
+import { FRAME_SIGNATURE_BYTES, Opener, Sealer, SENDER_ID_BYTES, type Opened, type Rejection } from "./envelope";
+import { structClients, type GuardProblem } from "./guard";
 import { reserveRoomCreation, deriveRoomKeys, type Channel, type RoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
@@ -17,11 +17,15 @@ import {
   type PeerPresence,
   type PresenceState,
 } from "./presence";
-import { DOC, frame, fragment, isEmptyUpdate, PRESENCE, Reassembler, unframe } from "./protocol";
+import { DOC, frame, fragment, isEmptyUpdate, PRESENCE, Reassembler, unframe, LIVE } from "./protocol";
 import { secureRandom, type RandomBytes } from "./random";
 import type { CollabTransport, Connectivity, PeerId } from "./transport/types";
 import { RoomRecovery } from "./recovery";
 import type { RecoveryStore } from "./recoveryStore";
+import { bytesToText, textToBytes } from "../interop/codec";
+import type { RosterOp } from "./roster";
+import { SignedRoom } from "./signedRoom";
+import type { Identity } from "./signing";
 
 // A room session: one person's CollabDoc joined to a room over a transport, with the room's E2E envelopes on every
 // frame. Transport-neutral: it needs only the CollabTransport interface. All timing reads the room clock.
@@ -33,6 +37,20 @@ import type { RecoveryStore } from "./recoveryStore";
 //
 // Refusals are counted by reason (`stats.rejected`), never thrown at the transport. A sender whose authenticated
 // frame carries an update the guard refuses is quarantined: everything else it sends is ignored for the session.
+//
+// A signed room (a v2 link, P4: ./signedRoom.ts) checks more, against the roster (./roster.ts):
+// - Every frame carries its sender's signature, and counts only once that verifies under the key the sender's
+//   presence bound (its counter isn't recorded before, so a forged frame can't use up another sender's counters).
+//   Verifications are bounded per sender (COLLAB_LIMITS.verifiesPerWindow).
+// - A direct update counts only from an editor, and only with structs of the Yjs client id it bound; a sync reply
+//   only from an editor. Viewers never serve sync. These depend only on bytes and the roster, never on timing.
+// - What doesn't count yet (an editor's grant still on its way, a sender's binding not yet here) is held, per sender
+//   and bounded (COLLAB_LIMITS.maxHeldBytesPerSender, heldMs), and never applied before it counts: once it does
+//   (the roster or the binding changed) it's applied in order; past the bounds it's dropped and its sender
+//   quarantined. No honest peer applies an update another honest peer refuses, so honest peers can't diverge, and
+//   nothing is ever rolled back.
+// - The roster travels as DOC.roster: in full to each peer that appears, each new entry to everyone, and a summary
+//   with every anti-entropy round (a peer whose roster differs sends its entries back).
 
 export class PrivateDiagramError extends Error {
   constructor() {
@@ -54,10 +72,19 @@ export type RejectReason =
   | "request-throttled"
   | "proof-throttled"
   | "presence-throttled"
+  | "live-throttled"
   | "queue-full"
   | "too-many-partials"
   | "internal"
-  | "malformed";
+  | "malformed"
+  // Signed rooms (P4):
+  | "unbound"
+  | "rebound"
+  | "bad-binding"
+  | "bad-signature"
+  | "verify-throttled"
+  | "unauthorised"
+  | "roster-refused";
 
 export interface SessionStats {
   framesSent: number;
@@ -86,6 +113,11 @@ export interface SessionOptions {
   random?: RandomBytes;
   /** For tests: deterministic Yjs client id. */
   clientId?: number;
+  /**
+   * A signed room's member (its link has a host key, P4): this tab's identity, and the roster entries it kept (from
+   * its record: each is checked again).
+   */
+  signed?: { identity: Identity; log?: readonly unknown[] };
   presence?: Partial<PresenceState>;
 }
 
@@ -106,6 +138,66 @@ class RateLimit {
     if (b.tokens < bytes) return false;
     b.tokens -= bytes;
     return true;
+  }
+}
+
+type Frame = Extract<Opened, { ok: true }>;
+
+/** A signed room's document frame that doesn't count yet: still to verify, or verified and waiting for a grant. */
+interface Held {
+  from: PeerId;
+  bytes: number;
+  opened: Frame;
+  /** Its message and signature (the plaintext, split). */
+  message: Uint8Array;
+  signature: Uint8Array;
+  /** Once verified (and reassembled): the document message. */
+  msg?: { type: number; payload: Uint8Array };
+  /** An update's struct clients, read once (null: undecodable). */
+  clients?: Set<number> | null;
+  /** The roster and bindings' revision it last didn't count at. */
+  checkedAt?: number;
+}
+
+/**
+ * A sender's held frames: those still to verify (its binding not here yet), in order, and its verified updates and
+ * sync replies that don't count yet, in order.
+ */
+interface HeldQueue {
+  raw: Held[];
+  blocked: Held[];
+  bytes: number;
+  stop: () => void;
+}
+
+/** What changes the document: what has to count before it's applied, in order. */
+const isMutation = (msg: { type: number }) => msg.type === DOC.update || msg.type === DOC.syncReply;
+
+/** A roster summary: which entries a peer holds (not a security check: a mismatch only asks for the entries). */
+function rosterSummary(sigs: readonly string[]): string {
+  let h = 0x811c9dc5;
+  for (const sig of sigs)
+    for (let i = 0; i < sig.length; i++) {
+      h ^= sig.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+  return `${sigs.length}.${h.toString(16)}`;
+}
+
+/** A DOC.roster payload: entries, or a summary. Undefined when it isn't exactly one. */
+function parseRosterMessage(payload: Uint8Array): { e: unknown[] } | { h: string } | undefined {
+  if (payload.length > COLLAB_LIMITS.maxRosterMessageBytes) return undefined;
+  try {
+    const v = JSON.parse(bytesToText(payload)) as unknown;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
+    const o = v as Record<string, unknown>;
+    const keys = Object.keys(o);
+    if (keys.length !== 1) return undefined;
+    if (Array.isArray(o.e)) return { e: o.e };
+    if (typeof o.h === "string" && o.h.length <= 32) return { h: o.h };
+    return undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -145,6 +237,9 @@ export class CollabSession {
   private readonly proofs: RateLimit;
   /** Presence frames per sender (cursors are frequent): its own bound, so they never ride free. */
   private readonly presenceRate: RateLimit;
+  /** Shared Live frames per sender, likewise. */
+  private readonly liveRate: RateLimit;
+  private readonly liveListeners = new Set<(sender: string, from: PeerId, payload: Uint8Array) => void>();
   /** Bytes of frames waiting in the inbox: in total and per transport peer. */
   private queuedBytes = 0;
   private readonly queuedFrom = new Map<PeerId, number>();
@@ -155,6 +250,19 @@ export class CollabSession {
   private readonly reassembler: Reassembler;
   private nextMessage = 0;
   private readonly quarantined = new Set<string>();
+  /** A signed room's state (P4): this member's identity, the roster, senders' bindings. Absent: a room without roles. */
+  signed?: SignedRoom;
+  /** Signature verifications per sender (frames and roster entries): each costs real work. */
+  private readonly verifies: RateLimit;
+  /** Full rosters sent back to a peer whose summary differs, per requester. */
+  private readonly rosterReplies: RateLimit;
+  /** A signed room's document frames that don't count yet, per sender (see above). */
+  private readonly held = new Map<string, HeldQueue>();
+  /** Newcomers this session is admitting (an entry being signed). */
+  private readonly admitting = new Set<string>();
+  private summary?: string;
+  /** Counts changes to the roster and to bindings: a held update that didn't count is checked again after one. */
+  private authRevision = 0;
   private outbox: Promise<void> = Promise.resolve();
   private inbox: Promise<void> = Promise.resolve();
   private proofJob: Promise<void> = Promise.resolve();
@@ -178,6 +286,9 @@ export class CollabSession {
     this.requests = new RateLimit(clock, COLLAB_LIMITS.syncRequestsPerWindow);
     this.proofs = new RateLimit(clock, COLLAB_LIMITS.syncProofsPerWindow);
     this.presenceRate = new RateLimit(clock, COLLAB_LIMITS.presenceFramesPerWindow);
+    this.liveRate = new RateLimit(clock, COLLAB_LIMITS.liveFramesPerWindow);
+    this.verifies = new RateLimit(clock, COLLAB_LIMITS.verifiesPerWindow);
+    this.rosterReplies = new RateLimit(clock, COLLAB_LIMITS.rosterRepliesPerWindow);
     this.reassembler = new Reassembler(clock);
     this.presence = new PresenceTable(clock);
   }
@@ -187,6 +298,7 @@ export class CollabSession {
     // The diagram's own flag too: a Private file never joins, whatever state the caller passed.
     if (!canCollaborate(opts.privacy) || opts.initial?.private || opts.privacy?.diagram?.private)
       throw new PrivateDiagramError();
+    if (opts.room.hostKey && !opts.signed) throw new Error("A signed room needs this member's identity.");
     const creation = reserveRoomCreation(opts.room);
     let doc = opts.doc;
     let session: CollabSession | undefined;
@@ -202,6 +314,8 @@ export class CollabSession {
       if (creation && opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
       const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
       session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);
+      if (opts.room.hostKey && opts.signed) await session.setUpSigned(opts.room.hostKey, opts.signed);
+      if (opts.allowed && !opts.allowed()) throw new PrivateDiagramError();
       session.recovery = recovery;
       session.start();
       recovery?.watch(doc);
@@ -220,6 +334,86 @@ export class CollabSession {
 
   get senderId(): string {
     return this.sealer.senderHex;
+  }
+
+  /** Whether this person may edit: always in a room without roles; in a signed one, as its roster says. */
+  get canEdit(): boolean {
+    return !this.signed || this.signed.canEdit;
+  }
+
+  /**
+   * A signed room's roster entry by this member (a grant, a handover, the room's policy), signed and sent to
+   * everyone in order with what's sent after it (a goodbye goes after a handover). False when this member may not
+   * make it now, it would change nothing, or this isn't a signed room.
+   */
+  appendRoster(op: RosterOp, fields: { who?: string; viewOnly?: boolean } = {}): Promise<boolean> {
+    const room = this.signed;
+    if (!room || this.status === "left") return Promise.resolve(false);
+    const job = this.outbox.then(async () => {
+      const entry = await room.append(op, fields);
+      if (entry) await this.deliver("doc", frame(DOC.roster, textToBytes(JSON.stringify({ e: [entry] }))));
+      return !!entry;
+    });
+    this.outbox = job.then(
+      () => {},
+      () => {},
+    );
+    return job.catch(() => false);
+  }
+
+  /** Sets up a signed room before the session starts: its roster (from the record), its signer, its binding. */
+  private async setUpSigned(hostKey: string, s: { identity: Identity; log?: readonly unknown[] }): Promise<void> {
+    const room = new SignedRoom(this.keys, hostKey, s.identity);
+    await room.addEntries(s.log ?? []);
+    this.signed = room;
+    this.sealer.sign = room.signFrame;
+    await this.bind();
+    room.roster.subscribe(() => (this.summary = undefined));
+    room.subscribe(() => this.signedChanged());
+  }
+
+  /** This session's binding, for its sender id and its document's Yjs client id: carried by its presence. */
+  private async bind(): Promise<void> {
+    const room = this.signed;
+    if (!room) return;
+    const b = await room.bindMine(this.sealer.sender, this.doc.ydoc.clientID);
+    this.me = { ...this.me, key: b.key, client: b.client, bind: b.bind };
+  }
+
+  /** The roster or a binding changed: held frames may count now, a newcomer may need admitting, the UI re-reads. */
+  private signedChanged(): void {
+    if (this.status === "left" || this.leaving) return;
+    this.authRevision++;
+    this.inbox = this.inbox.then(() => this.drainAll()).catch(() => this.reject("internal"));
+    this.admitNewcomers();
+    this.emit();
+  }
+
+  /**
+   * While new people may edit, each newcomer here (a bound key the roster doesn't name as an editor) is admitted by
+   * one person: the host if here, else the earliest co-host here (only they can admit: ../roster.ts). Until then the
+   * newcomer views; with neither here, they view until one is.
+   */
+  private admitNewcomers(): void {
+    const room = this.signed;
+    if (!room || this.leaving) return;
+    const s = room.state();
+    if (s.viewOnly) return;
+    const keyOf = (sender: string) => (sender === this.senderId ? room.key : room.keyOf(sender));
+    const here = [this.senderId, ...this.presence.list().map((p) => p.sender)]
+      .map((sender) => ({ sender, key: keyOf(sender) }))
+      .filter((h): h is { sender: string; key: string } => !!h.key)
+      .sort((a, b) => (a.sender < b.sender ? -1 : 1));
+    const newcomers = [...new Set(here.filter((h) => !s.editors.has(h.key)).map((h) => h.key))];
+    if (!newcomers.length) return;
+    const admitter =
+      here.find((h) => h.key === s.host) ?? s.cohosts.map((c) => here.find((h) => h.key === c)).find((h) => !!h);
+    if (admitter?.sender !== this.senderId) return;
+    for (const key of newcomers) {
+      if (this.admitting.has(key)) continue;
+      this.admitting.add(key);
+      void this.appendRoster("admit", { who: key }).finally(() => this.admitting.delete(key));
+    }
   }
 
   /** Allocation survives editor remounts within this session; a rejoin draws a new sender id. */
@@ -374,7 +568,14 @@ export class CollabSession {
 
   private start(): void {
     const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin !== REMOTE) this.sendDoc(frame(DOC.update, update));
+      if (origin === REMOTE) return;
+      if (this.signed) {
+        // A viewer's own step (the editor refuses them first) never leaves this tab.
+        if (!this.signed.canEdit) return;
+        // Yjs drew another client id: bound again before the update goes (receivers hold it until then).
+        if (this.doc.ydoc.clientID !== this.signed.mine?.client) this.rebind();
+      }
+      this.sendDoc(frame(DOC.update, update));
     };
     this.doc.ydoc.on("update", onUpdate);
     this.stops.push(() => this.doc.ydoc.off("update", onUpdate));
@@ -392,8 +593,13 @@ export class CollabSession {
         connectivity: () => this.updateStatus(),
         frame: (from, bytes) => this.enqueue(from, bytes),
         join: (peer) => {
+          // A signed room: who this is and the roster first, so what follows counts at once.
+          if (this.signed) {
+            this.sendPresence(peer);
+            this.sendRoster(peer);
+          }
           this.requestSync(peer);
-          this.sendPresence(peer);
+          if (!this.signed) this.sendPresence(peer);
           this.updateStatus();
           this.emit();
         },
@@ -404,7 +610,16 @@ export class CollabSession {
         },
       }),
     );
-    this.stops.push(this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => this.requestSync()));
+    this.stops.push(
+      this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => {
+        this.requestSync();
+        if (this.signed) this.sendDoc(frame(DOC.roster, textToBytes(JSON.stringify({ h: this.rosterSummary() }))));
+      }),
+    );
+    this.stops.push(() => {
+      for (const q of this.held.values()) q.stop();
+      this.held.clear();
+    });
     this.stops.push(this.clock.every(COLLAB_LIMITS.partialTtlMs, () => this.reassembler.expire()));
     this.stops.push(() => this.reassembler.clear());
     this.stops.push(
@@ -415,8 +630,9 @@ export class CollabSession {
         if (this.presence.expire()) this.emit();
       }),
     );
+    if (this.signed) this.sendPresence();
     this.requestSync();
-    this.sendPresence();
+    if (!this.signed) this.sendPresence();
     this.prepareBye();
     this.updateStatus();
   }
@@ -495,6 +711,20 @@ export class CollabSession {
       .catch(() => {});
   }
 
+  /** A shared Live message (src/collab/room/liveShare.ts): to everyone, or to one transport peer. False: too large. */
+  sendLive(payload: Uint8Array, to?: PeerId): boolean {
+    const signature = this.signed ? FRAME_SIGNATURE_BYTES : 0;
+    if (1 + payload.length + 48 + signature > COLLAB_LIMITS.maxLiveFrameBytes) return false;
+    this.send("live", frame(LIVE.message, payload), to);
+    return true;
+  }
+
+  /** Shared Live messages from others, with their sender (as presence names them) and transport peer. */
+  onLive(listener: (sender: string, from: PeerId, payload: Uint8Array) => void): () => void {
+    this.liveListeners.add(listener);
+    return () => this.liveListeners.delete(listener);
+  }
+
   private sendPresence(to?: PeerId): void {
     this.send("presence", frame(PRESENCE.state, encodePresence(this.me)), to);
   }
@@ -509,19 +739,44 @@ export class CollabSession {
   /** Seals and sends in order. Sealing is asynchronous; the outbox keeps frames in the order they were made. */
   private send(channel: Channel, plaintext: Uint8Array, to?: PeerId): void {
     if (this.status === "left") return;
+    this.outbox = this.outbox.then(() => this.deliver(channel, plaintext, to));
+  }
+
+  /** Seals one frame and hands it to the transport (a step of the outbox: in order with everything else). */
+  private async deliver(channel: Channel, plaintext: Uint8Array, to?: PeerId): Promise<void> {
+    try {
+      const sealed = await this.sealer.seal(channel, plaintext);
+      // Every receiver keeps a window of a sender's counters: the cached goodbye stays well inside it.
+      if (channel === "doc" && ++this.framesSinceBye >= COLLAB_LIMITS.replayWindow / 2) this.prepareBye();
+      if (this.status === "left") return;
+      this.transport.send(sealed, to);
+      this.stats.framesSent++;
+      this.stats.bytesSent += sealed.length;
+    } catch {
+      this.reject("too-large");
+    }
+  }
+
+  /** Bound again (a new Yjs client id), and said, before anything queued after it. */
+  private rebind(): void {
     this.outbox = this.outbox.then(async () => {
       try {
-        const sealed = await this.sealer.seal(channel, plaintext);
-        // Every receiver keeps a window of a sender's counters: the cached goodbye stays well inside it.
-        if (channel === "doc" && ++this.framesSinceBye >= COLLAB_LIMITS.replayWindow / 2) this.prepareBye();
-        if (this.status === "left") return;
-        this.transport.send(sealed, to);
-        this.stats.framesSent++;
-        this.stats.bytesSent += sealed.length;
+        await this.bind();
       } catch {
-        this.reject("too-large");
+        return this.reject("internal");
       }
+      await this.deliver("presence", frame(PRESENCE.state, encodePresence(this.me)));
     });
+  }
+
+  /** This session's roster entries, to one peer (it just appeared, or its summary differs). */
+  private sendRoster(to?: PeerId): void {
+    const log = this.signed?.roster.log();
+    if (log?.length) this.sendDoc(frame(DOC.roster, textToBytes(JSON.stringify({ e: log }))), to);
+  }
+
+  private rosterSummary(): string {
+    return (this.summary ??= rosterSummary(this.signed?.roster.log().map((e) => e.sig) ?? []));
   }
 
   /**
@@ -555,11 +810,18 @@ export class CollabSession {
   private async receive(from: PeerId, bytes: Uint8Array): Promise<void> {
     if (this.status === "left" || this.leaving) return;
     this.stats.framesReceived++;
-    const opened = await this.opener.open(bytes);
+    const opened = await this.opener.open(bytes, !!this.signed);
     if (!opened.ok) return this.reject(opened.reason);
     if (this.quarantined.has(opened.sender)) return this.reject("quarantined");
+    if (this.signed) return this.receiveSigned(from, bytes, opened);
     let msg = unframe(opened.plaintext);
     if (!msg) return this.reject("malformed");
+    if (opened.channel === "live") {
+      if (!this.liveRate.take(opened.sender, 1)) return this.reject("live-throttled");
+      if (msg.type !== LIVE.message) return this.reject("malformed");
+      for (const listener of this.liveListeners) listener(opened.sender, from, msg.payload);
+      return;
+    }
     if (opened.channel === "presence") {
       if (!this.presenceRate.take(opened.sender, 1)) return this.reject("presence-throttled");
       const state = msg.type === PRESENCE.state ? parsePresence(msg.payload) : undefined;
@@ -575,6 +837,209 @@ export class CollabSession {
       msg = unframe(part.done);
       if (!msg || msg.type === DOC.fragment) return this.reject("malformed");
     }
+    return this.handleDoc(from, opened.sender, msg);
+  }
+
+  /** A signed room's frame (see above): its signature, its sender's binding, and (document frames) the roster. */
+  private async receiveSigned(from: PeerId, bytes: Uint8Array, opened: Frame): Promise<void> {
+    const room = this.signed!;
+    const sender = opened.sender;
+    const cut = opened.plaintext.length - FRAME_SIGNATURE_BYTES;
+    if (cut < 1) return this.reject("malformed");
+    const message = opened.plaintext.subarray(0, cut);
+    const signature = opened.plaintext.subarray(cut);
+    if (opened.channel === "presence") {
+      if (!this.presenceRate.take(sender, 1)) return this.reject("presence-throttled");
+      const msg = unframe(message);
+      const state = msg?.type === PRESENCE.state ? parsePresence(msg.payload) : undefined;
+      if (!state) return this.reject("malformed");
+      if (!state.key || state.client === undefined || !state.bind) return this.reject("unbound");
+      const held = room.keyOf(sender);
+      if (held && held !== state.key) return this.reject("rebound");
+      if (!this.verifies.take(sender, held === state.key && room.clientOf(sender) === state.client ? 1 : 2))
+        return this.reject("verify-throttled");
+      if (!(await room.verifyFrame(state.key, opened.header, message, signature))) return this.reject("bad-signature");
+      const bound = await room.bindPeer(
+        sender,
+        opened.senderBytes,
+        { key: state.key, client: state.client, bind: state.bind },
+        opened.counter,
+      );
+      if (bound === "rebound" || bound === "bad-binding") return this.reject(bound);
+      const accepted = this.opener.accept(opened);
+      if (accepted !== true) return this.reject(accepted);
+      if (this.presence.receive(sender, opened.counter, state)) {
+        this.emit();
+        this.admitNewcomers();
+      }
+      return;
+    }
+    if (opened.channel === "live") {
+      if (!this.liveRate.take(sender, 1)) return this.reject("live-throttled");
+      const key = room.keyOf(sender);
+      if (!key) return this.reject("unbound");
+      if (!this.verifies.take(sender, 1)) return this.reject("verify-throttled");
+      if (!(await room.verifyFrame(key, opened.header, message, signature))) return this.reject("bad-signature");
+      const accepted = this.opener.accept(opened);
+      if (accepted !== true) return this.reject(accepted);
+      const msg = unframe(message);
+      if (msg?.type !== LIVE.message) return this.reject("malformed");
+      for (const listener of this.liveListeners) listener(sender, from, msg.payload);
+      return;
+    }
+    if (!this.rate.take(sender, bytes.length)) return this.reject("rate-limited");
+    const item: Held = { from, bytes: bytes.length, opened, message, signature };
+    // A sender with frames held: this one goes behind them (their order matters), and they go as far as they can.
+    const q = this.held.get(sender);
+    // Not bound yet (or frames before this one aren't verified yet): it waits, in order, for the binding.
+    if (!room.keyOf(sender) || q?.raw.length) return this.hold(sender, item, "raw");
+    if (!(await this.open(item))) return;
+    // The roster and sync messages never wait (one may carry the grant an update waits for).
+    if (!isMutation(item.msg!)) return this.handleDoc(from, sender, item.msg!);
+    // Behind updates that don't count yet: in order, checked again when the roster or a binding changes (not now).
+    if (q?.blocked.length) return this.hold(sender, item, "blocked");
+    if (this.counts(sender, item)) return this.handleDoc(from, sender, item.msg!);
+    item.checkedAt = this.authRevision;
+    this.hold(sender, item, "blocked");
+  }
+
+  /**
+   * A document frame from a bound sender, verified and opened: its counter recorded, its fragments put together.
+   * False when there's nothing (more) to do with it: refused, or a part of a message still incomplete.
+   */
+  private async open(item: Held): Promise<boolean> {
+    const room = this.signed!;
+    const sender = item.opened.sender;
+    if (!this.verifies.take(sender, 1)) {
+      this.reject("verify-throttled");
+      return false;
+    }
+    if (!(await room.verifyFrame(room.keyOf(sender)!, item.opened.header, item.message, item.signature))) {
+      this.reject("bad-signature");
+      return false;
+    }
+    const accepted = this.opener.accept(item.opened);
+    if (accepted !== true) {
+      this.reject(accepted);
+      return false;
+    }
+    let msg = unframe(item.message);
+    if (!msg) {
+      this.reject("malformed");
+      return false;
+    }
+    if (msg.type === DOC.fragment) {
+      const part = this.reassembler.add(sender, msg.payload);
+      if ("error" in part) {
+        this.reject(part.error);
+        return false;
+      }
+      if ("pending" in part) return false;
+      msg = unframe(part.done);
+      if (!msg || msg.type === DOC.fragment) {
+        this.reject("malformed");
+        return false;
+      }
+    }
+    item.msg = msg;
+    this.resize(sender, item, msg.payload.length);
+    return true;
+  }
+
+  /**
+   * Whether a verified update or sync reply counts now: a direct update from an editor, with structs of its own
+   * bound client id only (read once per held update); a sync reply from an editor.
+   */
+  private counts(sender: string, item: Held): boolean {
+    const room = this.signed!;
+    if (!room.isEditor(room.keyOf(sender))) return false;
+    if (item.msg!.type === DOC.syncReply) return true;
+    // Undecodable: it counts, and the guard refuses it (its sender quarantined, as ever).
+    if (item.clients === undefined) item.clients = this.updateClients(item.msg!.payload);
+    const own = room.clientOf(sender);
+    return !item.clients || [...item.clients].every((c) => c === own);
+  }
+
+  /** An update's struct clients (decoded once per held update: it's cached on the item). */
+  private updateClients(payload: Uint8Array): Set<number> | null {
+    return structClients(payload) ?? null;
+  }
+
+  private resize(_sender: string, item: Held, bytes: number): void {
+    item.bytes = bytes;
+  }
+
+  /** Holds a frame that doesn't count yet; past the bounds, its sender's held frames go, and the sender with them. */
+  private hold(sender: string, item: Held, where: "raw" | "blocked"): void {
+    let q = this.held.get(sender);
+    if (!q) {
+      if (this.held.size >= COLLAB_LIMITS.maxSenders) return this.reject("unauthorised");
+      q = { raw: [], blocked: [], bytes: 0, stop: this.clock.after(COLLAB_LIMITS.heldMs, () => this.giveUp(sender)) };
+      this.held.set(sender, q);
+    }
+    if (q.bytes + item.bytes > COLLAB_LIMITS.maxHeldBytesPerSender) return this.giveUp(sender, 1);
+    q[where].push(item);
+    q.bytes += item.bytes;
+  }
+
+  /** What a sender sent that never came to count: dropped, and the sender quarantined. */
+  private giveUp(sender: string, extra = 0): void {
+    const q = this.held.get(sender);
+    q?.stop();
+    this.held.delete(sender);
+    for (let i = 0; i < (q ? q.raw.length + q.blocked.length : 0) + extra; i++) this.reject("unauthorised");
+    this.quarantine(sender);
+  }
+
+  private quarantine(sender: string, from?: PeerId): void {
+    if (from) this.synced.delete(from);
+    this.quarantined.add(sender);
+    if (this.presence.remove(sender)) this.emit();
+  }
+
+  /**
+   * A sender's held frames, as far as they go now (the roster or a binding changed). Frames waiting for the
+   * sender's binding are verified in order once it's here: roster and sync messages among them are handled at once,
+   * updates join the blocked ones. Then the blocked updates, in order, each once it counts; the first that doesn't
+   * stops the rest, and it's checked again only after the next change (constant work per change, whatever's held).
+   */
+  private async drain(sender: string): Promise<void> {
+    const q = this.held.get(sender);
+    const room = this.signed;
+    if (!q || !room) return;
+    const current = () => this.held.get(sender) === q && !this.leaving;
+    while (q.raw.length && room.keyOf(sender) && current()) {
+      const item = q.raw.shift()!;
+      q.bytes -= item.bytes;
+      if (!(await this.open(item))) continue;
+      if (!isMutation(item.msg!)) await this.handleDoc(item.from, sender, item.msg!);
+      else if (current()) {
+        q.blocked.push(item);
+        q.bytes += item.bytes;
+      }
+    }
+    while (q.blocked.length && current()) {
+      const item = q.blocked[0];
+      if (item.checkedAt === this.authRevision) break;
+      item.checkedAt = this.authRevision;
+      if (!this.counts(sender, item)) break;
+      q.blocked.shift();
+      q.bytes -= item.bytes;
+      await this.handleDoc(item.from, sender, item.msg!);
+    }
+    if (this.held.get(sender) === q && !q.raw.length && !q.blocked.length) {
+      q.stop();
+      this.held.delete(sender);
+    }
+  }
+
+  private async drainAll(): Promise<void> {
+    for (const sender of [...this.held.keys()]) await this.drain(sender);
+  }
+
+  /** One whole document message from an authenticated sender (in a signed room: one that counts). */
+  private async handleDoc(from: PeerId, sender: string, msg: { type: number; payload: Uint8Array }): Promise<void> {
+    const opened = { sender };
     switch (msg.type) {
       case DOC.syncProof:
       case DOC.syncAck: {
@@ -594,6 +1059,8 @@ export class CollabSession {
       }
       case DOC.syncRequest: {
         if (!this.requests.take(opened.sender, 1)) return this.reject("request-throttled");
+        // A signed room's viewers never serve sync (only an editor's reply counts anywhere).
+        const serves = !this.signed || this.signed.isEditor(this.signed.key);
         let sv: Uint8Array;
         try {
           sv = msg.payload;
@@ -601,7 +1068,7 @@ export class CollabSession {
         } catch {
           return this.reject("malformed");
         }
-        for (const diff of this.doc.encodeDiffParts(sv, COLLAB_LIMITS.maxMessageBytes - 16)) {
+        for (const diff of serves ? this.doc.encodeDiffParts(sv, COLLAB_LIMITS.maxMessageBytes - 16) : []) {
           if (isEmptyUpdate(diff)) continue;
           if (this.replies.take(opened.sender, diff.length)) this.sendDoc(frame(DOC.syncReply, diff), from);
           else this.reject("reply-throttled");
@@ -613,11 +1080,24 @@ export class CollabSession {
       case DOC.update: {
         const result = this.doc.applyRemote(msg.payload);
         if (!result.ok) {
-          this.synced.delete(from);
-          this.quarantined.add(opened.sender);
-          this.presence.remove(opened.sender);
+          this.quarantine(opened.sender, from);
           this.reject(result.problem);
         }
+        return;
+      }
+      case DOC.roster: {
+        const room = this.signed;
+        const body = room && parseRosterMessage(msg.payload);
+        if (!room || !body) return this.reject("malformed");
+        if ("h" in body) {
+          // A peer whose roster differs: this one's entries, at most a few times a window.
+          if (body.h !== this.rosterSummary() && room.roster.size && this.rosterReplies.take(opened.sender, 1))
+            this.sendRoster(from);
+          return;
+        }
+        const added = await room.addEntries(body.e, () => this.verifies.take(opened.sender, 1));
+        for (let i = 0; i < added.refused; i++) this.reject("roster-refused");
+        for (let i = 0; i < added.throttled; i++) this.reject("verify-throttled");
         return;
       }
       case DOC.bye:

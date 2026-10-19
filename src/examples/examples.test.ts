@@ -81,6 +81,40 @@ const freePlay = (slug: string) => {
 };
 
 describe("recent-feature showcases", () => {
+  it("frees threads within ten seconds and lets CPU scaling answer the spike", () => {
+    const d = diagram("blocking-call");
+    const run = createSimulationRun(
+      d,
+      d.simulations!.find((s) => s.id === "free-thread")!,
+    );
+    run.step(9000);
+    const early = run.engine.snapshot();
+    expect(early.nodes.caller.threads!.waiting).toBe(0);
+    expect(early.edges.call.calls!.inFlight).toBeGreaterThan(80);
+    expect(early.nodes.applications.backlog).toBeLessThan(100);
+    expect(early.nodes.caller.resources!.cpuRequestPct!).toBeGreaterThan(50);
+    run.step(31000);
+    const spike = run.engine.snapshot();
+    expect(spike.nodes.caller.fleet!.desired).toBeGreaterThan(4);
+    expect(spike.nodes.caller.fleet!.ready).toBeGreaterThan(4);
+  });
+  it("fills caller threads within ten seconds while CPU scaling stays quiet", () => {
+    const d = diagram("blocking-call");
+    const run = createSimulationRun(d, d.simulations![0]);
+    let mostWaiting = 0;
+    for (let i = 0; i < 90; i++) {
+      run.step(100);
+      mostWaiting = Math.max(mostWaiting, run.engine.snapshot().nodes.caller.threads!.waiting);
+    }
+    const s = run.engine.snapshot();
+    expect(mostWaiting).toBeGreaterThan(48);
+    expect(s.nodes.applications.backlog).toBeGreaterThan(500);
+    expect(s.nodes.caller.fleet).toMatchObject({ ready: 4, desired: 4 });
+    expect(s.nodes.caller.resources!.cpuRequestPct!).toBeLessThan(70);
+    expect(exampleMetadata["blocking-call"].shows).toContain("requestsWait");
+    run.step(11000);
+    expect(run.engine.snapshot().nodes.caller.fleet).toMatchObject({ ready: 4, desired: 4 });
+  });
   it("shows the Billing spike's sampled latency and 78% waiting within ten seconds", () => {
     const d = diagram("where-the-time-goes");
     const run = createSimulationRun(d, d.simulations![0]);

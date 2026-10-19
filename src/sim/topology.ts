@@ -62,6 +62,11 @@ export interface CompiledEdge {
   deny: boolean;
   groupName: string;
 }
+
+/** Terminals finish locally; brokers deliver through their consumer groups, never as callers. */
+export function callEligible(role: SimRole, edge: Pick<CompiledEdge, "sync" | "dlq">): boolean {
+  return (role === "processor" || role === "source" || role === "gateway" || role === "none") && edge.sync && !edge.dlq;
+}
 export interface CompiledGroup {
   broker: string;
   name: string;

@@ -7,6 +7,10 @@ import { parseXml } from "../xml";
 import { drawioPageToDiagram, readDrawio } from "./read";
 import { diagramToDrawio } from "./write";
 import { nativeShape, parseStyle, stencilFromStyle } from "./mapping";
+import { revisionAtLeast } from "../../model/revisions";
+import { waitingFixture } from "../../lab/waitingFixture";
+import { resourceLesson } from "../../model/autoscaling";
+import { createEngine } from "../../sim/engine";
 import azureOrders from "./fixtures/azure-orders.drawio?raw";
 import twoPages from "./fixtures/two-pages-compressed.drawio?raw";
 
@@ -17,6 +21,30 @@ async function importFirst(xml: string) {
   const doc = await readDrawio(xml);
   return drawioPageToDiagram(doc.pages[0]);
 }
+
+it("round-trips non-blocking calls, reply handling, caps and saved simulation overrides", async () => {
+  const d = waitingFixture();
+  d.edges[1].props = { caller: { wait: "non-blocking", replyMs: 30, poolConnections: 2 } };
+  d.simulations = [
+    {
+      id: "freed",
+      title: "Free the thread",
+      traffic: [],
+      setup: { edges: { call: { caller: { wait: "blocking" } } } },
+    },
+  ];
+  const imported = await importFirst(diagramToDrawio(d));
+  const result = validateDiagram(imported.diagram);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.diagram.edges[1].props?.caller).toEqual(d.edges[1].props.caller);
+  expect(result.diagram.simulations).toEqual(d.simulations);
+  const e = createEngine();
+  e.load(result.diagram);
+  e.inject("source", 8);
+  e.step(50);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ inFlight: 2, held: 0 });
+});
 
 it("repairs cyclic draw.io boundary metadata through native validation", async () => {
   const input: DiagramFile = {
@@ -244,8 +272,8 @@ describe("round-trip: every public example through draw.io", () => {
             ...ex,
             // A1 resource data requires its revision; older planning-model loss remains explicit
             // (docs/BACKLOG.md) for the other showcases.
-            format: ex.planning?.revision === "p3-a1" ? "diagrams/v2" : "diagrams/v1",
-            planning: ex.planning?.revision === "p3-a1" ? ex.planning : undefined,
+            format: revisionAtLeast(ex.planning?.revision, "p3-a1") ? "diagrams/v2" : "diagrams/v1",
+            planning: revisionAtLeast(ex.planning?.revision, "p3-a1") ? ex.planning : undefined,
             groups: ex.groups?.map((g) => ({ ...g, tone: g.tone ?? "neutral" })),
             edges: ex.edges.map((e) => ({ ...e, kind: e.kind ?? "async" })),
           }),
@@ -256,6 +284,38 @@ describe("round-trip: every public example through draw.io", () => {
 });
 
 describe("draw.io review regressions", () => {
+  it("preserves W1 routes, resources, saved simulations and blocking execution", async () => {
+    const d = waitingFixture();
+    d.planning!.requestRoutes = [{ id: "score", address: { method: "POST", path: "/score" } }];
+    d.edges[1].props!.requestRouteId = "score";
+    d.nodes[1].props!.resources = { ...resourceLesson(), cpuMsPerMessage: 1 };
+    d.simulations = [
+      {
+        id: "burst",
+        title: "A waiting burst",
+        traffic: [{ id: "batch", node: "source", shape: { kind: "burst", count: 8 } }],
+      },
+    ];
+    const imported = await importFirst(diagramToDrawio(d));
+    const back = imported.diagram;
+    expect(imported.warnings).toEqual([]);
+    expect(back.format).toBe("diagrams/v2");
+    expect(back.planning).toEqual(d.planning);
+    expect(back.nodes.map((n) => n.props)).toEqual(d.nodes.map((n) => n.props));
+    expect(back.edges.map((e) => e.props)).toEqual(d.edges.map((e) => e.props));
+    expect(back.simulations).toEqual(d.simulations);
+    for (const diagram of [d, back]) {
+      const e = createEngine({ seed: 17 });
+      e.load(diagram);
+      e.inject("source", 8);
+      e.step(40);
+      expect(e.snapshot().nodes.caller.threads).toMatchObject({ waiting: 4, queued: 4 });
+      expect(e.snapshot().nodes.caller.processed).toBe(0);
+      e.step(1000);
+      expect(e.snapshot().nodes.caller.processed).toBe(8);
+      expect(e.snapshot().inSystem).toBe(0);
+    }
+  });
   it("round-trips a self-loop edge", async () => {
     const d: DiagramFile = {
       format: "diagrams/v1",

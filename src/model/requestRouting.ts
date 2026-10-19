@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "./revisions";
 import type { DiagramEdge, DiagramFile, DiagramNode, PlanningModel, SimRole } from "./types";
 import type { Quota } from "./admission";
 import { quotaSchema } from "./quotaSchema";
@@ -117,7 +118,7 @@ export const trafficMixCapable = (role: SimRole): boolean => role === "source";
 
 /** Routing is on for a p3-a1 document that declares its request routes (an empty list counts). */
 export function routingEnabled(planning: PlanningModel | undefined): boolean {
-  return planning?.revision === "p3-a1" && Array.isArray(planning.requestRoutes);
+  return revisionAtLeast(planning?.revision, "p3-a1") && Array.isArray(planning?.requestRoutes);
 }
 
 // ---------------------------------------------------------------- grammar
@@ -424,7 +425,7 @@ function checkRouting(diagram: RoutingDocument, context: RoutingContext): void {
   const planning = diagram.planning;
   const enabled = routingEnabled(planning);
   const declared = planning?.requestRoutes;
-  if (declared !== undefined && planning?.revision !== "p3-a1")
+  if (declared !== undefined && !revisionAtLeast(planning?.revision, "p3-a1"))
     throw new Error("planning.requestRoutes: request routing needs the current planning model (p3-a1)");
   const anyPatch = (diagram.simulations ?? []).some(
     (sim) =>

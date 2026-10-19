@@ -139,6 +139,7 @@ export function NoteCallout({ state }: { state: LiveState }) {
             ref={continueRef}
             className="lv-note-continue"
             onClick={() => ui.controller.resume()}
+            disabled={state.needsRestart}
             data-testid="live-note-continue"
           >
             Continue <LiveIcon name="play" size={10} />

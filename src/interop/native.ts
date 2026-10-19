@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { DRILL_PRESETS, faultProblem, faultTarget, type Fault } from "../model/faults";
 import { createResourceValidator } from "../model/resourceValidation";
 import { validateRouting } from "../model/routingValidation";
@@ -122,14 +123,7 @@ export function validateDiagram(data: unknown): NativeResult {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
-  if (
-    raw.format === "diagrams/v2" &&
-    (!isObj(raw.planning) ||
-      (raw.planning.revision !== "p1" &&
-        raw.planning.revision !== "p2" &&
-        raw.planning.revision !== "p3" &&
-        raw.planning.revision !== "p3-a1"))
-  )
+  if (raw.format === "diagrams/v2" && (!isObj(raw.planning) || !revisionAtLeast(raw.planning.revision, "p1")))
     return {
       ok: false,
       error: t("planning.unsupportedRevision"),
@@ -631,6 +625,18 @@ export function simulationProblem(sim: unknown): string | undefined {
   }
   if (sim.setup !== undefined) {
     if (!isObj(sim.setup)) return "setup must be an object";
+    if (sim.setup.edges !== undefined) {
+      if (!isObj(sim.setup.edges)) return "setup edges must map connection ids to caller policies";
+      for (const patch of Object.values(sim.setup.edges)) {
+        if (!isObj(patch) || Object.keys(patch).some((key) => key !== "caller") || patch.caller === undefined)
+          return "setup edges must contain caller policies";
+        try {
+          checkJsonSchema(patch.caller, callerSchema);
+        } catch {
+          return "setup edges must contain valid bounded caller policies";
+        }
+      }
+    }
     if (
       sim.setup.status !== undefined &&
       (!isObj(sim.setup.status) || !Object.values(sim.setup.status).every((v) => STATUS.has(v as string)))

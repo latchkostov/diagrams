@@ -33,7 +33,7 @@ describe("fault targets", () => {
         { atMs: 100, action: { do: "fault" as const, fault: { kind: "link" as const, edge: "request", cut: true } } },
       ],
     };
-    expect(c.selectSimulation(sim)).toBe(true);
+    expect(c.selectSimulation(sim)).toBe("selected");
     const next = structuredClone(d);
     next.nodes.forEach((n) => {
       n.group = "zone-a";
@@ -116,7 +116,7 @@ describe("fault targets", () => {
             { atMs, action: { do: "fault" as const, fault: { kind: "boundary" as const, boundary: "", down: true } } },
           ],
         };
-        expect(c.selectSimulation(sim)).toBe(false);
+        expect(c.selectSimulation(sim)).toBe("rejected");
         expect(c.getState().resourceError).toContain("target id");
         expect(() => createSimulationRun(d, sim)).toThrow("target id");
         const before = c.snapshot().time;

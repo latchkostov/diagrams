@@ -30,9 +30,17 @@ export type LiveOp =
   // run with them from the start), so a replay never applies them again.
   | { kind: "inputs"; inputs: LiveInputs }
   | { kind: "base"; simulation: Simulation }
-  | { kind: "commit" }
-  // A diagram edit the running engine took: a props patch, or a structural change that restarted it.
-  | { kind: "patch"; patches: Record<string, NodeSimProps>; statuses: Record<string, NodeStatus> }
+  // Inputs saved: the saved simulation becomes the base (null: free play), and the diagram's node props (by node id)
+  // when the save wrote them; the what-ifs are cleared.
+  | { kind: "commit"; simulation: Simulation | null; props?: Record<string, Record<string, unknown>> }
+  // A diagram edit the running engine took: a props patch (with the edited nodes' props as the diagram now has
+  // them), or a structural change that restarted it.
+  | {
+      kind: "patch";
+      patches: Record<string, NodeSimProps>;
+      statuses: Record<string, NodeStatus>;
+      nodes?: Record<string, Record<string, unknown>>;
+    }
   | { kind: "reload" }
   // Engine tweaks: what a tick does from here on. A replay applies these again on their tick.
   | { kind: "traffic"; on: boolean }
@@ -44,6 +52,13 @@ export type LiveOp =
   | { kind: "props"; node: string; patch: NodeSimProps };
 
 export type LiveOpKind = LiveOp["kind"];
+
+/**
+ * Who changed the run: this person ("user"), the room's host through Watch together ("remote", src/collab/room), or
+ * the editor's document catching up with the run ("sync": a saved simulation edited or removed, a diagram edit).
+ * Only this person's own changes end following someone else's run.
+ */
+export type OpOrigin = "user" | "remote" | "sync";
 
 export interface LogEntry {
   /** The run this op belongs to: a restart, another simulation or a structural edit starts a new one. */

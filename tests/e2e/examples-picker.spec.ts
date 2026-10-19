@@ -178,6 +178,7 @@ const BY_THEME: Record<string, string[]> = {
   cloud: ["aws-serverless-orders", "aks-app-config-key-vault", "serverless-burst-buffer", "cloud-run-timetable-api"],
   integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
+    "blocking-call",
     "outbox-saga-checkout",
     "zone-outage-drill",
     "branch-to-datacentre",
@@ -243,12 +244,13 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   expectNoErrors(consoleErrors);
 });
 
-test("Autoscaling filter finds the seven autoscaling showcases and runs the HPA story", async ({ page }) => {
+test("Autoscaling filter finds the eight autoscaling showcases and runs the HPA story", async ({ page }) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("autoscaling");
-  await expect(publicExampleCards(page)).toHaveCount(7);
+  await expect(publicExampleCards(page)).toHaveCount(8);
   for (const slug of [
+    "blocking-call",
     "black-friday-commerce",
     "delivery-dispatch",
     "recommendations-feature-store",

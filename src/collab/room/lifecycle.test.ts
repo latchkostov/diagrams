@@ -114,6 +114,7 @@ function browser(
   clock: FakeClock,
   seed: number,
   from?: Partial<Pick<Browser, "library" | "store" | "tab">>,
+  signedRooms = true,
 ): Browser {
   const b: Browser = {
     library: from?.library ?? new Library(),
@@ -134,6 +135,7 @@ function browser(
     library: b.library,
     clock,
     random: seededBytes(seed),
+    signedRooms,
   });
   b.room.configure({ navigate: (slug) => b.shown.push(slug) });
   onTestFinished(() => b.room.wipe());
@@ -327,6 +329,62 @@ describe("leaving and reloading", () => {
     expect(a.library.read(slug)?.title).toBe("After B's reload");
     // Only one entry for the room: the reload reused it.
     expect(reloaded.library.entries.size).toBe(1);
+  });
+
+  it("who hosts now, and the roster, survive a reload (not the role a tab came in with)", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 12),
+      b = browser(net, clock, 13);
+    await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    const aRoster = a.room.getSnapshot().open!.roster;
+    const bRoster = b.room.getSnapshot().open!.roster;
+    expect(aRoster.get().hosting).toBe(true);
+    expect(bRoster.get().hosting).toBe(false);
+    // The creator makes the joiner host: the joiner hosts, with the creator as co-host and driving.
+    bRoster.update({
+      hosting: true,
+      host: bRoster.get().member,
+      cohosts: [aRoster.get().member],
+      driver: aRoster.get().member,
+    });
+    aRoster.update({ hosting: false, host: bRoster.get().member, cohosts: [aRoster.get().member] });
+    b.room.pageHidden();
+    a.room.pageHidden();
+    await settle(net);
+    const b2 = browser(net, clock, 14, b);
+    const a2 = browser(net, clock, 15, a);
+    await b2.room.resume();
+    await a2.room.resume();
+    const promoted = b2.room.getSnapshot().open!.roster.get();
+    const resigned = a2.room.getSnapshot().open!.roster.get();
+    // The promoted joiner hosts after its reload; the creator who handed it on doesn't take it back.
+    expect(promoted).toMatchObject({ hosting: true, cohosts: [aRoster.get().member], driver: aRoster.get().member });
+    expect(promoted.member).toBe(bRoster.get().member);
+    expect(resigned).toMatchObject({ hosting: false, host: bRoster.get().member });
+    expect(resigned.member).toBe(aRoster.get().member);
+  });
+
+  it("a duplicated tab (its record copied, member id and all) takes an id of its own, and no claim to host", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    // A room without roles (a v1 link's): the member id is the one other tabs are asked about.
+    const a = browser(net, clock, 12, undefined, false);
+    await start(a);
+    expect(a.room.getSnapshot().open!.link.hostKey).toBeUndefined();
+    const original = a.room.getSnapshot().open!.roster.get();
+    // The copy's own lifecycle, its tab store a copy of the original's, and another tab answering for the member.
+    const copy = browser(net, clock, 13, a);
+    (copy.room as unknown as { deps: { memberTaken?: (m: string) => Promise<boolean> } }).deps.memberTaken = async (
+      m,
+    ) => m === original.member;
+    await copy.room.resume();
+    const cloned = copy.room.getSnapshot().open!.roster.get();
+    expect(cloned.member).not.toBe(original.member);
+    expect(cloned.hosting).toBe(false);
+    expect(a.room.getSnapshot().open!.roster.get()).toEqual(original);
   });
 
   it("an edit the checkpoint hadn't saved before a reload is merged back in", async () => {
@@ -851,5 +909,124 @@ describe("leaving and reloading", () => {
     await settle(net, a);
     expect(session(a).transport.peers()).toHaveLength(0);
     await a.room.leave();
+  });
+});
+
+describe("signed rooms (P4)", () => {
+  const keyOf = (b: Browser) => session(b).signed!.key;
+
+  it("a new room is a signed room: its link names the creator's key; a joiner signs as itself", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 61),
+      b = browser(net, clock, 62);
+    await start(a);
+    const link = a.room.getSnapshot().open!.link;
+    expect(link.hostKey).toBe(keyOf(a));
+    expect(linkOf(a)).toMatch(/#room=v2\.0\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    expect(keyOf(b)).not.toBe(keyOf(a));
+    expect(session(b).signed!.state().host).toBe(keyOf(a));
+    // New people may edit by default: the host admitted b.
+    expect(session(b).canEdit).toBe(true);
+    expect(session(a).signed!.isEditor(keyOf(b))).toBe(true);
+    edit(b, (d) => ({ ...d, title: "Signed" }));
+    await settle(net, a, b);
+    expect(titleOf(a)).toBe("Signed");
+  });
+
+  it("a reload keeps its identity and its verified roles, before anyone else is back", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 63),
+      b = browser(net, clock, 64);
+    await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    const [aKey, bKey] = [keyOf(a), keyOf(b)];
+    expect(await session(a).appendRoster("cohost", { who: bKey })).toBe(true);
+    expect(await session(a).appendRoster("drive", { who: bKey })).toBe(true);
+    await settle(net, a, b);
+    expect(session(b).signed!.state()).toMatchObject({ cohosts: [bKey], driver: bKey });
+    a.room.pageHidden();
+    b.room.pageHidden();
+    await settle(net);
+    // b comes back alone: its roles are its record's entries, each checked again.
+    const b2 = browser(net, clock, 65, b);
+    await b2.room.resume();
+    expect(keyOf(b2)).toBe(bKey);
+    expect(session(b2).signed!.state()).toMatchObject({ host: aKey, cohosts: [bKey], driver: bKey });
+    // a comes back the host (the link's key is its own).
+    const a2 = browser(net, clock, 66, a);
+    await a2.room.resume();
+    expect(keyOf(a2)).toBe(aKey);
+    expect(session(a2).signed!.state().host).toBe(aKey);
+    await settle(net, a2, b2);
+    expect(session(a2).signed!.state().cohosts).toEqual([bKey]);
+  });
+
+  it("an entry changed in the record (by hand, or a damaged copy) doesn't count after a reload", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 67),
+      b = browser(net, clock, 68);
+    await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    expect(await session(a).appendRoster("drive", { who: keyOf(b) })).toBe(true);
+    await settle(net, a, b);
+    b.room.pageHidden();
+    await settle(net);
+    // The record's drive entry now names someone else: its signature no longer verifies.
+    const tab = b.tab as ReturnType<typeof memoryTabRoom>;
+    const record = JSON.parse(tab.text!);
+    const entry = record.roster.signed.log.find((e: { op: string }) => e.op === "drive");
+    entry.who = keyOf(a);
+    tab.text = JSON.stringify(record);
+    a.room.pageHidden();
+    await settle(net);
+    const b2 = browser(net, clock, 69, b);
+    await b2.room.resume();
+    expect(session(b2).signed!.state().driver).toBeUndefined();
+    expect(
+      session(b2)
+        .signed!.roster.log()
+        .some((e) => e.op === "drive"),
+    ).toBe(false);
+  });
+
+  it("a v1 link still opens, as a room without roles", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 70, undefined, false),
+      b = browser(net, clock, 71);
+    await start(a);
+    expect(linkOf(a)).toMatch(/#room=v1\.0\.[A-Za-z0-9_-]{43}$/);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    expect(session(b).signed).toBeUndefined();
+    expect(session(b).canEdit).toBe(true);
+    expect(session(a).peers()[0]?.key).toBeUndefined();
+    edit(b, (d) => ({ ...d, title: "Role-less" }));
+    await settle(net, a, b);
+    expect(titleOf(a)).toBe("Role-less");
+  });
+
+  it("a duplicated tab of a signed room signs as someone new; the original keeps its identity and roles", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 72);
+    await start(a);
+    const original = a.room.getSnapshot().open!.roster.get();
+    const copy = browser(net, clock, 73, a);
+    (copy.room as unknown as { deps: { memberTaken?: (m: string) => Promise<boolean> } }).deps.memberTaken = async (
+      m,
+    ) => m === original.signed!.identity.key;
+    await copy.room.resume();
+    expect(keyOf(copy)).not.toBe(keyOf(a));
+    expect(session(copy).signed!.state().host).toBe(keyOf(a));
+    expect(copy.room.getSnapshot().open!.roster.get().signed!.identity.key).toBe(keyOf(copy));
+    expect(a.room.getSnapshot().open!.roster.get().signed!.identity).toEqual(original.signed!.identity);
   });
 });

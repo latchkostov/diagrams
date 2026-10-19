@@ -56,6 +56,8 @@ export interface PolicyState {
   slowmo: boolean;
   /** Who had the view when slow motion took it: it goes back when slow motion ends. */
   resume: CameraOwner;
+  /** Following someone's shared Live run (Watch together): a note's focus doesn't take a view moved by hand (L10). */
+  watching?: boolean;
 }
 
 /** What the controller measured once the pane settled, for the pending work's decision. */
@@ -116,6 +118,12 @@ export type CameraEvent =
    * it, and leaves pending work as it is: a peer's change never moves your view or steals your focus.
    */
   | { type: "remote.changed"; kind: "doc" | "presence" }
+  /**
+   * Watch together's "Follow the host's view", which this person turned on: the host's view (in this pane), or null
+   * when they turn it off. Their own pan or zoom takes the view back (user.moved).
+   */
+  | { type: "host.view"; view: Viewport | null }
+  | { type: "watching"; on: boolean }
   /** The pane has its new size and the selection is measured: pending work may run. */
   | ({ type: "pane.settled" } & SettledFacts);
 

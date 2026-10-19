@@ -38,7 +38,7 @@ export interface Stencil {
 export const DIAGRAM_FORMAT = "diagrams/v1" as const;
 /** Immutable model revision. Absent means legacy playback, including omitted defaults. */
 export interface PlanningModel {
-  revision: "p1" | "p2" | "p3" | "p3-a1";
+  revision: "p1" | "p2" | "p3" | "p3-a1" | "p3-w1";
   sharedQuotas?: import("./admission").Quota[];
   sharedAllocations?: import("./admission").SharedAllocation[];
   /**
@@ -165,6 +165,8 @@ export interface Simulation {
   durationMs?: number;
   /** Node status / prop overrides applied before t=0 (e.g. a consumer already slow). */
   setup?: {
+    /** Per-connection caller overrides for a repeatable waiting-call comparison. */
+    edges?: Record<string, { caller: NonNullable<import("../sim/types").EdgeSimProps["caller"]> }>;
     status?: Record<string, "up" | "paused" | "down">;
     props?: Record<string, Record<string, unknown>>;
   };

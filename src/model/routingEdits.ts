@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "./revisions";
 import type { DiagramFile, PlanningModel } from "./types";
 import {
   addressText,
@@ -58,7 +59,7 @@ export function addRoute(
 
 /** Routing turned on for a document: its planning with request routes (an empty list counts). */
 export function withRouting(planning: PlanningModel | undefined): PlanningModel | undefined {
-  if (planning?.revision !== "p3-a1") return planning;
+  if (!planning || !revisionAtLeast(planning.revision, "p3-a1")) return planning;
   return planning.requestRoutes ? planning : { ...planning, requestRoutes: [] };
 }
 

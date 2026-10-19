@@ -18,6 +18,18 @@ export function realNodeMetrics(node: NodeSimState, scale = 1): RealNodeMetrics 
   return {
     ...node,
     units: "real",
+    ...(node.threads
+      ? {
+          threads: {
+            slots: real(node.threads.slots),
+            working: real(node.threads.working),
+            waiting: real(node.threads.waiting),
+            queued: real(node.threads.queued),
+            ...(node.threads.inFlight === undefined ? {} : { inFlight: real(node.threads.inFlight) }),
+            waitingOn: node.threads.waitingOn.map(([id, count]): [string, number] => [id, real(count)]),
+          },
+        }
+      : {}),
     backlog: real(node.backlog),
     inFlight: real(node.inFlight),
     processed: real(node.processed),
@@ -75,7 +87,18 @@ export function realSnapshot(snapshot: SimSnapshot): RealSimSnapshot {
     edges: Object.fromEntries(
       Object.entries(snapshot.edges).map(([id, edge]) => [
         id,
-        { ...edge, delivered: toRealUnits(edge.delivered, scale), active: toRealUnits(edge.active, scale) },
+        {
+          ...edge,
+          ...(edge.calls
+            ? {
+                calls: Object.fromEntries(
+                  Object.entries(edge.calls).map(([key, count]) => [key, toRealUnits(count, scale)]),
+                ) as typeof edge.calls,
+              }
+            : {}),
+          delivered: toRealUnits(edge.delivered, scale),
+          active: toRealUnits(edge.active, scale),
+        },
       ]),
     ),
   };

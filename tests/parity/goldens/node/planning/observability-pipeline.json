@@ -19,10 +19,6 @@
         "count": 2,
         "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
       },
-      "siem": {
-        "count": 48,
-        "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
-      },
       "tempo": {
         "count": 24,
         "spec": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
@@ -146,17 +142,7 @@
         "pagerduty": ["Infinity", 0.8200000000000001, 0, 1, 1, 0],
         "status-page": ["Infinity", 0.16400000000000003, 0, 1, 1, 0],
         "slack": ["Infinity", 0.8200000000000001, 0, 1, 1, 0],
-        "siem": [
-          "Infinity",
-          410,
-          0,
-          1,
-          1,
-          0,
-          {
-            "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
-          }
-        ]
+        "siem": ["Infinity", 8.2, 0, 1, 1, 0]
       },
       "connections": {
         "shoppers--ingress": 400,
@@ -189,12 +175,12 @@
         "logs--ingesters": 410,
         "logs--ch-sink": 410,
         "logs--s3-sink": 410,
-        "logs--siem": 410,
         "spans--tempo": 41,
         "spans--s3-sink": 41,
         "metrics--prom": 82,
         "metrics--rules": 82,
         "ingesters--loki-store": 410,
+        "ch-sink--siem": 8.2,
         "ch-sink--clickhouse": 410,
         "s3-sink--cold": 451,
         "rules--alertmanager": 0.8200000000000001,
@@ -229,11 +215,11 @@
         "ingesters": ["LogRecord"],
         "ch-sink": ["LogRecord"],
         "s3-sink": ["LogRecord", "Span"],
-        "siem": ["LogRecord"],
         "tempo": ["Span"],
         "prom": ["MetricPoint"],
         "rules": ["MetricPoint"],
         "loki-store": ["LogRecord"],
+        "siem": ["LogRecord"],
         "clickhouse": ["LogRecord"],
         "cold": ["LogRecord", "Span"],
         "alertmanager": ["Alert"],
@@ -1636,17 +1622,7 @@
           "pagerduty": ["Infinity", 0.8, 0, 1, 1, 0],
           "status-page": ["Infinity", 0.16000000000000003, 0, 1, 1, 0],
           "slack": ["Infinity", 0.8, 0, 1, 1, 0],
-          "siem": [
-            "Infinity",
-            2000,
-            0,
-            1,
-            1,
-            0,
-            {
-              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
-            }
-          ]
+          "siem": ["Infinity", 40, 0, 1, 1, 0]
         },
         "connections": {
           "shoppers--ingress": 400,
@@ -1674,12 +1650,12 @@
           "logs--ingesters": 2000,
           "logs--ch-sink": 2000,
           "logs--s3-sink": 2000,
-          "logs--siem": 2000,
           "spans--tempo": 40,
           "spans--s3-sink": 40,
           "metrics--prom": 80,
           "metrics--rules": 80,
           "ingesters--loki-store": 2000,
+          "ch-sink--siem": 40,
           "ch-sink--clickhouse": 2000,
           "s3-sink--cold": 2040,
           "rules--alertmanager": 0.8,
@@ -1710,11 +1686,11 @@
           "ingesters": ["LogRecord"],
           "ch-sink": ["LogRecord"],
           "s3-sink": ["LogRecord", "Span"],
-          "siem": ["LogRecord"],
           "tempo": ["Span"],
           "prom": ["MetricPoint"],
           "rules": ["MetricPoint"],
           "loki-store": ["LogRecord"],
+          "siem": ["LogRecord"],
           "clickhouse": ["LogRecord"],
           "cold": ["LogRecord", "Span"],
           "alertmanager": ["Alert"],
@@ -2359,17 +2335,7 @@
           "pagerduty": ["Infinity", 0.8, 0, 1, 1, 0],
           "status-page": ["Infinity", 0.16000000000000003, 0, 1, 1, 0],
           "slack": ["Infinity", 0.8, 0, 1, 1, 0],
-          "siem": [
-            "Infinity",
-            400,
-            0,
-            1,
-            1,
-            0,
-            {
-              "assignment": { "partitioned": true, "assignment": "partitions", "group": "group", "ingestUnit": "MB/s", "producerSizeUnit": "kB" }
-            }
-          ]
+          "siem": ["Infinity", 8, 0, 1, 1, 0]
         },
         "connections": {
           "shoppers--ingress": 400,
@@ -2397,12 +2363,12 @@
           "logs--ingesters": 400,
           "logs--ch-sink": 400,
           "logs--s3-sink": 400,
-          "logs--siem": 400,
           "spans--tempo": 40,
           "spans--s3-sink": 40,
           "metrics--prom": 80,
           "metrics--rules": 80,
           "ingesters--loki-store": 400,
+          "ch-sink--siem": 8,
           "ch-sink--clickhouse": 400,
           "s3-sink--cold": 440,
           "rules--alertmanager": 0.8,
@@ -2433,11 +2399,11 @@
           "ingesters": ["LogRecord"],
           "ch-sink": ["LogRecord"],
           "s3-sink": ["LogRecord", "Span"],
-          "siem": ["LogRecord"],
           "tempo": ["Span"],
           "prom": ["MetricPoint"],
           "rules": ["MetricPoint"],
           "loki-store": ["LogRecord"],
+          "siem": ["LogRecord"],
           "clickhouse": ["LogRecord"],
           "cold": ["LogRecord", "Span"],
           "alertmanager": ["Alert"],
@@ -3021,7 +2987,7 @@
             "pagerduty": ["idle", "Limits unknown; enter measured or contracted values."],
             "status-page": ["idle", "Limits unknown; enter measured or contracted values."],
             "slack": ["idle", "Limits unknown; enter measured or contracted values."],
-            "siem": ["idle", "410/s · no limit", { "modeled": false }]
+            "siem": ["idle", "8.2/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -3080,7 +3046,7 @@
             "pagerduty": ["idle", "Limits unknown; enter measured or contracted values."],
             "status-page": ["idle", "Limits unknown; enter measured or contracted values."],
             "slack": ["idle", "Limits unknown; enter measured or contracted values."],
-            "siem": ["idle", "2k/s · no limit", { "modeled": false }]
+            "siem": ["idle", "41/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -3136,7 +3102,7 @@
             "pagerduty": ["idle", "Limits unknown; enter measured or contracted values."],
             "status-page": ["idle", "Limits unknown; enter measured or contracted values."],
             "slack": ["idle", "Limits unknown; enter measured or contracted values."],
-            "siem": ["idle", "410/s · no limit", { "modeled": false }]
+            "siem": ["idle", "8.2/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -3195,10 +3161,10 @@
             "pagerduty": ["idle", "Limits unknown; enter measured or contracted values."],
             "status-page": ["idle", "Limits unknown; enter measured or contracted values."],
             "slack": ["idle", "Limits unknown; enter measured or contracted values."],
-            "siem": ["idle", "410/s · no limit", { "modeled": false }]
+            "siem": ["idle", "8.2/s · no limit", { "modeled": false }]
           }
         },
-        "partitionsNotes": {}
+        "partitionsNotes": { "logs": "All configured reader instances already have an assignment." }
       }
     },
     "log-storm": {
@@ -3253,7 +3219,7 @@
         "pagerduty": ["idle", "Limits unknown; enter measured or contracted values."],
         "status-page": ["idle", "Limits unknown; enter measured or contracted values."],
         "slack": ["idle", "Limits unknown; enter measured or contracted values."],
-        "siem": ["idle", "2k/s · no limit", { "modeled": false }]
+        "siem": ["idle", "40/s · no limit", { "modeled": false }]
       }
     },
     "loki-outage": {
@@ -3305,7 +3271,7 @@
         "pagerduty": ["idle", "Limits unknown; enter measured or contracted values."],
         "status-page": ["idle", "Limits unknown; enter measured or contracted values."],
         "slack": ["idle", "Limits unknown; enter measured or contracted values."],
-        "siem": ["idle", "400/s · no limit", { "modeled": false }]
+        "siem": ["idle", "8/s · no limit", { "modeled": false }]
       }
     }
   }

@@ -1,4 +1,8 @@
-import { SIM_TICK_MS } from "../sim/scheduler";
+/**
+ * The simulation's tick (src/sim/scheduler.ts SIM_TICK_MS), written here so the room's code that paces a follower
+ * imports nothing the live view's chunk does (simClock.test.ts checks they agree).
+ */
+export const TICK_MS = 10;
 
 // How far a live run moves each frame (shared Live design, P1). Alone, it moves as the frame clock says
 // (./frameClock.ts). A follower in shared Live (P2) tracks the driver instead: it aims for the driver's tick minus a
@@ -33,7 +37,7 @@ export function createFollowClock(target: () => number | undefined, rate = FOLLO
     pace(proposedMs, run) {
       const goal = target();
       if (goal === undefined || !(proposedMs > 0) || !(run.speed > 0)) return 0;
-      const behind = (goal - run.tick) * SIM_TICK_MS;
+      const behind = (goal - run.tick) * TICK_MS;
       if (behind <= 0) return 0;
       const sim = proposedMs * run.speed;
       const paced = behind > sim ? sim * (1 + rate) : sim * (1 - rate);

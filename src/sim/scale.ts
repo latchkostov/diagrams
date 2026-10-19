@@ -1,3 +1,6 @@
+import { revisionAtLeast } from "../model/revisions";
+import { replicaRange } from "../model/autoscaling";
+import { resolveProps } from "./defaults";
 import type { DiagramFile, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { resolveMultiplier } from "./units";
@@ -48,9 +51,31 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
   const required = ((rate + injections) * resolveMultiplier(simulation.multipliers?.traffic)) / 60;
   if (!Number.isFinite(required)) return Number.MAX_SAFE_INTEGER;
   if (required <= 1) return 1;
-  // The largest power of ten at or below `required`, by multiplying: Math.log10 may differ in the last bit between
-  // JS engines, and the scale decides every sampled dot (shared Live, docs/PARITY.md).
+  // Multiplication keeps dot-scale rounding identical across JavaScript engines.
   let power = 1;
   while (power * 10 <= required) power *= 10;
-  return Math.min(Number.MAX_SAFE_INTEGER, [1, 2, 5, 10].find((value) => value * power >= required)! * power);
+  let scale = Math.min(Number.MAX_SAFE_INTEGER, [1, 2, 5, 10].find((value) => value * power >= required)! * power);
+  if (revisionAtLeast(diagram.planning?.revision, "p3-w1")) {
+    const callers = new Set(
+      diagram.edges.filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow")).map((e) => e.from),
+    );
+    for (const node of diagram.nodes)
+      if (callers.has(node.id) && stencilRole(node.stencil) === "processor") {
+        const props = resolveProps(
+          "processor",
+          node.label,
+          { ...node.props, ...simulation.setup?.props?.[node.id] },
+          node.stencil,
+          diagram.planning,
+        );
+        const multiplier = resolveMultiplier(simulation.multipliers?.capacity);
+        const replicas =
+          props.autoscaling?.mode === "on"
+            ? replicaRange(props.autoscaling.controller, multiplier).initial
+            : Math.max(1, Math.round(props.replicas * multiplier));
+        const slots = props.admission?.slots ?? replicas * props.concurrency;
+        scale = Math.min(scale, Math.max(1, slots / 4));
+      }
+  }
+  return scale;
 }

@@ -13,6 +13,7 @@ import { secureRandom, type RandomBytes } from "./random";
 //                room id so a tracker's hash can't be matched against any other transport's room name.
 //   doc          AES-256-GCM base for document frames.
 //   presence     AES-256-GCM base for presence frames (alias, colour, status).
+//   live         AES-256-GCM base for shared Live frames (the driver's run: its start, ops, clock and digests).
 //   signal       AES-256-GCM key that encrypts WebRTC offers/answers on public matchmaking. Independent of the
 //                content keys, so a signalling adapter never holds a key that opens the diagram.
 //   storage      AES-256-GCM key for local encrypted CRDT checkpoints, never used on the wire.
@@ -26,7 +27,7 @@ import { secureRandom, type RandomBytes } from "./random";
 const SALT = textToBytes("livediagrams/collab/v1");
 const info = (purpose: string, epoch: number) => textToBytes(`livediagrams/collab/v1/${purpose}/epoch=${epoch}`);
 
-export type Channel = "doc" | "presence";
+export type Channel = "doc" | "presence" | "live";
 
 export interface RoomKeys {
   epoch: number;
@@ -65,9 +66,9 @@ export function reserveRoomCreation(room: RoomLink): { commit(): void; rollback(
   };
 }
 
-/** A new room: 32 random bytes from WebCrypto, epoch 0. */
-export function newRoom(random: RandomBytes = secureRandom): RoomLink {
-  const room = { epoch: 0, secret: random(ROOM_SECRET_BYTES) };
+/** A new room: 32 random bytes from WebCrypto, epoch 0; a signed room (v2) when it has its creator's key. */
+export function newRoom(random: RandomBytes = secureRandom, hostKey?: string): RoomLink {
+  const room: RoomLink = { epoch: 0, secret: random(ROOM_SECRET_BYTES), ...(hostKey ? { hostKey } : {}) };
   freshRooms.add(room);
   return room;
 }
@@ -88,25 +89,28 @@ async function hkdfBase(raw: Uint8Array): Promise<CryptoKey> {
 export async function deriveRoomKeys(room: RoomLink): Promise<RoomKeys> {
   if (room.secret.length !== ROOM_SECRET_BYTES) throw new Error("A room secret is 32 bytes.");
   const base = await hkdfBase(room.secret);
-  const [roomIdBytes, discovery, signalRaw, docRaw, presenceRaw, storageRaw] = await Promise.all([
+  const [roomIdBytes, discovery, signalRaw, docRaw, presenceRaw, storageRaw, liveRaw] = await Promise.all([
     bits(base, "room-id", room.epoch, 32),
     bits(base, "discovery", room.epoch, 20),
     bits(base, "signal", room.epoch, 32),
     bits(base, "doc", room.epoch, 32),
     bits(base, "presence", room.epoch, 32),
     bits(base, "storage", room.epoch, 32),
+    bits(base, "live", room.epoch, 32),
   ]);
-  const [signal, doc, presence, storage] = await Promise.all([
+  const [signal, doc, presence, storage, live] = await Promise.all([
     subtle().importKey("raw", signalRaw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]),
     hkdfBase(docRaw),
     hkdfBase(presenceRaw),
     subtle().importKey("raw", storageRaw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]),
+    hkdfBase(liveRaw),
   ]);
   // The raw intermediate bytes are dropped here; only non-extractable keys survive.
   signalRaw.fill(0);
   docRaw.fill(0);
   presenceRaw.fill(0);
   storageRaw.fill(0);
+  liveRaw.fill(0);
   return {
     epoch: room.epoch,
     roomId: bytesToBase64Url(roomIdBytes),
@@ -114,7 +118,7 @@ export async function deriveRoomKeys(room: RoomLink): Promise<RoomKeys> {
     discovery,
     signal,
     storage,
-    channels: { doc, presence },
+    channels: { doc, presence, live },
   };
 }
 

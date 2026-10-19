@@ -76,7 +76,6 @@ import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
 import { ContextMenu } from "../components/ContextMenu";
-import { ShortcutsDialog } from "../components/ShortcutsDialog";
 import { actionRegistry } from "../editor/actions";
 import { builtinActions } from "../editor/builtinActions";
 import { useEditorPrefs } from "../editor/prefs";
@@ -115,6 +114,8 @@ import { PresenceLayer } from "./PresenceLayer";
 /** A room's cursor is sent at most this often (src/collab/limits.ts, cursorIntervalMs; the canvas doesn't import it). */
 const COLLAB_CURSOR_MS = 67;
 import { t as tr, useLocale } from "../i18n";
+import { lazyComponent } from "../lib/lazyLoad";
+import { ShortcutsShell } from "../components/ShortcutsShell";
 import { CopyNotice } from "./CopyNotice";
 import {
   CameraContext,
@@ -130,6 +131,15 @@ import {
 import type { EditorRoom } from "../editor/room";
 import { remoteTargetRemoved } from "../editor/remoteSnapshot";
 import { targetRemoved } from "./menus/menuTargets";
+
+/**
+ * The keyboard shortcuts sheet (?) loads when it's first opened: it isn't part of the canvas's first view. Until it
+ * arrives (or if its download fails) a dialog of the same name stands in: Esc and Close dismiss it, Retry tries again.
+ */
+const ShortcutsDialog = lazyComponent(
+  () => import("../components/ShortcutsDialog").then((m) => m.ShortcutsDialog),
+  ({ onClose }, status) => <ShortcutsShell onClose={onClose} status={status} />,
+);
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -1133,6 +1143,8 @@ function CanvasInner({
                 {!hideChrome && (
                   <CanvasControls
                     editor={editor}
+                    menus={interaction}
+                    menu={menu}
                     fit={fit}
                     zoomedByButton={zoomedByButton}
                     onShortcuts={showShortcuts}
@@ -1152,6 +1164,7 @@ function CanvasInner({
                     simulations={meta.simulations}
                     planning={meta.planning}
                     privateDiagram={privacy !== null}
+                    documentId={documentId}
                     onLiveChange={onLiveChange}
                     onPanelChange={setLivePanelOpen}
                     onSaveDiagram={

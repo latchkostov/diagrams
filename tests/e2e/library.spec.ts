@@ -189,6 +189,40 @@ test.describe("Your diagrams", () => {
     await expect(page.getByTestId("example-picker")).toContainText("Alpha, retitled");
   });
 
+  test("a recency refresh between pointer-down and pointer-up keeps the library action under the pointer", async ({
+    page,
+  }) => {
+    await page.clock.install();
+    await gotoCanvas(page, publicExamples[0].slug);
+    const a = await importDiagram(page, "Alpha");
+    const b = await importDiagram(page, "Beta");
+    await openLibrary(page);
+    await pauseClock(page);
+    const duplicate = page.getByTestId(`library-duplicate-${a}`);
+    await duplicate.hover();
+    await page.mouse.down();
+    // An autosave or another tab can move Alpha ahead of Beta after the hit test.
+    await page.evaluate((slug) => {
+      const key = `diagrams.library-entry.v1:${slug}`;
+      const stored = localStorage.getItem(key);
+      if (!stored) throw new Error("Expected the imported library entry");
+      const entry = JSON.parse(stored);
+      localStorage.setItem(key, JSON.stringify({ ...entry, title: "Alpha refreshed", updatedAt: Date.now() + 1 }));
+      window.dispatchEvent(new StorageEvent("storage", { key }));
+    }, a);
+    await expect(page.getByTestId(`library-title-${a}`)).toHaveText("Alpha refreshed");
+    await expect(page.getByTestId(/^library-title-/)).toHaveText(["Beta", "Alpha refreshed"]);
+    await page.clock.runFor(2);
+    await page.mouse.up();
+    await expect(page.getByTestId("toast")).toContainText("Duplicated");
+    await expect(page.getByTestId(/^library-item-/)).toHaveCount(3);
+    await page.getByTestId("duplicate-open").click();
+    await expect(page.getByTestId("diagram-title")).toHaveText("Alpha (copy)");
+    expect([a, b]).not.toContain(await currentDiagram(page));
+    await openLibrary(page);
+    await expect(page.getByTestId(/^library-title-/)).toHaveText(["Alpha (copy)", "Alpha refreshed", "Beta"]);
+  });
+
   test("the start card lists your recent diagrams first, with thumbnails", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
     const a = await importDiagram(page, "Alpha", 2);

@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../../model/revisions";
 import { englishAssignmentLabel } from "../../model/brokers";
 import { resolveNodeProps } from "../../sim/defaults";
 import type { DiagramOp } from "../../ai";
@@ -35,10 +36,7 @@ function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
   const brokerChanges: NonNullable<CheckFix["brokerChanges"]> = [];
   const words = changes.map((c) => {
     const spec =
-      c.key === "partitions" &&
-      (ctx.diagram.planning?.revision === "p2" ||
-        ctx.diagram.planning?.revision === "p3" ||
-        ctx.diagram.planning?.revision === "p3-a1")
+      c.key === "partitions" && revisionAtLeast(ctx.diagram.planning?.revision, "p2")
         ? resolveNodeProps(ctx.diagram, ctx.nodes.get(c.nodeId)!).broker
         : undefined;
     if (spec) {

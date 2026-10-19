@@ -1,9 +1,16 @@
-import { useCallback, useMemo, type Dispatch, type MouseEvent as ReactMouseEvent, type SetStateAction } from "react";
+import {
+  useCallback,
+  useMemo,
+  type Dispatch,
+  type MouseEvent as ReactMouseEvent,
+  type SetStateAction,
+  type RefObject,
+} from "react";
 import type { EdgeMouseHandler, NodeMouseHandler, ReactFlowInstance } from "@xyflow/react";
 import { actionRegistry, type ActionContext, type MenuNode } from "../../editor/actions";
 import type { EditorApi, Selection } from "../../editor/types";
 import { t as tr, type useLocale } from "../../i18n";
-import { isMac } from "../../editor/shortcuts";
+import { isMac, shortcutKeys } from "../../editor/shortcuts";
 import type { InteractionController } from "../interaction";
 import type { ConnectedMenuAnchor } from "../geometry/connectedMenuPlacement";
 import type { InlineEdit } from "../DiagramContext";
@@ -13,6 +20,8 @@ import { isAnnotationNode, isGroupNode, type DiagramFlowEdge, type FlowNode } fr
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
 export type MenuState = {
+  menuId?: string;
+  triggerRef?: RefObject<HTMLElement | null>;
   connected?: ConnectedMenuAnchor;
   x: number;
   y: number;
@@ -25,6 +34,40 @@ export type MenuState = {
   /** The items a node, connection or selection menu acts on (flow ids): a peer deleting one closes it (`remote`). */
   targets?: readonly string[];
 };
+/** The toolbar uses the same menu and camera command paths as the canvas and keyboard. */
+export function toolbarViewMenu(editor: EditorApi): Omit<MenuState, "x" | "y"> {
+  return {
+    get label() {
+      return tr("view.menu");
+    },
+    testId: "view-tools-menu",
+    items: () => {
+      const selection = editor.getSelection();
+      const hasSelection = selection.nodeIds.length + selection.groupIds.length + selection.edgeIds.length > 0;
+      return [
+        {
+          type: "item",
+          id: "toolbar-view:zoom-100",
+          label: tr("shortcuts.zoom100"),
+          icon: "zoom",
+          shortcut: shortcutKeys("zoom-100"),
+          run: () => editor.zoomTo100(),
+        },
+        {
+          type: "item",
+          id: "toolbar-view:zoom-selection",
+          label: tr("shortcuts.zoomSelection"),
+          icon: "zoom",
+          shortcut: shortcutKeys("zoom-selection"),
+          disabled: !hasSelection,
+          title: hasSelection ? undefined : tr("menu.selectSomethingFirst"),
+          run: () => void editor.zoomToSelection(),
+        },
+      ];
+    },
+  };
+}
+
 /** What opens over the canvas: a menu (its anchor and items), or a dialog (no payload). */
 export type CanvasSurface = MenuState | null;
 /** The canvas's menus: they open and close through the interaction controller, with a reason. */

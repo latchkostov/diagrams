@@ -1,5 +1,6 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
+import { reserveCallerOccupancy, type CallerOccupancy } from "./callerOccupancy";
 import {
   normalizeCall,
   quotaKey,
@@ -128,9 +129,37 @@ export const emptyAdmission = (): AdmissionState => ({
   compiled: new Map(),
   owners: new Map(),
 });
-export interface AdmissionLease {
+export interface AdmissionLease extends CallerOccupancy {
   keys: string[];
-  weight: number;
+  threadKey?: string;
+}
+
+/** Execution slots can be returned while the admitted request still owns its concurrency limits. */
+export function separateAdmission(lease: AdmissionLease) {
+  const slot = lease.threadKey;
+  return {
+    request: { ...lease, keys: lease.keys.filter((key) => key !== slot) },
+    thread: { ...lease, keys: lease.keys.filter((key) => key === slot) },
+  };
+}
+
+/** Resume an already admitted request: reserve execution capacity without another quota transaction. */
+export function reserveContinuation(
+  state: AdmissionState,
+  node: string,
+  policy: AdmissionPolicy,
+  weight: number,
+  slots: number,
+  partial: boolean,
+  retained?: CallerOccupancy,
+): AdmissionLease | undefined {
+  const key = (state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy))
+    .slots;
+  const available = slots - (state.inFlight.get(key) ?? 0);
+  if (available <= 0 || (!partial && available + 1e-9 < weight)) return undefined;
+  const reservation = reserveCallerOccupancy(weight, available, retained);
+  state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
+  return { ...reservation, keys: [key] };
 }
 
 /** Index each definition/reference once. Reference-only callers also participate in invalidation. */
@@ -294,6 +323,7 @@ export function attemptAdmission(
   weight: number,
   slots = policy.slots,
   extra: readonly Requirement[] = [],
+  partialOccupancy = false,
 ): { lease: AdmissionLease; latencyMs?: number; errorRate?: number } | { rejected: string } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
@@ -306,14 +336,25 @@ export function attemptAdmission(
     const bucket = bucketAt(state, key, quota, now);
     if (bucket.tokens + 1e-9 < weight * cost) return { rejected: `${quota.id}: ${quota.unit}` };
   }
-  if (slots !== undefined && (state.inFlight.get(compiled.slots) ?? 0) + weight > slots + 1e-9)
+  let occupancy = weight;
+  if (partialOccupancy) {
+    if (slots !== undefined) occupancy = Math.min(occupancy, slots - (state.inFlight.get(compiled.slots) ?? 0));
+    for (const [key, limit] of call.limits) occupancy = Math.min(occupancy, limit - (state.inFlight.get(key) ?? 0));
+    if (occupancy <= 0) return { rejected: "concurrency" };
+  }
+  if (slots !== undefined && (state.inFlight.get(compiled.slots) ?? 0) + occupancy > slots + 1e-9)
     return { rejected: "concurrency" };
   for (const [key, limit] of call.limits)
-    if ((state.inFlight.get(key) ?? 0) + weight > limit + 1e-9) return { rejected: "concurrency" };
+    if ((state.inFlight.get(key) ?? 0) + occupancy > limit + 1e-9) return { rejected: "concurrency" };
   for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
-  for (const key of keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + weight);
-  return { lease: { keys, weight }, latencyMs: call.latencyMs, errorRate: call.errorRate };
+  const reservation = reserveCallerOccupancy(weight, occupancy);
+  for (const key of keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
+  return {
+    lease: { keys, threadKey: slots === undefined ? undefined : compiled.slots, ...reservation },
+    latencyMs: call.latencyMs,
+    errorRate: call.errorRate,
+  };
 }
 export function releaseAdmission(state: AdmissionState, lease?: AdmissionLease) {
   if (lease)

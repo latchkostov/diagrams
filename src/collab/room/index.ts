@@ -9,11 +9,15 @@ import {
   writeAutosave,
 } from "../../lib/diagramIO";
 import { onClearDevice } from "../../lib/clearDevice";
+import { canCollaborate } from "../../lib/localOnly";
 import { IndexedDbRecoveryStore } from "../recoveryStore";
 import { createTrackerTransport } from "../transport/tracker";
 import { roomEndpoints } from "./endpoints";
 import { RoomLifecycle } from "./lifecycle";
+import { memberId } from "./roomRoster";
 import { sessionTabRoom } from "./tabRoom";
+import { watchNotices } from "./watchNotices";
+import { bindWatch } from "./watch";
 
 // Rooms in the app (Edit together): the one lifecycle this page has, wired to the real things. App.tsx loads this
 // module only when the page has a room to open or the person asks for one (src/lib/roomEntry.ts), so local
@@ -25,7 +29,34 @@ export const ROOM_CAP = 8;
 
 let store: IndexedDbRecoveryStore | undefined;
 
+/**
+ * Tabs of this browser asking each other who holds a member id (a duplicated tab copies its record with it): the tab
+ * whose open room has it says so, and the asker takes an id of its own.
+ */
+const members = typeof BroadcastChannel === "function" ? new BroadcastChannel("diagrams-room-members") : undefined;
+members?.addEventListener("message", (e: MessageEvent<{ t?: string; member?: string }>) => {
+  const roster = room.getSnapshot().open?.roster.get();
+  const member = roster && memberId(roster);
+  if (e.data?.t === "who" && member && e.data.member === member) members.postMessage({ t: "mine", member });
+});
+const memberTaken = (member: string) =>
+  new Promise<boolean>((resolve) => {
+    if (!members) return resolve(false);
+    const done = (taken: boolean) => {
+      clearTimeout(timer);
+      members.removeEventListener("message", heard);
+      resolve(taken);
+    };
+    const heard = (e: MessageEvent<{ t?: string; member?: string }>) => {
+      if (e.data?.t === "mine" && e.data.member === member) done(true);
+    };
+    const timer = setTimeout(() => done(false), 250);
+    members.addEventListener("message", heard);
+    members.postMessage({ t: "who", member });
+  });
+
 export const room = new RoomLifecycle({
+  memberTaken,
   transport: (keys) => {
     const { trackers, iceServers } = roomEndpoints();
     return createTrackerTransport({
@@ -73,6 +104,32 @@ document.addEventListener("visibilitychange", () => {
   room.setAway(hidden);
 });
 onClearDevice(() => room.wipe());
+
+// Watch together lasts as long as the room's session, whatever's on screen (presenting hides the chip).
+bindWatch(
+  room,
+  {
+    read: () => {
+      const slug = room.getSnapshot().open?.slug;
+      if (!slug) return { eligible: false };
+      const diagram = getCurrent(slug);
+      return {
+        documentId: getDiagramIdentity(slug),
+        eligible: canCollaborate({ ...getPrivacyFlags(slug), diagram }) && !diagram?.private,
+      };
+    },
+    show: () => room.showRoomDiagram(),
+    subscribe: (fn) => {
+      const stop = room.subscribe(fn);
+      window.addEventListener(DIAGRAMS_CHANGED, fn);
+      return () => {
+        stop();
+        window.removeEventListener(DIAGRAMS_CHANGED, fn);
+      };
+    },
+  },
+  watchNotices,
+);
 
 export { RoomChip, RoomConnecting, RoomLayer } from "./RoomUi";
 export type { RoomSnapshot, OpenRoom } from "./lifecycle";

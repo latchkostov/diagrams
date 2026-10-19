@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(535.103px, 12.9851px) scale(0.675373)",
+    "viewport": "translate(373.103px, 12.9851px) scale(0.675373)",
     "nodes": {
       "group:dmz": { "kind": "group", "box": "translate(0px, 296px) 460×336", "text": "DMZ" },
       "group:trusted": { "kind": "group", "box": "translate(160px, 616px) 339×496", "text": "Trusted services" },

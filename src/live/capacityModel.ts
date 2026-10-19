@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import { replicaRange } from "../model/autoscaling";
 // Inputs & capacity: the pure model behind the "Inputs & capacity" panel and the capacity heat map.
 // No React, no DOM. It turns a diagram plus an optional saved simulation plus the panel's what-if
@@ -360,8 +361,7 @@ export function computeFix(
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const changes: FixChange[] = sized.map((c) => ({ ...c, label: byId.get(c.nodeId)!.label }));
   const phrase = (c: FixChange) =>
-    c.key === "partitions" &&
-    (d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1")
+    c.key === "partitions" && revisionAtLeast(d.planning?.revision, "p2")
       ? t("broker.fix", {
           name: c.label,
           kind: assignmentLabel(baseProps(d, byId.get(c.nodeId)!, sim).broker),
@@ -467,7 +467,7 @@ export function capacityView(
     // Not "can't keep up": nothing reads it. Partitions only cap the consumers in a group, so they can't help.
     headline = `Nobody reads ${top.label}`;
     detail = keeps(top.role)
-      ? d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1"
+      ? revisionAtLeast(d.planning?.revision, "p2")
         ? t("broker.noReader")
         : "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer."
       : "Messages wait in it until a consumer takes them.";
@@ -559,7 +559,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
     if (!groups.length) {
       notes.set(
         node.id,
-        d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1"
+        revisionAtLeast(d.planning?.revision, "p2")
           ? t("broker.noReader")
           : "Nobody reads it yet, so more partitions change nothing.",
       );
@@ -571,7 +571,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
     const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
     notes.set(
       node.id,
-      d.planning?.revision === "p2" || d.planning?.revision === "p3" || d.planning?.revision === "p3-a1"
+      revisionAtLeast(d.planning?.revision, "p2")
         ? t("broker.assignmentNote")
         : `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`,
     );

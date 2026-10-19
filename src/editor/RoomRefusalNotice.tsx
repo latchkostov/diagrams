@@ -11,6 +11,7 @@ export function RoomRefusalNotice({ reason }: { reason: RoomRefusal }) {
     "bad-id": t("collab.refusedId"),
     "room-full": t("collab.refusedFull"),
     private: t("collab.leftPrivate"),
+    "view-only": t("collab.refusedViewOnly"),
   }[reason];
   return (
     <p className="room-edit-alert" role="alert" data-testid="collab-edit-refused">

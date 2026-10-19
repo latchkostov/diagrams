@@ -680,6 +680,8 @@ test.describe("annotations", () => {
     await annotation(page, "caption-1").dblclick();
     const inlineEditor = page.getByTestId("annotation-editor");
     await expect(inlineEditor).toBeFocused();
+    // The editable shell is immediate; formatting attaches after its separate lazy module.
+    await expect(inlineEditor).toHaveAttribute("data-markdown-ready", "");
     await inlineEditor.fill("critical");
     await inlineEditor.selectText();
     await page.keyboard.press(`${MOD}+b`);

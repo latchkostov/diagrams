@@ -2,8 +2,9 @@ import { nodeFaultLabel } from "../../model/faultWords";
 import { faultTrouble } from "../faultTrouble";
 import { boundaryOutage } from "../../model/faultRuntime";
 import { t } from "../../i18n";
+import { effectiveCallerPolicy } from "../../editor/callerPolicy";
 import { useStore } from "@xyflow/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EditorApi } from "../../editor/types";
 import { notify } from "../../interop/ui/toast";
 import { addConsumer, addDeadLetterQueue } from "../addConsumer";
@@ -19,6 +20,8 @@ import type { CapacityInputs } from "./useCapacityInputs";
 import type { LiveCommands } from "./useLiveCommands";
 import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";
+import { useFollowing } from "../watchBridge";
+import { LiveSync } from "./liveSync";
 export function useLiveDiagramChanges({
   session,
   editor,
@@ -29,26 +32,23 @@ export function useLiveDiagramChanges({
 
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
+  // The document's changes into the run, through one boundary that waits while this person follows someone's
+  // shared run (the host's ops bring them, on their ticks) and reconciles once following ends.
+  const following = useFollowing();
+  const sync = useMemo(() => new LiveSync(controller, () => flash(t("liveSession.restarted"))), [controller, flash]);
+  useEffect(() => sync.setFollowing(following), [sync, following]);
   useEffect(() => {
     if (!editor) return;
-    const timer = window.setTimeout(() => {
-      const result = controller.updateDiagram(getDiagram());
-      if (result === "reloaded") flash(t("liveSession.restarted"));
-    }, 200);
+    const timer = window.setTimeout(() => sync.diagram(getDiagram), 200);
     return () => window.clearTimeout(timer);
-  }, [nodes, edges, editor, controller, getDiagram, flash]);
+  }, [nodes, edges, editor, sync, getDiagram]);
 
-  // A saved simulation edited elsewhere (undo, the panel's Save) replays with the new definition.
+  // A saved simulation edited elsewhere (undo, the panel's Save) replays with the new definition; removed, free play.
   useEffect(() => {
-    const cur = controller.getState().simulation;
-    if (!cur || cur.id === draftRef.current?.id) return;
-    const next = simulations.find((s) => s.id === cur.id);
-    if (!next) controller.selectSimulation(null);
-    // Keep the Inputs & capacity what-ifs; prop changes (Apply fix, undo) patch the run live.
-    else if (JSON.stringify(next) !== JSON.stringify(cur)) controller.setBase(next);
+    sync.simulations(simulations, () => draftRef.current?.id);
     // Session-owned refs and setters are stable; preserve the original dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulations, controller]);
+  }, [simulations, sync]);
 
   // Mirror the live state into the URL (canvas only) so the address is a shareable live link. A private diagram
   // can't be shared as one, and its simulation ids can carry its words: only `live=1` goes in its address.
@@ -142,6 +142,8 @@ export function useLiveFixes({
           flash(t("liveSession.addedDeadLetter"));
           revealAdded();
         }
+      } else if (action.kind === "free-thread") {
+        if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ wait: "non-blocking" });
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },
@@ -170,7 +172,9 @@ export function useLiveFixes({
   }, [announcement]);
   // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
   const troubleActionHere = (t: Trouble) =>
-    !presenting && (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq"));
+    !presenting &&
+    (t.action.kind !== "free-thread" || !!(editor && effectiveCallerPolicy(editor, t.action.edge)?.editable)) &&
+    (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq" && t.action.kind !== "free-thread"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {

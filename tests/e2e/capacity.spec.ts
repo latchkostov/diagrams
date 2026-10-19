@@ -1,6 +1,6 @@
 import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, gotoLive, fitDiagram } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, gotoLive, fitDiagram, pauseClock } from "./fixtures";
 import { interactionJournalMark, interactionLog } from "./fixtures";
 
 // Inputs & capacity: the presenter's what-if flow (Black Friday at 3×, the heat map, Apply fix),
@@ -452,17 +452,24 @@ test.describe("fourth review capacity regressions", () => {
   });
 
   test("Save rejects the document traffic budget and keeps unsaved inputs", async ({ page }) => {
+    await page.clock.install();
     await openBlackFridayInputs(page);
+    await pauseClock(page);
     // The budget counts what plays: at one message per dot, 3k/s × 10 for 10 s is 300,000 dots.
     await page.getByTestId("scale-override").selectOption("1");
     await page.getByTestId("capacity-rate-shopper").fill("3k");
     await page.getByTestId("capacity-rate-shopper").press("Enter");
+    // Settle the scale/rate replay before Traffic patches the paused run. Save validation
+    // must not depend on whether the replay debounce happened before or after that patch.
+    await page.clock.runFor(1000);
+    await expect(page.getByTestId("scale-indicator")).toHaveAttribute("data-scale", "1");
     await page.getByTestId("capacity-traffic-mult").fill("19");
     await page.getByTestId("capacity-save").click();
     await expect(page.getByTestId("capacity-save-error")).toContainText("traffic volume budget");
     await expect(page.getByTestId("capacity-dirty")).toBeVisible();
     await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("10×");
     await expect(page.getByTestId("live-notice")).toHaveCount(0);
+    await page.clock.resume();
     await page.reload();
     await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("1×");

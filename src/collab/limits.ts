@@ -36,6 +36,8 @@ export const COLLAB_LIMITS = {
   maxPartialBytes: 64 * 1024 * 1024,
   /** A presence frame (alias, colour, status). */
   maxPresenceFrameBytes: 4 * 1024,
+  /** A shared Live frame: one start, op, beacon or digest, or a slice of a run's log. */
+  maxLiveFrameBytes: 16 * 1024,
   /** Distinct senders (sessions) a room tracks replay state and presence for. A new sender past this is refused. */
   maxSenders: 64,
   /** Out-of-order counters a sender's replay window accepts. Older ones are refused as stale. */
@@ -72,6 +74,8 @@ export const COLLAB_LIMITS = {
   maxQueuedBytesPerPeer: 24 * 1024 * 1024,
   /** Presence: what a peer's entry may say. */
   maxAliasChars: 40,
+  /** Co-hosts a room's roster names at most (src/collab/room/roomRoster.ts): one fewer than a full room. */
+  maxCohosts: 7,
   /** Presence entries expire when their sender hasn't refreshed them for this long (room clock). */
   presenceTtlMs: 30_000,
   /** How often a session refreshes its own presence. */
@@ -81,6 +85,25 @@ export const COLLAB_LIMITS = {
    * and selections, with room to spare. Past it they are dropped (and counted), unlike document frames' byte bucket.
    */
   presenceFramesPerWindow: 200,
+  /**
+   * Shared Live frames one sender may deliver per window: beacons at 2 Hz, digests, a slider's ops at up to 10 Hz
+   * and a late joiner's log slices, with room to spare. Past it they are dropped (and counted).
+   */
+  liveFramesPerWindow: 600,
+  /**
+   * Signed rooms (P4): signature verifications one sender may cost per window (frames and roster entries: a full
+   * roster is at most 1,024), and how often a session sends its whole roster back to one peer whose summary differs.
+   */
+  verifiesPerWindow: 2048,
+  rosterRepliesPerWindow: 4,
+  /** A roster message's JSON: a full roster of 1,024 entries is about 300 KB. */
+  maxRosterMessageBytes: 1024 * 1024,
+  /**
+   * A signed room's document frames that don't count yet (a grant or a binding still on its way): held this long, and
+   * this many bytes per sender (a whole diagram's sync reply fits), then dropped and the sender quarantined.
+   */
+  heldMs: 30_000,
+  maxHeldBytesPerSender: 4 * 1024 * 1024,
   /** A session sends its cursor at most this often (15 times a second). */
   cursorIntervalMs: 67,
   /** A peer's cursor that hasn't moved for this long is hidden (and while they're away). */

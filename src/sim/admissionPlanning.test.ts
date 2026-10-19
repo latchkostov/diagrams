@@ -13,8 +13,20 @@ describe("planning call normalization", () => {
     const normalize = vi.spyOn(policy, "normalizeCall");
     try {
       const result = admissionPlan([
-        { id: "first", policy: api, offered: workload.length, latencyMs: 10, endpoints: workload },
-        { id: "second", policy: api, offered: 1, latencyMs: 20, endpoints: [{ id: "e0", rate: 1 }] },
+        {
+          id: "first",
+          policy: api,
+          offered: workload.length,
+          timing: { workMs: 10, threadHoldMs: 10, memoryResidenceMs: 10 },
+          endpoints: workload,
+        },
+        {
+          id: "second",
+          policy: api,
+          offered: 1,
+          timing: { workMs: 20, threadHoldMs: 20, memoryResidenceMs: 20 },
+          endpoints: [{ id: "e0", rate: 1 }],
+        },
       ]);
       expect(normalize).toHaveBeenCalledTimes(endpoints.length + 2);
       expect(result.capacities.get("first")).toBeCloseTo(10_000);

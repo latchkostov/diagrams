@@ -1,0 +1,448 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "source", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "source",
+            "to": "applications"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "applications" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "caller",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "source", "label": "Applications submitted", "stencil": "client.user" },
+          { "id": "applications", "label": "Renamed by parity", "stencil": "generic.topic" },
+          { "id": "caller", "label": "Decision service", "stencil": "aws.lambda" },
+          { "id": "partner", "label": "Partner scoring API", "stencil": "generic.external-api" },
+          { "id": "decisions", "label": "Decisions", "stencil": "generic.topic" },
+          { "id": "store", "label": "Case store", "stencil": "generic.database" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 628,
+            "y": 292,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["applications"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["caller"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "source", "applications"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["source"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": { "revision": "p3-w1" },
+    "title": "Parity edit",
+    "description": "Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.",
+    "nodes": [
+      {
+        "id": "source",
+        "stencil": "client.user",
+        "label": "Applications submitted",
+        "x": 0,
+        "y": 180,
+        "props": { "ratePerSec": 400 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "applications",
+        "stencil": "generic.topic",
+        "label": "Renamed by parity",
+        "x": 320,
+        "y": 180,
+        "props": { "partitions": 12, "latencyMs": 120 },
+        "group": "boundary-1"
+      },
+      {
+        "id": "caller",
+        "stencil": "aws.lambda",
+        "label": "Decision service",
+        "sublabel": "4 replicas · 16 threads each",
+        "x": 660,
+        "y": 180,
+        "props": {
+          "replicas": 4,
+          "concurrency": 16,
+          "latencyMs": 10,
+          "jitter": 0,
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 5,
+            "baselineMemoryMiB": 128,
+            "memoryMiBPerMessage": 2,
+            "cpuRequestMilli": 1000,
+            "cpuLimitMilli": 1000,
+            "memoryRequestMiB": 512,
+            "memoryLimitMiB": 1024,
+            "startup": { "delayMs": 5000, "jitterFraction": 0 },
+            "terminationGraceMs": 30000
+          },
+          "autoscaling": {
+            "mode": "on",
+            "modelRevision": "a1",
+            "preset": "hpa-service",
+            "presetRevision": "1",
+            "controller": {
+              "kind": "hpa",
+              "initialReplicas": 4,
+              "minReplicas": 4,
+              "maxReplicas": 12,
+              "settings": {
+                "syncMs": 15000,
+                "tolerance": 0.1,
+                "initialReadinessDelayMs": 30000,
+                "cpuInitializationPeriodMs": 300000,
+                "metrics": [
+                  {
+                    "source": { "kind": "resource", "resource": "cpu" },
+                    "target": { "kind": "utilization", "percentOfRequest": 70 },
+                    "windowMs": 15000,
+                    "metricDelayMs": 0
+                  }
+                ],
+                "up": {
+                  "stabilizationMs": 0,
+                  "selectPolicy": "Max",
+                  "policies": [
+                    { "type": "Pods", "value": 4, "periodMs": 15000 },
+                    { "type": "Percent", "value": 100, "periodMs": 15000 }
+                  ]
+                },
+                "down": {
+                  "stabilizationMs": 300000,
+                  "selectPolicy": "Max",
+                  "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "partner",
+        "stencil": "generic.external-api",
+        "label": "Partner scoring API",
+        "x": 1010,
+        "y": 180,
+        "props": { "latencyMs": 250, "api": { "latencyMs": 250 }, "jitter": 0 }
+      },
+      {
+        "id": "decisions",
+        "stencil": "generic.topic",
+        "label": "Decisions",
+        "x": 660,
+        "y": 420,
+        "props": { "partitions": 12 }
+      },
+      {
+        "id": "store",
+        "stencil": "generic.database",
+        "label": "Case store",
+        "x": 1010,
+        "y": 420,
+        "props": { "latencyMs": 1 }
+      },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 328, "y": 292 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 64 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 328, "y": 404 }
+    ],
+    "edges": [
+      { "id": "consume", "from": "applications", "to": "caller", "props": { "travelMs": 100, "group": "decisions" } },
+      { "id": "call", "from": "caller", "to": "partner", "kind": "sync", "props": { "travelMs": 200 } },
+      { "id": "publish", "from": "caller", "to": "decisions", "props": { "travelMs": 100 } },
+      { "id": "save", "from": "decisions", "to": "store", "props": { "travelMs": 100 } },
+      { "id": "e-1", "from": "source", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "source", "to": "queue-1", "props": { "travelMs": 100 } },
+      { "id": "e-5", "from": "queue-1", "to": "applications", "props": { "travelMs": 100 } }
+    ],
+    "simulations": [
+      {
+        "id": "blocking",
+        "title": "Blocking: CPU says all is well",
+        "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
+        "seed": 17,
+        "scale": 1,
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "node": "source",
+            "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 20000 },
+            "id": "applications-0",
+            "label": "Applications",
+            "messageType": "ApplicationSubmitted"
+          }
+        ],
+        "expectations": [
+          {
+            "id": "lag",
+            "label": "Applications lag stays below 1,000",
+            "metric": { "node": "applications", "field": "backlog" },
+            "op": "<",
+            "value": 1000,
+            "when": "end"
+          }
+        ]
+      },
+      {
+        "id": "free-thread",
+        "title": "Free the thread while waiting",
+        "description": "Calls wait off-thread. Reply handling uses a small CPU slice. A spike at 15 seconds makes CPU the limit again, so CPU scaling adds replicas.",
+        "seed": 17,
+        "scale": 1,
+        "durationMs": 60000,
+        "traffic": [
+          {
+            "node": "source",
+            "shape": { "kind": "spike", "baseRate": 400, "peakRate": 700, "atMs": 15000, "peakMs": 30000, "durationMs": 60000 },
+            "id": "applications-0",
+            "label": "Applications",
+            "messageType": "ApplicationSubmitted"
+          }
+        ],
+        "expectations": [
+          {
+            "id": "lag",
+            "label": "Applications lag stays below 100",
+            "metric": { "node": "applications", "field": "backlog" },
+            "op": "<",
+            "value": 100,
+            "when": "end"
+          }
+        ],
+        "setup": { "edges": { "call": { "caller": { "wait": "non-blocking" } } } }
+      },
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "source",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "source",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "source",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "source",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "caller", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["caller"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "caller", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": -40, "y": 116, "width": 620, "height": 176 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 0, "y": 300, "width": 240, "height": 160 }
+    ],
+    "direction": "TB"
+  }
+}

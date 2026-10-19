@@ -1,3 +1,5 @@
+import { revisionAtLeast } from "../model/revisions";
+import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingEdits";
 import { routingIntent } from "./routingIntent";
@@ -675,7 +677,7 @@ export function builtinActions(): Action[] {
         const d = node && ctx.editor.getDiagram();
         return (
           !!node &&
-          d?.planning?.revision === "p3-a1" &&
+          revisionAtLeast(d?.planning?.revision, "p3-a1") &&
           node.props?.routeTable === undefined &&
           routeTableCapable(node.stencil, getStencil(node.stencil).simRole)
         );
@@ -702,7 +704,7 @@ export function builtinActions(): Action[] {
         const d = node && ctx.editor.getDiagram();
         return (
           !!node &&
-          d?.planning?.revision === "p3-a1" &&
+          revisionAtLeast(d?.planning?.revision, "p3-a1") &&
           node.props?.trafficMix === undefined &&
           trafficMixCapable(getStencil(node.stencil).simRole)
         );
@@ -845,6 +847,30 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }),
     },
     relationshipAction,
+    {
+      id: "edge.simulation",
+      section: "edge",
+      targets: ["edge"],
+      modes: ["edit", "live"],
+      label: () => t("threads.simulation"),
+      when: (ctx) =>
+        isFlowEdgeTarget(ctx) &&
+        ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" &&
+        revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w1") &&
+        !!effectiveCallerPolicy(ctx.editor, ctx.edgeId!)?.editable,
+      children: (ctx) => {
+        const effective = effectiveCallerPolicy(ctx.editor, ctx.edgeId!)!;
+        const blocking = effective.policy.blocking;
+        return [
+          {
+            type: "item",
+            id: "edge.wait",
+            label: blocking ? t("threads.freeAction") : t("threads.holdAction"),
+            run: () => effective.set({ wait: blocking ? "non-blocking" : "blocking" }),
+          },
+        ];
+      },
+    },
     {
       // Rewire one end from the keyboard (dragging a selected edge's end is the pointer's way): From ▸ and To ▸,
       // each a searchable list of the nodes that end could move to. Keeps the label, relationship and settings.

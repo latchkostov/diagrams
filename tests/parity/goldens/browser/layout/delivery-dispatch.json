@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(52.3561px, 182.746px) scale(0.308904)",
+    "viewport": "translate(95.8231px, 193.153px) scale(0.295578)",
     "nodes": {
       "group:gcp": { "kind": "group", "box": "translate(-40px, -88px) 2982×1360", "text": "Google Cloud · europe-west1" },
       "group:orders": { "kind": "group", "box": "translate(736px, 156px) 1063×716", "text": "GKE · orders" },
@@ -142,7 +142,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-381.081px, 182.746px) scale(0.308904)",
+    "viewport": "translate(-348.035px, 193.153px) scale(0.295578)",
     "nodes": {
       "group:gcp": { "kind": "group", "box": "translate(360px, 212px) 4080×1620", "text": "Google Cloud · europe-west1" },
       "group:orders": { "kind": "group", "box": "translate(860px, 276px) 779×596", "text": "GKE · orders" },

@@ -2552,7 +2552,8 @@ details[open] > summary .lv-disclosure-chevron {
 .lv-detail-more {
   display: block;
 }
-.lv-detail.is-compact > :not(.planning-explanation):not(.lv-detail-more):not(.lv-latency),
+.lv-detail.is-compact
+  > :not(.planning-explanation):not(.lv-detail-more):not(.lv-latency):not(.lv-thread-detail):not(.lv-thread-ceiling),
 .lv-detail.is-compact .planning-explanation > :not([data-testid="planning-arithmetic"]) {
   display: none;
 }
@@ -2571,7 +2572,7 @@ details[open] > summary .lv-disclosure-chevron {
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
-.lv-detail.is-summary > :not(.lv-latency):not(.lv-detail-more),
+.lv-detail.is-summary > :not(.lv-latency):not(.lv-detail-more):not(.lv-thread-detail):not(.lv-thread-ceiling),
 .lv-detail.is-summary .lv-latency > strong {
   display: none;
 }
@@ -2617,4 +2618,48 @@ details[open] > summary .lv-disclosure-chevron {
 /* Latency leads the hover; the configured estimate remains as secondary context. */
 .lv-detail.has-latency .planning-explanation > :not([data-testid="planning-arithmetic"]) {
   display: none;
+}
+
+/* Threads sit inside the existing card footprint, with texture as well as colour. */
+.lv-threads {
+  position: absolute;
+  display: flex;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 0 0 8px 8px;
+  background: var(--line);
+}
+.lv-threads-work {
+  background: var(--accent, #6366f1);
+}
+.lv-threads-wait {
+  position: relative;
+  background: repeating-linear-gradient(135deg, #6366f1 0 2px, #c7d2fe 2px 5px);
+}
+.lv-threads-wait > span {
+  position: absolute;
+  top: -3px;
+  left: 2px;
+  font-size: 9px;
+}
+.lv-threads > i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--surface);
+}
+.lv-call-pill {
+  position: absolute;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
 }

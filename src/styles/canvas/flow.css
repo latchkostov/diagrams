@@ -142,24 +142,8 @@
   background: var(--surface);
 }
 
-.react-flow__controls-zoomin,
-.react-flow__controls-zoomout {
-  overflow: hidden;
-  transition:
-    height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.16s ease,
-    border-bottom-width 0.2s ease;
-}
-
-.react-flow__controls.is-collapsed .react-flow__controls-zoomin,
-.react-flow__controls.is-collapsed .react-flow__controls-zoomout {
-  height: 0;
-  opacity: 0;
-  border-bottom-width: 0;
-  pointer-events: none;
-}
-
 .rf-ctrl-body {
+  width: 54px;
   display: grid;
   grid-template-rows: 1fr;
   opacity: 1;
@@ -169,6 +153,7 @@
 }
 
 .react-flow__controls.is-collapsed .rf-ctrl-body {
+  width: 30px;
   grid-template-rows: 0fr;
   opacity: 0;
   pointer-events: none;
@@ -179,12 +164,18 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .react-flow__controls-button {
-  width: 30px;
+  width: 54px;
   height: 30px;
   border-bottom: 1px solid var(--line);
+}
+
+.react-flow__controls.is-collapsed .react-flow__controls-button,
+.rf-ctrl-split .react-flow__controls-button {
+  width: 30px;
 }
 
 .react-flow__controls-button:last-child,
@@ -204,25 +195,23 @@
 .rf-ctrl-split {
   position: relative;
   display: flex;
-  width: 30px;
+  width: 54px;
   height: 30px;
 }
 
 .rf-ctrl-flyout {
-  position: absolute;
-  inset-inline-end: 0;
-  bottom: 0;
-  width: 12px;
-  height: 12px;
-  padding: 2px;
+  width: 24px;
+  height: 30px;
+  padding: 0;
+  flex: none;
   border: 0;
   background: transparent;
   color: var(--text-3);
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  border-start-start-radius: 4px;
+  border-inline-start: 1px solid var(--line);
 }
 
 .rf-ctrl-flyout:hover,

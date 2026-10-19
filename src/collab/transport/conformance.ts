@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { structuralText } from "../../model/diagramDiff";
 import type { DiagramFile } from "../../model/types";
-import { openRoomClient, RoomClient } from "../client";
+import { openRoomClient, RoomClient, type RoomClientOptions } from "../client";
 import { FakeClock } from "../clock";
 import { CollabDoc } from "../doc";
 import { COLLAB_LIMITS } from "../limits";
@@ -61,12 +61,12 @@ export function openClient(
   room: RoomLink,
   clock: FakeClock,
   seed: number,
-  opts: { initial?: DiagramFile; doc?: CollabDoc } = {},
+  opts: { initial?: DiagramFile; doc?: CollabDoc; signed?: RoomClientOptions["signed"] } = {},
 ): Promise<RoomClient> {
   return openRoomClient({
     name,
     transport,
-    room: opts.initial ? newRoom(() => room.secret.slice()) : room,
+    room: opts.initial ? newRoom(() => room.secret.slice(), room.hostKey) : room,
     clock,
     random: seededBytes(seed),
     clientId: opts.doc ? undefined : seed,

@@ -1,0 +1,4 @@
+exit 0
+VALID <repo>/src/examples/blocking-call.json: 6 nodes, 5 edges, 2 simulations
+  warning: simulations[0] "Blocking: CPU says all is well": at "scale": 1, live view would animate too many dots. Use "scale": 10 (one dot stands for 10 messages).
+  warning: simulations[1] "Free the thread while waiting": at "scale": 1, live view would animate too many dots. Use "scale": 20 (one dot stands for 20 messages).

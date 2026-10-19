@@ -1,0 +1,279 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-w1"
+  },
+  "title": "A blocking call caps throughput",
+  "description": "Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.user",
+      "label": "Applications submitted",
+      "x": 0,
+      "y": 180,
+      "props": {
+        "ratePerSec": 400
+      }
+    },
+    {
+      "id": "applications",
+      "stencil": "generic.topic",
+      "label": "Applications",
+      "x": 320,
+      "y": 180,
+      "props": {
+        "partitions": 12
+      }
+    },
+    {
+      "id": "caller",
+      "stencil": "generic.service",
+      "label": "Decision service",
+      "sublabel": "4 replicas · 16 threads each",
+      "x": 660,
+      "y": 180,
+      "props": {
+        "replicas": 4,
+        "concurrency": 16,
+        "latencyMs": 10,
+        "jitter": 0,
+        "resources": {
+          "preset": "io-service",
+          "presetRevision": "1",
+          "cpuMsPerMessage": 5,
+          "baselineMemoryMiB": 128,
+          "memoryMiBPerMessage": 2,
+          "cpuRequestMilli": 1000,
+          "cpuLimitMilli": 1000,
+          "memoryRequestMiB": 512,
+          "memoryLimitMiB": 1024,
+          "startup": {
+            "delayMs": 5000,
+            "jitterFraction": 0
+          },
+          "terminationGraceMs": 30000
+        },
+        "autoscaling": {
+          "mode": "on",
+          "modelRevision": "a1",
+          "preset": "hpa-service",
+          "presetRevision": "1",
+          "controller": {
+            "kind": "hpa",
+            "initialReplicas": 4,
+            "minReplicas": 4,
+            "maxReplicas": 12,
+            "settings": {
+              "syncMs": 15000,
+              "tolerance": 0.1,
+              "initialReadinessDelayMs": 30000,
+              "cpuInitializationPeriodMs": 300000,
+              "metrics": [
+                {
+                  "source": {
+                    "kind": "resource",
+                    "resource": "cpu"
+                  },
+                  "target": {
+                    "kind": "utilization",
+                    "percentOfRequest": 70
+                  },
+                  "windowMs": 15000,
+                  "metricDelayMs": 0
+                }
+              ],
+              "up": {
+                "stabilizationMs": 0,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Pods",
+                    "value": 4,
+                    "periodMs": 15000
+                  },
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              },
+              "down": {
+                "stabilizationMs": 300000,
+                "selectPolicy": "Max",
+                "policies": [
+                  {
+                    "type": "Percent",
+                    "value": 100,
+                    "periodMs": 15000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "partner",
+      "stencil": "generic.external-api",
+      "label": "Partner scoring API",
+      "x": 1010,
+      "y": 180,
+      "props": {
+        "latencyMs": 250,
+        "api": {
+          "latencyMs": 250
+        },
+        "jitter": 0
+      }
+    },
+    {
+      "id": "decisions",
+      "stencil": "generic.topic",
+      "label": "Decisions",
+      "x": 660,
+      "y": 420,
+      "props": {
+        "partitions": 12
+      }
+    },
+    {
+      "id": "store",
+      "stencil": "generic.database",
+      "label": "Case store",
+      "x": 1010,
+      "y": 420,
+      "props": {
+        "latencyMs": 1
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "submit",
+      "from": "source",
+      "to": "applications",
+      "props": {
+        "travelMs": 100
+      }
+    },
+    {
+      "id": "consume",
+      "from": "applications",
+      "to": "caller",
+      "props": {
+        "travelMs": 100,
+        "group": "decisions"
+      }
+    },
+    {
+      "id": "call",
+      "from": "caller",
+      "to": "partner",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "publish",
+      "from": "caller",
+      "to": "decisions",
+      "props": {
+        "travelMs": 100
+      }
+    },
+    {
+      "id": "save",
+      "from": "decisions",
+      "to": "store",
+      "props": {
+        "travelMs": 100
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "blocking",
+      "title": "Blocking: CPU says all is well",
+      "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "traffic": [
+        {
+          "node": "source",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 400,
+            "durationMs": 20000
+          },
+          "id": "applications-0",
+          "label": "Applications",
+          "messageType": "ApplicationSubmitted"
+        }
+      ],
+      "expectations": [
+        {
+          "id": "lag",
+          "label": "Applications lag stays below 1,000",
+          "metric": {
+            "node": "applications",
+            "field": "backlog"
+          },
+          "op": "<",
+          "value": 1000,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "free-thread",
+      "title": "Free the thread while waiting",
+      "description": "Calls wait off-thread. Reply handling uses a small CPU slice. A spike at 15 seconds makes CPU the limit again, so CPU scaling adds replicas.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 60000,
+      "traffic": [
+        {
+          "node": "source",
+          "shape": {
+            "kind": "spike",
+            "baseRate": 400,
+            "peakRate": 700,
+            "atMs": 15000,
+            "peakMs": 30000,
+            "durationMs": 60000
+          },
+          "id": "applications-0",
+          "label": "Applications",
+          "messageType": "ApplicationSubmitted"
+        }
+      ],
+      "expectations": [
+        {
+          "id": "lag",
+          "label": "Applications lag stays below 100",
+          "metric": {
+            "node": "applications",
+            "field": "backlog"
+          },
+          "op": "<",
+          "value": 100,
+          "when": "end"
+        }
+      ],
+      "setup": {
+        "edges": {
+          "call": {
+            "caller": {
+              "wait": "non-blocking"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

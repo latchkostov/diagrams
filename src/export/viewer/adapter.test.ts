@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ViewerAdapter } from "./adapter";
 import { textFieldsFixture } from "../../lab/textFieldsFixture";
+import type { LiveSessionHandle } from "../../live/LiveView";
 
 describe("platform viewer adapter", () => {
   it("validates loads, never autoplays, and keeps the last good diagram on error", () => {
@@ -57,5 +58,32 @@ describe("platform viewer adapter", () => {
     adapter.dispose();
     adapter.report({ type: "resize", height: 600 });
     expect(size).toHaveBeenCalledOnce();
+  });
+
+  it("disposes an attached controller and queued commands without a React unmount", () => {
+    const adapter = new ViewerAdapter();
+    adapter.load(textFieldsFixture);
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn(() => unsubscribe);
+    const setPlaying = vi.fn();
+    const session = {
+      controller: { subscribe, setPlaying, getState: () => ({ playing: true, speed: 1, simulation: null }) },
+    } as unknown as LiveSessionHandle;
+    adapter.driver.setHandle({ live: true, session, goLive: vi.fn() });
+    expect(subscribe).toHaveBeenCalledOnce();
+    const changed = vi.fn();
+    adapter.subscribe(changed);
+    adapter.dispose();
+    adapter.stop();
+    expect(setPlaying).not.toHaveBeenCalled();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    adapter.load(textFieldsFixture);
+    expect(changed).not.toHaveBeenCalled();
+
+    adapter.play();
+    adapter.dispose();
+    const goLive = vi.fn();
+    adapter.driver.setHandle({ live: false, session: null, goLive });
+    expect(goLive).not.toHaveBeenCalled();
   });
 });

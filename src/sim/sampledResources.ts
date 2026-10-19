@@ -70,8 +70,15 @@ function split(f: Fleet, work: SampledWork, cut: number) {
   });
 }
 /** Splits only cohort boundaries, never one object per represented message or replica. */
-export function sampledParts(f: Fleet, eligible: number, cpu: number, working: SampledWork[]): CpuPart[] | undefined {
+export function sampledParts(
+  f: Fleet,
+  eligible: number,
+  cpu: number,
+  working: SampledWork[] | (() => SampledWork[]),
+): CpuPart[] | undefined {
   compactReadyRanges(f, working);
+  let resolved: SampledWork[] | undefined;
+  const owners = () => (resolved ??= typeof working === "function" ? working() : working);
   let left = eligible,
     countParts = 0,
     splits = 0;
@@ -81,7 +88,7 @@ export function sampledParts(f: Fleet, eligible: number, cpu: number, working: S
     if (count <= 0) continue;
     countParts++;
     if (count < size(range))
-      for (const work of working)
+      for (const work of owners())
         for (const part of work.cpuParts ?? [])
           if (part.first < range.first + count && range.first + count <= part.last) splits++;
     left -= count;
@@ -98,7 +105,7 @@ export function sampledParts(f: Fleet, eligible: number, cpu: number, working: S
     if (count <= 0) continue;
     const end = range.first + count - 1;
     if (end < range.last) {
-      for (const work of working) split(f, work, end + 1);
+      for (const work of owners()) split(f, work, end + 1);
       f.ranges.splice(i + 1, 0, { ...range, first: end + 1 });
       range.last = end;
     }

@@ -16,7 +16,7 @@ import type {
   DiagramNode,
   Simulation,
 } from "./types";
-import { planningSchema } from "./admissionSchema";
+import { callerSchema, planningSchema } from "./admissionSchema";
 
 // Every field of the file format, its nodes, edges, boundaries, notes and simulations is listed here:
 // `satisfies Fields<T>` fails typecheck when a type gains a field the schema doesn't describe, and
@@ -263,6 +263,15 @@ function diagramSchema(a1 = false) {
             properties: {
               status: { type: "object", additionalProperties: status },
               props: { type: "object", additionalProperties: { $ref: "#/$defs/NodeProps" } },
+              edges: {
+                type: "object",
+                additionalProperties: {
+                  type: "object",
+                  required: ["caller"],
+                  additionalProperties: false,
+                  properties: { caller: callerSchema },
+                },
+              },
             },
           },
           traffic: {
@@ -453,7 +462,9 @@ export const diagramV2Schema = {
       oneOf: [
         {
           additionalProperties: true,
-          properties: { planning: { additionalProperties: true, properties: { revision: { const: "p3-a1" } } } },
+          properties: {
+            planning: { additionalProperties: true, properties: { revision: { enum: ["p3-a1", "p3-w1"] } } },
+          },
         },
         {
           additionalProperties: true,

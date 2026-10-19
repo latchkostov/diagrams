@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "98e8b95751e69b95a38691e827ff30f171c92ec813cb35b6a8fd9655be344802", "bytes": 107447 },
+  "file": { "sha256": "021b2ee7087af2fbd67c04e61f74d4aa3f18a5c2412acd7e6bf8bc6fef985afd", "bytes": 107438 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -493,13 +493,7 @@
         { "id": "ingesters--loki-store", "from": "ingesters", "to": "loki-store", "kind": "sync", "label": "Push chunks" },
         { "id": "logs--ch-sink", "from": "logs", "to": "ch-sink", "kind": "async", "props": { "group": "clickhouse" } },
         { "id": "logs--s3-sink", "from": "logs", "to": "s3-sink", "kind": "async", "props": { "group": "archive" } },
-        {
-          "id": "logs--siem",
-          "from": "logs",
-          "to": "siem",
-          "kind": "async",
-          "props": { "group": "siem", "share": 0.02 }
-        },
+        { "id": "ch-sink--siem", "from": "ch-sink", "to": "siem", "kind": "async", "props": { "share": 0.02 } },
         { "id": "spans--tempo", "from": "spans", "to": "tempo", "kind": "async", "props": { "group": "tempo" } },
         { "id": "spans--s3-sink", "from": "spans", "to": "s3-sink", "kind": "async", "props": { "group": "archive" } },
         { "id": "metrics--prom", "from": "metrics", "to": "prom", "kind": "async", "props": { "group": "prometheus" } },

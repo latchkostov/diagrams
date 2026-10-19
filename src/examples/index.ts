@@ -95,6 +95,7 @@ const publicExamples: PublicExample[] = (
       theme: "systems",
       summary: "HQ, SD-WAN branches, spine and leaf, a fibre-cut drill",
     },
+    { slug: "blocking-call", theme: "reliability", summary: msg("examples.blockingSummary") },
     {
       slug: "where-the-time-goes",
       theme: "streaming",

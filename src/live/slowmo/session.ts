@@ -136,6 +136,7 @@ export class SlowMotion {
 
   /** Record the chosen message's journey, then replay it. */
   start(source: SlowSource): void {
+    if (this.controller.getState().needsRestart) return;
     const prev = this.state.status;
     if (prev === "capturing") this.abortCapture();
     if (prev === "off") this.wasPlaying = this.controller.isPlaying;
@@ -181,6 +182,12 @@ export class SlowMotion {
       waiting = { lag: (id) => (id === node ? lag : undefined) };
     }
     sandbox.restore();
+    if (sandbox.refused) {
+      this.set(OFF);
+      this.restoreSpeed();
+      this.controller.hold(false);
+      return;
+    }
     const tracer = sandbox.tracer;
     if (!trace) {
       // Nothing came (free play with no traffic, or a run that ended): wait for it live.

@@ -1,0 +1,16 @@
+---
+title: A blocking call caps throughput
+---
+flowchart LR
+  source(["Applications submitted"])
+  applications["Applications"]
+  caller["Decision service<br/>4 replicas · 16 threads each"]
+  partner(["Partner scoring API"])
+  decisions["Decisions"]
+  store[("Case store")]
+  source -.-> applications
+  applications -.-> caller
+  caller --> partner
+  caller -.-> decisions
+  decisions -.-> store
+  linkStyle 0,1,3,4 stroke-dasharray: 6 4

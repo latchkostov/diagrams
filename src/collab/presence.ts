@@ -31,7 +31,32 @@ export interface PresenceState {
   selection?: string[];
   /** Where their pointer is over the canvas, in flow coordinates (absent: not over it). */
   cursor?: { x: number; y: number };
+  /** This tab's member id (src/collab/room/roomRoster.ts): the same across its reloads, unlike the sender id. */
+  member?: string;
+  /** The room's host (src/collab/room/roles.ts): its creator to begin with, or whom the last host handed it to. */
+  host?: true;
+  /** The host's roster, said by the host: its co-hosts (member ids, the earliest made first). */
+  cohosts?: string[];
+  /** The host's roster: who drives the room's Live (a member id); absent, the host does. */
+  driver?: string;
+  /** The host's Live run others can watch: its id, its title, and whether it's playing. */
+  live?: { run: string; title: string; playing: boolean };
+  /** The host's view while in Live, for "Follow the host's view": its centre in flow coordinates, and its zoom. */
+  view?: { x: number; y: number; zoom: number };
+  /**
+   * A signed room's binding (P4, ./session.ts): this person's public key (base64url), their Yjs client id, and the
+   * key's signature over both with this session's sender id. Every frame they send is then checked against that key.
+   */
+  key?: string;
+  client?: number;
+  bind?: string;
 }
+
+/** The longest Live run id and title presence carries; the most co-hosts a roster names (a room's size). */
+const MAX_COHOSTS = COLLAB_LIMITS.maxCohosts;
+const SENDER = /^[0-9a-f]{8,64}$/;
+const MAX_RUN_CHARS = 64;
+const MAX_TITLE_CHARS = 120;
 
 /** Ids a presence frame carries at most: the rest of a big selection isn't drawn for others. */
 export const MAX_SELECTION = 32;
@@ -87,7 +112,28 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
   const o = v as Record<string, unknown>;
   const keys = Object.keys(o);
   if (!["alias", "colour", "status"].every((k) => keys.includes(k))) return undefined;
-  if (keys.some((k) => !["alias", "colour", "status", "selection", "cursor"].includes(k))) return undefined;
+  if (
+    keys.some(
+      (k) =>
+        ![
+          "alias",
+          "colour",
+          "status",
+          "selection",
+          "cursor",
+          "member",
+          "host",
+          "cohosts",
+          "driver",
+          "live",
+          "view",
+          "key",
+          "client",
+          "bind",
+        ].includes(k),
+    )
+  )
+    return undefined;
   if (typeof o.alias !== "string") return undefined;
   // Control and bidirectional-override characters could disguise one alias as another.
   const alias = o.alias.replace(CONTROL, "").trim().slice(0, COLLAB_LIMITS.maxAliasChars);
@@ -114,6 +160,53 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
     if (ck.length !== 2 || !ok(c.x) || !ok(c.y)) return undefined;
     state.cursor = { x: c.x as number, y: c.y as number };
   }
+  if (o.host !== undefined) {
+    if (o.host !== true) return undefined;
+    state.host = true;
+  }
+  if (o.member !== undefined) {
+    if (typeof o.member !== "string" || !SENDER.test(o.member)) return undefined;
+    state.member = o.member;
+  }
+  if (o.cohosts !== undefined) {
+    const ids = o.cohosts;
+    if (
+      !Array.isArray(ids) ||
+      ids.length > MAX_COHOSTS ||
+      !ids.every((id) => typeof id === "string" && SENDER.test(id))
+    )
+      return undefined;
+    state.cohosts = [...new Set(ids as string[])];
+  }
+  if (o.driver !== undefined) {
+    if (typeof o.driver !== "string" || !SENDER.test(o.driver)) return undefined;
+    state.driver = o.driver;
+  }
+  if (o.live !== undefined) {
+    const l = o.live as Record<string, unknown> | null;
+    if (typeof l !== "object" || l === null || Array.isArray(l) || Object.keys(l).length !== 3) return undefined;
+    if (typeof l.run !== "string" || !l.run || l.run.length > MAX_RUN_CHARS || /[^\w.:-]/.test(l.run)) return undefined;
+    if (typeof l.title !== "string" || typeof l.playing !== "boolean") return undefined;
+    const title = l.title.replace(CONTROL, "").trim().slice(0, MAX_TITLE_CHARS);
+    state.live = { run: l.run, title, playing: l.playing };
+  }
+  // The binding: all three or none (its signature is the session's to check).
+  const bound = [o.key, o.client, o.bind].filter((x) => x !== undefined).length;
+  if (bound === 3) {
+    if (typeof o.key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(o.key)) return undefined;
+    if (!Number.isInteger(o.client) || (o.client as number) < 0 || (o.client as number) > 0xffff_ffff) return undefined;
+    if (typeof o.bind !== "string" || !/^[A-Za-z0-9_-]{86}$/.test(o.bind)) return undefined;
+    state.key = o.key;
+    state.client = o.client as number;
+    state.bind = o.bind;
+  } else if (bound) return undefined;
+  if (o.view !== undefined) {
+    const w = o.view as Record<string, unknown> | null;
+    if (typeof w !== "object" || w === null || Array.isArray(w) || Object.keys(w).length !== 3) return undefined;
+    const ok = (n: unknown) => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= MAX_COORD;
+    if (!ok(w.x) || !ok(w.y) || typeof w.zoom !== "number" || !(w.zoom >= 0.01 && w.zoom <= 100)) return undefined;
+    state.view = { x: w.x as number, y: w.y as number, zoom: w.zoom };
+  }
   return state;
 }
 
@@ -122,7 +215,28 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
  * ones others see named).
  */
 export function encodePresence(s: PresenceState): Uint8Array {
-  const base = { alias: s.alias, colour: s.colour, status: s.status };
+  const base = {
+    alias: s.alias,
+    colour: s.colour,
+    status: s.status,
+    ...(s.member ? { member: s.member } : {}),
+    ...(s.key && s.client !== undefined && s.bind ? { key: s.key, client: s.client, bind: s.bind } : {}),
+    ...(s.host ? { host: true } : {}),
+    ...(s.cohosts?.length ? { cohosts: s.cohosts.slice(0, MAX_COHOSTS) } : {}),
+    ...(s.driver ? { driver: s.driver } : {}),
+    ...(s.live
+      ? { live: { run: s.live.run, title: s.live.title.slice(0, MAX_TITLE_CHARS), playing: s.live.playing } }
+      : {}),
+    ...(s.view
+      ? {
+          view: {
+            x: Math.round(s.view.x * 10) / 10,
+            y: Math.round(s.view.y * 10) / 10,
+            zoom: Math.round(s.view.zoom * 1000) / 1000,
+          },
+        }
+      : {}),
+  };
   const cursor = s.cursor && { x: Math.round(s.cursor.x * 10) / 10, y: Math.round(s.cursor.y * 10) / 10 };
   let ids = (s.selection ?? []).slice(0, MAX_SELECTION);
   for (;;) {

@@ -32,6 +32,7 @@ import type {
  * | Z1  | zoomToSelection               |                                            | zoomToSelection; owner manual; priority |
  * | Z2  | reveal.requested              | Zoom to selection owns the view            | nothing                                 |
  * | Z3  | reveal.requested              | otherwise                                  | reveal (selection)                      |
+ * | H3  | reveal.requested              | owner host (following the host's view)     | owner manual; reveal (Z3)               |
  * | I1  | input                         |                                            | Zoom to selection's priority ends       |
  * | U1  | user.moved, zoom100           |                                            | owner manual (zoom100: zoom100)         |
  * | F1  | fit, mode.changed             | (not slow motion staying live, W3)         | fit; owner fit; pending := none         |
@@ -47,6 +48,7 @@ import type {
  * | L7  | pane.settled                  | live panel work, owner manual              | reveal with edges if covered            |
  * | L8  | pane.settled                  | live.panel, live.card, owner manual        | nothing                                 |
  * | L9  | pane.settled                  | live.added                                 | liveFit clear of the panel, any owner   |
+ * | L10 | narration                     | following a shared run, owner manual       | the note's focus kept; the view stays   |
  * | W1  | slowmo(on)                    |                                            | owner slowmo; resume := owner           |
  * | W1a | slowmo(on)                    | starting with pending work                 | pending := slowmo.take (fold the work) |
  * | W1b | pane.changed(panel)           | slow motion already on, not presenting     | stop now; pending := panel; W5 replays  |
@@ -59,6 +61,8 @@ import type {
  * | W6  | slowmo.follow                 | owner slowmo, no work waits for the pane   | follow                                  |
  * | W7  | narration, live.*             | slow motion on                             | the room only: slow motion's camera     |
  * | C1  | remote.changed (a peer)       | any state                                  | nothing: no command, state unchanged    |
+ * | H1  | host.view(view)               | opted in; not slow motion, not presenting  | owner host; follow                      |
+ * | H2  | host.view(null)               | owner host                                 | owner manual (the view stays)           |
  *
  * Pending work is replayed with the owner at replay time (R1, R5, L5–L8), runs exactly once (the settled event
  * clears it), and a selection or placement never refits (S1, S2, R3, R4). Live's own work (L1–L4) doesn't wait
@@ -86,6 +90,10 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       return next({ pending: { cause: event.cause } });
     case "remote.changed":
       return { state, commands: [] };
+    case "host.view":
+      if (!event.view) return state.owner === "host" ? next({ owner: "manual" }) : next({});
+      if (state.slowmo || state.mode === "present") return next({});
+      return next({ owner: "host", zoomPriority: false }, { type: "follow", view: event.view });
     case "menu.opened":
       return next({ menu: event.kind });
     case "menu.closed":
@@ -122,9 +130,11 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
         : next({});
     case "overlay.opened":
       return state.mode === "edit" && state.owner === "fit" ? next({}, { type: "fit", reason: "checks" }) : next({});
+    case "watching":
+      return next({ watching: event.on });
     case "narration": {
       const live = { ...state.live, focus: event.focus };
-      if (state.slowmo) return next({ live });
+      if (state.slowmo || (state.watching && state.owner === "manual")) return next({ live });
       if (event.focus.length)
         return next({ live, owner: "narration", zoomPriority: false, pending: { cause: "narration" } });
       if (!state.live.focus.length) return next({ live });
@@ -168,7 +178,12 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       return next({}, { type: "follow", view: event.view });
     case "reveal.requested":
       if (state.zoomPriority) return next({});
-      return next({}, { type: "reveal", cause: event.cause, withEdges: false });
+      // Keyboard navigation or a focus reveal takes the view back from the host's: following their view ends.
+      return next(state.owner === "host" ? { owner: "manual" } : {}, {
+        type: "reveal",
+        cause: event.cause,
+        withEdges: false,
+      });
     case "pane.settled": {
       const work = state.pending;
       if (!work || (state.menu && waitsForMenu(work))) return next({});

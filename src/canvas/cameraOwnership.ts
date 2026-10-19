@@ -1,5 +1,8 @@
-/** Who the view belongs to: the automatic fit, the user, Live's narration, or slow motion following its message. */
-export type CameraOwner = "fit" | "manual" | "narration" | "slowmo";
+/**
+ * Who the view belongs to: the automatic fit, the user, Live's narration, slow motion following its message, or (Watch
+ * together, opted in) the room's host's view.
+ */
+export type CameraOwner = "fit" | "manual" | "narration" | "slowmo" | "host";
 
 /** Shared by the canvas and Live: deferred camera work may run only while its claim is current. */
 export function createCameraOwnership() {
