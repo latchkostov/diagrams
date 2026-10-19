@@ -5,7 +5,7 @@ import { createEngine } from "./engine";
 import { realSnapshot } from "./units";
 import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { cloudFixture } from "../lab/cloudFixture";
-import type { ThreadTail } from "./ledger";
+import type { Reservation } from "./ledger";
 import {
   assertLedgerInvariants,
   assertOutcomeInvariants,
@@ -97,7 +97,7 @@ it("simultaneous sampled non-blocking completions do linear tail accounting work
     d.nodes[1].props = { concurrency: count * 10 - 1, latencyMs: 100, jitter: 0 };
     d.nodes[2].props = { api: { latencyMs: 2000 }, jitter: 0 };
     d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking" } };
-    let tails!: Map<number, ThreadTail<unknown>>;
+    let tails!: Map<number, Reservation<unknown>>;
     const e = createEngine({
       scale: 10,
       seed: 7,
@@ -110,7 +110,7 @@ it("simultaneous sampled non-blocking completions do linear tail accounting work
     e.load(d);
     e.inject("source", count);
     e.step(10);
-    expect(e.snapshot().nodes.caller.inFlight).toBe(count);
+    expect(e.snapshot().nodes.caller.inFlight).toBe((count * 10 - 1) / 10);
     let visits = 0;
     const values = tails.values.bind(tails);
     const scan = vi.spyOn(tails, "values").mockImplementation(function* () {
@@ -251,19 +251,20 @@ it("non-blocking thread tails retain draining Kafka partition ownership", () => 
   expect([...assigned().allocations.values()].reduce((a, b) => a + b, 0)).toBe(3);
 });
 
-it("memory counts a non-blocking cohort once while its tail occupies threads", () => {
+it("memory separates retained thread weight from the open off-thread request", () => {
   const p = probe(true, 9);
   p.e.inject("source", 1);
   p.e.step(10);
   for (
     let tick = 0;
-    tick < 30 && ![...p.state().ledger.reservations.values()].some((r) => r.scope === "thread");
+    tick < 30 &&
+    ![...p.state().ledger.reservations.values()].some((r) => r.scope === "thread" && r.releaseAt !== undefined);
     tick++
   )
     p.e.step(10);
   const before = p.occupancy();
   p.e.step(10);
-  expect(p.occupancy() - before).toBe(10 * 10);
+  expect(p.occupancy() - before).toBe((9 + 10) * 10);
   expect(realSnapshot(p.e.snapshot()).nodes.caller.threads?.working).toBe(9);
   p.e.step(1000 - p.e.metrics().time);
   expect(p.e.snapshot().nodes.caller.resources?.memoryMiB).toBe(p.publishedOccupancy());
@@ -284,7 +285,7 @@ it.each([false, true])("scale changes preserve resource-backed non-blocking thre
   const current = [...p.state().ledger.reservations.values()].find((r) => r.scope === "thread");
   expect(current).toBe(tail);
   expect(realSnapshot(p.e.snapshot()).nodes.caller.threads?.working).toBe(2);
-  if (enabled) expect(p.e.snapshot().nodes.caller.resources?.memoryMiB).toBe(10);
+  if (enabled) expect(p.e.snapshot().nodes.caller.resources?.memoryMiB).toBe(2 + 1);
   p.e.step(30_000);
   expect(p.e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 0, inFlight: 0 });
   expect(p.e.snapshot().nodes.result.processed).toBe(1);

@@ -8,6 +8,8 @@ import { createSimulationRun } from "./simulation";
 import { autoScale } from "./scale";
 import { realSnapshot } from "./units";
 import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { SampledLedger } from "./ledger";
+import type { SimSnapshot } from "./types";
 
 it.each(["reply", "local"])("sampled failed replies preserve caller capacity (%s)", (failure) => {
   const d = waitingFixture();
@@ -297,12 +299,66 @@ it("nested sampled callers account for a downstream sampling delay once", () => 
   expect(Math.abs(counts[1] / counts[0] - 1)).toBeLessThan(0.01);
 });
 
-function drain(engine: ReturnType<typeof createEngine>, count = 16) {
-  for (let i = 0; i < 600; i++) {
-    engine.step(10);
-    const t = realSnapshot(engine.snapshot()).nodes.caller.threads!;
-    expect(t.working + t.waiting).toBeLessThanOrEqual(t.slots + 1e-9);
+type ShrinkRun = { step(ms: number): void; snapshot(): SimSnapshot };
+
+function expectShrinkMatchesScaleOne(sampled: ShrinkRun, scaleOne: ShrinkRun, scale = 4) {
+  const reserve = vi.spyOn(SampledLedger.prototype, "reserve");
+  const retire = vi.spyOn(SampledLedger.prototype, "retire");
+  let previous = sampled.snapshot();
+  try {
+    for (let i = 0; i < 600; i++) {
+      scaleOne.step(10);
+      reserve.mockClear();
+      retire.mockClear();
+      sampled.step(10);
+      const current = sampled.snapshot();
+      const t = current.nodes.caller.threads!;
+      const before = previous.nodes.caller.threads!;
+      const reference = scaleOne.snapshot().nodes.caller.threads!;
+      const held = t.working + t.waiting;
+      const priorHeld = before.working + before.waiting;
+      // At scale 1, shrinking 4 -> 1 keeps waiting=4, slots=1 for about 60 ms.
+      // The old held <= slots bound rejected that reference behavior; preserve
+      // existing (w, N), compare every tick, and independently check I4 and drain.
+      expect(Math.abs(held - reference.working - reference.waiting)).toBeLessThanOrEqual(scale);
+      for (const [index, [scope, represented, room]] of reserve.mock.calls.entries())
+        if (scope.owner === "caller" && reserve.mock.results[index].value)
+          expect(room).toBeGreaterThanOrEqual(Math.min(1, represented));
+      if (priorHeld > t.slots + 1e-9) expect(held).toBeLessThanOrEqual(priorHeld + 1e-9);
+      if (held > t.slots + 1e-9) {
+        expect(t.queued).toBeGreaterThanOrEqual(before.queued);
+        const starts = reserve.mock.calls.filter(
+          ([scope], index) => scope.owner === "caller" && reserve.mock.results[index].value,
+        );
+        expect(starts).toHaveLength(0);
+        const completed = retire.mock.calls
+          .filter(([r]) => r.owner === "caller" && r.scope === "request")
+          .reduce((sum, [r]) => {
+            expect(r.startActive).toBeLessThanOrEqual(previous.time);
+            return sum + r.represented;
+          }, 0);
+        expect(current.nodes.caller.processed - previous.nodes.caller.processed).toBeLessThanOrEqual(completed);
+      }
+      previous = current;
+    }
+  } finally {
+    reserve.mockRestore();
+    retire.mockRestore();
   }
+}
+
+function drain(engine: ReturnType<typeof createEngine>, count = 16, scaleOne?: ReturnType<typeof createEngine>) {
+  if (scaleOne)
+    expectShrinkMatchesScaleOne(
+      { step: engine.step, snapshot: () => realSnapshot(engine.snapshot()) },
+      { step: scaleOne.step, snapshot: () => realSnapshot(scaleOne.snapshot()) },
+    );
+  else
+    for (let i = 0; i < 600; i++) {
+      engine.step(10);
+      const t = realSnapshot(engine.snapshot()).nodes.caller.threads!;
+      expect(t.working + t.waiting).toBeLessThanOrEqual(t.slots + 1e-9);
+    }
   const s = realSnapshot(engine.snapshot());
   expect(s.nodes.caller.processed).toBe(count);
   expect(s.nodes.result.processed).toBe(count);
@@ -311,19 +367,20 @@ function drain(engine: ReturnType<typeof createEngine>, count = 16) {
 }
 
 it.each([0, 500])("sampled runs drain after timeline pool reductions (%i)", (atMs) => {
-  const run = createSimulationRun(waitingFixture(), {
+  const simulation: Simulation = {
     id: "run",
     title: "Run",
     scale: 4,
     durationMs: 6000,
     traffic: [{ id: "burst", node: "source", shape: { kind: "burst", count: 16 } }],
     timeline: [{ atMs, action: { do: "props", node: "caller", props: { concurrency: 1 } } }],
-  });
-  for (let i = 0; i < 600; i++) {
-    run.step(10);
-    const t = run.units.realSnapshot().nodes.caller.threads!;
-    expect(t.working + t.waiting).toBeLessThanOrEqual(t.slots + 1e-9);
-  }
+  };
+  const run = createSimulationRun(waitingFixture(), simulation);
+  const scaleOne = createSimulationRun(waitingFixture(), { ...simulation, scale: 1 });
+  expectShrinkMatchesScaleOne(
+    { step: run.step, snapshot: run.units.realSnapshot },
+    { step: scaleOne.step, snapshot: scaleOne.units.realSnapshot },
+  );
   expect(run.units.realSnapshot().nodes.caller.processed).toBe(16);
   expect(run.units.realSnapshot().nodes.caller.threads?.queued).toBe(0);
   expect(run.units.realSnapshot().inSystem).toBe(0);
@@ -333,15 +390,22 @@ it.each([{ replicas: 1 }, { concurrency: 1 }])("sampled callers drain after a li
   const d = waitingFixture();
   Object.assign(d.nodes[1].props!, { replicas: patch.replicas ? 4 : 1, concurrency: patch.concurrency ? 4 : 1 });
   const e = createEngine({ scale: 4 });
+  const scaleOne = createEngine({ scale: 1 });
   e.load(d);
+  scaleOne.load(d);
   e.inject("source", 4);
+  scaleOne.inject("source", 16);
   e.step(100);
+  scaleOne.step(100);
   e.setNodeProps("caller", patch);
+  scaleOne.setNodeProps("caller", patch);
   const checkpoint = e.checkpoint();
-  drain(e);
+  const referenceCheckpoint = scaleOne.checkpoint();
+  drain(e, 16, scaleOne);
   const expected = e.snapshot();
   e.restore(checkpoint);
-  drain(e);
+  scaleOne.restore(referenceCheckpoint);
+  drain(e, 16, scaleOne);
   expect(e.snapshot()).toEqual(expected);
   e.setNodeProps("caller", { replicas: 2, concurrency: 3 });
   e.inject("source", 4);

@@ -44,6 +44,7 @@ function compare(real: Real, model: Model): void {
   expect(a.state().ledger).toEqual(b.state().ledger);
   expect(randomDraws(a.engine)).toBe(randomDraws(b.engine));
   for (const p of real.probes) {
+    assertLedgerInvariants({ ...p.state(), nodes: [...p.state().nodes] });
     // A live setScale(1) preserves reservations admitted under the old scale.
     for (const owner of p.state().ledger.owners.values())
       for (const due of owner.heap) {

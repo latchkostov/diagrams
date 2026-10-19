@@ -1,6 +1,6 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
-import { reserveCallerOccupancy, type CallerOccupancy } from "./callerOccupancy";
+import { reserveCallerOccupancy, type CallerOccupancy } from "./ledger";
 import {
   normalizeCall,
   quotaKey,
@@ -156,7 +156,7 @@ export function reserveContinuation(
   const key = (state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy))
     .slots;
   const available = slots - (state.inFlight.get(key) ?? 0);
-  if (available <= 0 || (!partial && available + 1e-9 < weight)) return undefined;
+  if (available < Math.min(1, weight) || (!partial && available + 1e-9 < weight)) return undefined;
   const reservation = reserveCallerOccupancy(weight, available, retained);
   state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
   return { ...reservation, keys: [key] };
@@ -324,6 +324,7 @@ export function attemptAdmission(
   slots = policy.slots,
   extra: readonly Requirement[] = [],
   partialOccupancy = false,
+  retained?: CallerOccupancy,
 ): { lease: AdmissionLease; latencyMs?: number; errorRate?: number } | { rejected: string } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
@@ -336,16 +337,16 @@ export function attemptAdmission(
     const bucket = bucketAt(state, key, quota, now);
     if (bucket.tokens + 1e-9 < weight * cost) return { rejected: `${quota.id}: ${quota.unit}` };
   }
-  let occupancy = weight;
-  if (partialOccupancy) {
+  let occupancy = retained?.weight ?? weight;
+  if (partialOccupancy && !retained) {
     if (slots !== undefined) occupancy = Math.min(occupancy, slots - (state.inFlight.get(compiled.slots) ?? 0));
     for (const [key, limit] of call.limits) occupancy = Math.min(occupancy, limit - (state.inFlight.get(key) ?? 0));
-    if (occupancy <= 0) return { rejected: "concurrency" };
+    if (occupancy < Math.min(1, weight)) return { rejected: "concurrency" };
   }
-  if (slots !== undefined && (state.inFlight.get(compiled.slots) ?? 0) + occupancy > slots + 1e-9)
+  if (!retained && slots !== undefined && (state.inFlight.get(compiled.slots) ?? 0) + occupancy > slots + 1e-9)
     return { rejected: "concurrency" };
   for (const [key, limit] of call.limits)
-    if ((state.inFlight.get(key) ?? 0) + occupancy > limit + 1e-9) return { rejected: "concurrency" };
+    if (!retained && (state.inFlight.get(key) ?? 0) + occupancy > limit + 1e-9) return { rejected: "concurrency" };
   for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
   const reservation = reserveCallerOccupancy(weight, occupancy);
