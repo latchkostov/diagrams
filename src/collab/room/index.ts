@@ -28,7 +28,33 @@ export const ROOM_CAP = 8;
 
 let store: IndexedDbRecoveryStore | undefined;
 
+/**
+ * Tabs of this browser asking each other who holds a member id (a duplicated tab copies its record with it): the tab
+ * whose open room has it says so, and the asker takes an id of its own.
+ */
+const members = typeof BroadcastChannel === "function" ? new BroadcastChannel("diagrams-room-members") : undefined;
+members?.addEventListener("message", (e: MessageEvent<{ t?: string; member?: string }>) => {
+  const member = room.getSnapshot().open?.roster.get().member;
+  if (e.data?.t === "who" && member && e.data.member === member) members.postMessage({ t: "mine", member });
+});
+const memberTaken = (member: string) =>
+  new Promise<boolean>((resolve) => {
+    if (!members) return resolve(false);
+    const done = (taken: boolean) => {
+      clearTimeout(timer);
+      members.removeEventListener("message", heard);
+      resolve(taken);
+    };
+    const heard = (e: MessageEvent<{ t?: string; member?: string }>) => {
+      if (e.data?.t === "mine" && e.data.member === member) done(true);
+    };
+    const timer = setTimeout(() => done(false), 250);
+    members.addEventListener("message", heard);
+    members.postMessage({ t: "who", member });
+  });
+
 export const room = new RoomLifecycle({
+  memberTaken,
   transport: (keys) => {
     const { trackers, iceServers } = roomEndpoints();
     return createTrackerTransport({

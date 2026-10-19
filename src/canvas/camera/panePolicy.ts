@@ -48,6 +48,7 @@ import type {
  * | L7  | pane.settled                  | live panel work, owner manual              | reveal with edges if covered            |
  * | L8  | pane.settled                  | live.panel, live.card, owner manual        | nothing                                 |
  * | L9  | pane.settled                  | live.added                                 | liveFit clear of the panel, any owner   |
+ * | L10 | narration                     | following a shared run, owner manual       | the note's focus kept; the view stays   |
  * | W1  | slowmo(on)                    |                                            | owner slowmo; resume := owner           |
  * | W1a | slowmo(on)                    | starting with pending work                 | pending := slowmo.take (fold the work) |
  * | W1b | pane.changed(panel)           | slow motion already on, not presenting     | stop now; pending := panel; W5 replays  |
@@ -129,9 +130,11 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
         : next({});
     case "overlay.opened":
       return state.mode === "edit" && state.owner === "fit" ? next({}, { type: "fit", reason: "checks" }) : next({});
+    case "watching":
+      return next({ watching: event.on });
     case "narration": {
       const live = { ...state.live, focus: event.focus };
-      if (state.slowmo) return next({ live });
+      if (state.slowmo || (state.watching && state.owner === "manual")) return next({ live });
       if (event.focus.length)
         return next({ live, owner: "narration", zoomPriority: false, pending: { cause: "narration" } });
       if (!state.live.focus.length) return next({ live });

@@ -31,15 +31,23 @@ export interface PresenceState {
   selection?: string[];
   /** Where their pointer is over the canvas, in flow coordinates (absent: not over it). */
   cursor?: { x: number; y: number };
-  /** Shared Live (src/collab/room/liveShare.ts): the room's creator says so; they drive Live for the room. */
+  /** This tab's member id (src/collab/room/roomRoster.ts): the same across its reloads, unlike the sender id. */
+  member?: string;
+  /** The room's host (src/collab/room/roles.ts): its creator to begin with, or whom the last host handed it to. */
   host?: true;
+  /** The host's roster, said by the host: its co-hosts (member ids, the earliest made first). */
+  cohosts?: string[];
+  /** The host's roster: who drives the room's Live (a member id); absent, the host does. */
+  driver?: string;
   /** The host's Live run others can watch: its id, its title, and whether it's playing. */
   live?: { run: string; title: string; playing: boolean };
   /** The host's view while in Live, for "Follow the host's view": its centre in flow coordinates, and its zoom. */
   view?: { x: number; y: number; zoom: number };
 }
 
-/** The longest Live run id and title presence carries. */
+/** The longest Live run id and title presence carries; the most co-hosts a roster names (a room's size). */
+const MAX_COHOSTS = COLLAB_LIMITS.maxCohosts;
+const SENDER = /^[0-9a-f]{8,64}$/;
 const MAX_RUN_CHARS = 64;
 const MAX_TITLE_CHARS = 120;
 
@@ -97,7 +105,24 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
   const o = v as Record<string, unknown>;
   const keys = Object.keys(o);
   if (!["alias", "colour", "status"].every((k) => keys.includes(k))) return undefined;
-  if (keys.some((k) => !["alias", "colour", "status", "selection", "cursor", "host", "live", "view"].includes(k)))
+  if (
+    keys.some(
+      (k) =>
+        ![
+          "alias",
+          "colour",
+          "status",
+          "selection",
+          "cursor",
+          "member",
+          "host",
+          "cohosts",
+          "driver",
+          "live",
+          "view",
+        ].includes(k),
+    )
+  )
     return undefined;
   if (typeof o.alias !== "string") return undefined;
   // Control and bidirectional-override characters could disguise one alias as another.
@@ -129,6 +154,24 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
     if (o.host !== true) return undefined;
     state.host = true;
   }
+  if (o.member !== undefined) {
+    if (typeof o.member !== "string" || !SENDER.test(o.member)) return undefined;
+    state.member = o.member;
+  }
+  if (o.cohosts !== undefined) {
+    const ids = o.cohosts;
+    if (
+      !Array.isArray(ids) ||
+      ids.length > MAX_COHOSTS ||
+      !ids.every((id) => typeof id === "string" && SENDER.test(id))
+    )
+      return undefined;
+    state.cohosts = [...new Set(ids as string[])];
+  }
+  if (o.driver !== undefined) {
+    if (typeof o.driver !== "string" || !SENDER.test(o.driver)) return undefined;
+    state.driver = o.driver;
+  }
   if (o.live !== undefined) {
     const l = o.live as Record<string, unknown> | null;
     if (typeof l !== "object" || l === null || Array.isArray(l) || Object.keys(l).length !== 3) return undefined;
@@ -156,7 +199,10 @@ export function encodePresence(s: PresenceState): Uint8Array {
     alias: s.alias,
     colour: s.colour,
     status: s.status,
+    ...(s.member ? { member: s.member } : {}),
     ...(s.host ? { host: true } : {}),
+    ...(s.cohosts?.length ? { cohosts: s.cohosts.slice(0, MAX_COHOSTS) } : {}),
+    ...(s.driver ? { driver: s.driver } : {}),
     ...(s.live
       ? { live: { run: s.live.run, title: s.live.title.slice(0, MAX_TITLE_CHARS), playing: s.live.playing } }
       : {}),

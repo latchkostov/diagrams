@@ -2,6 +2,7 @@ import { bytesToBase64Url } from "../../interop/codec";
 import { ROOM_TAB_KEY } from "../../lib/roomEntry";
 import { safeSessionStorage } from "../../lib/storage";
 import { parseRoomValue, type RoomLink } from "../link";
+import { parseRoster, type RosterRecord } from "./roomRoster";
 
 // This tab's open room (owner decision Q4): a reload keeps you in it. sessionStorage only, so it is never shared
 // with another tab or kept past this one; Leave removes it, closing the tab drops it, and Clear everything removes
@@ -22,6 +23,8 @@ export interface TabRoomRecord {
    * it into the recovered document, so an edit made just before the reload isn't lost and nothing newer is reverted.
    */
   pending?: string;
+  /** This tab's roles in the room (./roomRoster.ts): who hosts now, and the last roster a host said. */
+  roster?: RosterRecord;
 }
 
 export interface TabRoomStore {
@@ -52,6 +55,7 @@ function parseRecord(text: string | null): TabRoomRecord | undefined {
       ...(typeof v.slug === "string" ? { slug: v.slug } : {}),
       ...(typeof v.alias === "string" ? { alias: v.alias } : {}),
       ...(typeof v.pending === "string" ? { pending: v.pending } : {}),
+      ...(parseRoster(v.roster) ? { roster: parseRoster(v.roster) } : {}),
     };
   } catch {
     return undefined;

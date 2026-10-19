@@ -329,6 +329,60 @@ describe("leaving and reloading", () => {
     expect(reloaded.library.entries.size).toBe(1);
   });
 
+  it("who hosts now, and the roster, survive a reload (not the role a tab came in with)", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 12),
+      b = browser(net, clock, 13);
+    await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    const aRoster = a.room.getSnapshot().open!.roster;
+    const bRoster = b.room.getSnapshot().open!.roster;
+    expect(aRoster.get().hosting).toBe(true);
+    expect(bRoster.get().hosting).toBe(false);
+    // The creator makes the joiner host: the joiner hosts, with the creator as co-host and driving.
+    bRoster.update({
+      hosting: true,
+      host: bRoster.get().member,
+      cohosts: [aRoster.get().member],
+      driver: aRoster.get().member,
+    });
+    aRoster.update({ hosting: false, host: bRoster.get().member, cohosts: [aRoster.get().member] });
+    b.room.pageHidden();
+    a.room.pageHidden();
+    await settle(net);
+    const b2 = browser(net, clock, 14, b);
+    const a2 = browser(net, clock, 15, a);
+    await b2.room.resume();
+    await a2.room.resume();
+    const promoted = b2.room.getSnapshot().open!.roster.get();
+    const resigned = a2.room.getSnapshot().open!.roster.get();
+    // The promoted joiner hosts after its reload; the creator who handed it on doesn't take it back.
+    expect(promoted).toMatchObject({ hosting: true, cohosts: [aRoster.get().member], driver: aRoster.get().member });
+    expect(promoted.member).toBe(bRoster.get().member);
+    expect(resigned).toMatchObject({ hosting: false, host: bRoster.get().member });
+    expect(resigned.member).toBe(aRoster.get().member);
+  });
+
+  it("a duplicated tab (its record copied, member id and all) takes an id of its own, and no claim to host", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 12);
+    await start(a);
+    const original = a.room.getSnapshot().open!.roster.get();
+    // The copy's own lifecycle, its tab store a copy of the original's, and another tab answering for the member.
+    const copy = browser(net, clock, 13, a);
+    (copy.room as unknown as { deps: { memberTaken?: (m: string) => Promise<boolean> } }).deps.memberTaken = async (
+      m,
+    ) => m === original.member;
+    await copy.room.resume();
+    const cloned = copy.room.getSnapshot().open!.roster.get();
+    expect(cloned.member).not.toBe(original.member);
+    expect(cloned.hosting).toBe(false);
+    expect(a.room.getSnapshot().open!.roster.get()).toEqual(original);
+  });
+
   it("an edit the checkpoint hadn't saved before a reload is merged back in", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();

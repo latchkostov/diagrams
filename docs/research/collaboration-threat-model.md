@@ -299,7 +299,10 @@ What the production feature adds to the model above.
     the host's; what a follower keeps of a run is bounded too (1 MiB or 20,000 entries, 32 waiting digests), and a
     seek's synchronous work is judged by the controller from the tick it reached.
 
-  Only Live on the room's own diagram is attached: a session on any other diagram, or one that becomes Private, sends
+  Hosts and requests (P3) add the host's roster to its presence (co-hosts, the driver, as sender ids), and requests,
+  answers, a driver's handoff and a host's handover on the live channel. All of it is cooperative too: any member
+  could claim to host, ignore a "Not now" or hand themselves the run. Only Live on the room's own diagram is
+  attached: a session on any other diagram, or one that becomes Private, sends
   nothing and is detached at once (every send checks). Presence carries `host`, the shown run's title and the host's
   view centre. All of it is cooperative: any member
   holds the key and could send Live frames or claim `host`. Followers trust the lowest sender id claiming it. Signed

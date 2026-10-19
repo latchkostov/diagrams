@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import type { CanvasHandle } from "../../canvas/CanvasView";
 import { t, useLocale } from "../../i18n";
 import { BRAND_NAME } from "../../lib/deployment";
@@ -30,7 +38,8 @@ import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
 import { interactionJournal } from "../../canvas/interaction/journal";
 import { RECONNECT_MS } from "./timing";
 import { hasTrackers, roomEndpoints, serviceHosts } from "./endpoints";
-import { roomWatch, type WatchState, type WatchTogether } from "./watch";
+import { roomWatch, type Prompt, type WatchState, type WatchTogether } from "./watch";
+import { rolesOf } from "./roles";
 import "./room.css";
 
 // The room's controls (collaboration plan §2.2–2.6): the consent dialogs (start and join), what a joiner sees while
@@ -176,7 +185,22 @@ const NOTICES: Record<RoomNotice, () => string> = {
  * The dialogs: consent to start (the open diagram) or to join (a link), and a link that can't be opened. Nothing is
  * contacted before Start room or Join.
  */
-export function RoomLayer({
+export function RoomLayer(props: {
+  room: RoomLifecycle;
+  slug: string;
+  canvas: RefObject<CanvasHandle | null>;
+  /** The diagram view is on screen (not Stencils or the Lab): the alert sits over the room's canvas only. */
+  canvasShown: boolean;
+}) {
+  return (
+    <>
+      <RoomLayerMain {...props} />
+      <WatchLayer />
+    </>
+  );
+}
+
+function RoomLayerMain({
   room,
   slug,
   canvas,
@@ -185,7 +209,6 @@ export function RoomLayer({
   room: RoomLifecycle;
   slug: string;
   canvas: RefObject<CanvasHandle | null>;
-  /** The diagram view is on screen (not Stencils or the Lab): the alert sits over the room's canvas only. */
   canvasShown: boolean;
 }) {
   useLocale();
@@ -567,7 +590,7 @@ function followingAnnouncement(w: WatchState | undefined): string {
 function followingText(w: WatchState | undefined): string | undefined {
   const f = w?.following;
   if (!f) return undefined;
-  const alias = w.host?.alias ?? "";
+  const alias = w.driver?.alias ?? "";
   const seconds = (ms: number) => `${Math.floor(ms / 60_000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
   switch (f.phase) {
     case "joining":
@@ -606,7 +629,12 @@ function OpenChip({
     "data-present": session.peers().length,
     "data-role": open.role,
     // Watch together: following the host's Live (its phase), hosting, or neither.
-    "data-watch": watching?.following?.phase ?? (watching?.hosting ? "host" : watching?.show ? "offered" : "none"),
+    "data-watch":
+      watching?.following?.phase ??
+      (watching?.hosting ? "host" : watching?.driving ? "driving" : watching?.show ? "offered" : "none"),
+    // Hosts and requests: this person's roles (the host, a co-host; driving Live).
+    "data-host": watching?.hosting ? "true" : watching?.cohosting ? "cohost" : "false",
+    "data-driving": watching?.driving ? "true" : "false",
     // For diagnostics (the Nightly network smoke classifies a failure by it): never shown.
     "data-connectivity": session.connectivity,
   };
@@ -630,7 +658,9 @@ function OpenChip({
   };
   const entries = (): MenuEntry[] => [
     { type: "section", label: t("collab.inRoom") },
-    { type: "note", text: <People session={session} /> },
+    { type: "note", text: <People session={session} watching={watching} /> },
+    // The host acts on each person: their own row, with a menu of what the host can do.
+    ...(watch && watching?.hosting ? personEntries(watch, watching, session) : []),
     { type: "separator" },
     ...(state === "failed"
       ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: retry }]
@@ -673,12 +703,27 @@ function OpenChip({
   );
 }
 
-/** Watch together's rows in the chip's menu: watch the host's Live, or (following) stop and follow their view. */
+/**
+ * Watch together's rows in the chip's menu: watch the driver's Live, or (following) ask to drive, stop, and follow
+ * their view; with your own Live, show it to the room.
+ */
 function watchEntries(watch: WatchTogether | undefined, w: WatchState | undefined): MenuEntry[] {
-  if (!watch || !w || w.hosting) return [];
-  const alias = w.host?.alias ?? "";
+  if (!watch || !w || w.driving) return [];
+  const alias = w.driver?.alias ?? "";
+  // Following (a host who let someone drive too): stop, and follow their view; others can ask to drive.
   if (w.following)
     return [
+      ...(w.hosting
+        ? []
+        : [
+            {
+              type: "item" as const,
+              testId: "room-ask-drive",
+              title: w.asked === "drive" ? t("collab.askedToDrive") : t("collab.askToDrive"),
+              disabled: !!w.asked,
+              onSelect: () => watch.askToDrive(),
+            },
+          ]),
       { type: "item", testId: "room-watch-stop", title: t("collab.watchStop"), onSelect: () => watch.watchOnMyOwn() },
       {
         type: "item",
@@ -690,34 +735,107 @@ function watchEntries(watch: WatchTogether | undefined, w: WatchState | undefine
       },
       { type: "separator" },
     ];
-  if (!w.show) return [];
+  const entries: MenuEntry[] = [];
+  if (w.show)
+    entries.push({
+      type: "item",
+      testId: "room-watch",
+      title: t("collab.watchMenu", { alias }),
+      onSelect: () => watch.watch(),
+    });
+  if (watch.canShow && !w.hosting)
+    entries.push({
+      type: "item",
+      testId: "room-show-live",
+      title: w.asked === "show" ? t("collab.askedToShow") : t("collab.showToRoom"),
+      disabled: !!w.asked,
+      onSelect: () => watch.showToRoom(),
+    });
+  return entries.length ? [...entries, { type: "separator" }] : [];
+}
+
+/** The host's row per person: their roles, and a menu (co-host, drive, host). */
+function personEntries(watch: WatchTogether, w: WatchState, session: CollabSession): MenuEntry[] {
+  return session.peers().map((p) => {
+    const roles = rolesOf(w.roster, p.sender);
+    return {
+      type: "item" as const,
+      testId: "room-person-row",
+      title: p.alias,
+      desc: roleWords(roles),
+      submenuTestId: "room-person-menu",
+      submenu: (): MenuEntry[] => [
+        roles.cohost
+          ? {
+              type: "item",
+              testId: "room-remove-cohost",
+              title: t("collab.removeCohost"),
+              onSelect: () => watch.setCohost(p.sender, false),
+            }
+          : {
+              type: "item",
+              testId: "room-make-cohost",
+              title: t("collab.makeCohost"),
+              onSelect: () => watch.setCohost(p.sender, true),
+            },
+        roles.driving
+          ? { type: "item", testId: "room-take-back", title: t("collab.takeBack"), onSelect: () => watch.takeBack() }
+          : {
+              type: "item",
+              testId: "room-let-drive",
+              title: t("collab.letDrive"),
+              onSelect: () => watch.letDrive(p.sender),
+            },
+        {
+          type: "item",
+          testId: "room-make-host",
+          title: t("collab.makeHost"),
+          onSelect: () => watch.makeHost(p.sender),
+        },
+      ],
+    };
+  });
+}
+
+/** "host · driving": a person's roles in words. */
+function roleWords(roles: { host: boolean; cohost: boolean; driving: boolean }): string {
   return [
-    { type: "item", testId: "room-watch", title: t("collab.watchMenu", { alias }), onSelect: () => watch.watch() },
-    { type: "separator" },
-  ];
+    roles.host && t("collab.roleHost"),
+    roles.cohost && t("collab.roleCohost"),
+    roles.driving && t("collab.roleDriving"),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** Who is here: you, then each peer by the name they gave (unverified), in their colour. */
-function People({ session }: { session: CollabSession }): ReactNode {
+function People({ session, watching }: { session: CollabSession; watching?: WatchState }): ReactNode {
   // Names and statuses change without the count changing: its own subscription.
   useSyncExternalStore(
     (fn) => session.onChange(fn),
     () => session.presenceRevision,
   );
   const me = session.me;
+  const roster = watching?.roster;
+  const mine = roster && roleWords(rolesOf(roster, session.senderId));
   return (
     // Inside a menu, so not a list (a menu holds menu items): rows of text with no role of their own.
     <div className="room-people" role="presentation" data-testid="room-people">
       <div role="presentation" data-testid="room-person-you">
         <span className="room-dot" style={{ color: PRESENCE_COLOURS[me.colour] }} aria-hidden="true" />
         {t("collab.you", { alias: me.alias })}
+        {mine && ` · ${mine}`}
       </div>
-      {session.peers().map((p) => (
-        <div key={p.sender} role="presentation" data-testid="room-person">
-          <span className="room-dot" style={{ color: PRESENCE_COLOURS[p.colour] }} aria-hidden="true" />
-          {t("collab.peer", { alias: p.alias, status: p.status })}
-        </div>
-      ))}
+      {session.peers().map((p) => {
+        const roles = roster && roleWords(rolesOf(roster, p.sender));
+        return (
+          <div key={p.sender} role="presentation" data-testid="room-person">
+            <span className="room-dot" style={{ color: PRESENCE_COLOURS[p.colour] }} aria-hidden="true" />
+            {t("collab.peer", { alias: p.alias, status: p.status })}
+            {roles && ` · ${roles}`}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -881,6 +999,124 @@ function ConnectingFailure({
       >
         {t("common.retry")}
       </button>
+    </div>
+  );
+}
+
+/**
+ * Watch together's in-room surfaces: the host's (and co-hosts') request cards under the chip, never taking focus or
+ * the keyboard; and "Sam is driving" where a follower used the inert live bar.
+ */
+function WatchLayer(): ReactNode {
+  useLocale();
+  const { watch, state } = useWatch();
+  if (!watch || !state) return null;
+  return (
+    <>
+      {state.prompts.length > 0 && <RequestCards watch={watch} prompts={state.prompts} />}
+      {state.inert && state.following && <DrivingPopover watch={watch} state={state} at={state.inert} />}
+    </>
+  );
+}
+
+/** The request cards under the chip (the toolbar measured only while there are some). */
+function RequestCards({ watch, prompts }: { watch: WatchTogether; prompts: Prompt[] }) {
+  const top = useToolbarBottom();
+  return (
+    <div className="room-prompts" style={{ insetBlockStart: top + 8 }}>
+      {prompts.map((p) => (
+        <RequestCard key={p.from} prompt={p} onAnswer={(yes) => watch.answer(p, yes)} />
+      ))}
+    </div>
+  );
+}
+
+function RequestCard({ prompt, onAnswer }: { prompt: Prompt; onAnswer: (yes: boolean) => void }) {
+  const drive = prompt.what === "drive";
+  return (
+    <div className="room-prompt" role="status" data-testid={drive ? "room-prompt-drive" : "room-prompt-show"}>
+      <p>
+        {drive
+          ? t("collab.promptDrive", { alias: prompt.alias })
+          : t("collab.promptShow", { alias: prompt.alias, title: prompt.title ?? "" })}
+      </p>
+      <div className="room-alert-actions">
+        <button className="btn" onClick={() => onAnswer(false)} data-testid="room-prompt-decline">
+          {t("collab.notNow")}
+        </button>
+        <button className="btn btn-primary" onClick={() => onAnswer(true)} data-testid="room-prompt-accept">
+          {drive ? t("collab.letThem") : t("collab.showEveryone")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** "Sam is driving.", where the follower used the live bar: Ask to drive, or watch on their own. */
+function DrivingPopover({
+  watch,
+  state,
+  at,
+}: {
+  watch: WatchTogether;
+  state: WatchState;
+  at: { x: number; y: number };
+}) {
+  const card = useRef<HTMLDivElement>(null);
+  // Where it fits: above what was used, within the viewport (measured once it's drawn).
+  const [place, setPlace] = useState<{ left: number; top: number }>({ left: at.x, top: Math.max(8, at.y - 96) });
+  useLayoutEffect(() => {
+    const el = card.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const left = Math.min(Math.max(8, at.x), window.innerWidth - width - 8);
+    const top = Math.min(Math.max(8, at.y - height - 8), window.innerHeight - height - 8);
+    setPlace({ left: Math.max(8, left), top: Math.max(8, top) });
+  }, [at.x, at.y]);
+  useEffect(() => {
+    // Focus comes in, and goes back to what had it (else the canvas) when it closes with focus still inside.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const el = card.current;
+    el?.querySelector<HTMLElement>("button")?.focus();
+    const away = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !card.current?.contains(e.target as Node))
+        watch.dismissInert();
+    };
+    document.addEventListener("keydown", away);
+    document.addEventListener("pointerdown", away);
+    return () => {
+      document.removeEventListener("keydown", away);
+      document.removeEventListener("pointerdown", away);
+      const lost =
+        !document.activeElement || document.activeElement === document.body || el?.contains(document.activeElement);
+      if (!lost) return;
+      if (opener && opener !== document.body && opener.isConnected) opener.focus();
+      else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
+    };
+  }, [watch]);
+  return (
+    <div
+      ref={card}
+      className="room-driving"
+      role="dialog"
+      aria-label={t("collab.isDriving", { alias: state.driver?.alias ?? "" })}
+      data-testid="room-driving"
+      style={{ top: place.top, left: place.left }}
+    >
+      <p>{t("collab.isDriving", { alias: state.driver?.alias ?? "" })}</p>
+      <div className="room-alert-actions">
+        <button className="btn" onClick={() => watch.watchOnMyOwn()} data-testid="room-driving-own">
+          {t("collab.watchStop")}
+        </button>
+        <button
+          className="btn btn-primary"
+          disabled={!!state.asked}
+          onClick={() => watch.askToDrive()}
+          data-testid="room-driving-ask"
+        >
+          {state.asked ? t("collab.askedToDrive") : t("collab.askToDrive")}
+        </button>
+      </div>
     </div>
   );
 }

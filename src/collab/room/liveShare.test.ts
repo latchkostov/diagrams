@@ -997,6 +997,145 @@ describe("Watch together: the final round", () => {
   });
 });
 
+describe("Hosts and requests: the driver role moves at a tick", () => {
+  it("the host hands the run to a follower; the new driver changes a rate; the old host follows it by digest", () => {
+    const room = new Room();
+    const [H, G, O] = ["00aa00aa", "11bb11bb", "22cc22cc"];
+    const host = new LiveController(diagram);
+    host.selectSimulation(steady);
+    const hostDriver = new LiveDriver(room.channel(H), session(host), () => {}, undefined, timers);
+    host.setPlaying(true);
+    const make = (name: string) => {
+      const controller = new LiveController(diagram);
+      const w: Watcher = { controller, status: [], local: 0, follower: undefined as unknown as LiveFollower };
+      w.follower = new LiveFollower(
+        room.channel(name),
+        session(controller),
+        H,
+        (st) => w.status.push(st),
+        () => w.local++,
+        timers,
+      );
+      return w;
+    };
+    const guest = make(G);
+    const other = make(O);
+    const step = (driver: LiveController, followers: { c: LiveController; f: LiveFollower }[]) => {
+      vi.advanceTimersByTime(16);
+      driver.advance(16);
+      for (const { c, f } of followers) c.advance(f.pace(16));
+    };
+    const pairs = () => [
+      { c: guest.controller, f: guest.follower },
+      { c: other.controller, f: other.follower },
+    ];
+    for (let i = 0; i < 2_000 && !(guest.follower.phase === "following" && host.tick >= 600); i++) step(host, pairs());
+    expect(guest.follower.phase).toBe("following");
+    // The host lets the guest drive: the run is handed over at the host's tick.
+    const at = host.tick;
+    const snapshot = hostDriver.handoff(G);
+    expect(snapshot).toBeDefined();
+    if (!snapshot) return;
+    const hostStatus: FollowStatus[] = [];
+    const hostFollower = new LiveFollower(
+      room.channel(H),
+      session(host),
+      G,
+      (st) => hostStatus.push(st),
+      () => {},
+      timers,
+      snapshot,
+    );
+    expect(hostFollower.phase).toBe("following");
+    expect(other.follower.driver).toBe(G);
+    // The guest comes level with the handoff, then drives the same run on.
+    let level: ReturnType<LiveFollower["levelWith"]>;
+    for (let i = 0; i < 2_000 && !(level = guest.follower.levelWith(at, snapshot.seq)); i++) {
+      vi.advanceTimersByTime(16);
+      host.advance(hostFollower.pace(16));
+      for (const { c, f } of pairs()) c.advance(f.pace(16));
+    }
+    expect(level).toBeDefined();
+    expect(guest.controller.tick).toBe(at);
+    guest.follower.dispose();
+    const guestDriver = new LiveDriver(room.channel(G), session(guest.controller), () => {}, undefined, timers, level);
+    expect(guestDriver.runId).toBe(snapshot.id);
+    const followers = () => [
+      { c: host, f: hostFollower },
+      { c: other.controller, f: other.follower },
+    ];
+    for (let i = 0; i < 400; i++) step(guest.controller, followers());
+    // The new driver changes an entry rate: the old host (and everyone) follows it, on its tick.
+    guest.controller.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    for (let i = 0; i < 2_000 && guest.controller.tick < at + 900; i++) step(guest.controller, followers());
+    guest.controller.setPlaying(false);
+    for (let i = 0; i < 2_000 && !(host.tick === guest.controller.tick && other.controller.tick === host.tick); i++)
+      step(guest.controller, followers());
+    expect(host.tick).toBe(guest.controller.tick);
+    expect(digestOf(host)).toBe(digestOf(guest.controller));
+    expect(digestOf(other.controller)).toBe(digestOf(guest.controller));
+    expect(hostStatus.some((st) => st.phase === "cant-follow" || st.phase === "catching-up")).toBe(false);
+    expect(other.status.some((st) => st.phase === "cant-follow")).toBe(false);
+    guestDriver.dispose();
+  });
+});
+
+describe("Hosts and requests: the silence of a handoff", () => {
+  it("until the next driver's first beacon, followers wait as following, not as a dropped connection", () => {
+    const room = new Room();
+    const [H, G, O] = ["00aa00aa", "11bb11bb", "22cc22cc"];
+    const host = new LiveController(diagram);
+    host.selectSimulation(steady);
+    const driver = new LiveDriver(room.channel(H), session(host), () => {}, undefined, timers);
+    host.setPlaying(true);
+    const c = new LiveController(diagram);
+    const status: FollowStatus[] = [];
+    const other = new LiveFollower(
+      room.channel(O),
+      session(c),
+      H,
+      (st) => status.push(st),
+      () => {},
+      timers,
+    );
+    for (let i = 0; i < 2_000 && !(other.phase === "following" && host.tick >= 300); i++) {
+      vi.advanceTimersByTime(16);
+      host.advance(16);
+      c.advance(other.pace(16));
+    }
+    driver.handoff(G);
+    // Five seconds with no driver (the next one still coming level): following, held.
+    for (let i = 0; i < 300; i++) {
+      vi.advanceTimersByTime(16);
+      c.advance(other.pace(16));
+    }
+    expect(other.phase).toBe("following");
+    expect(status.some((st) => st.phase === "host-dropped")).toBe(false);
+    expect(other.driver).toBe(G);
+    other.dispose();
+  });
+});
+
+describe("Hosts and requests: a handoff mid-replay", () => {
+  it("waits for the driver's Inputs replay: its tick is the ops' again before the run is handed over", () => {
+    const room = new Room();
+    const host = new LiveController(diagram);
+    host.selectSimulation(steady);
+    const driver = new LiveDriver(room.channel("00aa00aa"), session(host), () => {}, undefined, timers);
+    host.setPlaying(true);
+    for (let i = 0; i < 300; i++) frame(host, []);
+    expect(driver.ready).toBe(true);
+    // An entry rate: the run is rebuilt and replayed to this moment, in slices.
+    host.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    expect(driver.ready).toBe(false);
+    for (let i = 0; i < 400 && !driver.ready; i++) frame(host, []);
+    expect(driver.ready).toBe(true);
+    const last = host.controlLog().at(-1);
+    expect(host.tick).toBeGreaterThanOrEqual(last?.tick ?? 0);
+    driver.dispose();
+  });
+});
+
 describe("the host's view, for followers who choose to follow it", () => {
   it("is the host's centre and zoom, placed in the follower's own pane", () => {
     const host = viewOf([100, 50, 2], { width: 1000, height: 600 });

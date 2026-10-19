@@ -21,7 +21,15 @@ export const watchNotices: WatchNotices = {
               ? t("collab.followTooLarge")
               : message === "ended"
                 ? t("collab.watchEnded", { alias })
-                : t("collab.cantFollow"),
-      { kind: message === "own" || message === "ended" ? "info" : "error" },
+                : message === "declined"
+                  ? t("collab.declined", { alias })
+                  : message === "driving"
+                    ? t("collab.nowDriving")
+                    : message === "host"
+                      ? t("collab.nowHost")
+                      : message === "rebased"
+                        ? t("collab.liveRebased")
+                        : t("collab.cantFollow"),
+      { kind: ["own", "ended", "declined", "driving", "host", "rebased"].includes(message) ? "info" : "error" },
     ),
 };

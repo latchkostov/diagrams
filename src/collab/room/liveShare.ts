@@ -46,6 +46,8 @@ const SLICE_BYTES = 12 * 1024;
 /** A run whose log has grown past either of these isn't sent any more (the next run is); nor is it kept. */
 export const MAX_RUN_BYTES = 1024 * 1024;
 export const MAX_RUN_ENTRIES = 20_000;
+/** How long a handoff may take, at most: the run held where it was handed over, then caught up to there. */
+export const HANDOFF_MS = 30_000;
 /** Digests a follower keeps waiting for their tick, at most. */
 export const MAX_DIGESTS = 32;
 /** One peer's requests for the whole run: at most one per this long (a follower asks every ASK_MS). */
@@ -94,7 +96,22 @@ export type LiveMessage =
   | ({ t: "beacon"; run: string } & HostClock)
   | { t: "digest"; run: string; tick: number; seq: number; hash: number }
   | { t: "stop"; run: string }
-  | { t: "hello" };
+  | { t: "hello" }
+  // Hosts and requests (P3, ./roles.ts): the driver hands its run to the next driver at a tick; someone asks the
+  // host and co-hosts to drive, or to show their own Live; they answer; a leaving host names the next one.
+  | { t: "handoff"; run: string; to: string; tick: number; seq: number }
+  | { t: "ask"; what: "drive" | "show"; title?: string }
+  | { t: "answer"; to: string; what: "drive" | "show"; yes: boolean }
+  | { t: "host"; to: string; cohosts: string[]; driver?: string };
+
+/** A shared run as its driver has it: what a new driver continues from, and the old one goes on following. */
+export interface RunSnapshot {
+  id: string;
+  start: RunStart;
+  entries: WireEntry[];
+  /** The last op's seq: the next driver's ops come after it. */
+  seq: number;
+}
 
 /** What became of a message: sent; too large to send at all; or not sent now (the room's closed, or not allowed). */
 export type SendResult = "sent" | "too-large" | "refused";
@@ -222,7 +239,16 @@ export function runOrigin(c: LiveController): RunStart | undefined {
  * run and anyone who asks. A run too large to send stops being shown, and says so (onError); the next one is.
  */
 export class LiveDriver {
-  private run?: { id: string; number: number; start: RunStart; entries: WireEntry[]; bytes: number; broken: boolean };
+  private run?: {
+    id: string;
+    number: number;
+    start: RunStart;
+    entries: WireEntry[];
+    bytes: number;
+    broken: boolean;
+    /** The run's own op numbering (it outlives a driver: the next one goes on from here). */
+    seq: number;
+  };
   /** The controller's run this driver is on (one it couldn't describe isn't shared: `run` is then absent). */
   private number: number;
   private nextDigest = DIGEST_EVERY_TICKS;
@@ -241,11 +267,28 @@ export class LiveDriver {
     private readonly onShow: (show: DriverShow | null) => void,
     private readonly onError: (problem: "too-large") => void = () => {},
     private readonly timers: LiveTimers = pageTimers,
+    /** A run handed over by the last driver: this one goes on with it, from where this controller is. */
+    adopt?: RunSnapshot,
   ) {
     const c = watched.controller;
     this.number = c.runId;
-    const origin = runOrigin(c);
-    if (origin) this.begin(c.runId, origin, c.controlLog());
+    if (adopt) {
+      const entries = adopt.entries.map((e) => ({ ...e }));
+      this.run = {
+        id: adopt.id,
+        number: c.runId,
+        start: adopt.start,
+        entries,
+        bytes: entries.reduce((n, e) => n + sizeOf(e), 0),
+        broken: false,
+        seq: adopt.seq,
+      };
+      this.nextDigest = c.tick + DIGEST_EVERY_TICKS;
+      this.show();
+    } else {
+      const origin = runOrigin(c);
+      if (origin) this.begin(c.runId, origin, c.controlLog());
+    }
     this.stops.push(
       c.onOp((entry) => this.logged(entry)),
       channel.onMessage((_sender, from, message) => {
@@ -269,8 +312,33 @@ export class LiveDriver {
     return this.run && !this.run.broken ? this.run.id : undefined;
   }
 
+  /**
+   * The run can be handed over now: the controller is at its logged ops' state. While it replays an Inputs change
+   * (or waits to), its tick is a replay's, which the next driver couldn't come level with.
+   */
+  get ready(): boolean {
+    const c = this.watched.controller;
+    const last = this.run?.entries.at(-1);
+    return !c.busy && !(last && c.tick < last.tick);
+  }
+
+  /**
+   * Hands the run to the next driver (`to`, a sender) at this controller's tick and stops driving (no stop: the run
+   * goes on). Returns the run, for this person to go on following it from here. Only when `ready`.
+   */
+  handoff(to: string): RunSnapshot | undefined {
+    const run = this.run && !this.run.broken ? this.run : undefined;
+    for (const stop of this.stops.splice(0)) stop();
+    this.answer?.();
+    this.answer = undefined;
+    this.run = undefined;
+    if (run) this.channel.send({ t: "handoff", run: run.id, to, tick: this.watched.controller.tick, seq: run.seq });
+    this.show();
+    return run && { id: run.id, start: run.start, entries: run.entries, seq: run.seq };
+  }
+
   private begin(number: number, start: RunStart, entries: readonly WireEntry[]): void {
-    const copies = entries.map(wire);
+    const copies = entries.map((e, i) => wire({ ...e, seq: i + 1 }));
     this.number = number;
     this.run = {
       id: `${this.nonce}.${number}.${++this.shared}`,
@@ -279,6 +347,7 @@ export class LiveDriver {
       entries: copies,
       bytes: copies.reduce((n, e) => n + sizeOf(e), 0),
       broken: false,
+      seq: copies.length,
     };
     this.nextDigest = this.watched.controller.tick + DIGEST_EVERY_TICKS;
     // Everyone gets a new run from its start (a follower on the last one starts over with it).
@@ -324,7 +393,7 @@ export class LiveDriver {
         return this.begin(this.number, this.startNow(), log);
       }
     }
-    const copy = wire(entry);
+    const copy = wire({ ...entry, seq: ++run.seq });
     run.entries.push(copy);
     run.bytes += sizeOf(copy);
     if (run.bytes > MAX_RUN_BYTES || run.entries.length > MAX_RUN_ENTRIES) return this.broke();
@@ -479,6 +548,8 @@ export class LiveFollower {
   private seen = 0;
   private digests: { tick: number; seq: number; hash: number; at: number }[] = [];
   private beacon?: HostClock & { at: number };
+  /** A handoff in progress: the old driver is silent and the next one not yet driving; that's expected until then. */
+  private handoffUntil = -Infinity;
   /** Asked for the run, and not had it whole yet. */
   private asking = false;
   /** An op is missing (the next one received skipped it): holding still, asking for the run. */
@@ -497,12 +568,14 @@ export class LiveFollower {
   constructor(
     private readonly channel: LiveChannel,
     private readonly watched: WatchedSession,
-    /** The host's sender id (presence's). */
-    private readonly host: string,
+    /** The driver's sender id (presence's): who this follows (a handoff names the next one). */
+    private host: string,
     private readonly onStatus: (status: FollowStatus) => void,
     /** This person changed the run themselves (they watch on their own from here). */
     private readonly onLocal: () => void,
     private readonly timers: LiveTimers = pageTimers,
+    /** The run this person drove until now: followed from here, where this controller is, with nothing to ask. */
+    adopt?: RunSnapshot,
   ) {
     this.clock = createFollowClock(() => this.target());
     this.stops.push(
@@ -515,8 +588,48 @@ export class LiveFollower {
       }),
       timers.every(BEACON_MS, () => this.check()),
     );
-    this.publish({ phase: "joining" });
-    this.ask();
+    if (adopt) {
+      const c = watched.controller;
+      this.run = { id: adopt.id, start: adopt.start, entries: adopt.entries, complete: true, bytes: 0, count: 0 };
+      this.next = adopt.entries.length;
+      this.appliedSeq = this.seen = adopt.seq;
+      // Holding where it handed over until the next driver's beacons say how the run goes on.
+      this.beacon = { tick: c.tick, playing: false, speed: c.settings.speed, on: c.isPlaying, at: timers.now() };
+      this.publish({ phase: "following" });
+    } else {
+      this.publish({ phase: "joining" });
+      this.ask();
+    }
+  }
+
+  /** Who this follows now (a handoff moves it to the next driver). */
+  get driver(): string {
+    return this.host;
+  }
+
+  /** It has this run whole (what a handoff of it needs to go on from). */
+  holds(run: string): boolean {
+    return !!this.run?.complete && this.run.id === run;
+  }
+
+  /**
+   * The run, once this browser is level with a handoff (on its tick, every op up to its seq applied): what this
+   * person goes on driving from. Undefined until then.
+   */
+  levelWith(tick: number, seq: number): RunSnapshot | undefined {
+    const run = this.run;
+    const c = this.c;
+    if (!run?.complete || c.busy || c.tick !== tick || this.appliedSeq < seq || this.next < run.entries.length)
+      return undefined;
+    return { id: run.id, start: run.start, entries: run.entries, seq: this.seen };
+  }
+
+  /**
+   * This person changed the run themselves while following: it's put back as the run is (rebuilt), without counting
+   * as drift.
+   */
+  restore(): void {
+    if (this.run?.complete) this.rebuild(true);
   }
 
   dispose(): void {
@@ -601,6 +714,7 @@ export class LiveFollower {
       case "beacon":
         if (m.run !== this.run?.id) return this.unfamiliar();
         if (!this.run.complete) return;
+        this.handoffUntil = -Infinity;
         this.beacon = { tick: m.tick, playing: m.playing, speed: m.speed, on: m.on, at: this.timers.now() };
         return;
       case "digest": {
@@ -618,6 +732,19 @@ export class LiveFollower {
           if (this.status.phase === "following") this.publish({ phase: "host-dropped" });
         }
         return;
+      case "handoff": {
+        if (m.run !== this.run?.id) return;
+        // The run goes on with the next driver: from them from now on, holding at the handoff's tick meanwhile.
+        const b = this.beacon;
+        this.host = m.to;
+        this.beacon = { tick: m.tick, playing: false, speed: b?.speed ?? 1, on: b?.on ?? true, at: this.timers.now() };
+        // The silence until the next driver's first beacon is expected; meanwhile this run comes to the handoff's
+        // tick, at once if it's far behind (a slow page).
+        this.handoffUntil = this.timers.now() + HANDOFF_MS;
+        if (this.status.phase === "host-dropped") this.publish({ phase: "following" });
+        if (this.status.phase === "following" && m.tick - this.c.tick > CATCH_UP_TICKS) this.catchUp();
+        return;
+      }
       default:
         return;
     }
@@ -712,7 +839,8 @@ export class LiveFollower {
   // -------------------------------------------------------------- lockstep
 
   private fresh(): boolean {
-    return !!this.beacon && this.timers.now() - this.beacon.at < HOST_SILENT_MS;
+    const now = this.timers.now();
+    return !!this.beacon && (now - this.beacon.at < HOST_SILENT_MS || now < this.handoffUntil);
   }
 
   /** The host's tick now, extrapolated from its last beacon, less the playout delay (none once it's paused). */
@@ -806,11 +934,11 @@ export class LiveFollower {
   // -------------------------------------------------------------- the run from its start
 
   /** This browser's run from the host's run's start, then caught up through its log, in slices. */
-  private rebuild(): void {
+  private rebuild(restoring = false): void {
     const run = this.run;
     if (!run?.complete) return this.resync();
     this.stopCatchUp();
-    if (++this.rebuilds > MAX_RESYNCS) return this.fail();
+    if (!restoring && ++this.rebuilds > MAX_RESYNCS) return this.fail();
     const c = this.c;
     const s = run.start;
     try {

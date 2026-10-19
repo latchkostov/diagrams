@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
+import { useDialogInteraction } from "./useDialogInteraction";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { t } from "../i18n";
@@ -11,45 +12,11 @@ import type { LoadStatus } from "../lib/lazyLoad";
  */
 export function ShortcutsShell({ onClose, status }: { onClose: () => void; status: LoadStatus }) {
   const panel = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  useLayoutEffect(() => {
-    close.current = onClose;
-  }, [onClose]);
-  useEffect(() => {
-    const element = panel.current;
-    if (!element) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      e.stopPropagation();
-      if (e.key === "Escape") {
-        e.preventDefault();
-        close.current();
-      } else if (e.key === "Tab") {
-        const controls = Array.from(element.querySelectorAll<HTMLElement>("button"));
-        e.preventDefault();
-        if (!controls.length) return element.focus();
-        const i = controls.indexOf(document.activeElement as HTMLElement);
-        const next = e.shiftKey ? (i <= 0 ? controls.length - 1 : i - 1) : i + 1 >= controls.length ? 0 : i + 1;
-        controls[next].focus();
-      }
-    };
-    element.addEventListener("keydown", onKeyDown);
-    const prev = document.activeElement as HTMLElement | null;
-    element.focus();
-    const background = Array.from(document.body.children).filter(
-      (el): el is HTMLElement => el instanceof HTMLElement && !el.contains(element),
-    );
-    const inert = background.map((el) => el.inert);
-    for (const el of background) el.inert = true;
-    return () => {
-      element.removeEventListener("keydown", onKeyDown);
-      background.forEach((el, i) => {
-        el.inert = inert[i];
-      });
-      if (prev?.isConnected) prev.focus();
-    };
-  }, []);
+  const backdrop = useRef<HTMLDivElement>(null);
+  // As every dialog: Esc closes, Tab wraps inside, the page behind is inert, focus goes back to what opened it.
+  useDialogInteraction(panel, backdrop, onClose);
   return createPortal(
-    <div className="dlg-backdrop" data-editor-overlay onContextMenu={(e) => e.preventDefault()}>
+    <div ref={backdrop} className="dlg-backdrop" data-editor-overlay>
       <div
         ref={panel}
         className="dlg"
