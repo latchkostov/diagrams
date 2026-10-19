@@ -120,6 +120,40 @@ function show(session: WatchedSession, isPrivate: boolean) {
   );
 }
 
+it("the probe distinguishes a paused replay between frames from a settled run", async () => {
+  const { session } = fakeSession();
+  const watched = live("room-a", false, shared);
+  show(watched, false);
+  const watch = new WatchTogether(session, roster("creator"), room(), notices);
+  await settle();
+  const c = watched.controller;
+  c.seek(20_000);
+  const target = c.tick;
+  const frames: FrameRequestCallback[] = [];
+  let now = 0;
+  const clock = vi.spyOn(performance, "now").mockImplementation(() => (now += 7));
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
+  vi.stubGlobal("cancelAnimationFrame", () => {});
+  try {
+    c.setInputs({ props: {}, rates: { shopper: 75 } });
+    vi.advanceTimersByTime(250);
+    c.setPlaying(false);
+    const held = watch.probe();
+    expect(held).toMatchObject({ playing: false, busy: true });
+    expect(held!.tick).toBeLessThan(target);
+    // Equal tick samples prove nothing while the next replay frame is held.
+    expect(watch.probe()?.tick).toBe(held!.tick);
+    expect(watch.probe()?.busy).toBe(true);
+    for (let i = 0; i < 1_000 && c.busy; i++) frames.shift()?.(0);
+    expect(watch.probe()).toMatchObject({ playing: false, busy: false, tick: target });
+  } finally {
+    c.dispose();
+    watch.dispose();
+    vi.unstubAllGlobals();
+    clock.mockRestore();
+  }
+});
+
 describe("Watch together and privacy", () => {
   it("a Private diagram in Live while the room is on another: nothing of it is published or sent", async () => {
     const { session, sent, presence } = fakeSession();

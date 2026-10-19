@@ -9,3 +9,7 @@ Private Share explains that links, rooms and public embeds are off. In server mo
 shortcut to change privacy, even when public share links are available for other diagrams.
 Browser regressions exercise the enabled-link build, a two-person relay, and server-wide room
 exhaustion. Offline build regressions inspect emitted code and policy endpoints.
+
+The full gate's shared-Live failure came from sampling a paused replay before its next frame,
+not a changed product interaction. The browser helpers now check the controller's explicit busy
+state before comparing ticks and digests. No timeout, simulation behavior, or assertion was relaxed.
