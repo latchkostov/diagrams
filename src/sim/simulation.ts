@@ -3,7 +3,7 @@ import { faultTimelineProblem, FaultTimelineError } from "../model/faultRuntime"
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { createRealCountInjector } from "./injection";
-import { createEngine, seedEngine } from "./engine";
+import { createEngine, seedEngine, SOURCE_VOLUME_CAP, WorkBudgetError } from "./engine";
 import { realFrame, realSnapshot, resolveScale, resolveMultiplier, toRealUnits } from "./units";
 export { autoScale } from "./scale";
 import type {
@@ -125,7 +125,7 @@ export function createSimulationRun(
   const problem = faultTimelineProblem(diagram, simulation);
   if (problem) throw new FaultTimelineError(problem);
   const seed = simulation.seed ?? opts.seed ?? 1;
-  let scale = resolveScale(simulation.scale);
+  const scale = resolveScale(simulation.scale);
   let multipliers = {
     traffic: resolveMultiplier(simulation.multipliers?.traffic),
     capacity: resolveMultiplier(simulation.multipliers?.capacity),
@@ -172,6 +172,14 @@ export function createSimulationRun(
   let expectations: ExpectationState[] = [];
   let credits: number[] = [],
     fired: boolean[] = [];
+  let scriptedSamples = 0;
+
+  function injectScripted(node: string, count: number, options?: InjectOptions): void {
+    if (!Number.isFinite(count) || count > SOURCE_VOLUME_CAP - scriptedSamples)
+      throw new WorkBudgetError("The simulation exceeds its scripted traffic budget");
+    scriptedSamples += count;
+    engine.inject(node, count, options);
+  }
 
   function injectReal(node: string, count: number, type?: string, spreadMs?: number): void {
     if (!inputs.has(node)) return;
@@ -179,7 +187,7 @@ export function createSimulationRun(
     const credit = (injectionCredits.get(key) ?? 0) + (positive(count) * multipliers.traffic) / scale;
     const samples = Math.floor(credit + 1e-9);
     injectionCredits.set(key, credit - samples);
-    if (samples > 0) engine.inject(node, samples, { type, spreadMs });
+    if (samples > 0) injectScripted(node, samples, { type, spreadMs });
   }
 
   function injectManual(node: string, count: number, options: InjectOptions = {}): void {
@@ -226,7 +234,7 @@ export function createSimulationRun(
       const count = Math.floor(credits[index] + 1e-9);
       credits[index] -= count;
       if (count > 0)
-        engine.inject(profile.node, count, { type: profile.messageType, spreadMs: profile.shape.spreadMs });
+        injectScripted(profile.node, count, { type: profile.messageType, spreadMs: profile.shape.spreadMs });
     });
   }
 
@@ -271,6 +279,21 @@ export function createSimulationRun(
   }
 
   function restart(): void {
+    // Refuse unsafe raw callers too, before startup actions or bursts schedule anything.
+    const messages = simulation.traffic.reduce(
+      (sum, { shape }) => sum + (shape.kind === "burst" ? positive(shape.count) : trafficArea(shape, 0, Infinity)),
+      (simulation.timeline ?? []).reduce(
+        (sum, { action }) => sum + (action.do === "inject" ? positive(action.count) : 0),
+        0,
+      ),
+    );
+    if (
+      !Number.isFinite(messages) ||
+      (messages * resolveMultiplier(simulation.multipliers?.traffic)) / resolveScale(simulation.scale) >
+        SOURCE_VOLUME_CAP
+    )
+      throw new WorkBudgetError("The simulation exceeds its scripted traffic budget");
+    scriptedSamples = 0;
     seedEngine(engine, seed);
     engine.load(diagram);
     multipliers = {
@@ -278,8 +301,7 @@ export function createSimulationRun(
       capacity: resolveMultiplier(simulation.multipliers?.capacity),
     };
     engine.setNodePropsBatch(simulation.setup?.props ?? {}, multipliers.capacity);
-    engine.setScale(resolveScale(simulation.scale));
-    scale = engine.frame().scale ?? 1;
+    engine.setScale(scale);
     injectionCredits.clear();
     manual.clear();
     epoch++;
@@ -318,6 +340,7 @@ export function createSimulationRun(
       credits,
       fired,
       injectionCredits,
+      scriptedSamples,
     });
     const manualState = manual.checkpoint();
     const clock = scheduler.checkpoint();
@@ -327,7 +350,8 @@ export function createSimulationRun(
       if (epoch !== savedEpoch) throw new Error("Checkpoint belongs to a previous run");
       engine.restore(engineState);
       const copy = structuredClone(saved);
-      ({ multipliers, speed, cursor, done, waiting, idleSince, note, expectations, credits, fired } = copy);
+      ({ multipliers, speed, cursor, done, waiting, idleSince, note, expectations, credits, fired, scriptedSamples } =
+        copy);
       injectionCredits.clear();
       for (const [key, value] of copy.injectionCredits) injectionCredits.set(key, value);
       manual.restore(manualState);
@@ -399,7 +423,7 @@ export function createSimulationRun(
               credits[index] += (trafficArea(profile.shape, from, to) * multipliers.traffic) / scale;
               const count = Math.floor(credits[index] + 1e-9);
               credits[index] -= count;
-              if (count > 0) engine.inject(profile.node, count, { type: profile.messageType });
+              if (count > 0) injectScripted(profile.node, count, { type: profile.messageType });
             });
             bursts(to);
           } else {
@@ -433,7 +457,7 @@ export function createSimulationRun(
           simulation.traffic.forEach((profile, index) => {
             const count = Math.floor(credits[index] + 1e-9);
             credits[index] -= count;
-            if (count > 0) engine.inject(profile.node, count, { type: profile.messageType });
+            if (count > 0) injectScripted(profile.node, count, { type: profile.messageType });
           });
           bursts(metrics.time);
         }

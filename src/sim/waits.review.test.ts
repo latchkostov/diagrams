@@ -51,7 +51,7 @@ it.each(["generic.service", "aws.lambda"])("uses hold time in every capacity lan
 });
 
 it.each(["generic.service", "azure.functions"])(
-  "includes endpoint work overrides in held occupancy (%s)",
+  "endpoint overrides update wait duration and ceiling (%s)",
   (stencil) => {
     const d = waitingFixture();
     d.nodes[0].props!.ratePerSec = 100;
@@ -65,6 +65,8 @@ it.each(["generic.service", "azure.functions"])(
     d.edges[0].props!.endpointId = "slow";
     const plan = analyzeCapacity(d).nodes.caller;
     expect(plan.capacity).toBeCloseTo(4000 / 300);
+    expect(plan.waits).toMatchObject({ workMs: 50, holdMs: 300 });
+    expect(plan.waits?.ceiling).toBeCloseTo(4000 / 300);
     if (stencil === "generic.service") expect(plan.resourcePlan?.initialCapacity).toBeCloseTo(plan.capacity);
   },
 );
@@ -179,24 +181,32 @@ it("sampled callers preserve non-divisible pool capacity", () => {
     const run = (weight: number) => {
       const e = createEngine({ scale: weight, maxParticles: 0 });
       e.load(d);
-      e.inject("source", 1000);
-      for (let i = 0; i < 1000; i++) {
-        e.step(10);
+      expect(e.snapshot().scale).toBe(weight);
+      const dots = Math.ceil(capacity / scale);
+      e.inject("source", 400 * dots * scale);
+      for (let i = 0; i < 100; i++) {
+        e.step((300 * scale * dots) / capacity);
         const t = realSnapshot(e.snapshot()).nodes.caller.threads!;
         expect(t.working + t.waiting).toBeLessThanOrEqual(capacity + 1e-9);
       }
       return realSnapshot(e.snapshot()).nodes.caller.processed;
     };
-    expect(run(scale)).toBeCloseTo(run(1));
+    const sampled = run(scale),
+      baseline = run(1);
+    // Whole dots finish at different instants. Compare a long run within one pool of dots
+    // and 1%, rather than requiring sub-message equality at an arbitrary instant.
+    expect(Math.abs(sampled - baseline)).toBeLessThanOrEqual(Math.ceil(capacity / scale) * scale);
+    expect(Math.abs(sampled / baseline - 1)).toBeLessThan(0.01);
   };
   check(3, 2);
   check(1, 10);
+  check(4, 3);
   fc.assert(fc.property(fc.integer({ min: 1, max: 12 }), fc.integer({ min: 1, max: 20 }), check), {
     numRuns: propertyRuns(30),
   });
 });
 
-it("uses the effective sampling weight for saved and manual real-count injections", () => {
+it("uses the saved sampling weight for saved and manual real-count injections", () => {
   const d = waitingFixture();
   d.nodes[1].props!.concurrency = 3;
   const run = createSimulationRun(d, {
@@ -254,8 +264,8 @@ it("keeps a caller at zero replicas able to admit its first sampled request", ()
   const e = createEngine({ scale: 100 });
   e.load(d);
   expect(e.fleet("caller")?.ready).toBe(0);
-  expect(e.snapshot().scale).toBe(4);
+  expect(e.snapshot().scale).toBe(100);
   e.inject("source", 1);
-  e.step(2000);
+  e.step(10_000);
   expect(e.snapshot().nodes.caller.processed).toBe(1);
 });

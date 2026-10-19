@@ -664,8 +664,9 @@ export function analyzeCapacity(
         ? {
             waits: {
               ...entry.wait,
+              ...timing,
               slots: entry.active * entry.props.concurrency,
-              ceiling: (entry.active * entry.props.concurrency * 1000) / entry.wait.holdMs,
+              ceiling: (entry.active * entry.props.concurrency * 1000) / timing.holdMs,
             },
           }
         : {}),
