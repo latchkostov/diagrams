@@ -13,6 +13,7 @@ import { DOC, frame } from "./protocol";
 import { textToBytes } from "../interop/codec";
 import { seededBytes } from "./random";
 import { KNOCK_TTL_MS, type KnockMember } from "./session";
+import { CATCH_UP_MS } from "./chainCatchUp";
 import { RoomRoster } from "./room/roomRoster";
 import { WatchTogether } from "./room/watch";
 import { newAgreement, newIdentity, type Agreement, type Identity } from "./signing";
@@ -1543,6 +1544,152 @@ describe("knock-to-join: chains, denials and leaving, message by message", () =>
     expect(old.session.signed!.current!.sig).toBe(current.sig);
   });
 
+  it("retains the pending chain tip across stale bundles", async () => {
+    const r = await knockRoom(118);
+    const host = r.host.client!;
+    const a = await r.join("a");
+    const b = await r.join("b");
+    const aKey = a.session.signed!.key;
+    const record = a.session.memberRecord()!;
+    await a.session.leave();
+    expect(await host.session.remove(aKey)).toBe(true);
+    await r.settle();
+    // Readmitted only in epoch 2's chain: b removed (epoch 2), then a let in again there.
+    expect(await host.session.remove(b.session.signed!.key)).toBe(true);
+    await r.settle();
+    const aP = r.people[1];
+    const again = await r.open(aP, { agreement: aP.agreement, chain: { starts: [], logs: [] } }, r.net.connect());
+    await r.settle();
+    expect(await host.session.admit(aKey)).toBe(true);
+    await r.settle();
+    const data = chainOf(host);
+    const current = host.session.signed!.current!;
+    const wrap = await wrapFor(
+      r.lobbyKeys.roomId,
+      scopeOf(current),
+      { identity: r.host.identity, agreement: r.host.agreement },
+      { key: aKey, x: aP.agreement.x },
+      host.session.signed!.knock!.chain.secretOf(current)!,
+    );
+    // The old tab on its epoch-0 record, reachable only by what's sent by hand: as the host, and as a stranger.
+    const [hostT, strangerT] = [r.net.connect(), r.net.connect()];
+    const asHost = await r.rogue(host.session.signed!.identity, hostT);
+    const stranger = await r.rogue(undefined, strangerT);
+    const old = await r.open(
+      aP,
+      { agreement: aP.agreement, chain: record.chain, secret: secretOf(record), wraps: record.wraps },
+      r.net.connect(),
+    );
+    r.net.partition([
+      [old.session.transport.self, hostT.self, strangerT.self],
+      [host, again].map((c) => c.session.transport.self),
+    ]);
+    await r.settle();
+    const to = old.session.transport.self;
+    const tip = scopeOf(current);
+    await asHost.send(
+      {
+        t: "bundle",
+        chain: { starts: data.starts.slice(0, 2), logs: data.logs.slice(0, 2) },
+        wraps: [],
+        more: true,
+        tip,
+      },
+      to,
+    );
+    // A stale bundle (epoch 0 only, its own tip), then an empty one from someone who isn't a member: neither clears
+    // what the first piece promised.
+    await asHost.send(
+      {
+        t: "bundle",
+        chain: { starts: data.starts.slice(0, 1), logs: data.logs.slice(0, 1) },
+        wraps: [],
+        tip: scopeOf(r.start),
+      },
+      to,
+    );
+    await stranger.send({ t: "bundle", chain: { starts: [], logs: [] }, wraps: [] }, to);
+    expect(old.session.removed).toBe(false);
+    expect(old.session.status).not.toBe("left");
+    await asHost.send(
+      { t: "bundle", chain: { starts: data.starts.slice(2), logs: data.logs.slice(2) }, wraps: [wrap], tip },
+      to,
+    );
+    expect(old.session.removed).toBe(false);
+    expect(old.session.signed!.current!.sig).toBe(current.sig);
+  });
+
+  it("defers denial authority checks until the pending chain is complete", async () => {
+    const r = await knockRoom(119);
+    const host = r.host.client!;
+    const co = await r.join("co");
+    const y = await r.join("y");
+    expect(await host.session.appendRoster("cohost", { who: co.session.signed!.key })).toBe(true);
+    await r.settle();
+    // y removed in epoch 1; the co-host in epoch 2.
+    expect(await host.session.remove(y.session.signed!.key)).toBe(true);
+    await r.settle();
+    expect(await host.session.remove(co.session.signed!.key)).toBe(true);
+    await r.settle();
+    const data = chainOf(host);
+    const k = await r.knock("wren");
+    const asHost = await r.rogue(host.session.signed!.identity);
+    const formerCo = await r.rogue(co.session.signed!.identity);
+    const to = k.client.session.transport.self;
+    const tip = host.session.signed!.scope;
+    // Epochs 0 and 1 (where the co-host still co-hosts), promising epoch 2.
+    await asHost.send(
+      {
+        t: "bundle",
+        chain: { starts: data.starts.slice(0, 2), logs: data.logs.slice(0, 2) },
+        wraps: [],
+        more: true,
+        tip,
+      },
+      to,
+    );
+    // The former co-host's no, naming epoch 0: not taken while epoch 2 is on its way.
+    await formerCo.send(
+      { t: "deny", to: k.p.identity.key, chain: { starts: [], logs: [] }, tip: scopeOf(r.start) },
+      to,
+    );
+    expect(k.outcome()).toBeUndefined();
+    // Epoch 2 arrives: the co-host was removed there; its no counts for nothing.
+    await asHost.send(
+      { t: "bundle", chain: { starts: data.starts.slice(2), logs: data.logs.slice(2) }, wraps: [], tip },
+      to,
+    );
+    expect(k.client.session.signed!.knock!.chain.deepest()!.epoch).toBe(2);
+    expect(k.outcome()).toBeUndefined();
+    expect(k.client.session.status).not.toBe("left");
+    // The host's no still counts.
+    host.session.deny(k.p.identity.key);
+    await r.settle();
+    expect(k.outcome()).toBe("denied");
+  });
+
+  it("a peer lying about how far its chain goes stalls decisions only until the catch-up deadline", async () => {
+    const r = await knockRoom(120);
+    const host = r.host.client!;
+    const k = await r.knock("wren");
+    const liar = await r.rogue();
+    // Promises epoch 20 (a start nobody will send).
+    await liar.send(
+      { t: "bundle", chain: { starts: [], logs: [] }, wraps: [], tip: `20:${bytesToBase64Url(seededBytes(1200)(64))}` },
+      k.client.session.transport.self,
+    );
+    host.session.deny(k.p.identity.key);
+    await r.settle();
+    expect(k.outcome()).toBeUndefined();
+    r.clock.advance(CATCH_UP_MS - COLLAB_LIMITS.antiEntropyMs);
+    await r.settle();
+    expect(k.outcome()).toBeUndefined();
+    // Past the deadline: decided from what's validated, the host's no.
+    r.clock.advance(COLLAB_LIMITS.antiEntropyMs * 2);
+    await r.settle();
+    expect(k.outcome()).toBe("denied");
+  });
+
   it("Remove then Leave at once: the removal re-keys, the handover lands in the new epoch, and the new host can remove", async () => {
     const r = await knockRoom(116);
     const host = r.host.client!;
@@ -1571,6 +1718,26 @@ describe("knock-to-join: chains, denials and leaving, message by message", () =>
     await r.settle();
     expect(m.session.removed).toBe(true);
     expect(co.session.keys.epoch).toBe(2);
+  });
+
+  it("Leave in an unchanged epoch hands over with the roster entry alone: no chain sent to the lobby", async () => {
+    const r = await knockRoom(121);
+    const host = r.host.client!;
+    const co = await r.join("co");
+    const m = await r.join("m");
+    expect(await host.session.appendRoster("cohost", { who: co.session.signed!.key })).toBe(true);
+    await r.settle();
+    let lobbyFrames = 0;
+    const stop = r.net.tap((rec) => {
+      if (rec.from === host.session.transport.self && rec.bytes[3] === 4) lobbyFrames++;
+    });
+    onTestFinished(stop);
+    const handed = host.session.appendRoster("host", { who: co.session.signed!.key });
+    await host.session.leave();
+    expect(await handed).toBe(true);
+    await r.settle();
+    expect(lobbyFrames).toBe(0);
+    for (const c of [co, m]) expect(c.session.signed!.state().host).toBe(co.session.signed!.key);
   });
 
   it("Admit waiting its turn takes the card at once: a Deny after it changes nothing, and they're let in", async () => {

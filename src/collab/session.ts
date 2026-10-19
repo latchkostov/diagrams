@@ -12,6 +12,7 @@ import {
   type Opened,
   type Rejection,
 } from "./envelope";
+import { ChainCatchUp } from "./chainCatchUp";
 import { structClients, type GuardProblem } from "./guard";
 import {
   checkMemberProof,
@@ -370,8 +371,11 @@ export class CollabSession {
   /** Keys this host or co-host said no to, and when (oldest first, a few). */
   private readonly denials = new Map<string, number>();
   private pendingDeny?: { by: string; tip?: string };
-  /** The epoch the chain a peer is sending reaches: nothing irreversible (leaving) is decided before it's here. */
-  private chainTip?: string;
+  /**
+   * The chains peers have said they're sending (each piece names the epoch it reaches): nothing irreversible (leaving
+   * as removed, knocking again, taking a no) is decided while one's still to arrive (./chainCatchUp.ts).
+   */
+  private readonly catchUp = new ChainCatchUp();
   /** At the door, a member here answered (someone's here and has been asked): until they've all gone. */
   get lobbyAnswered(): boolean {
     return this.answeredBy.size > 0;
@@ -780,11 +784,12 @@ export class CollabSession {
     // re-key, then the handover as the host leaves, in the epoch that left it in) finish first. Then the goodbye.
     this.closing = true;
     const room = this.signed;
-    const before = room && `${room.scope}:${room.roster.log().length}`;
+    const before = room?.scope;
     await room?.settled;
-    // Something landed meanwhile (a removal's new epoch, whose members haven't proved themselves to this page yet, and
-    // a handover in it): the chain to everyone in the lobby, so it reaches them before this page goes.
-    if (room?.knock && room.current && before !== `${room.scope}:${room.roster.log().length}`)
+    // A re-key meanwhile (a removal under way): the new epoch's members haven't proved themselves to this page, so a
+    // handover after it reached nobody: the chain (the handover in it) to everyone in the lobby before this page goes.
+    // In an unchanged epoch, the handover went to everyone with it (commitEntry).
+    if (room?.knock && room.current && before !== room.scope)
       await this.sendLobby(chainMessages(room.knock.chain.data(room.current), []));
     this.leaving = true;
     try {
@@ -868,6 +873,11 @@ export class CollabSession {
     this.stops.push(
       this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => {
         this.expireKnocks();
+        // A chain promised and still not here (or its wait run out): what waited on it is looked at again.
+        if (this.lobby && (this.pendingDeny || this.catchUp.size)) {
+          this.checkDeny();
+          void this.follow();
+        }
         // Anyone not yet proved a member (a hello lost, a peer behind on epochs) hears from this one again.
         if (this.lobby) for (const peer of this.transport.peers()) if (!this.memberPeers.has(peer)) this.sayHello(peer);
         // Without the document yet: who this is goes with each request (a lost binding never stalls the answer).
@@ -1145,7 +1155,8 @@ export class CollabSession {
     const chain = room?.knock?.chain;
     const pending = this.pendingDeny;
     if (!room || !chain || !pending || !this.knocking) return;
-    if (pending.tip && !chain.byScope(pending.tip)) return;
+    // Its own epoch, and every chain a peer has said is on its way: the newest roster may be about to change.
+    if ((pending.tip && !chain.byScope(pending.tip)) || this.catchingUp()) return;
     this.pendingDeny = undefined;
     const deepest = chain.deepest();
     if (!chain.leadsNow(pending.by) || !deepest || chain.rosterOf(deepest)!.state().members.has(room.key)) return;
@@ -1479,10 +1490,17 @@ export class CollabSession {
         if (secret) await chain.learn(start, secret);
       } else this.keepWrap(w);
     }
-    // The chain this one is part of: whole once its tip's here (the last piece to arrive, whichever it is, says so).
-    this.chainTip = bundle.tip && !chain.byScope(bundle.tip) ? bundle.tip : undefined;
+    // The chain this piece is part of, as its sender said (only ever raised: ./chainCatchUp.ts).
+    this.catchUp.note(m.sender, bundle.tip, this.clock.now());
     this.checkDeny();
     await this.follow();
+  }
+
+  /** Whether a chain a peer has said it's sending is still to arrive (each checked against what's validated now). */
+  private catchingUp(): boolean {
+    const now = this.clock.now();
+    this.catchUp.settle(this.signed?.knock?.chain.deepest()?.epoch ?? -1, now);
+    return this.catchUp.pending(now);
   }
 
   /**
@@ -1506,10 +1524,10 @@ export class CollabSession {
       if (secret) return this.rekey(st, secret);
     }
     if (this.knocking || !current || !ahead.length) return;
-    // Nothing irreversible on part of a chain: once the epoch a peer's chain reaches is here, and only if this person
-    // isn't a member at the end of the line (a member there whose secret is on its way waits for it).
-    if (this.chainTip && !chain.byScope(this.chainTip)) return;
-    this.chainTip = undefined;
+    // Nothing irreversible on part of a chain: not while a chain a peer said it's sending is still to arrive (looked at
+    // again as it does, or when that wait runs out), nor while this person is a member at the end of the line (a
+    // member there whose secret is on its way waits for it).
+    if (this.catchingUp()) return;
     if (chain.rosterOf(ahead[0])!.state().members.has(room.key)) return;
     const line = chain.path(ahead[0]);
     const removed = line.some((p, i) => {

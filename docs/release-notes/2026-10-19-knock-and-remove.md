@@ -89,6 +89,10 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   denier once led), and its chain is taken once; nothing irreversible is decided on part of a chain; leaving lets a
   Remove under way re-key, and the handover land in the new epoch, before the goodbye; an Admit waiting its turn
   takes the card at once, so a Deny can't overtake it.
+- **An eighth review** (two causes): a page catching up keeps every chain a peer has promised (per sender, only
+  ever raised) until it has it, and decides nothing irreversible meanwhile: not leaving, not knocking again, not
+  taking a no; a promise nobody keeps lapses after 20 s without progress. Leaving sends the chain to the lobby only
+  after a re-key.
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.
