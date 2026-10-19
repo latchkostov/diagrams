@@ -8,7 +8,7 @@ import { localRateQuota } from "../model/admissionPresets";
 import { resolveNodeProps } from "./defaults";
 import { analyzeCapacity } from "./capacity";
 import { sizingFix } from "./capacityPlanning";
-import { attemptAdmission, emptyAdmission, configureAdmission, releaseAdmission } from "./admission";
+import { attemptAdmission, emptyAdmission, configureAdmission, releaseAdmissions } from "./admission";
 import * as policyModule from "./admissionPolicy";
 import * as admissionModule from "./admission";
 import * as admissionSchema from "../model/admissionSchema";
@@ -44,6 +44,29 @@ const load = (d: DiagramFile, scale = 1) => {
   e.load(d);
   return e;
 };
+
+it("paired release preserves a sibling slot after renewing unequal retained weights", () => {
+  const state = emptyAdmission();
+  const policy = { api: { maxInFlight: 10 }, endpoints: [], slots: 10 };
+  const admitted = attemptAdmission(state, "api", policy, undefined, undefined, 0, 4);
+  if ("rejected" in admitted) throw new Error(admitted.rejected);
+  const retained = admitted.leases;
+  // A continuation returned two execution slots while retaining its four requests.
+  for (const key of retained.thread.keys) state.inFlight.set(key, state.inFlight.get(key)! - 2);
+  retained.thread.weight = 2;
+  const sibling = attemptAdmission(state, "api", policy, undefined, undefined, 0, 1);
+  if ("rejected" in sibling) throw new Error(sibling.rejected);
+  const renewed = attemptAdmission(state, "api", policy, undefined, undefined, 0, 4, 10, [], true, retained);
+  if ("rejected" in renewed) throw new Error(renewed.rejected);
+  expect(renewed.leases.request.weight).toBe(4);
+  expect(renewed.leases.thread.weight).toBe(2);
+  expect(renewed).not.toHaveProperty("lease");
+  releaseAdmissions(state, renewed.leases);
+  for (const lease of [sibling.leases.request, sibling.leases.thread])
+    for (const key of lease.keys) expect(state.inFlight.get(key)).toBe(1);
+  releaseAdmissions(state, sibling.leases);
+  expect([...state.inFlight.values()].every((count) => count === 0)).toBe(true);
+});
 describe("P3 managed admission", () => {
   it.each(["node", "endpoint"])(
     "duplicate quota ids in the %s API scope fail import and runtime validation",
@@ -209,7 +232,7 @@ describe("P3 managed admission", () => {
     const policy = resolveNodeProps(d, d.nodes[0]).admission!;
     const shared = emptyAdmission();
     configureAdmission(shared, [policy], d.planning);
-    expect(attemptAdmission(shared, "api", policy, "a", d.planning, 0, 1)).toHaveProperty("lease");
+    expect(attemptAdmission(shared, "api", policy, "a", d.planning, 0, 1)).toHaveProperty("leases");
     expect([...shared.buckets.values()].map((bucket) => bucket.tokens)).toEqual([1]);
     expect(
       admissionCapacities([{ ...entries[0], policy, endpoints: [{ id: "a", rate: 10 }] }], d.planning).get("0"),
@@ -232,11 +255,11 @@ describe("P3 managed admission", () => {
     const state = emptyAdmission();
     configureAdmission(state, [a, b]);
     const first = attemptAdmission(state, "a", a, undefined, undefined, 0, 1);
-    expect(first).toHaveProperty("lease");
-    expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toHaveProperty("lease");
+    expect(first).toHaveProperty("leases");
+    expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toHaveProperty("leases");
     expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toEqual({ rejected: "concurrency" });
-    if ("lease" in first) releaseAdmission(state, first.lease);
-    expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toHaveProperty("lease");
+    if ("leases" in first) releaseAdmissions(state, first.leases);
+    expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 1)).toHaveProperty("leases");
     expect([
       ...admissionCapacities(
         [a, b].map((policy, i) => ({
@@ -386,12 +409,12 @@ describe("P3 managed admission", () => {
     const policy = { api: { quotas }, endpoints: endpoints.items };
     const state = emptyAdmission();
     configureAdmission(state, [policy]);
-    expect(attemptAdmission(state, "api", policy, "499", undefined, 0, 1)).toHaveProperty("lease");
+    expect(attemptAdmission(state, "api", policy, "499", undefined, 0, 1)).toHaveProperty("leases");
     const reads = endpoints.reads();
     const serialize = vi.spyOn(JSON, "stringify");
     try {
       for (let i = 0; i < 100; i++)
-        expect(attemptAdmission(state, "api", policy, String(i), undefined, 0, 1)).toHaveProperty("lease");
+        expect(attemptAdmission(state, "api", policy, String(i), undefined, 0, 1)).toHaveProperty("leases");
       expect(serialize.mock.calls.length).toBe(0);
       expect(endpoints.reads()).toBe(reads);
     } finally {
@@ -823,7 +846,7 @@ describe("P3 managed admission", () => {
     const state = emptyAdmission();
     const policy = { api: { maxInFlight: 2, sharedConcurrency: "account" }, endpoints: [] };
     configureAdmission(state, [policy]);
-    expect(attemptAdmission(state, "a", policy, undefined, undefined, 0, 2)).toHaveProperty("lease");
+    expect(attemptAdmission(state, "a", policy, undefined, undefined, 0, 2)).toHaveProperty("leases");
     expect(attemptAdmission(state, "b", policy, undefined, undefined, 0, 1)).toEqual({ rejected: "concurrency" });
   });
   it("planning reports the binding token budget and never proposes SaaS replicas", () => {

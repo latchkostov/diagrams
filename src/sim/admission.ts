@@ -131,12 +131,14 @@ export const emptyAdmission = (): AdmissionState => ({
 });
 export interface AdmissionLease extends CallerOccupancy {
   keys: string[];
-  threadKey?: string;
+}
+export interface AdmissionLeases {
+  request: AdmissionLease;
+  thread?: AdmissionLease;
 }
 
 /** Execution slots can be returned while the admitted request still owns its concurrency limits. */
-export function separateAdmission(lease: AdmissionLease) {
-  const slot = lease.threadKey;
+function separateAdmission(lease: AdmissionLease, slot?: string): AdmissionLeases & { thread: AdmissionLease } {
   return {
     request: { ...lease, keys: lease.keys.filter((key) => key !== slot) },
     thread: { ...lease, keys: lease.keys.filter((key) => key === slot) },
@@ -324,9 +326,9 @@ export function attemptAdmission(
   slots = policy.slots,
   extra: readonly Requirement[] = [],
   partialOccupancy = false,
-  retained?: { request: AdmissionLease; thread?: AdmissionLease },
+  retained?: AdmissionLeases,
 ):
-  | { leases: ReturnType<typeof separateAdmission>; lease: AdmissionLease; latencyMs?: number; errorRate?: number }
+  | { leases: AdmissionLeases & { thread: AdmissionLease }; latencyMs?: number; errorRate?: number }
   | { rejected: string } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
@@ -352,13 +354,11 @@ export function attemptAdmission(
   for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
   const reservation = reserveCallerOccupancy(weight, occupancy);
-  const lease = { keys, threadKey: slots === undefined ? undefined : compiled.slots, ...reservation };
-  const leases = separateAdmission(lease);
+  const leases = separateAdmission({ keys, ...reservation }, slots === undefined ? undefined : compiled.slots);
   if (retained) {
     // Quotas and policy validation succeeded before any existing occupancy changes.
     // Request residence and execution can have different retained weights after a shrink.
-    releaseAdmission(state, retained.request);
-    releaseAdmission(state, retained.thread);
+    releaseAdmissions(state, retained);
     leases.request.weight = retained.request.weight;
     if (retained.thread) leases.thread.weight = retained.thread.weight;
   }
@@ -366,10 +366,14 @@ export function attemptAdmission(
     for (const key of part.keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + part.weight);
   return {
     leases,
-    lease,
     latencyMs: call.latencyMs,
     errorRate: call.errorRate,
   };
+}
+/** Release exactly the request and execution occupancy charged by the transaction. */
+export function releaseAdmissions(state: AdmissionState, leases: AdmissionLeases) {
+  releaseAdmission(state, leases.request);
+  releaseAdmission(state, leases.thread);
 }
 export function releaseAdmission(state: AdmissionState, lease?: AdmissionLease) {
   if (lease)

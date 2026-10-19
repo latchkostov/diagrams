@@ -124,6 +124,7 @@ export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
 }
 
 interface Work extends ResourceWork {
+  resumeAtAdmission?: boolean;
   slotted?: boolean;
   delivery?: unknown;
   held?: boolean;
@@ -147,6 +148,7 @@ export interface ResourceState {
       admission?: { slots?: number; api: { maxInFlight?: number } };
     };
     working: readonly Work[];
+    workQueues?: { working: Iterable<Work>; pending: Iterable<Work>; takeovers: Iterable<Work> };
     threadTails?: ReadonlyMap<number, Reservation<unknown>>;
     threadWeight?: Record<"work" | "wait", number>;
     pending: Iterable<Work>;
@@ -178,6 +180,18 @@ export function assertResourceInvariants(state: ResourceState) {
     const queued = [...node.pending];
     const all = [...node.working, ...queued];
     const fail = (ok: boolean, message: string) => check(ok, `${node.id} @${state.time}: ${message}`);
+    if (node.workQueues) {
+      const seen = new Set<Work>();
+      const takeovers = new Set(node.workQueues.takeovers);
+      for (const [path, entries] of Object.entries(node.workQueues))
+        for (const work of entries) {
+          fail(!seen.has(work), "work has multiple admission paths");
+          seen.add(work);
+          fail(!!work.resumeAtAdmission === (path === "takeovers"), "takeover scheduling disagrees");
+        }
+      for (const work of all)
+        fail(!work.resumeAtAdmission || takeovers.has(work), "takeover flag has no admission path");
+    }
     let tails = 0;
     for (const tail of node.threadTails?.values() ?? []) tails += tail.weight;
     fail(

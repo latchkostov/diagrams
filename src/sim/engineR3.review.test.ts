@@ -1,8 +1,104 @@
 import { expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
-import { assertLedgerInvariants, type LedgerInvariantState } from "./resourceInvariants";
+import { assertResourceInvariants, assertLedgerInvariants, type LedgerInvariantState } from "./resourceInvariants";
 import { createSimulationRun } from "./simulation";
+
+function managedRecovery(latencyMs: number, quota = false) {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 2 };
+  d.nodes[1].stencil = "aws.lambda";
+  Object.assign(d.nodes[1].props!, {
+    maxConcurrency: 1,
+    scaling: "fixed",
+    retry: "inplace",
+    retryBackoffMs: 1000,
+    api: {
+      latencyMs,
+      errorRate: 1,
+      ...(quota
+        ? { quotas: [{ id: "attempts", unit: "requests", amount: 2, windowMs: 10_000, algorithm: "token-bucket" }] }
+        : {}),
+    },
+  });
+  const p = checkedEngine(1);
+  p.engine.load(d);
+  p.engine.inject("source", 1);
+  p.tick((latencyMs + 20) / 10);
+  expect(p.engine.snapshot().nodes.caller.failed).toBe(1);
+  const node = [...p.state().nodes].find((n) => n.id === "caller") as unknown as {
+    working: { retryAdmissionAt?: number }[];
+  };
+  const deadline = node.working[0].retryAdmissionAt!;
+  expect(deadline).toBe(latencyMs + 1020);
+  p.tick(2);
+  p.engine.setNodeStatus("caller", "down");
+  p.tick();
+  p.engine.setNodeStatus("caller", "up");
+  p.engine.setNodeProps("caller", {
+    api: {
+      ...d.nodes[1].props!.api!,
+      errorRate: 0,
+    },
+  });
+  return { ...p, deadline };
+}
+
+function fullyReleased(p: ReturnType<typeof checkedEngine>) {
+  expect(p.engine.snapshot().inSystem).toBe(0);
+  expect(p.state().ledger.reservations.size).toBe(0);
+  expect(p.state().ledger.owners.size).toBe(0);
+  expect([...p.state().admissionInFlight.values()].every((count) => count === 0)).toBe(true);
+  expect(p.engine.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
+}
+
+it("managed caller recovery preserves retry backoff", () => {
+  const p = managedRecovery(100);
+  while (p.engine.metrics().time < p.deadline - 10) {
+    p.tick();
+    expect(p.engine.snapshot().nodes.caller.processed).toBe(0);
+    expect(p.engine.snapshot().edges.call.delivered).toBe(0);
+    expect(p.engine.snapshot().edges.call.active).toBe(0);
+  }
+  p.tick(400);
+  expect(p.engine.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, rejected: 0 });
+  fullyReleased(p);
+});
+
+it("recovery during backoff charges the retry quota once", () => {
+  const p = managedRecovery(1000, true);
+  p.tick(600);
+  expect(p.engine.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, rejected: 0 });
+  fullyReleased(p);
+});
+
+it.each([4, 10])("saved down/up between reply settlement and takeover drains at scale %i", (scale) => {
+  const d = waitingFixture();
+  Object.assign(d.nodes[1].props!, { concurrency: 1, latencyMs: 100 });
+  d.nodes[2].props = { api: { latencyMs: 10 }, jitter: 0 };
+  d.edges[1].props = { caller: { wait: "non-blocking", replyMs: 100 } };
+  const p = checkedEngine(scale);
+  const run = createSimulationRun(
+    d,
+    {
+      id: "takeover",
+      title: "Takeover recovery",
+      durationMs: 5000,
+      scale,
+      traffic: [],
+      timeline: [
+        { atMs: 0, action: { do: "inject", node: "caller", count: scale } },
+        { atMs: 111, action: { do: "status", node: "caller", status: "down" } },
+        { atMs: 112, action: { do: "status", node: "caller", status: "up" } },
+      ],
+    },
+    { engine: p.engine },
+  );
+  for (let tick = 0; tick < 500; tick++) run.step(10);
+  expect(p.engine.snapshot().nodes.caller.processed).toBe(1);
+  fullyReleased(p);
+});
 
 function checkedEngine(scale: number) {
   let state!: LedgerInvariantState;
@@ -10,6 +106,7 @@ function checkedEngine(scale: number) {
     scale,
     seed: 7,
     maxParticles: 0,
+    verifyResources: assertResourceInvariants,
     verifyLedger(s) {
       state = { ...s, nodes: [...s.nodes] };
       assertLedgerInvariants(state);

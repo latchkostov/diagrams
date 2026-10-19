@@ -70,6 +70,7 @@ import {
   emptyAdmission,
   releaseAdmission,
   type AdmissionLease,
+  type AdmissionLeases,
 } from "./admission";
 import {
   chooseAction,
@@ -185,6 +186,8 @@ interface Work {
   localThread?: number;
   thread?: number;
   requestLease?: number;
+  /** Capacity lost at shutdown; recovery never admits a new attempt. */
+  recoveryCapacity?: AdmissionLeases;
   /** Owns its preceding thread while awaiting the ordinary continuation phase. */
   resumeAtAdmission?: boolean;
   continuation?: { ok: boolean; cpuMs: number };
@@ -831,6 +834,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       ...[...node.calls.values()].map((c) => c.work),
     ]);
     for (const work of workSet) {
+      const request = ledger.get(work.requestLease);
+      const thread = ledger.get(work.thread);
+      if (request)
+        work.recoveryCapacity = {
+          request: { weight: request.weight, represented: request.represented, keys: request.keys ?? [] },
+          thread: thread
+            ? { weight: thread.weight, represented: thread.represented, keys: thread.keys ?? [] }
+            : undefined,
+        };
       work.thread = work.requestLease = work.localThread = undefined;
       if (work.attempt) work.attempt.res = {};
     }
@@ -917,37 +929,66 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       attempt(node, work).res = { thread: work.thread, request: work.requestLease };
       return;
     }
-    const lease = work.threadLease ?? work.lease;
+    if (!reacquireCapacity(node, work)) throw new Error("Caller admitted without thread capacity");
+    attempt(node, work).res = { thread: work.thread, request: work.requestLease };
+  }
+
+  /** Capacity only: preserve the attempt's timing, policy and quota transaction. */
+  function reacquireCapacity(node: Node, work: Work): boolean {
+    if (!callerReservations(node) || ledger.get(work.thread)) return true;
+    const recovery = work.recoveryCapacity;
+    const lease = recovery?.thread ?? work.threadLease ?? work.lease;
     let request = ledger.get(work.requestLease);
-    const represented = request?.represented ?? scale;
+    const represented = request?.represented ?? recovery?.request.represented ?? scale;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
-    const cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? Infinity);
+    const cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
     const thread = ledger.reserve<Group>(
-      { owner: node.id, scope: "thread", startActive: node.activeMs, keys: work.threadLease?.keys },
+      {
+        owner: node.id,
+        scope: "thread",
+        startActive: node.activeMs,
+        keys: recovery?.thread?.keys ?? work.threadLease?.keys,
+      },
       represented,
       room,
       cap,
       work.admissibleActive ?? node.activeMs,
     );
-    if (!thread) throw new Error("Caller admitted without thread capacity");
+    if (!thread) return false;
     work.thread = thread.id;
     node.threadWeight.work += thread.weight;
     node.threadCount.work++;
     work.threadLease = undefined;
     if (!request) {
       request = ledger.reserve(
-        { owner: node.id, scope: "request", startActive: node.activeMs, keys: work.lease?.keys },
+        {
+          owner: node.id,
+          scope: "request",
+          startActive: node.activeMs,
+          keys: recovery?.request.keys ?? work.lease?.keys,
+        },
         represented,
-        thread.weight,
+        recovery?.request.weight ?? thread.weight,
         Infinity,
         work.admissibleActive ?? node.activeMs,
       )!;
       work.requestLease = request.id;
       work.lease = undefined;
     }
-    const a = attempt(node, work);
     thread.requestWeight = request.weight;
-    a.res = { thread: thread.id, request: work.requestLease };
+    if (recovery) {
+      for (const r of [thread, request])
+        for (const key of r.keys ?? []) admission.inFlight.set(key, (admission.inFlight.get(key) ?? 0) + r.weight);
+      work.recoveryCapacity = undefined;
+    }
+    return true;
+  }
+
+  /** The source has been consumed by its queue/phase; invalidate any alternate admission path. */
+  function scheduleWork(node: Node, work: Work, destination: "working" | "pending" | "takeovers"): void {
+    if (work.resumeAtAdmission) node.takeovers = node.takeovers.filter((entry) => entry !== work);
+    work.resumeAtAdmission = destination === "takeovers";
+    node[destination].push(work);
   }
 
   /** Invisible decoration owns counts only, never messages or their connected graph. */
@@ -1177,7 +1218,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       );
       if (node.fleet) {
         if (scale > 1 && node.props.concurrency < previous.concurrency)
-          for (const work of node.working)
+          for (const work of [...node.working, ...node.takeovers])
             if (work.cpuParts) work.memorySlots = Math.max(work.memorySlots ?? 0, memorySlots);
         configureConcurrency(node.fleet, node.props.concurrency);
       }
@@ -1191,17 +1232,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         } else if (!node.fleet || time === 0) {
           initializeFleet(node);
           initialized.add(node);
-          const working = node.working;
+          const working = [...node.working, ...node.takeovers];
           node.working = [];
+          node.takeovers = [];
           for (const work of working) {
             work.replica = undefined;
             work.cpuParts = undefined;
             if (startResources(node, work)) {
               work.workedAt = time;
-              node.working.push(work);
+              scheduleWork(node, work, work.resumeAtAdmission ? "takeovers" : "working");
             } else {
               work.slotted = false;
-              node.pending.push(work);
+              scheduleWork(node, work, "pending");
             }
           }
         } else {
@@ -1378,7 +1420,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.staged++;
       return;
     }
-    node.pending.push(work);
+    scheduleWork(node, work, "pending");
   }
 
   /**
@@ -1835,9 +1877,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         work.cpuRemaining = node.props.resources ? work.continuation.cpuMs * scale : undefined;
         work.slotted = true;
         work.workedAt = time;
-        work.resumeAtAdmission = true;
-        node.working.push(work);
-        node.takeovers.push(work);
+        scheduleWork(node, work, "takeovers");
       } else {
         endResources(node, work);
         work.admissibleActive = node.activeMs;
@@ -1876,7 +1916,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.waitingCall = undefined;
       work.attempt = undefined;
       work.workedAt = time;
-      node.working.push(work);
+      scheduleWork(node, work, "working");
     } else releaseCall(call);
   }
 
@@ -2235,12 +2275,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // An in-place retry took a free slot (canRetain); the others went back to the broker.
       if (work.retained) {
         if (!startResources(node, work)) {
-          node.pending.push(work);
+          scheduleWork(node, work, "pending");
           return;
         }
         work.workedAt = time;
         startAttempt(node, work);
-        node.working.push(work);
+        scheduleWork(node, work, "working");
         work.slotted = true;
       }
       return;
@@ -2258,18 +2298,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         return;
       }
       if (!reserveAdmission(node, work)) return;
-      if (node.status === "paused") node.pending.push(work);
+      if (node.status === "paused") scheduleWork(node, work, "pending");
       else if (work.remaining <= 0 && !node.props.resources?.cpuMsPerMessage) {
         startAttempt(node, work);
         finish(node, work);
       } else {
         if (!startResources(node, work)) {
-          node.pending.push(work);
+          scheduleWork(node, work, "pending");
           return;
         }
         work.workedAt = time;
         startAttempt(node, work);
-        node.working.push(work);
+        scheduleWork(node, work, "working");
         work.slotted = true;
         if (work.message.family.trace) step(work.message, "start", node.id);
       }
@@ -2470,6 +2510,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function* nodeWork(node: Node): IterableIterator<ResourceWork> {
     yield* node.working;
+    yield* node.takeovers;
     yield* node.threadTails.values();
     for (const call of node.calls.values()) if (call.held) yield call.work;
     yield* queuedWork(node);
@@ -2513,6 +2554,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const group of groupsByConsumer.get(node.id) ?? []) held += group.heldByNode.get(node.id) ?? 0;
     let working = 0;
     for (const work of node.working) if (work.delivery) working++;
+    for (const work of node.takeovers) if (work.delivery) working++;
     working += node.heldBrokerCalls;
     return Math.max(0, node.pending.length - (held - working)) * scale;
   }
@@ -2532,9 +2574,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     };
   }
   function resourceWork(node: Node): (Work | Reservation<Group>)[] {
-    return node.heldCalls || node.threadTails.size
+    return node.heldCalls || node.threadTails.size || node.takeovers.length
       ? [
           ...node.working,
+          ...node.takeovers,
           ...[...node.calls.values()].filter((c) => c.held).map((c) => c.work),
           ...node.threadTails.values(),
         ]
@@ -2617,12 +2660,33 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.status !== "paused" && !held(node)) {
       if (node.takeovers.length) {
         const finished = new Set<Work>();
-        for (const work of node.takeovers) {
+        const takeovers = node.takeovers;
+        node.takeovers = [];
+        for (const work of takeovers) {
           if (!work.resumeAtAdmission) continue;
-          work.resumeAtAdmission = false;
+          const f = node.fleet;
+          const expired =
+            f &&
+            ((work.replica !== undefined && (f.busy.get(work.replica)?.drainAt ?? Infinity) <= time) ||
+              work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
+          if (node.status === "down" || expired) {
+            work.resumeAtAdmission = false;
+            settleWork(node, work, false, false);
+            work.slotted = false;
+            endResources(node, work);
+            continue;
+          }
+          if (node.status === "up" && !ledger.get(work.thread)) {
+            work.slotted = false;
+            endResources(node, work);
+            work.admissibleActive = node.activeMs;
+            scheduleWork(node, work, "pending");
+            continue;
+          }
+          scheduleWork(node, work, "working");
           startAttempt(node, work);
           work.workedAt = time;
-          if (node.status === "down" || (work.remaining <= 0 && !(work.cpuRemaining ?? 0))) {
+          if (work.remaining <= 0 && !(work.cpuRemaining ?? 0)) {
             finish(node, work);
             if (!work.retained) {
               finished.add(work);
@@ -2633,7 +2697,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             }
           }
         }
-        node.takeovers = [];
         if (finished.size) node.working = node.working.filter((work) => !finished.has(work));
       }
       while (
@@ -2660,7 +2723,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         const queue = node.resume.length ? node.resume : node.pending;
         const next = queue.peek()!;
-        if (next.continuation && node.props.admission && !next.threadLease && node.status === "up") {
+        const recovering = !!next.recoveryCapacity;
+        if (next.continuation && !recovering && node.props.admission && !next.threadLease && node.status === "up") {
           const policy = node.props.admission;
           const ceiling =
             policy.fixedSlotsPerReplica === undefined
@@ -2678,10 +2742,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (!next.threadLease) break;
         }
         if (node.status === "up" && !startResources(node, next)) break;
+        if (recovering && node.status === "up" && !reacquireCapacity(node, next)) {
+          endResources(node, next);
+          break;
+        }
         const work = queue.shift()!;
         if (work.continuation) wakeDelivery(work);
         if (
           !work.continuation &&
+          !recovering &&
           node.props.admission &&
           !work.lease &&
           node.status === "up" &&
@@ -2700,16 +2769,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           finish(node, work);
           if (work.retained) {
             if (!startResources(node, work)) {
-              node.pending.push(work);
+              scheduleWork(node, work, "pending");
               break;
             }
             work.workedAt = time;
-            node.working.push(work);
+            scheduleWork(node, work, "working");
             work.slotted = true;
           } else if (work.waitingCall === undefined) endResources(node, work);
         } else {
           work.workedAt = time;
-          node.working.push(work);
+          scheduleWork(node, work, "working");
           work.slotted = true;
           if (work.message.family.trace) step(work.message, "start", node.id);
         }
@@ -2900,20 +2969,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             work.slotted = false;
             endResources(node, work);
             work.admissibleActive = node.activeMs;
-            node.pending.push(work);
-            continue;
-          }
-          if (work.resumeAtAdmission) {
-            const expired =
-              f &&
-              ((work.replica !== undefined && (f.busy.get(work.replica)?.drainAt ?? Infinity) <= time) ||
-                work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
-            if (node.status === "down" || expired) {
-              work.resumeAtAdmission = false;
-              settleWork(node, work, false, false);
-              work.slotted = false;
-              endResources(node, work);
-            } else node.working[keep++] = work;
+            scheduleWork(node, work, "pending");
             continue;
           }
           if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
@@ -3077,6 +3133,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         working: resourceWork(node),
         pending: queuedWork(node),
         queue: node.pending,
+        workQueues: { working: node.working, pending: queuedWork(node), takeovers: node.takeovers },
       })),
       time,
       scale,
