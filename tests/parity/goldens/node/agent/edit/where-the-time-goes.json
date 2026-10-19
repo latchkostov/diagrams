@@ -284,6 +284,10 @@
           {
             "atMs": 3000,
             "action": { "do": "note", "text": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.", "focus": ["billing", "orders"] }
+          },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.", "focus": ["billing", "receipts"] }
           }
         ],
         "expectations": [
@@ -313,6 +317,51 @@
           }
         ],
         "timeline": [],
+        "expectations": [
+          {
+            "id": "no-loss",
+            "label": "No orders dropped at Billing",
+            "metric": { "node": "billing", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "always"
+          }
+        ]
+      },
+      {
+        "id": "slow-billing-drill",
+        "title": "Slow Billing drill",
+        "description": "At 3 s Billing slows 5×. Hover for latency measured since that fault; restoring it at 6 s starts a fresh window.",
+        "seed": 41,
+        "scale": 100,
+        "durationMs": 9000,
+        "traffic": [
+          {
+            "id": "orders",
+            "node": "checkout",
+            "messageType": "OrderPlaced",
+            "shape": { "kind": "constant", "ratePerSec": 1000, "durationMs": 8500 }
+          }
+        ],
+        "timeline": [
+          {
+            "atMs": 3000,
+            "action": {
+              "do": "fault",
+              "fault": { "kind": "slow", "node": "billing", "factor": 5 },
+              "drill": "slow-dependency"
+            }
+          },
+          {
+            "atMs": 3100,
+            "action": { "do": "note", "text": "Billing is 5× slower. Hover Billing: its latency samples now count from this fault, not from restart.", "focus": ["billing", "receipts"] }
+          },
+          { "atMs": 6000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "billing", "factor": 1 } } },
+          {
+            "atMs": 6100,
+            "action": { "do": "note", "text": "Billing is restored. Hover Billing: the percentile window starts again at the restoration. Restart resets everything.", "focus": ["billing", "receipts"] }
+          }
+        ],
         "expectations": [
           {
             "id": "no-loss",

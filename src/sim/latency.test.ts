@@ -340,3 +340,71 @@ describe("bounded async latency", () => {
     expect(run.engine.frame()).toEqual(end);
   });
 });
+
+it("drills reset aggregate and per-type percentiles on effective fault changes, retain counters and replay windows", () => {
+  const run = createSimulationRun(
+    diagram(),
+    {
+      id: "fault-window",
+      title: "Fault window",
+      traffic: [],
+      durationMs: 10000,
+      timeline: [{ atMs: 9000, action: { do: "fault", fault: { kind: "slow", node: "worker", factor: 5 } } }],
+    },
+    { roleOf: (id) => id as SimRole },
+  );
+  const e = run.engine;
+  e.inject("source", 10, { type: "Order" });
+  run.step(2000);
+  const before = e.snapshot().nodes.sink;
+  expect(before.latency!.samples).toBe(10);
+  const healthy = run.checkpoint();
+  const slow = { kind: "slow", node: "worker", factor: 5 } as const;
+  e.setFault(slow);
+  expect(e.snapshot().nodes.sink.latency).toBeUndefined();
+  expect(e.snapshot().nodes.sink.processed).toBe(before.processed);
+  e.inject("source", 1, { type: "Order" });
+  run.step(1000);
+  const faulted = e.snapshot().nodes.sink.latency!;
+  expect(faulted).toMatchObject({
+    samples: 1,
+    p50: 500,
+    p95: 500,
+    byType: { Order: { samples: 1 } },
+    sinceFault: { atMs: 2000, fault: slow },
+  });
+  e.setFault({ factor: 5, node: "worker", kind: "slow" }); // Key order does not make an effective change.
+  expect(e.snapshot().nodes.sink.latency).toEqual(faulted);
+  const faultCheckpoint = run.checkpoint();
+  expect(Object.isFrozen(faulted.sinceFault)).toBe(true);
+  expect(Object.isFrozen(faulted.sinceFault!.fault)).toBe(true);
+  expect(() => Object.assign(faulted.sinceFault!, { atMs: -1 })).toThrow(TypeError);
+  expect(() => Object.assign(faulted.sinceFault!.fault, { factor: 10 })).toThrow(TypeError);
+  e.setFault({ ...slow, factor: 1 });
+  expect(e.snapshot().nodes.sink.latency).toBeUndefined();
+  e.inject("source", 1, { type: "Order" });
+  run.step(500);
+  expect(e.snapshot().nodes.sink.latency).toMatchObject({
+    samples: 1,
+    p95: 100,
+    sinceFault: { atMs: 3000, fault: { ...slow, factor: 1 } },
+  });
+  run.restore(faultCheckpoint);
+  expect(e.snapshot().nodes.sink.latency).toEqual(faulted);
+  run.restore(healthy);
+  expect(e.snapshot().nodes.sink.latency).toEqual(before.latency);
+  run.restart();
+  expect(e.snapshot().nodes.sink.latency).toBeUndefined();
+  e.inject("source", 1);
+  run.step(500);
+  expect(e.snapshot().nodes.sink.latency!.sinceFault).toBeUndefined();
+});
+
+it("Free play keeps its cumulative latency through faults", () => {
+  const e = engine();
+  e.inject("source", 1);
+  e.step(500);
+  const latency = e.snapshot().nodes.sink.latency;
+  e.setFault({ kind: "slow", node: "worker", factor: 5 });
+  expect(e.snapshot().nodes.sink.latency).toEqual(latency);
+});

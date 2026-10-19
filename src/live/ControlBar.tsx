@@ -1,3 +1,5 @@
+import { useInteraction } from "../canvas/interaction";
+import { SimPanel } from "./lazySimPanel";
 import { t, useLocale } from "../i18n";
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveState } from "./controller";
@@ -206,6 +208,7 @@ const TRACE_CHOICES: readonly (readonly [TraceChoice, string])[] = [
 ];
 
 function MoreMenu({ state }: { state: LiveState }) {
+  const interaction = useInteraction();
   const ui = useLive();
   const c = ui.controller;
   // Its Esc leaves focus where it is (no invoker): the "⋯" button keeps it, an item's focus goes with the menu.
@@ -219,6 +222,7 @@ function MoreMenu({ state }: { state: LiveState }) {
   const traffic = ui.action("sim.traffic");
   useEffect(() => {
     if (!open) return;
+    SimPanel.preload();
     const outside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && close("outside");
     const esc = (e: KeyboardEvent) => e.key === "Escape" && close("escape");
     window.addEventListener("pointerdown", outside, true);
@@ -253,7 +257,25 @@ function MoreMenu({ state }: { state: LiveState }) {
         <LiveIcon name="more" size={15} />
       </button>
       {open && (
-        <div className="lv-more-menu" role="menu" data-testid="live-more-menu">
+        <div
+          className="lv-more-menu"
+          role="menu"
+          tabIndex={-1}
+          data-testid="live-more-menu"
+          onKeyDown={(e) => {
+            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+            e.preventDefault();
+            const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+            const index = items.indexOf(document.activeElement as HTMLButtonElement);
+            const next =
+              e.key === "Home"
+                ? 0
+                : e.key === "End"
+                  ? items.length - 1
+                  : (index + (e.key === "ArrowUp" ? -1 : 1) + items.length) % items.length;
+            if (items[next]) interaction?.dispatch({ type: "dialog.tab", target: items[next] });
+          }}
+        >
           <button
             role="menuitemcheckbox"
             aria-checked={state.traffic}
@@ -335,10 +357,7 @@ function MoreMenu({ state }: { state: LiveState }) {
               <span>{state.simulation ? "Edit this simulation" : "Simulations…"}</span>
             </button>
           )}
-          <div className="lv-more-hint">
-            {mutations.hint() ??
-              "Right-click any node to inject messages, break things or trace one. Click a moving message to trace it."}
-          </div>
+          <div className="lv-more-hint">{mutations.hint() ?? t("liveMenu.faultHint")}</div>
         </div>
       )}
     </div>

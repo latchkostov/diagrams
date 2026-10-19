@@ -4,7 +4,7 @@ import { replicaRange } from "../model/autoscaling";
 import { stencilRole } from "../stencils/roles";
 import { brokerRole } from "../model/brokerRoutes";
 import { createSimulationRun, estimateTotalMs } from "./simulation";
-import { FaultTimelineError } from "../model/faults";
+import { FaultTimelineError } from "../model/faultRuntime";
 import { resolveMultiplier, resolveScale } from "./units";
 import { resolveNodeProps } from "./defaults";
 import type { ScalingDecision } from "./autoscaling";

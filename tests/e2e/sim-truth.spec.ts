@@ -202,7 +202,7 @@ test.describe("the simulation tells the truth", () => {
     await expect(page.getByTestId("trouble-detail")).toContainText(
       "Messages wait in orders.created.v1 until it's back",
     );
-    await expect(page.getByTestId("trouble-action")).toHaveText(/Revive/);
+    await expect(page.getByTestId("trouble-action")).toHaveText(/Restore/);
     await page.getByTestId("trouble-action").click();
     await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "up");
     await expect(callout).toHaveCount(0);

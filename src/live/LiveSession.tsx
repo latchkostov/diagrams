@@ -15,6 +15,7 @@ import { EventLog } from "./EventLog";
 import { InjectDialog } from "./InjectDialog";
 import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
+import { SimPanelFrame } from "./SimPanelFrame";
 import { SimPanel } from "./lazySimPanel";
 import { TraceCard } from "./TraceCard";
 import { LiveContext, type LiveUi } from "./context";
@@ -366,17 +367,19 @@ export function LiveSession({
         />
       )}
       {panel.open && panel.kind === "sims" && editor && (
-        <SimPanel
-          key={panel.sim?.id ?? "picker"}
-          initial={panel.sim}
-          onDraftChange={takePanelDraft}
-          state={state}
-          onClose={() => setPanel({ open: false, kind: "sims", sim: null })}
-          onRun={runDraft}
-          onSave={saveSimulation}
-          onDelete={deleteSimulation}
-          onOpen={showSimulation}
-        />
+        <SimPanelFrame>
+          <SimPanel
+            key={panel.sim?.id ?? "picker"}
+            initial={panel.sim}
+            onDraftChange={takePanelDraft}
+            state={state}
+            onClose={() => setPanel({ open: false, kind: "sims", sim: null })}
+            onRun={runDraft}
+            onSave={saveSimulation}
+            onDelete={deleteSimulation}
+            onOpen={showSimulation}
+          />
+        </SimPanelFrame>
       )}
       {inject && <InjectDialog request={inject} onClose={() => setInject(null)} />}
       {sequence && (

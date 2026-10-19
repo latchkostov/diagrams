@@ -1,3 +1,5 @@
+import { useInteraction } from "../../canvas/interaction";
+import { SimPanel } from "../lazySimPanel";
 import { t, useLocale } from "../../i18n";
 import { useStoreApi } from "@xyflow/react";
 import { useEffect } from "react";
@@ -33,6 +35,14 @@ export function useLiveContextMenu({
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
 }) {
   const locale = useLocale();
+  const interaction = useInteraction();
+  useEffect(
+    () =>
+      interaction?.subscribe(() => {
+        if (interaction.menu?.kind === "context") SimPanel.preload();
+      }),
+    [interaction],
+  );
   const { controller, traceRef, setTrace, setInject, getDiagram, flash, panel } = session;
   const { slowRef } = spotlight;
   const { startStorm, showEvents } = commands;

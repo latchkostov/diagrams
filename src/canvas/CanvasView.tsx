@@ -58,6 +58,7 @@ import {
   type EdgeTypes,
   type IsValidConnection,
 } from "@xyflow/react";
+import { examples } from "../examples";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import { DRAFT_SLUG, getDiagramIdentity, isLibrarySlug, setDiagramPrivate, setOnDeviceAllowed } from "../lib/diagramIO";
@@ -1079,7 +1080,9 @@ function CanvasInner({
                 preventScrolling={!readOnly || !!viewer?.wheel}
                 // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
                 // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
-                panOnDrag={editGestures ? PAN_MIDDLE : true}
+                panOnDrag={editGestures && !spaceHeld ? PAN_MIDDLE : true}
+                // usePanKeys owns Space; React Flow's global listener would cancel reading-region scrolling.
+                panActivationKeyCode={null}
                 selectionOnDrag={editGestures}
                 selectionKeyCode={editGestures ? null : "Shift"}
                 multiSelectionKeyCode={editGestures ? MULTI_SELECT_KEYS : undefined}
@@ -1112,6 +1115,7 @@ function CanvasInner({
                 {(nodeCount > 0 || live) && (
                   <LiveView
                     readOnly={readOnly}
+                    example={!initial && !modified && examples.some((example) => example.slug === slug)}
                     initial={viewer?.live}
                     onHandle={receiveLiveHandle}
                     editor={readOnly ? undefined : editor}

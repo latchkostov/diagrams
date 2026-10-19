@@ -393,13 +393,19 @@ test.describe("outages in the run (UX gate 3)", () => {
     await expect(page.getByTestId("trouble-detail")).toContainText(
       "Messages wait in orders.created.v1 until it's back",
     );
-    await expect(page.getByTestId("trouble-action")).toHaveText(/Revive/);
+    await expect(page.getByTestId("trouble-action")).toHaveText(/Restore/);
     await expect(page.getByTestId("capacity-label-payments")).toContainText("Down · ");
     await expect(page.getByTestId("capacity-label-payments")).toContainText("waiting in orders.created.v1");
+    await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
+    await expect(page.getByTestId("node-metric-payments")).toHaveCount(0);
+    await expect(page.getByTestId("node-latency-payments")).toHaveCount(0);
     // Payments comes back at 12.0s.
     await page.getByTestId("live-marker-4").click();
     await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
     await expect(headline).toHaveText("Healthy: every service has headroom");
+    await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "up");
+    await expect(page.getByTestId("capacity-label-payments")).toHaveAttribute("data-level", "ok");
+    await expect(page.getByTestId("capacity-label-payments")).not.toContainText("Down");
   });
 });
 

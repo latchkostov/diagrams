@@ -1,4 +1,6 @@
-import { DRILL_PRESETS, faultTimelineProblem, type DrillPreset } from "../model/faults";
+import { useInteraction } from "../canvas/interaction";
+import { DRILL_PRESETS, type DrillPreset } from "../model/faults";
+import { faultTimelineProblem } from "../model/faultRuntime";
 import { simulationProblem } from "../interop/native";
 import { FaultStep } from "./FaultStep";
 import { defaultFault, drillFault, drillKind, drillName, faultTargets } from "./faults";
@@ -24,8 +26,10 @@ import { Sparkline } from "./Sparkline";
 import { LiveIcon } from "./icons";
 import { formatSeconds } from "./format";
 import { usePanelEscape } from "./usePanelEscape";
+import type { ElementHandle } from "../canvas/interaction/types";
 
 interface Props {
+  opener?: ElementHandle | null;
   /** Simulation to open for editing; null shows the list. */
   initial: Simulation | null;
   state: LiveState;
@@ -83,9 +87,10 @@ const num = (v: string) => (v.trim() === "" ? 0 : Number(v));
  * Right-side drawer to create and edit the diagram's saved simulations. Edits a working copy;
  * Save writes it through the editor (one undo step) and Run plays it immediately, saved or not.
  */
-export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen, onDraftChange }: Props) {
+export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen, onDraftChange, opener }: Props) {
   useLocale();
   const ui = useLive();
+  const interaction = useInteraction();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
   useLayoutEffect(() => onDraftChange?.(sim), [sim, onDraftChange]);
@@ -101,11 +106,18 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
 
   usePickNode(picker, () => setPicker(null));
   // Esc cancels a node pick first, then closes the panel.
-  usePanelEscape(onClose, () => {
-    if (!picker) return false;
-    setPicker(null);
-    return true;
-  });
+  usePanelEscape(
+    onClose,
+    () => {
+      if (!picker) return false;
+      setPicker(null);
+      return true;
+    },
+    opener,
+  );
+  useLayoutEffect(() => {
+    interaction?.dispatch({ type: "panel.field", panel: "sim-panel", field: "sim-panel-heading" });
+  }, [interaction]);
 
   const edit = (fn: (draft: Simulation) => void) =>
     setSim((s) => {
@@ -133,7 +145,9 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
         ) : (
           <LiveIcon name="storm" size={16} />
         )}
-        <strong>{sim ? (saved ? "Edit simulation" : "New simulation") : "Simulations"}</strong>
+        <strong tabIndex={-1} data-testid="sim-panel-heading">
+          {sim ? (saved ? "Edit simulation" : "New simulation") : "Simulations"}
+        </strong>
         {dirty && (
           <span className="lv-dirty" data-testid="sim-panel-dirty">
             unsaved
@@ -268,16 +282,21 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
                     disabled={!faultTargets(diagram, drillKind(preset)).length}
                     data-testid={`sim-panel-preset-${preset}`}
                   >
-                    {drillName(preset)}
+                    {faultTargets(diagram, drillKind(preset)).length
+                      ? drillName(preset)
+                      : translate("fault.unavailablePreset", {
+                          name: drillName(preset),
+                          reason:
+                            preset === "zone-outage"
+                              ? translate("fault.needsBoundary")
+                              : preset === "region-connectivity"
+                                ? translate("fault.needsLink")
+                                : translate("fault.needsNode"),
+                        })}
                   </option>
                 ))}
               </optgroup>
             </select>
-            {DRILL_PRESETS.some((preset) => !faultTargets(diagram, drillKind(preset)).length) && (
-              <p className="lv-warning" data-testid="sim-panel-unavailable-faults">
-                {translate("fault.unavailablePresets")}
-              </p>
-            )}
           </Disclosure>
 
           <Disclosure
@@ -1023,7 +1042,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
       </div>
       {a.do === "fault" ? (
         <>
-          {a.drill && <small>{translate("fault.drill", { name: drillName(a.drill) })}</small>}
+          {a.drill && <small>{translate("fault.preset", { name: drillName(a.drill) })}</small>}
           <FaultStep
             fault={a.fault}
             diagram={diagram}

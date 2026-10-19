@@ -1,7 +1,9 @@
-import { boundaryOutage } from "../../model/faults";
+import { nodeFaultLabel } from "../../model/faultWords";
+import { faultTrouble } from "../faultTrouble";
+import { boundaryOutage } from "../../model/faultRuntime";
 import { t } from "../../i18n";
 import { useStore } from "@xyflow/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorApi } from "../../editor/types";
 import { notify } from "../../interop/ui/toast";
 import { addConsumer, addDeadLetterQueue } from "../addConsumer";
@@ -102,11 +104,36 @@ export function useLiveFixes({
   // ---------------------------------------------------------------- what playback shows going wrong
 
   // The run's trouble the plan can't see (a node down, messages lost, a lag that keeps rising), for the callout.
-  const { trouble, dismiss: dismissTrouble, shown: troubleShown } = useObservedTrouble(controller);
+  const { trouble: observed, dismiss: dismissTrouble, shown: troubleShown } = useObservedTrouble(controller);
+  const [dismissedFault, setDismissedFault] = useState<string | null>(null);
+  const top = capacity?.top;
+  const capacityFault: Trouble | undefined =
+    top && nodeFaultLabel(top.id, session.state.snapshot.faults)
+      ? {
+          key: `fault:${session.state.generation}:${top.id}:${nodeFaultLabel(top.id, session.state.snapshot.faults)}`,
+          kind: "lag",
+          node: top.id,
+          headline: capacity.headline,
+          announce: capacity.headline,
+          detail: capacity.detail,
+          action: { kind: "inputs" },
+        }
+      : undefined;
+  const trouble = faultTrouble(
+    observed ?? capacityFault,
+    controller.currentDiagram,
+    session.state.snapshot.faults,
+    session.state.snapshot.nodes,
+  );
   const runTroubleAction = useCallback(
     (action: TroubleAction) => {
       if (slowRef.current?.session.active && action.kind !== "events" && action.kind !== "inputs") return;
-      if (action.kind === "revive") {
+      if (action.kind === "restore-boundary")
+        controller.setFault({ kind: "boundary", boundary: action.boundary, down: false });
+      else if (action.kind === "clear-fault") {
+        controller.setFault({ kind: "slow", node: action.node, factor: 1 });
+        controller.setFault({ kind: "fail", node: action.node, rate: 0 });
+      } else if (action.kind === "revive") {
         if (boundaryOutage(controller.currentDiagram, action.node, controller.snapshot().faults)) return;
         controller.setNodeStatus(action.node, "up");
       } else if (action.kind === "add-consumer") addReader(action.node);
@@ -130,7 +157,9 @@ export function useLiveFixes({
     !presenting &&
     !capturing &&
     !capacityOpen &&
-    (!showCapacity || troubleLeads(trouble, capacity))
+    (observed || trouble.key !== dismissedFault) &&
+    !(session.state.run?.note && trouble.action.kind === "restore-boundary") &&
+    (!showCapacity || trouble.action.kind === "clear-fault" || troubleLeads(trouble, capacity))
       ? trouble
       : undefined;
   const troubleAnnouncement = useRef<HTMLSpanElement>(null);
@@ -173,7 +202,10 @@ export function useLiveFixes({
     troubleAnnouncement,
     troubleActionHere,
     troubleShown,
-    dismissTrouble,
+    dismissTrouble: () => {
+      if (observed) dismissTrouble();
+      else if (capacityFault) setDismissedFault(capacityFault.key);
+    },
     saveInputs,
   };
 }

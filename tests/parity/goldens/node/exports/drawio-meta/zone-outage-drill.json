@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "994cd70cc593aaba74440ee29124b9e73f70716d7982fd5f0462421d2bcae333",
-    "bytes": 13836,
+    "sha256": "abcf20900e94d953f90abecb2564d4d406c47518f8c51c7fefb23d63c6327ae5",
+    "bytes": 13916,
     "inlined": { "client.user": "client-user c8aa1007847a06e5" }
   },
   "readBack": [
@@ -151,7 +151,7 @@
             "expectations": [
               {
                 "id": "api-a-loss",
-                "label": "Nothing lost at api-a",
+                "label": "No checkouts lost at Checkout API a",
                 "metric": { "node": "api-a", "field": "dropped" },
                 "op": "==",
                 "value": 0,
@@ -159,7 +159,7 @@
               },
               {
                 "id": "api-b-loss",
-                "label": "Nothing lost at api-b",
+                "label": "No checkouts lost at Checkout API b",
                 "metric": { "node": "api-b", "field": "dropped" },
                 "op": "==",
                 "value": 0,
@@ -167,7 +167,7 @@
               },
               {
                 "id": "orders-a-loss",
-                "label": "Nothing lost at orders-a",
+                "label": "No checkouts lost at Orders a",
                 "metric": { "node": "orders-a", "field": "dropped" },
                 "op": "==",
                 "value": 0,
@@ -175,7 +175,7 @@
               },
               {
                 "id": "orders-b-loss",
-                "label": "Nothing lost at orders-b",
+                "label": "No checkouts lost at Orders b",
                 "metric": { "node": "orders-b", "field": "dropped" },
                 "op": "==",
                 "value": 0,
@@ -194,7 +194,7 @@
           {
             "id": "no-health-checks",
             "title": "Zone outage: no health checks",
-            "description": "Zone b fails at 3 s. Compare how the load balancer chooses its next target.",
+            "description": "Without health checks, Checkout API b drops checkouts. The zero-loss expectation fails.",
             "seed": 7,
             "scale": 1,
             "durationMs": 9000,
@@ -217,13 +217,13 @@
               },
               {
                 "atMs": 3200,
-                "action": { "do": "note", "text": "Zone b is down. Without health checks the load balancer still sends half the checkouts there: watch the dropped count." }
+                "action": { "do": "note", "text": "Zone b is down. Without health checks, Checkout API b drops checkouts. The zero-loss expectation will fail: compare with the health-checks run." }
               }
             ],
             "expectations": [
               {
                 "id": "api-a-loss",
-                "label": "Nothing lost at api-a",
+                "label": "No checkouts lost at Checkout API a",
                 "metric": { "node": "api-a", "field": "dropped" },
                 "op": "==",
                 "value": 0,
@@ -231,15 +231,15 @@
               },
               {
                 "id": "api-b-loss",
-                "label": "Without health checks, checkouts are lost at api-b",
+                "label": "No checkouts lost at Checkout API b",
                 "metric": { "node": "api-b", "field": "dropped" },
-                "op": ">=",
-                "value": 10,
+                "op": "==",
+                "value": 0,
                 "when": "end"
               },
               {
                 "id": "orders-a-loss",
-                "label": "Nothing lost at orders-a",
+                "label": "No checkouts lost at Orders a",
                 "metric": { "node": "orders-a", "field": "dropped" },
                 "op": "==",
                 "value": 0,
@@ -247,7 +247,7 @@
               },
               {
                 "id": "orders-b-loss",
-                "label": "Nothing lost at orders-b",
+                "label": "No checkouts lost at Orders b",
                 "metric": { "node": "orders-b", "field": "dropped" },
                 "op": "==",
                 "value": 0,

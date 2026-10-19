@@ -175,6 +175,7 @@ export function useCanvasNavigation({
       const ns = getNodes().filter((n) => !n.hidden);
       const es = store.getState().edges.filter((e) => !e.hidden);
       const el = from instanceof Element ? from : null;
+      const detailOwner = el?.closest<HTMLElement>("[data-live-node-detail]")?.dataset.liveNodeDetail;
       // A step's destination until focus lands there, a node's or an edge's: a second Tab or Ctrl+Alt+] in the same
       // frame (two presses queued behind a busy moment) goes on from there, not from what the key event still targets.
       const pending = interaction.pendingTarget();
@@ -182,7 +183,7 @@ export function useCanvasNavigation({
         ? pending.kind === "node"
           ? pending.id
           : undefined
-        : (el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined);
+        : (detailOwner ?? el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined);
       const focusedEdge = pending
         ? pending.kind === "edge"
           ? pending.id
@@ -231,6 +232,15 @@ export function useCanvasNavigation({
       };
 
       if (step === "next" || step === "prev") {
+        // Capture owns node → reading region → next node; embeds retain their local fallback.
+        if (detailOwner && step === "prev") return goNode(detailOwner);
+        if (!detailOwner && focusedNode && step === "next") {
+          const detail = document.getElementById(`live-node-detail-${encodeURIComponent(focusedNode)}`);
+          if (detail?.hasAttribute("data-live-node-detail")) {
+            interaction.dispatch({ type: "node.details", target: detail });
+            return true;
+          }
+        }
         // From an edge, the order goes on from its source.
         const start = current ?? (focusedEdge ? es.find((e) => e.id === focusedEdge)?.source : undefined);
         if (!start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;

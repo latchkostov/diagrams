@@ -14,15 +14,41 @@
         "what": "dropped",
         "count": 26,
         "onPurpose": { "count": 26, "why": "down" },
-        "expects": "some"
+        "expects": "none"
       }
     ],
-    "dropped": []
+    "dropped": [
+      {
+        "id": "dropped:api-b",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "api-b",
+        "elements": ["api-b"],
+        "title": "Failed requests to Checkout API b are lost",
+        "message": "Checkout API b fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      }
+    ]
   },
-  "planned": [
-    { "node": "api-b", "simulation": "Zone outage: no health checks", "what": "dropped", "count": 26, "why": "down" }
+  "planned": [],
+  "counted": 1,
+  "findings": [
+    {
+      "id": "dropped:api-b",
+      "rule": "dropped",
+      "severity": "suggestion",
+      "target": "api-b",
+      "elements": ["api-b"],
+      "evidence": [{ "simulation": "Zone outage: no health checks", "what": "dropped", "count": 26 }],
+      "evidenceText": ["26 dropped in “Zone outage: no health checks”"]
+    }
   ],
-  "counted": 0,
-  "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 26 dropped at api-b in “Zone outage: no health checks”." }
+  "agentReport": {
+    "findings": [
+      { "id": "dropped:api-b", "rule": "dropped", "severity": "suggestion", "title": "Failed requests to Checkout API b are lost", "message": "Checkout API b fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["api-b"], "evidence": ["26 dropped in “Zone outage: no health checks”"] }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 2 saved simulations (at most 60 s each)."
+  }
 }

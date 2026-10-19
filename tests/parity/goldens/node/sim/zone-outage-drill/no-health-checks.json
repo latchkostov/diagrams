@@ -6,16 +6,16 @@
     "scale": 1,
     "multipliers": { "traffic": 1, "capacity": 1 },
     "expectations": [
-      { "id": "api-a-loss", "label": "Nothing lost at api-a", "status": "pass", "value": 0 },
-      { "id": "api-b-loss", "label": "Without health checks, checkouts are lost at api-b", "status": "pass", "value": 26 },
-      { "id": "orders-a-loss", "label": "Nothing lost at orders-a", "status": "pass", "value": 0 },
-      { "id": "orders-b-loss", "label": "Nothing lost at orders-b", "status": "pass", "value": 0 },
+      { "id": "api-a-loss", "label": "No checkouts lost at Checkout API a", "status": "pass", "value": 0 },
+      { "id": "api-b-loss", "label": "No checkouts lost at Checkout API b", "status": "fail", "value": 26 },
+      { "id": "orders-a-loss", "label": "No checkouts lost at Orders a", "status": "pass", "value": 0 },
+      { "id": "orders-b-loss", "label": "No checkouts lost at Orders b", "status": "pass", "value": 0 },
       { "id": "surviving-zone", "label": "Zone a continues serving checkouts", "status": "pass", "value": 40 }
     ],
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "checkouts" },
-      { "atMs": 3000, "kind": "fault", "label": "Zone outage: zone-b" },
-      { "atMs": 3200, "kind": "note", "label": "Zone b is down. Without health checks the load balancer still sends half the checkouts there: watch the dropped count." },
+      { "atMs": 3000, "kind": "fault", "label": "Zone outage: Zone b" },
+      { "atMs": 3200, "kind": "note", "label": "Zone b is down. Without health checks, Checkout API b drops checkouts. The zero-loss expectation will fail: compare with the health-checks run." },
       { "atMs": 8000, "kind": "traffic", "label": "checkouts ends" }
     ]
   },
@@ -71,7 +71,7 @@
     ]
   },
   "notes": [
-    { "atMs": 3200, "text": "Zone b is down. Without health checks the load balancer still sends half the checkouts there: watch the dropped count.", "focus": [] }
+    { "atMs": 3200, "text": "Zone b is down. Without health checks, Checkout API b drops checkouts. The zero-loss expectation will fail: compare with the health-checks run.", "focus": [] }
   ],
   "latency": {
     "journeys": { "done": 80, "retried": 0, "deadLettered": 0, "dropped": 26, "blocked": 0, "partial": 0, "truncated": 0 },

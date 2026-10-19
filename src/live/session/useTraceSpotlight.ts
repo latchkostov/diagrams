@@ -68,8 +68,9 @@ export function useTraceSpotlight({ session, camera }: { session: LiveSessionSta
     camera.dispatch({ type: "narration", focus: noteFocus });
   }, [camera, noteKey, noteFocus]);
   useEffect(() => {
+    if (panel.open && panel.kind === "sims") return; // SimPanelFrame owns its mount, including Loading.
     camera.dispatch({ type: "live.panel", open: panel.open });
-  }, [camera, panel.open]);
+  }, [camera, panel.open, panel.kind]);
   const cardOpen = !!state.trace;
   useEffect(() => {
     camera.dispatch({ type: "live.card", open: cardOpen });

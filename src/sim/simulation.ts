@@ -1,5 +1,5 @@
 import { faultLabel } from "../model/faultWords";
-import { faultTimelineProblem, FaultTimelineError } from "../model/faults";
+import { faultTimelineProblem, FaultTimelineError } from "../model/faultRuntime";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { createRealCountInjector } from "./injection";
@@ -147,7 +147,7 @@ export function createSimulationRun(
       step.action.do === "note"
         ? step.action.text
         : step.action.do === "fault"
-          ? faultLabel(step.action.fault, step.action.drill)
+          ? faultLabel(step.action.fault, step.action.drill, diagram)
           : `${step.action.do}: ${step.action.node}`,
   }));
   for (const profile of simulation.traffic) {
@@ -157,6 +157,7 @@ export function createSimulationRun(
     if (window.endMs !== window.startMs) markers.push({ atMs: window.endMs, kind: "traffic", label: `${label} ends` });
   }
   markers.sort((a, b) => a.atMs - b.atMs);
+  engine.setLatencySinceFault(timeline.some((step) => step.action.do === "fault"));
   const totalMs = estimateTotalMs(simulation);
   const trafficEnd = Math.max(0, ...simulation.traffic.map((p) => trafficWindow(p.shape).endMs));
   const scheduler = createScheduler();

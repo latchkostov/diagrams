@@ -1,3 +1,5 @@
+import { nodeFaultLabels } from "../model/faultWords";
+import { useInteraction } from "../canvas/interaction";
 import { compileTopology } from "../sim/topology";
 import { brokerAssignments } from "../sim/brokerAssignments";
 import { resolveMultiplier } from "../sim/units";
@@ -54,6 +56,9 @@ export function NodeBadges({
   capacity?: CapacityView | null;
 }) {
   const ui = useLive();
+  useLocale();
+  const faults = state.snapshot.faults;
+  const labels = nodeFaultLabels(faults);
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
   const topology = useMemo(() => compileTopology(diagram), [diagram]);
@@ -105,8 +110,11 @@ export function NodeBadges({
           <NodeBadge
             key={n.id}
             node={n}
+            diagram={diagram}
             s={s}
             showOutageLoss={boundaryFault}
+            fault={labels.get(n.id) ?? ""}
+            properties={ui.canEdit && !presenting}
             peak={peak}
             hovered={hovered === n.id}
             cap={capacity?.nodes[n.id]}
@@ -136,36 +144,70 @@ export function NodeBadges({
  * Whichever moved last wins: a node focused after its label edit doesn't hide the one hovered next.
  */
 function useHoveredNode(): string | null {
+  const interaction = useInteraction();
   const domNode = useStore((s) => s.domNode);
   const [id, setId] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [pointerLast, setPointerLast] = useState(false);
   useEffect(() => {
     if (!domNode) return;
+    const nodeAt = (target: Element | null) => {
+      const detail = target?.closest<HTMLElement>("[data-live-node-detail]");
+      return (
+        detail?.dataset.liveNodeDetail ??
+        target?.closest<HTMLElement>(".react-flow__node-diagram[data-id]")?.dataset.id ??
+        null
+      );
+    };
     const over = (e: PointerEvent) => {
-      const el =
-        e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
-      setId(el?.dataset.id ?? null);
+      const node = nodeAt(e.target instanceof Element ? e.target : null);
+      // Latency details stay open across the gap to their scrollable surface.
+      if (node || !domNode.querySelector("[data-live-node-detail].is-summary")) setId(node);
       setPointerLast(true);
     };
     const leave = () => setId(null);
     const focus = () => {
-      const el = document.activeElement?.closest<HTMLElement>(".react-flow__node-diagram[data-id]");
-      setFocused(el?.dataset.id ?? null);
+      setFocused(nodeAt(document.activeElement));
       setPointerLast(false);
+    };
+    const down = (e: PointerEvent) => {
+      if (!nodeAt(e.target instanceof Element ? e.target : null)) setId(null);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const active = document.activeElement;
+      if (e.shiftKey && active?.hasAttribute("data-live-node-detail")) {
+        const card = domNode.querySelector<HTMLElement>(`[data-testid="node-${CSS.escape(nodeAt(active)!)}"]`);
+        const target = card?.parentElement;
+        if (target?.hasAttribute("tabindex")) {
+          e.preventDefault();
+          interaction?.dispatch({ type: "node.details", target });
+        }
+        return;
+      }
+      if (e.shiftKey) return;
+      if (!active?.matches(".react-flow__node-diagram[data-id]")) return;
+      const detail = document.getElementById(`live-node-detail-${encodeURIComponent(nodeAt(active)!)}`);
+      if (!detail?.hasAttribute("data-live-node-detail")) return;
+      e.preventDefault();
+      interaction?.dispatch({ type: "node.details", target: detail });
     };
     focus();
     domNode.addEventListener("pointerover", over);
     domNode.addEventListener("pointerleave", leave);
+    domNode.addEventListener("pointerdown", down);
+    domNode.addEventListener("keydown", key);
     domNode.addEventListener("focusin", focus);
     domNode.addEventListener("focusout", focus);
     return () => {
       domNode.removeEventListener("pointerover", over);
       domNode.removeEventListener("pointerleave", leave);
+      domNode.removeEventListener("pointerdown", down);
+      domNode.removeEventListener("keydown", key);
       domNode.removeEventListener("focusin", focus);
       domNode.removeEventListener("focusout", focus);
     };
-  }, [domNode]);
+  }, [domNode, interaction]);
   return pointerLast ? (id ?? focused) : (focused ?? id);
 }
 
@@ -183,6 +225,9 @@ function groupNames(d: DiagramFile, nodeId: string, topology: ReturnType<typeof 
 }
 
 interface BadgeProps {
+  diagram: DiagramFile;
+  fault: string;
+  properties: boolean;
   node: DiagramFlowNode;
   s: NodeSimState;
   peak: number;
@@ -200,6 +245,7 @@ interface BadgeProps {
 
 const NodeBadge = memo(function NodeBadge({
   node,
+  diagram,
   s,
   peak,
   hovered,
@@ -211,6 +257,8 @@ const NodeBadge = memo(function NodeBadge({
   brokerSpec,
   currentModel,
   showOutageLoss,
+  fault,
+  properties,
 }: BadgeProps) {
   useLocale();
   const domNode = useStore((store) => store.domNode);
@@ -223,7 +271,20 @@ const NodeBadge = memo(function NodeBadge({
     const card = domNode.querySelector<HTMLElement>(`[data-testid="node-${CSS.escape(node.id)}"]`);
     if (!tooltip || !card) return;
     const place = () => {
-      const pane = domNode.getBoundingClientRect(),
+      const scrollTop = tooltip.scrollTop;
+      const bounds = domNode.getBoundingClientRect();
+      const overlays = document.querySelectorAll<HTMLElement>(
+        '[data-testid="live-controls"], [data-testid="live-note"]',
+      );
+      const bottom = Math.min(bounds.bottom, ...Array.from(overlays).map((el) => el.getBoundingClientRect().top - 8));
+      const pane = {
+          left: bounds.left,
+          right: bounds.right,
+          top: bounds.top,
+          bottom,
+          width: bounds.width,
+          height: bottom - bounds.top,
+        },
         box = card.getBoundingClientRect();
       const zoom = card.offsetWidth ? box.width / card.offsetWidth : 1;
       const detailScale = tooltip.offsetWidth ? tooltip.getBoundingClientRect().width / tooltip.offsetWidth : zoom;
@@ -248,6 +309,8 @@ const NodeBadge = memo(function NodeBadge({
       tooltip.style.top = `${top >= box.bottom ? Math.ceil(offset) : Math.floor(offset)}px`;
       const left = Math.max(pane.left + 12, Math.min(detail.left, pane.right - 12 - detail.width));
       tooltip.style.left = `${(left - detail.left) / zoom}px`;
+      // Measuring at natural height temporarily removes overflow. Keep the user's scroll position.
+      tooltip.scrollTop = scrollTop;
     };
     place();
     const observer = new ResizeObserver(place);
@@ -284,7 +347,7 @@ const NodeBadge = memo(function NodeBadge({
   // throughput readout; a broker keeps its lag only while something is waiting.
   const capShown = !!cap && cap.level !== "idle";
   const latencyBadge = s.latency && (s.role === "sink" || !!cap);
-  const showMetric = active && !latencyBadge && !(capShown && (!broker || s.backlog === 0));
+  const showMetric = s.status !== "down" && active && !latencyBadge && !(capShown && (!broker || s.backlog === 0));
   const held = broker ? heldWords(s) : null;
   // A topic nobody reads says so with its count; the heat map's chip would only repeat it as a rate.
   const unread = !!held?.lead;
@@ -351,8 +414,13 @@ const NodeBadge = memo(function NodeBadge({
         </div>
       )}
 
-      {(active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
+      {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
         <div className="lv-strip">
+          {fault && (
+            <span className="lv-metric is-failover" data-testid={`node-fault-${node.id}`}>
+              {fault}
+            </span>
+          )}
           {!showMetric ? null : broker ? (
             <span
               className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`}
@@ -372,11 +440,12 @@ const NodeBadge = memo(function NodeBadge({
               <b className="mono">{formatRate(s.throughput)}</b>
             </span>
           )}
-          {latencyBadge && s.latency && (
+          {s.status !== "down" && latencyBadge && s.latency && (
             <span className="lv-metric mono" data-testid={`node-latency-${node.id}`} title={latencySampling(s.latency)}>
               {latencyLabel(s.latency)}
             </span>
           )}
+          {/* Capacity describes the current outage and waiting traffic, unlike stale throughput/latency. */}
           {cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
           {blocked > 0 && (
             <span
@@ -415,15 +484,46 @@ const NodeBadge = memo(function NodeBadge({
       {hovered && (
         <div
           id={tooltipId}
-          className={`lv-detail${hasLatency ? " has-latency" : ""}`}
-          role="tooltip"
+          className={`lv-detail${hasLatency ? " has-latency nowheel nopan" : ""}`}
+          role={hasLatency ? "region" : "tooltip"}
+          aria-label={hasLatency ? t("latency.heading") : undefined}
+          tabIndex={hasLatency ? 0 : undefined}
+          data-live-node-detail={hasLatency ? node.id : undefined}
+          data-canvas-reading-region={hasLatency ? "" : undefined}
           data-testid={`node-detail-${node.id}`}
+          onKeyDown={
+            hasLatency
+              ? (event) => {
+                  if (event.ctrlKey || event.metaKey || event.altKey) return;
+                  const region = event.currentTarget;
+                  const page = region.clientHeight * 0.875;
+                  const top =
+                    event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? region.scrollHeight
+                        : event.key === "PageDown"
+                          ? region.scrollTop + page
+                          : event.key === "PageUp"
+                            ? region.scrollTop - page
+                            : null;
+                  if (top === null) return;
+                  // Keep paging in this transformed region. Native smooth Home/End scrolls can
+                  // overlap when the next key arrives before the previous scroll has settled.
+                  event.preventDefault();
+                  region.scrollTo({ top, behavior: "instant" });
+                }
+              : undefined
+          }
         >
+          {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
+          {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}
           <HoverExplanation id={node.id} />
-          {s.latency && <LatencyReadout id={node.id} latency={s.latency} />}
-          <small className="lv-detail-more" data-testid="node-detail-more">
-            {t("planning.moreInProperties")}
-          </small>
+          {properties && (
+            <small className="lv-detail-more" data-testid="node-detail-more">
+              {t("planning.moreInProperties")}
+            </small>
+          )}
           {!explained && (
             <>
               <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />
