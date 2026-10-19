@@ -382,7 +382,8 @@ export class WatchTogether {
   private keyOf(sender: string | undefined): string | undefined {
     const signed = this.session.signed;
     if (!signed || !sender) return undefined;
-    return sender === this.me ? signed.key : signed.keyOf(sender);
+    // Who it is, across a re-key (bindings are per epoch; the person isn't): roles never resolve to someone else.
+    return sender === this.me ? signed.key : signed.identityOf(sender);
   }
 
   /** This person hosts the room: a signed room's roster says so, else this tab's record (cooperative). */
@@ -457,7 +458,7 @@ export class WatchTogether {
           ? undefined
           : key === signed.key
             ? this.me
-            : signed.sendersOf(key).find((sender) => here.has(sender));
+            : signed.sendersFor(key).find((sender) => here.has(sender));
       const host = senderOf(s.host);
       const cohosts = s.cohosts.map(senderOf).filter((x): x is string => !!x && x !== host);
       return {
@@ -580,10 +581,10 @@ export class WatchTogether {
     if (key && this.isLead) void this.session.appendRoster("admit", { who: key });
   }
 
-  /** Knock-to-join: Remove someone (the host or a co-host; never the host). The room moves to a new epoch. */
+  /** Knock-to-join: Remove someone (the host alone; never the host). The room moves to a new epoch. */
   remove(sender: string): void {
     const key = this.keyOf(sender);
-    if (key && sender !== this.me && this.isLead) void this.session.remove(key);
+    if (key && sender !== this.me && this.isHosting) void this.session.remove(key);
   }
 
   /** Knock-to-join: "Ask before people join" (the host's or a co-host's switch). */

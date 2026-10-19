@@ -119,6 +119,30 @@ test.describe("Knock-to-join and Remove", () => {
     }
   });
 
+  test("presenting: answering the last card from the keyboard leaves focus on the canvas", async ({
+    browser,
+    context,
+    page,
+  }) => {
+    test.slow();
+    const other = await browser.newContext();
+    try {
+      await emulateTracker([context, other]);
+      const link = await hostRoom(page);
+      await page.getByTestId("present-toggle").click();
+      await expect(page.getByTestId("present-exit")).toBeVisible();
+      await expect(chip(page)).toHaveCount(0);
+      await knock(other, link, "Wren");
+      await expect(card(page, "Wren")).toBeVisible({ timeout: pageLoadTimeout() });
+      await card(page, "Wren").getByTestId("room-knock-admit").focus();
+      await page.keyboard.press("Enter");
+      await expect(card(page, "Wren")).toHaveCount(0, { timeout: pageLoadTimeout() });
+      await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    } finally {
+      await other.close();
+    }
+  });
+
   test("remove: the room moves to a new key; the one removed is out, and the one who stays carries on", async ({
     browser,
     context,
@@ -137,6 +161,24 @@ test.describe("Knock-to-join and Remove", () => {
       await expect(goes.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
       await expect(chip(page)).toHaveAttribute("data-peers", "2");
       await expect(chip(stays)).toHaveAttribute("data-epoch", "0");
+      // Ada becomes a co-host: she has "Ask before people join", kept as the host changes it while her menu is open,
+      // and no Remove (the host's alone).
+      await chip(page).click();
+      await page.getByTestId("room-person-row").filter({ hasText: "Ada" }).click();
+      await page.getByTestId("room-make-cohost").click();
+      await expect(chip(stays)).toHaveAttribute("data-host", "cohost", { timeout: pageLoadTimeout() });
+      await chip(stays).click();
+      await expect(stays.getByTestId("room-ask-join")).toHaveAttribute("aria-checked", "true");
+      await chip(page).click();
+      await page.getByTestId("room-ask-join").click();
+      await expect(stays.getByTestId("room-ask-join")).toHaveAttribute("aria-checked", "false", {
+        timeout: pageLoadTimeout(),
+      });
+      await stays.getByTestId("room-person-row").filter({ hasText: "Bea" }).click();
+      await expect(stays.getByTestId("room-person-menu")).toBeVisible();
+      await expect(stays.getByTestId("room-remove")).toHaveCount(0);
+      await stays.keyboard.press("Escape");
+      await stays.keyboard.press("Escape");
       // The host removes Bea from the people menu.
       await chip(page).click();
       await page.getByTestId("room-person-row").filter({ hasText: "Bea" }).click();

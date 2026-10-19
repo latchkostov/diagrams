@@ -15,14 +15,14 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   Retry) work while knocking too. This closes P4's binding-race backlog item.
 - **Ask before people join** (a host's or co-host's switch, on for new rooms). Off, the host's page (else the
   earliest co-host's here) lets people in on its own; with neither here, people knock until one is back.
-- **Remove from room** (host or co-host; never the host): a signed removal, then a new epoch: a fresh secret, its
-  start signed by the remover and committing to it, wrapped for every member left (absent ones too), and every page
+- **Remove from room** (the host's alone; never of the host): a signed removal, then a new epoch: a fresh secret,
+  its start signed by the host and committing to it, wrapped for every member left (absent ones too), and every page
   re-keyed in place: the same document, the same Live run, the same sender. Frames from any other epoch are refused,
   so the removed person's old key opens nothing new, and their page leaves with a notice; their copy stays theirs.
   Removed while driving: the host drives. The new epoch's roster starts from the last one's state without them, and
   no entry from before counts in it, which ends P4's residual (a former co-host's backdated entries).
-- **Edge cases.** Two removals on two sides of a partition resolve to one chain everywhere (its first removal; the
-  other removal is made again); someone let in just as someone else is removed knocks again and is let back in on
+- **Edge cases.** As only the host removes, the room's epochs are a single line: a dropped connection never splits
+  the room across keys; someone let in just as someone else is removed knocks again and is let back in on
   its own, if whoever let them in still hosts or co-hosts; a member away during a re-key (or reloading after one) is handed the new secret when they're back, and a
   removed one coming back is told; a reload keeps the current epoch (its secret in the tab's record).
 - **Hardened in review** (one P0, nine P1s):
@@ -58,6 +58,19 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
     that peer is still to be answered.
   - After a re-key the chip counts the others as soon as they've proved they're in (it waited for something else to
     change, so it could read "waiting" with someone there).
+- **Simplified after a fourth review** (four P1s, owner decision: Remove is host-only):
+  - Only the host removes (co-hosts still let people in, deny, and change roles; handing the room over hands Remove
+    over). An epoch's start counts only as the host's, one per epoch, so the epochs are a single line, and the
+    machinery for concurrent removals (sibling epochs, carrying out the other side's removal) is gone. A co-host's
+    removal, current, former or removed, never counts, whenever it arrives; a start, once placed, stays placed
+    whatever forks arrive later, so a record reloads the same. "Remove from room" is in the host's menu only.
+  - Roles resolve by who each person is across a re-key, so the driver stays the driver while the room moves to a
+    new key.
+  - The lobby puts fragments back together under small limits of its own, and people at the door make way for
+    members, so two sender ids can't block an admission.
+  - Answering the last card while presenting leaves focus on the canvas; a co-host who stops being one loses their
+    cards; "Ask before people join" in an open menu follows the room's setting; a bundle with nothing new tells
+    nobody; a stored record's chain and wraps are checked in full.
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.

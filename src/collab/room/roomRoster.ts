@@ -3,6 +3,7 @@ import { MAX_LOG_ENTRIES, parseEntry, type RosterEntry } from "../roster";
 import { publicKeyBytes, type StoredAgreement, type StoredIdentity } from "../signing";
 import type { ChainData } from "../epochs";
 import type { Wrap } from "../lobby";
+import { parseChainData, parseWraps } from "../chainShape";
 import type { RoomRole } from "./tabRoom";
 
 // The room's roles as this tab holds them (P3, cooperative), owned by the room's lifecycle and kept in the tab's
@@ -56,17 +57,18 @@ function parseKnock(v: unknown): KnockRecord | undefined {
   const jwk = a?.jwk as Record<string, unknown> | undefined;
   if (!a || typeof a.x !== "string" || !publicKeyBytes(a.x) || !jwk || jwk.kty !== "OKP" || jwk.crv !== "X25519")
     return undefined;
-  const chain = k.chain as Record<string, unknown> | undefined;
-  if (!chain || !Array.isArray(chain.starts) || !Array.isArray(chain.logs)) return undefined;
+  // Checked in full before anything reads them (a reload reads the chain and the wraps at once).
+  const chain = parseChainData(k.chain);
+  const wraps = parseWraps(k.wraps, 64);
+  if (!chain || !wraps) return undefined;
   if (k.secret !== undefined && (typeof k.secret !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(k.secret)))
     return undefined;
-  if (!Array.isArray(k.wraps) || k.wraps.length > 64) return undefined;
   return {
     agreement: { x: a.x, jwk: jwk as JsonWebKey },
-    chain: { starts: chain.starts, logs: chain.logs as ChainData["logs"] },
+    chain,
     ...(typeof k.secret === "string" ? { secret: k.secret } : {}),
     ...(typeof k.scope === "string" && k.scope.length < 120 ? { scope: k.scope } : {}),
-    wraps: k.wraps as Wrap[],
+    wraps,
   };
 }
 

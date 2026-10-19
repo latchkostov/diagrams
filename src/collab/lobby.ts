@@ -1,5 +1,6 @@
 import { base64UrlToBytes, bytesToBase64Url, bytesToText, textToBytes } from "../interop/codec";
 import type { Clock } from "./clock";
+import { parseChainData, parseWraps } from "./chainShape";
 import { frameChannel, frameSender, Opener, Sealer } from "./envelope";
 import type { ChainData } from "./epochs";
 import type { RoomKeys } from "./keys";
@@ -49,6 +50,16 @@ import type { PeerId } from "./transport/types";
 export const LOBBY = { message: 1, fragment: 5 } as const;
 /** A lobby message's JSON at most (a bundle carries the rosters of a room's epochs). */
 export const MAX_LOBBY_MESSAGE_BYTES = 4 * 1024 * 1024;
+/**
+ * Half-delivered lobby messages held at most: one message's length (a bundle), two in progress per sender, and a few
+ * in all (people at the door make way for members: ./protocol.ts).
+ */
+const LOBBY_REASSEMBLY = {
+  maxMessageBytes: MAX_LOBBY_MESSAGE_BYTES + 1,
+  maxPartialMessages: 2,
+  maxPartialBytesPerSender: 2 * (MAX_LOBBY_MESSAGE_BYTES + 1),
+  maxPartialBytes: 4 * (MAX_LOBBY_MESSAGE_BYTES + 1),
+};
 /** Lobby frames a sender may deliver per window, and messages it may have verified. */
 const LOBBY_FRAMES_PER_WINDOW = 256;
 /** Sender ids one transport peer may speak under (one session's; a second for slack). */
@@ -131,16 +142,6 @@ export async function unwrap(roomId: string, wrap: Wrap, mine: { key: string; ag
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const key = (v: unknown): v is string => typeof v === "string" && !!publicKeyBytes(v);
 
-function chainData(v: unknown): ChainData | undefined {
-  if (!isRecord(v) || !Array.isArray(v.starts) || !Array.isArray(v.logs) || v.starts.length > 64 || v.logs.length > 64)
-    return undefined;
-  if (
-    !v.logs.every((l) => isRecord(l) && typeof l.scope === "string" && l.scope.length < 120 && Array.isArray(l.entries))
-  )
-    return undefined;
-  return { starts: v.starts, logs: v.logs as ChainData["logs"] };
-}
-
 /** A lobby message's body, checked in full, or undefined. */
 export function parseBody(v: unknown): LobbyBody | undefined {
   if (!isRecord(v) || typeof v.t !== "string") return undefined;
@@ -162,31 +163,12 @@ export function parseBody(v: unknown): LobbyBody | undefined {
       };
     }
     case "bundle": {
-      const chain = chainData(v.chain);
-      if (!chain || !Array.isArray(v.wraps) || v.wraps.length > MAX_WRAPS) return undefined;
-      const wraps = v.wraps.filter(
-        (w): w is Wrap =>
-          isRecord(w) &&
-          typeof w.scope === "string" &&
-          w.scope.length < 120 &&
-          key(w.to) &&
-          key(w.from) &&
-          typeof w.fx === "string" &&
-          B64_43.test(w.fx) &&
-          typeof w.w === "string" &&
-          /^[A-Za-z0-9_-]{80}$/.test(w.w) &&
-          typeof w.sig === "string" &&
-          /^[A-Za-z0-9_-]{86}$/.test(w.sig),
-      );
-      if (wraps.length !== v.wraps.length) return undefined;
-      return {
-        t: "bundle",
-        chain,
-        wraps: wraps.map((w) => ({ scope: w.scope, to: w.to, from: w.from, fx: w.fx, w: w.w, sig: w.sig })),
-      };
+      const chain = parseChainData(v.chain);
+      const wraps = parseWraps(v.wraps, MAX_WRAPS);
+      return chain && wraps ? { t: "bundle", chain, wraps } : undefined;
     }
     case "deny": {
-      const chain = chainData(v.chain);
+      const chain = parseChainData(v.chain);
       return key(v.to) && chain ? { t: "deny", to: v.to, chain } : undefined;
     }
     default:
@@ -274,7 +256,7 @@ export class Lobby {
     this.sealer = new Sealer(keys, sender);
     this.sealer.sign = (head, message) => sign(identity.privateKey, frameBytes(keys.roomId, head, message));
     this.opener = new Opener(keys, sender, COLLAB_LIMITS.maxSenders + MAX_LOBBY_GUESTS);
-    this.reassembler = new Reassembler(clock);
+    this.reassembler = new Reassembler(clock, LOBBY_REASSEMBLY, (sender) => !this.slots.get(sender)?.member);
     this.rate = new Buckets(clock, LOBBY_FRAMES_PER_WINDOW, COLLAB_LIMITS.maxSenders + MAX_LOBBY_GUESTS);
     this.peerRate = new Buckets(clock, LOBBY_FRAMES_PER_PEER);
   }

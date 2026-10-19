@@ -17,6 +17,7 @@ import { MemoryNetwork } from "../transport/memory";
 import type { CollabTransport } from "../transport/types";
 import { RoomLifecycle, type RoomLibrary } from "./lifecycle";
 import { memoryTabRoom } from "./tabRoom";
+import { parseRoster } from "./roomRoster";
 import { serializeNative } from "../../interop/native";
 
 // The room lifecycle (Edit together, plan E2) on the in-memory network: who seeds the room, what a link may do
@@ -1106,6 +1107,25 @@ describe("knock-to-join rooms (P5)", () => {
     expect(b.room.getSnapshot().open).toBeUndefined();
     expect(b.tab.read()).toBeUndefined();
     expect(session(a).knocks.size).toBe(0);
+  });
+
+  it("a stored knock record is checked in full before it's read: a malformed chain log or wrap isn't this tab's record", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 98);
+    await start(a);
+    const stored = a.tab.read()!.roster!;
+    expect(parseRoster(JSON.parse(JSON.stringify(stored)))).toBeDefined();
+    const broken = (change: (knock: Record<string, unknown>) => void) => {
+      const copy = JSON.parse(JSON.stringify(stored));
+      change(copy.signed.knock);
+      return parseRoster(copy);
+    };
+    expect(broken((k) => ((k.chain as { logs: unknown[] }).logs = [null]))).toBeUndefined();
+    expect(broken((k) => ((k.chain as { logs: unknown[] }).logs = [{ scope: 3, entries: [] }]))).toBeUndefined();
+    expect(broken((k) => ((k.chain as { logs: unknown[] }).logs = [{ scope: "0:x", entries: "no" }]))).toBeUndefined();
+    expect(broken((k) => (k.wraps = [null]))).toBeUndefined();
+    expect(broken((k) => (k.wraps = [{ scope: "0:x", to: "nobody" }]))).toBeUndefined();
   });
 
   it("a duplicated tab of a member signs as someone new and knocks: none of the original's secrets come with it", async () => {

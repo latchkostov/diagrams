@@ -39,6 +39,12 @@ const bindBytes = (keys: RoomKeys, sender: Uint8Array, key: string, client: numb
 export class SignedRoom {
   private readonly single?: SignedRoster;
   private readonly bindings = new Map<string, PeerBinding>();
+  /**
+   * Who each sender is (its member key), apart from its binding: a binding is signed for one epoch and goes with it,
+   * but the person behind a sender doesn't change, so a re-key keeps this for the members who stay (roles resolve by
+   * it while they bind again; frames are still checked against bindings only).
+   */
+  private readonly identities = new Map<string, string>();
   private readonly listeners = new Set<() => void>();
   /** This session's own binding, as its presence says it. */
   mine?: Binding;
@@ -92,6 +98,8 @@ export class SignedRoom {
     this.current = start;
     this.keys = keys;
     this.bindings.clear();
+    const members = this.state().members;
+    for (const [sender, key] of this.identities) if (!members.has(key)) this.identities.delete(sender);
     this.mine = undefined;
     for (const l of this.listeners) l();
   }
@@ -121,6 +129,18 @@ export class SignedRoom {
 
   clientOf(sender: string): number | undefined {
     return this.bindings.get(sender)?.client;
+  }
+
+  /** Who a sender is (its member key): bound now, or bound before a re-key it stayed through. For roles, not frames. */
+  identityOf(sender: string): string | undefined {
+    return this.bindings.get(sender)?.key ?? this.identities.get(sender);
+  }
+
+  /** The senders known to be `key` (bound, or from before a re-key), lowest first. */
+  sendersFor(key: string): string[] {
+    const out = new Set(this.sendersOf(key));
+    for (const [sender, k] of this.identities) if (k === key) out.add(sender);
+    return [...out].sort();
   }
 
   /** The senders bound to `key` (a reload's old session may linger), lowest first. */
@@ -187,6 +207,7 @@ export class SignedRoom {
     if (now && now.key !== b.key) return "rebound";
     if (now && now.counter >= counter) return "same";
     this.bindings.set(sender, { key: b.key, client: b.client, bind: b.bind, counter });
+    this.identities.set(sender, b.key);
     for (const l of this.listeners) l();
     return "bound";
   }

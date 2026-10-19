@@ -651,6 +651,11 @@ function OpenChip({
   const session = open.session;
   const { state, peers } = useRoomState(session);
   const { watch, state: watching } = useWatch();
+  // "Ask before people join", as the roster has it now (another host may change it while the menu is open).
+  const ask = useSyncExternalStore(
+    (fn) => session.signed?.subscribe(fn) ?? (() => {}),
+    () => session.signed?.state().ask ?? false,
+  );
   const elsewhere = !here && !!open.slug;
   const status = elsewhere
     ? t("collab.chipElsewhere", { title: session.doc.project().diagram?.title ?? "" })
@@ -716,8 +721,8 @@ function OpenChip({
             testId: "room-ask-join",
             title: t("collab.askBeforeJoin"),
             checkbox: true,
-            checked: session.signed.state().ask,
-            onSelect: () => watch.setAsk(!session.signed!.state().ask),
+            checked: ask,
+            onSelect: () => watch.setAsk(!ask),
           },
         ]
       : []),
@@ -887,8 +892,8 @@ function personEntries(watch: WatchTogether, w: WatchState, session: CollabSessi
               },
             ]
           : []),
-        // Knock-to-join: Remove (never the host): the room moves to a new key they don't have.
-        ...(session.signed?.knock && !roles.host
+        // Knock-to-join: Remove, the host's alone (never of the host): the room moves to a new key they don't have.
+        ...(session.signed?.knock && w.hosting && !roles.host
           ? [
               {
                 type: "item" as const,
@@ -1166,14 +1171,17 @@ function WatchLayer(): ReactNode {
       focusInside.current = false;
       return;
     }
+    // Presenting hides the chip: the canvas, then.
     const next =
       stack.current?.querySelector<HTMLElement>("button") ??
-      document.querySelector<HTMLElement>('[data-testid="room-chip"]');
+      document.querySelector<HTMLElement>('[data-testid="room-chip"]') ??
+      document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
     next?.focus();
     focusInside.current = !!next && !!stack.current?.contains(next);
   });
   if (!watch || !state || !session) return null;
-  const knocks = knocking ? [...session.knocks.values()] : [];
+  // Only while this person may answer (the host or a co-host): a co-host made a member again has no cards.
+  const knocks = knocking && state.lead ? [...session.knocks.values()] : [];
   return (
     <>
       {(state.prompts.length > 0 || knocks.length > 0) && (

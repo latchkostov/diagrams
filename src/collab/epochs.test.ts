@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { commitEpoch, EpochChain, MAX_EPOCHS, parseStart, scopeOf, signStart, type EpochStart } from "./epochs";
 import { newEpochSecret } from "./keys";
 import { seededBytes } from "./random";
-import { afterRemoval, rootState, SignedRoster } from "./roster";
+import { afterRemoval, rootState, signEntry, SignedRoster } from "./roster";
 import { newAgreement, newIdentity, type Identity } from "./signing";
-import { Lobby, parseBody, unwrap, wrapFor } from "./lobby";
+import { LOBBY, Lobby, MAX_LOBBY_MESSAGE_BYTES, parseBody, unwrap, wrapFor } from "./lobby";
+import { COLLAB_LIMITS } from "./limits";
+import { base64UrlToBytes } from "../interop/codec";
 import { deriveRoomKeys } from "./keys";
 import { FakeClock } from "./clock";
 
@@ -40,7 +42,7 @@ describe("epochs", () => {
     expect(await chain.learn(start, secret)).toBe(true);
   });
 
-  it("a later epoch's start counts only signed by the remover of a removal that counts in its parent", async () => {
+  it("a later epoch's start counts only signed by the host who closed its parent with a removal; the line never forks", async () => {
     const [host, cohost, wren] = [await newIdentity(), await newIdentity(), await newIdentity()];
     const chain = new EpochChain(host.key, ROOM);
     const start = await startOf(host, newEpochSecret(seededBytes(4)));
@@ -50,29 +52,116 @@ describe("epochs", () => {
     await r0.append(host, "join", { who: cohost.key, x: cx });
     await r0.append(host, "join", { who: wren.key, x: wx });
     await r0.append(host, "cohost", { who: cohost.key });
-    const removal = (await r0.append(cohost, "remove", { who: wren.key }))!;
+    // A co-host can't remove: its entry isn't made, and one it signs anyway doesn't count.
+    expect(await r0.append(cohost, "remove", { who: wren.key })).toBeUndefined();
+    const heads = r0.heads();
+    const forged = await signEntry(cohost, ROOM, scopeOf(start), {
+      n: Math.max(...heads.map((h) => r0.entry(h)!.n)) + 1,
+      op: "remove",
+      who: wren.key,
+      deps: heads,
+    });
+    expect(await r0.add([forged])).toMatchObject({ added: 0, refused: 1 });
+    const removal = (await r0.append(host, "remove", { who: wren.key }))!;
     expect(r0.state().removal?.sig).toBe(removal.sig);
     const next = newEpochSecret(seededBytes(5));
     const kc = await commitEpoch(next, ROOM, 1);
-    // The host signs a start for it (not the remover): it isn't the next epoch. Nor one naming no removal of this one.
-    const byHost = await signStart(host, ROOM, { epoch: 1, kc, prev: removal.sig });
-    const elsewhere = await signStart(cohost, ROOM, { epoch: 1, kc, prev: start.sig });
-    await chain.addStarts([byHost, elsewhere]);
+    // The co-host signs a start for the host's removal, or for its own: neither is the next epoch. Nor one naming no
+    // removal of this one.
+    const byCohost = await signStart(cohost, ROOM, { epoch: 1, kc, prev: removal.sig });
+    const ownRemoval = await signStart(cohost, ROOM, { epoch: 1, kc, prev: forged.sig });
+    const elsewhere = await signStart(host, ROOM, { epoch: 1, kc, prev: start.sig });
+    await chain.addStarts([byCohost, ownRemoval, elsewhere]);
     expect(chain.deepest()?.sig).toBe(start.sig);
-    const real = await signStart(cohost, ROOM, { epoch: 1, kc, prev: removal.sig });
+    const real = await signStart(host, ROOM, { epoch: 1, kc, prev: removal.sig });
     await chain.addStarts([real]);
     expect(chain.deepest()?.sig).toBe(real.sig);
     expect(chain.parentOf(real)?.sig).toBe(start.sig);
+    // A second start for the same epoch (even the host's own) has no place: the line doesn't fork.
+    const again = await signStart(host, ROOM, {
+      epoch: 1,
+      kc: await commitEpoch(newEpochSecret(seededBytes(6)), ROOM, 1),
+      prev: removal.sig,
+    });
+    await chain.addStarts([again]);
+    expect(chain.validated().map((st) => st.sig)).toEqual([start.sig, real.sig]);
     // The next epoch starts from this one's state without whom it removed.
     const s = chain.rosterOf(real)!.state();
     expect(s.members.has(wren.key)).toBe(false);
     expect([...s.members].sort()).toEqual([host.key, cohost.key].sort());
     expect(s.cohosts).toEqual([cohost.key]);
-    // A chain from a record or a bundle gives the same.
-    const again = new EpochChain(host.key, ROOM);
-    await again.add(chain.data(real));
-    expect(again.deepest()?.sig).toBe(real.sig);
-    expect(scopeOf(again.deepest()!)).toBe(scopeOf(real));
+    // A chain from a record or a bundle gives the same, whatever else it carries.
+    const data = chain.data(real);
+    data.starts.push(byCohost, ownRemoval);
+    data.logs[0].entries.push(forged);
+    const restored = new EpochChain(host.key, ROOM);
+    await restored.add(data);
+    expect(restored.validated().map((st) => st.sig)).toEqual([start.sig, real.sig]);
+    expect(scopeOf(restored.deepest()!)).toBe(scopeOf(real));
+  });
+
+  it("a start stays named whatever forks arrive: before it, after it, or in a reload, the line is the same", async () => {
+    const host = await newIdentity();
+    const others = [await newIdentity(), await newIdentity(), await newIdentity()];
+    const chain = new EpochChain(host.key, ROOM);
+    const start = await startOf(host, newEpochSecret(seededBytes(50)));
+    await chain.addStarts([start]);
+    const r0 = chain.rosterOf(start)!;
+    for (const o of others) await r0.append(host, "join", { who: o.key, x: (await newAgreement()).x });
+    const deps = r0.heads();
+    const removal = (await r0.append(host, "remove", { who: others[0].key }))!;
+    // The host's own fork of its removal's slot, sorting first (it takes the slot): a misbehaving host's, or a former
+    // host's later on.
+    let fork;
+    for (let i = 0; !fork; i++) {
+      const who = others[1 + (i % 2)].key;
+      const e = await signEntry(host, ROOM, scopeOf(start), { n: removal.n, op: "remove", who, deps });
+      if (e.sig < removal.sig) fork = e;
+    }
+    const kc = await commitEpoch(newEpochSecret(seededBytes(51)), ROOM, 1);
+    const next = await signStart(host, ROOM, { epoch: 1, kc, prev: removal.sig });
+    // After the start: it stays placed.
+    await chain.addStarts([next]);
+    await r0.add([fork]);
+    expect(r0.state().removal?.sig).toBe(fork.sig);
+    expect(chain.deepest()?.sig).toBe(next.sig);
+    const members = [...chain.rosterOf(next)!.state().members].sort();
+    // Before the start (a fresh chain, the fork first), and in a reload of the record: the same line, the same roster.
+    for (const order of ["fork first", "record"] as const) {
+      const other = new EpochChain(host.key, ROOM);
+      const data = chain.data(next);
+      if (order === "fork first") {
+        await other.addStarts([start]);
+        await other
+          .rosterOf(start)!
+          .add([...data.logs[0].entries.filter((e) => (e as { sig: string }).sig !== removal.sig)]);
+        await other.add(data);
+      } else await other.add(JSON.parse(JSON.stringify(data)));
+      expect(other.validated().map((st) => st.sig)).toEqual([start.sig, next.sig]);
+      expect([...other.rosterOf(next)!.state().members].sort()).toEqual(members);
+    }
+  });
+
+  it("handing the room over hands Remove over: the new host's removal counts, the old host's doesn't", async () => {
+    const [host, next] = [await newIdentity(), await newIdentity()];
+    const chain = new EpochChain(host.key, ROOM);
+    const start = await startOf(host, newEpochSecret(seededBytes(7)));
+    await chain.addStarts([start]);
+    const r0 = chain.rosterOf(start)!;
+    const others = [await newIdentity(), await newIdentity()];
+    for (const who of [next, ...others]) await r0.append(host, "join", { who: who.key, x: (await newAgreement()).x });
+    await r0.append(host, "host", { who: next.key });
+    expect(r0.state().host).toBe(next.key);
+    expect(await r0.append(host, "remove", { who: others[0].key })).toBeUndefined();
+    const removal = (await r0.append(next, "remove", { who: others[1].key }))!;
+    expect(removal).toBeDefined();
+    const kc = await commitEpoch(newEpochSecret(seededBytes(8)), ROOM, 1);
+    await chain.addStarts([await signStart(host, ROOM, { epoch: 1, kc, prev: removal.sig })]);
+    expect(chain.validated()).toHaveLength(1);
+    const real = await signStart(next, ROOM, { epoch: 1, kc, prev: removal.sig });
+    await chain.addStarts([real]);
+    expect(chain.deepest()?.sig).toBe(real.sig);
+    expect(chain.rosterOf(real)!.state().host).toBe(next.key);
   });
 
   it("round-trips every supported epoch: a chain through epoch 31 comes back in full, its membership with it", async () => {
@@ -107,6 +196,28 @@ describe("epochs", () => {
     }
     expect(start.epoch).toBe(MAX_EPOCHS - 1);
   }, 60_000);
+
+  it("a bundle tells the chain's listeners once, and only when it changed something", async () => {
+    const host = await newIdentity();
+    const chain = new EpochChain(host.key, ROOM);
+    const start = await startOf(host, newEpochSecret(seededBytes(30)));
+    await chain.addStarts([start]);
+    const r0 = chain.rosterOf(start)!;
+    for (let i = 0; i < 3; i++)
+      await r0.append(host, "join", { who: (await newIdentity()).key, x: (await newAgreement()).x });
+    const data = chain.data(start);
+    let told = 0;
+    chain.subscribe(() => told++);
+    for (let i = 0; i < 256; i++) await chain.add({ starts: [], logs: [] });
+    await chain.add(data);
+    expect(told).toBe(0);
+    // A bundle with something new: told once, however much it carried.
+    const other = new EpochChain(host.key, ROOM);
+    let otherTold = 0;
+    other.subscribe(() => otherTold++);
+    await other.add(data);
+    expect(otherTold).toBe(1);
+  });
 
   it("starts are checked in full", async () => {
     const host = await newIdentity();
@@ -158,6 +269,62 @@ describe("the lobby", () => {
     expect(await unwrap(ROOM, { ...wrap, to: otter.key }, { key: otter.key, agreement: oa })).toBeUndefined();
     expect(await unwrap("another-room", wrap, { key: wren.key, agreement: wa })).toBeUndefined();
     expect(await unwrap(ROOM, { ...wrap, scope: "1:s" }, { key: wren.key, agreement: wa })).toBeUndefined();
+  });
+
+  it("two sender ids from someone at the door can't block a member's fragmented bundle (a lobby's own small limits)", async () => {
+    const host = await newIdentity();
+    const keys = await deriveRoomKeys({ epoch: 0, secret: seededBytes(11)(32), hostKey: host.key, knock: true });
+    const clock = new FakeClock();
+    // The newcomer's page, at the door: the room's host is the one member it knows.
+    const door = new Lobby(keys, await newIdentity(), seededBytes(12)(16), clock);
+    door.isMember = (key) => key === host.key;
+    // Someone with the link: two sender ids, each declaring messages far past a lobby message's size, then as many
+    // first fragments of a message just under it as they're let keep.
+    const evil = await newIdentity();
+    const part = (lobby: Lobby, length: number, id: number) => {
+      const size = COLLAB_LIMITS.maxFragmentBytes;
+      const body = new Uint8Array(1 + 12 + size);
+      const view = new DataView(body.buffer);
+      body[0] = LOBBY.fragment;
+      view.setUint32(1, id);
+      view.setUint16(5, 0);
+      view.setUint16(7, Math.ceil(length / size));
+      view.setUint32(9, length);
+      const plain = new Uint8Array(body.length + 32);
+      plain.set(body);
+      plain.set(base64UrlToBytes(evil.key), body.length);
+      return (lobby as unknown as { sealer: { seal(c: "lobby", p: Uint8Array): Promise<Uint8Array> } }).sealer.seal(
+        "lobby",
+        plain,
+      );
+    };
+    let refusedLarge = 0;
+    let kept = 0;
+    for (let i = 0; i < 2; i++) {
+      const lobby = new Lobby(keys, evil, seededBytes(20 + i)(16), clock);
+      expect(await door.open("evil", await part(lobby, 32 * 1024 * 1024, 1))).toBeUndefined();
+      if (door.refused === "too-large") refusedLarge++;
+      for (let id = 2; id < 6; id++) {
+        expect(await door.open("evil", await part(lobby, MAX_LOBBY_MESSAGE_BYTES, id))).toBeUndefined();
+        if (door.refused === undefined) kept++;
+      }
+    }
+    expect(refusedLarge).toBe(2);
+    expect(kept).toBeGreaterThan(0);
+    // The host's bundle, larger than a frame: it's put back together and taken.
+    const host1 = new Lobby(keys, host, seededBytes(13)(16), clock);
+    const big = {
+      t: "bundle" as const,
+      chain: { starts: [], logs: [{ scope: "0:x", entries: ["y".repeat(2_500_000)] }] },
+      wraps: [],
+    };
+    const frames = await host1.seal(big);
+    expect(frames.length).toBeGreaterThan(1);
+    let got;
+    for (const f of frames) got = await door.open("host", f);
+    expect(door.refused).toBeUndefined();
+    expect(got?.body.t).toBe("bundle");
+    expect(got?.key).toBe(host.key);
   });
 
   it("checks every message: its signature (bound to its sender id), and its shape", async () => {

@@ -17,12 +17,13 @@ former co-host's backdated entries now end at the next removal.
   only by the remover until someone comes back.
 - **The knock card's identity.** The card names the knocker by the name they typed (unverified, as everywhere); a
   short fingerprint of their key would help a host tell two "Anonymous Wren"s apart.
-- **A demoted co-host's fork.** A co-host demoted (not removed) in the last closed epoch can still sign entries there
-  claiming to predate the demotion, and from them an epoch of its own. Members follow it only forward and only if it
-  brings back nobody they removed, so it can't readmit anyone, but it can take roles back in its branch. Removing
-  them (not just demoting) closes it.
-- **Concurrent removals** converge by the winning side carrying out the other's removal: one extra epoch, and the
-  losing side's members wait for it.
+- **A former host's fork.** Remove is host-only, so no co-host can start an epoch. A former host (handed over, not
+  removed) can still sign as the host it was: fork its own entries, and in an epoch with no successor yet, a removal
+  and a start of its own that a newcomer it reaches first could follow. Removing a former host closes it; a
+  host-signed handover that also re-keys would close it outright.
+- **The door's fragments.** People at the door make way for members in the lobby's fragment budget, but at the door
+  only the room's host is known as a member: a co-host's admission bundle can wait behind someone flooding the door
+  (until their partials expire, 30 s; the newcomer's next knock asks again).
 - **Carry-over after a demotion.** Someone let in at the same moment as a removal is let back in on their own only if
   whoever let them in still hosts or co-hosts; otherwise they knock and wait. Rare, and safe; a host-signed summary
   at each epoch's close would let the room carry them over regardless.

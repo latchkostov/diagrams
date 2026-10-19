@@ -42,7 +42,9 @@ If they say no, you're told, and nothing is left behind. **Cancel** stops waitin
 
 ## Remove someone
 
-The host or a co-host chooses **Remove from room** on a person's row in the chip's menu (the host can't be removed).
+The host chooses **Remove from room** on a person's row in the chip's menu. Only the host can remove someone (co-hosts
+let people in and change roles, but don't remove anyone), and the host can't be removed; making someone else host
+hands Remove over with the room.
 
 - **The room moves to a new key.** Everyone else's page switches to it at once, with the diagram and any shared Live
   run as they are. The person removed has only the old key: nothing sent after this reaches them, and anything they
@@ -51,8 +53,8 @@ The host or a co-host chooses **Remove from room** on a person's row in the chip
 - **If they were driving Live,** the host drives from here.
 - **Someone away** when another person was removed catches up when they're back (a reload too): their page is
   handed the new key, if they're still in the room.
-- **Two removals at the same moment** (on two sides of a dropped connection): one of them takes the room to its new
-  key, and the other is made again straight after, so both hold.
+- **One room, one key.** As only the host removes, the room only ever moves to one new key at a time, even when a
+  connection drops: everyone ends up on the same key.
 - **What it doesn't undo:** the person removed keeps what they saw before (the diagram as it was then, a copy they
   saved). Removing someone changes who gets what happens next.
 
@@ -121,8 +123,8 @@ reaches the room: not its simulation's name, not its run.
   **Not a co-host**), **Let them drive** (or **Take back Live**), **Can edit** for someone who can only view, and,
   for the host, **Make host**. Making someone host makes you their first co-host; who drives stays as it was. The
   people list says who's the host, a co-host, driving, or can only view.
-- **Co-hosts** see requests and can answer them too, and change roles as the host does, except who hosts. Their
-  changes count while the host is away, too.
+- **Co-hosts** see requests and can answer them too, and change roles as the host does, except who hosts and who's
+  removed. Their changes count while the host is away, too.
 - **A reload keeps the roles.** Who hosts now, the co-hosts, who drives and who can edit survive anyone's reload: a
   host who was handed the room still hosts after reloading, and one who handed it on doesn't take it back. A
   duplicated tab is a new person in the room, with no role.
@@ -165,7 +167,7 @@ when someone is removed.
   - only the host and co-hosts let people edit, so nobody else can get round "New people can view only";
   - only the driver moves the shared Live run, and handing it over only counts to someone the host or a co-host let
     drive;
-  - only the host and co-hosts change roles, and only the host hands the room on;
+  - only the host and co-hosts change roles, and only the host hands the room on or removes someone;
   - nobody can send edits, Live commands or role changes as someone else.
 - **What a modified page can still do:**
   - change its own copy of the diagram, show anything on its own screen, and keep or forward what it was sent

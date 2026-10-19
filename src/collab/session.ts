@@ -351,8 +351,6 @@ export class CollabSession {
   private readonly sealedScopes = new Set<string>();
   /** At the door, a member answered (someone's here and has been asked): waiting to be let in, not for an answer. */
   lobbyAnswered = false;
-  /** Carrying out a removal made at the same moment as another (one at a time). */
-  private carrying = false;
   /** Counts changes to the roster and to bindings: a held update that didn't count is checked again after one. */
   private authRevision = 0;
   private outbox: Promise<void> = Promise.resolve();
@@ -543,6 +541,9 @@ export class CollabSession {
       }
     this.inbox = this.inbox.then(() => this.drainAll()).catch(() => this.reject("internal"));
     this.admitNewcomers();
+    // Who's at the door is asked of the host and co-hosts only: no longer one, the knocks go.
+    const s = room?.state();
+    if (this.knocks.size && s && !(s.host === room!.key || s.cohosts.includes(room!.key))) this.knocks.clear();
     this.emit();
   }
 
@@ -556,7 +557,7 @@ export class CollabSession {
     if (!room || this.leaving) return;
     const s = room.state();
     if (s.viewOnly) return;
-    const keyOf = (sender: string) => (sender === this.senderId ? room.key : room.keyOf(sender));
+    const keyOf = (sender: string) => (sender === this.senderId ? room.key : room.identityOf(sender));
     const here = [this.senderId, ...this.presence.list().map((p) => p.sender)]
       .map((sender) => ({ sender, key: keyOf(sender) }))
       .filter((h): h is { sender: string; key: string } => !!h.key)
@@ -1123,16 +1124,22 @@ export class CollabSession {
   }
 
   /**
-   * Someone at the door. The host and co-hosts are asked; with "ask" off, or for someone who was in the room in an
-   * earlier epoch and wasn't removed (let in just as someone else was removed), the host's page (else the earliest
-   * co-host's here) lets them in. Bounded: one knock per transport peer (another key from it replaces its last),
+   * Someone at the door. The host and co-hosts are asked; with "ask" off, the host's page (else the earliest co-host's
+   * here) lets them in, and someone who was in the room in an earlier epoch and wasn't removed (let in just as someone
+   * else was removed) is let in by any host or co-host who knows it. Bounded: one knock per transport peer (another key from it replaces its last),
    * MAX_KNOCKS in all (the oldest goes), and a knock not said again for KNOCK_TTL_MS goes.
    */
   private knocked(k: Knock): void {
     const room = this.signed!;
     const s = room.state();
     if (!(s.host === room.key || s.cohosts.includes(room.key))) return;
-    if (!s.ask || this.wasMember(k.key)) {
+    // Someone let in just as someone else was removed: back in at once, by whichever host or co-host knows it (the
+    // host may not have seen that admission). With "ask" off, anyone, by one page: the host's, else a co-host's.
+    if (this.wasMember(k.key)) {
+      void this.admit(k.key, k);
+      return;
+    }
+    if (!s.ask) {
       if (this.designatedLead()) void this.admit(k.key, k);
       return;
     }
@@ -1172,7 +1179,7 @@ export class CollabSession {
     const path = this.path();
     const out: RosterEntry[] = [];
     for (let i = 0; i + 1 < path.length; i++) {
-      const removal = chain?.rosterOf(path[i])?.entry(path[i + 1].prev!);
+      const removal = chain?.rosterOf(path[i])?.named(path[i + 1].prev!);
       if (removal) out.push(removal);
     }
     return out;
@@ -1222,7 +1229,7 @@ export class CollabSession {
       room.key,
       ...this.presence
         .list()
-        .map((p) => room.keyOf(p.sender))
+        .map((p) => room.identityOf(p.sender))
         .filter((k): k is string => !!k),
     ]);
     const lead = here.has(s.host) ? s.host : s.cohosts.find((c) => here.has(c));
@@ -1335,66 +1342,38 @@ export class CollabSession {
   }
 
   /**
-   * Where this session goes next, only ever forward: to a start that counts at a higher epoch than its own (at the
-   * door: any), whose epoch this person is a member of and has the secret for, and whose path brings back nobody a
-   * removal on this session's path took out, nor any start they signed. Of several, the highest epoch (then the
-   * lower signature). A removal on a path forward from here that names this person: they leave. Not a member forward
-   * from here, and not removed (let in just as someone was removed): they knock again.
+   * Where this session goes next, only ever forward along the line (only the host removes, so each epoch has one
+   * successor): to the furthest start after its own (at the door: any) whose epoch this person is a member of and has
+   * the secret for. A removal on the line ahead that names this person: they leave. Not a member ahead, and not
+   * removed (let in just as someone was removed): they knock again.
    */
   private async follow(): Promise<void> {
     const room = this.signed;
     const chain = room?.knock?.chain;
     if (!room || !chain || this.leaving) return;
     const current = room.current;
-    // Who's out stays out on any path forward (a fork that kept them can't bring them back); someone let back in since
-    // by this epoch's roster is a member again, and a later removal's epoch keeps them.
-    const removed = this.removedOnPath();
-    const forward = chain
+    const ahead = chain
       .validated()
-      .filter((st) => !current || st.epoch > current.epoch)
-      .filter((st) => {
-        const path = chain.path(st);
-        if (path[0]?.epoch !== 0) return false;
-        // Nobody this session's path removed comes back, nor signs a start on the way.
-        if (path.some((p) => removed.has(p.by))) return false;
-        const members = chain.rosterOf(st)?.state().members;
-        return !!members && ![...removed].some((k) => members.has(k));
-      })
+      .filter((st) => (current ? st.epoch > current.epoch && chain.path(st).includes(current) : true))
       .sort((a, b) => b.epoch - a.epoch || (a.sig < b.sig ? -1 : 1));
-    for (const st of forward) {
-      const s = chain.rosterOf(st)!.state();
-      if (!s.members.has(room.key)) continue;
+    for (const st of ahead) {
+      if (!chain.rosterOf(st)!.state().members.has(room.key)) continue;
       const secret = chain.secretOf(st);
       if (secret) return this.rekey(st, secret);
     }
-    if (this.knocking || !current) return;
-    // Staying: a removal made at the same moment as one on this path may be this session's to carry out.
-    this.carryOut();
-    // Removed: a removal on a path forward that names this person, made by the host or a co-host of this epoch (a
-    // descendant's, or the other side of a partition's that won). Not a member forward from here, and not removed (let
-    // in just as someone was removed): they knock again.
-    const s = room.state();
-    const mine = new Set(this.closingRemovals().map((r) => r.sig));
-    const outOf = (st: EpochStart) =>
-      chain.path(st).some((p, i, path) => {
-        const next = path[i + 1];
-        const removal = next && chain.rosterOf(p)?.entry(next.prev!);
-        return (
-          !!removal &&
-          !mine.has(removal.sig) &&
-          removal.who === room.key &&
-          (removal.by === s.host || s.cohosts.includes(removal.by))
-        );
-      });
-    if (forward.some(outOf)) {
+    if (this.knocking || !current || !ahead.length) return;
+    const line = chain.path(ahead[0]);
+    const removed = line.some((p, i) => {
+      const next = line[i + 1];
+      return p.epoch >= current.epoch && !!next && chain.rosterOf(p)?.named(next.prev!)?.who === room.key;
+    });
+    if (removed) {
       this.removed = true;
       this.emit();
       void this.leave();
       return;
     }
-    const descendants = forward.filter((st) => chain.path(st).some((p) => p.sig === current.sig));
-    if (!descendants.length) return;
-    if (descendants.every((st) => !chain.rosterOf(st)!.state().members.has(room.key))) {
+    if (ahead.every((st) => !chain.rosterOf(st)!.state().members.has(room.key))) {
       this.knocking = true;
       this.lobbyAnswered = false;
       this.memberPeers.clear();
@@ -1405,8 +1384,8 @@ export class CollabSession {
   }
 
   /**
-   * Remove: the host or a co-host takes someone out of the room. A signed removal, then a new epoch: a new secret, its
-   * start signed by this person, wrapped for everyone left (all prepared before anything changes: a member whose key
+   * Remove: the host (only the host) takes someone out of the room. A signed removal, then a new epoch: a new secret,
+   * its start signed by the host, wrapped for everyone left (all prepared before anything changes: a member whose key
    * can't be agreed with is left out of the wraps), sent to everyone, and this session re-keyed. False when this
    * person may not, or it changes nothing.
    */
@@ -1453,42 +1432,6 @@ export class CollabSession {
     this.sendLobby({ t: "bundle", chain: chain.data(start), wraps });
     await this.rekey(start, secret);
     return true;
-  }
-
-  /**
-   * Removals made at the same moment as the one that closed an epoch on this session's path (each side of a
-   * partition): they didn't close it, so they're carried out now, in the epoch this session is in, by the host here
-   * (else the earliest co-host here), if this session's path is the one that won (of an epoch's starts with one parent,
-   * the lower signature: the other side follows forward once this is done). Only a removal by someone who still hosts
-   * or co-hosts, of someone still in the room, and only once: a removal on the path since then that took them out
-   * means it's done (and someone let back in after it stays in).
-   */
-  private carryOut(): void {
-    const room = this.signed;
-    const chain = room?.knock?.chain;
-    const current = room?.current;
-    if (!room || !chain || !current || this.knocking || this.carrying || !this.designatedLead()) return;
-    const s = room.state();
-    const path = this.path();
-    for (let i = 0; i + 1 < path.length; i++) {
-      const next = path[i + 1];
-      if (chain.siblings(next).some((sib) => sib.sig < next.sig)) continue;
-      const roster = chain.rosterOf(path[i]);
-      const closing = roster?.entry(next.prev!);
-      const later = new Set(
-        path
-          .slice(i + 1)
-          .map((p, j) => chain.rosterOf(p)?.entry(path[i + 2 + j]?.prev ?? "")?.who)
-          .filter((k) => !!k),
-      );
-      for (const r of roster?.removals() ?? []) {
-        if (r.sig === closing?.sig || later.has(r.who) || closing?.who === r.who) continue;
-        if (!(r.by === s.host || s.cohosts.includes(r.by)) || r.who === s.host || !s.members.has(r.who!)) continue;
-        this.carrying = true;
-        void this.remove(r.who!).finally(() => (this.carrying = false));
-        return;
-      }
-    }
   }
 
   /**

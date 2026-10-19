@@ -224,7 +224,9 @@ const order = (a: RosterEntry, b: RosterEntry) => a.n - b.n || compare(a.by, b.b
 
 /** Whether `by` may make an entry of `op` in state `s`: the host hands the room on; the host and co-hosts the rest. */
 function authorised(s: RosterState, by: string, op: RosterOp): boolean {
-  if (op === "host") return by === s.host;
+  // Handing the room over and removing someone are the host's alone (owner decision: Remove is host-only, so an
+  // epoch has one possible successor); everything else, the host's or a co-host's.
+  if (op === "host" || op === "remove") return by === s.host;
   return by === s.host || s.cohosts.includes(by);
 }
 
@@ -351,9 +353,12 @@ export class SignedRoster {
     return (this.cached ??= fold(this.base, [...this.entries.values()]));
   }
 
-  /** The state this epoch closes with, and the next one starts from: none until a removal counts. */
+  /**
+   * The state this epoch closes with, and the next one starts from: the removal's causal past (what the host saw as it
+   * removed), whatever forks arrive later; none for an entry that isn't a removal here.
+   */
   next(removal = this.state().removal): RosterState | undefined {
-    if (!removal || removal.op !== "remove" || !this.entries.has(removal.sig)) return undefined;
+    if (!removal || removal.op !== "remove" || !this.known(removal.sig)) return undefined;
     // The state the remover saw (the removal's causal past), with the removal: what the next epoch starts from.
     return afterRemoval({ ...fold(this.base, [...this.past(removal), removal]), removal });
   }
@@ -361,6 +366,14 @@ export class SignedRoster {
   /** One of this roster's entries that counts, by signature. */
   entry(sig: string): RosterEntry | undefined {
     return this.entries.get(sig);
+  }
+
+  /**
+   * One of this roster's entries by signature, whether it counts now or lost its slot to a fork since (it was checked
+   * against its causal past either way): what an epoch's start names stays named, whatever arrives later.
+   */
+  named(sig: string): RosterEntry | undefined {
+    return this.entries.get(sig) ?? this.forks.get(sig);
   }
 
   /** The joins that count in this roster letting `key` in. */
@@ -390,7 +403,10 @@ export class SignedRoster {
       .sort();
   }
 
-  /** An entry's causal past: every counting entry its deps name, transitively (a fork contributes nothing). */
+  /**
+   * An entry's causal past: every entry its deps name, transitively, as its signer saw them (one that has since lost
+   * its slot to a fork included: a fork arriving later never changes what an entry already had authority for).
+   */
   private past(e: RosterEntry): RosterEntry[] {
     const seen = new Set<string>();
     const out: RosterEntry[] = [];
@@ -399,7 +415,7 @@ export class SignedRoster {
       const sig = stack.pop()!;
       if (seen.has(sig)) continue;
       seen.add(sig);
-      const d = this.entries.get(sig);
+      const d = this.entries.get(sig) ?? this.forks.get(sig);
       if (!d) continue;
       out.push(d);
       stack.push(...d.deps);

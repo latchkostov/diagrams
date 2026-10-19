@@ -6,20 +6,22 @@ import { commitSecret, publicKeyBytes, sign, signedBytes, verify, type Identity 
 // under a secret per epoch, which the link doesn't carry.
 //
 // - Each epoch has a start, signed: epoch 0's by the room's host (the link's key) as it creates the room; each later
-//   one by whoever removed someone, naming that removal (`prev`). A start commits to its epoch's secret (`kc`), so a
+//   one by the host who removed someone, naming that removal (`prev`). Only the host removes (owner decision), and an
+//   epoch closes with its first removal that counts, so the chain is a single line: each epoch has at most one
+//   successor, and there are no sibling epochs to reconcile. A start commits to its epoch's secret (`kc`), so a
 //   member handed the secret by anyone can check it's the epoch's own, and names its signer's key-agreement key
 //   (epoch 0: the host's, so members can hand the host the next epoch's secret).
 // - Each epoch has its own roster (./roster.ts), its entries bound to its start (`<epoch>:<start signature>`): nothing
 //   signed in one epoch counts in another. Epoch 0's starts from the host alone; a later one's from its parent's state
 //   at the removal it names (that removal's causal past), without whom it removed.
-// - A start counts only with its authority: epoch 0's signed by the link's host key; a later one's signed by whoever
-//   made a removal that counts in its parent epoch's roster, naming it. A start is checked before it's kept: one whose
+// - A start counts only with its authority: epoch 0's signed by the link's host key; a later one's signed by the host
+//   who made the removal that closes its parent epoch, naming it (anyone else's, a co-host's or a former one's, never
+//   counts, whenever it arrives). A start is checked before it's kept: one whose
 //   parent or removal isn't here yet waits in a small pool (evicted oldest first), so someone with only the link
 //   can't fill the chain with starts of their own. Resolution walks from the starts already placed, so its work is
 //   bounded by the pool and the chain, never by what a peer sends.
-// - Which epoch a member is in is its session's to decide (./session.ts), and only ever forward: a start at a higher
-//   epoch than its own, on a path that brings back nobody its own path removed. This chain only says which starts
-//   count, and each one's path back to epoch 0.
+// - Which epoch a member is in is its session's to decide (./session.ts), and only ever forward, along the line. This
+//   chain only says which starts count, and each one's path back to epoch 0.
 //
 // A removed person's page holds the old epochs' secrets only: the new epoch's content, sealed under its own secret,
 // is unreadable to them, and their frames, sealed under an old one, are refused by the epoch in their header.
@@ -100,6 +102,8 @@ export class EpochChain {
   /** Starts that count (their authority checked), and each one's parent (epoch 0: none). */
   private readonly starts = new Map<string, EpochStart>();
   private readonly parents = new Map<string, string>();
+  /** Starts that have their successor (one at most: the line doesn't fork). */
+  private readonly children = new Set<string>();
   /** Starts whose signature checked, waiting for their parent or the removal they name. Oldest first. */
   private readonly waiting = new Map<string, EpochStart>();
   private readonly rosters = new Map<string, SignedRoster>();
@@ -119,7 +123,15 @@ export class EpochChain {
     return () => this.listeners.delete(fn);
   }
 
+  /** Inside add(): changes are told once, at its end, and only if there were any. */
+  private batching = 0;
+  private dirty = false;
+
   private changed(): void {
+    if (this.batching) {
+      this.dirty = true;
+      return;
+    }
     for (const l of this.listeners) l();
   }
 
@@ -150,21 +162,16 @@ export class EpochChain {
     return [...this.starts.values()].sort((a, b) => b.epoch - a.epoch || (a.sig < b.sig ? -1 : 1))[0];
   }
 
-  /** Starts with the same parent as `start` (itself included). */
-  siblings(start: EpochStart): EpochStart[] {
-    const parent = this.parents.get(start.sig);
-    return [...this.starts.values()].filter((s) => s.epoch === start.epoch && this.parents.get(s.sig) === parent);
-  }
-
   /** A start's roster (once it counts). */
   rosterOf(start: EpochStart): SignedRoster | undefined {
     return this.rosters.get(start.sig);
   }
 
   /**
-   * Places waiting starts whose authority is here: epoch 0's (the host's), or one naming a removal that counts in a
-   * placed start's roster, signed by that removal's signer. Each pass places at least one or stops: bounded by the
-   * waiting pool and the chain.
+   * Places waiting starts whose authority is here: epoch 0's (the host's), or the one successor of a placed start: it
+   * names a removal in that epoch's roster (only the host's are ever kept: authority checked in the removal's causal
+   * past) and is signed by its signer. A placed start keeps its place whatever arrives later, and a start's parent
+   * takes one successor only. Each pass places at least one or stops: bounded by the waiting pool and the chain.
    */
   private resolve(): boolean {
     let placed = false;
@@ -175,21 +182,26 @@ export class EpochChain {
         this.work.lookups++;
         let base;
         let parent: EpochStart | undefined;
-        if (s.epoch === 0) base = s.by === this.hostKey ? rootState(this.hostKey, s.x) : undefined;
+        if (s.epoch === 0) base = s.by === this.hostKey && !this.starts.size ? rootState(this.hostKey, s.x) : undefined;
         else
           for (const p of this.starts.values()) {
             this.work.lookups++;
-            if (p.epoch !== s.epoch - 1) continue;
-            const removal = this.rosters.get(p.sig)?.entry(s.prev!);
+            if (p.epoch !== s.epoch - 1 || this.children.has(p.sig)) continue;
+            // The removal it names, as checked when it arrived (a fork arriving later doesn't unname it).
+            const roster = this.rosters.get(p.sig)!;
+            const removal = roster.named(s.prev!);
             if (removal?.op !== "remove" || removal.by !== s.by) continue;
-            base = this.rosters.get(p.sig)!.next(removal);
+            base = roster.next(removal);
             parent = p;
             break;
           }
         if (!base) continue;
         this.waiting.delete(s.sig);
         this.starts.set(s.sig, s);
-        if (parent) this.parents.set(s.sig, parent.sig);
+        if (parent) {
+          this.parents.set(s.sig, parent.sig);
+          this.children.add(parent.sig);
+        }
         const roster = new SignedRoster(this.hostKey, this.roomId, scopeOf(s), { base, knock: true });
         roster.subscribe(() => this.changed());
         this.rosters.set(s.sig, roster);
@@ -241,14 +253,23 @@ export class EpochChain {
   async add(data: ChainData, budget?: () => boolean): Promise<void> {
     const starts = data.starts.slice(0, MAX_STARTS);
     const epochOf = (v: unknown) => (v && typeof v === "object" ? (v as { epoch?: unknown }).epoch : undefined);
-    for (let epoch = 0; epoch < MAX_EPOCHS; epoch++) {
-      const these = starts.filter((s) => epochOf(s) === epoch);
-      if (these.length) await this.addStarts(these, budget);
-      for (const log of data.logs)
-        if (typeof log.scope === "string" && parseInt(log.scope, 10) === epoch)
-          await this.addEntries(log.scope, log.entries, budget);
+    this.batching++;
+    try {
+      for (let epoch = 0; epoch < MAX_EPOCHS; epoch++) {
+        const these = starts.filter((s) => epochOf(s) === epoch);
+        if (these.length) await this.addStarts(these, budget);
+        for (const log of data.logs)
+          if (typeof log.scope === "string" && parseInt(log.scope, 10) === epoch)
+            await this.addEntries(log.scope, log.entries, budget);
+      }
+    } finally {
+      this.batching--;
     }
-    this.changed();
+    // Told once, and only if a start or an entry was taken (a bundle of what's known already changes nothing).
+    if (!this.batching && this.dirty) {
+      this.dirty = false;
+      this.changed();
+    }
   }
 
   /** The path to `start` as sent or kept: its starts, and their rosters' entries. */
