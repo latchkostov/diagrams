@@ -17,6 +17,14 @@ ARG VITE_DISABLE_ONDEVICE
 ARG VITE_PRIVATE_BY_DEFAULT
 ARG VITE_BRAND_NAME
 ARG VITE_LOCALES
+# Edit together: off unless VITE_ENABLE_COLLAB=1. Its trackers, STUN and TURN are build values too (unset: the
+# approved public trackers and STUN, no TURN); the headers below follow the same variables.
+ARG VITE_ENABLE_COLLAB
+ARG VITE_COLLAB_TRACKERS
+ARG VITE_COLLAB_STUN
+ARG VITE_COLLAB_TURN
+ARG VITE_COLLAB_TURN_USERNAME
+ARG VITE_COLLAB_TURN_CREDENTIAL
 RUN node scripts/build-container.mjs
 
 # Hosting configuration changes reuse the compiled app layer.

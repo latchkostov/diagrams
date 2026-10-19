@@ -29,6 +29,29 @@ const CLASS_TEXT = {
   "app-error": "App error (a bug: see the trace)",
 };
 
+/**
+ * Why a night failed, from what each side's room said, whether the peers ever connected and what the trackers did.
+ * A failure after the peers connected (the room's document never arrived, say) is the app's, not the network's.
+ */
+export function classify(r) {
+  if (r.errors?.length || r.stage !== "connect") return "app-error";
+  const states = [r.connectivity?.creator, r.connectivity?.joiner];
+  if (r.peerConnected || states.includes("connected")) return "app-error";
+  if (states.some((s) => s === "ice-failed" || s === "no-answer")) return "ice-nat";
+  const answered = Object.values(r.trackers ?? {}).some((t) => t.framesReceived > 0);
+  if (!answered || states.includes("trackers-unreachable")) return "tracker-unreachable";
+  // Trackers answered but no peer ever connected: matchmaking found no one, or the connection never formed.
+  return "ice-nat";
+}
+
+/** How long from starting `act` (an edit) until `until` (the other side shows it) passes, in ms. */
+export async function timeFrom(act, until) {
+  const start = Date.now();
+  await act();
+  await until();
+  return Date.now() - start;
+}
+
 /** Reads a result file; a missing or unreadable one is a failed night with no detail. */
 export function readResult(path) {
   try {
@@ -48,6 +71,7 @@ export function summary(r) {
     ["Time to connect", ms(r.connectMs)],
     ["Sync creator → joiner", ms(r.syncMs?.creatorToJoiner)],
     ["Sync joiner → creator", ms(r.syncMs?.joinerToCreator)],
+    ["Peers connected", r.peerConnected === undefined ? "–" : r.peerConnected ? "yes" : "no"],
     ["Candidate pair", r.pair ? `${r.pair.local}/${r.pair.protocol} → ${r.pair.remote}` : "–"],
     [
       "Trackers (sockets, frames received)",

@@ -13,6 +13,7 @@ import {
 } from "../../scripts/security-headers";
 import { archiveTar, offlineBuildEnv, stageOffline } from "../../scripts/offline-package";
 import { prepareSite } from "../../scripts/prepare-site";
+import { DEPLOYMENT_VARIABLES } from "../../scripts/deployment-env";
 import { imageBuildArgs } from "../../scripts/self-host-image";
 import { headersFile, selfHostCsp, selfHostFlatCsp, selfHostHeadersFor } from "../../scripts/self-host-headers";
 import { hostingBase, hostingTemplates, nginxServer } from "../../scripts/self-host-templates";
@@ -124,6 +125,18 @@ describe("self-host kit", () => {
       const declaration = dockerfile.indexOf(`ARG ${arg}=`);
       expect(declaration).toBeGreaterThan(build);
       expect(declaration).toBeLessThan(prepare);
+    }
+  });
+
+  it("passes every build switch to the image: Dockerfile arguments before the build, compose's build args", () => {
+    const dockerfile = read("Dockerfile");
+    const build = dockerfile.indexOf("RUN node scripts/build-container.mjs");
+    const compose = read("docker-compose.yml");
+    for (const variable of DEPLOYMENT_VARIABLES) {
+      const declaration = dockerfile.search(new RegExp(`^ARG ${variable}$`, "m"));
+      expect(declaration, variable).toBeGreaterThan(-1);
+      expect(declaration, variable).toBeLessThan(build);
+      expect(compose, variable).toContain(`        ${variable}: \${${variable}-}`);
     }
   });
 

@@ -15,10 +15,54 @@ export const DEPLOYMENT_SWITCHES = [
   "VITE_DISABLE_AI_TOOLS",
   "VITE_DISABLE_ONDEVICE",
   "VITE_PRIVATE_BY_DEFAULT",
+  // Edit together (rooms): opt-in. On for livediagrams.dev (its build settings set it), off for every other copy
+  // unless it sets it. Never without share links (a room is a kind of link).
+  "VITE_ENABLE_COLLAB",
 ] as const;
 
-export type DeploymentVariable = (typeof DEPLOYMENT_SWITCHES)[number] | "VITE_BRAND_NAME" | "VITE_LOCALES";
-export const DEPLOYMENT_VARIABLES: DeploymentVariable[] = [...DEPLOYMENT_SWITCHES, "VITE_BRAND_NAME", "VITE_LOCALES"];
+/**
+ * Where a room finds the others (collaboration plan Q9): a self-hosted copy may name its own matchmaking trackers,
+ * STUN and TURN servers, at build time only. Unset, the approved public set (APPROVED_TRACKERS, APPROVED_STUN) and no
+ * TURN: what livediagrams.dev uses, and nothing else without the owner's approval.
+ *  - VITE_COLLAB_TRACKERS: wss:// WebTorrent tracker URLs, separated by commas or spaces.
+ *  - VITE_COLLAB_STUN: stun: (or stuns:) URLs, or "none" for no STUN server.
+ *  - VITE_COLLAB_TURN, with VITE_COLLAB_TURN_USERNAME and VITE_COLLAB_TURN_CREDENTIAL: turn: (or turns:) URLs. The
+ *    username and credential are in the page for anyone who can open it, like every other build value.
+ */
+export const COLLAB_VARIABLES = [
+  "VITE_COLLAB_TRACKERS",
+  "VITE_COLLAB_STUN",
+  "VITE_COLLAB_TURN",
+  "VITE_COLLAB_TURN_USERNAME",
+  "VITE_COLLAB_TURN_CREDENTIAL",
+] as const;
+
+export type DeploymentVariable =
+  (typeof DEPLOYMENT_SWITCHES)[number] | (typeof COLLAB_VARIABLES)[number] | "VITE_BRAND_NAME" | "VITE_LOCALES";
+export const DEPLOYMENT_VARIABLES: DeploymentVariable[] = [
+  ...DEPLOYMENT_SWITCHES,
+  ...COLLAB_VARIABLES,
+  "VITE_BRAND_NAME",
+  "VITE_LOCALES",
+];
+
+/**
+ * The approved public matchmaking trackers and STUN server (collaboration plan §2.8, the owner's decision): exactly
+ * these, and no TURN, unless the owner approves a change. src/collab/transport/tracker.ts names the same
+ * (policy.test.ts checks), and the public site's connect-src allows exactly these trackers (security-headers.ts).
+ */
+export const APPROVED_TRACKERS: readonly string[] = [
+  "wss://tracker.openwebtorrent.com",
+  "wss://tracker.webtorrent.dev",
+];
+export const APPROVED_STUN: readonly string[] = ["stun:stun.cloudflare.com:3478"];
+
+/** An ICE server as RTCPeerConnection takes it. */
+export interface IceServer {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
 
 /** `pnpm build:internal`'s defaults: no links made here, no AI tools, new diagrams Private. */
 export const INTERNAL_DEFAULTS: Partial<Record<DeploymentVariable, string>> = {
@@ -45,6 +89,12 @@ export interface Deployment {
   locales: string;
   /** More than one language: View ▸ Language… and Ctrl+K's Language… exist. */
   languageChoice: boolean;
+  /** Edit together (rooms) in a production build: VITE_ENABLE_COLLAB, and share links on. */
+  collab: boolean;
+  /** The trackers a room announces to: VITE_COLLAB_TRACKERS, else APPROVED_TRACKERS. */
+  collabTrackers: string[];
+  /** The ICE servers a room's connections use: VITE_COLLAB_STUN and VITE_COLLAB_TURN, else APPROVED_STUN. */
+  collabIceServers: IceServer[];
 }
 
 const on = (value: string | undefined) => /^(1|true|yes|on)$/i.test((value ?? "").trim());
@@ -66,6 +116,46 @@ export function localeList(value: string | undefined): string {
   return [...new Set(tags)].join(",");
 }
 
+const list = (value: string | undefined) => [...new Set((value ?? "").split(/[\s,]+/).filter(Boolean))];
+const HOST = String.raw`[a-z0-9-]+(?:\.[a-z0-9-]+)*`;
+const PORT = String.raw`(?::\d{1,5})?`;
+/** A wss:// tracker (plain ws:// only on this machine), with an optional path and nothing else. */
+const TRACKER = new RegExp(String.raw`^(?:wss://${HOST}|ws://(?:localhost|127\.0\.0\.1))${PORT}(?:/[\w.~/-]*)?$`, "i");
+const STUN = new RegExp(String.raw`^stuns?:${HOST}${PORT}$`, "i");
+const TURN = new RegExp(String.raw`^turns?:${HOST}${PORT}(?:\?transport=(?:udp|tcp))?$`, "i");
+
+/** VITE_COLLAB_TRACKERS as the build reads it; unset, the approved trackers. Anything else throws. */
+export function trackerList(value: string | undefined): string[] {
+  const urls = list(value);
+  const bad = urls.filter((url) => !TRACKER.test(url));
+  if (bad.length) throw new Error(`VITE_COLLAB_TRACKERS takes wss:// tracker URLs, not: ${bad.join(", ")}`);
+  return urls.length ? urls : [...APPROVED_TRACKERS];
+}
+
+/**
+ * The ICE servers from VITE_COLLAB_STUN and VITE_COLLAB_TURN (with its username and credential); unset, the
+ * approved STUN server and no TURN. Anything malformed throws, so a typo never ships a copy that can't connect.
+ */
+export function iceServerList(env: Record<string, string | undefined>): IceServer[] {
+  const stunValue = (env.VITE_COLLAB_STUN ?? "").trim();
+  const stun = /^none$/i.test(stunValue) ? [] : list(stunValue);
+  const badStun = stun.filter((url) => !STUN.test(url));
+  if (badStun.length) throw new Error(`VITE_COLLAB_STUN takes stun: URLs (or "none"), not: ${badStun.join(", ")}`);
+  const turn = list(env.VITE_COLLAB_TURN);
+  const badTurn = turn.filter((url) => !TURN.test(url));
+  if (badTurn.length) throw new Error(`VITE_COLLAB_TURN takes turn: or turns: URLs, not: ${badTurn.join(", ")}`);
+  const username = (env.VITE_COLLAB_TURN_USERNAME ?? "").trim();
+  const credential = (env.VITE_COLLAB_TURN_CREDENTIAL ?? "").trim();
+  if (turn.length && (!username || !credential))
+    throw new Error("VITE_COLLAB_TURN needs VITE_COLLAB_TURN_USERNAME and VITE_COLLAB_TURN_CREDENTIAL");
+  if (!turn.length && (username || credential))
+    throw new Error("VITE_COLLAB_TURN_USERNAME and VITE_COLLAB_TURN_CREDENTIAL need VITE_COLLAB_TURN");
+  return [
+    ...(stunValue ? stun : APPROVED_STUN).map((urls) => ({ urls })),
+    ...(turn.length ? [{ urls: turn, username, credential }] : []),
+  ];
+}
+
 /**
  * The deployment variables a build sees, in Vite's order: the shell's environment first, then the .env files for
  * `mode` in `dir` (`.env.<mode>.local`, `.env.<mode>`, `.env.local`, `.env`), then `defaults` for any still
@@ -85,7 +175,10 @@ export function resolveDeploymentEnv(
   return out;
 }
 
-/** The deployment the variables describe. No variables: the public site's. */
+/**
+ * The deployment the variables describe. No variables: the public site's, but for Edit together, which is opt-in
+ * (livediagrams.dev sets VITE_ENABLE_COLLAB=1 in its build settings).
+ */
 export function readDeployment(env: Record<string, string | undefined>): Deployment {
   return {
     shareLinks: !on(env.VITE_DISABLE_SHARE_LINKS),
@@ -97,6 +190,9 @@ export function readDeployment(env: Record<string, string | undefined>): Deploym
     brandName: brandName(env.VITE_BRAND_NAME),
     locales: localeList(env.VITE_LOCALES),
     languageChoice: !localeList(env.VITE_LOCALES) || localeList(env.VITE_LOCALES).includes(","),
+    collab: on(env.VITE_ENABLE_COLLAB) && !on(env.VITE_DISABLE_SHARE_LINKS),
+    collabTrackers: trackerList(env.VITE_COLLAB_TRACKERS),
+    collabIceServers: iceServerList(env),
   };
 }
 
@@ -111,6 +207,11 @@ export const DEPLOYMENT_KEYS: Record<keyof Deployment, string> = {
   brandName: "__DEPLOYMENT_BRAND_NAME__",
   locales: "__DEPLOYMENT_LOCALES__",
   languageChoice: "__DEPLOYMENT_LANGUAGE_CHOICE__",
+  collab: "__DEPLOYMENT_COLLAB__",
+  // Read by src/collab/room/endpoints.ts only, so they land in the room's own chunk (never at startup), and only in
+  // a build that has rooms.
+  collabTrackers: "__DEPLOYMENT_COLLAB_TRACKERS__",
+  collabIceServers: "__DEPLOYMENT_COLLAB_ICE_SERVERS__",
 };
 
 /** Vite `define` entries: every constant, always, as a literal (a build without them would fail to run). */

@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { test, expect, type Browser, type Page } from "@playwright/test";
 import { COLLAB_STUN, COLLAB_TRACKERS } from "../../src/collab/transport/tracker";
+import { classify, timeFrom } from "../../scripts/collab-smoke.mjs";
 
 // Collaboration's Nightly network smoke (collaboration plan §4.2, E6): report-only, never in pull requests (its
 // Playwright project exists only with COLLAB_SMOKE=1). Two browsers start and join a room through the product's own
@@ -12,8 +13,8 @@ import { COLLAB_STUN, COLLAB_TRACKERS } from "../../src/collab/transport/tracker
 // turns the result into the Nightly summary and its trend.
 //
 // The e2e build contacts no public service unless a test names the endpoints (src/collab/room/endpoints.ts): this
-// spec names exactly the approved set. Until the production switch (E7) adds them to connect-src, the pages bypass
-// the build's CSP; E7 removes that.
+// spec names exactly the approved set. The pages run under the build's real headers (vite preview sends the public
+// site's policy, whose connect-src allows exactly these trackers).
 
 const RESULT = process.env.COLLAB_SMOKE_RESULT ?? "tests/.output/collab-smoke/result.json";
 /** How long two browsers may take to find each other through the public trackers. */
@@ -31,6 +32,8 @@ interface Result {
   pair?: { local?: string; remote?: string; protocol?: string };
   trackers: Record<string, { opened: number; framesReceived: number }>;
   connectivity: { creator?: string; joiner?: string };
+  /** Whether the joiner's peer connection ever reached "connected" (a later failure is then the app's). */
+  peerConnected?: boolean;
   errors: string[];
   message?: string;
   at: string;
@@ -39,13 +42,11 @@ interface Result {
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(6 * 60_000);
-test.use({ bypassCSP: true });
 
 /** A browser context that names the approved endpoints, keeps its peer connections for getStats, and logs sockets. */
 async function context(browser: Browser, result: Result, role: "creator" | "joiner") {
   const ctx = await browser.newContext({
     baseURL: test.info().project.use.baseURL,
-    bypassCSP: true,
     viewport: { width: 1440, height: 900 },
   });
   await ctx.addInitScript(
@@ -53,15 +54,20 @@ async function context(browser: Browser, result: Result, role: "creator" | "join
       const w = window as unknown as {
         __collabEndpoints: unknown;
         __pcs: RTCPeerConnection[];
+        __pcConnected: boolean;
         RTCPeerConnection: typeof RTCPeerConnection;
       };
       w.__collabEndpoints = endpoints;
       w.__pcs = [];
+      w.__pcConnected = false;
       const Native = w.RTCPeerConnection;
       w.RTCPeerConnection = class extends Native {
         constructor(config?: RTCConfiguration) {
           super(config);
           w.__pcs.push(this);
+          this.addEventListener("connectionstatechange", () => {
+            if (this.connectionState === "connected") w.__pcConnected = true;
+          });
         }
       };
     },
@@ -100,32 +106,26 @@ async function selectedPair(page: Page): Promise<Result["pair"]> {
   });
 }
 
-async function rename(page: Page, id: string, value: string) {
+/**
+ * Renames a node on `page` and times it until `remote` shows the new name: from the edit itself (the field's typing
+ * publishes it), not from after it, so the time includes sending it.
+ */
+async function syncedRename(page: Page, remote: Page, id: string, value: string): Promise<number> {
   await page.bringToFront();
   await page.getByTestId(`node-${id}`).dblclick();
   const field = page.getByTestId("inspector-field-label");
   await expect(field).toBeFocused();
-  await field.fill(value);
-  await field.press("Enter");
+  return timeFrom(
+    async () => {
+      await field.fill(value);
+      await field.press("Enter");
+    },
+    () => expect(remote.getByTestId(`node-${id}`)).toContainText(value, { timeout: 30_000 }),
+  );
 }
 
 /** How long until `check` passes (ms), or a failure after `timeout`. */
-async function timed(check: () => Promise<void>): Promise<number> {
-  const start = Date.now();
-  await check();
-  return Date.now() - start;
-}
-
-/** Why it failed, from what each side's room says and what the trackers did. */
-function classify(result: Result): FailureClass {
-  if (result.errors.length || !["connect"].includes(result.stage)) return "app-error";
-  const states = [result.connectivity.creator, result.connectivity.joiner];
-  if (states.some((s) => s === "ice-failed" || s === "no-answer")) return "ice-nat";
-  const answered = Object.values(result.trackers).some((t) => t.framesReceived > 0);
-  if (!answered || states.some((s) => s === "trackers-unreachable")) return "tracker-unreachable";
-  // Trackers answered but no peer ever connected: matchmaking found no one, or the connection never formed.
-  return "ice-nat";
-}
+const timed = (check: () => Promise<void>) => timeFrom(async () => {}, check);
 
 test("two browsers edit one room together over the public trackers", async ({ browser }) => {
   const result: Result = {
@@ -164,14 +164,8 @@ test("two browsers edit one room together over the public trackers", async ({ br
     await expect(a.getByTestId("room-chip")).toHaveAttribute("data-peers", "1", { timeout: 30_000 });
 
     result.stage = "sync";
-    await rename(a, "gateway", "Renamed by the creator");
-    const creatorToJoiner = await timed(() =>
-      expect(b.getByTestId("node-gateway")).toContainText("Renamed by the creator", { timeout: 30_000 }),
-    );
-    await rename(b, "orders", "Renamed by the joiner");
-    const joinerToCreator = await timed(() =>
-      expect(a.getByTestId("node-orders")).toContainText("Renamed by the joiner", { timeout: 30_000 }),
-    );
+    const creatorToJoiner = await syncedRename(a, b, "gateway", "Renamed by the creator");
+    const joinerToCreator = await syncedRename(b, a, "orders", "Renamed by the joiner");
     result.syncMs = { creatorToJoiner, joinerToCreator };
 
     result.stage = "presence";
@@ -199,6 +193,9 @@ test("two browsers edit one room together over the public trackers", async ({ br
         .getAttribute("data-connectivity", { timeout: 1_000 })
         .catch(() => null)) ?? undefined;
     result.connectivity = { creator: await read(a), joiner: await read(b) };
+    result.peerConnected = await b
+      .evaluate(() => (window as unknown as { __pcConnected?: boolean }).__pcConnected === true)
+      .catch(() => undefined);
     if (!result.ok) result.class = classify(result);
     mkdirSync(dirname(RESULT), { recursive: true });
     writeFileSync(RESULT, JSON.stringify(result, null, 2));

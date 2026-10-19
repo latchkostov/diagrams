@@ -1,5 +1,5 @@
 import { t, useLocale } from "../i18n";
-import { COLLABORATION_LAB } from "../lib/localOnly";
+import { ROOMS } from "../lib/localOnly";
 import { EDIT_TOGETHER } from "../lib/roomEntry";
 import {
   memo,
@@ -102,7 +102,7 @@ export function PaletteDialog({
         openDiagram: opened.onOpenDiagram,
         present: opened.onPresent,
         language: LANGUAGE_CHOICE ? openLanguageDialog : undefined,
-        editTogether: COLLABORATION_LAB ? () => void window.dispatchEvent(new Event(EDIT_TOGETHER)) : undefined,
+        editTogether: ROOMS ? () => void window.dispatchEvent(new Event(EDIT_TOGETHER)) : undefined,
         sendStencilToCanvas: addToCurrentDiagram,
         onStencilUsed: pushRecentStencil,
         runSimulation: (simId) => {

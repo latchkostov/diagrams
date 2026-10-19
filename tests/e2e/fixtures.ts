@@ -474,7 +474,7 @@ export async function openShareChooser(page: Page) {
 }
 
 /** Share…'s rows: the private and controlled ones, then the public ones (behind their own step). */
-export type ShareOption = "html" | "file" | "embed" | "password" | "link" | "embed-public";
+export type ShareOption = "html" | "file" | "embed" | "password" | "link" | "embed-public" | "edit-together";
 
 /** File ▸ Share… ▸ one row. The public ones (`link`, `embed-public`) take the deliberate step that shows them first. */
 export async function shareVia(page: Page, option: ShareOption) {

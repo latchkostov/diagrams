@@ -1,11 +1,18 @@
-import { COLLAB_STUN, COLLAB_TRACKERS } from "../transport/tracker";
-
-// The public services a room contacts: the two approved matchmaking trackers and Cloudflare's STUN server, fixed
-// in code (CSP can't govern STUN, so this list is the allowlist). Nothing here is editable in the app.
+// The services a room contacts: the matchmaking trackers and the ICE servers. Fixed at build time and never editable
+// in the app (CSP can't govern STUN or TURN, so this list is their allowlist). livediagrams.dev builds with none of
+// the variables set: the two approved trackers and Cloudflare's STUN server, no TURN (scripts/deployment-env.ts,
+// APPROVED_TRACKERS and APPROVED_STUN). A self-hosted copy may name its own (VITE_COLLAB_TRACKERS, VITE_COLLAB_STUN,
+// VITE_COLLAB_TURN).
+//
+// The build defines both lists as literals here, not in src/lib/deployment.ts with the other switches: only the
+// room's own chunk reads them, so they never ship at startup, and a build without rooms carries none of them.
 //
 // The e2e build contacts none of them: its tests emulate a tracker inside the test runner (Playwright's
-// routeWebSocket, on this page's own origin) and connect browsers over host candidates. They say where through
-// `window.__collabEndpoints` before the page loads; without it, an e2e page has no tracker at all.
+// routeWebSocket) and connect browsers over host candidates. They say where through `window.__collabEndpoints`
+// before the page loads; without it, an e2e page has no tracker at all.
+
+declare const __DEPLOYMENT_COLLAB_TRACKERS__: string[];
+declare const __DEPLOYMENT_COLLAB_ICE_SERVERS__: RTCIceServer[];
 
 export interface RoomEndpoints {
   trackers: readonly string[];
@@ -23,5 +30,13 @@ export function roomEndpoints(): RoomEndpoints {
     const test = window.__collabEndpoints;
     return { trackers: test?.trackers ?? [], iceServers: test?.iceServers ?? [] };
   }
-  return { trackers: COLLAB_TRACKERS, iceServers: COLLAB_STUN };
+  return { trackers: __DEPLOYMENT_COLLAB_TRACKERS__, iceServers: __DEPLOYMENT_COLLAB_ICE_SERVERS__ };
+}
+
+/** The hosts a room's endpoints name, once each, in order (what the consent dialogs list). */
+export function serviceHosts(endpoints: RoomEndpoints): string[] {
+  const host = (url: string) =>
+    /^wss?:/.test(url) ? new URL(url).hostname : url.replace(/^(?:stuns?|turns?):/, "").replace(/[:?].*$/, "");
+  const urls = [...endpoints.trackers, ...endpoints.iceServers.flatMap((s) => [s.urls].flat())];
+  return [...new Set(urls.map(host))];
 }

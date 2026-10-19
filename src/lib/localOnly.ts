@@ -1,6 +1,6 @@
 import type { DiagramFile } from "../model/types";
 import { matchesLocalExample } from "./localOnly.dev";
-import { AI_TOOLS, ON_DEVICE, SHARE_LINKS } from "./deployment";
+import { AI_TOOLS, COLLAB, ON_DEVICE, SHARE_LINKS } from "./deployment";
 
 // The one privacy decision. A diagram is kept on this device (no AI, no share links, no cloud saves) when
 // it is either:
@@ -55,15 +55,19 @@ export function canUseAiTools(state: CanvasPrivacyState | null | undefined): boo
   return AI_TOOLS && !isLocalOnly(state);
 }
 
-/**
- * Collaboration rooms (C0: a Lab proof, docs/research/collaboration.md). Off in every production build: only the dev
- * server and the e2e build have it, behind the Lab. Never for a diagram that stays on this device (Private or
- * local-only): C0 has no consent flow that could make an exception, and a Private diagram must not leave the
- * device. Never in a copy deployed without links either: a room is a kind of link.
- */
+/** The dev server and the e2e build have rooms (and the Lab's collaboration presets) whatever the switch says. */
 export const COLLABORATION_LAB = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
+/**
+ * Edit together (rooms): in a production build with VITE_ENABLE_COLLAB=1 (COLLAB), and in development and e2e
+ * builds. Never in a copy deployed without links: a room is a kind of link.
+ */
+export const ROOMS = (COLLABORATION_LAB || COLLAB) && SHARE_LINKS;
+/**
+ * A room for this diagram. Never for one that stays on this device (Private or local-only): a Private diagram must
+ * not leave the device, and no consent makes an exception.
+ */
 export function canCollaborate(state: CanvasPrivacyState | null | undefined): boolean {
-  return COLLABORATION_LAB && SHARE_LINKS && !isLocalOnly(state);
+  return ROOMS && !isLocalOnly(state);
 }
 
 /** Saving to Google Drive, OneDrive or Dropbox. Files on this device are always allowed (the person's own act). */

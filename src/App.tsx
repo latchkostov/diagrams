@@ -56,7 +56,7 @@ import { lazyComponent, LOAD_FAILED, loadOnce, whenIdle } from "./lib/lazyLoad";
 import { EDIT_TOGETHER, roomEntryPending, roomInAddress, roomTabPending } from "./lib/roomEntry";
 import { AiMount } from "./ai/ui/AiMount";
 import { unseen } from "./ai/ui/unseen";
-import { AI_PANEL } from "./lib/deployment";
+import { AI_PANEL, COLLAB, SHARE_LINKS } from "./lib/deployment";
 import { t, useLocale } from "./i18n";
 import "./styles/interop.css";
 
@@ -71,11 +71,14 @@ const LabView =
     : () => null;
 /**
  * Rooms (Edit together; src/collab/room): their code, Yjs included, loads only for a page with a room to open or when
- * one is asked for. Development and e2e builds only, for now: spelled out so production builds drop it.
+ * one is asked for. In development and e2e builds, and in production with VITE_ENABLE_COLLAB=1 (ROOMS in
+ * ./lib/localOnly): spelled out from build constants so a build without rooms drops the chunk.
  */
 type RoomsModule = typeof import("./collab/room");
 const loadRooms =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === "1" ? loadOnce(() => import("./collab/room")) : undefined;
+  (import.meta.env.DEV || import.meta.env.VITE_E2E === "1" || COLLAB) && SHARE_LINKS
+    ? loadOnce(() => import("./collab/room"))
+    : undefined;
 const noRoomSubscribe = () => () => {};
 const noRoomSnapshot = () => undefined;
 
