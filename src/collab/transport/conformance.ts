@@ -63,10 +63,13 @@ export function openClient(
   seed: number,
   opts: { initial?: DiagramFile; doc?: CollabDoc; signed?: RoomClientOptions["signed"] } = {},
 ): Promise<RoomClient> {
+  // A creator's room is a fresh one (it seeds the document); a knock-to-join room stays one.
+  const fresh = opts.initial ? newRoom(() => room.secret.slice(), room.hostKey) : room;
+  if (room.knock) fresh.knock = true;
   return openRoomClient({
     name,
     transport,
-    room: opts.initial ? newRoom(() => room.secret.slice(), room.hostKey) : room,
+    room: fresh,
     clock,
     random: seededBytes(seed),
     clientId: opts.doc ? undefined : seed,

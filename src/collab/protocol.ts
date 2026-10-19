@@ -81,6 +81,14 @@ export function fragment(message: Uint8Array, id: number): Uint8Array[] {
 export type Reassembled =
   { done: Uint8Array } | { pending: true } | { error: "malformed" | "too-large" | "too-many-partials" };
 
+/** What a Reassembler holds at most: a message's length, and half-delivered messages per sender and in all. */
+export interface ReassemblyLimits {
+  maxMessageBytes: number;
+  maxPartialMessages: number;
+  maxPartialBytesPerSender: number;
+  maxPartialBytes: number;
+}
+
 /** Puts fragments back together, per sender, within the limits. */
 export class Reassembler {
   private partial = new Map<
@@ -88,7 +96,16 @@ export class Reassembler {
     { sender: string; length: number; count: number; parts: (Uint8Array | undefined)[]; got: number; at: number }
   >();
 
-  constructor(private readonly clock: Clock) {}
+  constructor(
+    private readonly clock: Clock,
+    /** The document's limits by default; the lobby has small ones of its own. */
+    private readonly limits: ReassemblyLimits = COLLAB_LIMITS,
+    /**
+     * Whether a sender's half-delivered messages may make way for another's (the lobby: people at the door make way
+     * for members, so they can never block one).
+     */
+    private readonly yields: (sender: string) => boolean = () => false,
+  ) {}
 
   /** Bytes reserved for half-delivered messages (each message's whole length, from its first part). */
   private reserved = 0;
@@ -97,6 +114,17 @@ export class Reassembler {
   expire(): void {
     const now = this.clock.now();
     for (const [k, p] of this.partial) if (now - p.at > COLLAB_LIMITS.partialTtlMs) this.drop(k);
+  }
+
+  /** Whether a half-delivered message from `sender` is held. */
+  holds(sender: string): boolean {
+    for (const p of this.partial.values()) if (p.sender === sender) return true;
+    return false;
+  }
+
+  /** Bytes reserved for half-delivered messages. */
+  get held(): number {
+    return this.reserved;
   }
 
   /** Forgets everything (leaving). */
@@ -122,7 +150,9 @@ export class Reassembler {
     const count = view.getUint16(6);
     const length = view.getUint32(8);
     const size = COLLAB_LIMITS.maxFragmentBytes;
-    if (length > COLLAB_LIMITS.maxMessageBytes) return { error: "too-large" };
+    const limits = this.limits;
+    // A declared length past the limit is refused before anything is reserved for it.
+    if (length > limits.maxMessageBytes) return { error: "too-large" };
     // A message that fits one frame is never fragmented; the count and every part's length follow from the length.
     if (length <= size || count !== Math.ceil(length / size) || index >= count) return { error: "malformed" };
     const body = payload.subarray(FRAGMENT_HEADER);
@@ -139,12 +169,15 @@ export class Reassembler {
           open++;
           held += p.length;
         }
-      if (
-        open >= COLLAB_LIMITS.maxPartialMessages ||
-        held + length > COLLAB_LIMITS.maxPartialBytesPerSender ||
-        this.reserved + length > COLLAB_LIMITS.maxPartialBytes
-      )
+      if (open >= limits.maxPartialMessages || held + length > limits.maxPartialBytesPerSender)
         return { error: "too-many-partials" };
+      // Full: a sender that doesn't yield takes the place of the oldest that do.
+      if (this.reserved + length > limits.maxPartialBytes && !this.yields(sender))
+        for (const [k, p] of this.partial) {
+          if (this.reserved + length <= limits.maxPartialBytes) break;
+          if (this.yields(p.sender)) this.drop(k);
+        }
+      if (this.reserved + length > limits.maxPartialBytes) return { error: "too-many-partials" };
       entry = { sender, length, count, parts: new Array<Uint8Array | undefined>(count), got: 0, at: now };
       this.partial.set(key, entry);
       this.reserved += length;

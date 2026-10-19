@@ -11,13 +11,20 @@ import { secureRandom, type RandomBytes } from "../random";
 import type { RecoveryStore } from "../recoveryStore";
 import { CollabSession, PrivateDiagramError } from "../session";
 import {
+  loadAgreement,
   loadIdentity,
+  newAgreement,
   newIdentity,
   SigningUnsupportedError,
+  storeAgreement,
   storeIdentity,
   type Identity,
+  type StoredAgreement,
   type StoredIdentity,
 } from "../signing";
+import { commitEpoch, signStart } from "../epochs";
+import { newEpochSecret } from "../keys";
+import type { KnockMember } from "../session";
 import type { CollabTransport } from "../transport/types";
 import { recordRoom, roomValue, type RoomRole, type TabRoomRecord, type TabRoomStore } from "./tabRoom";
 import { clonedRoster, memberId, newRoster, RoomRoster, type RosterRecord } from "./roomRoster";
@@ -73,9 +80,12 @@ export interface RoomDeps {
   memberTaken?(member: string): Promise<boolean>;
   /** New rooms are signed rooms (P4) when this browser can sign; false: rooms without roles, as v1 links open. */
   signedRooms?: boolean;
+  /** New signed rooms have knock-to-join (P5, v3 links); false: signed rooms anyone with the link joins (v2). */
+  knockRooms?: boolean;
 }
 
-export type RoomNotice = "left" | "private" | "failed" | "storage-full" | "unsupported";
+export type RoomNotice =
+  "left" | "private" | "failed" | "storage-full" | "denied" | "removed" | "unsupported" | "unsupported-start";
 
 export interface OpenRoom {
   role: RoomRole;
@@ -104,6 +114,7 @@ export interface RoomSnapshot {
   open?: OpenRoom;
   /** Opening a room now: as its creator or as a joiner. */
   opening?: RoomRole;
+
   /** A decision for the person: consent to start or join, or a link that can't be opened. */
   prompt?: RoomPrompt;
   /** The last thing that happened to a room, once (`seq` tells repeats apart). */
@@ -161,12 +172,22 @@ async function identityFor(
   return { identity, stored: await storeIdentity(identity) };
 }
 
-/** Whether this browser can sign (Ed25519 in WebCrypto): new rooms are signed rooms then, else rooms without roles. */
-async function signingIdentity(): Promise<Identity | undefined> {
+/**
+ * Whether this browser can sign and agree keys (Ed25519 and X25519 in WebCrypto). New rooms are knock-to-join rooms
+ * (v3, P5): a browser without both can't start one (./start), never a room anyone with the link walks into.
+ */
+async function signingIdentity(): Promise<{ identity: Identity; knock: boolean } | undefined> {
+  let identity: Identity;
   try {
-    return await newIdentity();
+    identity = await newIdentity();
   } catch {
     return undefined;
+  }
+  try {
+    await newAgreement();
+    return { identity, knock: true };
+  } catch {
+    return { identity, knock: false };
   }
 }
 
@@ -294,16 +315,26 @@ export class RoomLifecycle {
   /** Start room: a new room seeded with `diagram`, kept in Your diagrams' entry `slug`. */
   async start(o: { slug: string; diagram: DiagramFile; alias?: string }): Promise<OpenRoom | undefined> {
     this.invite = undefined;
+    // A knock-to-join room (P5): the creator's identity is its root, named in its link. Its Share and start dialogs
+    // promise newcomers wait to be let in, so a browser that can't sign and agree keys starts nothing (it's told
+    // plainly, and a room it's in stays as it is), never a room anyone with the link walks into. (Signed rooms
+    // without knock-to-join (v2), and rooms without roles, only where this copy says so.)
+    const knock = this.deps.signedRooms !== false && this.deps.knockRooms !== false;
+    const signing = this.deps.signedRooms === false ? undefined : await signingIdentity();
+    if (knock && !signing?.knock) {
+      this.set({ opening: undefined, notice: this.notice("unsupported-start", o.slug) });
+      return undefined;
+    }
     await this.leaveActive("left");
-    // A signed room (P4) when this browser can sign: the creator's identity is its root, named in its link.
-    const identity = this.deps.signedRooms === false ? undefined : await signingIdentity();
+    const link = newRoom(this.random, signing?.identity.key);
+    if (knock) link.knock = true;
     return this.open({
-      link: newRoom(this.random, identity?.key),
+      link,
       role: "creator",
       slug: o.slug,
       initial: o.diagram,
       alias: o.alias,
-      identity,
+      identity: signing?.identity,
     });
   }
 
@@ -343,6 +374,7 @@ export class RoomLifecycle {
     let session: CollabSession | undefined;
     let roster = o.roster ?? o.record?.roster ?? newRoster(o.role, this.random);
     let stored: StoredIdentity | undefined;
+    let agreementStored: StoredAgreement | undefined;
     // The entry's flags as they are now: another tab may mark it Private while the keys and recovery load.
     const allowed = () => !o.slug || canCollaborate(this.deps.library.privacy(o.slug));
     try {
@@ -352,7 +384,7 @@ export class RoomLifecycle {
       if (token !== this.attempt) return;
       if (!allowed()) throw new PrivateDiagramError();
       // A signed room: this tab's identity (kept across reloads with the roster it knew), checked before anything.
-      let signed: { identity: Identity; log: readonly unknown[] } | undefined;
+      let signed: { identity: Identity; log: readonly unknown[]; knock?: KnockMember } | undefined;
       if (o.link.hostKey) {
         const id = await identityFor(roster, o.identity);
         if (token !== this.attempt) return;
@@ -360,8 +392,42 @@ export class RoomLifecycle {
         const log = roster.signed?.identity.key === id.stored.key ? roster.signed.log : [];
         roster = { ...roster, signed: { identity: id.stored, log } };
         signed = { identity: id.identity, log };
+        // Knock-to-join: this member's epoch, from its record; a new room's first one; or, at the door, let in. The
+        // identity and the knock record come from one roster (a duplicated tab's has an identity of its own and no
+        // knock record: it starts at the door, with a key-agreement key of its own).
+        if (o.link.knock && o.link.hostKey) {
+          const source = o.roster ?? o.record?.roster;
+          const kept = source?.signed?.knock;
+          const own = kept && source?.signed?.identity.key === id.stored.key ? kept : undefined;
+          const loaded = own && (await loadAgreement(own.agreement));
+          const agreement = loaded || (await newAgreement());
+          agreementStored = loaded ? own!.agreement : await storeAgreement(agreement);
+          if (token !== this.attempt) return;
+          let member: KnockMember;
+          if (loaded && own?.secret)
+            member = {
+              agreement,
+              chain: own.chain,
+              secret: base64UrlToBytes(own.secret),
+              scope: own.scope,
+              wraps: own.wraps,
+            };
+          else if (o.initial) {
+            const secret = newEpochSecret(this.random);
+            const start = await signStart(id.identity, keys.roomId, {
+              epoch: 0,
+              kc: await commitEpoch(secret, keys.roomId, 0),
+              x: agreement.x,
+            });
+            member = { agreement, chain: { starts: [start], logs: [] }, secret };
+          } else {
+            // At the door: the session knocks, and waits (as a joiner waits for the diagram) until it's let in.
+            member = { agreement, chain: own?.chain ?? { starts: [], logs: [] } };
+          }
+          signed = { ...signed, knock: member };
+        }
       }
-      transport = this.deps.transport(keys);
+      transport ??= this.deps.transport(keys);
       session = await CollabSession.open({
         room: o.link,
         transport,
@@ -426,8 +492,29 @@ export class RoomLifecycle {
     const signedRoom = session.signed;
     if (signedRoom && stored) {
       const identity = stored;
-      const keep = () => a.roster.update({ signed: { identity, log: signedRoom.roster.log() } });
-      a.stops.push(signedRoom.roster.subscribe(keep));
+      const agreement = agreementStored;
+      const keep = () => {
+        // Knock-to-join: the epoch this member is in, its secret and chain (as they stand once it's followed one).
+        const member = agreement && session.memberRecord();
+        // At the door: its key-agreement key alone (a reload knocks again, as the same person).
+        const knock = agreement
+          ? member
+            ? { agreement, ...member }
+            : (a.roster.get().signed?.knock ?? { agreement, chain: { starts: [], logs: [] }, wraps: [] })
+          : undefined;
+        a.roster.update({
+          signed: { identity, log: agreement ? [] : signedRoom.roster.log(), ...(knock ? { knock } : {}) },
+        });
+      };
+      a.stops.push(signedRoom.subscribe(keep));
+      let scope = signedRoom.scope;
+      a.stops.push(
+        session.onChange(() => {
+          if (signedRoom.scope === scope) return;
+          scope = signedRoom.scope;
+          keep();
+        }),
+      );
       keep();
     }
     if (o.record?.pending) this.mergePending(a, o.record.pending);
@@ -489,7 +576,16 @@ export class RoomLifecycle {
     // A room on its way out (the page going, Leave, the cache) records nothing more.
     if (this.active !== a || a.leaving) return;
     if (a.session.status === "left") {
-      void this.finish(a, a.editor.refusal === "private" ? "private" : "left");
+      void this.finish(
+        a,
+        a.session.removed
+          ? "removed"
+          : a.session.denied
+            ? "denied"
+            : a.editor.refusal === "private"
+              ? "private"
+              : "left",
+      );
       return;
     }
     if (a.pending && a.session.recovery?.saved) {

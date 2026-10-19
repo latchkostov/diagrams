@@ -36,7 +36,9 @@ describe("room links", () => {
   it.each([
     ["no fragment", BASE, "missing"],
     ["a share link", `${BASE}#d=abc`, "missing"],
-    ["a newer version", `${BASE}#room=v3.0.${key}`, "newer"],
+    ["a newer version", `${BASE}#room=v4.0.${key}`, "newer"],
+    ["a v3 link with an epoch", `${BASE}#room=v3.0.${key}.${hostKey}`, "damaged"],
+    ["a v3 link without its host key", `${BASE}#room=v3.${key}`, "damaged"],
     ["a v2 link without its host key", `${BASE}#room=v2.0.${key}`, "damaged"],
     ["a v1 link with a host key", `${BASE}#room=v1.0.${key}.${hostKey}`, "damaged"],
     ["a short host key", `${BASE}#room=v2.0.${key}.${hostKey.slice(1)}`, "damaged"],
@@ -69,6 +71,15 @@ describe("room links", () => {
     expect([...room.secret]).toEqual([...secret]);
     expect(parseRoomLink(`${BASE}#room=v1.3.${key}`).hostKey).toBeUndefined();
     expect(() => formatRoomLink(BASE, { epoch: 0, secret, hostKey: "short" })).toThrow();
+  });
+
+  it("v3 (knock-to-join) carries the lobby's secret and the host key, and no epoch", () => {
+    const url = formatRoomLink(BASE, { epoch: 0, secret, hostKey, knock: true });
+    expect(url).toBe(`${BASE}#room=v3.${key}.${hostKey}`);
+    const room = parseRoomLink(url);
+    expect(room).toMatchObject({ epoch: 0, hostKey, knock: true });
+    expect([...room.secret]).toEqual([...secret]);
+    expect(() => formatRoomLink(BASE, { epoch: 2, secret, hostKey, knock: true })).toThrow();
   });
 
   it("refuses a v2 host key that isn't its one canonical spelling", () => {

@@ -29,7 +29,11 @@ export const watchNotices: WatchNotices = {
                       ? t("collab.nowHost")
                       : message === "rebased"
                         ? t("collab.liveRebased")
-                        : t("collab.cantFollow"),
+                        : message === "removal-limit"
+                          ? t("collab.removalLimit")
+                          : message === "remove-failed"
+                            ? t("collab.removeFailed", { alias })
+                            : t("collab.cantFollow"),
       { kind: ["own", "ended", "declined", "driving", "host", "rebased"].includes(message) ? "info" : "error" },
     ),
 };

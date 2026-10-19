@@ -17,6 +17,7 @@ import { MemoryNetwork } from "../transport/memory";
 import type { CollabTransport } from "../transport/types";
 import { RoomLifecycle, type RoomLibrary } from "./lifecycle";
 import { memoryTabRoom } from "./tabRoom";
+import { parseRoster } from "./roomRoster";
 import { serializeNative } from "../../interop/native";
 
 // The room lifecycle (Edit together, plan E2) on the in-memory network: who seeds the room, what a link may do
@@ -115,6 +116,9 @@ function browser(
   seed: number,
   from?: Partial<Pick<Browser, "library" | "store" | "tab">>,
   signedRooms = true,
+  // Most of these tests are about the room's life in the page, in rooms anyone with the link joins (v2): knock-to-join
+  // rooms (v3, the default for new rooms) have their own below.
+  knockRooms = false,
 ): Browser {
   const b: Browser = {
     library: from?.library ?? new Library(),
@@ -136,6 +140,7 @@ function browser(
     clock,
     random: seededBytes(seed),
     signedRooms,
+    knockRooms,
   });
   b.room.configure({ navigate: (slug) => b.shown.push(slug) });
   onTestFinished(() => b.room.wipe());
@@ -1031,6 +1036,178 @@ describe("signed rooms (P4)", () => {
   });
 });
 
+describe("knock-to-join rooms (P5)", () => {
+  const knocky = (
+    net: MemoryNetwork,
+    clock: FakeClock,
+    seed: number,
+    from?: Partial<Pick<Browser, "library" | "store" | "tab">>,
+  ) => browser(net, clock, seed, from, true, true);
+  const keyOf = (b: Browser) => session(b).signed!.key;
+
+  /** Opens `link` in `b` and says Join: it knocks, and waits (the promise resolves once it's let in, or not). */
+  function knock(b: Browser, link: string) {
+    const url = new URL(link);
+    b.room.readAddress({ hash: url.hash, pathname: url.pathname, search: url.search }, nohistory);
+    return b.room.accept();
+  }
+
+  it("a new room has knock-to-join: a joiner waits at the door, with nothing of the room, until the host lets them in", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 81),
+      b = knocky(net, clock, 82);
+    await start(a);
+    expect(linkOf(a)).toMatch(/#room=v3\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
+    await knock(b, linkOf(a));
+    await settle(net, a, b);
+    // At the door: open (as a joiner waits for the diagram), knocking, with nothing of the room and no entry.
+    expect(session(b).knocking).toBe(true);
+    expect(b.room.getSnapshot().open).toMatchObject({ ready: false, slug: undefined });
+    expect(b.library.entries.size).toBe(0);
+    const [waiting] = [...session(a).knocks.values()];
+    expect(waiting).toBeDefined();
+    expect(await session(a).admit(waiting.key)).toBe(true);
+    await settle(net, a, b);
+    expect(session(b).knocking).toBe(false);
+    expect(titleOf(b)).toBe(titleOf(a));
+    edit(b, (d) => ({ ...d, title: "Let in" }));
+    await settle(net, a, b);
+    expect(titleOf(a)).toBe("Let in");
+  });
+
+  it("denied: the joiner is told so, and nothing of the room is left with them", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 83),
+      b = knocky(net, clock, 84);
+    await start(a);
+    await knock(b, linkOf(a));
+    await settle(net, a, b);
+    const [waiting] = [...session(a).knocks.values()];
+    session(a).deny(waiting.key);
+    await settle(net, a, b);
+    expect(b.room.getSnapshot()).toMatchObject({ notice: { kind: "denied" } });
+    expect(b.room.getSnapshot().open).toBeUndefined();
+    expect(b.tab.read()).toBeUndefined();
+    expect(b.library.entries.size).toBe(0);
+  });
+
+  it("Leave while waiting at the door stops knocking and leaves nothing", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 85),
+      b = knocky(net, clock, 86);
+    await start(a);
+    await knock(b, linkOf(a));
+    await settle(net, a, b);
+    expect(session(a).knocks.size).toBe(1);
+    await b.room.leave();
+    await settle(net, a);
+    expect(b.room.getSnapshot().open).toBeUndefined();
+    expect(b.tab.read()).toBeUndefined();
+    expect(session(a).knocks.size).toBe(0);
+  });
+
+  it("a stored knock record is checked in full before it's read: a malformed chain log or wrap isn't this tab's record", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 98);
+    await start(a);
+    const stored = a.tab.read()!.roster!;
+    expect(parseRoster(JSON.parse(JSON.stringify(stored)))).toBeDefined();
+    const broken = (change: (knock: Record<string, unknown>) => void) => {
+      const copy = JSON.parse(JSON.stringify(stored));
+      change(copy.signed.knock);
+      return parseRoster(copy);
+    };
+    expect(broken((k) => ((k.chain as { logs: unknown[] }).logs = [null]))).toBeUndefined();
+    expect(broken((k) => ((k.chain as { logs: unknown[] }).logs = [{ scope: 3, entries: [] }]))).toBeUndefined();
+    expect(broken((k) => ((k.chain as { logs: unknown[] }).logs = [{ scope: "0:x", entries: "no" }]))).toBeUndefined();
+    expect(broken((k) => (k.wraps = [null]))).toBeUndefined();
+    expect(broken((k) => (k.wraps = [{ scope: "0:x", to: "nobody" }]))).toBeUndefined();
+  });
+
+  it("a duplicated tab of a member signs as someone new and knocks: none of the original's secrets come with it", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 95),
+      b = knocky(net, clock, 96);
+    await start(a);
+    await knock(b, linkOf(a));
+    for (let i = 0; i < 100 && !session(a).knocks.size; i++) {
+      await settle(net, a);
+      await new Promise((r) => setTimeout(r, 1));
+    }
+    for (const k of [...session(a).knocks.values()]) expect(await session(a).admit(k.key)).toBe(true);
+    await settle(net, a, b);
+    expect(session(b).knocking).toBe(false);
+    const original = b.room.getSnapshot().open!.roster.get();
+    expect(b.tab.read()?.roster?.signed?.knock?.secret).toBeDefined();
+    // The tab is duplicated: its record (identity, epoch secret, key-agreement key) copied with it.
+    const copy = knocky(net, clock, 97, b);
+    (copy.room as unknown as { deps: { memberTaken?: (m: string) => Promise<boolean> } }).deps.memberTaken = async (
+      m,
+    ) => m === original.signed!.identity.key;
+    await copy.room.resume();
+    await settle(net, a, b, copy);
+    expect(keyOf(copy)).not.toBe(keyOf(b));
+    expect(session(copy).knocking).toBe(true);
+    expect(session(copy).hasDocument).toBe(false);
+    expect(session(copy).signed!.knock!.agreement.x).not.toBe(session(b).signed!.knock!.agreement.x);
+    expect(session(a).signed!.state().members.has(keyOf(copy))).toBe(false);
+    // It waits at the door like anyone: the host sees it, and can let it in.
+    for (let i = 0; i < 100 && !session(a).knocks.has(keyOf(copy)); i++) {
+      await settle(net, a, copy);
+      await new Promise((r) => setTimeout(r, 1));
+    }
+    expect(session(a).knocks.has(keyOf(copy))).toBe(true);
+    expect(await session(a).admit(keyOf(copy))).toBe(true);
+    await settle(net, a, b, copy);
+    expect(session(copy).knocking).toBe(false);
+    expect(titleOf(copy)).toBe(titleOf(a));
+    // The original keeps its identity and its place.
+    expect(keyOf(b)).toBe(original.signed!.identity.key);
+    expect(session(b).knocking).toBe(false);
+  });
+
+  it("removed: the room ends for them with a notice, and their copy stays; a reload after the re-key opens the new epoch", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 87),
+      b = knocky(net, clock, 88),
+      c = knocky(net, clock, 89);
+    await start(a);
+    for (const x of [b, c]) {
+      await knock(x, linkOf(a));
+      // The newcomer's page gets to the door (its keys and identity first).
+      for (let i = 0; i < 100 && !session(a).knocks.size; i++) {
+        await settle(net, a);
+        await new Promise((r) => setTimeout(r, 1));
+      }
+      for (const k of [...session(a).knocks.values()]) await session(a).admit(k.key);
+      await settle(net, a, x);
+      expect(session(x).knocking).toBe(false);
+    }
+    const cSlug = c.room.getSnapshot().open!.slug!;
+    const cKey = keyOf(c);
+    expect(await session(a).remove(cKey)).toBe(true);
+    await settle(net, a, b, c);
+    expect(c.room.getSnapshot()).toMatchObject({ notice: { kind: "removed" } });
+    expect(c.room.getSnapshot().open).toBeUndefined();
+    expect(c.library.read(cSlug)).toBeDefined();
+    expect(session(b).keys.epoch).toBe(1);
+    // b reloads alone: its record has the new epoch, and it opens there before anyone answers.
+    b.room.pageHidden();
+    a.room.pageHidden();
+    await settle(net);
+    const b2 = knocky(net, clock, 90, b);
+    await b2.room.resume();
+    expect(session(b2).keys.epoch).toBe(1);
+    expect(session(b2).signed!.state().members.has(cKey)).toBe(false);
+  });
+});
+
 describe("a browser that can't sign", () => {
   it("joining a signed room says plainly that this browser can't, instead of waiting for ever", async () => {
     const net = new MemoryNetwork(),
@@ -1054,5 +1231,52 @@ describe("a browser that can't sign", () => {
     expect(b.room.getSnapshot()).toMatchObject({ notice: { kind: "unsupported" } });
     expect(b.room.getSnapshot().open).toBeUndefined();
     expect(b.room.getSnapshot().opening).toBeUndefined();
+  });
+
+  for (const missing of ["X25519", "Ed25519"])
+    it(`starting a room without ${missing} says so, and starts nothing: never a room anyone with the link walks into`, async () => {
+      const net = new MemoryNetwork(),
+        clock = new FakeClock();
+      const a = browser(net, clock, missing === "X25519" ? 98 : 99, undefined, true, true);
+      const generateKey = crypto.subtle.generateKey.bind(crypto.subtle);
+      const spy = vi.spyOn(crypto.subtle, "generateKey").mockImplementation(((
+        algorithm: AlgorithmIdentifier,
+        ...rest: [boolean, KeyUsage[]]
+      ) => {
+        if ((typeof algorithm === "string" ? algorithm : algorithm.name) === missing)
+          return Promise.reject(new DOMException("Not supported", "NotSupportedError"));
+        return generateKey(algorithm as never, ...rest);
+      }) as typeof crypto.subtle.generateKey);
+      onTestFinished(() => spy.mockRestore());
+      const slug = a.library.create(canaryDiagram());
+      expect(await a.room.start({ slug, diagram: canaryDiagram() })).toBeUndefined();
+      expect(a.room.getSnapshot()).toMatchObject({ notice: { kind: "unsupported-start", slug } });
+      expect(a.room.getSnapshot().open).toBeUndefined();
+      expect(a.room.getSnapshot().opening).toBeUndefined();
+      // Nothing was contacted, and nothing recorded.
+      expect(a.transports).toHaveLength(0);
+      expect(a.tab.read()).toBeUndefined();
+    });
+
+  it("joining a knock-to-join room without key agreement (X25519) says so too", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 93, undefined, true, true),
+      b = browser(net, clock, 94, undefined, true, true);
+    await start(a);
+    expect(a.room.getSnapshot().open!.link.knock).toBe(true);
+    const generateKey = crypto.subtle.generateKey.bind(crypto.subtle);
+    const spy = vi.spyOn(crypto.subtle, "generateKey").mockImplementation(((
+      algorithm: AlgorithmIdentifier,
+      ...rest: [boolean, KeyUsage[]]
+    ) => {
+      if ((typeof algorithm === "string" ? algorithm : algorithm.name) === "X25519")
+        return Promise.reject(new DOMException("Not supported", "NotSupportedError"));
+      return generateKey(algorithm as never, ...rest);
+    }) as typeof crypto.subtle.generateKey);
+    onTestFinished(() => spy.mockRestore());
+    await join(b, linkOf(a));
+    expect(b.room.getSnapshot()).toMatchObject({ notice: { kind: "unsupported" } });
+    expect(b.room.getSnapshot().open).toBeUndefined();
   });
 });

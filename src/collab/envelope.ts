@@ -28,8 +28,11 @@ import { ReplayWindow } from "./replay";
 export const HEADER_BYTES = 32;
 const TAG_BYTES = 16;
 const VERSION = 1;
-const CHANNEL_CODE: Record<Channel, number> = { doc: 1, presence: 2, live: 3 };
-const CODE_CHANNEL: Record<number, Channel | undefined> = { 1: "doc", 2: "presence", 3: "live" };
+const CHANNEL_CODE: Record<Channel, number> = { doc: 1, presence: 2, live: 3, lobby: 4 };
+const CODE_CHANNEL: Record<number, Channel | undefined> = { 1: "doc", 2: "presence", 3: "live", 4: "lobby" };
+/** A frame's channel, read from its header before anything else (a room with knock-to-join opens lobby frames apart). */
+export const frameChannel = (frame: Uint8Array): Channel | undefined =>
+  frame.length > 3 ? CODE_CHANNEL[frame[3]] : undefined;
 export const SENDER_ID_BYTES = 16;
 /** What a signed room's frames carry after their message: an Ed25519 signature (./signing.ts). */
 export const FRAME_SIGNATURE_BYTES = 64;
@@ -63,13 +66,16 @@ export type Opened =
   | { ok: false; reason: Rejection };
 
 const maxFrame = (channel: Channel) =>
-  channel === "doc"
+  channel === "doc" || channel === "lobby"
     ? COLLAB_LIMITS.maxDocFrameBytes
     : channel === "live"
       ? COLLAB_LIMITS.maxLiveFrameBytes
       : COLLAB_LIMITS.maxPresenceFrameBytes;
 
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+/** A frame's sender id (hex), read from its header before anything is decrypted; undefined for a frame too short. */
+export const frameSender = (frame: Uint8Array): string | undefined =>
+  frame.length >= 24 ? hex(frame.subarray(8, 24)) : undefined;
 
 function header(channel: Channel, epoch: number, sender: Uint8Array, counter: number): Uint8Array {
   const h = new Uint8Array(HEADER_BYTES);
@@ -110,11 +116,14 @@ class KeyCache {
   keep(channel: Channel, id: string, key: Promise<CryptoKey>): void {
     this.keys.set(`${channel}:${id}`, key);
   }
+  forget(id: string): void {
+    for (const channel of Object.values(CODE_CHANNEL)) this.keys.delete(`${channel}:${id}`);
+  }
 }
 
 /** Seals frames for one session: its own sender id and counters. */
 export class Sealer {
-  private counters: Record<Channel, number> = { doc: 0, presence: 0, live: 0 };
+  private counters: Record<Channel, number> = { doc: 0, presence: 0, live: 0, lobby: 0 };
   private keys: KeyCache;
   readonly senderHex: string;
 
@@ -181,6 +190,8 @@ export class Opener {
     private readonly room: RoomKeys,
     /** Our own sender id: a frame claiming it is a reflection (or a forgery) and is refused. */
     private readonly self: Uint8Array,
+    /** Senders it keeps windows for at most (the lobby keeps its own pools under a larger one). */
+    private readonly maxSenders: number = COLLAB_LIMITS.maxSenders,
   ) {
     this.keys = new KeyCache(room);
   }
@@ -208,7 +219,7 @@ export class Opener {
     const big = view.getBigUint64(24);
     if (big < 1n || big >= BigInt(COLLAB_LIMITS.maxCounter)) return { ok: false, reason: "bad-counter" };
     const counter = Number(big);
-    if (!this.senders.has(sender) && this.senders.size >= COLLAB_LIMITS.maxSenders)
+    if (!this.senders.has(sender) && this.senders.size >= this.maxSenders)
       return { ok: false, reason: "too-many-senders" };
     const windowKey = `${channel}:${sender}`;
     const window = this.windows.get(windowKey);
@@ -254,7 +265,7 @@ export class Opener {
     key: Promise<CryptoKey> | undefined = this.deferredKeys.get(opened),
   ): true | Rejection {
     const { channel, sender, counter } = opened;
-    if (!this.senders.has(sender) && this.senders.size >= COLLAB_LIMITS.maxSenders) return "too-many-senders";
+    if (!this.senders.has(sender) && this.senders.size >= this.maxSenders) return "too-many-senders";
     const windowKey = `${channel}:${sender}`;
     let w = this.windows.get(windowKey);
     if (!w) {
@@ -272,5 +283,15 @@ export class Opener {
   /** Senders whose frames have authenticated (bounded by COLLAB_LIMITS.maxSenders). */
   get senderCount(): number {
     return this.senders.size;
+  }
+
+  /**
+   * A sender gone (the lobby frees a transport peer's senders this way): its place and its keys. Its replay windows
+   * stay unless `windows` (the same session back counts on from where it was; its old frames stay refused).
+   */
+  forget(sender: string, windows = false): void {
+    this.senders.delete(sender);
+    this.keys.forget(sender);
+    if (windows) for (const channel of Object.values(CODE_CHANNEL)) this.windows.delete(`${channel}:${sender}`);
   }
 }

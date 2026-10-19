@@ -2,7 +2,10 @@ import { expect, it, vi, onTestFinished } from "vitest";
 import * as Y from "yjs";
 import { COLLAB_LIMITS } from "./limits";
 import { CollabDoc } from "./doc";
-import { deriveRoomKeys } from "./keys";
+import { deriveEpochKeys, deriveRoomKeys, newEpochSecret, newRoom } from "./keys";
+import { commitEpoch, scopeOf, signStart } from "./epochs";
+import { seededBytes } from "./random";
+import { newAgreement, newIdentity } from "./signing";
 import { demoDiagram } from "./lab/demo";
 import { RECOVERY_RETRY, RoomRecovery } from "./recovery";
 import {
@@ -15,7 +18,7 @@ import {
 } from "./recoveryStore";
 import { roomFor } from "./transport/conformance";
 import { CollabSession } from "./session";
-import { FakeClock } from "./clock";
+import { FakeClock, realClock } from "./clock";
 import { MemoryNetwork } from "./transport/memory";
 import { metaOf } from "./schema";
 
@@ -450,6 +453,61 @@ it("does not claim whole-room sync while a reachable peer is behind, and rejects
   await Promise.all([a.leave(), b.leave()]);
   a.doc.destroy();
   b.doc.destroy();
+});
+
+it("two epochs with one number (each side of a partition) keep their own copies: neither reads the other's as corrupt", async () => {
+  const store = new Store();
+  const lobby = await deriveRoomKeys(roomFor(113));
+  const [a, b] = await Promise.all([
+    deriveEpochKeys(lobby, 1, newEpochSecret(seededBytes(1131))),
+    deriveEpochKeys(lobby, 1, newEpochSecret(seededBytes(1132))),
+  ]);
+  const docA = new CollabDoc({ clientId: 1131 });
+  docA.hydrate({ ...demoDiagram(), title: "Side A" });
+  const tabA = new RoomRecovery(store, a, () => {}, Date.now, realClock, `1:${"A".repeat(86)}`);
+  tabA.watch(docA);
+  await tabA.flush(docA);
+  // The other side's tab, on the same device: its own epoch 1, its own secret.
+  const docB = new CollabDoc({ clientId: 1132 });
+  const tabB = new RoomRecovery(store, b, () => {}, Date.now, realClock, `1:${"B".repeat(86)}`);
+  await tabB.restore(docB);
+  expect(tabB.problem).toBeUndefined();
+  expect(tabB.id).not.toBe(tabA.id);
+  // Side A's copy is still there, and still reads back.
+  const again = new CollabDoc({ clientId: 1133 });
+  await new RoomRecovery(store, a, () => {}, Date.now, realClock, `1:${"A".repeat(86)}`).restore(again);
+  expect(again.project().diagram?.title).toBe("Side A");
+  // A room before knock-to-join keeps its old record id: its epoch number.
+  expect(new RoomRecovery(store, lobby).id).toBe(`${lobby.roomId}:${lobby.epoch}`);
+  for (const d of [docA, docB, again]) d.destroy();
+});
+
+it("a knock-to-join room's session keeps its copy under its epoch's scope", async () => {
+  const net = new MemoryNetwork(),
+    clock = new FakeClock(),
+    store = new Store();
+  const [identity, agreement] = [await newIdentity(), await newAgreement()];
+  const room = newRoom(seededBytes(114), identity.key);
+  room.knock = true;
+  const lobby = await deriveRoomKeys(room);
+  const secret = newEpochSecret(seededBytes(1141));
+  const start = await signStart(identity, lobby.roomId, {
+    epoch: 0,
+    kc: await commitEpoch(secret, lobby.roomId, 0),
+    x: agreement.x,
+  });
+  const session = await CollabSession.open({
+    room,
+    transport: net.connect(),
+    privacy: {},
+    initial: demoDiagram(),
+    clock,
+    recovery: store,
+    signed: { identity, knock: { agreement, chain: { starts: [start], logs: [] }, secret } },
+  });
+  await session.leave();
+  expect([...store.records.keys()]).toEqual([`${lobby.roomId}:${scopeOf(start)}`]);
+  session.doc.destroy();
 });
 
 it("every leave caller waits for the same final encrypted save", async () => {

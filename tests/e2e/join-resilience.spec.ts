@@ -44,7 +44,12 @@ test("a joiner gets the diagram though the host's presence frames are lost for a
     const guest = await other.newPage();
     await guest.goto(link);
     await guest.getByTestId("room-join-accept").click();
-    // Meanwhile the wait says why: connected, checking who's here.
+    // Knock-to-join: at the door, asked; the host lets them in.
+    await expect(guest.getByTestId("room-connecting")).toHaveAttribute("data-waiting", "admission", {
+      timeout: pageLoadTimeout(),
+    });
+    await page.getByTestId("room-knock-admit").first().click({ timeout: pageLoadTimeout() });
+    // Meanwhile the wait says why: connected, checking who's here (the host's presence isn't getting through).
     await expect(guest.getByTestId("room-connecting")).toHaveAttribute("data-waiting", "verifying", {
       timeout: pageLoadTimeout(),
     });
@@ -52,7 +57,7 @@ test("a joiner gets the diagram though the host's presence frames are lost for a
     // Nobody was held against anybody.
     const chip = guest.getByTestId("room-chip");
     await expect(chip).toHaveAttribute("data-waiting", "none");
-    expect(await chip.getAttribute("data-rejected")).not.toContain("quarantined");
+    expect(JSON.parse((await chip.getAttribute("data-diagnostics")) ?? "{}").rejected?.quarantined).toBeUndefined();
   } finally {
     await other.close();
   }

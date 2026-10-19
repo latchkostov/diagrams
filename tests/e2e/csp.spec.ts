@@ -327,6 +327,8 @@ test.describe("Content-Security-Policy", () => {
       const guestCsp = await watch(guest);
       await guest.goto(link);
       await guest.getByTestId("room-join-accept").click();
+      // Knock-to-join: the host lets them in.
+      await page.getByTestId("room-knock-admit").first().click({ timeout: pageLoadTimeout() });
       await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
       await expect(page.getByTestId("room-chip")).toHaveAttribute("data-peers", "1");
       expect(tracker.opened).toBeGreaterThanOrEqual(2 * COLLAB_TRACKERS.length);

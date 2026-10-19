@@ -42,10 +42,27 @@ import { publicKeyBytes, sign, signedBytes, verify, type Identity } from "./sign
 //   drive     the host or a co-host lets `who` drive Live (the host's own key: the host drives)
 //   host      the host hands the room to `who`; the old host becomes the first co-host, and Live stays as it was
 //   policy    the host or a co-host says whether new people can only view (`viewOnly`)
+//
+// A room with knock-to-join (v3 links, P5) adds membership: who may read the room at all, epoch by epoch.
+//
+//   join      the host or a co-host lets `who` into the room (Admit), with `x`, their key-agreement key: the room's
+//             content key is wrapped for it (./epochs.ts)
+//   remove    the host or a co-host removes `who` (never the host): the first removal in the roster's order closes
+//             the epoch; the next one's roster starts from this one's state at that removal, without `who`
+//   ask       the host or a co-host says whether people knock and wait to be let in (`ask`, on for new rooms), or
+//             the host's (or a co-host's) page lets them in on its own
+//
+// There, admit, co-host, host and drive name members only. Everyone's roles carry over to the next epoch, as they
+// stood at the removal (every peer computes the same), but no entry does: entries are bound to their epoch's start
+// (`scope`), so nothing signed in one epoch (a former co-host's backdated grant, say) counts in the next.
 
-export type RosterOp = "admit" | "cohost" | "uncohost" | "drive" | "host" | "policy";
-const OPS = new Set<RosterOp>(["admit", "cohost", "uncohost", "drive", "host", "policy"]);
-const FIELDS = new Set(["n", "by", "op", "who", "viewOnly", "deps", "sig"]);
+export type RosterOp = "admit" | "cohost" | "uncohost" | "drive" | "host" | "policy" | "join" | "remove" | "ask";
+const OPS = new Set<RosterOp>(["admit", "cohost", "uncohost", "drive", "host", "policy", "join", "remove", "ask"]);
+/** Ops only a room with knock-to-join has. */
+const MEMBERSHIP = new Set<RosterOp>(["join", "remove", "ask"]);
+const FIELDS = new Set(["n", "by", "op", "who", "viewOnly", "x", "ask", "deps", "sig"]);
+/** A key-agreement (X25519) public key: 32 bytes, base64url. */
+const AGREEMENT = /^[A-Za-z0-9_-]{43}$/;
 
 export interface RosterEntry {
   /** Lamport counter: one more than the highest of its deps (1 with none). */
@@ -55,6 +72,10 @@ export interface RosterEntry {
   op: RosterOp;
   who?: string;
   viewOnly?: boolean;
+  /** A join's key-agreement key (X25519, base64url). */
+  x?: string;
+  /** An ask entry's setting. */
+  ask?: boolean;
   /** The entries its signer had seen (the heads of its roster): signatures, sorted. */
   deps: string[];
   /** Ed25519 over the room id, the epoch and the fields above (base64url, canonical, 86 characters). */
@@ -71,6 +92,42 @@ export interface RosterState {
   driver?: string;
   /** New people can only view until someone lets them edit. */
   viewOnly: boolean;
+  /** Knock-to-join (v3): who's in the room this epoch (the host included), and their key-agreement keys. */
+  members: ReadonlySet<string>;
+  xs: ReadonlyMap<string, string>;
+  /** People knock and wait to be let in (on for new rooms). */
+  ask: boolean;
+  /** The removal that closes this epoch: the first counting one in the roster's order. */
+  removal?: RosterEntry;
+}
+
+/** A room's roles before any entry: its host alone (with its key-agreement key, in a room with knock-to-join). */
+export function rootState(hostKey: string, x?: string): RosterState {
+  return {
+    host: hostKey,
+    cohosts: [],
+    editors: new Set([hostKey]),
+    viewOnly: false,
+    members: new Set([hostKey]),
+    xs: new Map(x ? [[hostKey, x]] : []),
+    ask: true,
+  };
+}
+
+/** The next epoch's roles: this one's at its removal, without whom it removed (their roles go with them). */
+export function afterRemoval(s: RosterState): RosterState {
+  const who = s.removal?.who;
+  const without = <T>(set: ReadonlySet<T>) => new Set([...set].filter((k) => k !== (who as unknown as T)));
+  return {
+    host: s.host,
+    cohosts: s.cohosts.filter((c) => c !== who),
+    editors: without(s.editors),
+    driver: s.driver === who ? undefined : s.driver,
+    viewOnly: s.viewOnly,
+    members: without(s.members),
+    xs: new Map([...s.xs].filter(([k]) => k !== who)),
+    ask: s.ask,
+  };
 }
 
 /** Entries a roster holds at most, from one signer, and waiting for their past: an honest room comes nowhere near. */
@@ -98,24 +155,32 @@ const canonicalSig = (s: unknown): s is string => {
   }
 };
 
-const entryBytes = (roomId: string, epoch: number, e: Omit<RosterEntry, "sig">) =>
+/**
+ * What an entry's signature covers: the room id, its scope (the epoch: a number, or with knock-to-join the epoch and
+ * its start's signature) and its fields. A membership entry's extra fields come last, so P4's entries keep their bytes.
+ */
+const entryBytes = (roomId: string, scope: Scope, e: Omit<RosterEntry, "sig">) =>
   signedBytes(
     "livediagrams/roster/v2",
     roomId,
-    epoch,
+    scope,
     e.n,
     e.by,
     e.op,
     e.who ?? "",
     e.viewOnly === undefined ? "" : e.viewOnly ? "1" : "0",
     e.deps.join(","),
+    ...(e.x !== undefined || e.ask !== undefined ? [e.x ?? "", e.ask === undefined ? "" : e.ask ? "1" : "0"] : []),
   );
+
+/** An entry's scope: its epoch (P4), or its epoch's start (`<epoch>:<start signature>`, knock-to-join). */
+export type Scope = number | string;
 
 /** An entry signed by `identity` for this room and epoch (whatever its authority: its past decides). */
 export async function signEntry(
   identity: Identity,
   roomId: string,
-  epoch: number,
+  epoch: Scope,
   body: Omit<RosterEntry, "sig" | "by">,
 ): Promise<RosterEntry> {
   const unsigned = { ...body, deps: [...body.deps].sort(), by: identity.key };
@@ -132,8 +197,11 @@ export function parseEntry(v: unknown): RosterEntry | undefined {
   if (typeof e.by !== "string" || !publicKeyBytes(e.by)) return undefined;
   if (typeof e.op !== "string" || !OPS.has(e.op as RosterOp)) return undefined;
   const op = e.op as RosterOp;
-  if (op === "policy" ? e.who !== undefined : typeof e.who !== "string" || !publicKeyBytes(e.who)) return undefined;
+  const subjectless = op === "policy" || op === "ask";
+  if (subjectless ? e.who !== undefined : typeof e.who !== "string" || !publicKeyBytes(e.who)) return undefined;
   if (op === "policy" ? typeof e.viewOnly !== "boolean" : e.viewOnly !== undefined) return undefined;
+  if (op === "ask" ? typeof e.ask !== "boolean" : e.ask !== undefined) return undefined;
+  if (op === "join" ? typeof e.x !== "string" || !AGREEMENT.test(e.x) : e.x !== undefined) return undefined;
   if (!Array.isArray(e.deps) || e.deps.length > MAX_DEPS || !e.deps.every(canonicalSig)) return undefined;
   const deps = e.deps as string[];
   // Sorted and once each: one spelling per entry.
@@ -143,7 +211,9 @@ export function parseEntry(v: unknown): RosterEntry | undefined {
     n: e.n as number,
     by: e.by,
     op,
-    ...(op === "policy" ? { viewOnly: e.viewOnly as boolean } : { who: e.who as string }),
+    ...(op === "policy" ? { viewOnly: e.viewOnly as boolean } : op === "ask" ? { ask: e.ask as boolean } : {}),
+    ...(subjectless ? {} : { who: e.who as string }),
+    ...(op === "join" ? { x: e.x as string } : {}),
     deps,
     sig: e.sig,
   };
@@ -154,7 +224,9 @@ const order = (a: RosterEntry, b: RosterEntry) => a.n - b.n || compare(a.by, b.b
 
 /** Whether `by` may make an entry of `op` in state `s`: the host hands the room on; the host and co-hosts the rest. */
 function authorised(s: RosterState, by: string, op: RosterOp): boolean {
-  if (op === "host") return by === s.host;
+  // Handing the room over and removing someone are the host's alone (owner decision: Remove is host-only, so an
+  // epoch has one possible successor); everything else, the host's or a co-host's.
+  if (op === "host" || op === "remove") return by === s.host;
   return by === s.host || s.cohosts.includes(by);
 }
 
@@ -162,17 +234,33 @@ function authorised(s: RosterState, by: string, op: RosterOp): boolean {
  * The roles that `entries` (each one that counts) give, from the room's host key: editors from every grant, the rest
  * folded in order, each change applied only if its signer still had the authority at its place.
  */
-export function fold(hostKey: string, entries: readonly RosterEntry[]): RosterState {
-  let host = hostKey;
-  let cohosts: string[] = [];
-  const editors = new Set([hostKey]);
-  let driver: string | undefined;
-  let viewOnly = false;
+export function fold(start: string | RosterState, entries: readonly RosterEntry[]): RosterState {
+  const base = typeof start === "string" ? rootState(start) : start;
+  let host = base.host;
+  let cohosts: string[] = [...base.cohosts];
+  const editors = new Set(base.editors);
+  let driver: string | undefined = base.driver;
+  let viewOnly = base.viewOnly;
+  const members = new Set(base.members);
+  const xs = new Map(base.xs);
+  let ask = base.ask;
+  let removal: RosterEntry | undefined;
   for (const e of [...entries].sort(order)) {
     const who = e.who ?? "";
     if (e.op === "admit" || e.op === "cohost" || e.op === "host") editors.add(who);
-    if (!authorised({ host, cohosts, editors, driver, viewOnly }, e.by, e.op)) continue;
+    if (e.op === "join") {
+      members.add(who);
+      xs.set(who, e.x!);
+    }
+    const now = { host, cohosts, editors, driver, viewOnly, members, xs, ask };
+    if (!authorised(now, e.by, e.op)) continue;
     switch (e.op) {
+      case "remove":
+        if (!removal && who !== host && members.has(who)) removal = e;
+        break;
+      case "ask":
+        ask = !!e.ask;
+        break;
       case "cohost":
         if (who !== host && !cohosts.includes(who)) cohosts.push(who);
         break;
@@ -195,7 +283,7 @@ export function fold(hostKey: string, entries: readonly RosterEntry[]): RosterSt
         break;
     }
   }
-  return { host, cohosts, editors, driver, viewOnly };
+  return { host, cohosts, editors, driver, viewOnly, members, xs, ask, ...(removal ? { removal } : {}) };
 }
 
 export interface AddResult {
@@ -224,13 +312,23 @@ export class SignedRoster {
   private cached?: RosterState;
   private readonly listeners = new Set<() => void>();
 
+  /** The roles before any of this roster's entries: the room's host alone, or the last epoch's at its removal. */
+  readonly base: RosterState;
+
   constructor(
     /** The room's root: the host key in its link. */
     readonly hostKey: string,
-    /** The room id (base64url) and epoch every entry is bound to: one from another room or epoch doesn't verify. */
+    /** The room id (base64url) and scope every entry is bound to: one from another room or epoch doesn't verify. */
     readonly roomId: string,
-    readonly epoch: number,
-  ) {}
+    readonly epoch: Scope,
+    opts: { base?: RosterState; knock?: boolean } = {},
+  ) {
+    this.base = opts.base ?? rootState(hostKey);
+    this.knock = !!opts.knock;
+  }
+
+  /** A room with knock-to-join: membership entries count, and roles name members only. */
+  readonly knock: boolean;
 
   /** The entries, forks included, in their order (a past before what follows it: to keep, or to send a peer). */
   log(): RosterEntry[] {
@@ -252,7 +350,40 @@ export class SignedRoster {
   }
 
   state(): RosterState {
-    return (this.cached ??= fold(this.hostKey, [...this.entries.values()]));
+    return (this.cached ??= fold(this.base, [...this.entries.values()]));
+  }
+
+  /**
+   * The state this epoch closes with, and the next one starts from: the removal's causal past (what the host saw as it
+   * removed), whatever forks arrive later; none for an entry that isn't a removal here.
+   */
+  next(removal = this.state().removal): RosterState | undefined {
+    if (!removal || removal.op !== "remove" || !this.known(removal.sig)) return undefined;
+    // The state the remover saw (the removal's causal past), with the removal: what the next epoch starts from.
+    return afterRemoval({ ...fold(this.base, [...this.past(removal), removal]), removal });
+  }
+
+  /** One of this roster's entries that counts, by signature. */
+  entry(sig: string): RosterEntry | undefined {
+    return this.entries.get(sig);
+  }
+
+  /**
+   * One of this roster's entries by signature, whether it counts now or lost its slot to a fork since (it was checked
+   * against its causal past either way): what an epoch's start names stays named, whatever arrives later.
+   */
+  named(sig: string): RosterEntry | undefined {
+    return this.entries.get(sig) ?? this.forks.get(sig);
+  }
+
+  /** The joins that count in this roster letting `key` in. */
+  joinsOf(key: string): RosterEntry[] {
+    return [...this.entries.values()].filter((e) => e.op === "join" && e.who === key);
+  }
+
+  /** The removals that count in this roster (each could close the epoch on some branch). */
+  removals(): RosterEntry[] {
+    return [...this.entries.values()].filter((e) => e.op === "remove").sort(order);
   }
 
   subscribe(fn: () => void): () => void {
@@ -272,7 +403,10 @@ export class SignedRoster {
       .sort();
   }
 
-  /** An entry's causal past: every counting entry its deps name, transitively (a fork contributes nothing). */
+  /**
+   * An entry's causal past: every entry its deps name, transitively, as its signer saw them (one that has since lost
+   * its slot to a fork included: a fork arriving later never changes what an entry already had authority for).
+   */
   private past(e: RosterEntry): RosterEntry[] {
     const seen = new Set<string>();
     const out: RosterEntry[] = [];
@@ -281,7 +415,7 @@ export class SignedRoster {
       const sig = stack.pop()!;
       if (seen.has(sig)) continue;
       seen.add(sig);
-      const d = this.entries.get(sig);
+      const d = this.entries.get(sig) ?? this.forks.get(sig);
       if (!d) continue;
       out.push(d);
       stack.push(...d.deps);
@@ -310,8 +444,14 @@ export class SignedRoster {
     const past = this.past(e);
     const seq = past.filter((p) => p.by === e.by).length + 1;
     if (seq > MAX_ENTRIES_PER_SIGNER) return "refused";
-    const before = fold(this.hostKey, past);
+    const before = fold(this.base, past);
     if (!authorised(before, e.by, e.op)) return "refused";
+    if (MEMBERSHIP.has(e.op) && !this.knock) return "refused";
+    // With knock-to-join, roles are for members (and a removal is of a member, never the host).
+    if (this.knock && e.who !== undefined && e.op !== "join" && e.op !== "uncohost") {
+      if (!before.members.has(e.who)) return "refused";
+      if (e.op === "remove" && e.who === before.host) return "refused";
+    }
     const slot = `${e.by}:${seq}`;
     const holder = this.slots.get(slot);
     if (holder) {
@@ -433,21 +573,47 @@ export class SignedRoster {
   async append(
     identity: Identity,
     op: RosterOp,
-    fields: { who?: string; viewOnly?: boolean } = {},
+    fields: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean } = {},
+  ): Promise<RosterEntry | undefined> {
+    const entry = await this.draft(identity, op, fields);
+    if (!entry) return undefined;
+    await this.add([entry]);
+    return this.entries.has(entry.sig) ? entry : undefined;
+  }
+
+  /**
+   * A new entry by `identity`, on everything this roster holds, signed but not kept (a removal is kept only once its
+   * epoch's successor is ready: ../session.ts); undefined when append would refuse it.
+   */
+  async draft(
+    identity: Identity,
+    op: RosterOp,
+    fields: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean } = {},
   ): Promise<RosterEntry | undefined> {
     if (!this.may(identity.key, op) || !this.roomFor(identity.key) || !this.changes(op, fields)) return undefined;
     const deps = this.heads();
     let top = 0;
     for (const d of deps) top = Math.max(top, this.entries.get(d)!.n);
-    const entry = await signEntry(identity, this.roomId, this.epoch, { n: top + 1, op, ...fields, deps });
-    await this.add([entry]);
-    return this.entries.has(entry.sig) ? entry : undefined;
+    return signEntry(identity, this.roomId, this.epoch, { n: top + 1, op, ...fields, deps });
+  }
+
+  /** The state the next epoch would start from after a removal drafted here (its past all here), not yet kept. */
+  nextAfter(removal: RosterEntry): RosterState | undefined {
+    if (removal.op !== "remove" || !removal.deps.every((d) => this.known(d))) return undefined;
+    return afterRemoval({ ...fold(this.base, [...this.past(removal), removal]), removal });
   }
 
   /** Whether an entry would change the roles as they stand (else it isn't worth a place in the roster). */
-  private changes(op: RosterOp, f: { who?: string; viewOnly?: boolean }): boolean {
+  private changes(op: RosterOp, f: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean }): boolean {
     const s = this.state();
+    if (this.knock && f.who !== undefined && op !== "join" && op !== "uncohost" && !s.members.has(f.who)) return false;
     switch (op) {
+      case "join":
+        return this.knock && !!f.who && !!f.x && !s.members.has(f.who);
+      case "remove":
+        return this.knock && !!f.who && f.who !== s.host && s.members.has(f.who) && !s.removal;
+      case "ask":
+        return this.knock && f.ask !== undefined && f.ask !== s.ask;
       case "admit":
         return !!f.who && !s.editors.has(f.who);
       case "cohost":
