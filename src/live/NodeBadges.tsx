@@ -454,7 +454,7 @@ const NodeBadge = memo(function NodeBadge({
 
       {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
         <div className="lv-strip">
-          {s.threads && threadBusy >= 0.8 * s.threads.slots && (
+          {s.threads && threadBusy > 0 && threadBusy >= 0.8 * s.threads.slots && (
             <span className="lv-metric" data-testid={`thread-chip-${node.id}`}>
               ⌛ {t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })}
             </span>

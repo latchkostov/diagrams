@@ -1271,8 +1271,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     calls.set(call.id, call);
     node.calls.set(call.id, call);
     work.waitingCall = call.id;
-    if (call.held) node.heldCalls++;
-    else {
+    if (call.held) {
+      node.heldCalls++;
+      work.slotted = true;
+    } else {
       work.slotted = false;
       endResources(node, work);
     }
@@ -1321,9 +1323,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (ok) complete(node, work);
     else fail(node, work);
     if (work.retained) {
-      work.slotted = false;
-      endResources(node, work);
-      node.pending.push(work);
+      // In-place backoff keeps the same slot, lease and replica, just like a failed working attempt.
+      work.workedAt = time;
+      node.working.push(work);
     } else {
       work.slotted = false;
       endResources(node, work);
@@ -2740,18 +2742,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     frame() {
       const particles: Particle[] = [];
       for (const trip of drawnTrips.values())
-        particles.push({
-          id: trip.id,
-          edgeId: trip.edge.id,
-          messageId: trip.message.id,
-          rootId: trip.message.family.root,
-          kind: trip.kind,
-          progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
-          type: trip.message.type,
-          color: trip.message.request?.color ?? trip.message.color,
-          ...(trip.message.request ? { route: trip.message.request.id, marker: trip.message.request.marker } : {}),
-          ...(trip.code ? { code: trip.code } : {}),
-        });
+        if (trip.start <= time)
+          particles.push({
+            id: trip.id,
+            edgeId: trip.edge.id,
+            messageId: trip.message.id,
+            rootId: trip.message.family.root,
+            kind: trip.kind,
+            progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
+            type: trip.message.type,
+            color: trip.message.request?.color ?? trip.message.color,
+            ...(trip.message.request ? { route: trip.message.request.id, marker: trip.message.request.marker } : {}),
+            ...(trip.code ? { code: trip.code } : {}),
+          });
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);

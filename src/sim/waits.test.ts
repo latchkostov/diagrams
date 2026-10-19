@@ -233,3 +233,45 @@ it("resets nesting depth when a completed request publishes a Message", () => {
   expect(e.snapshot().nodes.n17.failed).toBe(0);
   expect(e.snapshot().inSystem).toBe(0);
 });
+
+it.each([0, 1, 2])(
+  "keeps an in-place retry's slot and replica after a waiting call fails (resource mode %s)",
+  (mode) => {
+    const d = waitingFixture();
+    d.nodes[0].stencil = "generic.queue";
+    d.nodes[0].props = { maxDeliveryCount: 3 };
+    d.nodes[1].props = {
+      ...d.nodes[1].props,
+      concurrency: 1,
+      latencyMs: mode === 2 ? 0 : 10,
+      retry: "inplace",
+      retryBackoffMs: 100,
+      ...(mode ? { resources: { ...resourceLesson(), cpuMsPerMessage: mode === 2 ? 0 : 1 } } : {}),
+    };
+    d.nodes[2].props = { ...d.nodes[2].props, status: "down" };
+    const e = start(d);
+    e.inject("source", 1);
+    e.step(30);
+    expect(e.snapshot().nodes.caller.failed).toBe(1);
+    expect(e.snapshot().nodes.caller.threads).toMatchObject({ working: 1, waiting: 0, queued: 0 });
+    e.step(50);
+    expect(e.snapshot().nodes.caller.inFlight).toBe(1);
+    expect(e.snapshot().nodes.caller.failed).toBe(1);
+    e.step(1000);
+    expect(e.snapshot().nodes.caller.failed).toBe(3);
+    expect(e.snapshot().nodes.caller.inFlight).toBe(0);
+    expect(e.snapshot().inSystem).toBe(0);
+  },
+);
+
+it("keeps animation echoes hidden until the preceding dot arrives", () => {
+  const d = waitingFixture();
+  d.edges[1].props = { travelMs: 10_000 };
+  const e = start(d);
+  e.inject("source", 1);
+  e.step(300);
+  expect(e.snapshot().nodes.caller.processed).toBe(1);
+  expect(e.frame().particles.filter((p) => p.kind === "reply")).toHaveLength(0);
+  e.step(10_000);
+  expect(e.frame().particles.some((p) => p.kind === "reply")).toBe(true);
+});

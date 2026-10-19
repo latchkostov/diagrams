@@ -29,6 +29,12 @@ The 142 new records cover the six W1 corpus diagrams (including two sampling run
 
 Engine and upgrade regressions cover acquire/release, pending work, nested and parallel replies, failure propagation, broker retries/DLQ, route refusals, depth limits, paused callers, replica drain, sampled slots, checkpoint replay, endpoint duration and undo. A fast-check property varies workload, capacity, latency, failure, fan-out and scale. Removing the W1 engine gate fails twelve new regressions; removing the CPU-target guard fails its regression.
 
-The initial full unit run exposed the new example's required traffic metadata, catalog/precision registrations, and intentional failing-lag expectation. All affected suites were corrected and rerun. A compact-hover browser regression exposed the hidden Ceiling line; the visibility assertion now passes with Threads/Ceiling above latency. Visual review also caught and corrected a duplicated rate unit. Production browser coverage passes all three W1 tests.
+The initial full unit run exposed the new example's required traffic metadata, catalog/precision registrations, and intentional failing-lag expectation. All affected suites were corrected and rerun. A compact-hover browser regression exposed the hidden Ceiling line; the visibility assertion now passes with Threads/Ceiling above latency. Visual review also caught and corrected a duplicated rate unit. Production browser coverage passes all four W1 tests.
 
 The existing CPU-target recommendation is withheld on waiting callers: lowering that target does not repair a thread ceiling. Busy-thread scaling and its replacement recommendation remain in PR 4. No new Check kind or agent readout is introduced here.
+
+An additional failing probe caught a waiting broker delivery releasing its slot for one tick when it entered an in-place retry. It now returns directly to working backoff with its lease and replica intact. The regression covers resource-free and resource-enabled callers, backoff occupancy and eventual release; no golden changes.
+
+The busy chip stays quiet for an empty, zero-replica caller pool. Its production-browser regression fails before the non-zero occupancy guard and passes after it. An initial bind-mounted Linux load run was invalidated by a concurrent native E2E rebuild; verification was restarted from an isolated committed archive.
+
+Future animation echoes stay hidden until their scheduled start, so a logically completed reply cannot appear before its preceding dot arrives. A simulation-clock regression rejects the previous progress-zero echo. The isolated Linux load run completed all five repetitions: 545 passed, 0 failed, 0 flaky.

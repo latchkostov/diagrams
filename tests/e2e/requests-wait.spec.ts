@@ -1,3 +1,4 @@
+import { cloudLesson, resourceLesson } from "../../src/model/autoscaling";
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import {
   test,
@@ -10,10 +11,14 @@ import {
   STORAGE_KEYS,
 } from "./fixtures";
 
-async function seed(page: import("@playwright/test").Page, older = false) {
+async function seed(page: import("@playwright/test").Page, older = false, empty = false) {
   const d = waitingFixture();
   d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
   if (older) d.planning = { revision: "p3-a1" };
+  if (empty) {
+    d.nodes[0].props = { ratePerSec: 0 };
+    d.nodes[1].props = { ...d.nodes[1].props, resources: resourceLesson(), autoscaling: cloudLesson("cloud-run") };
+  }
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "blocking-call",
     d,
@@ -62,4 +67,12 @@ test("historical models have no thread meter", async ({ page }) => {
   await seed(page, true);
   await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
   await expect(page.getByTestId("thread-meter-caller")).toHaveCount(0);
+});
+
+test("an empty caller pool keeps the busy chip quiet", async ({ page }) => {
+  await seed(page, false, true);
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await expect(page.getByTestId("node-badge-caller")).toHaveAttribute("data-ready", "0");
+  await expect(page.getByTestId("thread-meter-caller")).toBeVisible();
+  await expect(page.getByTestId("thread-chip-caller")).toHaveCount(0);
 });
