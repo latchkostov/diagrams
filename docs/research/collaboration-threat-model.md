@@ -294,9 +294,12 @@ What the production feature adds to the model above.
   - what travels: its start (the simulation, its seed-free settings and what-ifs), its ops on their ticks, beacons
     and state digests;
   - the channel's own sender subkeys and rate bound (`liveFramesPerWindow`);
-  - JSON a follower checks before use, each op applied through the live controller's ordinary methods.
+  - JSON checked in full before use (every nested op, with bounded numbers, sizes and depth; parts reassembled within
+    byte and time bounds), each op applied through the live controller's ordinary methods.
 
-  Presence carries `host`, the shown run's title and the host's view centre. All of it is cooperative: any member
+  Only Live on the room's own diagram is attached: a session on any other diagram, or one that becomes Private, sends
+  nothing and is detached at once (every send checks). Presence carries `host`, the shown run's title and the host's
+  view centre. All of it is cooperative: any member
   holds the key and could send Live frames or claim `host`. Followers trust the lowest sender id claiming it. Signed
   roles (P4) are what will make this enforceable. Nothing of a run reaches a server.
 

@@ -15,6 +15,10 @@ export interface WatchedSession {
   store: CameraStore;
   /** The canvas's camera (src/canvas/camera): a follower's opt-in "Follow the host's view" goes through it. */
   camera: HostViewCamera;
+  /** The diagram's identity (Your diagrams'): the room shares and follows Live only on its own diagram. */
+  documentId?: string;
+  /** The diagram stays on this device now (Private, local-only): nothing of its Live leaves it. */
+  isPrivate(): boolean;
 }
 
 /** What the room asks of the canvas's camera: follow the host's view, and who has the view now. */
@@ -52,17 +56,19 @@ export const watchBridge = {
   follower: null as Follower | null,
 };
 
+/** Publishes a live session (the hook below, or a test); returns its withdrawal. */
+export function publishWatched(watched: WatchedSession): () => void {
+  session = watched;
+  for (const l of listeners) l();
+  return () => {
+    if (session !== watched) return;
+    session = null;
+    watchBridge.follower = null;
+    for (const l of listeners) l();
+  };
+}
+
 /** The live session publishes itself while it's mounted on an editable canvas. */
 export function useWatchBridge(watched: WatchedSession | null): void {
-  useEffect(() => {
-    if (!watched) return;
-    session = watched;
-    for (const l of listeners) l();
-    return () => {
-      if (session !== watched) return;
-      session = null;
-      watchBridge.follower = null;
-      for (const l of listeners) l();
-    };
-  }, [watched]);
+  useEffect(() => (watched ? publishWatched(watched) : undefined), [watched]);
 }

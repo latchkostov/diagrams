@@ -1158,6 +1158,7 @@ function CanvasInner({
                     simulations={meta.simulations}
                     planning={meta.planning}
                     privateDiagram={privacy !== null}
+                    documentId={documentId}
                     onLiveChange={onLiveChange}
                     onPanelChange={setLivePanelOpen}
                     onSaveDiagram={

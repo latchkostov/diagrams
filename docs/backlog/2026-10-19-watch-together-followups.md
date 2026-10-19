@@ -18,3 +18,5 @@
 - **Slow motion stays local,** for the host and followers alike (owner decision 16, P7).
 - **The host's view is shared at most four times a second, while in Live,** in presence (its centre and zoom).
   Outside Live it isn't shared.
+- **A large run is re-sent whole.** A follower that missed an op asks for the whole run (up to 1 MiB of log, about
+  seventy frames). Asking for the log after a sequence number would make that a few frames.

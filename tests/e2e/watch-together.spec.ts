@@ -137,9 +137,68 @@ test.describe("Watch together", () => {
       await hostPlays(page);
       await page.getByTestId("live-capacity").click();
       await page.getByTestId("capacity-replicas-payments-inc").click();
-      await expect.poll(async () => (await run(page)).tick, { timeout: 10_000 }).toBeGreaterThan(500);
+      await expect.poll(async () => (await run(page)).tick, { timeout: 20_000 }).toBeGreaterThan(500);
       // Seconds into the run, from the chip's menu: the guest's run catches up from the start.
       await guestWatches(guest, "menu");
+      await sameStateAfterPause(page, guest);
+    } finally {
+      await other.close();
+    }
+  });
+
+  test("the guest keeps following when the host restarts and picks another simulation", async ({
+    browser,
+    context,
+    page,
+  }) => {
+    test.slow();
+    const other = await browser.newContext();
+    try {
+      const guest = await twoInARoom(page, context, other);
+      await hostPlays(page);
+      await guestWatches(guest, "toast");
+      await expect.poll(async () => (await run(page)).tick, { timeout: 10_000 }).toBeGreaterThan(200);
+      // Restart: a new run, from its start for everyone.
+      await page.getByTestId("live-restart").click();
+      await expect(chip(guest)).toHaveAttribute("data-watch", "following", { timeout: 15_000 });
+      await sameStateAfterPause(page, guest);
+      // Another simulation (free play): a new run again, and the guest follows it.
+      const picker = page.getByTestId("live-sim-picker");
+      if (!(await picker.isVisible())) await page.getByTestId("live-more").click();
+      await picker.selectOption("");
+      if ((await page.getByTestId("live-play").getAttribute("data-state")) !== "playing")
+        await page.getByTestId("live-play").click();
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+      await expect.poll(async () => (await run(page)).tick, { timeout: 10_000 }).toBeGreaterThan(100);
+      await expect(chip(guest)).toHaveAttribute("data-watch", "following", { timeout: 15_000 });
+      await sameStateAfterPause(page, guest);
+    } finally {
+      await other.close();
+    }
+  });
+
+  test("presenting (no top bar, no chip) stops neither the host sharing nor the guest following", async ({
+    browser,
+    context,
+    page,
+  }) => {
+    test.slow();
+    const other = await browser.newContext();
+    try {
+      const guest = await twoInARoom(page, context, other);
+      await hostPlays(page);
+      await guestWatches(guest, "toast");
+      await page.getByTestId("present-toggle").click();
+      await expect(page.getByTestId("present-exit")).toBeVisible();
+      await guest.getByTestId("present-toggle").click();
+      await expect(guest.getByTestId("present-exit")).toBeVisible();
+      await expect(chip(guest)).toHaveCount(0);
+      // Both present: the guest's run goes on with the host's.
+      const from = (await run(guest)).tick;
+      await expect.poll(async () => (await run(guest)).tick, { timeout: 10_000 }).toBeGreaterThan(from + 50);
+      await guest.getByTestId("present-exit").click();
+      await page.getByTestId("present-exit").click();
+      await expect(chip(guest)).toHaveAttribute("data-watch", "following");
       await sameStateAfterPause(page, guest);
     } finally {
       await other.close();

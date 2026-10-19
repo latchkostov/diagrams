@@ -64,6 +64,7 @@ export function LiveSession({
   onPanelChange,
   onSession,
   privateDiagram,
+  documentId,
 }: SessionProps) {
   // Every move of the view goes through the canvas camera (src/canvas/camera): Live only says what changed.
   const camera = useCameraController();
@@ -132,8 +133,19 @@ export function LiveSession({
   const { slow, slowMotionTrace } = motion;
   useLiveSessionBridge({ session, onSession, commands, editor, alwaysOn, slow });
   const watched = useMemo(
-    () => (editor && !alwaysOn ? { controller, getDiagram: session.getDiagram, store, camera } : null),
-    [editor, alwaysOn, controller, session.getDiagram, store, camera],
+    () =>
+      editor && !alwaysOn
+        ? {
+            controller,
+            getDiagram: session.getDiagram,
+            store,
+            camera,
+            documentId,
+            // Asked as it is now (the Private switch, a local-only example): unknown counts as private.
+            isPrivate: () => editor.isPrivate?.() ?? true,
+          }
+        : null,
+    [editor, alwaysOn, controller, session.getDiagram, store, camera, documentId],
   );
   useWatchBridge(watched);
   const slowCard = useSlowTraceCard(slow);
