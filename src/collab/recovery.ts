@@ -62,8 +62,14 @@ export class RoomRecovery {
     private readonly changed: () => void = () => {},
     private readonly now = Date.now,
     private readonly clock: Clock = realClock,
+    /**
+     * A knock-to-join room's epoch scope (`<epoch>:<start signature>`): two epochs with one number (each side of a
+     * partition) have different secrets, so each keeps its own copy. Without one (rooms before knock-to-join), the
+     * epoch number names it, as it always has.
+     */
+    scope?: string,
   ) {
-    this.id = `${keys.roomId}:${keys.epoch}`;
+    this.id = scope ? `${keys.roomId}:${scope}` : `${keys.roomId}:${keys.epoch}`;
     this.aad = textToBytes(`livediagrams/collab/storage/v1/${this.id}`);
     this.codec = new RecoveryCodec(keys, this.aad);
   }

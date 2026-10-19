@@ -432,7 +432,14 @@ export class CollabSession {
       const atDoor = !!opts.room.knock && !current;
       const recovery =
         opts.recovery && !atDoor
-          ? new RoomRecovery(opts.recovery, keys, () => session?.emit(), Date.now, opts.clock ?? realClock)
+          ? new RoomRecovery(
+              opts.recovery,
+              keys,
+              () => session?.emit(),
+              Date.now,
+              opts.clock ?? realClock,
+              current && scopeOf(current),
+            )
           : undefined;
       await recovery?.restore(doc);
       if (opts.allowed && !opts.allowed()) throw new PrivateDiagramError();
@@ -1516,7 +1523,7 @@ export class CollabSession {
       // there was none: the room's copy on this device (another tab's) is read now the secret is known.
       const old = this.recovery;
       if (this.recoveryStore) {
-        this.recovery = new RoomRecovery(this.recoveryStore, keys, () => this.emit(), Date.now, this.clock);
+        this.recovery = new RoomRecovery(this.recoveryStore, keys, () => this.emit(), Date.now, this.clock, scope);
         if (!old) await this.recovery.restore(this.doc);
         this.recovery.watch(this.doc);
         // The old copy's last save runs on its own: the new epoch doesn't wait for storage to say who's here.
