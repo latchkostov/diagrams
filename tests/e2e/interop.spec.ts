@@ -283,6 +283,8 @@ test.describe("interop", () => {
     const ex = publicExamples[0];
     await page.goto(`./?embed=1&example=${ex.slug}`);
     await expect(page.getByTestId("embed-view")).toBeVisible();
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await expect(page.getByTestId("live-canvas")).toHaveCount(0);
     await expect(page.getByTestId("topbar")).toHaveCount(0);
     await expect(page.getByTestId("diagram-title")).toHaveText(ex.title);
     await expect(page.getByTestId("embed-open-in-app")).toHaveAttribute("href", new RegExp(`example=${ex.slug}`));
@@ -307,6 +309,7 @@ test.describe("interop", () => {
     await page.mouse.move(box.x + 260, box.y + 160, { steps: 8 });
     await page.mouse.up();
     expect(await offset()).toEqual(before);
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
 

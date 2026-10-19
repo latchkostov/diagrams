@@ -284,10 +284,22 @@ test("Routing filter finds the route table showcases and runs the parcel API's s
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("busy-afternoon");
 });
 
-test("Live starts an untouched gallery example's first simulation", async ({ page }) => {
+test("Live opens an example in Free play with traffic moving, including on re-entry", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await page.getByTestId("live-toggle").click();
-  await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await page.getByTestId("live-more").click();
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "true");
+    await page.getByTestId("live-more").click();
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")))
+      .toBeGreaterThan(0);
+    await expect(page).not.toHaveURL(/[?&]sim=/);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+  }
 });
 
 test("Run it starts and restarts the currently open example", async ({ page }) => {
@@ -862,7 +874,7 @@ for (const exit of ["toggle", "keyboard"] as const) {
     try {
       await gotoCanvas(page, SLUG);
       await page.keyboard.press("ControlOrMeta+k");
-      // Launch a non-default simulation so replaying a cancelled request is observable.
+      // Launch a named simulation so replaying a cancelled request is observable.
       await page.getByTestId("command-input").fill("payments service goes down");
       await page.getByTestId("command-item-sim:payments-outage").click();
       await expect.poll(() => requested).toBe(true);
@@ -875,7 +887,7 @@ for (const exit of ["toggle", "keyboard"] as const) {
       // Re-entering proves the cancelled request cannot replay when the session finally mounts.
       await toggle.click();
       await expect(page.getByTestId("live-hud")).toBeVisible();
-      await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+      await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
       await expect(page.getByTestId("live-sim-picker")).not.toHaveValue("payments-outage");
     } finally {
       release();

@@ -112,7 +112,10 @@ export function useTraceActions({
   // "Nothing has dead-lettered yet" is out of date once one has: the trace card takes over.
   const shownNotice =
     state.resourceError ??
-    (notice === DEAD_LETTER_WAIT ? (state.trace?.current ? null : t("liveSession.deadLetterWait")) : notice);
+    (notice === DEAD_LETTER_WAIT ? (state.trace?.current ? null : t("liveSession.deadLetterWait")) : notice) ??
+    (!state.simulation && state.traffic && !Object.values(state.snapshot.nodes).some((node) => node.role === "source")
+      ? t("liveSession.noTrafficSources")
+      : null);
   const sendOne = useCallback(
     (nodeId: string) => controller.sendOne(nodeId, suggestedMessageType(getDiagram(), nodeId)),
     [controller, getDiagram],

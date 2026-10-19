@@ -39,7 +39,7 @@ export function useLiveSessionState({
     if (params.speed) c.setSpeed(params.speed);
     const sim = params.sim ? simulations.find((s) => s.id === params.sim) : undefined;
     if (sim) c.selectSimulation(sim);
-    // Free play starts with gentle continuous traffic so something is always flowing.
+    // Free play uses the diagram's configured rates, through a logged, budget-checked control op.
     else if (params.traffic !== false) c.setTraffic(true);
     if (params.traffic === false) c.setTraffic(false);
     if (params.trace === "next") c.traceNext();

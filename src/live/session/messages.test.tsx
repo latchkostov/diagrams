@@ -37,3 +37,50 @@ it("a dead-letter wait translates at display time and clears after a language sw
   expect(render()).not.toContain("trace:deadLetterWait");
   expect(render(true)).toBe("<p></p>");
 });
+
+it("Free play explains missing traffic sources in the existing hint slot", () => {
+  function Notice({
+    source = false,
+    traffic = true,
+    simulation = null,
+    resourceError,
+    notice,
+  }: {
+    source?: boolean;
+    traffic?: boolean;
+    simulation?: object | null;
+    resourceError?: string;
+    notice?: string;
+  }) {
+    const actions = useTraceActions({
+      session: {
+        controller: {},
+        state: {
+          simulation,
+          traffic,
+          resourceError,
+          snapshot: { nodes: { api: { role: source ? "source" : "processor" } } },
+        },
+        panel: { open: true },
+        notice,
+      },
+      spotlight: { slowRef: { current: null } },
+      presenting: false,
+    } as unknown as Parameters<typeof useTraceActions>[0]);
+    return <p>{actions.shownNotice}</p>;
+  }
+  const render = (props: Parameters<typeof Notice>[0] = {}) =>
+    renderToStaticMarkup(
+      <ReactFlowProvider>
+        <Notice {...props} />
+      </ReactFlowProvider>,
+    );
+  expect(render()).toContain(
+    "Nothing is sending traffic yet. Right-click a node and choose Inject to send a request, or add a traffic source.",
+  );
+  expect(render({ source: true })).toBe("<p></p>");
+  expect(render({ traffic: false })).toBe("<p></p>");
+  expect(render({ simulation: {} })).toBe("<p></p>");
+  expect(render({ resourceError: "Budget reached" })).toBe("<p>Budget reached</p>");
+  expect(render({ notice: "Saved" })).toBe("<p>Saved</p>");
+});
