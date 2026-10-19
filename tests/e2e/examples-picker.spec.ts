@@ -282,6 +282,12 @@ test("Routing filter finds the route table showcases and runs the parcel API's s
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("busy-afternoon");
 });
 
+test("Live starts an untouched gallery example's first simulation", async ({ page }) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+});
+
 test("Run it starts and restarts the currently open example", async ({ page }) => {
   await page.goto(`./?example=${SLUG}`);
   await expect(page.getByTestId("example-badge")).toBeVisible();

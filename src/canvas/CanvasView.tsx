@@ -1115,7 +1115,7 @@ function CanvasInner({
                 {(nodeCount > 0 || live) && (
                   <LiveView
                     readOnly={readOnly}
-                    example={!initial && examples.some((example) => example.slug === slug)}
+                    example={!initial && !modified && examples.some((example) => example.slug === slug)}
                     initial={viewer?.live}
                     onHandle={receiveLiveHandle}
                     editor={readOnly ? undefined : editor}

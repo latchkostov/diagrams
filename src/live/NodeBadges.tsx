@@ -491,6 +491,30 @@ const NodeBadge = memo(function NodeBadge({
           data-live-node-detail={hasLatency ? node.id : undefined}
           data-canvas-reading-region={hasLatency ? "" : undefined}
           data-testid={`node-detail-${node.id}`}
+          onKeyDown={
+            hasLatency
+              ? (event) => {
+                  if (event.ctrlKey || event.metaKey || event.altKey) return;
+                  const region = event.currentTarget;
+                  const page = region.clientHeight * 0.875;
+                  const top =
+                    event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? region.scrollHeight
+                        : event.key === "PageDown"
+                          ? region.scrollTop + page
+                          : event.key === "PageUp"
+                            ? region.scrollTop - page
+                            : null;
+                  if (top === null) return;
+                  // Keep paging in this transformed region. Native smooth Home/End scrolls can
+                  // overlap when the next key arrives before the previous scroll has settled.
+                  event.preventDefault();
+                  region.scrollTo({ top, behavior: "instant" });
+                }
+              : undefined
+          }
         >
           {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
           {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}

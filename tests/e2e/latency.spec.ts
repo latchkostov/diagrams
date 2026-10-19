@@ -245,6 +245,8 @@ for (const surface of ["embed", "presentation"]) {
     await expect(detail).toBeVisible();
     await page.mouse.wheel(0, 300);
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    await page.mouse.wheel(0, await detail.evaluate((el) => el.scrollHeight));
+    await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
     if (surface === "presentation") await detail.click();
     else {
       await node.evaluate((el) => el.parentElement?.focus());
@@ -255,6 +257,13 @@ for (const surface of ["embed", "presentation"]) {
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
     await page.keyboard.press("End");
     await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
+    await page.keyboard.press("Home");
+    await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
+    const pages = await detail.evaluate((el) => Math.ceil(el.scrollHeight / (el.clientHeight * 0.875)));
+    for (let i = 0; i < pages; i++) await page.keyboard.press("PageDown");
+    await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
+    for (let i = 0; i < pages; i++) await page.keyboard.press("PageUp");
+    await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
     await page.keyboard.press("Shift+Tab");
     if (surface === "embed")
       await expect.poll(() => node.evaluate((el) => document.activeElement?.contains(el))).toBe(true);
