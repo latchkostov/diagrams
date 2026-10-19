@@ -3,6 +3,9 @@ import { bytesToBase64Url, base64UrlToBytes } from "../interop/codec";
 import {
   fold,
   MAX_ENTRIES_PER_SIGNER,
+  MAX_FORKS_PER_SIGNER,
+  MAX_PENDING,
+  MAX_ROSTER_ENTRIES,
   parseEntry,
   signEntry,
   SignedRoster,
@@ -243,11 +246,12 @@ describe("the signed roster", () => {
     await left.append(host, "cohost", { who: a.key });
     await left.append(host, "admit", { who: b.key });
     const right = await copyOf(left);
+    // Each side its own signers (one person is on one side; a key on both would be a fork: below).
     await left.append(host, "drive", { who: b.key });
-    await left.append(a, "cohost", { who: c.key });
+    await left.append(host, "cohost", { who: c.key });
     await right.append(a, "drive", { who: a.key });
+    await right.append(a, "admit", { who: d.key });
     await right.append(a, "uncohost", { who: a.key });
-    await right.append(host, "admit", { who: d.key });
     const all = [...left.log(), ...right.log()];
     const random = seededRandom(7);
     const results = await Promise.all(
@@ -288,6 +292,65 @@ describe("the signed roster", () => {
     expect(r.size).toBe(MAX_ENTRIES_PER_SIGNER);
     expect(await r.append(host, "admit", { who: others[1].key })).toBeUndefined();
   }, 60_000);
+
+  it("imports and restores a roster larger than MAX_PENDING: the same log and roles after import, reload and replay", async () => {
+    const [host, cohost, wren] = await people(3);
+    const source = roster(host);
+    await source.append(host, "cohost", { who: cohost.key });
+    await source.append(host, "admit", { who: wren.key });
+    // Two signers' drive changes, back and forth: a chain longer than the waiting bound.
+    for (let i = 0; source.size <= MAX_PENDING + 10; i++) {
+      const signer = i % 3 ? cohost : host;
+      await source.append(signer, "drive", { who: i % 2 ? wren.key : cohost.key });
+    }
+    expect(source.size).toBeGreaterThan(MAX_PENDING);
+    const facts = (r: SignedRoster) => {
+      const s = r.state();
+      return JSON.stringify([r.log(), s.host, s.cohosts, [...s.editors].sort(), s.driver, s.viewOnly]);
+    };
+    // A newcomer's import (the whole log in one message), however it's ordered.
+    const imported = roster(host);
+    expect(await imported.add([...source.log()].reverse())).toMatchObject({ added: source.size, waiting: 0 });
+    expect(facts(imported)).toBe(facts(source));
+    // A reload: the record's log (JSON) into a fresh roster.
+    const reloaded = roster(host);
+    await reloaded.add(JSON.parse(JSON.stringify(imported.log())));
+    expect(facts(reloaded)).toBe(facts(source));
+    // Replayed (anti-entropy sends it again): nothing changes, nothing is verified again.
+    let checks = 0;
+    expect(await reloaded.add(source.log(), () => (checks++, true))).toMatchObject({ added: 0, refused: 0 });
+    expect(checks).toBe(0);
+    expect(facts(reloaded)).toBe(facts(source));
+  }, 60_000);
+
+  it("a revoked co-host's flood of sibling entries takes one slot: the host can still act, and every peer agrees", async () => {
+    const [host, cohost] = await people(2);
+    const base = roster(host);
+    const granted = (await base.append(host, "cohost", { who: cohost.key }))!;
+    await base.append(host, "uncohost", { who: cohost.key });
+    // Siblings on the grant (each claims to predate the revocation): many admissions, one slot.
+    const keys = Array.from({ length: MAX_ROSTER_ENTRIES }, (_, i) =>
+      bytesToBase64Url(Uint8Array.from({ length: 32 }, (_, j) => (i * 31 + j * 7 + (i >> 8)) & 255)),
+    );
+    const flood = await Promise.all(
+      keys.map((who) => signEntry(cohost, ROOM, 0, { n: 2, op: "admit", who, deps: [granted.sig] })),
+    );
+    await base.add(flood);
+    const byCohost = base.log().filter((e) => e.by === cohost.key);
+    expect(base.size).toBe(3);
+    expect(byCohost.length).toBeLessThanOrEqual(1 + MAX_FORKS_PER_SIGNER);
+    expect([...base.state().editors].filter((k) => keys.includes(k))).toHaveLength(1);
+    // The host can still change the room.
+    expect(await base.append(host, "policy", { viewOnly: true })).toBeDefined();
+    // Another peer, the flood in another order: the same entry wins the slot.
+    const other = roster(host);
+    await other.add(base.log().filter((e) => e.by === host.key));
+    await other.add([...flood].reverse());
+    expect(other.state().editors).toEqual(base.state().editors);
+    expect(other.log().filter((e) => e.by === cohost.key)[0].sig).toBe(
+      base.log().filter((e) => base.has(e.sig) && e.by === cohost.key)[0].sig,
+    );
+  }, 120_000);
 
   it("verifies each entry once, within the budget it's given: the rest are left for when they're sent again", async () => {
     const [host, ...rest] = await people(5);

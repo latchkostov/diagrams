@@ -1,4 +1,10 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import kafka from "../../examples/kafka-order-pipeline.json";
+import type { EditorApi } from "../../editor/types";
+import { LiveController } from "../../live/controller";
+import { publishWatched, type WatchedSession } from "../../live/watchBridge";
+import type { DiagramFile, Simulation } from "../../model/types";
+import { publish } from "../../palette/host";
 import { FakeClock } from "../clock";
 import type { RoomLink } from "../link";
 import { newIdentity } from "../signing";
@@ -66,6 +72,48 @@ async function setUp(seed: number) {
   /** One sender's messages, in the order they came. */
   const from = (who: string) => got.filter((g) => g.startsWith(`${who}:`));
   return { a, b, c, d, watch, got, from, send, settle };
+}
+
+/** This page in Live on the room's diagram (as the canvas and the live view publish themselves). */
+function inLive(): void {
+  const diagram = kafka as unknown as DiagramFile;
+  const sim: Simulation = {
+    id: "steady",
+    title: "Steady checkouts",
+    seed: 3,
+    durationMs: 60_000,
+    traffic: [
+      {
+        id: "t",
+        node: "shopper",
+        messageType: "OrderRequest",
+        shape: { kind: "constant", ratePerSec: 50, durationMs: 60_000 },
+      },
+    ],
+  };
+  const controller = new LiveController(diagram);
+  controller.selectSimulation(sim);
+  const session: WatchedSession = {
+    controller,
+    getDiagram: () => diagram,
+    store: { getState: () => ({ transform: [0, 0, 1], width: 800, height: 600 }), subscribe: () => () => {} },
+    camera: { dispatch: () => {}, state: { owner: "fit" }, subscribe: () => () => {} },
+    documentId: "room-a",
+    isPrivate: () => false,
+  } as unknown as WatchedSession;
+  const stops = [
+    publish("canvas", {
+      editor: {} as EditorApi,
+      documentId: "room-a",
+      private: false,
+      live: true,
+      focusNode: () => {},
+      addStencil: () => "",
+    }),
+    publish("session", { run: () => {} }),
+    publishWatched(session),
+  ];
+  onTestFinished(() => stops.forEach((stop) => stop()));
 }
 
 describe("a signed room's shared Live", () => {
@@ -161,5 +209,29 @@ describe("a signed room's shared Live", () => {
     expect(watch.getState().hosting).toBe(false);
     expect(c.session.signed!.state()).toMatchObject({ host: a.session.signed!.key, cohosts: [], driver: undefined });
     expect(watch.getState().roster.host).toBe(a.session.senderId);
+  });
+
+  it("roster changes overtaking handoffs: a follower left on a superseded driver follows the roster's driver", async () => {
+    const { a, b, d, watch, settle } = await setUp(47);
+    inLive();
+    a.session.setPresence(showing);
+    await settle();
+    await import("../../live/watchBridge");
+    watch.watch();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    await settle();
+    const following = () => (watch as unknown as { follower?: { driver: string } }).follower?.driver;
+    expect(following()).toBe(a.session.senderId);
+    // a lets b drive, then d: both changes reach this follower before a's handoff (which never comes).
+    expect(await a.session.appendRoster("drive", { who: b.session.signed!.key })).toBe(true);
+    await settle();
+    // The last driver's handoff may still come: it waits on a's run for now.
+    expect(following()).toBe(a.session.senderId);
+    // d, the roster's driver now, shows its run (b's handoff, and a's, never reach it).
+    d.session.setPresence(showing);
+    expect(await a.session.appendRoster("drive", { who: d.session.signed!.key })).toBe(true);
+    await settle();
+    expect(following()).toBe(d.session.senderId);
+    expect(watch.getState().following).toBeDefined();
   });
 });

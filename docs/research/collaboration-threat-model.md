@@ -350,8 +350,21 @@ whatever the review finds.
   - **Epochs.** Every entry is bound to the key epoch: a new epoch (P5's Remove with re-key) starts its roster from
     the host's state, and nothing of the old one carries over. That is the only way to cut off a former co-host who
     signs entries claiming to predate the "Not a co-host" (indistinguishable from a concurrent honest entry).
-  - **Bounds.** 1,024 entries, 256 per signer (counted in the entry's own past, so it's the same everywhere), one
-    entry per signature (canonical base64url only: an alias of a signature is refused, review P1).
+  - **Slots and forks.** Each signer has one slot per sequence number (one more than its entries in the entry's
+    past), at most 256. An honest signer's entries form a chain, one per slot. Two entries by one signer in one slot
+    (siblings on the same past: a fork, which only a misbehaving signer makes) can't both count: the first in the
+    roster's order holds the slot wherever it's placed (one that sorts before a slot's holder makes the roster be
+    placed again from scratch, in order), and the other is kept only as a known entry that changes nothing (16 per
+    signer, 256 in all; past that, a signer's further forks are refused). So what one key stores is bounded whatever
+    it signs, and peers holding the same entries agree (review round 2: a revoked co-host's flood of siblings takes
+    one slot).
+  - **Bounds.** 1,024 counting entries, of which entries by anyone but the host (in the entry's past) take at most
+    768: the host can always act. One entry per signature (canonical base64url only: an alias is refused). Past the
+    768 (reachable only with many co-hosts each signing hundreds of entries), which non-host entries got in can
+    differ between peers: the one overflow that isn't deterministic.
+  - **Ingestion.** Entries are taken in order, each placed as soon as its past is here, so a whole roster (a
+    newcomer's, a reload's) places in one go however long; only entries genuinely missing their past wait (256), and
+    an entry already known is never verified again (review round 2).
   - **Replication.** `DOC.roster`: in full to each peer that appears (a past before what follows it), each new entry
     to everyone, and a summary each anti-entropy round that a peer whose roster differs answers with its entries
     (four times a window at most). It's kept in the tab's record and checked again as a reload opens.
@@ -360,17 +373,22 @@ whatever the review finds.
   Roles only add editors (rule 3), so no honest peer refuses what another honest peer applied.
 - **Held, not rolled back** (rule 2). A document frame that doesn't count yet (its sender's binding or grant still
   on the way) is held per sender (4 MiB, 30 s), never applied; once it counts it's applied, updates and sync replies
-  in order, or past the bounds it's dropped with its sender quarantined. Roster and sync messages never wait behind
-  a held update (one may carry the very grant it waits for, review P1), and a held update is checked again only when
-  the roster or a binding changed (its clients are read once). A newcomer in a room where new people may edit is
-  admitted by the host if here, else the earliest co-host here; with neither, they view until one is back (a page
-  only edits once the roster says it may, so an honest newcomer's edits never need holding).
+  in order, or past the bounds it's dropped with its sender quarantined. Per sender, frames waiting for its binding
+  are kept apart from its verified updates that don't count yet. Roster and sync messages never wait behind a held
+  update (one may carry the very grant it waits for, review P1): a frame arriving behind blocked updates is opened
+  and, if it's one of those, handled at once, without rescanning them. The blocked updates are checked again only
+  when the roster or a binding changes, from the first, each update's clients decoded once (review round 2). A
+  newcomer in a room where new people may edit is admitted by the host if here, else the earliest co-host here;
+  with neither, they view until one is back (a page only edits once the roster says it may, so an honest
+  newcomer's edits never need holding).
 - **Bindings by frame order.** A binding counts from its presence frame's counter: an older frame never replaces a
   newer binding. A deferred frame's sender subkey is cached only once its frame is accepted (review P1).
 - **Live.** A shared run's messages count only from its driver (the roster's while here, else the host), or, for the
   run it drove, from the last driver for 30 s after the roster moved on, until its handoff. A handoff counts only to
   the driver the roster names: one that arrives before its grant waits for it (30 s); one to anyone else grants
-  nothing, and nothing renews the last driver's moment (review P1). A yes to a request, a handover and who drives
+  nothing, and nothing renews the last driver's moment (review P1). A follower whose driver was superseded twice
+  before its handoff came (neither the roster's driver nor the last one) follows the roster's driver, asking it for
+  its run (review round 2). A yes to a request, a handover and who drives
   are roster entries; the P3 `host` message and a yes in an `answer` change nothing.
 - **Bounds.** Signature verifications per sender per window (`verifiesPerWindow`, 2,048: frames and roster
   entries), checked after the cheaper per-channel bounds; a binding is verified once; a roster entry once.
@@ -405,8 +423,9 @@ without using up the sender's counters; a forged roster entry refused; convergen
 anti-entropy; only the held sender supplying its own grant; a held update read once; bindings by frame order; the
 verification bound), `envelope.test.ts` (no subkey kept for a deferred frame not accepted),
 `room/signedWatch.test.ts` (only the driver's run messages count; an early handoff waits for its grant; a handoff
-to someone no grant names grants nothing; alternating handoffs never renew; a yes or a handover in a message changes
-nothing)
+to someone no grant names grants nothing; alternating handoffs never renew; roster changes overtaking handoffs; a yes
+or a handover in a message changes nothing), the roster's import of a log longer than the waiting bound (import,
+reload, replay) and a revoked co-host's sibling flood, and a held update decoded once across authorisation changes
 and `room/lifecycle.test.ts` (a reload keeps verified roles; a changed record entry doesn't count; a v1 link opens
 without roles; a duplicated tab signs as someone new).
 

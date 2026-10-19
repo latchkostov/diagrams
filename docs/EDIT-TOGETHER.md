@@ -105,7 +105,8 @@ reaches the room: not its simulation's name, not its run.
 ## Who can edit
 
 - **Everyone, by default.** New people can edit a moment after they join: the host's page (or, with the host away,
-  a co-host's) lets them in. With neither here, new people can view until one of them is back.
+  a co-host's) lets them in. With neither here, new people can view until one of them is back; the room chip says
+  "can view" meanwhile, and its menu says who can let them edit.
 - **New people can view only.** The host or a co-host can turn this on in the chip's menu. From then on, people who
   join can see the diagram, its changes and everyone's pointers, and watch Live, but not edit: a change they try is
   undone at once, and a note says why. The people list says "can view". **Can edit** in the people menu lets them

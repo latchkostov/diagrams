@@ -23,9 +23,18 @@ import { publicKeyBytes, sign, signedBytes, verify, type Identity } from "./sign
 //   order (Lamport counter, then signer key, then signature: every peer holding the same entries gets the same roles,
 //   so a partition merges into one roster), each applied only if its signer still had the authority at its place in
 //   that fold.
-// - Kept only once its past is here and it counts; bounded (MAX_ROSTER_ENTRIES in all, MAX_ENTRIES_PER_SIGNER from
-//   one key, MAX_PENDING waiting for their past); signatures in their one canonical spelling, so one signature is
-//   one entry.
+// - Kept only once its past is here and it counts; signatures in their one canonical spelling, so one signature is
+//   one entry. An entry whose past is here is placed at once (a whole roster, in order, never waits); only entries
+//   genuinely missing some of their past wait (MAX_PENDING).
+// - Slots: one per signer per sequence number (one more than that signer's entries in the entry's past), at most
+//   MAX_ENTRIES_PER_SIGNER. An honest signer's entries form a chain, one per slot. Two entries by one signer in one
+//   slot (a fork: siblings on the same past, which only a misbehaving signer makes) can't both count: the first in
+//   the roster's order does, wherever it's placed, and the other is kept only as a known entry that changes nothing
+//   (MAX_FORKS_PER_SIGNER of them; past that a signer's further forks are refused). So what one key stores is
+//   bounded whatever it signs, and every peer holding the same entries agrees. Placing an entry that sorts before a
+//   slot's holder places the roster again from scratch, in order (the same result as having had it all along).
+// - The room's capacity keeps a reserve for the host: entries by someone who isn't the host (in the entry's past)
+//   take at most MAX_ROSTER_ENTRIES - MAX_ENTRIES_PER_SIGNER places, so the host can always act.
 //
 //   admit     the host or a co-host lets `who` edit ("Can edit"; their pages admit newcomers while new people may edit)
 //   cohost    the host or a co-host makes `who` a co-host (who can edit, too)
@@ -68,6 +77,11 @@ export interface RosterState {
 export const MAX_ROSTER_ENTRIES = 1024;
 export const MAX_ENTRIES_PER_SIGNER = 256;
 export const MAX_PENDING = 256;
+/** Forked entries (siblings that lost their slot) kept per signer, and in all. */
+export const MAX_FORKS_PER_SIGNER = 16;
+export const MAX_FORKS = 256;
+/** What a roster's log (its entries and the forks it knows) holds at most: what a record or a message carries. */
+export const MAX_LOG_ENTRIES = MAX_ROSTER_ENTRIES + MAX_FORKS;
 /** Heads an entry names at most (its signer's roster rarely has more than a few). */
 export const MAX_DEPS = 32;
 const MAX_COUNTER = 2 ** 31;
@@ -193,11 +207,18 @@ export interface AddResult {
   throttled: number;
   /** Verified, waiting for entries of their past. */
   waiting: number;
+  /** The roles may have changed (an entry was kept, or the roster was placed again). */
+  changed: boolean;
 }
 
 /** One room's roster: its entries that count (bounded), the roles they give, and new ones made by this member. */
 export class SignedRoster {
+  /** Entries that count, by signature. */
   private readonly entries = new Map<string, RosterEntry>();
+  /** Forked entries: verified, their past here, but another entry by their signer holds their slot. */
+  private readonly forks = new Map<string, RosterEntry>();
+  /** Each signer's slots (`<key>:<seq>`), and the entry holding it. */
+  private readonly slots = new Map<string, string>();
   /** Verified entries whose past isn't all here yet, oldest first. */
   private readonly pending = new Map<string, RosterEntry>();
   private cached?: RosterState;
@@ -211,17 +232,23 @@ export class SignedRoster {
     readonly epoch: number,
   ) {}
 
-  /** The entries, in their order (a past before what follows it: to keep, or to send a peer). */
+  /** The entries, forks included, in their order (a past before what follows it: to keep, or to send a peer). */
   log(): RosterEntry[] {
-    return [...this.entries.values()].sort(order);
+    return [...this.entries.values(), ...this.forks.values()].sort(order);
   }
 
+  /** Entries that count. */
   get size(): number {
     return this.entries.size;
   }
 
   has(sig: string): boolean {
     return this.entries.has(sig);
+  }
+
+  /** Whether an entry is known here: it counts, or it's a fork. */
+  private known(sig: string): boolean {
+    return this.entries.has(sig) || this.forks.has(sig);
   }
 
   state(): RosterState {
@@ -233,18 +260,19 @@ export class SignedRoster {
     return () => this.listeners.delete(fn);
   }
 
-  /** The entries this roster holds that nothing it holds names: what a new entry's deps are. */
+  /** The entries that count that nothing counting names: what a new entry's deps are. */
   heads(): string[] {
     const named = new Set<string>();
     for (const e of this.entries.values()) for (const d of e.deps) named.add(d);
-    return this.log()
+    return [...this.entries.values()]
+      .sort(order)
       .filter((e) => !named.has(e.sig))
       .slice(-MAX_DEPS)
       .map((e) => e.sig)
       .sort();
   }
 
-  /** An entry's causal past (every entry its deps name, transitively), all here. */
+  /** An entry's causal past: every counting entry its deps name, transitively (a fork contributes nothing). */
   private past(e: RosterEntry): RosterEntry[] {
     const seen = new Set<string>();
     const out: RosterEntry[] = [];
@@ -253,40 +281,113 @@ export class SignedRoster {
       const sig = stack.pop()!;
       if (seen.has(sig)) continue;
       seen.add(sig);
-      const d = this.entries.get(sig)!;
+      const d = this.entries.get(sig);
+      if (!d) continue;
       out.push(d);
       stack.push(...d.deps);
     }
     return out;
   }
 
-  /** Whether an entry whose past is all here counts: its counter is its past's, and its signer had the authority there. */
-  private counts(e: RosterEntry): boolean {
+  /** How many non-host entries count (they share what the host's reserve leaves). */
+  private others = 0;
+
+  private forksBy(key: string): number {
+    let n = 0;
+    for (const e of this.forks.values()) if (e.by === key) n++;
+    return n;
+  }
+
+  /**
+   * Places an entry whose past is all here: "added" (it counts, in its slot), "fork" (its slot is held by an entry
+   * that sorts first), "refused" (it doesn't count, or there's no room), or "replace" (it sorts before its slot's
+   * holder: the roster is placed again).
+   */
+  private place(e: RosterEntry): "added" | "fork" | "refused" | "replace" {
     let top = 0;
-    for (const d of e.deps) top = Math.max(top, this.entries.get(d)!.n);
-    if (e.n !== top + 1) return false;
+    for (const d of e.deps) top = Math.max(top, (this.entries.get(d) ?? this.forks.get(d))!.n);
+    if (e.n !== top + 1) return "refused";
     const past = this.past(e);
-    if (past.filter((p) => p.by === e.by).length >= MAX_ENTRIES_PER_SIGNER) return false;
-    return authorised(fold(this.hostKey, past), e.by, e.op);
+    const seq = past.filter((p) => p.by === e.by).length + 1;
+    if (seq > MAX_ENTRIES_PER_SIGNER) return "refused";
+    const before = fold(this.hostKey, past);
+    if (!authorised(before, e.by, e.op)) return "refused";
+    const slot = `${e.by}:${seq}`;
+    const holder = this.slots.get(slot);
+    if (holder) {
+      if (order(e, this.entries.get(holder)!) < 0) return "replace";
+      if (this.forksBy(e.by) >= MAX_FORKS_PER_SIGNER || this.forks.size >= MAX_FORKS) return "refused";
+      this.forks.set(e.sig, e);
+      return "fork";
+    }
+    const host = before.host === e.by;
+    if (!host && this.others >= MAX_ROSTER_ENTRIES - MAX_ENTRIES_PER_SIGNER) return "refused";
+    this.entries.set(e.sig, e);
+    this.slots.set(slot, e.sig);
+    if (!host) this.others++;
+    this.cached = undefined;
+    return "added";
+  }
+
+  /** Places the roster again from scratch, in order, with `extra`: what having had them all along would give. */
+  private replace(extra: RosterEntry): void {
+    const all = [...this.entries.values(), ...this.forks.values(), extra].sort(order);
+    this.entries.clear();
+    this.forks.clear();
+    this.slots.clear();
+    this.others = 0;
+    this.cached = undefined;
+    for (const e of all) if (e.deps.every((d) => this.known(d))) this.place(e);
+  }
+
+  /** Places pending entries whose past has arrived, until none is ready. */
+  private drainReady(result: AddResult): void {
+    for (let progress = true; progress;) {
+      progress = false;
+      for (const e of [...this.pending.values()].sort(order)) {
+        if (!e.deps.every((d) => this.known(d))) continue;
+        this.pending.delete(e.sig);
+        progress = true;
+        this.settle(e, result);
+      }
+    }
+  }
+
+  private settle(e: RosterEntry, result: AddResult): void {
+    const placed = this.place(e);
+    if (placed === "replace") {
+      const had = this.entries.size;
+      this.replace(e);
+      result.added += Math.max(0, this.entries.size - had);
+      result.changed = true;
+    } else if (placed === "added") {
+      result.added++;
+      result.changed = true;
+    } else if (placed === "refused") result.refused++;
   }
 
   /**
    * Entries from a peer or this tab's record. Each new one is checked once: its shape, then its signature under its
-   * signer's key for this room and epoch (`budget` says whether another verification may run now). Then, once its
-   * past is here, whether it counts: one that does is kept for good; one that doesn't (forged authority, a counter
-   * that isn't its past's) never is.
+   * signer's key for this room and epoch (`budget` says whether another verification may run now). Taken in order,
+   * each is placed as soon as its past is here (a whole roster is taken in one go, however long); only entries whose
+   * past is missing wait, up to MAX_PENDING. One that counts is kept for good; one that doesn't (forged authority, a
+   * counter that isn't its past's, no slot) never is.
    */
   async add(list: readonly unknown[], budget: () => boolean = () => true): Promise<AddResult> {
-    const result: AddResult = { added: 0, refused: 0, throttled: 0, waiting: 0 };
+    const result: AddResult = { added: 0, refused: 0, throttled: 0, waiting: 0, changed: false };
+    const parsed: RosterEntry[] = [];
     const seen = new Set<string>();
-    for (const raw of list.slice(0, MAX_ROSTER_ENTRIES)) {
+    for (const raw of list.slice(0, MAX_LOG_ENTRIES)) {
       const e = parseEntry(raw);
-      if (!e) {
-        result.refused++;
-        continue;
+      if (!e) result.refused++;
+      else if (!this.known(e.sig) && !this.pending.has(e.sig) && !seen.has(e.sig)) {
+        seen.add(e.sig);
+        parsed.push(e);
       }
-      if (this.entries.has(e.sig) || this.pending.has(e.sig) || seen.has(e.sig)) continue;
-      seen.add(e.sig);
+    }
+    result.refused += Math.max(0, list.length - MAX_LOG_ENTRIES);
+    // In order: an entry's past (a lower counter) comes before it, so a whole roster places as it goes.
+    for (const e of parsed.sort(order)) {
       if (!budget()) {
         result.throttled++;
         continue;
@@ -295,32 +396,20 @@ export class SignedRoster {
         result.refused++;
         continue;
       }
+      if (e.deps.every((d) => this.known(d))) {
+        this.settle(e, result);
+        if (this.pending.size) this.drainReady(result);
+        continue;
+      }
       this.pending.set(e.sig, e);
-      // Bounded: the oldest waiting entry goes first (sent again, it's checked again).
+      // Bounded: only entries genuinely missing their past wait; the oldest goes first (sent again, it's checked again).
       for (const old of this.pending.keys()) {
         if (this.pending.size <= MAX_PENDING) break;
         this.pending.delete(old);
       }
     }
-    result.refused += Math.max(0, list.length - MAX_ROSTER_ENTRIES);
-    // Each entry whose past is all here: kept if it counts, in order (an earlier one may be another's past).
-    for (let progress = true; progress;) {
-      progress = false;
-      for (const e of [...this.pending.values()].sort(order)) {
-        if (!e.deps.every((d) => this.entries.has(d))) continue;
-        this.pending.delete(e.sig);
-        progress = true;
-        if (this.entries.size >= MAX_ROSTER_ENTRIES || !this.counts(e)) {
-          result.refused++;
-          continue;
-        }
-        this.entries.set(e.sig, e);
-        this.cached = undefined;
-        result.added++;
-      }
-    }
-    result.waiting = [...seen].filter((s) => this.pending.has(s)).length;
-    if (result.added) for (const l of this.listeners) l();
+    result.waiting = [...seen].filter((sig) => this.pending.has(sig)).length;
+    if (result.changed) for (const l of this.listeners) l();
     return result;
   }
 
@@ -329,11 +418,12 @@ export class SignedRoster {
     return authorised(this.state(), key, op);
   }
 
-  /** Whether there's room for another entry from `key`. */
+  /** Whether there's room for another entry from `key`: its next slot, and the room's capacity (the host's reserve). */
   roomFor(key: string): boolean {
     let n = 0;
     for (const e of this.entries.values()) if (e.by === key) n++;
-    return this.entries.size < MAX_ROSTER_ENTRIES && n < MAX_ENTRIES_PER_SIGNER;
+    if (n >= MAX_ENTRIES_PER_SIGNER) return false;
+    return key === this.state().host || this.others < MAX_ROSTER_ENTRIES - MAX_ENTRIES_PER_SIGNER;
   }
 
   /**
@@ -350,8 +440,8 @@ export class SignedRoster {
     let top = 0;
     for (const d of deps) top = Math.max(top, this.entries.get(d)!.n);
     const entry = await signEntry(identity, this.roomId, this.epoch, { n: top + 1, op, ...fields, deps });
-    const { added } = await this.add([entry]);
-    return added ? entry : undefined;
+    await this.add([entry]);
+    return this.entries.has(entry.sig) ? entry : undefined;
   }
 
   /** Whether an entry would change the roles as they stand (else it isn't worth a place in the roster). */

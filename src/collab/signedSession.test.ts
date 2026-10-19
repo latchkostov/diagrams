@@ -359,9 +359,43 @@ describe("signed rooms", () => {
     await r.settle();
     expect(counts).toHaveBeenCalledTimes(1);
     // The frames after it were handled (not held behind it): only the update waits.
-    const held = (a.session as unknown as { held: Map<string, { items: unknown[] }> }).held;
-    expect(held.get(b.session.senderId)?.items).toHaveLength(1);
+    const held = (a.session as unknown as { held: Map<string, { blocked: unknown[] }> }).held;
+    expect(held.get(b.session.senderId)?.blocked).toHaveLength(1);
     expect(title(a)).toBe(canaryDiagram().title);
+  });
+
+  it("decodes a held update once across roster and binding changes, rechecks it on each, and applies it once it counts", async () => {
+    const r = await signedRoom(44);
+    const [a] = r.clients;
+    const b = await r.join("b", 442);
+    const c = await r.join("c", 443);
+    await r.settle();
+    const other = new Y.Doc();
+    other.clientID = 778;
+    other.getMap("meta").set("title", "From client 778");
+    const decodes = vi.spyOn(a.session as unknown as { updateClients(p: Uint8Array): unknown }, "updateClients");
+    const counts = vi.spyOn(a.session as unknown as { counts(...args: unknown[]): boolean }, "counts");
+    (b.session as unknown as { sendDoc(m: Uint8Array): void }).sendDoc(frame(DOC.update, Y.encodeStateAsUpdate(other)));
+    await r.settle();
+    expect(title(a)).toBe(canaryDiagram().title);
+    // Roster changes (each a new authorisation revision): rechecked each time, never decoded again.
+    expect(await a.session.appendRoster("cohost", { who: c.session.signed!.key })).toBe(true);
+    await r.settle();
+    expect(await a.session.appendRoster("drive", { who: c.session.signed!.key })).toBe(true);
+    await r.settle();
+    // A binding change that doesn't help it (c's new client id): rechecked, still not decoded again.
+    c.session.doc.ydoc.clientID = 4321;
+    (c.session as unknown as { rebind(): void }).rebind();
+    await r.settle();
+    expect(c.session.signed!.mine?.client).toBe(4321);
+    expect(decodes).toHaveBeenCalledTimes(1);
+    expect(counts.mock.calls.length).toBeGreaterThanOrEqual(4);
+    // b binds the client its update carries: it counts now, and applies.
+    b.session.doc.ydoc.clientID = 778;
+    (b.session as unknown as { rebind(): void }).rebind();
+    await r.settle();
+    expect(title(a)).toBe("From client 778");
+    expect(decodes).toHaveBeenCalledTimes(1);
   });
 
   it("an older presence frame's binding never replaces a newer one's", async () => {

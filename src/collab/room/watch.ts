@@ -1150,6 +1150,27 @@ export class WatchTogether {
       // A handoff that came before the roster named its driver: asked again.
       this.control.release();
       this.channel.release();
+      // Newer changes overtook an unfinished handoff: whom this person follows is neither the roster's driver nor the
+      // last one (whose handoff may still come), so nothing they'd hear counts. Follow the roster's driver instead,
+      // asking it for its run.
+      const followedKey = this.keyOf(this.follower?.driver);
+      const grace = this.grace;
+      const lingering = !!grace && grace.key === followedKey && performance.now() < grace.until;
+      const watched = this.attached;
+      if (
+        this.follower &&
+        watched &&
+        !this.driver &&
+        !this.takeover &&
+        followedKey &&
+        followedKey !== key &&
+        !lingering &&
+        r.driver &&
+        r.driver !== this.me
+      ) {
+        this.stopFollowing(true);
+        this.startFollowing(watched, r.driver);
+      }
       const hosting = this.isHosting;
       if (this.wasHosting === false && hosting) this.notices.told("host", "");
       this.wasHosting = hosting;

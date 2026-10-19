@@ -27,3 +27,7 @@ restarting the run.
   would scale further).
 - **Anti-entropy cost.** The roster summary is one small signed frame per peer every round; a full roster goes to a
   peer only when its summary differs (four times a window at most).
+- **The non-host overflow.** Past 768 non-host entries (many co-hosts, each signing hundreds), which of them a peer
+  keeps depends on arrival order. A per-epoch snapshot (P5) or a per-co-host share would make it deterministic.
+- **Placing again on a fork.** An entry sorting before its slot's holder places the whole roster again (bounded by
+  the fork limits). An incremental re-placement would be cheaper if forks ever mattered in practice.

@@ -646,9 +646,12 @@ function OpenChip({
   const { state, peers } = useRoomState(session);
   const { watch, state: watching } = useWatch();
   const elsewhere = !here && !!open.slug;
-  const text = elsewhere
+  const status = elsewhere
     ? t("collab.chipElsewhere", { title: session.doc.project().diagram?.title ?? "" })
     : (followingText(watching) ?? CHIP_TEXT[state](peers));
+  // A signed room's viewer sees it on the chip itself (the menu says who can let them edit).
+  const viewing = !!watching?.signed && !watching.canEdit;
+  const text = viewing ? `${status} · ${t("collab.roleViewing")}` : status;
   const data = {
     "data-testid": "room-chip",
     "data-state": elsewhere ? "elsewhere" : state,
@@ -731,9 +734,7 @@ function OpenChip({
         <button
           type="button"
           className="ix-shared room-chip"
-          aria-label={t("collab.chipLabel", {
-            status: watching?.signed && !watching.canEdit ? `${text} · ${t("collab.roleViewing")}` : text,
-          })}
+          aria-label={t("collab.chipLabel", { status: text })}
           {...props}
           {...data}
         >

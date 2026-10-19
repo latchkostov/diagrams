@@ -15,15 +15,18 @@ final choice the review's).
   checked against the key its sender bound before anything uses it. A frame forged under someone's sender id is
   refused without using up their counters (the replay window records a counter only once the signature verifies,
   and its sender's subkey is cached only then).
-- **A signed roster with causal authority** replaces P3's presence-carried roster: admit, co-host, not a co-host,
-  drive, host and policy entries. Each names the entries its signer had seen (`deps`), its Lamport counter exactly
-  one more than theirs, and counts if and only if its signer had the authority in that causal past, so whether it
-  counts never changes. Admissions are permanent: a concurrent "Not a co-host" or "view only" can't undo one that
-  counted. Only the host and co-hosts admit, so nobody can backdate an admission past "view only". The other roles
-  are folded from the counting entries in one order everywhere, so P3's two-rosters-after-a-partition follow-up is
-  resolved. One signature has one (canonical) spelling. It's sent in full to each peer that appears, each new entry
-  to everyone, and summarised every anti-entropy round (a peer whose roster differs sends its entries). Kept with
-  `RoomRoster` in the tab's record, so a reload keeps verified roles, checked again as it opens.
+- **A signed roster with causal authority** replaces P3's presence-carried roster: admit, co-host, not a co-host, drive,
+  host and policy entries. Each names the entries its signer had seen (`deps`), its Lamport counter exactly one more
+  than theirs, and counts if and only if its signer had the authority in that causal past, so whether it counts never
+  changes. Admissions are permanent: a concurrent "Not a co-host" or "view only" can't undo one that counted. Only the
+  host and co-hosts admit, so nobody can backdate an admission past "view only". The other roles are folded from the
+  counting entries in one order everywhere, so P3's two-rosters-after-a-partition follow-up is resolved. One signature
+  has one (canonical) spelling. Each signer has one slot per sequence number (at most 256): a fork (sibling entries)
+  takes one slot, decided the same way everywhere, and the host keeps a reserve of the room's capacity. A whole roster
+  is taken in one go, however long: entries are placed as soon as their past is here, and only those missing it wait.
+  It's sent in full to each peer that appears, each new entry to everyone, and summarised every anti-entropy round (a
+  peer whose roster differs sends its entries). Kept with `RoomRoster` in the tab's record, so a reload keeps verified
+  roles, checked again as it opens.
 - **Edits only from editors.** A direct update counts only from an editor, with structs of its own bound client id;
   a sync reply only from an editor; viewers never serve sync. What doesn't count yet (a grant or a binding on its
   way) is held per sender (4 MiB, 30 s), never applied and never rolled back, then applied in order once it counts,
@@ -34,12 +37,13 @@ final choice the review's).
   makes joiners viewers. A viewer's change is undone at once with a note ("you can view this room, not edit it"), and
   never sent. **Can edit** in the people menu lets them edit. While new people may edit, the host's page (else the
   earliest co-host's here) admits each newcomer a moment after they join; with neither here, newcomers view until
-  one is back. A change in this person's editing is announced, and the chip's label says "can view".
-- **Live, by the driver only.** A shared run's messages count only from the roster's driver (while here, else the
-  host), and, for the run it drove, from the last driver for 30 s after the roster moved on, until its handoff. A
-  handoff counts only to the driver the roster names (one that arrives before its grant waits for it), so a handoff
-  never grants the run and nothing renews the last driver's moment. A yes to a request, Make host and Leave room's
-  handover are signed entries; P3's `host` message and a yes in an answer change nothing in a signed room.
+  one is back. A change in this person's editing is announced, and the chip says "can view" while they can't edit.
+- **Live, by the driver only.** A shared run's messages count only from the roster's driver (while here, else the host),
+  and, for the run it drove, from the last driver for 30 s after the roster moved on, until its handoff. A handoff
+  counts only to the driver the roster names (one that arrives before its grant waits for it), so a handoff never grants
+  the run and nothing renews the last driver's moment. A follower whose driver was superseded before its handoff came
+  follows the roster's driver. A yes to a request, Make host and Leave room's handover are signed entries; P3's `host`
+  message and a yes in an answer change nothing in a signed room.
 - **A co-host-capable people menu** (P3 follow-up): co-hosts get the people menu (co-host, drive, **Can edit**; no
   co-host row for the host); Make host stays the host's.
 - **Bounded verification.** Signature checks per sender are bounded (`verifiesPerWindow`, 2,048 per 10 s: frames and

@@ -1,5 +1,5 @@
 import { COLLAB_LIMITS } from "../limits";
-import { MAX_ROSTER_ENTRIES, parseEntry, type RosterEntry } from "../roster";
+import { MAX_LOG_ENTRIES, parseEntry, type RosterEntry } from "../roster";
 import { publicKeyBytes, type StoredIdentity } from "../signing";
 import type { RoomRole } from "./tabRoom";
 
@@ -42,7 +42,7 @@ function parseSigned(v: unknown): SignedRecord | undefined {
   const jwk = id.jwk as Record<string, unknown> | undefined;
   if (!jwk || typeof jwk !== "object" || jwk.kty !== "OKP" || jwk.crv !== "Ed25519" || typeof jwk.d !== "string")
     return undefined;
-  if (!Array.isArray(r.log) || r.log.length > MAX_ROSTER_ENTRIES) return undefined;
+  if (!Array.isArray(r.log) || r.log.length > MAX_LOG_ENTRIES) return undefined;
   const log = r.log.map(parseEntry);
   if (log.some((e) => !e)) return undefined;
   return { identity: { key: id.key, jwk: jwk as JsonWebKey }, log: log as RosterEntry[] };

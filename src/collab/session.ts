@@ -159,6 +159,17 @@ interface Held {
   checkedAt?: number;
 }
 
+/**
+ * A sender's held frames: those still to verify (its binding not here yet), in order, and its verified updates and
+ * sync replies that don't count yet, in order.
+ */
+interface HeldQueue {
+  raw: Held[];
+  blocked: Held[];
+  bytes: number;
+  stop: () => void;
+}
+
 /** What changes the document: what has to count before it's applied, in order. */
 const isMutation = (msg: { type: number }) => msg.type === DOC.update || msg.type === DOC.syncReply;
 
@@ -246,7 +257,7 @@ export class CollabSession {
   /** Full rosters sent back to a peer whose summary differs, per requester. */
   private readonly rosterReplies: RateLimit;
   /** A signed room's document frames that don't count yet, per sender (see above). */
-  private readonly held = new Map<string, { items: Held[]; bytes: number; stop: () => void }>();
+  private readonly held = new Map<string, HeldQueue>();
   /** Newcomers this session is admitting (an entry being signed). */
   private readonly admitting = new Set<string>();
   private summary?: string;
@@ -879,15 +890,17 @@ export class CollabSession {
     if (!this.rate.take(sender, bytes.length)) return this.reject("rate-limited");
     const item: Held = { from, bytes: bytes.length, opened, message, signature };
     // A sender with frames held: this one goes behind them (their order matters), and they go as far as they can.
-    if (this.held.has(sender)) {
-      this.hold(sender, item);
-      return this.drain(sender);
-    }
-    if (!room.keyOf(sender)) return this.hold(sender, item);
+    const q = this.held.get(sender);
+    // Not bound yet (or frames before this one aren't verified yet): it waits, in order, for the binding.
+    if (!room.keyOf(sender) || q?.raw.length) return this.hold(sender, item, "raw");
     if (!(await this.open(item))) return;
-    if (!isMutation(item.msg!) || this.counts(sender, item)) return this.handleDoc(from, sender, item.msg!);
+    // The roster and sync messages never wait (one may carry the grant an update waits for).
+    if (!isMutation(item.msg!)) return this.handleDoc(from, sender, item.msg!);
+    // Behind updates that don't count yet: in order, checked again when the roster or a binding changes (not now).
+    if (q?.blocked.length) return this.hold(sender, item, "blocked");
+    if (this.counts(sender, item)) return this.handleDoc(from, sender, item.msg!);
     item.checkedAt = this.authRevision;
-    this.hold(sender, item);
+    this.hold(sender, item, "blocked");
   }
 
   /**
@@ -942,28 +955,30 @@ export class CollabSession {
     if (!room.isEditor(room.keyOf(sender))) return false;
     if (item.msg!.type === DOC.syncReply) return true;
     // Undecodable: it counts, and the guard refuses it (its sender quarantined, as ever).
-    if (item.clients === undefined) item.clients = structClients(item.msg!.payload) ?? null;
+    if (item.clients === undefined) item.clients = this.updateClients(item.msg!.payload);
     const own = room.clientOf(sender);
     return !item.clients || [...item.clients].every((c) => c === own);
   }
 
-  private resize(sender: string, item: Held, bytes: number): void {
-    const q = this.held.get(sender);
-    if (q?.items.includes(item)) q.bytes += bytes - item.bytes;
+  /** An update's struct clients (decoded once per held update: it's cached on the item). */
+  private updateClients(payload: Uint8Array): Set<number> | null {
+    return structClients(payload) ?? null;
+  }
+
+  private resize(_sender: string, item: Held, bytes: number): void {
     item.bytes = bytes;
   }
 
   /** Holds a frame that doesn't count yet; past the bounds, its sender's held frames go, and the sender with them. */
-  private hold(sender: string, item: Held): void {
+  private hold(sender: string, item: Held, where: "raw" | "blocked"): void {
     let q = this.held.get(sender);
     if (!q) {
       if (this.held.size >= COLLAB_LIMITS.maxSenders) return this.reject("unauthorised");
-      q = { items: [], bytes: 0, stop: this.clock.after(COLLAB_LIMITS.heldMs, () => this.giveUp(sender)) };
+      q = { raw: [], blocked: [], bytes: 0, stop: this.clock.after(COLLAB_LIMITS.heldMs, () => this.giveUp(sender)) };
       this.held.set(sender, q);
     }
-    if (q.items.includes(item)) return;
     if (q.bytes + item.bytes > COLLAB_LIMITS.maxHeldBytesPerSender) return this.giveUp(sender, 1);
-    q.items.push(item);
+    q[where].push(item);
     q.bytes += item.bytes;
   }
 
@@ -972,7 +987,7 @@ export class CollabSession {
     const q = this.held.get(sender);
     q?.stop();
     this.held.delete(sender);
-    for (let i = 0; i < (q?.items.length ?? 0) + extra; i++) this.reject("unauthorised");
+    for (let i = 0; i < (q ? q.raw.length + q.blocked.length : 0) + extra; i++) this.reject("unauthorised");
     this.quarantine(sender);
   }
 
@@ -983,56 +998,36 @@ export class CollabSession {
   }
 
   /**
-   * A sender's held frames, as far as they go now. Frames wait for their sender's binding (in order); then the
-   * roster and sync messages among them are handled at once (a grant one carries may be what the rest wait for),
-   * and the updates and sync replies in order, each once it counts. One that didn't count is checked again only once
-   * the roster or a binding has changed since (another frame arriving changes nothing for it).
+   * A sender's held frames, as far as they go now (the roster or a binding changed). Frames waiting for the
+   * sender's binding are verified in order once it's here: roster and sync messages among them are handled at once,
+   * updates join the blocked ones. Then the blocked updates, in order, each once it counts; the first that doesn't
+   * stops the rest, and it's checked again only after the next change (constant work per change, whatever's held).
    */
   private async drain(sender: string): Promise<void> {
     const q = this.held.get(sender);
     const room = this.signed;
     if (!q || !room) return;
-    const remove = (item: Held) => {
-      q.items.splice(q.items.indexOf(item), 1);
+    const current = () => this.held.get(sender) === q && !this.leaving;
+    while (q.raw.length && room.keyOf(sender) && current()) {
+      const item = q.raw.shift()!;
       q.bytes -= item.bytes;
-    };
-    for (let progress = true; progress && this.held.get(sender) === q && !this.leaving;) {
-      progress = false;
-      let blocked = false;
-      for (const item of [...q.items]) {
-        if (this.held.get(sender) !== q) return;
-        if (!item.msg) {
-          if (!room.keyOf(sender)) break;
-          const ok = await this.open(item);
-          if (!ok) {
-            remove(item);
-            progress = true;
-            continue;
-          }
-        }
-        const msg = item.msg!;
-        if (!isMutation(msg)) {
-          remove(item);
-          await this.handleDoc(item.from, sender, msg);
-          progress = true;
-          continue;
-        }
-        if (blocked) continue;
-        if (item.checkedAt === this.authRevision) {
-          blocked = true;
-          continue;
-        }
-        item.checkedAt = this.authRevision;
-        if (!this.counts(sender, item)) {
-          blocked = true;
-          continue;
-        }
-        remove(item);
-        await this.handleDoc(item.from, sender, msg);
-        progress = true;
+      if (!(await this.open(item))) continue;
+      if (!isMutation(item.msg!)) await this.handleDoc(item.from, sender, item.msg!);
+      else if (current()) {
+        q.blocked.push(item);
+        q.bytes += item.bytes;
       }
     }
-    if (this.held.get(sender) === q && !q.items.length) {
+    while (q.blocked.length && current()) {
+      const item = q.blocked[0];
+      if (item.checkedAt === this.authRevision) break;
+      item.checkedAt = this.authRevision;
+      if (!this.counts(sender, item)) break;
+      q.blocked.shift();
+      q.bytes -= item.bytes;
+      await this.handleDoc(item.from, sender, item.msg!);
+    }
+    if (this.held.get(sender) === q && !q.raw.length && !q.blocked.length) {
       q.stop();
       this.held.delete(sender);
     }
