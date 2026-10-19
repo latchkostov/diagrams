@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { commitEpoch, EpochChain, MAX_EPOCHS, parseStart, scopeOf, signStart, type EpochStart } from "./epochs";
 import { newEpochSecret } from "./keys";
 import { seededBytes } from "./random";
-import { afterRemoval, rootState, signEntry, SignedRoster } from "./roster";
+import { afterRemoval, MAX_LOG_ENTRIES, rootState, signEntry, SignedRoster } from "./roster";
 import { newAgreement, newIdentity, type Identity } from "./signing";
 import { LOBBY, Lobby, MAX_LOBBY_MESSAGE_BYTES, parseBody, unwrap, wrapFor } from "./lobby";
 import { COLLAB_LIMITS } from "./limits";
-import { base64UrlToBytes } from "../interop/codec";
+import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
 import { deriveRoomKeys } from "./keys";
 import { FakeClock } from "./clock";
 
@@ -18,6 +18,58 @@ async function startOf(host: Identity, secret: Uint8Array): Promise<EpochStart> 
 }
 
 describe("epochs", () => {
+  it("a single reverse delivery retains each roster until its parent starts resolve", async () => {
+    const host = await newIdentity();
+    const chain = new EpochChain(host.key, ROOM);
+    let start = await startOf(host, newEpochSecret(seededBytes(600)));
+    await chain.addStarts([start]);
+    for (let epoch = 1; epoch < 4; epoch++) {
+      const roster = chain.rosterOf(start)!;
+      const away = await newIdentity();
+      await roster.append(host, "join", { who: away.key, x: (await newAgreement()).x });
+      const removal = (await roster.append(host, "remove", { who: away.key }))!;
+      start = await signStart(host, ROOM, {
+        epoch,
+        kc: await commitEpoch(newEpochSecret(seededBytes(600 + epoch)), ROOM, epoch),
+        prev: removal.sig,
+      });
+      await chain.addStarts([start]);
+    }
+    await chain.rosterOf(start)!.append(host, "ask", { ask: false });
+    const data = chain.data(start);
+    const received = new EpochChain(host.key, ROOM);
+    for (let i = data.starts.length - 1; i >= 0; i--) {
+      await received.add({ starts: [data.starts[i]], logs: [data.logs[i]] });
+    }
+    expect(received.data(received.deepest())).toEqual(data);
+    expect(received.rosterOf(start)!.state().ask).toBe(false);
+  });
+
+  it("pending logs are limited to verified waiting starts and bounded entry counts", async () => {
+    const host = await newIdentity();
+    const chain = new EpochChain(host.key, ROOM);
+    const entry = await signEntry(host, ROOM, "missing", { n: 1, op: "ask", ask: true, deps: [] });
+    const pending = (chain as unknown as { waitingEntries: Map<string, Map<string, unknown>> }).waitingEntries;
+    await chain.addEntries("missing", [entry]);
+    expect(pending.size).toBe(0);
+    for (let epoch = 1; epoch <= 20; epoch++) {
+      const start = await signStart(host, ROOM, {
+        epoch: 1,
+        kc: await commitEpoch(newEpochSecret(seededBytes(800 + epoch)), ROOM, 1),
+        prev: entry.sig,
+      });
+      await chain.addStarts([start]);
+      const entries = Array.from({ length: MAX_LOG_ENTRIES + 1 }, (_, i) => ({
+        ...entry,
+        sig: bytesToBase64Url(seededBytes(epoch * 10_000 + i)(64)),
+      }));
+      await chain.addEntries(scopeOf(start), entries);
+    }
+    expect(pending.size).toBe(16);
+    expect([...pending.values()].every((entries) => entries.size <= MAX_LOG_ENTRIES)).toBe(true);
+    expect([...pending.values()].at(-1)!.size).toBe(MAX_LOG_ENTRIES);
+  });
+
   it("epoch 0 starts with the link's host; a start by anyone else, or a forged one, isn't the room's", async () => {
     const [host, mallory] = [await newIdentity(), await newIdentity()];
     const secret = newEpochSecret(seededBytes(1));

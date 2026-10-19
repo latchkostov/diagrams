@@ -136,6 +136,9 @@ export class SlowMotion {
 
   /** Record the chosen message's journey, then replay it. */
   start(source: SlowSource): void {
+    // Inputs may still have a debounced rebuild queued. Finish it before taking the
+    // checkpoint: a later rebuild would discard this journey (and its paused state).
+    this.controller.flush();
     if (this.controller.getState().needsRestart) return;
     const prev = this.state.status;
     if (prev === "capturing") this.abortCapture();

@@ -216,8 +216,8 @@ function MoreMenu({ state }: { state: LiveState }) {
   const interaction = useInteraction();
   const ui = useLive();
   const c = ui.controller;
-  // Its Esc leaves focus where it is (no invoker): the "⋯" button keeps it, an item's focus goes with the menu.
-  const { open, toggle, close } = useLivePopover();
+  const button = useRef<HTMLButtonElement>(null);
+  const { open, toggle, close } = useLivePopover(() => button.current);
   const [traceOpen, setTraceOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const waiting = !!state.run?.waiting;
@@ -250,6 +250,7 @@ function MoreMenu({ state }: { state: LiveState }) {
   return (
     <div className="lv-more" ref={root}>
       <button
+        ref={button}
         className={`lv-btn${open ? " is-on" : ""}`}
         onClick={toggle}
         aria-haspopup="menu"

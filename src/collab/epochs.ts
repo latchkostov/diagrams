@@ -1,5 +1,5 @@
 import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
-import { rootState, SignedRoster, type AddResult } from "./roster";
+import { MAX_LOG_ENTRIES, parseEntry, rootState, SignedRoster, type AddResult, type RosterEntry } from "./roster";
 import { commitSecret, publicKeyBytes, sign, signedBytes, verify, type Identity } from "./signing";
 
 // A knock-to-join room's epochs (meeting hosts design §2, P5). The link opens only the lobby; the room's content is
@@ -106,6 +106,8 @@ export class EpochChain {
   private readonly children = new Set<string>();
   /** Starts whose signature checked, waiting for their parent or the removal they name. Oldest first. */
   private readonly waiting = new Map<string, EpochStart>();
+  /** Only verified waiting starts may hold a log; both scopes and entries are bounded. */
+  private readonly waitingEntries = new Map<string, Map<string, RosterEntry>>();
   private readonly rosters = new Map<string, SignedRoster>();
   private readonly secrets = new Map<string, Uint8Array>();
   private readonly listeners = new Set<() => void>();
@@ -239,20 +241,46 @@ export class EpochChain {
       this.waiting.set(s.sig, s);
       for (const old of this.waiting.keys()) {
         if (this.waiting.size <= MAX_WAITING_STARTS) break;
+        this.waitingEntries.delete(scopeOf(this.waiting.get(old)!));
         this.waiting.delete(old);
       }
     }
     if (this.resolve() || this.starts.size !== before) this.changed();
+    await this.resolveEntries(budget);
     return this.starts.size - before;
   }
 
-  /** Roster entries for one epoch (its scope); a start not placed takes none. A removal may place a waiting start. */
+  private async resolveEntries(budget?: () => boolean): Promise<void> {
+    for (let progress = true; progress;) {
+      progress = false;
+      for (const [scope, entries] of this.waitingEntries) {
+        const start = this.byScope(scope);
+        if (!start) continue;
+        this.waitingEntries.delete(scope);
+        await this.rosters.get(start.sig)!.add([...entries.values()], budget);
+        if (this.resolve()) this.changed();
+        progress = true;
+      }
+    }
+  }
+
+  /** Roster entries wait with their verified start. A removal may place a waiting start. */
   async addEntries(scope: string, list: readonly unknown[], budget?: () => boolean): Promise<AddResult | undefined> {
     const start = this.byScope(scope);
     const roster = start && this.rosters.get(start.sig);
-    if (!roster) return undefined;
+    if (!roster) {
+      if (![...this.waiting.values()].some((s) => scopeOf(s) === scope)) return undefined;
+      const pending = this.waitingEntries.get(scope) ?? new Map<string, RosterEntry>();
+      for (const raw of list.slice(0, MAX_LOG_ENTRIES)) {
+        const entry = parseEntry(raw);
+        if (entry && pending.size < MAX_LOG_ENTRIES) pending.set(entry.sig, entry);
+      }
+      this.waitingEntries.set(scope, pending);
+      return undefined;
+    }
     const result = await roster.add(list, budget);
     if (this.waiting.size && this.resolve()) this.changed();
+    await this.resolveEntries(budget);
     return result;
   }
 

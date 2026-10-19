@@ -42,7 +42,22 @@ async function openChecks(page: Page) {
   await page.getByTestId("canvas-view").click({ position: { x: 900, y: 120 } });
   await palette(page, "Check diagram");
   await expect(page.getByTestId("command-item-action:canvas.check-diagram")).toBeVisible();
-  await page.keyboard.press("Enter");
+  await page.getByTestId("command-item-action:canvas.check-diagram").click();
+  // First use downloads the card. Await its mount as setup (the test's hang backstop),
+  // then assert visibility with the normal UI budget, as waitForLiveSession does.
+  await page.getByTestId("canvas-wrap").evaluate(
+    (root) =>
+      new Promise<void>((resolve) => {
+        const ready = () => {
+          if (!root.querySelector('[data-testid="checks-card"]')) return;
+          observer.disconnect();
+          resolve();
+        };
+        const observer = new MutationObserver(ready);
+        observer.observe(root, { childList: true, subtree: true });
+        ready();
+      }),
+  );
   await expect(card(page)).toBeVisible();
 }
 
