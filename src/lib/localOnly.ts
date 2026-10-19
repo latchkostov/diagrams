@@ -55,13 +55,8 @@ export function canUseAiTools(state: CanvasPrivacyState | null | undefined): boo
   return AI_TOOLS && !isLocalOnly(state);
 }
 
-/** The dev server and the e2e build have rooms (and the Lab's collaboration presets) whatever the switch says. */
-export const COLLABORATION_LAB = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
-/**
- * Edit together (rooms): in a production build with VITE_ENABLE_COLLAB=1 (COLLAB), and in development and e2e
- * builds. Never in a copy deployed without links: a room is a kind of link.
- */
-export const ROOMS = (COLLABORATION_LAB || COLLAB) && SHARE_LINKS;
+/** Rooms have their own build switch, independent of share links. */
+export const ROOMS = COLLAB || import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
 /**
  * A room for this diagram. Never for one that stays on this device (Private or local-only): a Private diagram must
  * not leave the device, and no consent makes an exception.

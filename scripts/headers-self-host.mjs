@@ -7,7 +7,7 @@
 //   pnpm headers:self-host --out some/dir                     # default: self-host-headers/
 //
 // Edit together follows the build's own variables (the shell's, then the .env files, as the build reads them): with
-// VITE_ENABLE_COLLAB=1 the app's connect-src allows its trackers (VITE_COLLAB_TRACKERS, else the approved two).
+// public mode the app's connect-src allows its trackers; server mode allows only its configured relay origin.
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -19,6 +19,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const { values } = parseArgs({
   options: {
     "frame-ancestors": { type: "string", default: "" },
+    "collab-server": { type: "string" },
     providers: { type: "boolean", default: false },
     out: { type: "string", default: "self-host-headers" },
     base: { type: "string", default: "/" },
@@ -41,7 +42,8 @@ try {
     frameAncestors: values["frame-ancestors"].split(/[\s,]+/).filter(Boolean),
     providers: values.providers,
     base: values.base,
-    collab: collabTrackers(resolveDeploymentEnv("production", root)),
+    collab: values["collab-server"] ? [] : collabTrackers(resolveDeploymentEnv("production", root)),
+    collabServer: values["collab-server"],
   };
   files = {
     "nginx.conf": nginxHeaders(options),

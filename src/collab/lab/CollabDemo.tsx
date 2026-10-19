@@ -8,7 +8,14 @@ import { COLLAB_LIMITS } from "../limits";
 import { PRESENCE_COLOURS } from "../presence";
 import { MemoryNetwork } from "../transport/memory";
 import { applyMoves, demoDiagram, refusalMessage } from "./demo";
-import { SpikePanel } from "./SpikePanel";
+import { lazyComponent } from "../../lib/lazyLoad";
+
+declare const __DEPLOYMENT_COLLAB_MODE__: "off" | "public" | "server";
+// Even a relay build with Lab/test hooks must exclude the public WebRTC spike.
+const SpikePanel =
+  __DEPLOYMENT_COLLAB_MODE__ === "server"
+    ? () => null
+    : lazyComponent(() => import("./SpikePanel").then((module) => module.SpikePanel));
 
 // Collaboration C0 in the Lab (dev and e2e builds only): three people in one page, joined by the in-memory network.
 // Nothing here touches the network: every frame is an E2E envelope handed between three sessions in this tab. The

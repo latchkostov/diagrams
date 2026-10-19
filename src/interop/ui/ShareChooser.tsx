@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { SHARE_LINKS } from "../../lib/deployment";
+import { COLLAB_MODE, SHARE_LINKS } from "../../lib/deployment";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
 import { ROOMS, type Privacy } from "../../lib/localOnly";
 import { Dialog } from "./Dialog";
@@ -175,7 +175,7 @@ export function ShareChooser({
             />
           )}
         </div>
-        {links && rooms && (
+        {!privacy && rooms && (
           <div className="ix-share-group ix-share-room" data-testid="share-room">
             <Option
               testId="share-option-edit-together"
@@ -186,21 +186,23 @@ export function ShareChooser({
             />
           </div>
         )}
-        {SHARE_LINKS && privacy && (
+        {(SHARE_LINKS || rooms) && privacy && (
           <p className="ix-share-note" data-testid="share-private-note">
             <Glyph name="lock" size={13} />
             {privacy === "private" ? (
               <span>
                 {rooms ? t("share.privateOffRooms") : t("share.privateOff")}{" "}
-                <button
-                  type="button"
-                  className="link-btn"
-                  onClick={onMakeNotPrivate}
-                  data-share-row
-                  data-testid="share-make-not-private"
-                >
-                  {t("share.makeNotPrivate")}
-                </button>
+                {SHARE_LINKS && COLLAB_MODE !== "server" && (
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={onMakeNotPrivate}
+                    data-share-row
+                    data-testid="share-make-not-private"
+                  >
+                    {t("share.makeNotPrivate")}
+                  </button>
+                )}
               </span>
             ) : (
               <span>{t("share.alwaysPrivate")}</span>

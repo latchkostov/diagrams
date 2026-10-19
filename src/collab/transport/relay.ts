@@ -1,6 +1,7 @@
 import { realClock, type Clock } from "../clock";
 import { secureRandom, type RandomBytes } from "../random";
 import { COLLAB_LIMITS } from "../limits";
+import { reconnectDelay } from "./backoff";
 import { FrameTooLargeError, type CollabTransport, type TransportHandlers, type Connectivity } from "./types";
 import {
   clientFrame,
@@ -20,7 +21,7 @@ export interface RelayOptions {
   random?: RandomBytes;
 }
 
-/** S1: imported directly by dev/e2e harnesses only; build-mode selection belongs to S3. */
+/** Carries opaque envelopes only; the relay never receives room keys. */
 export function createRelayTransport(opts: RelayOptions): CollabTransport {
   if (!isRoomId(opts.roomId)) throw new Error("Invalid relay room ID");
   const url = new URL(opts.url);
@@ -73,7 +74,7 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   }
   function reconnect() {
     if (closed || cancelReconnect) return;
-    const delay = Math.min(60_000, 1000 * 2 ** Math.min(failures++, 7)) * (0.5 + random(1)[0] / 510);
+    const delay = reconnectDelay(failures++, random);
     cancelReconnect = clock.after(delay, () => {
       cancelReconnect = undefined;
       connect();

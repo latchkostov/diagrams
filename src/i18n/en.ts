@@ -2468,6 +2468,12 @@ const en = {
   "staticSkill.selectCopy": "Select and copy",
   "collab.startTitle": "Edit together",
   "collab.startLead": "People with the link knock, and you or a co-host let them in to see and edit this diagram.",
+  "collab.ipServer":
+    "This site's collaboration server ({host}) sees your IP address and when you're in a room, never the diagram or the link.",
+  "collab.joinIpServer":
+    "This site's collaboration server ({host}) will see your IP address and when you're in a room, never the diagram or the link.",
+  "collab.serverUnreachable": "Could not reach the collaboration server. Try again or ask whoever runs this copy.",
+  "collab.roomFull": "This room is full ({count} people). Try again after someone leaves.",
   "collab.ipPeers": "Everyone in the room can see your IP address.",
   "collab.ipTrackers":
     "The services below, which introduce you to the others, see your IP address too, but never the diagram or the link.",

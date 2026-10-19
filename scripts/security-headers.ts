@@ -1,5 +1,5 @@
 import type { Plugin } from "vite";
-import { APPROVED_TRACKERS } from "./deployment-env";
+import { relayUrl, APPROVED_TRACKERS } from "./deployment-env";
 
 /**
  * The site's security headers, in one place. Everything that serves the production build reads them here:
@@ -20,7 +20,7 @@ import { APPROVED_TRACKERS } from "./deployment-env";
  *    wildcards: *.1drv.com and *.microsoftpersonalcontent.com (personal), *.sharepoint.com (work or school).
  *    With Edit together (`collab`), the matchmaking trackers' origins too: on livediagrams.dev exactly the two
  *    approved ones (PUBLIC_SITE), never in an embed (it has no rooms). STUN and TURN aren't fetches: CSP can't
- *    govern them, so src/collab/room/endpoints.ts fixes them at build time instead.
+ *    govern them, so src/collab/room/transport.ts fixes them at build time instead.
  *  - frame-src: the embed dialog's preview (this site), the Google Picker and Identity Services frames.
  *  - frame-ancestors: embeds (`?embed=1`, including the host-supplied `?embed=1&host=1`) may be framed by any
  *    site; the app itself only by this site. The host-supplied embed keeps connect-src as it is: the page that
@@ -71,12 +71,13 @@ export interface CspOptions {
   embed: boolean;
   /** Edit together's trackers (wss:// URLs), when the build has rooms; none otherwise. */
   collab?: readonly string[];
+  collabServer?: string;
 }
 
 /** livediagrams.dev: Edit together on (the owner's decision), with exactly the approved trackers. */
 export const PUBLIC_SITE = { collab: APPROVED_TRACKERS } as const;
 
-export function cspDirectives({ embed, collab = [] }: CspOptions): [string, string[]][] {
+export function cspDirectives({ embed, collab = [], collabServer = "" }: CspOptions): [string, string[]][] {
   // An embed (a link's, an example's or one its host page supplies) never saves, opens or signs in anywhere: it
   // talks to this site only, so no storage provider's script, frame or endpoint is allowed in it, and no tracker.
   const providers = <T>(list: readonly T[]): T[] => (embed ? [] : [...list]);
@@ -86,7 +87,14 @@ export function cspDirectives({ embed, collab = [] }: CspOptions): [string, stri
     ["style-src", ["'self'", "'unsafe-inline'", ...providers(GOOGLE.style)]],
     ["img-src", ["'self'", "data:", "blob:"]],
     ["font-src", ["'self'", "data:"]],
-    ["connect-src", ["'self'", ...providers(PROVIDER_CONNECT), ...providers(trackerSources(collab))]],
+    [
+      "connect-src",
+      [
+        "'self'",
+        ...providers(PROVIDER_CONNECT),
+        ...providers(trackerSources([...collab, ...(collabServer ? [relayUrl(collabServer)] : [])])),
+      ],
+    ],
     ["media-src", ["'self'", "blob:"]],
     ["worker-src", ["'self'"]],
     ["frame-src", ["'self'", ...providers(GOOGLE.frame)]],

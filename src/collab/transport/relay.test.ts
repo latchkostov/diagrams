@@ -51,12 +51,12 @@ describeTransportConformance("WebSocket relay (real server)", (seed) => {
                 expect(envelope?.length).toBeGreaterThanOrEqual(48);
                 expect([...envelope!.subarray(0, 3)]).toEqual([0x4c, 0x44, 1]);
               }
-              for (const tap of taps) tap(bytes);
             } else {
               const hello = parseHello(Buffer.from(bytes).toString());
               expect(hello).toEqual({ t: "hello", v: 1, room: ids[seed] });
               expect(hello?.room).toHaveLength(43);
             }
+            for (const tap of taps) tap(bytes);
           });
         };
         relay.wss.on("connection", observe);

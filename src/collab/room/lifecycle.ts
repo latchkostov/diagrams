@@ -65,7 +65,7 @@ export interface RoomLibrary {
 }
 
 export interface RoomDeps {
-  transport(keys: RoomKeys): CollabTransport;
+  transport(keys: RoomKeys, allowed: () => boolean): CollabTransport | Promise<CollabTransport>;
   recovery?(): RecoveryStore | undefined;
   tab: TabRoomStore;
   library: RoomLibrary;
@@ -427,7 +427,12 @@ export class RoomLifecycle {
           signed = { ...signed, knock: member };
         }
       }
-      transport ??= this.deps.transport(keys);
+      transport ??= await this.deps.transport(keys, () => token === this.attempt && allowed());
+      if (token !== this.attempt) {
+        transport.close();
+        return;
+      }
+      if (!allowed()) throw new PrivateDiagramError();
       session = await CollabSession.open({
         room: o.link,
         transport,
