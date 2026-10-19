@@ -6,6 +6,7 @@ import { deriveRoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import { encodePresence } from "./presence";
+import * as Y from "yjs";
 import { DOC, frame, LIVE, PRESENCE } from "./protocol";
 import { seededBytes } from "./random";
 import { signEntry } from "./roster";
@@ -62,6 +63,16 @@ const rejected = (c: TestClient, reason: string) =>
 function unruly(c: TestClient): void {
   Object.defineProperty(c.session, "canEdit", { get: () => true });
   Object.defineProperty(c.session.signed!, "canEdit", { get: () => true });
+}
+
+/** `from`'s next broadcasts reach only `to` (one peer missing them, without anyone reconnecting). */
+function onlyTo(from: TestClient, to: TestClient): () => void {
+  const t = from.session.transport;
+  const send = t.send.bind(t);
+  t.send = (bytes, peer) => send(bytes, peer ?? to.session.transport.self);
+  return () => {
+    t.send = send;
+  };
 }
 
 describe("signed rooms", () => {
@@ -176,14 +187,16 @@ describe("signed rooms", () => {
     // its own.
     const signed = v.session.signed!;
     const mine = await signEntry(signed.identity, r.clients[0].session.keys.roomId, 0, {
-      n: 50,
+      n: 1,
       op: "cohost",
       who: signed.key,
+      deps: [],
     });
     const theirs = await signEntry(signed.identity, r.clients[0].session.keys.roomId, 0, {
-      n: 51,
+      n: 1,
       op: "admit",
       who: signed.key,
+      deps: [],
     });
     const forged = { ...theirs, by: r.host.key };
     const keys = await deriveRoomKeys(r.link);
@@ -209,7 +222,7 @@ describe("signed rooms", () => {
     }
   });
 
-  it("rosters converge: a late joiner gets the whole roster, and a summary that differs heals a gap", async () => {
+  it("rosters converge: a late joiner gets the whole roster", async () => {
     const r = await signedRoom(37);
     const [a] = r.clients;
     const b = await r.join("b", 372);
@@ -265,4 +278,106 @@ describe("signed rooms", () => {
     await r.settle();
     expect(verify.mock.calls.length).toBe(1);
   }, 60_000);
+
+  it("with no host or co-host here, an editor doesn't admit a newcomer: they view until one is back", async () => {
+    const r = await signedRoom(43);
+    const [a] = r.clients;
+    const b = await r.join("b", 432);
+    expect(b.session.canEdit).toBe(true);
+    // The host's connection goes (no handover): only b, a plain editor, is here.
+    await a.session.leave();
+    await r.settle();
+    const n = await r.join("n", 433);
+    await r.settle();
+    expect(b.session.signed!.isEditor(n.session.signed!.key)).toBe(false);
+    expect(n.session.canEdit).toBe(false);
+    expect(n.edit((d) => ({ ...d, title: "Too soon" }))).toBe(false);
+    expect(n.binding.refused).toBe("view-only");
+  });
+
+  it("a lost grant is recovered by roster anti-entropy, and the edit waiting for it applies in time", async () => {
+    const r = await signedRoom(39, { viewOnly: true });
+    const [a] = r.clients;
+    const b = await r.join("b", 392);
+    const c = await r.join("c", 393);
+    // The host's "Can edit" for b reaches b, but not c.
+    const restore = onlyTo(a, b);
+    expect(await a.session.appendRoster("admit", { who: b.session.signed!.key })).toBe(true);
+    await r.settle();
+    restore();
+    expect(b.session.canEdit).toBe(true);
+    expect(c.session.signed!.roster.size).toBe(a.session.signed!.roster.size - 1);
+    expect(b.edit((d) => ({ ...d, title: "From b" }))).toBe(true);
+    await r.settle();
+    expect(title(c)).toBe(canaryDiagram().title);
+    // Nobody reconnects: the next anti-entropy round's summaries say c's roster differs, and c gets the entries.
+    r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+    await r.settle();
+    expect(c.session.signed!.roster.log()).toEqual(a.session.signed!.roster.log());
+    expect(title(c)).toBe("From b");
+    expect(rejected(c, "unauthorised")).toBe(0);
+  });
+
+  it("only the held sender can supply its own missing grant: its roster isn't stuck behind its held edit", async () => {
+    const r = await signedRoom(40, { viewOnly: true });
+    const [a] = r.clients;
+    const b = await r.join("b", 402);
+    const c = await r.join("c", 403);
+    const restore = onlyTo(a, b);
+    expect(await a.session.appendRoster("admit", { who: b.session.signed!.key })).toBe(true);
+    await r.settle();
+    restore();
+    // The host goes: only b has the grant c lacks.
+    await a.session.leave();
+    await r.settle();
+    expect(b.edit((d) => ({ ...d, title: "From b" }))).toBe(true);
+    await r.settle();
+    expect(title(c)).toBe(canaryDiagram().title);
+    r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+    await r.settle();
+    expect(c.session.signed!.isEditor(b.session.signed!.key)).toBe(true);
+    expect(title(c)).toBe("From b");
+    expect(rejected(c, "unauthorised")).toBe(0);
+    expect(c.session.peers().some((p) => p.sender === b.session.senderId)).toBe(true);
+  });
+
+  it("a held update is read once: frames after it don't make it decoded again, and they're handled meanwhile", async () => {
+    const r = await signedRoom(41);
+    const [a] = r.clients;
+    const b = await r.join("b", 412);
+    await r.settle();
+    expect(a.session.signed!.isEditor(b.session.signed!.key)).toBe(true);
+    // b's update carries another Yjs client's structs: it doesn't count (not b's bound client), so it's held.
+    const other = new Y.Doc();
+    other.clientID = 777;
+    other.getMap("meta").set("title", "Not b's");
+    const send = (message: Uint8Array) => (b.session as unknown as { sendDoc(m: Uint8Array): void }).sendDoc(message);
+    const counts = vi.spyOn(a.session as unknown as { counts(...args: unknown[]): boolean }, "counts");
+    send(frame(DOC.update, Y.encodeStateAsUpdate(other)));
+    await r.settle();
+    for (let i = 0; i < 30; i++) send(frame(DOC.syncAck, new Uint8Array(32)));
+    await r.settle();
+    expect(counts).toHaveBeenCalledTimes(1);
+    // The frames after it were handled (not held behind it): only the update waits.
+    const held = (a.session as unknown as { held: Map<string, { items: unknown[] }> }).held;
+    expect(held.get(b.session.senderId)?.items).toHaveLength(1);
+    expect(title(a)).toBe(canaryDiagram().title);
+  });
+
+  it("an older presence frame's binding never replaces a newer one's", async () => {
+    const r = await signedRoom(42);
+    const keys = await deriveRoomKeys(r.link);
+    const mallory = await newIdentity();
+    const sender = seededBytes(80)(16);
+    const hex = Array.from(sender, (x) => x.toString(16).padStart(2, "0")).join("");
+    const theirs = new SignedRoom(keys, r.host.key, mallory);
+    const first = await theirs.bindMine(sender, 1);
+    const second = await theirs.bindMine(sender, 2);
+    const mine = new SignedRoom(keys, r.host.key, r.host);
+    expect(await mine.bindPeer(hex, sender, second, 5)).toBe("bound");
+    expect(await mine.bindPeer(hex, sender, first, 4)).toBe("same");
+    expect(mine.clientOf(hex)).toBe(2);
+    expect(await mine.bindPeer(hex, sender, first, 6)).toBe("bound");
+    expect(mine.clientOf(hex)).toBe(1);
+  });
 });

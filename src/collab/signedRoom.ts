@@ -23,6 +23,11 @@ export interface Binding {
   bind: string;
 }
 
+/** A peer's binding, and the presence frame it came in (an older frame never replaces a newer one). */
+interface PeerBinding extends Binding {
+  counter: number;
+}
+
 const frameBytes = (roomId: Uint8Array, head: Uint8Array, message: Uint8Array) =>
   signedBytes("livediagrams/frame/v1", roomId, head, message);
 
@@ -31,7 +36,7 @@ const bindBytes = (keys: RoomKeys, sender: Uint8Array, key: string, client: numb
 
 export class SignedRoom {
   readonly roster: SignedRoster;
-  private readonly bindings = new Map<string, Binding>();
+  private readonly bindings = new Map<string, PeerBinding>();
   private readonly listeners = new Set<() => void>();
   /** This session's own binding, as its presence says it. */
   mine?: Binding;
@@ -57,10 +62,9 @@ export class SignedRoom {
     return !!key && this.state().editors.has(key);
   }
 
-  /** Whether this person may edit: they can, or new people may edit (an editor admits them as their edits arrive). */
+  /** Whether this person can edit: the roster says so (a newcomer views until the host or a co-host admits them). */
   get canEdit(): boolean {
-    const s = this.state();
-    return s.editors.has(this.key) || !s.viewOnly;
+    return this.state().editors.has(this.key);
   }
 
   /** The key a sender bound, once its presence's binding verified. */
@@ -107,17 +111,23 @@ export class SignedRoom {
   }
 
   /**
-   * A presence's binding for `sender`: "same" (already held), "bound" (new, or its client id changed: verified),
-   * or why not: "rebound" (the sender bound another key first) or "bad-binding" (the signature doesn't verify).
+   * A presence's binding for `sender`, from its presence frame number `counter`: "same" (already held, or from an
+   * older frame than the one held: it changes nothing), "bound" (new, or its client id changed: verified), or why
+   * not: "rebound" (the sender bound another key first) or "bad-binding" (the signature doesn't verify).
    */
   async bindPeer(
     sender: string,
     senderBytes: Uint8Array,
     b: Binding,
+    counter: number,
   ): Promise<"same" | "bound" | "rebound" | "bad-binding"> {
     const held = this.bindings.get(sender);
     if (held && held.key !== b.key) return "rebound";
-    if (held && held.client === b.client && held.bind === b.bind) return "same";
+    if (held && held.counter >= counter) return "same";
+    if (held && held.client === b.client && held.bind === b.bind) {
+      held.counter = counter;
+      return "same";
+    }
     let sig: Uint8Array;
     try {
       sig = base64UrlToBytes(b.bind);
@@ -128,7 +138,8 @@ export class SignedRoom {
     // Checked again: another binding may have landed while this one verified.
     const now = this.bindings.get(sender);
     if (now && now.key !== b.key) return "rebound";
-    this.bindings.set(sender, { key: b.key, client: b.client, bind: b.bind });
+    if (now && now.counter >= counter) return "same";
+    this.bindings.set(sender, { key: b.key, client: b.client, bind: b.bind, counter });
     for (const l of this.listeners) l();
     return "bound";
   }

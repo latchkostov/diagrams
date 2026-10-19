@@ -2510,6 +2510,7 @@ const en = {
   "collab.letEdit": "Can edit",
   "collab.newViewOnly": "New people can view only",
   "collab.youViewOnly": "You can view this room. The host or a co-host can let you edit.",
+  "collab.nowEditing": "You can edit this room now.",
   "collab.refusedViewOnly":
     "Your change was undone: you can view this room, not edit it. Ask the host to let you edit.",
   "collab.watchTooLarge": "This run is too large to share with the room. The next one is shared.",

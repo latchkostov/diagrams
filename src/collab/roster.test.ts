@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { bytesToBase64Url, base64UrlToBytes } from "../interop/codec";
-import { fold, MAX_ENTRIES_PER_SIGNER, parseEntry, signEntry, SignedRoster, type RosterEntry } from "./roster";
+import {
+  fold,
+  MAX_ENTRIES_PER_SIGNER,
+  parseEntry,
+  signEntry,
+  SignedRoster,
+  type RosterEntry,
+  type RosterOp,
+} from "./roster";
 import { newIdentity, type Identity } from "./signing";
 import { seededRandom } from "./random";
 
@@ -10,8 +18,27 @@ async function people(n: number): Promise<Identity[]> {
   return Promise.all(Array.from({ length: n }, () => newIdentity()));
 }
 
-/** A roster as `host`'s room has it, and a second copy that gets the same entries in another order. */
 const roster = (host: Identity, epoch = 0) => new SignedRoster(host.key, ROOM, epoch);
+
+/** Another peer's copy of `from`'s roster (as it would get it on joining). */
+async function copyOf(from: SignedRoster): Promise<SignedRoster> {
+  const r = new SignedRoster(from.hostKey, ROOM, from.epoch);
+  await r.add(from.log());
+  return r;
+}
+
+/** An entry by `who` on exactly `deps` (a signer claiming to have seen only those), its counter its past's. */
+async function on(
+  r: SignedRoster,
+  signer: Identity,
+  op: RosterOp,
+  fields: { who?: string; viewOnly?: boolean },
+  deps: string[],
+): Promise<RosterEntry> {
+  const byId = new Map(r.log().map((e) => [e.sig, e]));
+  const n = 1 + Math.max(0, ...deps.map((d) => byId.get(d)!.n));
+  return signEntry(signer, ROOM, r.epoch, { n, op, ...fields, deps });
+}
 
 describe("the signed roster", () => {
   it("starts with the link's host key: the host edits, hosts and drives", async () => {
@@ -24,11 +51,13 @@ describe("the signed roster", () => {
     expect(s.editors.has(wren.key)).toBe(false);
   });
 
-  it("the host's grants count: admit, co-host, drive, policy", async () => {
+  it("the host's grants count: admit, co-host, drive, policy, each on the entries before it", async () => {
     const [host, wren, otter] = await people(3);
     const r = roster(host);
-    expect(await r.append(host, "admit", { who: wren.key })).toBeDefined();
-    expect(await r.append(host, "cohost", { who: otter.key })).toBeDefined();
+    const first = (await r.append(host, "admit", { who: wren.key }))!;
+    expect(first).toMatchObject({ n: 1, deps: [] });
+    const second = (await r.append(host, "cohost", { who: otter.key }))!;
+    expect(second).toMatchObject({ n: 2, deps: [first.sig] });
     expect(await r.append(host, "drive", { who: wren.key })).toBeDefined();
     expect(await r.append(host, "policy", { viewOnly: true })).toBeDefined();
     const s = r.state();
@@ -47,7 +76,7 @@ describe("the signed roster", () => {
     const genuine = (await r.append(host, "admit", { who: wren.key }))!;
     const target = roster(host);
     // Mallory signs an entry claiming to be the host's.
-    const own = await signEntry(mallory, ROOM, 0, { n: 2, op: "cohost", who: mallory.key });
+    const own = await signEntry(mallory, ROOM, 0, { n: 1, op: "cohost", who: mallory.key, deps: [] });
     const claimed: RosterEntry = { ...own, by: host.key };
     // The host's genuine entry, with its subject changed.
     const changed: RosterEntry = { ...genuine, who: mallory.key };
@@ -64,17 +93,37 @@ describe("the signed roster", () => {
     expect(target.state().editors.has(wren.key)).toBe(true);
   });
 
+  it("one signature has one spelling: aliases (its unused bits set) are refused, so they can't fill a quota", async () => {
+    const [host, wren] = await people(2);
+    const genuine = (await roster(host).append(host, "admit", { who: wren.key }))!;
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const last = alphabet.indexOf(genuine.sig.at(-1)!);
+    // The 86th character carries 6 bits, of which 2 are data: 15 other spellings decode to the same bytes.
+    const aliases = Array.from({ length: 4 }, (_, i) => alphabet[(last & ~3) | i])
+      .concat(Array.from({ length: 4 }, (_, i) => alphabet[(last & ~15) | (i << 2) | (last & 3)]))
+      .filter((c) => c !== genuine.sig.at(-1))
+      .map((c) => ({ ...genuine, sig: genuine.sig.slice(0, 85) + c }));
+    expect(aliases.length).toBeGreaterThan(0);
+    for (const alias of aliases) expect([...base64UrlToBytes(alias.sig)]).toEqual([...base64UrlToBytes(genuine.sig)]);
+    const target = roster(host);
+    expect(await target.add([...aliases, genuine])).toMatchObject({ added: 1, refused: aliases.length });
+    expect(target.size).toBe(1);
+  });
+
   it("refuses malformed entries before any verification", async () => {
     const [host] = await people(1);
     const r = roster(host);
+    const sig = "x".repeat(86);
     const bad = [
       null,
       [],
-      { n: 1, by: host.key, op: "admit", sig: "x".repeat(86) },
-      { n: 0, by: host.key, op: "admit", who: host.key, sig: "x".repeat(86) },
-      { n: 1, by: host.key, op: "remove", who: host.key, sig: "x".repeat(86) },
-      { n: 1, by: host.key, op: "policy", sig: "x".repeat(86) },
-      { n: 1, by: host.key, op: "admit", who: host.key, sig: "x".repeat(86), extra: 1 },
+      { n: 1, by: host.key, op: "admit", deps: [], sig },
+      { n: 0, by: host.key, op: "admit", who: host.key, deps: [], sig },
+      { n: 1, by: host.key, op: "remove", who: host.key, deps: [], sig },
+      { n: 1, by: host.key, op: "policy", deps: [], sig },
+      { n: 1, by: host.key, op: "admit", who: host.key, sig },
+      { n: 1, by: host.key, op: "admit", who: host.key, deps: ["b", "a"], sig },
+      { n: 1, by: host.key, op: "admit", who: host.key, deps: [], sig, extra: 1 },
     ];
     let checks = 0;
     expect(await r.add(bad, () => (checks++, true))).toMatchObject({ added: 0, refused: bad.length });
@@ -82,31 +131,93 @@ describe("the signed roster", () => {
     expect(bad.map(parseEntry).every((e) => e === undefined)).toBe(true);
   });
 
-  it("someone who can't edit gets nothing kept; an editor who isn't a co-host changes no roles", async () => {
-    const [host, wren, viewer] = await people(3);
+  it("a counter that isn't its past's is refused (an entry can't sort before what it saw)", async () => {
+    const [host, wren, otter] = await people(3);
     const r = roster(host);
-    await r.append(host, "admit", { who: wren.key });
-    // A viewer's entries (signed, but by someone who can't edit) aren't kept at all.
-    const self = await signEntry(viewer, ROOM, 0, { n: 5, op: "cohost", who: viewer.key });
-    expect(await r.add([self])).toMatchObject({ added: 0, refused: 1 });
-    // An editor's co-host entry is kept (it may yet sort before a grant) but changes nothing.
-    const made = await signEntry(wren, ROOM, 0, { n: 5, op: "cohost", who: wren.key });
-    expect(await r.add([made])).toMatchObject({ added: 1 });
-    expect(r.state().cohosts).toEqual([]);
-    expect(r.may(wren.key, "cohost")).toBe(false);
-    expect(r.may(wren.key, "admit")).toBe(true);
+    const first = (await r.append(host, "admit", { who: wren.key }))!;
+    const early = await signEntry(host, ROOM, 0, { n: 1, op: "admit", who: otter.key, deps: [first.sig] });
+    expect(await r.add([early])).toMatchObject({ added: 0, refused: 1 });
   });
 
-  it("while new people can only view, only the host and co-hosts admit", async () => {
-    const [host, wren, otter, newt] = await people(4);
+  it("only the host and co-hosts admit: an editor's admission never counts, and a viewer's entries aren't kept", async () => {
+    const [host, wren, viewer, newt] = await people(4);
     const r = roster(host);
-    await r.append(host, "admit", { who: wren.key });
-    await r.append(host, "cohost", { who: otter.key });
-    await r.append(host, "policy", { viewOnly: true });
+    const admitted = (await r.append(host, "admit", { who: wren.key }))!;
     expect(r.may(wren.key, "admit")).toBe(false);
-    expect(await r.append(wren, "admit", { who: newt.key })).toBeUndefined();
-    expect(await r.append(otter, "admit", { who: newt.key })).toBeDefined();
-    expect(r.state().editors.has(newt.key)).toBe(true);
+    expect(await r.add([await on(r, wren, "admit", { who: newt.key }, [admitted.sig])])).toMatchObject({
+      added: 0,
+      refused: 1,
+    });
+    expect(await r.add([await on(r, viewer, "cohost", { who: viewer.key }, [admitted.sig])])).toMatchObject({
+      added: 0,
+      refused: 1,
+    });
+    expect([...r.state().editors].sort()).toEqual([host.key, wren.key].sort());
+  });
+
+  it("a backdated admission can't get round 'view only': it would need host or co-host authority it never had", async () => {
+    // The review's case: the host admits an editor, changes the driver, then turns on view only; the editor signs an
+    // admission claiming to have seen only its own admission (sorting before the switch).
+    const [host, editor, viewer] = await people(3);
+    const r = roster(host);
+    const admitted = (await r.append(host, "admit", { who: editor.key }))!;
+    await r.append(host, "drive", { who: editor.key });
+    await r.append(host, "policy", { viewOnly: true });
+    const backdated = await on(r, editor, "admit", { who: viewer.key }, [admitted.sig]);
+    expect(backdated.n).toBe(2);
+    expect(await r.add([backdated])).toMatchObject({ added: 0, refused: 1 });
+    expect(r.state().editors.has(viewer.key)).toBe(false);
+  });
+
+  it("an admission concurrent with its admitter's 'Not a co-host' stays: what counted counts for good", async () => {
+    const [host, cohost, newt] = await people(3);
+    const base = roster(host);
+    const made = (await base.append(host, "cohost", { who: cohost.key }))!;
+    // A partition: the co-host admits a newcomer on one side; the host takes the co-hosting back on the other.
+    const side = await copyOf(base);
+    const admission = (await side.append(cohost, "admit", { who: newt.key }))!;
+    expect(side.state().editors.has(newt.key)).toBe(true);
+    const revoked = (await base.append(host, "uncohost", { who: cohost.key }))!;
+    // The side that admitted, then the revocation (it sorts first: same counter, the host's key may be lower).
+    expect(await side.add([revoked])).toMatchObject({ added: 1 });
+    expect(side.state().editors.has(newt.key)).toBe(true);
+    expect(side.state().cohosts).toEqual([]);
+    // The host's side, in either order.
+    expect(await base.add([admission])).toMatchObject({ added: 1 });
+    expect(base.state().editors.has(newt.key)).toBe(true);
+    expect(made.n).toBe(1);
+    // A fresh admission by the former co-host, on the revocation, doesn't count.
+    expect(await base.add([await on(base, cohost, "admit", { who: host.key }, base.heads())])).toMatchObject({
+      refused: 1,
+    });
+  });
+
+  it("an admission concurrent with turning on 'view only' stays: a co-host may admit, and it counted when made", async () => {
+    const [host, cohost, newt] = await people(3);
+    const base = roster(host);
+    await base.append(host, "cohost", { who: cohost.key });
+    const side = await copyOf(base);
+    const admission = (await side.append(cohost, "admit", { who: newt.key }))!;
+    const policy = (await base.append(host, "policy", { viewOnly: true }))!;
+    for (const [r, entry] of [
+      [side, policy],
+      [base, admission],
+    ] as const) {
+      expect(await r.add([entry])).toMatchObject({ added: 1 });
+      expect(r.state().editors.has(newt.key)).toBe(true);
+      expect(r.state().viewOnly).toBe(true);
+    }
+  });
+
+  it("an entry waits for its past, and counts once it's here", async () => {
+    const [host, wren, otter] = await people(3);
+    const source = roster(host);
+    const first = (await source.append(host, "admit", { who: wren.key }))!;
+    const second = (await source.append(host, "admit", { who: otter.key }))!;
+    const r = roster(host);
+    expect(await r.add([second])).toMatchObject({ added: 0, waiting: 1 });
+    expect(await r.add([first])).toMatchObject({ added: 2 });
+    expect(r.has(second.sig)).toBe(true);
   });
 
   it("a handover: the new host hosts, the old one is the first co-host, and Live stays as it was", async () => {
@@ -128,12 +239,10 @@ describe("the signed roster", () => {
 
   it("every peer folds the same roles from the same entries, whatever order they came in (a partition merges)", async () => {
     const [host, a, b, c, d] = await people(5);
-    // Two sides of a partition, each with the host's early grants, then each its own concurrent changes.
     const left = roster(host);
     await left.append(host, "cohost", { who: a.key });
     await left.append(host, "admit", { who: b.key });
-    const right = roster(host);
-    await right.add(left.log());
+    const right = await copyOf(left);
     await left.append(host, "drive", { who: b.key });
     await left.append(a, "cohost", { who: c.key });
     await right.append(a, "drive", { who: a.key });
@@ -145,19 +254,25 @@ describe("the signed roster", () => {
       Array.from({ length: 6 }, async () => {
         const r = roster(host);
         const shuffled = [...all].sort(() => random() - 0.5);
-        // In pieces, as peers would send them; an entry whose signer couldn't edit yet when it came is kept once it's
-        // sent again (a roster summary that differs asks for the whole roster).
+        // In pieces, as peers would send them: an entry waits for its past.
         await r.add(shuffled.slice(0, 3));
         await r.add(shuffled.slice(3));
-        await r.add(shuffled);
         const s = r.state();
-        return JSON.stringify([s.host, s.cohosts, [...s.editors].sort(), s.driver, s.viewOnly]);
+        return JSON.stringify([s.host, s.cohosts, [...s.editors].sort(), s.driver, s.viewOnly, r.size]);
       }),
     );
     expect(new Set(results).size).toBe(1);
-    // The same as folding the entries directly.
     const s = fold(host.key, all);
-    expect(results[0]).toBe(JSON.stringify([s.host, s.cohosts, [...s.editors].sort(), s.driver, s.viewOnly]));
+    expect(results[0]).toBe(
+      JSON.stringify([
+        s.host,
+        s.cohosts,
+        [...s.editors].sort(),
+        s.driver,
+        s.viewOnly,
+        new Set(all.map((e) => e.sig)).size,
+      ]),
+    );
   });
 
   it("is bounded: one signer's entries, and entries that would change nothing aren't made", async () => {
@@ -167,13 +282,12 @@ describe("the signed roster", () => {
     expect(await r.append(host, "policy", { viewOnly: false })).toBeUndefined();
     await r.append(host, "admit", { who: others[0].key });
     expect(await r.append(host, "admit", { who: others[0].key })).toBeUndefined();
-    // Drive changes back and forth, up to the signer's bound.
     let made = r.size;
     for (let i = 0; made < MAX_ENTRIES_PER_SIGNER; i++)
       if (await r.append(host, "drive", { who: i % 2 ? host.key : others[0].key })) made++;
     expect(r.size).toBe(MAX_ENTRIES_PER_SIGNER);
     expect(await r.append(host, "admit", { who: others[1].key })).toBeUndefined();
-  }, 30_000);
+  }, 60_000);
 
   it("verifies each entry once, within the budget it's given: the rest are left for when they're sent again", async () => {
     const [host, ...rest] = await people(5);
@@ -183,7 +297,6 @@ describe("the signed roster", () => {
     let budget = 2;
     expect(await r.add(source.log(), () => budget-- > 0)).toMatchObject({ added: 2, throttled: 2 });
     let checks = 0;
-    // Sent again: the two kept aren't verified again.
     expect(await r.add(source.log(), () => (checks++, true))).toMatchObject({ added: 2, throttled: 0 });
     expect(checks).toBe(2);
   });

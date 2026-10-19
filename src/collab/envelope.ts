@@ -172,6 +172,8 @@ export class Sealer {
 /** Opens frames from other sessions, keeping one replay window per sender and channel. */
 export class Opener {
   private windows = new Map<string, ReplayWindow>();
+  /** A deferred frame's subkey, until it's accepted (dropped with the frame otherwise). */
+  private readonly deferredKeys = new WeakMap<object, Promise<CryptoKey>>();
   private senders = new Set<string>();
   private keys: KeyCache;
 
@@ -232,10 +234,13 @@ export class Opener {
     } catch {
       return { ok: false, reason: "auth-failed" };
     }
-    this.keys.keep(channel, sender, pending);
     const opened = { ok: true as const, channel, sender, senderBytes, counter, plaintext, header: head.slice() };
-    if (deferred) return opened;
-    const accepted = this.accept(opened);
+    // A deferred frame's subkey isn't kept until it's accepted: frames under invented sender ids keep nothing.
+    if (deferred) {
+      this.deferredKeys.set(opened, pending);
+      return opened;
+    }
+    const accepted = this.accept(opened, pending);
     return accepted === true ? opened : { ok: false, reason: accepted };
   }
 
@@ -244,7 +249,10 @@ export class Opener {
    * meanwhile, the sender cap). The window is looked up again: another frame from this sender may have been opened
    * while this one was decrypting.
    */
-  accept(opened: { channel: Channel; sender: string; counter: number }): true | Rejection {
+  accept(
+    opened: { channel: Channel; sender: string; counter: number },
+    key: Promise<CryptoKey> | undefined = this.deferredKeys.get(opened),
+  ): true | Rejection {
     const { channel, sender, counter } = opened;
     if (!this.senders.has(sender) && this.senders.size >= COLLAB_LIMITS.maxSenders) return "too-many-senders";
     const windowKey = `${channel}:${sender}`;
@@ -256,6 +264,7 @@ export class Opener {
     const again = w.check(counter);
     if (again !== "ok") return again === "replay" ? "replay" : again === "stale" ? "stale" : "bad-counter";
     this.senders.add(sender);
+    if (key) this.keys.keep(channel, sender, key);
     w.accept(counter);
     return true;
   }

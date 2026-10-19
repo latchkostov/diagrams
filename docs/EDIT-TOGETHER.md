@@ -104,13 +104,15 @@ reaches the room: not its simulation's name, not its run.
 
 ## Who can edit
 
-- **Everyone, by default.** New people can edit as soon as they join, as before.
+- **Everyone, by default.** New people can edit a moment after they join: the host's page (or, with the host away,
+  a co-host's) lets them in. With neither here, new people can view until one of them is back.
 - **New people can view only.** The host or a co-host can turn this on in the chip's menu. From then on, people who
   join can see the diagram, its changes and everyone's pointers, and watch Live, but not edit: a change they try is
   undone at once, and a note says why. The people list says "can view". **Can edit** in the people menu lets them
   edit. People who could already edit keep that.
-- **Viewers stay viewers.** Someone who can edit can't be made a viewer again yet; that comes with removing people
-  from a room.
+- **Editing, once given, stays.** Someone who can edit can't be made a viewer again yet; that comes with removing
+  people from a room. That's also why a change made at the same moment elsewhere (the switch turned on, someone's
+  co-hosting taken back) never undoes a "Can edit" that was already given.
 
 ## Signed roles
 
@@ -119,9 +121,14 @@ switch are a list of changes, each signed by the person who made it, and every p
 room's link names the host's public key, so a page trusts only changes it can trace back to the host. Every message
 a person sends (an edit, a Live command, their presence) is signed by them too.
 
+- **Each change says what its maker had seen.** Whether it counts depends only on that: the maker must have been
+  the host or a co-host there. So everyone ends up with the same roles whatever order changes reach them in, and a
+  change that counted always counts.
 - **What this holds, as long as the others run Live Diagrams as published:**
   - a viewer's edits reach nobody;
-  - only the driver moves the shared Live run;
+  - only the host and co-hosts let people edit, so nobody else can get round "New people can view only";
+  - only the driver moves the shared Live run, and handing it over only counts to someone the host or a co-host let
+    drive;
   - only the host and co-hosts change roles, and only the host hands the room on;
   - nobody can send edits, Live commands or role changes as someone else.
 - **What a modified page can still do:**
@@ -129,7 +136,10 @@ a person sends (an edit, a Live command, their presence) is signed by them too.
     (anyone who can see the diagram can copy it);
   - if it can edit, change anything, as any editor can (people who can edit are trusted to);
   - send a lot of messages: every page bounds what it takes from one person, but can't stop them sending;
-  - claim another editor's place in the change history (attribution between editors is best-effort).
+  - claim another editor's place in the change history (attribution between editors is best-effort);
+  - if it was a co-host, keep making role changes that claim to come from before its co-hosting was taken back:
+    that can't be told apart from a change made at the same moment, so it counts. Starting a new room, or removing
+    people (coming later), is what cuts it off.
 - **Older links.** A link made before signed rooms opens as before, as a room without roles, for one more release.
   There, roles are what each page says, and a modified page could ignore them.
 - **Not yet independently reviewed.** The signing design hasn't had an independent review either. It only adds

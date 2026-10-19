@@ -128,13 +128,34 @@ const HANDOFF_WAIT_MS = 10_000;
  * The room's live channel over its session: JSON, split into parts when it's larger than a frame, and checked in
  * full as it arrives (./liveWire.ts). Nothing is sent while `allowed` says no.
  */
+export type Verdict = "pass" | "drop" | "hold";
+
+/** A channel whose messages pass a gate: held ones wait (a while, a few) for `release` to ask the gate again. */
+export interface GatedChannel extends LiveChannel {
+  release(): void;
+}
+
+/** Messages a gated channel holds at most, and for how long. */
+const HELD_MESSAGES = 8;
+
 export function sessionChannel(
   session: CollabSession,
   allowed: () => boolean = () => true,
-  counts: (sender: string, message: LiveMessage) => boolean = () => true,
-): LiveChannel {
+  gate: (sender: string, message: LiveMessage) => Verdict = () => "pass",
+): GatedChannel {
   let id = 0;
   const decoder = new LiveDecoder();
+  const listeners = new Set<(sender: string, from: string, message: LiveMessage) => void>();
+  let held: { sender: string; from: string; message: LiveMessage; at: number }[] = [];
+  let stop: (() => void) | undefined;
+  const deliver = (sender: string, from: string, message: LiveMessage) => {
+    for (const listener of [...listeners]) listener(sender, from, message);
+  };
+  const judge = (h: { sender: string; from: string; message: LiveMessage; at: number }) => {
+    const verdict = gate(h.sender, h.message);
+    if (verdict === "pass") deliver(h.sender, h.from, h.message);
+    else if (verdict === "hold") held = [...held.slice(-(HELD_MESSAGES - 1)), h];
+  };
   return {
     send(message, to): SendResult {
       if (!allowed()) return "refused";
@@ -144,10 +165,24 @@ export function sessionChannel(
       return "sent";
     },
     onMessage(listener) {
-      return session.onLive((sender, from, payload) => {
+      listeners.add(listener);
+      // One subscription however many listen: each message is decoded once.
+      stop ??= session.onLive((sender, from, payload) => {
         const message = decoder.push(sender, payload);
-        if (message && counts(sender, message)) listener(sender, from, message);
+        if (message) judge({ sender, from, message, at: performance.now() });
       });
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size) return;
+        stop?.();
+        stop = undefined;
+      };
+    },
+    release() {
+      const now = performance.now();
+      const waiting = held.filter((h) => now - h.at < HANDOFF_MS);
+      held = [];
+      for (const h of waiting) judge(h);
     },
   };
 }
@@ -173,9 +208,9 @@ export class WatchTogether {
   private wentLive = false;
   private disposed = false;
   private target: { documentId?: string; eligible: boolean };
-  private readonly channel: LiveChannel;
+  private readonly channel: GatedChannel;
   /** A channel that's never refused: requests and answers say nothing about anyone's Live. */
-  private readonly control: LiveChannel;
+  private readonly control: GatedChannel;
   private readonly stops: (() => void)[] = [];
   private viewStop?: () => void;
   /** The camera has the driver's view (since the last opt-in). */
@@ -208,8 +243,11 @@ export class WatchTogether {
   private inertStop?: () => void;
   private guardStop?: () => void;
   private snapshotKey = "";
-  /** A signed room: whose run messages still count for a moment (the last driver, whom it handed to), until when. */
-  private readonly graces = new Map<string, number>();
+  /**
+   * A signed room: the last driver, whose messages for the run it drove still count for a moment after the roster
+   * moved on (until its handoff, or HANDOFF_MS). Nothing extends it.
+   */
+  private grace?: { key: string; run?: string; until: number };
   private driverKey?: string;
   private wasHosting?: boolean;
 
@@ -225,7 +263,9 @@ export class WatchTogether {
       () => this.mayShare(),
       (sender, m) => this.moves(sender, m),
     );
-    this.control = sessionChannel(session, undefined, (sender, m) => m.t !== "handoff" || this.moves(sender, m, false));
+    this.control = sessionChannel(session, undefined, (sender, m) =>
+      m.t === "handoff" ? this.moves(sender, m, false) : "pass",
+    );
     const mine = roster.get();
     this.state = {
       followView: false,
@@ -361,25 +401,28 @@ export class WatchTogether {
 
   /**
    * Whether a shared run's message counts (a signed room): from the driver (the roster's while they're here, else
-   * the host), or from someone whose messages still count for a moment (the last driver; whom it handed the run to).
-   * Followers' requests for the run (hello) count from anyone. `note`: the run's own channel takes note of a handoff
-   * (the control channel only asks).
+   * the host), or, for the run it drove, from the last driver for a moment after the roster moved on. A handoff
+   * counts only to the driver the roster names: one that comes before the roster says so waits for it (a while),
+   * and one to anyone else changes nothing, so a handoff never grants anyone the run. Followers' requests for the
+   * run (hello) count from anyone. `note`: the run's own channel ends the last driver's moment at its handoff (the
+   * control channel only asks).
    */
-  private moves(sender: string, m: LiveMessage, note = true): boolean {
-    if (!this.session.signed || m.t === "hello") return true;
+  private moves(sender: string, m: LiveMessage, note = true): Verdict {
+    if (!this.session.signed || m.t === "hello") return "pass";
     const key = this.keyOf(sender);
-    if (!key) return false;
-    const now = performance.now();
-    const driving = key === this.keyOf(this.rosterNow().driver);
-    const grace = (this.graces.get(key) ?? -Infinity) > now;
-    if (!driving && !grace) return false;
-    if (m.t === "handoff" && note) {
-      // The run handed on: whom it went to counts for a moment too, until the roster says so as well.
-      const to = this.keyOf(m.to);
-      if (to) this.graces.set(to, now + HANDOFF_MS);
-      if (!driving) this.graces.delete(key);
-    }
-    return true;
+    if (!key) return "drop";
+    const driverKey = this.keyOf(this.rosterNow().driver);
+    const grace = this.grace;
+    const lingering =
+      !!grace && grace.key === key && performance.now() < grace.until && "run" in m && m.run === grace.run;
+    if (key !== driverKey && !lingering) return "drop";
+    if (m.t !== "handoff") return "pass";
+    const to = this.keyOf(m.to);
+    if (!to || to === key) return "drop";
+    // Handed to whom the roster doesn't (yet) name as driver: it waits for the roster.
+    if (to !== driverKey) return "hold";
+    if (note && lingering) this.grace = undefined;
+    return "pass";
   }
 
   /** This person's presence: their member id, and the roster while they host. */
@@ -1099,10 +1142,14 @@ export class WatchTogether {
     const r = this.rosterNow();
     const signed = this.session.signed;
     if (signed) {
-      // The driver changed: the last one's run messages still count for a moment (its handoff is on its way).
+      // The driver changed: the last one's messages for its run still count for a moment (its handoff is on its way).
       const key = this.keyOf(r.driver);
-      if (this.driverKey && key !== this.driverKey) this.graces.set(this.driverKey, performance.now() + HANDOFF_MS);
+      if (this.driverKey && key !== this.driverKey)
+        this.grace = { key: this.driverKey, run: this.state.show?.run, until: performance.now() + HANDOFF_MS };
       this.driverKey = key;
+      // A handoff that came before the roster named its driver: asked again.
+      this.control.release();
+      this.channel.release();
       const hosting = this.isHosting;
       if (this.wasHosting === false && hosting) this.notices.told("host", "");
       this.wasHosting = hosting;

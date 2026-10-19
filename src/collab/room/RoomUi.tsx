@@ -576,7 +576,17 @@ function RoomAnnouncer({ session }: { session: CollabSession }) {
     });
   }, [session]);
   // Following the host's Live: its phase as it changes (joining, catching up, following, their connection dropped).
-  const following = followingAnnouncement(useWatch().state);
+  const watching = useWatch().state;
+  const following = followingAnnouncement(watching);
+  // A signed room: this person's editing changing (let edit, or viewing).
+  const canEdit = watching?.signed ? watching.canEdit : undefined;
+  const lastCanEdit = useRef(canEdit);
+  useEffect(() => {
+    const was = lastCanEdit.current;
+    lastCanEdit.current = canEdit;
+    if (was === undefined || canEdit === undefined || was === canEdit) return;
+    setNote(canEdit ? t("collab.nowEditing") : t("collab.youViewOnly"));
+  }, [canEdit]);
   return (
     <span className="sr-only" role="status" data-testid="room-announce">
       {CHIP_TEXT[state](peers)}
@@ -721,7 +731,9 @@ function OpenChip({
         <button
           type="button"
           className="ix-shared room-chip"
-          aria-label={t("collab.chipLabel", { status: text })}
+          aria-label={t("collab.chipLabel", {
+            status: watching?.signed && !watching.canEdit ? `${text} · ${t("collab.roleViewing")}` : text,
+          })}
           {...props}
           {...data}
         >
@@ -813,19 +825,24 @@ function personEntries(watch: WatchTogether, w: WatchState, session: CollabSessi
               },
             ]
           : []),
-        roles.cohost
-          ? {
-              type: "item",
-              testId: "room-remove-cohost",
-              title: t("collab.removeCohost"),
-              onSelect: () => watch.setCohost(p.sender, false),
-            }
-          : {
-              type: "item",
-              testId: "room-make-cohost",
-              title: t("collab.makeCohost"),
-              onSelect: () => watch.setCohost(p.sender, true),
-            },
+        // The host is never a co-host: a co-host's menu for them has no co-host row.
+        ...(roles.host
+          ? []
+          : [
+              roles.cohost
+                ? {
+                    type: "item" as const,
+                    testId: "room-remove-cohost",
+                    title: t("collab.removeCohost"),
+                    onSelect: () => watch.setCohost(p.sender, false),
+                  }
+                : {
+                    type: "item" as const,
+                    testId: "room-make-cohost",
+                    title: t("collab.makeCohost"),
+                    onSelect: () => watch.setCohost(p.sender, true),
+                  },
+            ]),
         roles.driving
           ? { type: "item", testId: "room-take-back", title: t("collab.takeBack"), onSelect: () => watch.takeBack() }
           : {

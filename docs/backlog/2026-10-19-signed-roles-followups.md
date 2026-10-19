@@ -11,7 +11,10 @@ restarting the run.
 - **A viewer's canvas.** A viewer's edit is undone with a note. A read-only canvas (no edit affordances while
   viewing) would say it before they try.
 - **Making an editor a viewer again, and removing people,** need a new epoch with the content key re-wrapped
-  (P5); until then, roles only add editors.
+  (P5); until then, roles only add editors. A new epoch is also what cuts off a former co-host who signs entries
+  claiming to predate "Not a co-host" (they can't be told from concurrent honest ones, so they count).
+- **Newcomers with no lead here.** Only the host and co-hosts admit, so with both away a newcomer views until one is
+  back. A "let people in while I'm away" grant to named editors (or P5's knock) would cover it.
 - **A duplicated tab the BroadcastChannel check misses** shares its identity with the original: both are the same
   person, and the roles resolve to the lowest sender, but nothing re-mints the copy's key mid-session (P3 re-minted
   the member id; a key can't be re-bound to the same sender).
@@ -19,6 +22,8 @@ restarting the run.
   first (a denial of service on that newcomer, not an impersonation). Knock-to-join (P5) sends the binding before
   any frame.
 - **Roster growth.** Every newcomer's admit is an entry, and every drive change; a very long room could reach 1,024
-  entries (or 256 from the host), and then no more role changes. A compacted roster (a signed snapshot) would lift it.
+  entries (or 256 from the host), and then no more role changes. A compacted roster (a signed snapshot at a new
+  epoch) would lift it. Each new entry's check folds its causal past (fine at these bounds; an incremental fold
+  would scale further).
 - **Anti-entropy cost.** The roster summary is one small signed frame per peer every round; a full roster goes to a
   peer only when its summary differs (four times a window at most).

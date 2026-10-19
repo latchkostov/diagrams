@@ -153,7 +153,14 @@ interface Held {
   signature: Uint8Array;
   /** Once verified (and reassembled): the document message. */
   msg?: { type: number; payload: Uint8Array };
+  /** An update's struct clients, read once (null: undecodable). */
+  clients?: Set<number> | null;
+  /** The roster and bindings' revision it last didn't count at. */
+  checkedAt?: number;
 }
+
+/** What changes the document: what has to count before it's applied, in order. */
+const isMutation = (msg: { type: number }) => msg.type === DOC.update || msg.type === DOC.syncReply;
 
 /** A roster summary: which entries a peer holds (not a security check: a mismatch only asks for the entries). */
 function rosterSummary(sigs: readonly string[]): string {
@@ -243,6 +250,8 @@ export class CollabSession {
   /** Newcomers this session is admitting (an entry being signed). */
   private readonly admitting = new Set<string>();
   private summary?: string;
+  /** Counts changes to the roster and to bindings: a held update that didn't count is checked again after one. */
+  private authRevision = 0;
   private outbox: Promise<void> = Promise.resolve();
   private inbox: Promise<void> = Promise.resolve();
   private proofJob: Promise<void> = Promise.resolve();
@@ -363,6 +372,7 @@ export class CollabSession {
   /** The roster or a binding changed: held frames may count now, a newcomer may need admitting, the UI re-reads. */
   private signedChanged(): void {
     if (this.status === "left" || this.leaving) return;
+    this.authRevision++;
     this.inbox = this.inbox.then(() => this.drainAll()).catch(() => this.reject("internal"));
     this.admitNewcomers();
     this.emit();
@@ -370,8 +380,8 @@ export class CollabSession {
 
   /**
    * While new people may edit, each newcomer here (a bound key the roster doesn't name as an editor) is admitted by
-   * one editor: the host if here, else the earliest co-host here, else the editor here with the lowest sender id.
-   * Their edits are held by everyone until the entry arrives.
+   * one person: the host if here, else the earliest co-host here (only they can admit: ../roster.ts). Until then the
+   * newcomer views; with neither here, they view until one is.
    */
   private admitNewcomers(): void {
     const room = this.signed;
@@ -386,9 +396,7 @@ export class CollabSession {
     const newcomers = [...new Set(here.filter((h) => !s.editors.has(h.key)).map((h) => h.key))];
     if (!newcomers.length) return;
     const admitter =
-      here.find((h) => h.key === s.host) ??
-      s.cohosts.map((c) => here.find((h) => h.key === c)).find((h) => !!h) ??
-      here.find((h) => s.editors.has(h.key));
+      here.find((h) => h.key === s.host) ?? s.cohosts.map((c) => here.find((h) => h.key === c)).find((h) => !!h);
     if (admitter?.sender !== this.senderId) return;
     for (const key of newcomers) {
       if (this.admitting.has(key)) continue;
@@ -840,11 +848,12 @@ export class CollabSession {
       if (!this.verifies.take(sender, held === state.key && room.clientOf(sender) === state.client ? 1 : 2))
         return this.reject("verify-throttled");
       if (!(await room.verifyFrame(state.key, opened.header, message, signature))) return this.reject("bad-signature");
-      const bound = await room.bindPeer(sender, opened.senderBytes, {
-        key: state.key,
-        client: state.client,
-        bind: state.bind,
-      });
+      const bound = await room.bindPeer(
+        sender,
+        opened.senderBytes,
+        { key: state.key, client: state.client, bind: state.bind },
+        opened.counter,
+      );
       if (bound === "rebound" || bound === "bad-binding") return this.reject(bound);
       const accepted = this.opener.accept(opened);
       if (accepted !== true) return this.reject(accepted);
@@ -869,73 +878,73 @@ export class CollabSession {
     }
     if (!this.rate.take(sender, bytes.length)) return this.reject("rate-limited");
     const item: Held = { from, bytes: bytes.length, opened, message, signature };
+    // A sender with frames held: this one goes behind them (their order matters), and they go as far as they can.
     if (this.held.has(sender)) {
       this.hold(sender, item);
       return this.drain(sender);
     }
-    if ((await this.docStep(item)) === "hold") this.hold(sender, item);
-  }
-
-  /** One held (or new) document frame, as far as it can go now: "hold" when it doesn't count yet. */
-  private async docStep(item: Held): Promise<"done" | "hold"> {
-    const room = this.signed!;
-    const sender = item.opened.sender;
-    if (!item.msg) {
-      const key = room.keyOf(sender);
-      if (!key) return "hold";
-      if (!this.verifies.take(sender, 1)) {
-        this.reject("verify-throttled");
-        return "done";
-      }
-      if (!(await room.verifyFrame(key, item.opened.header, item.message, item.signature))) {
-        this.reject("bad-signature");
-        return "done";
-      }
-      const accepted = this.opener.accept(item.opened);
-      if (accepted !== true) {
-        this.reject(accepted);
-        return "done";
-      }
-      let msg = unframe(item.message);
-      if (!msg) {
-        this.reject("malformed");
-        return "done";
-      }
-      if (msg.type === DOC.fragment) {
-        const part = this.reassembler.add(sender, msg.payload);
-        if ("error" in part) {
-          this.reject(part.error);
-          return "done";
-        }
-        if ("pending" in part) return "done";
-        msg = unframe(part.done);
-        if (!msg || msg.type === DOC.fragment) {
-          this.reject("malformed");
-          return "done";
-        }
-      }
-      item.msg = msg;
-      this.resize(sender, item, msg.payload.length);
-    }
-    if (!this.counts(sender, item.msg)) return "hold";
-    await this.handleDoc(item.from, sender, item.msg);
-    return "done";
+    if (!room.keyOf(sender)) return this.hold(sender, item);
+    if (!(await this.open(item))) return;
+    if (!isMutation(item.msg!) || this.counts(sender, item)) return this.handleDoc(from, sender, item.msg!);
+    item.checkedAt = this.authRevision;
+    this.hold(sender, item);
   }
 
   /**
-   * Whether a verified document message counts now: a direct update from an editor, with structs of its own bound
-   * client id only; a sync reply from an editor; anything else from anyone bound.
+   * A document frame from a bound sender, verified and opened: its counter recorded, its fragments put together.
+   * False when there's nothing (more) to do with it: refused, or a part of a message still incomplete.
    */
-  private counts(sender: string, msg: { type: number; payload: Uint8Array }): boolean {
+  private async open(item: Held): Promise<boolean> {
     const room = this.signed!;
-    const key = room.keyOf(sender);
-    if (msg.type === DOC.syncReply) return room.isEditor(key);
-    if (msg.type !== DOC.update) return true;
-    if (!room.isEditor(key)) return false;
+    const sender = item.opened.sender;
+    if (!this.verifies.take(sender, 1)) {
+      this.reject("verify-throttled");
+      return false;
+    }
+    if (!(await room.verifyFrame(room.keyOf(sender)!, item.opened.header, item.message, item.signature))) {
+      this.reject("bad-signature");
+      return false;
+    }
+    const accepted = this.opener.accept(item.opened);
+    if (accepted !== true) {
+      this.reject(accepted);
+      return false;
+    }
+    let msg = unframe(item.message);
+    if (!msg) {
+      this.reject("malformed");
+      return false;
+    }
+    if (msg.type === DOC.fragment) {
+      const part = this.reassembler.add(sender, msg.payload);
+      if ("error" in part) {
+        this.reject(part.error);
+        return false;
+      }
+      if ("pending" in part) return false;
+      msg = unframe(part.done);
+      if (!msg || msg.type === DOC.fragment) {
+        this.reject("malformed");
+        return false;
+      }
+    }
+    item.msg = msg;
+    this.resize(sender, item, msg.payload.length);
+    return true;
+  }
+
+  /**
+   * Whether a verified update or sync reply counts now: a direct update from an editor, with structs of its own
+   * bound client id only (read once per held update); a sync reply from an editor.
+   */
+  private counts(sender: string, item: Held): boolean {
+    const room = this.signed!;
+    if (!room.isEditor(room.keyOf(sender))) return false;
+    if (item.msg!.type === DOC.syncReply) return true;
     // Undecodable: it counts, and the guard refuses it (its sender quarantined, as ever).
-    const clients = structClients(msg.payload);
+    if (item.clients === undefined) item.clients = structClients(item.msg!.payload) ?? null;
     const own = room.clientOf(sender);
-    return !clients || [...clients].every((c) => c === own);
+    return !item.clients || [...item.clients].every((c) => c === own);
   }
 
   private resize(sender: string, item: Held, bytes: number): void {
@@ -973,15 +982,55 @@ export class CollabSession {
     if (this.presence.remove(sender)) this.emit();
   }
 
-  /** A sender's held frames, in order, as far as they count now. */
+  /**
+   * A sender's held frames, as far as they go now. Frames wait for their sender's binding (in order); then the
+   * roster and sync messages among them are handled at once (a grant one carries may be what the rest wait for),
+   * and the updates and sync replies in order, each once it counts. One that didn't count is checked again only once
+   * the roster or a binding has changed since (another frame arriving changes nothing for it).
+   */
   private async drain(sender: string): Promise<void> {
     const q = this.held.get(sender);
-    if (!q) return;
-    while (q.items.length && this.held.get(sender) === q && !this.leaving) {
-      const item = q.items[0];
-      if ((await this.docStep(item)) === "hold") return;
-      q.items.shift();
+    const room = this.signed;
+    if (!q || !room) return;
+    const remove = (item: Held) => {
+      q.items.splice(q.items.indexOf(item), 1);
       q.bytes -= item.bytes;
+    };
+    for (let progress = true; progress && this.held.get(sender) === q && !this.leaving;) {
+      progress = false;
+      let blocked = false;
+      for (const item of [...q.items]) {
+        if (this.held.get(sender) !== q) return;
+        if (!item.msg) {
+          if (!room.keyOf(sender)) break;
+          const ok = await this.open(item);
+          if (!ok) {
+            remove(item);
+            progress = true;
+            continue;
+          }
+        }
+        const msg = item.msg!;
+        if (!isMutation(msg)) {
+          remove(item);
+          await this.handleDoc(item.from, sender, msg);
+          progress = true;
+          continue;
+        }
+        if (blocked) continue;
+        if (item.checkedAt === this.authRevision) {
+          blocked = true;
+          continue;
+        }
+        item.checkedAt = this.authRevision;
+        if (!this.counts(sender, item)) {
+          blocked = true;
+          continue;
+        }
+        remove(item);
+        await this.handleDoc(item.from, sender, msg);
+        progress = true;
+      }
     }
     if (this.held.get(sender) === q && !q.items.length) {
       q.stop();
