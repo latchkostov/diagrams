@@ -68,6 +68,31 @@ jobs:
           path: tests/.output/property-results.json
           retention-days: 14
 
+  # The same live runs, tweaks and scrub included, must give the same run digests in Chromium, Firefox and WebKit as
+  # in Node (shared Live design, P1; docs/PARITY.md, "Across engines"). Every public example's saved simulations,
+  # about half a minute; installing Firefox and WebKit with their system libraries costs more than the run, so it's
+  # here rather than on every pull request (src/sim/determinism.test.ts guards the code on every one).
+  engines:
+    name: Engine determinism (Chromium, Firefox, WebKit)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - name: Install the three browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Run digests in every engine
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: tests/.output/engines-results.json
+        run: pnpm test:engines --reporter=list,json
+      - name: Upload the results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-engines
+          path: tests/.output/engines-results.json
+          retention-days: 14
+
   native-unit:
     name: Native unit (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -337,11 +362,12 @@ jobs:
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:
     name: Report failure
-    needs: [e2e, native-unit, native-e2e, properties]
+    needs: [e2e, native-unit, native-e2e, properties, engines]
     if: >-
       always() && (needs.e2e.result == 'failure' || needs.native-unit.result == 'failure' ||
       needs.native-e2e.result == 'failure' || needs.native-unit.result == 'cancelled' ||
-      needs.native-e2e.result == 'cancelled' || needs.properties.result == 'failure')
+      needs.native-e2e.result == 'cancelled' || needs.properties.result == 'failure' ||
+      needs.engines.result == 'failure')
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
@@ -367,6 +393,9 @@ jobs:
           args=()
           for f in results/nightly-results-properties/property-results.json; do
             [ -f "$f" ] && args+=("Random property tests: new seeds, 20x runs=$f")
+          done
+          for f in results/nightly-results-engines/engines-results.json; do
+            [ -f "$f" ] && args+=("Engine determinism: Chromium, Firefox, WebKit=$f")
           done
           for f in results/nightly-results-dev-*/results.json; do
             [ -f "$f" ] && args+=("Dev server: every project, once=$f")

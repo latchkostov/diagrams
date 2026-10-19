@@ -48,6 +48,9 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
   const required = ((rate + injections) * resolveMultiplier(simulation.multipliers?.traffic)) / 60;
   if (!Number.isFinite(required)) return Number.MAX_SAFE_INTEGER;
   if (required <= 1) return 1;
-  const power = 10 ** Math.floor(Math.log10(required));
+  // The largest power of ten at or below `required`, by multiplying: Math.log10 may differ in the last bit between
+  // JS engines, and the scale decides every sampled dot (shared Live, docs/PARITY.md).
+  let power = 1;
+  while (power * 10 <= required) power *= 10;
   return Math.min(Number.MAX_SAFE_INTEGER, [1, 2, 5, 10].find((value) => value * power >= required)! * power);
 }
