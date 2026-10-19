@@ -26,6 +26,12 @@ declare global {
   }
 }
 
+/**
+ * Whether this build names any tracker. Without one a room can never find anyone: an e2e page given no endpoints,
+ * or a copy built without any. The room then says so instead of "Could not connect".
+ */
+export const hasTrackers = () => roomEndpoints().trackers.length > 0;
+
 export function roomEndpoints(): RoomEndpoints {
   if (import.meta.env.VITE_E2E === "1") {
     const test = window.__collabEndpoints;
