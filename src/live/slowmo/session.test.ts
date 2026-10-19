@@ -39,10 +39,12 @@ const fingerprint = (engine: SimEngine) => {
 };
 
 describe("slow motion session", () => {
-  it("starting from paused Inputs flushes the pending rebuild before recording", () => {
+  it.each([0, 2000])("starting from paused Inputs waits for the rebuild before recording (at %s)", (at) => {
     vi.useFakeTimers();
     try {
       const { c, slow } = setup({ traffic: true, sim: "black-friday", replayDelayMs: 250 });
+      c.seek(at);
+      vi.runAllTimers();
       c.setPlaying(false);
       c.subscribe(() => {
         if (c.getState().generation !== generation) {

@@ -118,6 +118,27 @@ async function traceKafkaOrder(page: Page, controlled = false) {
 }
 
 test.describe("message trace", () => {
+  test("Live downloads TraceCard only when tracing starts", async ({ page }) => {
+    const downloads: string[] = [];
+    page.on("request", (request) => {
+      if (/\/TraceCard-[^/]+\.js(?:\?|$)/.test(request.url())) downloads.push(request.url());
+    });
+    await page.clock.install();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&paused=1`);
+    await pauseClock(page);
+    // Flush both whenIdle's delay and its idle-callback fallback with the controlled clock.
+    await page.clock.runFor(4000);
+    expect(downloads).toEqual([]);
+    await page.getByTestId("rf__wrapper").evaluate((root) => root.setAttribute("data-live-particle", "hover"));
+    await expect(page.getByTestId("canvas-pane")).toHaveCSS("cursor", "pointer");
+    await page.clock.resume();
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-trace-message").click();
+    await page.getByTestId("live-trace-next").click();
+    await expect(card(page)).toHaveAttribute("data-state", "waiting");
+    expect(downloads).toHaveLength(1);
+  });
+
   test("Escape in Live's more menu returns focus through the interaction controller", async ({ page }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
     const button = page.getByTestId("live-more");
@@ -259,6 +280,7 @@ test.describe("message trace", () => {
   }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await traceKafkaOrder(page, true);
+    await page.clock.resume();
     await page.getByTestId("trace-sequence").click();
     const dialog = page.getByTestId("sequence-dialog");
     await expect(dialog).toBeVisible();

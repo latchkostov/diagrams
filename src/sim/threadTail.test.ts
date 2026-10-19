@@ -319,3 +319,94 @@ it.each([false, true])("zero-latency non-blocking admission drains iteratively (
   const master = 70;
   expect(Math.abs(sampled - master)).toBeLessThanOrEqual(10 * (Math.ceil(1 / 10) + 1) + 0.02 * master);
 });
+
+it.each([1, 10])("multi-group shrink preserves independent draining partition ownership (scale %s)", (scale) => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "kafka.topic";
+  d.nodes[0].props = { partitions: 3 };
+  d.nodes[1].props = { replicas: 2, concurrency: 1, latencyMs: 100, jitter: 0, resources: resources() };
+  d.nodes[2].props = { api: { latencyMs: 2000 }, jitter: 0 };
+  d.nodes.push(
+    { ...d.nodes[1], id: "other", props: { replicas: 2, concurrency: 1, latencyMs: 0 } },
+    { ...d.nodes[0], id: "second", props: { partitions: 5 } },
+    { ...d.nodes[1], id: "betaOther", props: { replicas: 4, concurrency: 1, latencyMs: 0 } },
+  );
+  d.edges[0].props = { travelMs: 10, group: "alpha" };
+  d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking" } };
+  d.edges.push(
+    { ...d.edges[0], id: "beta-input", from: "second", props: { travelMs: 10, group: "beta" } },
+    { ...d.edges[0], id: "alpha-other", to: "other" },
+    { ...d.edges[0], id: "beta-other", from: "second", to: "betaOther", props: { travelMs: 10, group: "beta" } },
+  );
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    scale,
+    seed: 7,
+    maxParticles: 0,
+    verifyLedger(s) {
+      state = { ...s, nodes: [...s.nodes] };
+    },
+  });
+  e.load(d);
+  e.inject("source", 3);
+  e.inject("second", 3);
+  e.step(200);
+  e.setNodeProps("caller", { replicas: 1 });
+  const groups = () =>
+    [...state.nodes]
+      .filter((n) => n.id === "source" || n.id === "second")
+      .flatMap(
+        (n) =>
+          (
+            n as unknown as {
+              groups: { name: string; allocations: Map<string, number>; drainOwners: Map<string, number> }[];
+            }
+          ).groups,
+      );
+  expect(e.snapshot().nodes.caller.fleet?.draining).toBe(1);
+  const assignment = () =>
+    groups().map((g) => ({
+      name: g.name,
+      owners: [...g.drainOwners],
+      allocations: [...g.allocations],
+    }));
+  // At 1x beta's work owns the retiring replica; at 10x alpha's sampled
+  // thread tail does. Neither reservation may take partitions from the other group.
+  expect(assignment()).toEqual([
+    {
+      name: "alpha",
+      owners: [["caller", scale === 10 ? 1 : 0]],
+      allocations: [
+        ["caller", 1],
+        ["other", scale === 10 ? 1 : 2],
+      ],
+    },
+    {
+      name: "beta",
+      owners: [["caller", scale === 1 ? 1 : 0]],
+      allocations: [
+        ["caller", 1],
+        ["betaOther", scale === 1 ? 3 : 4],
+      ],
+    },
+  ]);
+  e.step(1000);
+  expect(assignment()).toEqual([
+    {
+      name: "alpha",
+      owners: [["caller", 0]],
+      allocations: [
+        ["caller", 1],
+        ["other", 2],
+      ],
+    },
+    {
+      name: "beta",
+      owners: [["caller", 0]],
+      allocations: [
+        ["caller", 1],
+        ["betaOther", 4],
+      ],
+    },
+  ]);
+});

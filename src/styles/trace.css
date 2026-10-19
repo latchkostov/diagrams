@@ -365,12 +365,6 @@
   font-size: 11.5px;
 }
 
-/* Particles are clickable (to trace their message). */
-.react-flow[data-live-particle="hover"] .react-flow__pane,
-.react-flow[data-live-particle="hover"] .react-flow__edge {
-  cursor: pointer;
-}
-
 /* ---------- sequence dialog ---------- */
 
 .tr-seq {
