@@ -29,7 +29,9 @@ second slice, built on P1's control log. The owner's defaults apply.
   shown, and the host is told why.
 - **Nothing waits forever.** An op that went missing (the host's connection dropped) is noticed by the next op or
   digest; the follower asks for the run again and rebuilds. Unanswered asks, and rebuilds of one run, are bounded,
-  after which it watches on its own. Answers are bounded per peer and coalesced when several ask together.
+  after which it watches on its own. Answers are bounded per peer and coalesced when several ask together. While
+  the host's run replays after an Inputs change, it sends no beacon or digest from behind the ops it has logged
+  (one could hold a follower at a digest whose op lay ahead of it).
 - **Seeks as they arrive.** A seek back drops the branch it abandoned (ops and digests a follower hadn't reached),
   then applies at once if it's near and replays from the start if it's far.
 - **Checked in full.** Every message and every nested op is checked before use (`src/collab/room/liveWire.ts`):
@@ -72,6 +74,9 @@ second slice, built on P1's control log. The owner's defaults apply.
   - Malformed messages (`step` with `simMs: 1e20`, `op: null`, an injection of 10¹² messages, a 40-deep patch, bad
     beacons, logs and run ids, broken parts) are dropped and the follower carries on.
   - A follower that can't get the run gives up after its bounded asks; asks together get one answer.
+  - Free play's Inputs change (it starts over) is shared as a new run, and followed to the same state.
+  - While the host replays, no beacon or digest goes out from behind its logged ops; removing that check fails it.
+  - 11,893 unit tests pass after rebasing on #189.
 - **Unit (`watch.test.ts`):** the room on A and a Private B in Live: nothing about B is published or sent, then A is
   shared, and back on B only a stop goes out. An ordinary diagram that isn't the room's isn't shared; the room's
   diagram made Private stops sharing before anything else is sent; a follower asked to watch goes to the room's
@@ -86,13 +91,20 @@ second slice, built on P1's control log. The owner's defaults apply.
   - The host zooms without moving the guest. Follow the host's view is off until turned on, then takes the host's
     zoom, and the guest's own wheel ends it.
   - The guest keeps following when the host restarts, then switches to free play.
+  - Presenting, for the host and then the guest (no top bar, no chip), stops neither sharing nor following.
+
+  The spec's seven tests pass 36 of 36 at six repeats with six workers, after rebasing on #189; the collab, Live,
+  recording, presenting and accessibility specs pass too (173 of 173).
 
 - **Parity:** `node/i18n/catalogs.json` is re-recorded for the 14 new English messages. Every locale gains them as
   English fallbacks; nothing else changed.
-- **Bundle,** gzip, against master:
+- **Bundle,** gzip, against master (with #189):
 
   |                   | master    | now       | change   |
   | ----------------- | --------- | --------- | -------- |
-  | live session      | 134,989 B | 130,213 B | −4,776 B |
-  | canvas first view | 382,347 B | 379,994 B | −2,353 B |
-  | startup           | 176,050 B | 176,042 B | −8 B     |
+  | live session      | 133,321 B | 128,529 B | −4,792 B |
+  | canvas first view | 382,737 B | 380,394 B | −2,343 B |
+  | startup           | 176,313 B | 176,320 B | +7 B     |
+
+  Startup's code is unchanged. The entry now names two more lazy chunks (Record video and the shortcuts sheet),
+  and the chunks' content hashes moved; that's the 7 bytes. Every budget is as it was.
