@@ -13,9 +13,9 @@
     "markers": [
       { "atMs": 0, "kind": "note", "label": "Logs, spans and metrics each have their own topic and consumers." },
       { "atMs": 0, "kind": "traffic", "label": "Shoppers" },
-      { "atMs": 4000, "kind": "fault", "label": "Take down: loki" },
+      { "atMs": 4000, "kind": "fault", "label": "Take down: Loki write path" },
       { "atMs": 4000, "kind": "note", "label": "Drill: take down the Loki boundary. Kafka keeps the logs: nothing is lost, it just waits." },
-      { "atMs": 14000, "kind": "fault", "label": "Restore: loki" },
+      { "atMs": 14000, "kind": "fault", "label": "Restore: Loki write path" },
       { "atMs": 14000, "kind": "note", "label": "Loki is back and the ingesters drain the backlog. ClickHouse and the archive never stopped." },
       { "atMs": 25000, "kind": "traffic", "label": "Shoppers ends" }
     ]

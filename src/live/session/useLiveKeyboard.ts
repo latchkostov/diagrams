@@ -61,7 +61,9 @@ export function useLiveKeyboard({
         // A recording owns Esc (it stops the recording, see Recorder).
         recording: key === "escape" && isRecordingActive(),
         editable: isEditableTarget(t),
-        control: t instanceof Element && !!t.closest('button, select, a, [data-editor-overlay], [role="separator"]'),
+        control:
+          t instanceof Element &&
+          !!t.closest('button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"]'),
         owner: !!document.querySelector(ESC_OWNERS),
         selection,
         // The canvas clears its selection when it has focus; otherwise live view clears it (no dead end).

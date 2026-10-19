@@ -12,4 +12,4 @@ export { parsePayload, PAYLOAD_LIMITS } from "../../export/viewer/payload";
 export { lockedFileName, lockPayload, unlockPayloadText, MIN_PASSWORD_LENGTH } from "../../export/lock";
 export { passwordStrength } from "../../interop/passwordStrength";
 
-export { canCutLink } from "../../model/faults";
+export { canCutLink } from "../../model/faultRuntime";

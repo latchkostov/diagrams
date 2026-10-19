@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Where the time goes\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 2 simulations\ndescription: \"Kafka carries 2,000 orders/s to Billing. A spike at 4 s turns a 0.3 s async path into seconds of waiting; hover for sampled p50, p95 and p99.\"\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Order intake\" / \"2,000 orders/s\" props={\"ratePerSec\":2000,\"messageType\":\"OrderPlaced\",\"jitter\":0} capabilities=[{\"kind\":\"publishes\",\"edge\":\"intake-orders\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"kafka.topic\" (\"Kafka Topic\") \"Orders\" / \"Kafka · billing consumer group\" props={\"partitions\":12} capabilities=[] explanation=undefined\n  \"billing\" \"service.dotnet\" (\".NET Service\") \"Billing\" / \"300 ms per order\" props={\"replicas\":12,\"concurrency\":60,\"latencyMs\":300,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders-billing\",\"peer\":\"orders\",\"group\":\"billing\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":2400,\"offered\":2000,\"replicas\":12,\"baseReplicas\":12,\"omittedContributors\":0,\"activeReplicas\":12,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":60,\"seconds\":0.3,\"utilization\":0.8333333333333334,\"growth\":0,\"contributors\":[{\"edge\":\"orders-billing\",\"node\":\"orders\",\"label\":\"Orders\",\"rate\":2000}],\"target\":0.5,\"minimumReplicas\":12,\"targetReplicas\":20,\"changes\":null,\"converged\":true}\n  \"receipts\" \"generic.email\" (\"Email\") \"Receipts\" / \"Async completion\" props={\"latencyMs\":0,\"api\":{\"latencyMs\":0,\"errorRate\":0}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"receipts\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":null,\"offered\":2000,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"billing-receipts\",\"node\":\"billing\",\"label\":\"Billing\",\"rate\":2000}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"intake-orders\" \"checkout\" -> \"orders\" async\n  \"orders-billing\" \"orders\" -> \"billing\" async\n  \"billing-receipts\" \"billing\" -> \"receipts\" async\nsimulation \"billing-spike\" \"Where the time goes\": {\"kind\":\"spike\",\"baseRate\":2000,\"peakRate\":10000,\"atMs\":4000,\"peakMs\":5400,\"durationMs\":9400} from \"checkout\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.\",\"focus\":[\"billing\",\"orders\"]}}]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"steady-orders\" \"Room for steady orders\": {\"kind\":\"constant\",\"ratePerSec\":2000,\"durationMs\":9400} from \"checkout\"; timeline=[]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"Where the time goes\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 3 simulations\ndescription: \"Kafka carries 2,000 orders/s to Billing. A spike at 4 s turns a 0.3 s async path into seconds of waiting; hover for sampled p50, p95 and p99.\"\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Order intake\" / \"2,000 orders/s\" props={\"ratePerSec\":2000,\"messageType\":\"OrderPlaced\",\"jitter\":0} capabilities=[{\"kind\":\"publishes\",\"edge\":\"intake-orders\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"kafka.topic\" (\"Kafka Topic\") \"Orders\" / \"Kafka · billing consumer group\" props={\"partitions\":12} capabilities=[] explanation=undefined\n  \"billing\" \"service.dotnet\" (\".NET Service\") \"Billing\" / \"300 ms per order\" props={\"replicas\":12,\"concurrency\":60,\"latencyMs\":300,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders-billing\",\"peer\":\"orders\",\"group\":\"billing\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":2400,\"offered\":2000,\"replicas\":12,\"baseReplicas\":12,\"omittedContributors\":0,\"activeReplicas\":12,\"assignments\":[{\"broker\":\"orders\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":60,\"seconds\":0.3,\"utilization\":0.8333333333333334,\"growth\":0,\"contributors\":[{\"edge\":\"orders-billing\",\"node\":\"orders\",\"label\":\"Orders\",\"rate\":2000}],\"target\":0.5,\"minimumReplicas\":12,\"targetReplicas\":20,\"changes\":null,\"converged\":true}\n  \"receipts\" \"generic.email\" (\"Email\") \"Receipts\" / \"Async completion\" props={\"latencyMs\":0,\"api\":{\"latencyMs\":0,\"errorRate\":0}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"receipts\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":null,\"offered\":2000,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"billing-receipts\",\"node\":\"billing\",\"label\":\"Billing\",\"rate\":2000}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"intake-orders\" \"checkout\" -> \"orders\" async\n  \"orders-billing\" \"orders\" -> \"billing\" async\n  \"billing-receipts\" \"billing\" -> \"receipts\" async\nsimulation \"billing-spike\" \"Where the time goes\": {\"kind\":\"spike\",\"baseRate\":2000,\"peakRate\":10000,\"atMs\":4000,\"peakMs\":5400,\"durationMs\":9400} from \"checkout\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.\",\"focus\":[\"billing\",\"orders\"]}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.\",\"focus\":[\"billing\",\"receipts\"]}}]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"steady-orders\" \"Room for steady orders\": {\"kind\":\"constant\",\"ratePerSec\":2000,\"durationMs\":9400} from \"checkout\"; timeline=[]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"slow-billing-drill\" \"Slow Billing drill\": {\"kind\":\"constant\",\"ratePerSec\":1000,\"durationMs\":8500} from \"checkout\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"billing\",\"factor\":5},\"drill\":\"slow-dependency\"}},{\"atMs\":3100,\"action\":{\"do\":\"note\",\"text\":\"Billing is 5× slower. Hover Billing: its latency samples now count from this fault, not from restart.\",\"focus\":[\"billing\",\"receipts\"]}},{\"atMs\":6000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"billing\",\"factor\":1}}},{\"atMs\":6100,\"action\":{\"do\":\"note\",\"text\":\"Billing is restored. Hover Billing: the percentile window starts again at the restoration. Restart resets everything.\",\"focus\":[\"billing\",\"receipts\"]}}]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   },
   "json": {
     "isError": false,
@@ -150,6 +150,10 @@
             {
               "atMs": 3000,
               "action": { "do": "note", "text": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.", "focus": ["billing", "orders"] }
+            },
+            {
+              "atMs": 9000,
+              "action": { "do": "note", "text": "Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.", "focus": ["billing", "receipts"] }
             }
           ],
           "expectations": [
@@ -189,6 +193,51 @@
               "when": "always"
             }
           ]
+        },
+        {
+          "id": "slow-billing-drill",
+          "title": "Slow Billing drill",
+          "description": "At 3 s Billing slows 5×. Hover for latency measured since that fault; restoring it at 6 s starts a fresh window.",
+          "seed": 41,
+          "scale": 100,
+          "durationMs": 9000,
+          "traffic": [
+            {
+              "id": "orders",
+              "node": "checkout",
+              "messageType": "OrderPlaced",
+              "shape": { "kind": "constant", "ratePerSec": 1000, "durationMs": 8500 }
+            }
+          ],
+          "timeline": [
+            {
+              "atMs": 3000,
+              "action": {
+                "do": "fault",
+                "fault": { "kind": "slow", "node": "billing", "factor": 5 },
+                "drill": "slow-dependency"
+              }
+            },
+            {
+              "atMs": 3100,
+              "action": { "do": "note", "text": "Billing is 5× slower. Hover Billing: its latency samples now count from this fault, not from restart.", "focus": ["billing", "receipts"] }
+            },
+            { "atMs": 6000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "billing", "factor": 1 } } },
+            {
+              "atMs": 6100,
+              "action": { "do": "note", "text": "Billing is restored. Hover Billing: the percentile window starts again at the restoration. Restart resets everything.", "focus": ["billing", "receipts"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "no-loss",
+              "label": "No orders dropped at Billing",
+              "metric": { "node": "billing", "field": "dropped" },
+              "op": "==",
+              "value": 0,
+              "when": "always"
+            }
+          ]
         }
       ],
       "truncated": false
@@ -196,6 +245,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Where the time goes\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Kafka carries 2,000 orders/s to Billing. A spike at 4 s turns a 0.3 s async path into seconds of waiting; hover for sampled p50, p95 and p99.\"\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Order intake\" / \"2,000 orders/s\" props={\"ratePerSec\":2000,\"messageType\":\"OrderPlaced\",\"jitter\":0} capabilities=[{\"kind\":\"publishes\",\"edge\":\"intake-orders\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"kafka.topic\" (\"Kafka Topic\") \"Orders\" / \"Kafka · billing consumer group\" props={\"partitions\":12} capabilities=[] explanation=undefined\nconnections:\n  \"intake-orders\" \"checkout\" -> \"orders\" async\nsimulation \"billing-spike\" \"Where the time goes\": {\"kind\":\"spike\",\"baseRate\":2000,\"peakRate\":10000,\"atMs\":4000,\"peakMs\":5400,\"durationMs\":9400} from \"checkout\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.\",\"focus\":[\"billing\",\"orders\"]}}]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"steady-orders\" \"Room for steady orders\": {\"kind\":\"constant\",\"ratePerSec\":2000,\"durationMs\":9400} from \"checkout\"; timeline=[]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"Where the time goes\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 3 simulations\ndescription: \"Kafka carries 2,000 orders/s to Billing. A spike at 4 s turns a 0.3 s async path into seconds of waiting; hover for sampled p50, p95 and p99.\"\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Order intake\" / \"2,000 orders/s\" props={\"ratePerSec\":2000,\"messageType\":\"OrderPlaced\",\"jitter\":0} capabilities=[{\"kind\":\"publishes\",\"edge\":\"intake-orders\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"kafka.topic\" (\"Kafka Topic\") \"Orders\" / \"Kafka · billing consumer group\" props={\"partitions\":12} capabilities=[] explanation=undefined\nconnections:\n  \"intake-orders\" \"checkout\" -> \"orders\" async\nsimulation \"billing-spike\" \"Where the time goes\": {\"kind\":\"spike\",\"baseRate\":2000,\"peakRate\":10000,\"atMs\":4000,\"peakMs\":5400,\"durationMs\":9400} from \"checkout\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.\",\"focus\":[\"billing\",\"orders\"]}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.\",\"focus\":[\"billing\",\"receipts\"]}}]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"steady-orders\" \"Room for steady orders\": {\"kind\":\"constant\",\"ratePerSec\":2000,\"durationMs\":9400} from \"checkout\"; timeline=[]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"slow-billing-drill\" \"Slow Billing drill\": {\"kind\":\"constant\",\"ratePerSec\":1000,\"durationMs\":8500} from \"checkout\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"billing\",\"factor\":5},\"drill\":\"slow-dependency\"}},{\"atMs\":3100,\"action\":{\"do\":\"note\",\"text\":\"Billing is 5× slower. Hover Billing: its latency samples now count from this fault, not from restart.\",\"focus\":[\"billing\",\"receipts\"]}},{\"atMs\":6000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"billing\",\"factor\":1}}},{\"atMs\":6100,\"action\":{\"do\":\"note\",\"text\":\"Billing is restored. Hover Billing: the percentile window starts again at the restoration. Restart resets everything.\",\"focus\":[\"billing\",\"receipts\"]}}]; expectations=[{\"id\":\"no-loss\",\"label\":\"No orders dropped at Billing\",\"metric\":{\"node\":\"billing\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   }
 }

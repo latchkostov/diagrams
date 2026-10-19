@@ -92,6 +92,11 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     stub: () => "export const ShortcutsDialog = () => null;",
   },
   { name: "the simulation editor", path: "/src/live/SimPanel.tsx", stub: () => "export const SimPanel = () => null;" },
+  {
+    name: "the simulation editor loader",
+    path: "/src/live/lazySimPanel.tsx",
+    stub: () => "export const SimPanel = Object.assign(() => null, { preload() {} });",
+  },
   // Architecture checks (editing only): a read-only canvas runs none, so no count, card, markers or worker.
   {
     name: "the checks scheduler",
@@ -141,6 +146,7 @@ function viewerSwaps(root: string): Plugin {
       // Forward slashes, as Vite ids are: a Windows path would make a second copy of the module (two icon maps).
       if (source === "./iconUrls" && importer && own(importer, "/src/stencils/registry.ts"))
         return normalizePath(resolve(root, "src/export/viewer/iconUrls.ts"));
+      if (/i18n\/stencils$/.test(source)) return normalizePath(resolve(root, "src/export/viewer/stencilText.ts"));
       // Development's content check for local-only examples: never in a file (a single bundle keeps a stub of
       // every module it reaches, used or not).
       if (source === "./localOnly.dev" && importer && own(importer, "/src/lib/localOnly.ts")) return NO_LOCAL;

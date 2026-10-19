@@ -1,0 +1,1171 @@
+[
+  { "time": 200 },
+  { "time": 400 },
+  {
+    "time": 600,
+    "billing": {
+      "samples": 2,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 600,
+      "travelMs": 40,
+      "byType": {
+        "OrderPlaced": { "samples": 2, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 600, "travelMs": 40 }
+      }
+    },
+    "receipts": {
+      "samples": 2,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 600,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 2, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 600, "travelMs": 60 }
+      }
+    }
+  },
+  {
+    "time": 800,
+    "billing": {
+      "samples": 4,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 1200,
+      "travelMs": 80,
+      "byType": {
+        "OrderPlaced": { "samples": 4, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 1200, "travelMs": 80 }
+      }
+    },
+    "receipts": {
+      "samples": 4,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 1200,
+      "travelMs": 120,
+      "byType": {
+        "OrderPlaced": { "samples": 4, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 1200, "travelMs": 120 }
+      }
+    }
+  },
+  {
+    "time": 1000,
+    "billing": {
+      "samples": 6,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 1800,
+      "travelMs": 120,
+      "byType": {
+        "OrderPlaced": { "samples": 6, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 1800, "travelMs": 120 }
+      }
+    },
+    "receipts": {
+      "samples": 6,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 1800,
+      "travelMs": 180,
+      "byType": {
+        "OrderPlaced": { "samples": 6, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 1800, "travelMs": 180 }
+      }
+    }
+  },
+  {
+    "time": 1200,
+    "billing": {
+      "samples": 8,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 2400,
+      "travelMs": 160,
+      "byType": {
+        "OrderPlaced": { "samples": 8, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 2400, "travelMs": 160 }
+      }
+    },
+    "receipts": {
+      "samples": 8,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 2400,
+      "travelMs": 240,
+      "byType": {
+        "OrderPlaced": { "samples": 8, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 2400, "travelMs": 240 }
+      }
+    }
+  },
+  {
+    "time": 1400,
+    "billing": {
+      "samples": 10,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 3000,
+      "travelMs": 200,
+      "byType": {
+        "OrderPlaced": { "samples": 10, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 3000, "travelMs": 200 }
+      }
+    },
+    "receipts": {
+      "samples": 10,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 3000,
+      "travelMs": 300,
+      "byType": {
+        "OrderPlaced": { "samples": 10, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 3000, "travelMs": 300 }
+      }
+    }
+  },
+  {
+    "time": 1600,
+    "billing": {
+      "samples": 12,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 3600,
+      "travelMs": 240,
+      "byType": {
+        "OrderPlaced": { "samples": 12, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 3600, "travelMs": 240 }
+      }
+    },
+    "receipts": {
+      "samples": 12,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 3600,
+      "travelMs": 360,
+      "byType": {
+        "OrderPlaced": { "samples": 12, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 3600, "travelMs": 360 }
+      }
+    }
+  },
+  {
+    "time": 1800,
+    "billing": {
+      "samples": 14,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 4200,
+      "travelMs": 280,
+      "byType": {
+        "OrderPlaced": { "samples": 14, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 4200, "travelMs": 280 }
+      }
+    },
+    "receipts": {
+      "samples": 14,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 4200,
+      "travelMs": 420,
+      "byType": {
+        "OrderPlaced": { "samples": 14, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 4200, "travelMs": 420 }
+      }
+    }
+  },
+  {
+    "time": 2000,
+    "billing": {
+      "samples": 16,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 4800,
+      "travelMs": 320,
+      "byType": {
+        "OrderPlaced": { "samples": 16, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 4800, "travelMs": 320 }
+      }
+    },
+    "receipts": {
+      "samples": 16,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 4800,
+      "travelMs": 480,
+      "byType": {
+        "OrderPlaced": { "samples": 16, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 4800, "travelMs": 480 }
+      }
+    }
+  },
+  {
+    "time": 2200,
+    "billing": {
+      "samples": 18,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 5400,
+      "travelMs": 360,
+      "byType": {
+        "OrderPlaced": { "samples": 18, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 5400, "travelMs": 360 }
+      }
+    },
+    "receipts": {
+      "samples": 18,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 5400,
+      "travelMs": 540,
+      "byType": {
+        "OrderPlaced": { "samples": 18, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 5400, "travelMs": 540 }
+      }
+    }
+  },
+  {
+    "time": 2400,
+    "billing": {
+      "samples": 20,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 6000,
+      "travelMs": 400,
+      "byType": {
+        "OrderPlaced": { "samples": 20, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 6000, "travelMs": 400 }
+      }
+    },
+    "receipts": {
+      "samples": 20,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 6000,
+      "travelMs": 600,
+      "byType": {
+        "OrderPlaced": { "samples": 20, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 6000, "travelMs": 600 }
+      }
+    }
+  },
+  {
+    "time": 2600,
+    "billing": {
+      "samples": 22,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 6600,
+      "travelMs": 440,
+      "byType": {
+        "OrderPlaced": { "samples": 22, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 6600, "travelMs": 440 }
+      }
+    },
+    "receipts": {
+      "samples": 22,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 6600,
+      "travelMs": 660,
+      "byType": {
+        "OrderPlaced": { "samples": 22, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 6600, "travelMs": 660 }
+      }
+    }
+  },
+  {
+    "time": 2800,
+    "billing": {
+      "samples": 24,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 7200,
+      "travelMs": 480,
+      "byType": {
+        "OrderPlaced": { "samples": 24, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 7200, "travelMs": 480 }
+      }
+    },
+    "receipts": {
+      "samples": 24,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 7200,
+      "travelMs": 720,
+      "byType": {
+        "OrderPlaced": { "samples": 24, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 7200, "travelMs": 720 }
+      }
+    }
+  },
+  { "time": 3000 },
+  {
+    "time": 3200,
+    "billing": {
+      "samples": 2,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 600,
+      "travelMs": 40,
+      "byType": {
+        "OrderPlaced": { "samples": 2, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 600, "travelMs": 40 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 2,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 600,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 2, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 600, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 3400,
+    "billing": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 90,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 90 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 3600,
+    "billing": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 90,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 90 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 3800,
+    "billing": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 90,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 90 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 4000,
+    "billing": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 90,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 90 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 4200,
+    "billing": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 90,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 90 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 4400,
+    "billing": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 3,
+      "p50": 300,
+      "p95": 300,
+      "p99": 300,
+      "waitMs": 0,
+      "workMs": 900,
+      "travelMs": 90,
+      "byType": {
+        "OrderPlaced": { "samples": 3, "p50": 300, "p95": 300, "p99": 300, "waitMs": 0, "workMs": 900, "travelMs": 90 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 4600,
+    "billing": {
+      "samples": 4,
+      "p50": 323.6824526096009,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 2400,
+      "travelMs": 80,
+      "byType": {
+        "OrderPlaced": { "samples": 4, "p50": 323.6824526096009, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 2400, "travelMs": 80 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 4,
+      "p50": 323.6824526096009,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 2400,
+      "travelMs": 120,
+      "byType": {
+        "OrderPlaced": { "samples": 4, "p50": 323.6824526096009, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 2400, "travelMs": 120 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 4800,
+    "billing": {
+      "samples": 6,
+      "p50": 323.6824526096009,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 5400,
+      "travelMs": 120,
+      "byType": {
+        "OrderPlaced": { "samples": 6, "p50": 323.6824526096009, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 5400, "travelMs": 120 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 6,
+      "p50": 323.6824526096009,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 5400,
+      "travelMs": 180,
+      "byType": {
+        "OrderPlaced": { "samples": 6, "p50": 323.6824526096009, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 5400, "travelMs": 180 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 5000,
+    "billing": {
+      "samples": 8,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 8400,
+      "travelMs": 160,
+      "byType": {
+        "OrderPlaced": { "samples": 8, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 8400, "travelMs": 160 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 8,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 8400,
+      "travelMs": 240,
+      "byType": {
+        "OrderPlaced": { "samples": 8, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 8400, "travelMs": 240 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 5200,
+    "billing": {
+      "samples": 10,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 11400,
+      "travelMs": 200,
+      "byType": {
+        "OrderPlaced": { "samples": 10, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11400, "travelMs": 200 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 10,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 11400,
+      "travelMs": 300,
+      "byType": {
+        "OrderPlaced": { "samples": 10, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11400, "travelMs": 300 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 5400,
+    "billing": {
+      "samples": 12,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 14400,
+      "travelMs": 240,
+      "byType": {
+        "OrderPlaced": { "samples": 12, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 14400, "travelMs": 240 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 12,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 14400,
+      "travelMs": 360,
+      "byType": {
+        "OrderPlaced": { "samples": 12, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 14400, "travelMs": 360 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 5600,
+    "billing": {
+      "samples": 13,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 15900,
+      "travelMs": 260,
+      "byType": {
+        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 260 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 13,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 15900,
+      "travelMs": 390,
+      "byType": {
+        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 390 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  {
+    "time": 5800,
+    "billing": {
+      "samples": 13,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 15900,
+      "travelMs": 260,
+      "byType": {
+        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 260 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    },
+    "receipts": {
+      "samples": 13,
+      "p50": 1500,
+      "p95": 1500,
+      "p99": 1500,
+      "waitMs": 0,
+      "workMs": 15900,
+      "travelMs": 390,
+      "byType": {
+        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 390 }
+      },
+      "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
+    }
+  },
+  { "time": 6000 },
+  {
+    "time": 6200,
+    "billing": {
+      "samples": 2,
+      "p50": 2010,
+      "p95": 2010,
+      "p99": 2010,
+      "waitMs": 1020,
+      "workMs": 3000,
+      "travelMs": 40,
+      "byType": {
+        "OrderPlaced": { "samples": 2, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 1020, "workMs": 3000, "travelMs": 40 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 2,
+      "p50": 2010,
+      "p95": 2010,
+      "p99": 2010,
+      "waitMs": 1020,
+      "workMs": 3000,
+      "travelMs": 60,
+      "byType": {
+        "OrderPlaced": { "samples": 2, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 1020, "workMs": 3000, "travelMs": 60 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 6400,
+    "billing": {
+      "samples": 5,
+      "p50": 2010,
+      "p95": 2010,
+      "p99": 2010,
+      "waitMs": 3060,
+      "workMs": 6300,
+      "travelMs": 100,
+      "byType": {
+        "OrderPlaced": { "samples": 5, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 3060, "workMs": 6300, "travelMs": 100 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 5,
+      "p50": 2010,
+      "p95": 2010,
+      "p99": 2010,
+      "waitMs": 3060,
+      "workMs": 6300,
+      "travelMs": 150,
+      "byType": {
+        "OrderPlaced": { "samples": 5, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 3060, "workMs": 6300, "travelMs": 150 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 6600,
+    "billing": {
+      "samples": 9,
+      "p50": 2010,
+      "p95": 2010,
+      "p99": 2010,
+      "waitMs": 6120,
+      "workMs": 9900,
+      "travelMs": 180,
+      "byType": {
+        "OrderPlaced": { "samples": 9, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 6120, "workMs": 9900, "travelMs": 180 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 9,
+      "p50": 2010,
+      "p95": 2010,
+      "p99": 2010,
+      "waitMs": 6120,
+      "workMs": 9900,
+      "travelMs": 270,
+      "byType": {
+        "OrderPlaced": { "samples": 9, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 6120, "workMs": 9900, "travelMs": 270 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 6800,
+    "billing": {
+      "samples": 15,
+      "p50": 2050,
+      "p95": 2050,
+      "p99": 2050,
+      "waitMs": 10880,
+      "workMs": 14100,
+      "travelMs": 300,
+      "byType": {
+        "OrderPlaced": { "samples": 15, "p50": 2050, "p95": 2050, "p99": 2050, "waitMs": 10880, "workMs": 14100, "travelMs": 300 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 15,
+      "p50": 2050,
+      "p95": 2050,
+      "p99": 2050,
+      "waitMs": 10880,
+      "workMs": 14100,
+      "travelMs": 450,
+      "byType": {
+        "OrderPlaced": { "samples": 15, "p50": 2050, "p95": 2050, "p99": 2050, "waitMs": 10880, "workMs": 14100, "travelMs": 450 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 7000,
+    "billing": {
+      "samples": 21,
+      "p50": 1412.3861523248186,
+      "p95": 2160,
+      "p99": 2160,
+      "waitMs": 14980,
+      "workMs": 17100,
+      "travelMs": 420,
+      "byType": {
+        "OrderPlaced": { "samples": 21, "p50": 1412.3861523248186, "p95": 2160, "p99": 2160, "waitMs": 14980, "workMs": 17100, "travelMs": 420 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 21,
+      "p50": 1412.3861523248186,
+      "p95": 2160,
+      "p99": 2160,
+      "waitMs": 14980,
+      "workMs": 17100,
+      "travelMs": 630,
+      "byType": {
+        "OrderPlaced": { "samples": 21, "p50": 1412.3861523248186, "p95": 2160, "p99": 2160, "waitMs": 14980, "workMs": 17100, "travelMs": 630 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 7200,
+    "billing": {
+      "samples": 27,
+      "p50": 1412.3861523248186,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 17650,
+      "workMs": 20100,
+      "travelMs": 540,
+      "byType": {
+        "OrderPlaced": { "samples": 27, "p50": 1412.3861523248186, "p95": 2222.416954479012, "p99": 2270, "waitMs": 17650, "workMs": 20100, "travelMs": 540 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 27,
+      "p50": 1412.3861523248186,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 17650,
+      "workMs": 20100,
+      "travelMs": 810,
+      "byType": {
+        "OrderPlaced": { "samples": 27, "p50": 1412.3861523248186, "p95": 2222.416954479012, "p99": 2270, "waitMs": 17650, "workMs": 20100, "travelMs": 810 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 7400,
+    "billing": {
+      "samples": 31,
+      "p50": 1261.0590645757309,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 21300,
+      "travelMs": 620,
+      "byType": {
+        "OrderPlaced": { "samples": 31, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21300, "travelMs": 620 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 31,
+      "p50": 1261.0590645757309,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 21300,
+      "travelMs": 930,
+      "byType": {
+        "OrderPlaced": { "samples": 31, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21300, "travelMs": 930 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 7600,
+    "billing": {
+      "samples": 33,
+      "p50": 1261.0590645757309,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 21900,
+      "travelMs": 660,
+      "byType": {
+        "OrderPlaced": { "samples": 33, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21900, "travelMs": 660 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 33,
+      "p50": 1261.0590645757309,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 21900,
+      "travelMs": 990,
+      "byType": {
+        "OrderPlaced": { "samples": 33, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21900, "travelMs": 990 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 7800,
+    "billing": {
+      "samples": 35,
+      "p50": 1125.9455933711881,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 22500,
+      "travelMs": 700,
+      "byType": {
+        "OrderPlaced": { "samples": 35, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 22500, "travelMs": 700 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 35,
+      "p50": 1125.9455933711881,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 22500,
+      "travelMs": 1050,
+      "byType": {
+        "OrderPlaced": { "samples": 35, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 22500, "travelMs": 1050 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 8000,
+    "billing": {
+      "samples": 37,
+      "p50": 1125.9455933711881,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 23100,
+      "travelMs": 740,
+      "byType": {
+        "OrderPlaced": { "samples": 37, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23100, "travelMs": 740 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 37,
+      "p50": 1125.9455933711881,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 23100,
+      "travelMs": 1110,
+      "byType": {
+        "OrderPlaced": { "samples": 37, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23100, "travelMs": 1110 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 8200,
+    "billing": {
+      "samples": 39,
+      "p50": 1125.9455933711881,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 23700,
+      "travelMs": 780,
+      "byType": {
+        "OrderPlaced": { "samples": 39, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23700, "travelMs": 780 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 39,
+      "p50": 1125.9455933711881,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 23700,
+      "travelMs": 1170,
+      "byType": {
+        "OrderPlaced": { "samples": 39, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23700, "travelMs": 1170 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 8400,
+    "billing": {
+      "samples": 41,
+      "p50": 1005.3085655099893,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 24300,
+      "travelMs": 820,
+      "byType": {
+        "OrderPlaced": { "samples": 41, "p50": 1005.3085655099893, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24300, "travelMs": 820 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 41,
+      "p50": 1005.3085655099893,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 24300,
+      "travelMs": 1230,
+      "byType": {
+        "OrderPlaced": { "samples": 41, "p50": 1005.3085655099893, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24300, "travelMs": 1230 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 8600,
+    "billing": {
+      "samples": 43,
+      "p50": 897.5969334910618,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 24900,
+      "travelMs": 860,
+      "byType": {
+        "OrderPlaced": { "samples": 43, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24900, "travelMs": 860 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 43,
+      "p50": 897.5969334910618,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 24900,
+      "travelMs": 1290,
+      "byType": {
+        "OrderPlaced": { "samples": 43, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24900, "travelMs": 1290 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 8800,
+    "billing": {
+      "samples": 45,
+      "p50": 897.5969334910618,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 25500,
+      "travelMs": 900,
+      "byType": {
+        "OrderPlaced": { "samples": 45, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25500, "travelMs": 900 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 45,
+      "p50": 897.5969334910618,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 25500,
+      "travelMs": 1350,
+      "byType": {
+        "OrderPlaced": { "samples": 45, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25500, "travelMs": 1350 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  },
+  {
+    "time": 9000,
+    "billing": {
+      "samples": 46,
+      "p50": 801.4258334741622,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 25800,
+      "travelMs": 920,
+      "byType": {
+        "OrderPlaced": { "samples": 46, "p50": 801.4258334741622, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25800, "travelMs": 920 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    },
+    "receipts": {
+      "samples": 46,
+      "p50": 801.4258334741622,
+      "p95": 2222.416954479012,
+      "p99": 2270,
+      "waitMs": 18070,
+      "workMs": 25800,
+      "travelMs": 1380,
+      "byType": {
+        "OrderPlaced": { "samples": 46, "p50": 801.4258334741622, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25800, "travelMs": 1380 }
+      },
+      "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
+    }
+  }
+]

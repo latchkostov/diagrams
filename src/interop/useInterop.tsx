@@ -34,9 +34,9 @@ import {
 import {
   canSaveToCloud,
   canShareAsLink,
-  COLLABORATION_LAB,
   isLocalOnly,
   privacyOf,
+  ROOMS,
   type CanvasPrivacyState,
   type Privacy,
 } from "../lib/localOnly";
@@ -1117,7 +1117,7 @@ export function useInterop({
           onPasswordLink={() => void copyPasswordLink()}
           onShareLink={() => void openShare()}
           onEditTogether={
-            COLLABORATION_LAB
+            ROOMS
               ? () => {
                   setDialog(null);
                   window.dispatchEvent(new Event(EDIT_TOGETHER));

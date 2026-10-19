@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { COMMON_HEADERS, cspDirectives } from "../../scripts/security-headers";
+import { APPROVED_STUN, APPROVED_TRACKERS, readDeployment } from "../../scripts/deployment-env";
+import { COMMON_HEADERS, cspDirectives, securityHeadersFor, type CspOptions } from "../../scripts/security-headers";
 import { formatRoomLink } from "./link";
 import { seededBytes } from "./random";
 import { COLLAB_STUN, COLLAB_TRACKERS } from "./transport/tracker";
 
-// What keeps a room's key out of other people's logs, and the spike's public services out of production.
+// What keeps a room's key out of other people's logs, and a room's public services to exactly the approved set.
 
 describe("room keys never reach a server through the page's own requests", () => {
   it("sends no path or fragment cross-origin: Referrer-Policy is strict-origin-when-cross-origin (or stricter)", () => {
@@ -31,13 +32,51 @@ describe("room keys never reach a server through the page's own requests", () =>
   });
 });
 
-describe("production can't reach the spike's public services", () => {
-  it("allows no tracker, socket or STUN endpoint in connect-src", () => {
+const connect = (o: CspOptions) => cspDirectives(o).find(([name]) => name === "connect-src")![1];
+const sockets = (o: CspOptions) => connect(o).filter((src) => /^wss?:/.test(src) || src === "*");
+
+describe("a build with rooms reaches exactly the approved trackers; one without, none", () => {
+  it("the build's default endpoints are the transport's: the two approved trackers, Cloudflare STUN, no TURN", () => {
+    expect(APPROVED_TRACKERS).toEqual(COLLAB_TRACKERS);
+    expect(APPROVED_STUN.map((urls) => ({ urls }))).toEqual(COLLAB_STUN);
+    expect(readDeployment({}).collabTrackers).toEqual(COLLAB_TRACKERS);
+    expect(readDeployment({}).collabIceServers).toEqual(COLLAB_STUN);
+    expect(readDeployment({ VITE_ENABLE_COLLAB: "1" }).collabIceServers).toEqual(COLLAB_STUN);
+  });
+
+  it("with rooms, connect-src adds exactly the approved trackers, and never in an embed", () => {
+    expect(sockets({ embed: false, collab: COLLAB_TRACKERS })).toEqual([
+      "wss://tracker.openwebtorrent.com",
+      "wss://tracker.webtorrent.dev",
+    ]);
+    expect(sockets({ embed: true, collab: COLLAB_TRACKERS })).toEqual([]);
+  });
+
+  it("without rooms, no tracker or socket at all", () => {
     for (const embed of [false, true]) {
-      const connect = cspDirectives({ embed }).find(([name]) => name === "connect-src")![1];
-      expect(connect.filter((src) => /^wss?:/.test(src) || src === "*")).toEqual([]);
-      for (const tracker of [...COLLAB_TRACKERS, ...COLLAB_STUN.map((s) => String(s.urls))])
-        expect(connect.some((src) => tracker.includes(src.replace(/^https?:\/\//, "")))).toBe(false);
+      expect(sockets({ embed })).toEqual([]);
+      for (const tracker of COLLAB_TRACKERS)
+        expect(connect({ embed }).some((src) => tracker.includes(src.replace(/^https?:\/\//, "")))).toBe(false);
     }
+  });
+
+  it("never names STUN or TURN (not fetches: the build fixes them instead)", () => {
+    for (const o of [
+      { embed: false, collab: COLLAB_TRACKERS },
+      { embed: true, collab: COLLAB_TRACKERS },
+      { embed: false },
+    ])
+      expect(connect(o).filter((src) => /stun|turn/i.test(src))).toEqual([]);
+  });
+
+  it("livediagrams.dev (vercel.json, vite preview) sends the rooms policy to the app, not to embeds", () => {
+    const sources = (url: string) => {
+      const csp = securityHeadersFor(url)["Content-Security-Policy"];
+      const connectSrc = csp.split("; ").find((d) => d.startsWith("connect-src ")) ?? "";
+      return connectSrc.split(" ").filter((src) => /^wss?:/.test(src));
+    };
+    expect(sources("/")).toEqual(["wss://tracker.openwebtorrent.com", "wss://tracker.webtorrent.dev"]);
+    expect(sources("/?embed=1")).toEqual([]);
+    expect(sources("/?embed=1&host=1")).toEqual([]);
   });
 });

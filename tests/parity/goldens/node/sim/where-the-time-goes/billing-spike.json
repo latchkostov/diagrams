@@ -9,6 +9,7 @@
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "orders" },
       { "atMs": 3000, "kind": "note", "label": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes." },
+      { "atMs": 9000, "kind": "note", "label": "Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split." },
       { "atMs": 9400, "kind": "traffic", "label": "orders ends" }
     ]
   },
@@ -64,7 +65,8 @@
     ]
   },
   "notes": [
-    { "atMs": 3000, "text": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.", "focus": ["billing", "orders"] }
+    { "atMs": 3000, "text": "At 4 s, the spike exceeds Billing capacity. Orders wait in Kafka; the work still takes 300 ms. Hover Billing to see where the time goes.", "focus": ["billing", "orders"] },
+    { "atMs": 9000, "text": "Billing’s p95 went from 0.3 s to 3.9 s; 78% of that is waiting in Kafka. Hover Billing for the split.", "focus": ["billing", "receipts"] }
   ],
   "latency": {
     "journeys": { "done": 126, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },

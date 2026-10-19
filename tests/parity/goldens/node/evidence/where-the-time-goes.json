@@ -2,7 +2,8 @@
   "evidence": {
     "played": [
       { "id": "billing-spike", "title": "Where the time goes", "playedMs": 9400, "capped": false },
-      { "id": "steady-orders", "title": "Room for steady orders", "playedMs": 9400, "capped": false }
+      { "id": "steady-orders", "title": "Room for steady orders", "playedMs": 9400, "capped": false },
+      { "id": "slow-billing-drill", "title": "Slow Billing drill", "playedMs": 9000, "capped": false }
     ],
     "unplayed": [],
     "tooBig": [],
@@ -12,5 +13,5 @@
   "planned": [],
   "counted": 0,
   "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 3 saved simulations (at most 60 s each)." }
 }

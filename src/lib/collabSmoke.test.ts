@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import {
   ALERT_AFTER,
+  classify,
   ensure,
   previous,
   streak,
   summary,
+  timeFrom,
   trend,
   type SmokeResult,
 } from "../../scripts/collab-smoke.mjs";
@@ -36,6 +38,44 @@ describe("collaboration smoke report", () => {
     expect(summary(fail("app-error"))).toContain("App error");
     // A pipe in a message can't break the table.
     expect(summary(fail("app-error"))).toContain(String.raw`Timed out \| waiting`);
+  });
+
+  it("connected transport without an initial document is an app error", () => {
+    const night: SmokeResult = {
+      ok: false,
+      stage: "connect",
+      trackers: { "tracker.webtorrent.dev": { opened: 1, framesReceived: 4 } },
+      connectivity: { creator: "connected", joiner: "connected" },
+      peerConnected: true,
+      errors: [],
+    };
+    expect(classify(night)).toBe("app-error");
+    expect(classify({ ...night, connectivity: {} })).toBe("app-error");
+    expect(classify({ ...night, peerConnected: false, connectivity: { joiner: "connected" } })).toBe("app-error");
+  });
+
+  it("no tracker answered: trackers unreachable; answered but never connected: ICE/NAT; a page error: app", () => {
+    const base: SmokeResult = { ok: false, stage: "connect", connectivity: {}, peerConnected: false, errors: [] };
+    expect(classify({ ...base, trackers: { "tracker.webtorrent.dev": { opened: 1, framesReceived: 0 } } })).toBe(
+      "tracker-unreachable",
+    );
+    expect(classify({ ...base, connectivity: { joiner: "trackers-unreachable" } })).toBe("tracker-unreachable");
+    const answered = { "tracker.webtorrent.dev": { opened: 1, framesReceived: 3 } };
+    expect(classify({ ...base, trackers: answered })).toBe("ice-nat");
+    expect(classify({ ...base, trackers: answered, connectivity: { joiner: "ice-failed" } })).toBe("ice-nat");
+    expect(classify({ ...base, trackers: answered, connectivity: { joiner: "no-answer" } })).toBe("ice-nat");
+    expect(classify({ ...base, trackers: answered, errors: ["joiner: boom"] })).toBe("app-error");
+    expect(classify({ ...base, trackers: answered, stage: "sync" })).toBe("app-error");
+  });
+
+  it("sync timing includes mutation-to-observation delay", async () => {
+    const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+    // The edit takes 40 ms to send, the other side shows it 40 ms later: both count.
+    const ms = await timeFrom(
+      () => wait(40),
+      () => wait(40),
+    );
+    expect(ms).toBeGreaterThanOrEqual(75);
   });
 
   it(`alerts only after ${ALERT_AFTER} failed nights in a row`, () => {

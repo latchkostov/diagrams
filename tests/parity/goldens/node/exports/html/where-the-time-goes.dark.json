@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "d345d2201cabed3714807bc56915b22dc3f0d7f5b8d7b26ec948d1e2d5f170bc", "bytes": 15120 },
+  "file": { "sha256": "316cf453c736285a880b23d1c92847c1b148b7a01d478223e90abe83dd3ebd77", "bytes": 15729 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -58,21 +58,39 @@
       ],
       "simulations": [
         {
-          "id": "steady-orders",
-          "title": "Room for steady orders",
-          "description": "Two thousand orders per second fit. The same 300 ms work stays quick without a spike.",
+          "id": "slow-billing-drill",
+          "title": "Slow Billing drill",
+          "description": "At 3 s Billing slows 5×. Hover for latency measured since that fault; restoring it at 6 s starts a fresh window.",
           "seed": 41,
           "scale": 100,
-          "durationMs": 9400,
+          "durationMs": 9000,
           "traffic": [
             {
               "id": "orders",
               "node": "checkout",
               "messageType": "OrderPlaced",
-              "shape": { "kind": "constant", "ratePerSec": 2000, "durationMs": 9400 }
+              "shape": { "kind": "constant", "ratePerSec": 1000, "durationMs": 8500 }
             }
           ],
-          "timeline": [],
+          "timeline": [
+            {
+              "atMs": 3000,
+              "action": {
+                "do": "fault",
+                "fault": { "kind": "slow", "node": "billing", "factor": 5 },
+                "drill": "slow-dependency"
+              }
+            },
+            {
+              "atMs": 3100,
+              "action": { "do": "note", "text": "Billing is 5× slower. Hover Billing: its latency samples now count from this fault, not from restart.", "focus": ["billing", "receipts"] }
+            },
+            { "atMs": 6000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "billing", "factor": 1 } } },
+            {
+              "atMs": 6100,
+              "action": { "do": "note", "text": "Billing is restored. Hover Billing: the percentile window starts again at the restoration. Restart resets everything.", "focus": ["billing", "receipts"] }
+            }
+          ],
           "expectations": [
             {
               "id": "no-loss",

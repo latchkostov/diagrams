@@ -71,11 +71,18 @@ const LabView =
     : () => null;
 /**
  * Rooms (Edit together; src/collab/room): their code, Yjs included, loads only for a page with a room to open or when
- * one is asked for. Development and e2e builds only, for now: spelled out so production builds drop it.
+ * one is asked for. In development and e2e builds, and in production with VITE_ENABLE_COLLAB=1 (ROOMS in
+ * ./lib/localOnly). Spelled out from the build's own literals (scripts/deployment-env.ts defines them), not the
+ * constants src/lib/deployment.ts exports: those fold only after the module graph is known, so a build without rooms
+ * would still see this import, and the code the room shares with the canvas would leave the canvas's own chunk.
  */
+declare const __DEPLOYMENT_COLLAB__: boolean;
+declare const __DEPLOYMENT_SHARE_LINKS__: boolean;
 type RoomsModule = typeof import("./collab/room");
 const loadRooms =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === "1" ? loadOnce(() => import("./collab/room")) : undefined;
+  (import.meta.env.DEV || import.meta.env.VITE_E2E === "1" || __DEPLOYMENT_COLLAB__) && __DEPLOYMENT_SHARE_LINKS__
+    ? loadOnce(() => import("./collab/room"))
+    : undefined;
 const noRoomSubscribe = () => () => {};
 const noRoomSnapshot = () => undefined;
 

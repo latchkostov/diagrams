@@ -4,6 +4,9 @@ import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildViewer, buildViewerTemplate, EDITOR_ONLY } from "../../scripts/interactive-viewer";
 import { exportHtml, PAYLOAD_BLOCK, templateStencilIcons } from "./inject";
+import { catalog } from "../stencils/catalog";
+import * as translatedStencil from "../i18n/stencils";
+import * as viewerStencil from "./viewer/stencilText";
 
 // The Interactive HTML template, built for real (scripts/interactive-viewer.ts): one page whose CSP allows
 // exactly its own inline script and style, that references nothing outside itself, and that comes out the same
@@ -59,6 +62,8 @@ describe("interactive viewer template", () => {
   it("leaves the editing-only panels out (stubs in their place)", () => {
     const real = (path: string) => modules.some((id) => id.endsWith(path));
     expect(EDITOR_ONLY.filter((p) => real(p.path)).map((p) => p.name)).toEqual([]);
+    expect(real("/src/live/LoadingSimPanel.tsx")).toBe(false);
+    expect(real("/src/i18n/stencils.ts")).toBe(false);
     // The icon map the viewer swaps in is one module, wherever the build runs (a Windows path once made two).
     expect(modules.filter((id) => id.endsWith("/src/export/viewer/iconUrls.ts"))).toHaveLength(1);
     // A protected file decrypts with the token's crypto, never the link adapter around it.
@@ -68,6 +73,15 @@ describe("interactive viewer template", () => {
     // The canvas and the live session themselves are there.
     expect(real("/src/canvas/CanvasView.tsx")).toBe(true);
     expect(real("/src/live/LiveSession.tsx")).toBe(true);
+  });
+
+  it("reuses the catalog's English stencil text without changing viewer words", () => {
+    for (const stencil of catalog) {
+      expect(viewerStencil.stencilLabel(stencil)).toBe(translatedStencil.stencilLabel(stencil));
+      expect(viewerStencil.stencilDescription(stencil)).toBe(translatedStencil.stencilDescription(stencil));
+      expect(viewerStencil.stencilSubtitle(stencil)).toBe(translatedStencil.stencilSubtitle(stencil));
+      expect(viewerStencil.vendorLabel(stencil.vendor)).toBe(translatedStencil.vendorLabel(stencil.vendor));
+    }
   });
 
   it("runs no architecture checks: no engine, card, markers or checks worker", () => {

@@ -228,7 +228,9 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: string; icon?: "plus" | "play" }> = {
-  revive: { label: "Revive", icon: "play" },
+  revive: { label: "Restore", icon: "play" },
+  "restore-boundary": { label: "Restore", icon: "play" },
+  "clear-fault": { label: "Clear fault" },
   "add-consumer": { label: "Add a consumer", icon: "plus" },
   "add-dlq": { label: "Add dead-letter queue", icon: "plus" },
   events: { label: "Show events" },
@@ -296,7 +298,12 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
           disabled={!!disabledHint}
           title={disabledHint}
         >
-          {action.icon && <LiveIcon name={action.icon} size={13} />} {action.label}
+          {action.icon && <LiveIcon name={action.icon} size={13} />}{" "}
+          {trouble.action.kind === "restore-boundary"
+            ? t("fault.restoreNamed", { label: trouble.action.label })
+            : trouble.action.kind === "clear-fault"
+              ? t("fault.clearAction")
+              : action.label}
         </button>
       )}
       <button
@@ -348,12 +355,15 @@ function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: bool
       const p = parent.getBoundingClientRect();
       const c = card && !card.hidden ? card.getBoundingClientRect() : null;
       const t = toggle?.getBoundingClientRect();
-      const right = t ? Math.min(p.right - 16, t.left - 16) : p.right - 16;
+      const panel = wrap
+        ?.querySelector<HTMLElement>('[data-testid="sim-panel"], [data-testid="capacity-panel"]')
+        ?.getBoundingClientRect();
+      const right = Math.min(p.right - 16, t ? t.left - 16 : Infinity, panel ? panel.left - 16 : Infinity);
       const room = c ? right - (c.right + 16) : right - p.left - 16;
       const below = room < CALLOUT_MIN;
       const top = Math.round(Math.max(c?.bottom ?? p.top, t?.bottom ?? p.top) - p.top + 8);
       const left = !below ? Math.round((c?.right ?? p.left) - p.left + 16 + room / 2) : undefined;
-      const width = !below ? Math.floor(room) : undefined;
+      const width = !below ? Math.floor(room) : Math.max(0, right - p.left - 16);
       // A callout can arrive after fit-view. Move the callout off nodes rather than stealing
       // their pointer targets or moving the diagram. Re-evaluate after pan, zoom or resize.
       const rect = (r: DOMRect): Rect => ({ x: r.left - p.left, y: r.top - p.top, width: r.width, height: r.height });
@@ -414,7 +424,13 @@ function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: bool
     style: {
       translate: `${place.dx}px ${place.dy}px`,
       ...(place.below
-        ? ({ "--callout-top": `${place.top}px` } as CSSProperties)
+        ? ({
+            "--callout-top": `${place.top}px`,
+            left: 16,
+            right: "auto",
+            maxWidth: place.room,
+            minWidth: Math.min(340, place.room ?? 340),
+          } as CSSProperties)
         : place.left !== undefined && place.room !== undefined
           ? ({ left: place.left, maxWidth: place.room, minWidth: Math.min(340, place.room) } as CSSProperties)
           : {}),

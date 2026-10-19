@@ -1,3 +1,4 @@
+import { runEndResult } from "./runEndResult";
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useStore } from "@xyflow/react";
 import { useInteraction } from "../canvas/interaction";
@@ -18,7 +19,8 @@ const BOTTOM_RESERVE = 170;
 export function NoteCallout({ state }: { state: LiveState }) {
   const ui = useLive();
   const interaction = useInteraction();
-  const note = state.run?.note;
+  const result = runEndResult(state, ui.controller.currentDiagram);
+  const note = result ? { text: result, focus: [], atMs: state.run!.time } : state.run?.note;
   const waiting = !!state.run?.waiting;
   const transform = useStore((s) => s.transform);
   const paneWidth = useStore((s) => s.width);
@@ -121,12 +123,16 @@ export function NoteCallout({ state }: { state: LiveState }) {
       data-waiting={waiting ? "1" : undefined}
       data-editor-overlay
     >
-      <div className="lv-note-head">
-        <LiveIcon name="note" size={13} />
-        <span>{state.simulation?.title ?? "Note"}</span>
-        <span className="lv-note-time mono">{formatClock(note.atMs)}</span>
-      </div>
-      <p className="lv-note-text">{note.text}</p>
+      {!result && (
+        <div className="lv-note-head">
+          <LiveIcon name="note" size={13} />
+          <span>{state.simulation?.title ?? "Note"}</span>
+          <span className="lv-note-time mono">{formatClock(note.atMs)}</span>
+        </div>
+      )}
+      <p className="lv-note-text" data-testid={result ? "live-run-result" : undefined}>
+        {note.text}
+      </p>
       {waiting && (
         <div className="lv-note-actions">
           <button

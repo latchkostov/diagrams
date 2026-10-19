@@ -8,6 +8,7 @@ import { exampleTestLabel } from "./exampleLabels";
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
 /** Most examples tell two stories; these tell more. */
 const SIMULATIONS: Record<string, number> = {
+  "../examples/where-the-time-goes.json": 3,
   "../examples/aws-serverless-orders.json": 3,
   "../examples/black-friday-commerce.json": 3,
   "../examples/ev-charging-network.json": 4,
@@ -48,7 +49,7 @@ describe("saved example simulations with the real stencil registry", () => {
       }
     });
     for (const [simulationIndex, simulation] of (diagram.simulations ?? []).entries()) {
-      it(`${label}: simulation #${simulationIndex + 1} completes and passes every expectation`, () => {
+      it(`${label}: simulation #${simulationIndex + 1} completes with the authored reliability outcome`, () => {
         const run = createSimulationRun(diagram, simulation);
         run.setSpeed(4);
         for (let frames = 0; frames <= 6000 && !run.state().done; frames++) {
@@ -57,12 +58,17 @@ describe("saved example simulations with the real stencil registry", () => {
         }
         expect(run.state().done).toBe(true);
         expect(run.state().time).toBeLessThan(600_000);
-        expect(
-          run
-            .state()
-            .expectations.filter((e) => e.status !== "pass")
-            .map((e) => e.status),
-        ).toEqual([]);
+        expect(run.state().expectations.map((e) => ({ id: e.id, status: e.status }))).toEqual(
+          (simulation.expectations ?? []).map((e) => ({
+            id: e.id,
+            status:
+              path === "../examples/zone-outage-drill.json" &&
+              simulation.id === "no-health-checks" &&
+              e.id === "api-b-loss"
+                ? "fail"
+                : "pass",
+          })),
+        );
       });
     }
   }

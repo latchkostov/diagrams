@@ -48,8 +48,15 @@ function port(name: string, fallback: number, explicitFallback = false): { port:
   return { port: n, explicit: true };
 }
 
-const TARGET = process.env.E2E_TARGET ?? (CI ? "build" : "dev");
+/**
+ * Collaboration's Nightly network smoke (tests/network, report-only): its project exists only with COLLAB_SMOKE=1,
+ * so no pull request ever runs it, and it then runs alone, against the e2e build (its default target, locally too).
+ */
+const smoke = process.env.COLLAB_SMOKE === "1";
+const TARGET = process.env.E2E_TARGET ?? (CI || smoke ? "build" : "dev");
 if (TARGET !== "build" && TARGET !== "dev") throw new Error(`E2E_TARGET must be "build" or "dev", got "${TARGET}"`);
+if (smoke && TARGET !== "build")
+  throw new Error("COLLAB_SMOKE=1 runs against the e2e build: leave E2E_TARGET unset, or set it to build");
 const BUILD = TARGET === "build";
 const diagnostic = slowmoDiagnosticEnabled();
 const chromiumOnly = diagnostic || process.env.E2E_CHROMIUM_ONLY === "1";
@@ -60,11 +67,6 @@ const preview = port("E2E_PREVIEW_PORT", 5193);
 export const PREVIEW_BASE = "/tools/diagrams/";
 const internal = port("E2E_INTERNAL_PORT", preview.port + 1, preview.explicit);
 const locked = port("E2E_LOCKED_PORT", preview.port + 2, preview.explicit);
-/**
- * Collaboration's Nightly network smoke (tests/network, report-only): its project exists only with COLLAB_SMOKE=1,
- * so no pull request ever runs it, and it then runs alone, against the e2e build.
- */
-const smoke = process.env.COLLAB_SMOKE === "1";
 const skipPreview = smoke || chromiumOnly || process.env.E2E_SKIP_PREVIEW === "1";
 const prebuilt = process.env.E2E_PREBUILT === "1";
 
@@ -160,7 +162,7 @@ export default defineConfig({
     colorScheme: "light",
   },
   projects: smoke
-    ? [{ name: "collab-smoke", testDir: "./tests/network", use: { ...desktopChrome, bypassCSP: true } }]
+    ? [{ name: "collab-smoke", testDir: "./tests/network", use: { ...desktopChrome } }]
     : [
         {
           name: "chromium",
@@ -197,6 +199,7 @@ export default defineConfig({
             ]),
       ].filter((project) => !chromiumOnly || project.name === "chromium"),
   webServer: [
+    // The smoke needs only the e2e build (BUILD is always true with it).
     ...((BUILD && chromiumOnly) || smoke ? [] : [devWebServer]),
     ...(BUILD
       ? [

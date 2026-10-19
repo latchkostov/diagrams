@@ -1,11 +1,14 @@
 import { resolve } from "node:path";
 import { build, type Rollup } from "vite";
 import { beforeAll, describe, expect, it } from "vitest";
+import { APPROVED_STUN, APPROVED_TRACKERS } from "../../scripts/deployment-env";
 import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
 
 // What the production build loads up front, checked on the real build: the code that only some sessions
 // use stays out of the startup JavaScript (the entry and the chunks it preloads), and out of the canvas's
 // first view too. Each pattern names a module that once was, or could easily be, imported statically.
+// Two builds: without Edit together (VITE_ENABLE_COLLAB unset, every copy's default), which carries none of it,
+// and with it (livediagrams.dev's), where rooms, Yjs and the room's endpoints load only on use.
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
@@ -32,10 +35,13 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["the embed viewer", /[/\\]src[/\\]interop[/\\]embed[/\\]/],
   ["the Interactive HTML export", /[/\\]src[/\\]export[/\\]/],
   ["the Lab", /[/\\]src[/\\]lab[/\\]/],
-  // Collaboration (C0 is Lab-only: a production build has none of it). Rooms, their crypto and Yjs load on use.
+  // Collaboration: none of it without VITE_ENABLE_COLLAB; with it, rooms, their crypto and Yjs load on use.
   ["collaboration", /[/\\]src[/\\]collab[/\\]/],
   ["Yjs", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?(yjs|lib0)[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
+  ["fault execution and outage indexes", /[/\\]src[/\\]model[/\\]faultRuntime\.ts$/],
+  ["fault display messages", /[/\\]src[/\\]model[/\\]faultWords\.ts$/],
+  ["run-end result messages", /[/\\]src[/\\]live[/\\]runEndResult\.ts$/],
   ["recording", /[/\\]src[/\\]live[/\\]record[/\\]Recorder\.tsx$/],
   ["slow motion", /[/\\]src[/\\]live[/\\]slowmo[/\\]/],
   ["autoscaling execution", /[/\\]src[/\\]sim[/\\]autoscaling\.ts$/],
@@ -101,40 +107,62 @@ const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
     ].includes(what),
 );
 
+interface Build {
+  chunks: Rollup.OutputChunk[];
+  assets: Rollup.OutputAsset[];
+  html: string;
+}
+
 let chunks: Rollup.OutputChunk[];
 let assets: Rollup.OutputAsset[];
 let html: string;
+/** The build with Edit together on (VITE_ENABLE_COLLAB=1), as livediagrams.dev builds. */
+let rooms: Build;
 
-beforeAll(async () => {
-  // A production build, as `pnpm build` makes it (Vitest runs with NODE_ENV=test, which Vite reads as development).
-  const env = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
+/** A production build, as `pnpm build` makes it, with Edit together on or off whatever the shell or .env says. */
+async function buildApp(collab: boolean): Promise<Build> {
+  // Vitest runs with NODE_ENV=test, which Vite reads as development. A VITE_* variable already in the environment
+  // wins over the .env files.
+  const saved = { NODE_ENV: process.env.NODE_ENV, VITE_ENABLE_COLLAB: process.env.VITE_ENABLE_COLLAB };
+  Object.assign(process.env, { NODE_ENV: "production", VITE_ENABLE_COLLAB: collab ? "1" : "0" });
   let result: Awaited<ReturnType<typeof build>>;
   try {
     result = await build({ configFile: resolve("vite.config.ts"), logLevel: "silent", build: { write: false } });
   } finally {
-    process.env.NODE_ENV = env;
+    for (const [key, value] of Object.entries(saved))
+      if (value === undefined) Reflect.deleteProperty(process.env, key);
+      else process.env[key] = value;
   }
   const output = (Array.isArray(result) ? result : [result]).flatMap((r) => (r as Rollup.RolldownOutput).output);
-  chunks = output.filter((out): out is Rollup.OutputChunk => out.type === "chunk");
-  assets = output.filter((out): out is Rollup.OutputAsset => out.type === "asset");
   const page = output.find((out): out is Rollup.OutputAsset => out.type === "asset" && out.fileName === "index.html");
-  html = String(page?.source ?? "");
-}, 120_000);
+  return {
+    chunks: output.filter((out): out is Rollup.OutputChunk => out.type === "chunk"),
+    assets: output.filter((out): out is Rollup.OutputAsset => out.type === "asset"),
+    html: String(page?.source ?? ""),
+  };
+}
 
-const chunk = (fileName: string) => {
-  const found = chunks.find((c) => c.fileName === fileName);
+beforeAll(async () => {
+  ({ chunks, assets, html } = await buildApp(false));
+  rooms = await buildApp(true);
+}, 240_000);
+
+/** The build without Edit together: every copy's default. */
+const plain = (): Build => ({ chunks, assets, html });
+
+const chunkIn = (b: Build, fileName: string) => {
+  const found = b.chunks.find((c) => c.fileName === fileName);
   if (!found) throw new Error(`No chunk ${fileName}`);
   return found;
 };
 /** `from` and every chunk they import statically: what loads together with them. */
-function closure(from: Rollup.OutputChunk[]): Set<Rollup.OutputChunk> {
+function closure(from: Rollup.OutputChunk[], b: Build = plain()): Set<Rollup.OutputChunk> {
   const seen = new Set<Rollup.OutputChunk>();
   for (const stack = [...from]; stack.length;) {
     const c = stack.pop()!;
     if (seen.has(c)) continue;
     seen.add(c);
-    stack.push(...c.imports.map(chunk));
+    stack.push(...c.imports.map((name) => chunkIn(b, name)));
   }
   return seen;
 }
@@ -147,18 +175,18 @@ const bundled = (set: Iterable<Rollup.OutputChunk>) =>
 const found = (ids: string[], list: [string, RegExp][]) =>
   list.filter(([, pattern]) => ids.some((id) => pattern.test(id))).map(([what]) => what);
 
-const startup = () => {
-  const src = (re: RegExp) => [...html.matchAll(re)].map((m) => m[1].replace(/^\.\//, ""));
+const startup = (b: Build = plain()) => {
+  const src = (re: RegExp) => [...b.html.matchAll(re)].map((m) => m[1].replace(/^\.\//, ""));
   const entry = src(/<script\b[^>]*type="module"[^>]*\bsrc="([^"]+)"/g);
   expect(entry).toHaveLength(1);
   const preloaded = src(/<link\b[^>]*rel="modulepreload"[^>]*href="([^"]+)"/g);
-  const set = closure([chunk(entry[0])]);
+  const set = closure([chunkIn(b, entry[0])], b);
   // index.html preloads exactly what the entry imports statically.
   expect(new Set([...set].map((c) => c.fileName))).toEqual(new Set([...entry, ...preloaded]));
   return set;
 };
-const canvasChunk = () => {
-  const canvas = chunks.find((c) => c.name === "CanvasView");
+const canvasChunk = (b: Build = plain()) => {
+  const canvas = b.chunks.find((c) => c.name === "CanvasView");
   if (!canvas) throw new Error("No CanvasView chunk");
   return canvas;
 };
@@ -168,7 +196,7 @@ describe("production bundle split", () => {
     const manifest = assets.find((asset) => asset.fileName === "headers.json");
     expect(JSON.parse(String(manifest?.source))).toEqual(selfHostHeaderManifest());
   });
-  it("omits collaboration, Yjs and tracker code from every production chunk", () => {
+  it("without Edit together, omits collaboration, Yjs and tracker code from every chunk", () => {
     const collab = NOT_AT_STARTUP.filter(([what]) => ["collaboration", "Yjs"].includes(what));
     expect(found(bundled(chunks), collab)).toEqual([]);
     for (const c of chunks) {
@@ -237,6 +265,15 @@ describe("production bundle split", () => {
     expect(found(bundled(chunks), editor)).toEqual(editor.map(([what]) => what));
   });
 
+  it("loads fault playback, outage lookup and run results with the Live session", () => {
+    const live = chunks.find((c) => c.name === "LiveSession");
+    expect(live).toBeDefined();
+    const playback = NOT_AT_STARTUP.filter(([what]) =>
+      ["fault execution and outage indexes", "fault display messages", "run-end result messages"].includes(what),
+    );
+    expect(found(bundled(closure([live!])), playback)).toEqual(playback.map(([what]) => what));
+  });
+
   it("builds the Interactive HTML viewer apart: a file of its own, fetched only by the export", () => {
     const template = assets.filter((a) => /^export\/interactive-viewer-[0-9a-f]{10}\.html$/.test(a.fileName));
     expect(template).toHaveLength(1);
@@ -256,5 +293,39 @@ describe("production bundle split", () => {
       expect(view, name).toBeDefined();
       expect(closure([view!]).has(canvasChunk()), name).toBe(false);
     }
+  });
+});
+
+describe("production bundle split with Edit together on (VITE_ENABLE_COLLAB=1)", () => {
+  const collab = NOT_AT_STARTUP.filter(([what]) => ["collaboration", "Yjs"].includes(what));
+  const TRACKER_HOSTS = /\btracker\.(?:webtorrent\.dev|openwebtorrent\.com|btorrent\.xyz)\b/;
+
+  it("carries rooms and Yjs (so the checks below can fail)", () => {
+    expect(found(bundled(rooms.chunks), collab)).toEqual(["collaboration", "Yjs"]);
+  });
+
+  it("keeps them, and everything else lazy, out of the startup JavaScript, pinned to the same chunks", () => {
+    expect(found(bundled(startup(rooms)), NOT_AT_STARTUP)).toEqual([]);
+    expect([...startup(rooms)].map((c) => c.name).sort()).toEqual(STARTUP_CHUNKS);
+  });
+
+  it("keeps them out of the canvas's first view", () => {
+    const canvas = closure([canvasChunk(rooms)], rooms);
+    expect(found(bundled(canvas), NOT_WITH_CANVAS)).toEqual([]);
+    const loading = [...canvas].filter((c) => !startup(rooms).has(c));
+    expect(loading.map((c) => c.name).sort()).toEqual(["CanvasView", "canvas-shared"]);
+  });
+
+  it("names the endpoints in the room's own chunk only: exactly the approved trackers and STUN, no TURN", () => {
+    const naming = rooms.chunks.filter((c) => TRACKER_HOSTS.test(c.code) || c.code.includes("stun:"));
+    expect(naming).toHaveLength(1);
+    const [room] = naming;
+    expect(startup(rooms).has(room)).toBe(false);
+    expect(closure([canvasChunk(rooms)], rooms).has(room)).toBe(false);
+    expect(bundled([room]).some((id) => /[/\\]src[/\\]collab[/\\]room[/\\]endpoints\.ts$/.test(id))).toBe(true);
+    const sockets = [...new Set(room.code.match(/\bwss?:\/\/[A-Za-z0-9.-]+[^"'`\s,\]]*/g) ?? [])].sort();
+    expect(sockets).toEqual([...APPROVED_TRACKERS].sort());
+    expect([...new Set(room.code.match(/\bstuns?:[A-Za-z0-9.-]+(?::\d+)?/g) ?? [])]).toEqual([...APPROVED_STUN]);
+    expect(room.code).not.toMatch(/\bturns?:[A-Za-z0-9.-]/);
   });
 });

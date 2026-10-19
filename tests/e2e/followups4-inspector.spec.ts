@@ -65,6 +65,8 @@ test("Edit zoom then entering Live gives the automatic fit ownership of Inspecto
   await page.getByTestId("live-toggle").click();
   await waitForLiveSession(page);
   await waitForCameraIdle(page);
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
+  await expect(page.getByTestId("live-note")).toHaveCount(0);
   await pauseClock(page);
   const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-toggle").click();

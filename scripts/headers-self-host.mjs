@@ -5,6 +5,9 @@
 //   pnpm headers:self-host --frame-ancestors "https://wiki.example.com https://*.example.com"
 //   pnpm headers:self-host --providers                        # a build with cloud storage variables set
 //   pnpm headers:self-host --out some/dir                     # default: self-host-headers/
+//
+// Edit together follows the build's own variables (the shell's, then the .env files, as the build reads them): with
+// VITE_ENABLE_COLLAB=1 the app's connect-src allows its trackers (VITE_COLLAB_TRACKERS, else the approved two).
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -21,20 +24,25 @@ const { values } = parseArgs({
     base: { type: "string", default: "/" },
   },
 });
-const { nginxHeaders, headersFile, selfHostHeaderManifest } = (
+const { nginxHeaders, headersFile, selfHostHeaderManifest, collabTrackers } = (
   await runnerImport(path.join(root, "scripts/self-host-headers.ts"), { root, configFile: false, logLevel: "error" })
 ).module;
 const { hostingTemplates } = (
   await runnerImport(path.join(root, "scripts/self-host-templates.ts"), { root, configFile: false, logLevel: "error" })
 ).module;
 
-const options = {
-  frameAncestors: values["frame-ancestors"].split(/[\s,]+/).filter(Boolean),
-  providers: values.providers,
-  base: values.base,
-};
+const { resolveDeploymentEnv } = (
+  await runnerImport(path.join(root, "scripts/deployment-env.ts"), { root, configFile: false, logLevel: "error" })
+).module;
+
 let files;
 try {
+  const options = {
+    frameAncestors: values["frame-ancestors"].split(/[\s,]+/).filter(Boolean),
+    providers: values.providers,
+    base: values.base,
+    collab: collabTrackers(resolveDeploymentEnv("production", root)),
+  };
   files = {
     "nginx.conf": nginxHeaders(options),
     _headers: headersFile(options),

@@ -10,7 +10,8 @@ import { DEPLOYMENT_VARIABLES, INTERNAL_DEFAULTS } from "../../scripts/deploymen
 // encryption's dialog, the agents' get_share_link); one without AI tools carries no WebMCP and no Copy for AI; one
 // without the on-device model carries no request box for it. The public build keeps all of it (so the checks can
 // fail). A password-protected Interactive HTML file is a file, not a link: every build makes one, so the encryption
-// and the password field's strength hint stay in all of them.
+// and the password field's strength hint stay in all of them. Edit together is opt-in (VITE_ENABLE_COLLAB): without
+// it no room code ships, and with it a copy's own trackers, STUN and TURN replace the approved ones.
 
 interface Output {
   code: string;
@@ -114,6 +115,20 @@ const all = (what: { strings: string[]; modules: RegExp[]; code: RegExp[] }) =>
 let publicBuild: Output;
 let internal: Output;
 let locked: Output;
+/** Edit together on, with a self-hosted copy's own endpoints (collaboration plan Q9). */
+let ownRooms: Output;
+
+/** A room's code: the room module, the session and Yjs. */
+const ROOM_CODE = [/\/src\/collab\//, /\/node_modules\/(\.pnpm\/[^/]+\/node_modules\/)?yjs\//];
+const roomModules = (out: Output) => ROOM_CODE.filter((re) => out.modules.some((id) => re.test(id))).map(String);
+const OWN = {
+  VITE_ENABLE_COLLAB: "1",
+  VITE_COLLAB_TRACKERS: "wss://tracker.intranet.example/announce",
+  VITE_COLLAB_STUN: "stun:stun.intranet.example:3478",
+  VITE_COLLAB_TURN: "turns:turn.intranet.example:5349",
+  VITE_COLLAB_TURN_USERNAME: "rooms",
+  VITE_COLLAB_TURN_CREDENTIAL: "intranet-only",
+};
 
 /** What a developer's shell or CI might have set: the fixtures must not see it. */
 const AMBIENT = { VITE_BRAND_NAME: "Ambient Brand", VITE_DISABLE_SHARE_LINKS: "1", VITE_DISABLE_ONDEVICE: "1" };
@@ -124,21 +139,24 @@ beforeAll(async () => {
   Object.assign(process.env, AMBIENT);
   try {
     publicBuild = await buildWith({});
-    internal = await buildWith({ ...INTERNAL_DEFAULTS, VITE_BRAND_NAME: "Acme Diagrams (internal)" } as Record<
-      string,
-      string
-    >);
+    // Edit together asked for, but without share links: still none (a room is a kind of link).
+    internal = await buildWith({
+      ...INTERNAL_DEFAULTS,
+      VITE_BRAND_NAME: "Acme Diagrams (internal)",
+      VITE_ENABLE_COLLAB: "1",
+    } as Record<string, string>);
     locked = await buildWith({
       VITE_DISABLE_SHARE_LINKS: "1",
       VITE_DISABLE_LINK_OPEN: "1",
       VITE_DISABLE_AI_TOOLS: "1",
       VITE_DISABLE_ONDEVICE: "1",
     });
+    ownRooms = await buildWith(OWN);
   } finally {
     for (const key of Object.keys(AMBIENT)) if (!(key in saved)) Reflect.deleteProperty(process.env, key);
     Object.assign(process.env, saved);
   }
-}, 240_000);
+}, 360_000);
 
 describe("self-hosting switches in the production build", () => {
   it("build fixtures ignore ambient deployment settings (the shell's, .env files)", () => {
@@ -192,5 +210,28 @@ describe("self-hosting switches in the production build", () => {
     expect(publicBuild.code.includes("ai-rail-badge")).toBe(true);
     expect(publicBuild.files.filter((f) => /AiPanel-[^/]*\.(js|css)$/.test(f))).toHaveLength(2);
     expect(locked.code.includes("Opening shared links is turned off here")).toBe(true);
+  });
+});
+
+describe("Edit together in the production build", () => {
+  it("off by default: no room code, no Yjs, no endpoints", () => {
+    for (const out of [publicBuild, locked]) {
+      expect(roomModules(out)).toEqual([]);
+      expect(out.code).not.toMatch(/tracker\.(?:openwebtorrent\.com|webtorrent\.dev)|stun\.cloudflare\.com/);
+    }
+  });
+
+  it("asked for without share links: still none", () => {
+    expect(roomModules(internal)).toEqual([]);
+    expect(internal.code).not.toMatch(/tracker\.(?:openwebtorrent\.com|webtorrent\.dev)|stun\.cloudflare\.com/);
+  });
+
+  it("on, with a copy's own trackers, STUN and TURN instead of the approved ones", () => {
+    expect(roomModules(ownRooms)).toEqual(ROOM_CODE.map(String));
+    for (const value of ["wss://tracker.intranet.example/announce", "stun:stun.intranet.example:3478"])
+      expect(ownRooms.code, value).toContain(value);
+    expect(ownRooms.code).toContain("turns:turn.intranet.example:5349");
+    expect(ownRooms.code).toContain("intranet-only");
+    expect(ownRooms.code).not.toMatch(/tracker\.(?:openwebtorrent\.com|webtorrent\.dev)|stun\.cloudflare\.com/);
   });
 });

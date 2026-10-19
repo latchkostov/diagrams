@@ -1,5 +1,5 @@
 import type { Fault } from "../model/faults";
-import { faultTimelineProblem } from "../model/faults";
+import { faultTimelineProblem } from "../model/faultRuntime";
 import { simulationProjection } from "../sim/simulationContent";
 // The live view's model: one engine (free play) or one simulation run (a saved simulation), plus
 // the playback state around it. Pure TypeScript with no DOM or React, so it is unit-tested directly.

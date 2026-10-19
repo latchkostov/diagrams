@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
-import type { BrowserContext, Page, WebSocketRoute } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import {
   test,
   expect,
@@ -17,95 +17,12 @@ import {
 } from "./fixtures";
 import { COLLAB_LIMITS } from "../../src/collab/limits";
 import { RECONNECT_MS } from "../../src/collab/room/timing";
+import { emulateTracker } from "./collab-tracker";
 
 // Edit together in the app (collaboration plan E2): a room's life between two browsers, with real WebRTC between
 // them over host candidates. The matchmaking tracker is emulated here, in the test runner (routeWebSocket on the
 // app's own origin: no server, no public network), speaking the WebTorrent tracker protocol the transport uses.
 // Selectors are data-testid only.
-
-const TRACKER_PATH = "/__test-tracker";
-
-/** One emulated tracker shared by every context given: swarms by info hash, offers and answers forwarded. */
-async function emulateTracker(contexts: BrowserContext[]) {
-  const swarms = new Map<string, Map<string, WebSocketRoute>>();
-  const queued: (() => void)[] = [];
-  const sockets = {
-    opened: 0,
-    held: false,
-    /** Holds every offer and answer it would forward, until release(). */
-    hold() {
-      sockets.held = true;
-    },
-    release() {
-      sockets.held = false;
-      for (const send of queued.splice(0)) send();
-    },
-  };
-  const forward = (send: () => void) => (sockets.held ? queued.push(send) : send());
-  for (const context of contexts) {
-    await context.addInitScript((path) => {
-      window.__collabEndpoints = { trackers: [`${location.origin.replace(/^http/, "ws")}${path}`], iceServers: [] };
-    }, TRACKER_PATH);
-    await context.routeWebSocket(
-      (url) => url.pathname === TRACKER_PATH,
-      (ws) => {
-        sockets.opened++;
-        ws.onMessage((raw) => {
-          let msg: Record<string, unknown>;
-          try {
-            msg = JSON.parse(String(raw)) as Record<string, unknown>;
-          } catch {
-            return;
-          }
-          if (msg.action !== "announce" || typeof msg.info_hash !== "string" || typeof msg.peer_id !== "string") return;
-          const hash = msg.info_hash;
-          const swarm = swarms.get(hash) ?? new Map<string, WebSocketRoute>();
-          swarms.set(hash, swarm);
-          if (msg.event === "stopped") {
-            swarm.delete(msg.peer_id);
-            return;
-          }
-          swarm.set(msg.peer_id, ws);
-          if (msg.answer) {
-            const to = swarm.get(String(msg.to_peer_id));
-            forward(() =>
-              to?.send(
-                JSON.stringify({
-                  action: "announce",
-                  info_hash: hash,
-                  peer_id: msg.peer_id,
-                  offer_id: msg.offer_id,
-                  answer: msg.answer,
-                }),
-              ),
-            );
-            return;
-          }
-          ws.send(JSON.stringify({ action: "announce", info_hash: hash, interval: 120, complete: 0, incomplete: 0 }));
-          const offers = (msg.offers as { offer_id: string; offer: unknown }[] | undefined) ?? [];
-          const others = [...swarm].filter(([id]) => id !== msg.peer_id);
-          others.slice(0, offers.length).forEach(([, peer], i) =>
-            forward(() =>
-              peer.send(
-                JSON.stringify({
-                  action: "announce",
-                  info_hash: hash,
-                  peer_id: msg.peer_id,
-                  offer_id: offers[i].offer_id,
-                  offer: offers[i].offer,
-                }),
-              ),
-            ),
-          );
-        });
-        ws.onClose(() => {
-          for (const swarm of swarms.values()) for (const [id, s] of swarm) if (s === ws) swarm.delete(id);
-        });
-      },
-    );
-  }
-  return sockets;
-}
 
 /** Counts the page's peer connections (none may exist before consent). */
 async function countPeerConnections(context: BrowserContext) {

@@ -1,4 +1,5 @@
-import { faultTopology, faultActive, faultKey, faultProblem, type Fault } from "../model/faults";
+import { faultProblem, type Fault } from "../model/faults";
+import { faultTopology, faultActive, faultKey } from "../model/faultRuntime";
 import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget } from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
@@ -302,6 +303,8 @@ export function seedEngine(engine: SimEngine, seed: number): void {
 export function createEngine(opts: EngineOptions = {}): SimEngine {
   let partBudget = createCpuPartBudget();
   let latencyBudget = createLatencyBudget();
+  let latencySinceFault = false;
+  let sinceFault: import("./types").LatencyMetrics["sinceFault"];
   let seed = opts.seed ?? Math.floor(Math.random() * 4294967296);
   const roleOf = opts.roleOf ?? stencilRole;
   const maxParticles = Number.isFinite(opts.maxParticles) ? Math.max(0, Math.floor(opts.maxParticles!)) : 1500;
@@ -2039,6 +2042,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     randomState = mulberry32(seed);
     lineage.reset();
     latencyBudget = createLatencyBudget();
+    sinceFault = undefined;
     routeCounts = new Map();
     for (const node of nodes.values()) {
       node.latency = undefined;
@@ -2146,6 +2150,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         topology,
         scale,
         capacityMultiplier,
+        sinceFault,
       };
       const token = Object.freeze({ time });
       checkpoints.set(token, () => {
@@ -2203,6 +2208,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           randomCalls,
           scale,
           capacityMultiplier,
+          sinceFault,
         } = clock);
         randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
       });
@@ -2389,7 +2395,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         if (node.role === "queue" && !node.groups.length) lag.queue = backlog;
         nodeStates[node.id] = {
-          ...(node.latency ? { latency: latencyMetrics(node.latency) } : {}),
+          ...(node.latency
+            ? { latency: sinceFault ? { ...latencyMetrics(node.latency), sinceFault } : latencyMetrics(node.latency) }
+            : {}),
           id: node.id,
           role: node.role,
           status: node.status,
@@ -2466,6 +2474,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         });
       }
     },
+    setLatencySinceFault(on): void {
+      latencySinceFault = on;
+    },
     setFault(fault): void {
       const problem = faultProblem(fault);
       if (problem) throw new Error(problem);
@@ -2480,7 +2491,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const key = faultKey(fault);
       const previous = faults.get(key);
       if (!previous && !faultActive(fault)) return;
-      if (previous && JSON.stringify(previous) === JSON.stringify(fault)) return;
+      const magnitude = (value: Fault) =>
+        value.kind === "boundary"
+          ? value.down
+          : value.kind === "link"
+            ? value.cut
+            : value.kind === "slow"
+              ? value.factor
+              : value.rate;
+      if (previous && magnitude(previous) === magnitude(fault)) return;
+      if (latencySinceFault) {
+        latencyBudget = createLatencyBudget();
+        sinceFault = Object.freeze({ atMs: time, fault: Object.freeze(structuredClone(fault)) });
+        for (const node of nodes.values()) node.latency = undefined;
+      }
       if (faultActive(fault)) faults.set(faultKey(fault), structuredClone(fault));
       else faults.delete(faultKey(fault));
       if (fault.kind === "link") {
