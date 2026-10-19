@@ -78,5 +78,4 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
       }
   }
   return scale;
-
 }

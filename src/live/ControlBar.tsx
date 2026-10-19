@@ -63,7 +63,7 @@ export function ControlBar({ state }: { state: LiveState }) {
         <button
           className="lv-btn lv-play"
           onClick={() => (waiting ? c.resume() : c.togglePlaying())}
-          disabled={lookingAhead}
+          disabled={lookingAhead || state.needsRestart}
           title={waiting ? "Continue (Space)" : state.playing ? "Pause (Space)" : done ? "Play again" : "Play (Space)"}
           aria-label={state.playing && !waiting ? "Pause" : "Play"}
           data-testid="live-play"
@@ -298,7 +298,7 @@ function MoreMenu({ state }: { state: LiveState }) {
             <button
               role="menuitem"
               onClick={pick(() => c.step(), true)}
-              disabled={waiting || !!state.run?.done || slowStatus === "capturing"}
+              disabled={state.needsRestart || waiting || !!state.run?.done || slowStatus === "capturing"}
               data-testid="live-step"
             >
               <LiveIcon name="step" size={14} />

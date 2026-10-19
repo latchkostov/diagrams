@@ -1,4 +1,4 @@
-import { ThreadCeiling } from "../live/ThreadMeter";
+import { ThreadCeiling } from "../live/ThreadCeiling";
 import { ResourceEstimate } from "./ResourceDetails";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import { useLayoutEffect, useRef } from "react";

@@ -183,6 +183,42 @@ it("counts ramp startup volume in linear stage reads", () => {
 });
 
 it.each([
+  [1, 1],
+  [10, 1],
+  [10, 2],
+])("rejects an oversized rising and falling ramp before startup actions (scale %i, traffic %i)", (scale, traffic) => {
+  const simulation = (excess: number): Simulation => {
+    const volume = ((SOURCE_VOLUME_CAP + excess) * scale) / traffic - 1;
+    return {
+      id: "ramp-budget",
+      title: "Ramp budget",
+      scale,
+      multipliers: { traffic },
+      traffic: [
+        {
+          id: "ramp",
+          node: "source",
+          shape: {
+            kind: "ramp",
+            startRate: volume / 4,
+            stages: [
+              { durationMs: 1000, targetRate: (3 * volume) / 4 },
+              { durationMs: 1000, targetRate: volume / 4 },
+            ],
+          },
+        },
+      ],
+      timeline: [{ atMs: 0, action: { do: "inject", node: "source", count: 1 } }],
+    };
+  };
+  expect(() => createSimulationRun(waitingFixture(), simulation(0), { maxParticles: 0 })).not.toThrow();
+  const engine = createEngine(),
+    inject = vi.spyOn(engine, "inject");
+  expect(() => createSimulationRun(waitingFixture(), simulation(1), { engine })).toThrow(WorkBudgetError);
+  expect(inject).not.toHaveBeenCalled();
+});
+
+it.each([
   [3, 2],
   [1, 10],
   [9, 10],

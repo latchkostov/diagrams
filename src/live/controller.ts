@@ -59,6 +59,8 @@ export interface NodeTweak {
 }
 
 export interface LiveState {
+  /** Requested settings are stopped until a successful rebuild replaces a refused run. */
+  needsRestart: boolean;
   /** Recoverable run-wide CPU accounting refusal, also applies to manual/scripted bursts. */
   resourceError?: string;
   playing: boolean;
@@ -66,7 +68,7 @@ export interface LiveState {
   traffic: boolean;
   /** The selected simulation as saved (or the unsaved draft), or null for free play. */
   simulation: Simulation | null;
-  /** What actually runs: `simulation` with the Inputs & capacity panel's what-ifs applied. */
+  /** Requested configuration; it runs only when `needsRestart` is false. */
   running: Simulation | null;
   /** The panel's what-if inputs (unsaved until "Save"). */
   inputs: LiveInputs;
@@ -95,6 +97,8 @@ export interface LiveTrace {
 /** A restorable sandbox over the running engine (see `LiveController.lookAhead`). */
 export interface LookAhead {
   tracer: SimEngine["tracer"];
+  /** A budget stopped this forecast; restore it and leave Live paused. */
+  readonly refused: boolean;
   /** Simulation time now, ms. */
   time(): number;
   /** Advance `simMs` of simulated time. False when time can't move (a finished run). */
@@ -109,7 +113,7 @@ export interface LookAhead {
 
 type TraceIntent = { kind: "idle" } | { kind: "root"; rootId: number } | { kind: "pending"; request: TraceRequest };
 
-export type DiagramUpdate = "none" | "patched" | "reloaded";
+export type DiagramUpdate = "none" | "patched" | "reloaded" | "refused";
 
 /** Shared simulation content, excluding props/scripts that the controller patches separately. */
 export function structuralKey(d: DiagramFile): string {
@@ -182,6 +186,7 @@ export class LiveController {
   private listeners = new Set<() => void>();
   private state!: LiveState;
   private resourceError?: string;
+  private needsRestart = false;
   private structKey: string;
   private nodeProps = new Map<string, string>();
 
@@ -193,7 +198,7 @@ export class LiveController {
     this.structKey = structuralKey(diagram);
     this.rememberProps(diagram);
     this.newRun();
-    this.build();
+    if (this.build() === "refused") throw new Error("Initial free-play build refused");
     this.publish();
   }
 
@@ -233,13 +238,14 @@ export class LiveController {
    * tick the replay is heading for (the replay keeps its slices: nothing runs it to the end at once).
    */
   private apply(op: LiveOp): void {
+    if (this.needsRestart) return;
     // Behind a replay, or behind earlier ops still waiting (a refused Continue): in order, after them.
     if (this.replayTarget !== null || this.queued.length) {
       this.queued.push(own(op));
       this.publish();
       return;
     }
-    this.execute(op);
+    if (!this.updateRunner(() => this.execute(op))) return;
     this.record(op);
     this.dirty = true;
     this.publish();
@@ -250,11 +256,11 @@ export class LiveController {
    * resource budget refuses stops here: it and the rest keep waiting for a retry (Continue again) or a cancel.
    */
   private applyQueued(): void {
-    while (this.queued.length) {
+    while (!this.needsRestart && this.queued.length) {
       const op = structuredClone(this.queued[0]) as LiveOp;
       if (op.kind === "resume") {
         if (!this.continueRun()) return;
-      } else this.execute(op);
+      } else if (!this.updateRunner(() => this.execute(op))) return;
       this.queued.shift();
       this.record(op);
     }
@@ -456,6 +462,7 @@ export class LiveController {
       else this.tweaks.delete(id);
     }
     this.state = {
+      needsRestart: this.needsRestart,
       resourceError:
         this.resourceError ?? (this.engine.trafficLimit() === "resources" ? t("autoscaling.cpuBudget") : undefined),
       scale: resolveScale(snapshot.scale),
@@ -581,6 +588,9 @@ export class LiveController {
     runner?.setTraceActions(false);
     return {
       tracer: engine.tracer,
+      get refused() {
+        return budgetError !== undefined;
+      },
       time,
       step: (simMs) => {
         const before = time();
@@ -619,8 +629,7 @@ export class LiveController {
         this.applySpeed();
         this.engine.setTraffic(this.traffic);
         this.dirty = true;
-        if (budgetError instanceof WorkBudgetError) {
-          this.recoverBudget(budgetError);
+        if (budgetError !== undefined && this.recoverBudget(budgetError)) {
           this.publish();
         }
       },
@@ -646,7 +655,7 @@ export class LiveController {
 
   /** Advance by wall-clock ms (speed applies). No-op while paused, waiting on a note, or done. */
   advance(wallMs: number): void {
-    if (!this.playing || this.held || this.replayTarget !== null || !(wallMs > 0)) return;
+    if (this.needsRestart || !this.playing || this.held || this.replayTarget !== null || !(wallMs > 0)) return;
     if (this.runner) {
       if (!this.updateRunner(() => this.runner?.step(wallMs))) return;
       this.captureCheckpoint();
@@ -676,19 +685,25 @@ export class LiveController {
   private recoverBudget(error: unknown): boolean {
     if (!(error instanceof LifecycleBudgetError) && !(error instanceof WorkBudgetError)) return false;
     this.resourceError = error instanceof WorkBudgetError ? t("liveSession.workBudget") : error.message;
+    if (error instanceof WorkBudgetError) {
+      this.needsRestart = true;
+      this.cancelReplay();
+    }
     this.playing = false;
-    this.cancelReplay();
     this.dirty = true;
     return true;
   }
 
   setPlaying(on: boolean): void {
-    if (this.held) return;
+    if (this.held || this.needsRestart) return;
     // A finished run plays again from the start.
     if (on && this.runState?.done) {
       this.cancelReplay();
       this.newRun();
-      if (!this.build()) return;
+      if (this.build() === "refused") {
+        this.publish();
+        return;
+      }
     }
     this.playing = on;
     this.record({ kind: "play", on });
@@ -701,7 +716,7 @@ export class LiveController {
 
   setSpeed(speed: number): void {
     this.speed = Math.max(0.25, Math.min(8, speed));
-    this.applySpeed();
+    if (!this.needsRestart) this.applySpeed();
     this.record({ kind: "speed", speed: this.speed });
     this.publish();
   }
@@ -723,7 +738,7 @@ export class LiveController {
 
   /** Advance a fixed slice of sim time, playing or not. */
   step(simMs = STEP_MS): void {
-    if (this.held || this.replayTarget !== null) return;
+    if (this.needsRestart || this.held || this.replayTarget !== null) return;
     const wall = simMs / this.speed;
     this.record({ kind: "step", simMs });
     if (this.runner) {
@@ -737,7 +752,7 @@ export class LiveController {
 
   /** Continue after a pausing note. */
   resume(): void {
-    if (this.held) return;
+    if (this.held || this.needsRestart) return;
     if (this.replayTarget !== null) return this.apply({ kind: "resume" });
     // A refused Continue left ops waiting: this is its retry, then theirs, in order.
     if (this.queued.length) {
@@ -752,12 +767,13 @@ export class LiveController {
   }
 
   /** Start over: same diagram, same simulation and seed; live tweaks are dropped (a new run, a new log). */
-  restart(): void {
+  restart(): boolean {
     this.cancelReplay();
     this.newRun();
-    this.build();
+    const result = this.build();
     this.record({ kind: "restart" });
     this.publish();
+    return result === "ok";
   }
 
   /**
@@ -766,7 +782,7 @@ export class LiveController {
    * apply again on their ticks; moving back cuts the log at the target.
    */
   seek(targetMs: number): void {
-    if (!this.runner || this.held) return;
+    if (this.needsRestart || !this.runner || this.held) return;
     if (!Number.isFinite(targetMs)) return;
     const target = Math.max(0, targetMs);
     this.continuity = {};
@@ -789,7 +805,10 @@ export class LiveController {
         this.engine.setTraffic(this.traffic);
         after = this.applied = found.seq;
       } else {
-        this.build();
+        if (this.build() === "refused") {
+          this.publish();
+          return;
+        }
         after = 0;
       }
       this.keepTrace(intent);
@@ -845,10 +864,10 @@ export class LiveController {
     this.inputs = emptyInputs();
     this.sim = sim;
     this.newRun();
-    this.build();
+    const result = this.build();
     this.record({ kind: "select", simulation: sim });
     this.publish();
-    return true;
+    return result === "ok";
   }
 
   // ---------------------------------------------------------------- inputs & capacity
@@ -906,7 +925,7 @@ export class LiveController {
 
   /** Saved: `saved` becomes the base and the inputs are folded into it (no restart when equal). */
   commitInputs(saved: Simulation | null, diagram?: DiagramFile): void {
-    if (!saved && diagram) {
+    if (!saved && diagram && !this.needsRestart) {
       // Fold saved base props and normalize the multiplier in ONE allocation pass.
       const patches = Object.fromEntries(
         diagram.nodes.map((n) => [
@@ -950,6 +969,7 @@ export class LiveController {
       this.sim = next;
       if (
         !prev ||
+        this.needsRestart ||
         !this.runner ||
         this.replayTarget !== null ||
         this.replayTimer !== undefined ||
@@ -957,7 +977,7 @@ export class LiveController {
       )
         this.scheduleReplay();
       else this.patchRun(prev, next);
-    } else if (freePlayScale(this.diagram, this.inputs) !== this.freeScale) {
+    } else if (this.needsRestart || freePlayScale(this.diagram, this.inputs) !== this.freeScale) {
       this.scheduleReplay();
     } else {
       this.patchFree();
@@ -1040,11 +1060,14 @@ export class LiveController {
    */
   private replay(): void {
     const target = this.replayTarget ?? this.snapshot().time;
-    if (!this.build()) return;
+    if (this.build() === "refused") {
+      this.publish();
+      return;
+    }
     if (!this.runner || target <= 0) {
       // Free play starts over (nothing to replay to); so does its log. A run at its start keeps tick 0's tweaks.
       if (!this.runner) this.newRun();
-      else this.reapply(this.pendingAfter(0, 0), 0);
+      else if (!this.updateRunner(() => this.reapply(this.pendingAfter(0, 0), 0))) return;
       this.applied = this.seq;
       this.replayTarget = null;
       this.applyQueued();
@@ -1060,7 +1083,7 @@ export class LiveController {
       this.replayFrame = undefined;
       const start = performance.now();
       for (let slices = 0; slices < 20; slices++) {
-        cursor = this.reapply(pending, cursor);
+        if (!this.updateRunner(() => (cursor = this.reapply(pending, cursor)))) return;
         const s = runner.state();
         if (s.done || s.time >= target - 5) {
           this.replayTarget = null;
@@ -1073,7 +1096,8 @@ export class LiveController {
             if (s.waiting) runner.resume();
             else runner.step(Math.min(100, target - s.time, this.untilNext(pending, cursor)) / this.speed);
           })
-        ) return;
+        )
+          return;
         this.captureCheckpoint();
         if (performance.now() - start >= 6) break;
       }
@@ -1094,6 +1118,7 @@ export class LiveController {
 
   /** Injects at every node that has no incoming edges (the diagram's entry points). */
   injectAtSources(count: number): string[] {
+    if (this.needsRestart) return [];
     this.apply({ kind: "injectSources", count });
     return this.sourceIds();
   }
@@ -1149,16 +1174,16 @@ export class LiveController {
         valueKey(before?.props?.autoscaling) !== valueKey(n.props?.autoscaling)
       );
     });
-    if (key !== this.structKey || resourceChanged) {
+    if (this.needsRestart || key !== this.structKey || resourceChanged) {
       this.cancelReplay();
       this.diagram = next;
       this.structKey = key;
       this.rememberProps(next);
       this.newRun();
-      this.build();
+      const result = this.build();
       this.record({ kind: "reload" });
       this.publish();
-      return "reloaded";
+      return result === "ok" ? "reloaded" : "refused";
     }
     let patched = false;
     const patches: Record<string, NodeSimProps> = {};
@@ -1230,7 +1255,7 @@ export class LiveController {
     if (this.checkpoints.length > 24) this.checkpoints.splice(1, 1);
   }
 
-  private build(): boolean {
+  private build(): "ok" | "refused" {
     this.continuity = {};
     this.resourceError = this.sim ? faultTimelineProblem(this.diagram, this.sim) : undefined;
     if (this.resourceError) {
@@ -1249,8 +1274,8 @@ export class LiveController {
         });
       } catch (error) {
         if (!this.recoverBudget(error)) throw error;
-        this.publish();
-        return false;
+        this.needsRestart = true;
+        return "refused";
       }
       this.engine = this.runner.engine;
     } else {
@@ -1277,7 +1302,8 @@ export class LiveController {
     this.applied = 0;
     this.captureCheckpoint(true);
     this.generation++;
+    this.needsRestart = false;
     this.dirty = true;
-    return true;
+    return "ok";
   }
 }
