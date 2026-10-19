@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { expect, it } from "vitest";
 import { popDue, pushDue, removeDue, type Due } from "./dueHeap";
 import { propertyRuns } from "../test/fastCheck";
-import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { countingReads, GROWTH_FACTOR } from "../test/complexity";
 
 it("removes arbitrary entries and preserves stable ordering and every index", () => {
   fc.assert(
@@ -39,5 +39,25 @@ it("cancels by index without scanning the heap", () => {
     expect(removeDue(counted.items, count - 2, indices)?.id).toBe(count - 2);
     return counted.reads();
   };
-  expect(reads(8000)).toBeLessThanOrEqual(reads(8000 / GROWTH_FACTOR) * LINEAR_LIMIT);
+  expect(reads(8000)).toBe(3);
+  expect(reads(8000 / GROWTH_FACTOR)).toBe(3);
+});
+
+it("internal cancellation uses logarithmic reads", () => {
+  for (const count of [8000 / GROWTH_FACTOR, 8000]) {
+    for (const index of [0, 1, 7, 31, Math.floor(count / GROWTH_FACTOR) - 1]) {
+      const heap: Due[] = [];
+      const indices = new Map<number, number>();
+      for (let id = 0; id < count; id++) pushDue(heap, { id, end: id }, indices);
+      const counted = countingReads(heap);
+      expect(removeDue(counted.items, index, indices)?.id).toBe(index);
+      // At most six element reads per repaired level, plus pop and the parent check.
+      expect(counted.reads()).toBeLessThanOrEqual(6 * Math.ceil(Math.log2(count)) + 4);
+      expect(counted.reads()).toBeGreaterThan(3);
+      heap.forEach((item, at) => expect(indices.get(item.id)).toBe(at));
+      const popped = [];
+      while (heap.length) popped.push(popDue(heap, indices).id);
+      expect(popped).toEqual(Array.from({ length: count }, (_, id) => id).filter((id) => id !== index));
+    }
+  }
 });

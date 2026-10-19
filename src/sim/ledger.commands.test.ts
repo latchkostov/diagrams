@@ -46,7 +46,10 @@ function compare(real: Real, model: Model): void {
   for (const p of real.probes) {
     // A live setScale(1) preserves reservations admitted under the old scale.
     for (const owner of p.state().ledger.owners.values())
-      for (const due of owner.heap) expect(p.state().ledger.reservations.get(due.id)!.represented).toBeGreaterThan(1);
+      for (const due of owner.heap) {
+        const reservation = p.state().ledger.reservations.get(due.id)!;
+        expect(reservation.weight).toBeLessThan(reservation.represented);
+      }
   }
 }
 type Action =
@@ -133,7 +136,7 @@ function commands(scaleOne: boolean) {
     }),
     fc.record({
       kind: fc.constant("SetScale" as const),
-      scale: scaleOne ? fc.constant(1) : fc.constantFrom(1, 2, 3, 10),
+      scale: scaleOne ? fc.constant(1) : fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 10),
     }),
     fc.constant({ kind: "Checkpoint" as const }),
     fc.constant({ kind: "Restore" as const }),

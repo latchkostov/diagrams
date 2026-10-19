@@ -11,7 +11,9 @@ export interface Reservation {
   weight: number;
   represented: number;
   phase: "work" | "wait";
-  startActive: number;
+  readonly startActive: number;
+  /** Pool replies retain R1's wall-time deadlines, including time while the caller is paused. */
+  readonly startTime?: number;
   heldMs: number;
   releaseAt?: number;
   cpuTail?: CpuPart[];
@@ -35,13 +37,16 @@ export class SampledLedger {
   constructor(private readonly onRelease: (reservation: Reservation) => void = () => {}) {}
 
   reserve(
-    scope: Pick<Reservation, "owner" | "scope" | "startActive"> & Partial<Pick<Reservation, "edge" | "keys" | "phase">>,
+    scope: Pick<Reservation, "owner" | "scope" | "startActive"> &
+      Partial<Pick<Reservation, "edge" | "keys" | "phase" | "startTime">>,
     represented: number,
     room: number,
     cap = Infinity,
   ): Reservation | undefined {
     const weight = Math.min(represented, room, cap);
-    if (!Number.isFinite(represented) || represented <= 0 || !(weight >= Math.min(1, represented))) return;
+    // Decimal scales leave usable fractions of a connection. Ignore only floating
+    // point residue, which would otherwise create a near-zero, effectively immortal lease.
+    if (!Number.isFinite(represented) || !Number.isFinite(weight) || !(weight > 1e-9)) return;
     const reservation: Reservation = {
       ...scope,
       id: this.state.nextReservation++,
@@ -60,19 +65,26 @@ export class SampledLedger {
     return reservation;
   }
 
-  retire(reservation: Reservation, logicalHoldMs: number, ownerActiveMs: number): void {
-    if (this.state.reservations.get(reservation.id) !== reservation || reservation.releaseAt !== undefined) return;
-    reservation.heldMs += logicalHoldMs;
-    reservation.releaseAt = Math.max(
-      ownerActiveMs,
-      reservation.startActive + (reservation.heldMs * reservation.represented) / reservation.weight,
-    );
-    if (reservation.weight === reservation.represented || reservation.releaseAt <= ownerActiveMs + 1e-9) {
+  retire(reservation: Reservation, clock: { activeMs: number; time?: number; sampledDelayMs?: number }): number {
+    if (this.state.reservations.get(reservation.id) !== reservation || reservation.releaseAt !== undefined) return 0;
+    const elapsed =
+      reservation.startTime === undefined
+        ? clock.activeMs - reservation.startActive
+        : clock.time! - reservation.startTime;
+    reservation.heldMs = Math.max(0, elapsed - (clock.sampledDelayMs ?? 0));
+    // Translate the remaining residence into the owner's clock at retirement.
+    // Never add a child's elapsed delay to the owner's immutable admission clock:
+    // the child can run while that clock is frozen. Pool callers supply wall-time
+    // elapsed/delay together to preserve the pre-ledger reply deadline in R1.
+    const remaining = reservation.heldMs * (1 / (reservation.weight / reservation.represented) - 1);
+    reservation.releaseAt = clock.activeMs + remaining;
+    if (reservation.weight === reservation.represented || remaining <= 1e-9) {
       this.release(reservation);
-      return;
+      return 0;
     }
     const owner = this.state.owners.get(reservation.owner)!;
     pushDue(owner.heap, { id: reservation.id, end: reservation.releaseAt }, owner.indices);
+    return remaining;
   }
 
   release(reservation: Reservation): void {

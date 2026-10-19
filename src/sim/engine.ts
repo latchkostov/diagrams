@@ -307,6 +307,7 @@ interface Call {
   ready?: boolean;
 }
 interface Logical {
+  poolRelease?: number;
   sampledDelayMs?: number;
   id: number;
   end: number;
@@ -421,7 +422,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const edge = faultEdges.get(reservation.edge!)!;
     const fraction = occupancyFraction(reservation);
     edge.calls.inFlight = Math.max(0, edge.calls.inFlight - fraction);
-    edge.poolUsed = Math.max(0, edge.poolUsed - reservation.weight);
+    const remaining = edge.poolUsed - reservation.weight;
+    edge.poolUsed = remaining > 1e-9 ? remaining : 0;
     if (!edge.policy?.blocking) edge.from.freeFlight = Math.max(0, edge.from.freeFlight - fraction);
     if (edge.from.status !== "down") dispatchCalls(edge);
   });
@@ -1494,7 +1496,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         continue;
       }
       const reservation = ledger.reserve(
-        { scope: "pool", owner: edge.from.id, edge: edge.id, startActive: edge.from.activeMs, phase: "wait" },
+        {
+          scope: "pool",
+          owner: edge.from.id,
+          edge: edge.id,
+          startActive: edge.from.activeMs,
+          startTime: time,
+          phase: "wait",
+        },
         scale,
         (edge.policy?.pool ?? Infinity) - edge.poolUsed,
       );
@@ -1690,20 +1699,25 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           continue;
         }
         if (edge) {
-          const id = edge.poolLeases.get(event.call);
+          const id = event.poolRelease ?? edge.poolLeases.get(event.call);
           const lease = id === undefined ? undefined : ledger.state.reservations.get(id);
-          if (lease) {
+          if (lease && event.poolRelease === undefined) {
             // R1 preserves the existing delayed logical reply. Nested sampled residence
             // is excluded from this pool's logical hold; R2 separates the reply itself.
-            lease.startActive += event.sampledDelayMs ?? 0;
-            ledger.retire(lease, edge.from.activeMs - lease.startActive, edge.from.activeMs);
+            const extra = ledger.retire(lease, {
+              activeMs: edge.from.activeMs,
+              time,
+              sampledDelayMs: event.sampledDelayMs,
+            });
             edge.poolLeases.delete(event.call);
-            const extra = (lease.releaseAt ?? edge.from.activeMs) - edge.from.activeMs;
             if (extra > 1e-9) {
-              pushDue(logical, { ...event, id: nextLogical++, end: time + extra });
+              pushDue(logical, { ...event, id: nextLogical++, end: time + extra, poolRelease: lease.id });
               continue;
             }
           }
+          // R1's delayed reply is authoritative even if the owner's active clock
+          // stopped after retirement. Freezing that wall-time deadline is R2 behavior.
+          if (lease && event.poolRelease !== undefined) ledger.release(lease);
           ledger.releaseDue(edge.from.id, edge.from.activeMs);
           dispatchCalls(edge);
         }
