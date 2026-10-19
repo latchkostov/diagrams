@@ -546,8 +546,10 @@ host removes), which makes the epochs a single line.
   deadline covers the whole wait: 20 s from the first promise since the validated chain last grew (adding, raising
   or re-making promises never moves it, so peers taking turns lying stall these decisions 20 s at most); an honest
   catch-up, checked at a page's signature budget, keeps its wait while the chain grows. Every decision that reads
-  the chain (a no, leaving, knocking again, moving on) runs in the inbox, after whatever's being received has
-  validated its chain, rosters and wraps, never from a timer in the middle of it (ninth review P1). A no names the epoch it waits for, but that only says when to look: its chain is taken once, as
+  the chain (a no, leaving, knocking again, moving on) is asked for, then made at the next inbox boundary: the end
+  of the frame being received, once it has validated its chain, rosters and wraps, and before the next frame starts
+  (so a removal's new keys are in place before an old-epoch frame queued behind its bundle is looked at), or a step
+  of its own when a timer asks; never in the middle of a frame (ninth and tenth review P1s). A no names the epoch it waits for, but that only says when to look: its chain is taken once, as
   any is, and what waits is who said it and that epoch; it counts only from someone who hosts or co-hosts in the
   newest epoch the page knows (`EpochChain.leadsNow`, the one place current authority is read), so a removed
   co-host naming an epoch it once led denies nobody (seventh review P1s, the no's chain re-read with every later

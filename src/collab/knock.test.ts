@@ -1759,12 +1759,17 @@ describe("knock-to-join: chains, denials and leaving, message by message", () =>
     // Epoch 2's roster (the join that lets a back in) is held mid-validation.
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));
+    let entered!: () => void;
+    const blocked = new Promise<void>((resolve) => (entered = resolve));
     const add = SignedRoster.prototype.add;
     const spy = vi.spyOn(SignedRoster.prototype, "add").mockImplementation(async function (
       this: SignedRoster,
       ...args: Parameters<SignedRoster["add"]>
     ) {
-      if (this.epoch === scopeOf(current) && args[0].length) await gate;
+      if (this.epoch === scopeOf(current) && args[0].length) {
+        entered();
+        await gate;
+      }
       return add.apply(this, args);
     });
     onTestFinished(() => spy.mockRestore());
@@ -1789,20 +1794,77 @@ describe("knock-to-join: chains, denials and leaving, message by message", () =>
       tip,
     }))
       hostT.send(f, old.session.transport.self);
-    // Delivered (not waited for: its validation is held).
+    // Delivered (not waited for: its validation is held), up to epoch 2's roster.
     const delivering = r.net.settle();
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(spy).toHaveBeenCalled();
-    // Past every deadline, timers firing, while it's still validating: nothing is decided on half a chain.
-    for (let i = 0; i < 6; i++) r.clock.advance(CATCH_UP_MS);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(old.session.removed).toBe(false);
-    expect(old.session.status).not.toBe("left");
-    release();
+    try {
+      await blocked;
+      expect(old.session.status).not.toBe("left");
+      // Past every deadline, timers firing, while it's still validating: nothing is decided on half a chain.
+      for (let i = 0; i < 6; i++) {
+        r.clock.advance(CATCH_UP_MS);
+        for (let j = 0; j < 10; j++) await Promise.resolve();
+      }
+      expect(old.session.removed).toBe(false);
+      expect(old.session.status).not.toBe("left");
+    } finally {
+      release();
+    }
     await delivering;
     await r.settle();
     expect(old.session.removed).toBe(false);
     expect(old.session.signed!.current!.sig).toBe(current.sig);
+  });
+
+  it("a removal's new keys are in place before the next frame: an old-epoch update right behind its bundle is refused", async () => {
+    const r = await knockRoom(127);
+    const host = r.host.client!;
+    const x = await r.join("x");
+    // m's transport hands frames on without waiting for each (as a real network can): and x's next update is held
+    // back until the host's removal bundle reaches m, then handed on right behind it.
+    const xSelf = x.session.transport.self;
+    const hostSelf = host.session.transport.self;
+    const held: Uint8Array[] = [];
+    let arm = false;
+    const mT = r.net.connect();
+    const subscribe = mT.subscribe.bind(mT);
+    mT.subscribe = (handlers) =>
+      subscribe({
+        ...handlers,
+        frame: (from, bytes) => {
+          if (arm && from === xSelf && bytes[3] === 1) {
+            held.push(bytes);
+            return;
+          }
+          void handlers.frame(from, bytes);
+          if (arm && from === hostSelf && bytes[3] === 4 && bytes.length > 2_000 && held.length) {
+            arm = false;
+            for (const b of held.splice(0)) void handlers.frame(xSelf, b);
+          }
+        },
+      });
+    const mP: Person = { name: "m", identity: await newIdentity(), agreement: await newAgreement() };
+    r.people.push(mP);
+    const m = await r.open(mP, { agreement: mP.agreement, chain: { starts: [], logs: [] } }, mT);
+    await r.settle();
+    expect(await host.session.admit(mP.identity.key)).toBe(true);
+    await r.settle();
+    expect(m.session.knocking).toBe(false);
+    // x's update reaches nobody else (the host doesn't take it in the old epoch either).
+    const send = x.session.transport.send.bind(x.session.transport);
+    x.session.transport.send = (bytes, to) => {
+      if (to !== hostSelf && (to !== undefined || bytes[3] !== 1)) send(bytes, to);
+      else if (to === undefined) send(bytes, m.session.transport.self);
+    };
+    arm = true;
+    x.edit((d) => ({ ...d, title: "From the old key" }));
+    await r.settle();
+    expect(held.length).toBeGreaterThan(0);
+    const before = rejected(m, "old-epoch");
+    expect(await host.session.remove(x.session.signed!.key)).toBe(true);
+    await r.settle();
+    expect(m.session.keys.epoch).toBe(1);
+    expect(rejected(m, "old-epoch")).toBeGreaterThan(before);
+    expect(title(m)).not.toBe("From the old key");
   });
 
   it("an awaited Remove, then at once a handover and Leave: the co-host becomes host, and can remove", async () => {
@@ -1858,6 +1920,41 @@ describe("knock-to-join: chains, denials and leaving, message by message", () =>
       await lie(i);
       if (i * 10_000 < CATCH_UP_MS) expect(k.outcome()).toBeUndefined();
     }
+    expect(k.outcome()).toBe("denied");
+  });
+
+  it("alternating promises expire on the first anti-entropy tick at the catch-up deadline", async () => {
+    const r = await knockRoom(128);
+    const host = r.host.client!;
+    const k = await r.knock("wren");
+    const liars = [await r.rogue(), await r.rogue()];
+    const lie = (i: number) =>
+      liars[i % 2].send(
+        {
+          t: "bundle",
+          chain: { starts: [], logs: [] },
+          wraps: [],
+          tip: `${20 + (i % 5)}:${bytesToBase64Url(seededBytes(1280 + i)(64))}`,
+        },
+        k.client.session.transport.self,
+      );
+    await lie(0);
+    host.session.deny(k.p.identity.key);
+    await r.settle();
+    // Every tick up to the deadline (a promise from one liar, then the other, each time): still waiting.
+    const tick = COLLAB_LIMITS.antiEntropyMs;
+    let t = 0;
+    for (let i = 1; t + tick < CATCH_UP_MS; i++) {
+      await lie(i);
+      r.clock.advance(tick);
+      t += tick;
+      await r.settle();
+      expect(k.outcome()).toBeUndefined();
+    }
+    // The first tick at or past it: decided.
+    await lie(99);
+    r.clock.advance(tick);
+    await r.settle();
     expect(k.outcome()).toBe("denied");
   });
 

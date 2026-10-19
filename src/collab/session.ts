@@ -323,6 +323,8 @@ export class CollabSession {
   /** Knock-to-join: the key each proved transport peer proved (this epoch), and whether this page has committed a
    *  roster entry since its last re-key (one its members may not have had, if they haven't proved themselves yet). */
   private readonly provedKeys = new Map<PeerId, string>();
+  /** A chain decision asked for and not yet made (decideOnChain). */
+  private chainDecision = false;
   private committedSinceRekey = false;
   /** Leaving, with roster writes already asked for still to finish: nothing new comes in or is asked for. */
   private closing = false;
@@ -1157,13 +1159,21 @@ export class CollabSession {
    * re-key and a message all come here).
    */
   private decideOnChain(): void {
-    this.inbox = this.inbox
-      .then(async () => {
-        if (this.status === "left" || this.leaving || this.closing) return;
-        this.checkDeny();
-        await this.follow();
-      })
-      .catch(() => this.reject("internal"));
+    // Asked for, then made at the next inbox boundary: the end of the frame being received (before the next frame
+    // starts, so a removal's new keys are in place before anything queued after it), or a step of its own when asked
+    // from outside the inbox (a timer, a re-key in a roster transaction).
+    this.chainDecision = true;
+    this.inbox = this.inbox.then(() => this.decideNow()).catch(() => this.reject("internal"));
+  }
+
+  /** The chain's decisions asked for so far, made now (in the inbox, between frames). */
+  private async decideNow(): Promise<void> {
+    while (this.chainDecision) {
+      this.chainDecision = false;
+      if (this.status === "left" || this.leaving || this.closing) return;
+      this.checkDeny();
+      await this.follow();
+    }
   }
 
   /**
@@ -1763,7 +1773,11 @@ export class CollabSession {
       else this.queuedFrom.delete(from);
     };
     this.inbox = this.inbox
-      .then(() => this.receive(from, bytes))
+      .then(async () => {
+        await this.receive(from, bytes);
+        // What this frame asked of the chain (a removal's new epoch, a no), before the next frame is looked at.
+        await this.decideNow();
+      })
       .catch(() => this.reject("internal"))
       .finally(done);
     return this.inbox;
