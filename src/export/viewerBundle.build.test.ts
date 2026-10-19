@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { catalog } from "../stencils/catalog";
 import { buildViewerBundle } from "../../scripts/viewer-bundle";
 
 describe("static platform viewer", () => {
@@ -18,6 +19,8 @@ describe("static platform viewer", () => {
     expect(html).toMatch(/<script type="module" src="\.\/assets\/viewer-[\w-]+\.js"><\/script>/);
     expect(html).not.toMatch(/<script[^>]*>[^<]+<\/script>|<style>/);
     expect(html).toContain("font-src 'self'");
+    expect.soft(html).toContain("img-src 'self' data: blob:");
+    expect.soft(html).toContain("media-src blob:");
     expect(html).toContain("worker-src 'none'");
     expect(html).not.toContain("unsafe-eval");
     expect([...files.keys()].filter((f) => f.endsWith(".woff2"))).toHaveLength(2);
@@ -31,8 +34,12 @@ describe("static platform viewer", () => {
       .filter(([name]) => name.endsWith(".js"))
       .map(([, source]) => String(source))
       .join("");
+    const icons = [...files.keys()].filter((name) => name.endsWith(".svg"));
+    expect.soft(icons).toHaveLength(new Set(catalog.map((stencil) => stencil.icon)).size);
+    expect(icons.every((name) => /^assets\/[\w.-]+-[\w-]+\.svg$/.test(name))).toBe(true);
+    expect.soft(js.includes("data:image/svg+xml,")).toBe(false);
     expect(js).not.toMatch(/new Worker\(|indexedDB\.open|particleWorker/);
     // Fail closed if future imports pull the editor or a worker into this build (viewerSwaps checks modules).
-    expect([...files.keys()].filter((f) => /worker/i.test(f))).toEqual([]);
+    expect([...files.keys()].filter((f) => /worker.*\.js$/i.test(f))).toEqual([]);
   }, 120_000);
 });

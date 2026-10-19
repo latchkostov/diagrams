@@ -111,7 +111,8 @@ body,
 }
 
 /* React Flow's credit stays in its corner (the embed moves it left, where the zoom buttons are here). */
-.xv-canvas.ix-embed .react-flow__attribution {
+.xv-canvas.ix-embed .react-flow__attribution,
+.viewer-bundle .react-flow__attribution {
   left: auto;
   right: 0;
 }

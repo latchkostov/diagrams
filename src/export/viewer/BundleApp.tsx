@@ -3,6 +3,7 @@ import type { LiveHandle } from "../../live/LiveView";
 import type { CanvasViewerOptions } from "../../canvas/CanvasView";
 import { HostCanvasBridge, ViewerCanvas } from "../../interop/embed/ViewerCanvas";
 import { ViewerAdapter } from "./adapter";
+import { ViewerControls } from "./ViewerControls";
 import { t } from "../../i18n";
 
 export function BundleApp({ adapter }: { adapter: ViewerAdapter }) {
@@ -37,13 +38,18 @@ function BundleDiagram({ adapter }: { adapter: ViewerAdapter }) {
   );
   if (!diagram) return null;
   return (
-    <div className="ix-embed hx" data-testid="viewer-bundle" data-live={live ? "1" : "0"}>
+    <div className="ix-embed hx viewer-bundle" data-testid="viewer-bundle" data-live={live ? "1" : "0"}>
       <ViewerCanvas
         diagram={diagram}
         generation={generation}
         viewer={{
           ...viewer,
-          controls: <HostCanvasBridge fitRef={fitRef} highlight={[]} autoFit live={live} post={adapter.report} />,
+          controls: (
+            <>
+              <HostCanvasBridge fitRef={fitRef} highlight={[]} autoFit live={live} post={adapter.report} />
+              <ViewerControls />
+            </>
+          ),
         }}
       />
     </div>

@@ -9,7 +9,7 @@ import { i18n } from "./i18n-plugin";
 import { catalog } from "../src/stencils/catalog";
 
 export const BUNDLE_CSP =
-  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'";
+  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'";
 
 /** Same viewer restrictions as Interactive HTML, with external scripts, CSS and fonts for app CSPs. */
 export async function buildViewerBundle(root: string): Promise<Map<string, string | Uint8Array>> {
@@ -46,15 +46,14 @@ export async function buildViewerBundle(root: string): Promise<Map<string, strin
                   `@font-face{font-family:"${family}";font-style:normal;font-display:swap;font-weight:100 900;src:url("${normalizePath(resolve(root, file))}") format("woff2");unicode-range:${LATIN}}`,
               ).join("\n");
             if (id === "\0viewer-bundle-icons") {
-              const icons = Object.fromEntries(
-                [...new Set(catalog.map((s) => s.icon))]
-                  .sort()
-                  .map((name) => [
-                    `./icons/${name}.svg`,
-                    `data:image/svg+xml,${encodeURIComponent(readFileSync(resolve(root, `src/stencils/icons/${name}.svg`), "utf8"))}`,
-                  ]),
-              );
-              return `export const iconUrls = ${JSON.stringify(icons)};`;
+              const entries = [...new Set(catalog.map((s) => s.icon))].sort().map((name) => {
+                const source = readFileSync(resolve(root, `src/stencils/icons/${name}.svg`));
+                const hash = createHash("sha256").update(source).digest("hex").slice(0, 16);
+                const file = `${name}-${hash}.svg`;
+                this.emitFile({ type: "asset", fileName: `assets/${file}`, source });
+                return `${JSON.stringify(`./icons/${name}.svg`)}: new URL(/* @vite-ignore */ ${JSON.stringify(`./${file}`)}, import.meta.url).href`;
+              });
+              return `export const iconUrls = {${entries.join(",")}};`;
             }
           },
         },

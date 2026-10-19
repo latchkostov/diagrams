@@ -12,6 +12,7 @@ import "virtual:viewer-fonts.css";
 import { SettingsProvider } from "../harness/SettingsProvider";
 import { markWorkerUnsupported } from "../live/liveRenderer";
 import { ViewerAdapter } from "./viewer/adapter";
+import { Toaster } from "../interop/ui/Toaster";
 import { BundleApp } from "./viewer/BundleApp";
 
 markWorkerUnsupported();
@@ -20,6 +21,7 @@ const root = createRoot(document.getElementById("root")!);
 root.render(
   <SettingsProvider>
     <BundleApp adapter={adapter} />
+    <Toaster />
   </SettingsProvider>,
 );
 
@@ -30,11 +32,11 @@ declare global {
   }
 }
 window.liveDiagramsViewer = adapter;
-window.addEventListener(
-  "pagehide",
-  () => {
-    root.unmount();
-    adapter.dispose();
-  },
-  { once: true },
-);
+// Cached documents resume without evaluating this entry again. Keep their root and subscriptions intact.
+const teardown = (event: PageTransitionEvent) => {
+  if (event.persisted) return;
+  window.removeEventListener("pagehide", teardown);
+  root.unmount();
+  adapter.dispose();
+};
+window.addEventListener("pagehide", teardown);
