@@ -36,6 +36,12 @@ import { clonedRoster } from "./roomRoster";
 // The driver role moves at a tick: the old driver hands its run over (a handoff), goes on following it, and the new
 // driver, once its own run is level with the handoff, drives the same run on. Asking to show your own Live instead
 // starts a new run, from your simulation.
+//
+// In a signed room (P4) the roles are the session's signed roster (../roster.ts), not presence: the host and co-hosts
+// change them by signed entries (a yes to a request too), and the shared run's messages count only from its driver
+// (signed, so no one else can send them as the driver): the roster's driver while they're here, else the host. The
+// last driver's messages still count for a moment after the roster moved on (HANDOFF_MS, until its handoff), and
+// so do those of whom it handed the run to, until the roster says so too.
 
 type Bridge = typeof import("../../live/watchBridge");
 
@@ -66,6 +72,16 @@ export interface WatchState {
   roster: Roster;
   /** This person's sender id. */
   me: string;
+  /** A signed room (P4): roles are its signed roster's, and these say what it says beyond the roster above. */
+  signed: boolean;
+  /** This person can change roles (the host, a co-host). */
+  lead: boolean;
+  /** New people can only view (the host's or a co-host's switch). */
+  viewOnly: boolean;
+  /** This person can edit (always, in a room without roles). */
+  canEdit: boolean;
+  /** People here who can only view (sender ids). */
+  viewers: string[];
   /** Requests waiting for this person's answer (the host and co-hosts). */
   prompts: Prompt[];
   /** This person asked, and waits for the answer. */
@@ -112,7 +128,11 @@ const HANDOFF_WAIT_MS = 10_000;
  * The room's live channel over its session: JSON, split into parts when it's larger than a frame, and checked in
  * full as it arrives (./liveWire.ts). Nothing is sent while `allowed` says no.
  */
-export function sessionChannel(session: CollabSession, allowed: () => boolean = () => true): LiveChannel {
+export function sessionChannel(
+  session: CollabSession,
+  allowed: () => boolean = () => true,
+  counts: (sender: string, message: LiveMessage) => boolean = () => true,
+): LiveChannel {
   let id = 0;
   const decoder = new LiveDecoder();
   return {
@@ -126,7 +146,7 @@ export function sessionChannel(session: CollabSession, allowed: () => boolean = 
     onMessage(listener) {
       return session.onLive((sender, from, payload) => {
         const message = decoder.push(sender, payload);
-        if (message) listener(sender, from, message);
+        if (message && counts(sender, message)) listener(sender, from, message);
       });
     },
   };
@@ -188,6 +208,10 @@ export class WatchTogether {
   private inertStop?: () => void;
   private guardStop?: () => void;
   private snapshotKey = "";
+  /** A signed room: whose run messages still count for a moment (the last driver, whom it handed to), until when. */
+  private readonly graces = new Map<string, number>();
+  private driverKey?: string;
+  private wasHosting?: boolean;
 
   constructor(
     readonly session: CollabSession,
@@ -196,8 +220,12 @@ export class WatchTogether {
     private readonly notices: WatchNotices,
   ) {
     this.target = room.read();
-    this.channel = sessionChannel(session, () => this.mayShare());
-    this.control = sessionChannel(session);
+    this.channel = sessionChannel(
+      session,
+      () => this.mayShare(),
+      (sender, m) => this.moves(sender, m),
+    );
+    this.control = sessionChannel(session, undefined, (sender, m) => m.t !== "handoff" || this.moves(sender, m, false));
     const mine = roster.get();
     this.state = {
       followView: false,
@@ -207,6 +235,11 @@ export class WatchTogether {
       roster: { cohosts: [], source: { cohosts: [] } },
       me: session.senderId,
       prompts: [],
+      signed: !!session.signed,
+      lead: false,
+      viewOnly: false,
+      canEdit: session.canEdit,
+      viewers: [],
     };
     this.claim();
     this.stops.push(
@@ -220,6 +253,8 @@ export class WatchTogether {
       }),
       this.control.onMessage((sender, _from, message) => this.received(sender, message)),
     );
+    // A signed room's roster or bindings changed: the roles did.
+    if (session.signed) this.stops.push(session.signed.subscribe(() => this.peersChanged()));
     this.liveChanged();
     this.peersChanged();
   }
@@ -303,8 +338,57 @@ export class WatchTogether {
 
   // -------------------------------------------------------------- roles and requests
 
+  /** A sender's key in a signed room (this person's own included). */
+  private keyOf(sender: string | undefined): string | undefined {
+    const signed = this.session.signed;
+    if (!signed || !sender) return undefined;
+    return sender === this.me ? signed.key : signed.keyOf(sender);
+  }
+
+  /** This person hosts the room: a signed room's roster says so, else this tab's record (cooperative). */
+  private get isHosting(): boolean {
+    const signed = this.session.signed;
+    return signed ? signed.state().host === signed.key : this.roster.get().hosting;
+  }
+
+  /** This person can change roles in a signed room (the host, a co-host). */
+  private get isLead(): boolean {
+    const signed = this.session.signed;
+    if (!signed) return false;
+    const s = signed.state();
+    return s.host === signed.key || s.cohosts.includes(signed.key);
+  }
+
+  /**
+   * Whether a shared run's message counts (a signed room): from the driver (the roster's while they're here, else
+   * the host), or from someone whose messages still count for a moment (the last driver; whom it handed the run to).
+   * Followers' requests for the run (hello) count from anyone. `note`: the run's own channel takes note of a handoff
+   * (the control channel only asks).
+   */
+  private moves(sender: string, m: LiveMessage, note = true): boolean {
+    if (!this.session.signed || m.t === "hello") return true;
+    const key = this.keyOf(sender);
+    if (!key) return false;
+    const now = performance.now();
+    const driving = key === this.keyOf(this.rosterNow().driver);
+    const grace = (this.graces.get(key) ?? -Infinity) > now;
+    if (!driving && !grace) return false;
+    if (m.t === "handoff" && note) {
+      // The run handed on: whom it went to counts for a moment too, until the roster says so as well.
+      const to = this.keyOf(m.to);
+      if (to) this.graces.set(to, now + HANDOFF_MS);
+      if (!driving) this.graces.delete(key);
+    }
+    return true;
+  }
+
   /** This person's presence: their member id, and the roster while they host. */
   private claim(): void {
+    // A signed room's roles are its roster's: presence says nothing of them.
+    if (this.session.signed) {
+      this.session.setPresence({ member: undefined, host: undefined, cohosts: undefined, driver: undefined });
+      return;
+    }
     const r = this.roster.get();
     this.session.setPresence(
       r.hosting
@@ -320,6 +404,26 @@ export class WatchTogether {
 
   /** The roster as presence says it (this person's claim included), else the last one a host said. */
   private rosterNow(): Roster {
+    const signed = this.session.signed;
+    if (signed) {
+      // A signed room: its roster, resolved to the people here (a key's lowest sender id here).
+      const s = signed.state();
+      const here = new Set(this.session.peers().map((p) => p.sender));
+      const senderOf = (key?: string) =>
+        key === undefined
+          ? undefined
+          : key === signed.key
+            ? this.me
+            : signed.sendersOf(key).find((sender) => here.has(sender));
+      const host = senderOf(s.host);
+      const cohosts = s.cohosts.map(senderOf).filter((x): x is string => !!x && x !== host);
+      return {
+        host,
+        cohosts,
+        driver: senderOf(s.driver ?? s.host) ?? host,
+        source: { host: s.host, cohosts: s.cohosts, driver: s.driver },
+      };
+    }
     const r = this.roster.get();
     const mine = r.hosting
       ? { sender: this.me, member: r.member, host: true as const, cohosts: r.cohosts, driver: r.driver }
@@ -332,6 +436,8 @@ export class WatchTogether {
 
   /** Who should drive now: the roster's driver; with no host and no driver here, whoever drives already. */
   private wantDriver(r = this.rosterNow()): string | undefined {
+    // A signed room: only the roster's driver (or the host) can drive; nobody else's run would count.
+    if (this.session.signed) return r.driver;
     return r.driver ?? (this.driver ? this.me : undefined);
   }
 
@@ -361,6 +467,13 @@ export class WatchTogether {
 
   /** The host's or a co-host's answer to a request. */
   answer(prompt: Prompt, yes: boolean): void {
+    if (yes && this.session.signed) {
+      // A signed room: the yes is a signed entry (the answer below only tells the asker).
+      this.dropPrompt(prompt.from);
+      this.control.send({ t: "answer", to: prompt.from, what: prompt.what, yes });
+      this.granted(prompt.from);
+      return;
+    }
     this.dropPrompt(prompt.from);
     this.control.send({ t: "answer", to: prompt.from, what: prompt.what, yes });
     if (yes) this.granted(prompt.from);
@@ -371,6 +484,11 @@ export class WatchTogether {
    * with no host here, everyone's last roster does (a co-host's yes counts then).
    */
   private granted(to: string): void {
+    if (this.session.signed) {
+      const key = this.keyOf(to);
+      if (key && this.isLead) void this.session.appendRoster("drive", { who: key });
+      return;
+    }
     const member = this.memberOf(to);
     const r = this.roster.get();
     if (!member) return;
@@ -383,6 +501,11 @@ export class WatchTogether {
 
   /** The host's people menu: who drives, co-hosts, who hosts. */
   letDrive(sender: string): void {
+    if (this.session.signed) {
+      const key = this.keyOf(sender);
+      if (key && this.isLead) void this.session.appendRoster("drive", { who: key });
+      return;
+    }
     const r = this.roster.get();
     const member = this.memberOf(sender);
     if (!r.hosting || !member) return;
@@ -395,6 +518,12 @@ export class WatchTogether {
   }
 
   setCohost(sender: string, on: boolean): void {
+    if (this.session.signed) {
+      const key = this.keyOf(sender);
+      if (key && sender !== this.me && this.isLead)
+        void this.session.appendRoster(on ? "cohost" : "uncohost", { who: key });
+      return;
+    }
     const r = this.roster.get();
     const member = this.memberOf(sender);
     if (!r.hosting || !member || sender === this.me) return;
@@ -402,8 +531,24 @@ export class WatchTogether {
     this.setRoster({ cohosts: on ? [...cohosts, member] : cohosts });
   }
 
+  /** A signed room's "Can edit": the host or a co-host lets someone who can only view edit. */
+  letEdit(sender: string): void {
+    const key = this.keyOf(sender);
+    if (key && this.isLead) void this.session.appendRoster("admit", { who: key });
+  }
+
+  /** A signed room's "New people can view only" (the host's or a co-host's switch). */
+  setViewOnly(on: boolean): void {
+    if (this.isLead) void this.session.appendRoster("policy", { viewOnly: on });
+  }
+
   /** Make someone the host: they get the roster, this person becomes their first co-host. Live stays as it is. */
   makeHost(sender: string): void {
+    if (this.session.signed) {
+      const key = this.keyOf(sender);
+      if (key && sender !== this.me && this.isHosting) void this.session.appendRoster("host", { who: key });
+      return;
+    }
     const r = this.roster.get();
     const member = this.memberOf(sender);
     if (!r.hosting || !member || sender === this.me) return;
@@ -444,7 +589,24 @@ export class WatchTogether {
     const r = this.rosterNow();
     const mine = this.roster.get();
     let next = r.driver === this.me ? undefined : r.driver;
-    if (mine.hosting) {
+    const signed = this.session.signed;
+    if (signed && this.isHosting) {
+      // A signed room: the handover is a signed entry (sent before the goodbye), and Live with it if the host drove.
+      const host = successor(
+        { ...r, host: this.me },
+        this.session.peers().map((p) => p.sender),
+        this.since,
+      );
+      const key = this.keyOf(host);
+      if (host && key) {
+        const hostDrove = signed.state().driver === undefined;
+        void this.session.appendRoster("host", { who: key });
+        if (hostDrove) void this.session.appendRoster("drive", { who: key });
+        next = hostDrove ? host : r.driver === this.me ? host : r.driver;
+      }
+    } else if (signed) {
+      if (this.driver) next = r.host;
+    } else if (mine.hosting) {
       const host = successor(
         { ...r, host: this.me },
         this.session.peers().map((p) => p.sender),
@@ -485,10 +647,12 @@ export class WatchTogether {
           this.set({ asked: undefined });
           if (!m.yes) this.notices.told("declined", this.alias(sender));
         }
-        // A yes counts from the host, or a co-host (the last roster's, while no host is here).
-        if (m.yes && (sender === r.host || r.cohosts.includes(sender))) this.granted(m.to);
+        // A yes counts from the host, or a co-host (the last roster's, while no host is here). A signed room's yes
+        // is the roster entry its answerer signed: the answer itself grants nothing.
+        if (!this.session.signed && m.yes && (sender === r.host || r.cohosts.includes(sender))) this.granted(m.to);
         return;
       case "host": {
+        if (this.session.signed) return;
         // The host hands the room over (Make host, or leaving): this person hosts now. (The old host's presence may
         // already say otherwise: the last roster's host counts.)
         const from = this.memberOf(sender);
@@ -549,7 +713,7 @@ export class WatchTogether {
     // A minute without an answer: declined (the host says so; a co-host's card just goes).
     const timer = setTimeout(() => {
       if (!this.state.prompts.some((p) => p.from === prompt.from)) return;
-      if (this.roster.get().hosting) this.answer(prompt, false);
+      if (this.isHosting) this.answer(prompt, false);
       else this.dropPrompt(prompt.from);
     }, ASK_TIMEOUT_MS);
     this.promptTimers.set(prompt.from, () => clearTimeout(timer));
@@ -927,15 +1091,25 @@ export class WatchTogether {
     // Another sender with this tab's member id, and a lower one: this is a copy (a duplicated tab whose check didn't
     // catch it). It takes an id of its own, and gives up any claim to host.
     const mine = this.roster.get();
-    if (!ownsMember({ sender: this.me, member: mine.member }, peers)) {
+    if (!this.session.signed && !ownsMember({ sender: this.me, member: mine.member }, peers)) {
       this.roster.update(clonedRoster(mine, (n) => crypto.getRandomValues(new Uint8Array(n))));
       this.claim();
       this.set({ hosting: false });
     }
     const r = this.rosterNow();
+    const signed = this.session.signed;
+    if (signed) {
+      // The driver changed: the last one's run messages still count for a moment (its handoff is on its way).
+      const key = this.keyOf(r.driver);
+      if (this.driverKey && key !== this.driverKey) this.graces.set(this.driverKey, performance.now() + HANDOFF_MS);
+      this.driverKey = key;
+      const hosting = this.isHosting;
+      if (this.wasHosting === false && hosting) this.notices.told("host", "");
+      this.wasHosting = hosting;
+    }
     const host = peers.find((p) => p.sender === r.host);
     const followed = this.follower?.driver;
-    const driver = (followed && peers.find((p) => p.sender === followed && p.live)) || driverOf(r, peers);
+    const driver = (followed && peers.find((p) => p.sender === followed && p.live)) || driverOf(r, peers, !!signed);
     const show = this.driver ? this.state.show : driver?.live;
     const previous = this.state.driver;
     const wasShowing = !!this.state.show && !this.driver;
@@ -949,6 +1123,7 @@ export class WatchTogether {
       show,
       r,
       peers.map((p) => [p.sender, p.alias]),
+      signed && [signed.state().viewOnly, this.session.canEdit, [...signed.state().editors].length],
     ]);
     if (key !== this.snapshotKey) {
       this.snapshotKey = key;
@@ -957,8 +1132,12 @@ export class WatchTogether {
         driver,
         show,
         roster: r,
-        hosting: this.roster.get().hosting,
+        hosting: this.isHosting,
         cohosting: r.cohosts.includes(this.me),
+        lead: this.isLead,
+        viewOnly: !!signed?.state().viewOnly,
+        canEdit: this.session.canEdit,
+        viewers: signed ? peers.filter((p) => !signed.isEditor(this.keyOf(p.sender))).map((p) => p.sender) : [],
       });
     }
     const handing = now - this.handedAt < HANDOFF_WAIT_MS;

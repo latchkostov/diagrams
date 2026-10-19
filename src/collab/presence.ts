@@ -43,6 +43,13 @@ export interface PresenceState {
   live?: { run: string; title: string; playing: boolean };
   /** The host's view while in Live, for "Follow the host's view": its centre in flow coordinates, and its zoom. */
   view?: { x: number; y: number; zoom: number };
+  /**
+   * A signed room's binding (P4, ./session.ts): this person's public key (base64url), their Yjs client id, and the
+   * key's signature over both with this session's sender id. Every frame they send is then checked against that key.
+   */
+  key?: string;
+  client?: number;
+  bind?: string;
 }
 
 /** The longest Live run id and title presence carries; the most co-hosts a roster names (a room's size). */
@@ -120,6 +127,9 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
           "driver",
           "live",
           "view",
+          "key",
+          "client",
+          "bind",
         ].includes(k),
     )
   )
@@ -180,6 +190,16 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
     const title = l.title.replace(CONTROL, "").trim().slice(0, MAX_TITLE_CHARS);
     state.live = { run: l.run, title, playing: l.playing };
   }
+  // The binding: all three or none (its signature is the session's to check).
+  const bound = [o.key, o.client, o.bind].filter((x) => x !== undefined).length;
+  if (bound === 3) {
+    if (typeof o.key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(o.key)) return undefined;
+    if (!Number.isInteger(o.client) || (o.client as number) < 0 || (o.client as number) > 0xffff_ffff) return undefined;
+    if (typeof o.bind !== "string" || !/^[A-Za-z0-9_-]{86}$/.test(o.bind)) return undefined;
+    state.key = o.key;
+    state.client = o.client as number;
+    state.bind = o.bind;
+  } else if (bound) return undefined;
   if (o.view !== undefined) {
     const w = o.view as Record<string, unknown> | null;
     if (typeof w !== "object" || w === null || Array.isArray(w) || Object.keys(w).length !== 3) return undefined;
@@ -200,6 +220,7 @@ export function encodePresence(s: PresenceState): Uint8Array {
     colour: s.colour,
     status: s.status,
     ...(s.member ? { member: s.member } : {}),
+    ...(s.key && s.client !== undefined && s.bind ? { key: s.key, client: s.client, bind: s.bind } : {}),
     ...(s.host ? { host: true } : {}),
     ...(s.cohosts?.length ? { cohosts: s.cohosts.slice(0, MAX_COHOSTS) } : {}),
     ...(s.driver ? { driver: s.driver } : {}),

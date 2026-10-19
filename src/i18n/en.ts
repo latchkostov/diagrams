@@ -2506,6 +2506,12 @@ const en = {
   "collab.roleHost": "host",
   "collab.roleCohost": "co-host",
   "collab.roleDriving": "driving",
+  "collab.roleViewing": "can view",
+  "collab.letEdit": "Can edit",
+  "collab.newViewOnly": "New people can view only",
+  "collab.youViewOnly": "You can view this room. The host or a co-host can let you edit.",
+  "collab.refusedViewOnly":
+    "Your change was undone: you can view this room, not edit it. Ask the host to let you edit.",
   "collab.watchTooLarge": "This run is too large to share with the room. The next one is shared.",
   "collab.followTooLarge": "This run is too large to follow, so you're watching on your own.",
   "collab.watchEnded": "{alias} stopped showing Live. You're watching on your own.",

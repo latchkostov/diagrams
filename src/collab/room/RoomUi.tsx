@@ -196,8 +196,25 @@ export function RoomLayer(props: {
     <>
       <RoomLayerMain {...props} />
       <WatchLayer />
+      <ViewOnlyNotice room={props.room} />
     </>
   );
+}
+
+/** A signed room's viewer tried to edit: their change was undone (the editor refused it), and a toast says why. */
+function ViewOnlyNotice({ room }: { room: RoomLifecycle }): ReactNode {
+  const editor = useRoom(room).open?.editor;
+  useEffect(() => {
+    if (!editor) return;
+    let seen = editor.refusalOccurrence;
+    const stop = editor.onChange(() => {
+      if (editor.refusalOccurrence === seen) return;
+      seen = editor.refusalOccurrence;
+      if (editor.refusal === "view-only") notify(t("collab.refusedViewOnly"), { kind: "error" });
+    });
+    return () => void stop();
+  }, [editor]);
+  return null;
 }
 
 function RoomLayerMain({
@@ -635,6 +652,9 @@ function OpenChip({
     // Hosts and requests: this person's roles (the host, a co-host; driving Live).
     "data-host": watching?.hosting ? "true" : watching?.cohosting ? "cohost" : "false",
     "data-driving": watching?.driving ? "true" : "false",
+    // Signed rooms (P4): whether this is one, and whether this person can edit there.
+    "data-signed": watching?.signed ? "true" : "false",
+    "data-can-edit": watching?.canEdit === false ? "false" : "true",
     // For diagnostics (the Nightly network smoke classifies a failure by it): never shown.
     "data-connectivity": session.connectivity,
   };
@@ -659,8 +679,22 @@ function OpenChip({
   const entries = (): MenuEntry[] => [
     { type: "section", label: t("collab.inRoom") },
     { type: "note", text: <People session={session} watching={watching} /> },
-    // The host acts on each person: their own row, with a menu of what the host can do.
-    ...(watch && watching?.hosting ? personEntries(watch, watching, session) : []),
+    // A signed room's viewer: what they can do, and who can change it.
+    ...(watching?.signed && !watching.canEdit ? [{ type: "note" as const, text: t("collab.youViewOnly") }] : []),
+    // The host (and, in a signed room, a co-host) acts on each person: their own row, with a menu of what they can do.
+    ...(watch && watching && (watching.hosting || watching.lead) ? personEntries(watch, watching, session) : []),
+    ...(watch && watching?.signed && watching.lead
+      ? [
+          {
+            type: "item" as const,
+            testId: "room-new-view-only",
+            title: t("collab.newViewOnly"),
+            checkbox: true,
+            checked: watching.viewOnly,
+            onSelect: () => watch.setViewOnly(!watching.viewOnly),
+          },
+        ]
+      : []),
     { type: "separator" },
     ...(state === "failed"
       ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: retry }]
@@ -754,17 +788,31 @@ function watchEntries(watch: WatchTogether | undefined, w: WatchState | undefine
   return entries.length ? [...entries, { type: "separator" }] : [];
 }
 
-/** The host's row per person: their roles, and a menu (co-host, drive, host). */
+/**
+ * The host's row per person: their roles, and a menu (co-host, drive, host). In a signed room a co-host has it too
+ * (Make host stays the host's), and someone who can only view can be let edit.
+ */
 function personEntries(watch: WatchTogether, w: WatchState, session: CollabSession): MenuEntry[] {
   return session.peers().map((p) => {
     const roles = rolesOf(w.roster, p.sender);
+    const viewing = w.viewers.includes(p.sender);
     return {
       type: "item" as const,
       testId: "room-person-row",
       title: p.alias,
-      desc: roleWords(roles),
+      desc: roleWords({ ...roles, viewing }),
       submenuTestId: "room-person-menu",
       submenu: (): MenuEntry[] => [
+        ...(viewing
+          ? [
+              {
+                type: "item" as const,
+                testId: "room-let-edit",
+                title: t("collab.letEdit"),
+                onSelect: () => watch.letEdit(p.sender),
+              },
+            ]
+          : []),
         roles.cohost
           ? {
               type: "item",
@@ -786,23 +834,28 @@ function personEntries(watch: WatchTogether, w: WatchState, session: CollabSessi
               title: t("collab.letDrive"),
               onSelect: () => watch.letDrive(p.sender),
             },
-        {
-          type: "item",
-          testId: "room-make-host",
-          title: t("collab.makeHost"),
-          onSelect: () => watch.makeHost(p.sender),
-        },
+        ...(w.hosting
+          ? [
+              {
+                type: "item" as const,
+                testId: "room-make-host",
+                title: t("collab.makeHost"),
+                onSelect: () => watch.makeHost(p.sender),
+              },
+            ]
+          : []),
       ],
     };
   });
 }
 
-/** "host · driving": a person's roles in words. */
-function roleWords(roles: { host: boolean; cohost: boolean; driving: boolean }): string {
+/** "host · driving": a person's roles in words (a signed room's viewer: "can view"). */
+function roleWords(roles: { host: boolean; cohost: boolean; driving: boolean; viewing?: boolean }): string {
   return [
     roles.host && t("collab.roleHost"),
     roles.cohost && t("collab.roleCohost"),
     roles.driving && t("collab.roleDriving"),
+    roles.viewing && t("collab.roleViewing"),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -817,7 +870,8 @@ function People({ session, watching }: { session: CollabSession; watching?: Watc
   );
   const me = session.me;
   const roster = watching?.roster;
-  const mine = roster && roleWords(rolesOf(roster, session.senderId));
+  const mine =
+    roster && roleWords({ ...rolesOf(roster, session.senderId), viewing: !!watching?.signed && !watching.canEdit });
   return (
     // Inside a menu, so not a list (a menu holds menu items): rows of text with no role of their own.
     <div className="room-people" role="presentation" data-testid="room-people">
@@ -827,9 +881,15 @@ function People({ session, watching }: { session: CollabSession; watching?: Watc
         {mine && ` · ${mine}`}
       </div>
       {session.peers().map((p) => {
-        const roles = roster && roleWords(rolesOf(roster, p.sender));
+        const roles =
+          roster && roleWords({ ...rolesOf(roster, p.sender), viewing: !!watching?.viewers.includes(p.sender) });
         return (
-          <div key={p.sender} role="presentation" data-testid="room-person">
+          <div
+            key={p.sender}
+            role="presentation"
+            data-testid="room-person"
+            data-viewing={watching?.viewers.includes(p.sender) ? "true" : "false"}
+          >
             <span className="room-dot" style={{ color: PRESENCE_COLOURS[p.colour] }} aria-hidden="true" />
             {t("collab.peer", { alias: p.alias, status: p.status })}
             {roles && ` · ${roles}`}

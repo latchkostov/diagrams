@@ -17,6 +17,9 @@ import { ReplayWindow } from "./replay";
 //   IV  = 4 zero bytes || counter (8 bytes): unique, since each sender's subkey is its own and its counter only grows.
 //   AAD = header (32 bytes) || room id (32 bytes).
 //
+// In a signed room (P4) the plaintext ends with the sender's Ed25519 signature over the header and the message
+// (`sign`, inside the encryption): ./session.ts checks it against the key the sender's presence binds it to.
+//
 // Opening checks, in order, before any decryption: length bounds for the channel, magic, version, channel, epoch
 // (another epoch's frame is refused, old or new), not our own sender id, the sender cap, and the replay window.
 // Then GCM authenticates; only then is the counter recorded. Any failure is a typed rejection, never an exception
@@ -28,6 +31,8 @@ const VERSION = 1;
 const CHANNEL_CODE: Record<Channel, number> = { doc: 1, presence: 2, live: 3 };
 const CODE_CHANNEL: Record<number, Channel | undefined> = { 1: "doc", 2: "presence", 3: "live" };
 export const SENDER_ID_BYTES = 16;
+/** What a signed room's frames carry after their message: an Ed25519 signature (./signing.ts). */
+export const FRAME_SIGNATURE_BYTES = 64;
 
 export type Rejection =
   | "too-short"
@@ -45,7 +50,16 @@ export type Rejection =
   | "auth-failed";
 
 export type Opened =
-  | { ok: true; channel: Channel; sender: string; senderBytes: Uint8Array; counter: number; plaintext: Uint8Array }
+  | {
+      ok: true;
+      channel: Channel;
+      sender: string;
+      senderBytes: Uint8Array;
+      counter: number;
+      plaintext: Uint8Array;
+      /** The frame's 32-byte header (what a signed room's signature covers with the message). */
+      header: Uint8Array;
+    }
   | { ok: false; reason: Rejection };
 
 const maxFrame = (channel: Channel) =>
@@ -104,6 +118,12 @@ export class Sealer {
   private keys: KeyCache;
   readonly senderHex: string;
 
+  /**
+   * A signed room's signer (P4): the signature over a frame's header and message, appended to the message before
+   * it's encrypted. Absent: frames carry no signature (a room without roles).
+   */
+  sign?: (head: Uint8Array, message: Uint8Array) => Promise<Uint8Array>;
+
   constructor(
     private readonly room: RoomKeys,
     readonly sender: Uint8Array,
@@ -113,12 +133,21 @@ export class Sealer {
     this.senderHex = hex(sender);
   }
 
-  async seal(channel: Channel, plaintext: Uint8Array): Promise<Uint8Array> {
-    if (plaintext.length + HEADER_BYTES + TAG_BYTES > maxFrame(channel))
+  async seal(channel: Channel, message: Uint8Array): Promise<Uint8Array> {
+    const extra = this.sign ? FRAME_SIGNATURE_BYTES : 0;
+    if (message.length + extra + HEADER_BYTES + TAG_BYTES > maxFrame(channel))
       throw new Error(`That ${channel} frame is too large to send.`);
     const counter = ++this.counters[channel];
     if (counter >= COLLAB_LIMITS.maxCounter) throw new Error("This session has sent too many frames; rejoin the room.");
     const head = header(channel, this.room.epoch, this.sender, counter);
+    let plaintext = message;
+    if (this.sign) {
+      const signature = await this.sign(head, message);
+      if (signature.length !== FRAME_SIGNATURE_BYTES) throw new Error("A frame signature is 64 bytes.");
+      plaintext = new Uint8Array(message.length + FRAME_SIGNATURE_BYTES);
+      plaintext.set(message, 0);
+      plaintext.set(signature, message.length);
+    }
     const pending = this.keys.get(channel, this.sender, this.senderHex);
     this.keys.keep(channel, this.senderHex, pending);
     const key = await pending;
@@ -154,7 +183,12 @@ export class Opener {
     this.keys = new KeyCache(room);
   }
 
-  async open(frame: Uint8Array): Promise<Opened> {
+  /**
+   * Opens a frame. `deferred` (a signed room): its counter isn't recorded yet, nor its sender counted; `accept`
+   * does that once its signature verifies, so a frame forged under someone's sender id (anyone with the room key can
+   * seal one) can't use up their counters.
+   */
+  async open(frame: Uint8Array, deferred = false): Promise<Opened> {
     if (frame.length < HEADER_BYTES + TAG_BYTES) return { ok: false, reason: "too-short" };
     if (frame.length > COLLAB_LIMITS.maxDocFrameBytes) return { ok: false, reason: "too-large" };
     if (frame[0] !== 0x4c || frame[1] !== 0x44) return { ok: false, reason: "bad-magic" };
@@ -198,19 +232,32 @@ export class Opener {
     } catch {
       return { ok: false, reason: "auth-failed" };
     }
-    // Authenticated: only now does the sender count, and its counter move the window. The window is looked up
-    // again: another frame from this sender may have been opened while this one was decrypting.
-    this.senders.add(sender);
     this.keys.keep(channel, sender, pending);
+    const opened = { ok: true as const, channel, sender, senderBytes, counter, plaintext, header: head.slice() };
+    if (deferred) return opened;
+    const accepted = this.accept(opened);
+    return accepted === true ? opened : { ok: false, reason: accepted };
+  }
+
+  /**
+   * Records an opened frame's counter (and counts its sender): true, or why it can't be (a copy of it was accepted
+   * meanwhile, the sender cap). The window is looked up again: another frame from this sender may have been opened
+   * while this one was decrypting.
+   */
+  accept(opened: { channel: Channel; sender: string; counter: number }): true | Rejection {
+    const { channel, sender, counter } = opened;
+    if (!this.senders.has(sender) && this.senders.size >= COLLAB_LIMITS.maxSenders) return "too-many-senders";
+    const windowKey = `${channel}:${sender}`;
     let w = this.windows.get(windowKey);
     if (!w) {
       w = new ReplayWindow(COLLAB_LIMITS.replayWindow);
       this.windows.set(windowKey, w);
     }
     const again = w.check(counter);
-    if (again !== "ok") return { ok: false, reason: again === "replay" ? "replay" : "stale" };
+    if (again !== "ok") return again === "replay" ? "replay" : again === "stale" ? "stale" : "bad-counter";
+    this.senders.add(sender);
     w.accept(counter);
-    return { ok: true, channel, sender, senderBytes, counter, plaintext };
+    return true;
   }
 
   /** Senders whose frames have authenticated (bounded by COLLAB_LIMITS.maxSenders). */

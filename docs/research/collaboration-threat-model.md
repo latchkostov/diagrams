@@ -305,17 +305,83 @@ What the production feature adds to the model above.
   attached: a session on any other diagram, or one that becomes Private, sends
   nothing and is detached at once (every send checks). Presence carries `host`, the shown run's title and the host's
   view centre. All of it is cooperative: any member
-  holds the key and could send Live frames or claim `host`. Followers trust the lowest sender id claiming it. Signed
-  roles (P4) are what will make this enforceable. Nothing of a run reaches a server.
+  holds the key and could send Live frames or claim `host`. Followers trust the lowest sender id claiming it. In
+  signed rooms (below) this holds against honest copies; it stays cooperative in rooms opened from v1 links. Nothing
+  of a run reaches a server.
 
 - **Monitoring.** A report-only Nightly smoke runs over the real network. It classifies failures as trackers
   unreachable, ICE/NAT or app error, and alerts after three failed nights. It never runs in PR CI.
 
+## Signed rooms (P4, 2026-10-19)
+
+Meeting hosts design §2, owner decisions 12 to 14: rooms started now are signed. **Not yet independently reviewed**
+(decision 13): shipped disclosed as such, since it only adds checks to what rooms had; Private diagrams stay blocked
+whatever the review finds.
+
+- **The link.** `#room=v2.<epoch>.<secret>.<hostKey>`: v1's secret and key schedule (unchanged), plus the creator's
+  Ed25519 public key (43 characters), the roster's root. Parsing is strict, as v1's (one canonical spelling per key).
+  v1 links open as rooms without roles for one more release (decision 12).
+- **Identities.** Each tab has an Ed25519 key pair (WebCrypto, `src/collab/signing.ts`), its private half kept as a
+  JWK in the tab's `sessionStorage` record beside the room value (the same class of secret), never sent. The
+  creator's is the root. A reload keeps it; a duplicated tab (the `BroadcastChannel` check) makes a new one.
+- **Bindings.** Presence carries the member's key, its Yjs client id and the key's signature over both with the
+  session's sender id, the room id and the epoch. The first key a sender binds is the one it keeps (a later claim is
+  refused); its client id can change under a new binding by the same key.
+- **Signed frames.** Every frame's message carries its sender's signature over a label, the room id, the 32-byte
+  header (channel, epoch, sender, counter) and the message, inside the AES-GCM envelope. In a signed room the
+  opener records a frame's counter only after the signature verifies under the sender's bound key, so a frame
+  forged under another sender id (anyone with the link can seal one) can't use up that sender's counters.
+- **The roster** (`src/collab/roster.ts`) is a set of signed entries (admit, co-host, un-co-host, drive, host,
+  policy), each over a label, the room id, the epoch and its fields, ordered by a Lamport counter, then the signer's
+  key, then the signature. Every peer folds the same entries to the same roles whatever order they arrive in (this
+  resolves P3's partition-ordering item). An entry counts only where its signer had the authority at its place in
+  that order; only entries from someone who can edit are kept at all (1,024 in all, 256 per signer). It travels as
+  `DOC.roster`: in full to each peer that appears, each new entry to everyone, and a summary each anti-entropy round
+  that a peer whose roster differs answers with its entries (four times a window at most). It's kept in the tab's
+  record and checked again as a reload opens.
+- **Authorisation, by bytes and the roster only** (design rule 1): a direct update counts from an editor whose
+  update's structs all carry its own bound client id; a sync reply only from an editor; viewers never serve sync.
+  Roles only add editors (rule 3), so no honest peer refuses what another honest peer applied.
+- **Held, not rolled back** (rule 2). A document frame that doesn't count yet (its sender's binding or grant still
+  on the way) is held per sender (4 MiB, 30 s), never applied; it's applied in order once it counts, or dropped with
+  its sender quarantined. A newcomer in a room where new people may edit is admitted by one editor here (the host,
+  else the earliest co-host, else the lowest sender), and the holding covers that moment.
+- **Live.** A shared run's messages count only from its driver (the roster's while here, else the host), or for a
+  moment from the last driver and from whom it handed the run to (30 s, until its handoff). A yes to a request, a
+  handover and who drives are roster entries; the P3 `host` message and a yes in an `answer` change nothing.
+- **Bounds.** Signature verifications per sender per window (`verifiesPerWindow`, 2,048: frames and roster
+  entries), checked after the cheaper per-channel bounds; a binding is verified once; a roster entry once.
+
+What it holds, against peers running an honest copy: a viewer's edits reach nobody; only the driver moves the shared
+run; only the host and co-hosts change roles, and only the host hands the room on; nobody sends edits, Live commands
+or roster entries as another member. What a modified client can still do: edit its own copy and show anything
+locally, and keep or forward what it receives; vandalise if it can edit (editors are trusted to edit); claim another
+editor's client id in a struct through a sync reply (attribution between editors stays best-effort); flood within the
+bounds; bind a newcomer's sender id first if it sees it before the newcomer's first presence (that newcomer's frames
+are then refused: a denial of service, not an impersonation); fill the roster with entries that change nothing,
+within the bounds, if it can edit. Making an editor a viewer again, and removing anyone, need a new epoch (P5).
+
+**What this adds to the crypto review's scope** (design §2): the v2 link; the identity key in `sessionStorage`; the
+roster's signature chain and merge rule (Lamport order, authority at each point, storage gating); binding session
+keys to the sender id and Yjs client id (and re-binding the client id); signing inside the AEAD (what the signature
+covers, verification before the replay window records a counter); the holding buffer and its quarantine; replay of
+signed Live commands across runs (bounded by the run id and the driver check) and epochs (the epoch is signed); and
+the algorithm (Ed25519 in WebCrypto) against ECDSA P-256 (decision 14). Still to come with P5: the lobby and content
+key split, the per-recipient key wrap, epoch transitions with offline members, and the knock path.
+
+Tests: `src/collab/signing.test.ts`, `roster.test.ts` (forged, re-roomed and re-epoched entries refused; order
+independence after a partition; bounds), `signedSession.test.ts` (a viewer's and a modified copy's edits ignored by
+everyone; an edit that raced its grant held then applied; viewers don't serve sync; a forged frame refused without
+using up the sender's counters; a forged roster entry refused; convergence; the verification bound),
+`room/signedWatch.test.ts` (only the driver's run messages count; a yes or a handover in a message changes nothing)
+and `room/lifecycle.test.ts` (a reload keeps verified roles; a changed record entry doesn't count; a v1 link opens
+without roles; a duplicated tab signs as someone new).
+
 ## Residual risks and open items for C1
 
 1. **Independent review** of the key schedule, envelope and link format before any Private-diagram promise.
-2. **Roles and attribution:** one shared key means any member can write and impersonate another session. C2's
-   signed grants and per-session signing keys address it.
+2. **Roles and attribution:** one shared key means any member can write and impersonate another session. Signed
+   rooms (P4, above) address it against honest copies; v1 rooms stay cooperative for one more release.
 3. **Removal and rotation:** the epoch field and per-epoch keys are in place; the transition (new generation from
    the visible state, fresh links, refusing old-epoch writes) is not built. End session is not built.
 4. **IP exposure:** peers see each other's IPs on direct paths, trackers see everyone's. Disclosed before joining

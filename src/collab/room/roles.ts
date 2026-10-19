@@ -91,8 +91,11 @@ export function rolesOf(roster: Roster, sender: string): { host: boolean; cohost
   };
 }
 
-/** The peer whose run to follow: the roster's driver if they show one, else anyone who shows one (lowest id). */
-export function driverOf(roster: Roster, peers: readonly PeerPresence[]): PeerPresence | undefined {
+/**
+ * The peer whose run to follow: the roster's driver if they show one, else anyone who shows one (lowest id). Strict
+ * (a signed room): only the roster's driver, since no one else's run counts.
+ */
+export function driverOf(roster: Roster, peers: readonly PeerPresence[], strict = false): PeerPresence | undefined {
   const showing = peers.filter((p) => p.live).sort((a, b) => (a.sender < b.sender ? -1 : 1));
-  return showing.find((p) => p.sender === roster.driver) ?? showing[0];
+  return showing.find((p) => p.sender === roster.driver) ?? (strict ? undefined : showing[0]);
 }

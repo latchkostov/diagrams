@@ -88,7 +88,8 @@ async function startRoom(page: Page): Promise<string> {
   await expect(page.getByTestId("room-started-dialog")).toBeVisible();
   await expect(page.getByTestId("room-link-copy")).toBeFocused();
   const link = await page.getByTestId("room-link").inputValue();
-  expect(link).toMatch(/#room=v1\.0\.[A-Za-z0-9_-]{43}$/);
+  // A signed room (P4): the secret, then the host's public key.
+  expect(link).toMatch(/#room=v2\.0\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
   await page.getByTestId("room-started-done").click();
   return link;
 }

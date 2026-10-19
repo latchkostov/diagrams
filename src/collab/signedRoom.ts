@@ -1,0 +1,145 @@
+import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
+import type { RoomKeys } from "./keys";
+import { SignedRoster, type RosterEntry, type RosterOp, type RosterState } from "./roster";
+import { sign, signedBytes, verify, type Identity } from "./signing";
+
+// A signed room's session state (meeting hosts design §2, P4), beside ./session.ts, which uses it on every frame:
+//
+// - This member's identity (./signing.ts) and the room's roster (./roster.ts), rooted at the link's host key.
+// - Bindings: each sender's presence names its member key and its Yjs client id, with the key's signature over both
+//   and the sender id (`bind`). The first key a sender binds is the one it keeps (a later claim is refused: someone
+//   else can't take a sender's frames over); its client id may change, signed by the same key (Yjs may draw another).
+// - Frames: every frame's message is signed by its sender's key over the room id, the header (channel, epoch,
+//   sender, counter) and the message, inside the encryption; a frame is used only once that verifies under the key
+//   its sender bound.
+//
+// What's enforced from here, against peers running an honest copy, is in docs/research/collaboration-threat-model.md
+// ("Signed rooms"): roles change only by entries the roster's authority rules allow, a viewer's edits reach no one,
+// and only the driver moves the shared Live run.
+
+export interface Binding {
+  key: string;
+  client: number;
+  bind: string;
+}
+
+const frameBytes = (roomId: Uint8Array, head: Uint8Array, message: Uint8Array) =>
+  signedBytes("livediagrams/frame/v1", roomId, head, message);
+
+const bindBytes = (keys: RoomKeys, sender: Uint8Array, key: string, client: number) =>
+  signedBytes("livediagrams/bind/v1", keys.roomIdBytes, keys.epoch, sender, key, client);
+
+export class SignedRoom {
+  readonly roster: SignedRoster;
+  private readonly bindings = new Map<string, Binding>();
+  private readonly listeners = new Set<() => void>();
+  /** This session's own binding, as its presence says it. */
+  mine?: Binding;
+
+  constructor(
+    readonly keys: RoomKeys,
+    readonly hostKey: string,
+    readonly identity: Identity,
+  ) {
+    this.roster = new SignedRoster(hostKey, keys.roomId, keys.epoch);
+  }
+
+  get key(): string {
+    return this.identity.key;
+  }
+
+  state(): RosterState {
+    return this.roster.state();
+  }
+
+  /** Whether `key` can edit (the host, a co-host, someone admitted). */
+  isEditor(key: string | undefined): boolean {
+    return !!key && this.state().editors.has(key);
+  }
+
+  /** Whether this person may edit: they can, or new people may edit (an editor admits them as their edits arrive). */
+  get canEdit(): boolean {
+    const s = this.state();
+    return s.editors.has(this.key) || !s.viewOnly;
+  }
+
+  /** The key a sender bound, once its presence's binding verified. */
+  keyOf(sender: string): string | undefined {
+    return this.bindings.get(sender)?.key;
+  }
+
+  clientOf(sender: string): number | undefined {
+    return this.bindings.get(sender)?.client;
+  }
+
+  /** The senders bound to `key` (a reload's old session may linger), lowest first. */
+  sendersOf(key: string): string[] {
+    return [...this.bindings]
+      .filter(([, b]) => b.key === key)
+      .map(([s]) => s)
+      .sort();
+  }
+
+  /** Bindings changed (a sender bound, a client id re-bound) or the roster did. */
+  subscribe(fn: () => void): () => void {
+    this.listeners.add(fn);
+    const stop = this.roster.subscribe(fn);
+    return () => {
+      this.listeners.delete(fn);
+      stop();
+    };
+  }
+
+  /** This session's binding for its sender id and Yjs client id: what its presence carries. */
+  async bindMine(sender: Uint8Array, client: number): Promise<Binding> {
+    const sig = await sign(this.identity.privateKey, bindBytes(this.keys, sender, this.key, client));
+    this.mine = { key: this.key, client, bind: bytesToBase64Url(sig) };
+    return this.mine;
+  }
+
+  /** The signature a frame carries: over the room id, its header and its message. */
+  signFrame = (head: Uint8Array, message: Uint8Array): Promise<Uint8Array> =>
+    sign(this.identity.privateKey, frameBytes(this.keys.roomIdBytes, head, message));
+
+  /** Whether a frame's signature is `key`'s. */
+  verifyFrame(key: string, head: Uint8Array, message: Uint8Array, signature: Uint8Array): Promise<boolean> {
+    return verify(key, signature, frameBytes(this.keys.roomIdBytes, head, message));
+  }
+
+  /**
+   * A presence's binding for `sender`: "same" (already held), "bound" (new, or its client id changed: verified),
+   * or why not: "rebound" (the sender bound another key first) or "bad-binding" (the signature doesn't verify).
+   */
+  async bindPeer(
+    sender: string,
+    senderBytes: Uint8Array,
+    b: Binding,
+  ): Promise<"same" | "bound" | "rebound" | "bad-binding"> {
+    const held = this.bindings.get(sender);
+    if (held && held.key !== b.key) return "rebound";
+    if (held && held.client === b.client && held.bind === b.bind) return "same";
+    let sig: Uint8Array;
+    try {
+      sig = base64UrlToBytes(b.bind);
+    } catch {
+      return "bad-binding";
+    }
+    if (!(await verify(b.key, sig, bindBytes(this.keys, senderBytes, b.key, b.client)))) return "bad-binding";
+    // Checked again: another binding may have landed while this one verified.
+    const now = this.bindings.get(sender);
+    if (now && now.key !== b.key) return "rebound";
+    this.bindings.set(sender, { key: b.key, client: b.client, bind: b.bind });
+    for (const l of this.listeners) l();
+    return "bound";
+  }
+
+  /** Entries from a peer or a record (./roster.ts checks each). */
+  addEntries(list: readonly unknown[], budget?: () => boolean) {
+    return this.roster.add(list, budget);
+  }
+
+  /** A new entry by this member; undefined when it may not make it now, or it changes nothing. */
+  append(op: RosterOp, fields: { who?: string; viewOnly?: boolean } = {}): Promise<RosterEntry | undefined> {
+    return this.roster.append(this.identity, op, fields);
+  }
+}

@@ -90,6 +90,20 @@ export const COLLAB_LIMITS = {
    * and a late joiner's log slices, with room to spare. Past it they are dropped (and counted).
    */
   liveFramesPerWindow: 600,
+  /**
+   * Signed rooms (P4): signature verifications one sender may cost per window (frames and roster entries: a full
+   * roster is at most 1,024), and how often a session sends its whole roster back to one peer whose summary differs.
+   */
+  verifiesPerWindow: 2048,
+  rosterRepliesPerWindow: 4,
+  /** A roster message's JSON: a full roster of 1,024 entries is about 300 KB. */
+  maxRosterMessageBytes: 1024 * 1024,
+  /**
+   * A signed room's document frames that don't count yet (a grant or a binding still on its way): held this long, and
+   * this many bytes per sender (a whole diagram's sync reply fits), then dropped and the sender quarantined.
+   */
+  heldMs: 30_000,
+  maxHeldBytesPerSender: 4 * 1024 * 1024,
   /** A session sends its cursor at most this often (15 times a second). */
   cursorIntervalMs: 67,
   /** A peer's cursor that hasn't moved for this long is hidden (and while they're away). */

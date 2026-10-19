@@ -3,7 +3,7 @@ import type { FlowSelection } from "./historySelection";
 import type { CanvasPrivacyState } from "../lib/localOnly";
 
 export type RoomRefusal =
-  "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id" | "room-full" | "private";
+  "key-too-long" | "string-too-long" | "too-deep" | "too-large" | "bad-id" | "room-full" | "private" | "view-only";
 export type RoomCommitResult = { status: "applied" | "unchanged" } | { status: "refused"; reason: RoomRefusal };
 
 export interface RoomStepMeta {

@@ -66,9 +66,9 @@ export function reserveRoomCreation(room: RoomLink): { commit(): void; rollback(
   };
 }
 
-/** A new room: 32 random bytes from WebCrypto, epoch 0. */
-export function newRoom(random: RandomBytes = secureRandom): RoomLink {
-  const room = { epoch: 0, secret: random(ROOM_SECRET_BYTES) };
+/** A new room: 32 random bytes from WebCrypto, epoch 0; a signed room (v2) when it has its creator's key. */
+export function newRoom(random: RandomBytes = secureRandom, hostKey?: string): RoomLink {
+  const room: RoomLink = { epoch: 0, secret: random(ROOM_SECRET_BYTES), ...(hostKey ? { hostKey } : {}) };
   freshRooms.add(room);
   return room;
 }

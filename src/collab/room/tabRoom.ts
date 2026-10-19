@@ -1,7 +1,6 @@
-import { bytesToBase64Url } from "../../interop/codec";
 import { ROOM_TAB_KEY } from "../../lib/roomEntry";
 import { safeSessionStorage } from "../../lib/storage";
-import { parseRoomValue, type RoomLink } from "../link";
+import { formatRoomValue, parseRoomValue, type RoomLink } from "../link";
 import { parseRoster, type RosterRecord } from "./roomRoster";
 
 // This tab's open room (owner decision Q4): a reload keeps you in it. sessionStorage only, so it is never shared
@@ -12,7 +11,7 @@ import { parseRoster, type RosterRecord } from "./roomRoster";
 export type RoomRole = "creator" | "joiner";
 
 export interface TabRoomRecord {
-  /** `v1.<epoch>.<secret>`: the room link's value. */
+  /** `v1.<epoch>.<secret>` (or v2's, with the host key): the room link's value. */
   room: string;
   role: RoomRole;
   /** Your diagrams' entry that holds this tab's copy of the room (absent while a joiner waits for the diagram). */
@@ -33,7 +32,7 @@ export interface TabRoomStore {
   clear(): void;
 }
 
-export const roomValue = (room: RoomLink) => `v1.${room.epoch}.${bytesToBase64Url(room.secret)}`;
+export const roomValue = (room: RoomLink) => formatRoomValue(room);
 
 /** The record's room, or undefined when it isn't a valid one (then the record is ignored and dropped). */
 export function recordRoom(record: TabRoomRecord): RoomLink | undefined {
