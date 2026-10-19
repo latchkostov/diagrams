@@ -54,6 +54,6 @@ tests cover the toggle, meter, pill, continuation ceiling and one-step callout u
 No bundle budget is raised. Caller-family records remain shared; advanced/custom property editors,
 waiting visuals and secondary Live panels load on demand. The startup chunk contract continues to
 guard these boundaries. Generated agent modules are minified to keep the skill ZIP below its
-existing 825,000-byte download budget as the viewer gains non-blocking playback (813,106 bytes).
+existing 825,000-byte download budget as the viewer gains non-blocking playback.
 The saved-example and skill regression run passes 307 tests, including the authored outcomes of
 both comparison simulations, valid connection references, deterministic ZIP contents and its size cap.

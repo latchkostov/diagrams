@@ -1,5 +1,9 @@
 ## Markdown shortcut readiness under load
 
+Resolved upstream by `c3d15a42` (#194), included by `pnpm sync`: the annotation shortcut test
+waits for `data-markdown-ready` before editing and pressing Ctrl+B. The formatting assertion is
+unchanged. The original evidence below is retained for reference; no follow-up remains here.
+
 The non-blocking-calls UI load run (Linux, eight workers/CPUs, five repetitions of the affected
 specs and their neighbours) hit one failure in the first repetition of
 `annotations.spec.ts:626`: Ctrl+B left `critical` unchanged instead of producing `**critical**`.
