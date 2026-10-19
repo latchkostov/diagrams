@@ -59,7 +59,7 @@ function addHeader(viewport: HTMLElement, b: Bounds, header: { title: string; de
   el.style.maxWidth = `${Math.max(b.width, 420)}px`;
   viewport.append(el);
   return {
-    ready: Promise.all(Array.from(el.getElementsByTagName("img"), (image) => image.decode().catch(() => {}))),
+    ready: () => Promise.all(Array.from(el.getElementsByTagName("img"), (image) => image.decode().catch(() => {}))),
     measure: () => {
       // Layout sizes ignore viewport zoom. Images must finish decoding before this measurement.
       const rect = { x: b.x, y: b.y - HEADER_GAP - el.offsetHeight, width: el.offsetWidth, height: el.offsetHeight };
@@ -119,8 +119,6 @@ const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<Blob> {
   opts.signal?.throwIfAborted();
   opts.check?.();
-  await unlessCancelled(loadMarkdown(), opts.signal);
-  opts.check?.();
   const viewport = findViewport();
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
@@ -131,7 +129,11 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   const releaseInput = holdInput(opts.onEscape);
   let slicer: import("./imageClone").Slicer | undefined;
   try {
-    if (header) await unlessCancelled(header.ready, opts.signal);
+    // Insert the header before yielding, then finish its Markdown before finding images or measuring it.
+    // Loading belongs inside the input hold and cleanup, including cancellation and failed downloads.
+    await unlessCancelled(loadMarkdown(), opts.signal);
+    opts.check?.();
+    if (header) await unlessCancelled(header.ready(), opts.signal);
     opts.check?.();
     const b = header ? unionBounds(content, header.measure()) : content;
     const pad = opts.padding ?? 48;

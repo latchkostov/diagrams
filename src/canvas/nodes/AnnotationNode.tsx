@@ -4,12 +4,10 @@ import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/a
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { resolveAnnotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
 import { MarkdownView } from "../../components/markdown/lazy";
-import { lazyComponent } from "../../lib/lazyLoad";
+import { AnnotationEditor } from "./AnnotationEditor";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
-
-const AnnotationEditor = lazyComponent(() => import("./AnnotationEditor").then((m) => m.AnnotationEditor));
 
 /**
  * Text, notes, zones and shapes. Documentation only: no simulation role, no badges.

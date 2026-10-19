@@ -16,9 +16,10 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
     "Markdown rendering and parsing",
     /[/\\]src[/\\]components[/\\]markdown[/\\](MarkdownView\.tsx|markdownParser\.ts)$/,
   ],
+  ["inspector Markdown editing", /[/\\]src[/\\]components[/\\]markdown[/\\]MarkdownEditor\.tsx$/],
   [
-    "Markdown editing and keys",
-    /[/\\]src[/\\](?:components[/\\]markdown[/\\](MarkdownEditor\.tsx|markdownKeys\.ts)|canvas[/\\]nodes[/\\]AnnotationEditor\.tsx)$/,
+    "annotation editing and keys",
+    /[/\\]src[/\\](?:components[/\\]markdown[/\\]markdownKeys\.ts|canvas[/\\]nodes[/\\]AnnotationEditor\.tsx)$/,
   ],
   ["stencil display messages", /[/\\]src[/\\]i18n[/\\]stencils\.ts$/],
   ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
@@ -112,6 +113,8 @@ const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
       "the stencil search index",
       "canvas File actions",
       "stencil display messages",
+      // Inline editing must take the very first key after a double-click, including caret movement.
+      "annotation editing and keys",
     ].includes(what),
 );
 
@@ -265,9 +268,11 @@ describe("production bundle split", () => {
     );
     expect(view).toBeDefined();
     expect(Object.keys(view!.modules).some((id) => /[/\\]markdownParser\.ts$/.test(id))).toBe(true);
-    const editing = NOT_AT_STARTUP.filter(([what]) => what === "Markdown editing and keys");
+    const editing = NOT_AT_STARTUP.filter(([what]) =>
+      ["inspector Markdown editing", "annotation editing and keys"].includes(what),
+    );
     expect(found(bundled(closure([view!])), editing)).toEqual([]);
-    expect(found(bundled(chunks), editing)).toEqual(["Markdown editing and keys"]);
+    expect(found(bundled(chunks), editing)).toEqual(["inspector Markdown editing", "annotation editing and keys"]);
   });
 
   it("opens Live without the simulation editor and drill preset controls", () => {

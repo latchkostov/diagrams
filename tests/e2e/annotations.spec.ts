@@ -812,6 +812,30 @@ test("keyboard editing preserves navigation, selection and focus", async ({ page
   await expect(preview).toBeVisible();
 });
 
+for (const enter of ["Enter", "Shift+Enter"]) {
+  test(`cold annotation editing takes caret movement and ${enter} immediately`, async ({ page, consoleErrors }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Captions",
+      nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 80 }],
+      annotations: [{ id: "caption", kind: "text", text: "Caption", x: 80, y: 220, width: 240, height: 80 }],
+      edges: [],
+    });
+    await gotoCanvas(page, SLUG);
+    await waitForStableViewport(page);
+    await annotation(page, "caption").dblclick();
+    // No readiness wait: these keys belong to the editor from the instant it is opened.
+    await page.keyboard.press(TEXT_END);
+    await page.keyboard.press(enter);
+    await page.keyboard.type("second line");
+    await expect(page.getByTestId("annotation-editor")).toHaveValue("Caption\nsecond line");
+    await page.keyboard.press(`${MOD}+Enter`);
+    await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+    await expect(page.getByTestId("annotation-text-caption")).toHaveText("Caption\nsecond line");
+    expectNoErrors(consoleErrors);
+  });
+}
+
 test("cold Markdown keeps annotation geometry and image exports await the rendered text", async ({ page }) => {
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -865,7 +889,7 @@ test("cold Markdown keeps annotation geometry and image exports await the render
   );
   // Starting the export must leave its annotation fallback untouched until the held renderer arrives.
   await expect(page.getByTestId("image-dialog")).toHaveCount(0);
-  await expect(page.getByTestId("export-header")).toHaveCount(0);
+  await expect(page.getByTestId("export-header")).toBeVisible();
   expect(completed).toBe(false);
   await expect(note).toHaveText("**Retry** <script>plain</script>");
   release();
