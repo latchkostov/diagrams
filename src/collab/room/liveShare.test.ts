@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile, Simulation } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { LiveController } from "../../live/controller";
-import { emptyInputs } from "../../live/capacityModel";
+import { effectiveSimulation, emptyInputs } from "../../live/capacityModel";
+import { capacitySaveCandidate } from "../../live/capacityPersistence";
+import { LiveSync } from "../../live/session/liveSync";
 import { snapshotDigest } from "../../sim/digest";
 import type { WatchedSession } from "../../live/watchBridge";
 import type { LogEntry } from "../../live/controlLog";
@@ -11,7 +13,9 @@ import { COLLAB_LIMITS } from "../limits";
 import { encodeMessage, LiveDecoder, parseMessage } from "./liveWire";
 import {
   ASK_MS,
+  CATCH_UP_SLICE_MS,
   HOST_SILENT_MS,
+  MAX_DIGESTS,
   LiveDriver,
   LiveFollower,
   followViewport,
@@ -54,6 +58,8 @@ class Room {
   delivered: { from: string; m: LiveMessage; bytes: number }[] = [];
   /** While false, the host's frames are lost (their connection dropped). */
   hostOnline = true;
+  /** The room's diagram as every editor has it (the document syncs ahead of the run's ops). */
+  doc: DiagramFile = diagram;
   channel(sender: string): LiveChannel {
     let id = 0;
     return {
@@ -95,9 +101,9 @@ const timers: LiveTimers = {
   },
 };
 
-const session = (controller: LiveController): WatchedSession => ({
+const session = (controller: LiveController, getDiagram: () => DiagramFile = () => diagram): WatchedSession => ({
   controller,
-  getDiagram: () => diagram,
+  getDiagram,
   store: {
     getState: () => ({ transform: [0, 0, 1], width: 1000, height: 600 }),
     subscribe: () => () => {},
@@ -119,16 +125,16 @@ interface Watcher {
   local: number;
 }
 
-function watcher(room: Room, name: string): Watcher {
+function watcher(room: Room, name: string, clock: LiveTimers = timers): Watcher {
   const controller = new LiveController(diagram);
   const w: Watcher = { controller, status: [], local: 0, follower: undefined as unknown as LiveFollower };
   w.follower = new LiveFollower(
     room.channel(name),
-    session(controller),
+    session(controller, () => room.doc),
     "host",
     (s) => w.status.push(s),
     () => w.local++,
-    timers,
+    clock,
   );
   return w;
 }
@@ -449,6 +455,11 @@ describe("Watch together", () => {
       controlLog: () => log,
       onOp: (l: (e: LogEntry) => void) => (listeners.push(l), () => {}),
       getState: () => ({ playing: true, speed: 1, run: null, simulation: null, traffic: false, inputs: emptyInputs() }),
+      currentDiagram: diagram,
+      settings: { simulation: null, traffic: false, inputs: emptyInputs(), speed: 1, playing: true },
+      isPlaying: true,
+      runNow: null,
+      busy: false,
       digestInputs: () => new LiveController(diagram).digestInputs(),
     } as unknown as LiveController;
     const driver = new LiveDriver(room.channel("host"), session(fake), () => {}, undefined, timers);
@@ -549,9 +560,331 @@ describe("Watch together", () => {
     room.channel("host").send({
       t: "start",
       run: "x.1",
-      start: { engine: "other", simulation: null, traffic: false, inputs: emptyInputs(), speed: 1, title: "" },
+      start: {
+        engine: "other",
+        simulation: null,
+        traffic: false,
+        inputs: emptyInputs(),
+        speed: 1,
+        title: "",
+        props: {},
+      },
     });
-    expect(w.status.at(-1)).toMatchObject({ phase: "cant-follow", version: true });
+    expect(w.status.at(-1)).toMatchObject({ phase: "cant-follow", reason: "version" });
+  });
+});
+
+/** The diagram with one node's props changed. */
+const withNodeProps = (d: DiagramFile, id: string, props: Record<string, unknown>): DiagramFile => ({
+  ...d,
+  nodes: d.nodes.map((n) => (n.id === id ? { ...n, props: { ...n.props, ...props } } : n)),
+});
+
+/** A host playing `sim` (null: free play with traffic) and a guest following it. */
+function hostAndGuest(sim: Simulation | null = steady, from = 500) {
+  const room = new Room();
+  const host = new LiveController(diagram);
+  if (sim) host.selectSimulation(sim);
+  else host.setTraffic(true);
+  const driver = new LiveDriver(
+    room.channel("host"),
+    session(host, () => room.doc),
+    () => {},
+    undefined,
+    timers,
+  );
+  host.setPlaying(true);
+  const w = watcher(room, "guest");
+  framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= from);
+  return { room, host, driver, w };
+}
+
+const seenOf = (f: LiveFollower) => (f as unknown as { seen: number }).seen;
+const rawFromHost = (room: Room, message: unknown) => room.raw("host", textToBytes(JSON.stringify(message)));
+
+describe("Watch together: the host's ops through the controller", () => {
+  it("an Inputs save (commit), then a newer Inputs edit: the follower keeps the saved baseline", () => {
+    const { host, driver, w } = hostAndGuest();
+    host.setInputs({ ...emptyInputs(), traffic: 2 });
+    framesUntil(host, [w], () => tickOf(host) >= 700);
+    const saved = effectiveSimulation(steady, host.getState().inputs);
+    host.commitInputs(saved);
+    framesUntil(host, [w], () => tickOf(host) >= 900);
+    host.setInputs({ ...emptyInputs(), capacity: 2 });
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 1300);
+    sameAfterPause(host, w);
+    expect(w.controller.getState().simulation).toEqual(saved);
+    expect(w.controller.getState().inputs).toEqual(host.getState().inputs);
+    expect(w.status.some((s) => s.phase === "cant-follow")).toBe(false);
+    expect(w.local).toBe(0);
+    driver.dispose();
+  });
+
+  it("free play: 3 replicas in Inputs saved to the diagram, then edited to 5: the follower runs 5", () => {
+    const { room, host, driver, w } = hostAndGuest(null);
+    host.setInputs({ ...emptyInputs(), props: { inventory: { replicas: 3 } } });
+    framesUntil(host, [w], () => tickOf(host) >= 700);
+    const candidate = capacitySaveCandidate(room.doc, null, host.getState().inputs);
+    room.doc = candidate.diagram;
+    host.commitInputs(null, candidate.diagram);
+    framesUntil(host, [w], () => tickOf(host) >= 900);
+    room.doc = withNodeProps(room.doc, "inventory", { replicas: 5 });
+    host.updateDiagram(room.doc);
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 1200);
+    sameAfterPause(host, w);
+    expect(host.effectiveProps("inventory").replicas).toBe(5);
+    expect(w.controller.effectiveProps("inventory").replicas).toBe(5);
+    expect(w.controller.getState().inputs).toEqual(emptyInputs());
+    driver.dispose();
+  });
+
+  it("two diagram edits within the playout delay both happen, each on its tick", () => {
+    const { room, host, driver, w } = hostAndGuest();
+    const rebuilds = w.status.filter((s) => s.phase === "catching-up").length;
+    room.doc = withNodeProps(room.doc, "payments", { failureRate: 1 });
+    host.updateDiagram(room.doc);
+    // A quarter of a second later (the follower is half a second behind), the edit is undone.
+    for (let i = 0; i < 15; i++) frame(host, [w]);
+    room.doc = withNodeProps(room.doc, "payments", { failureRate: 0 });
+    host.updateDiagram(room.doc);
+    framesUntil(host, [w], () => tickOf(host) >= 1500);
+    sameAfterPause(host, w);
+    // The failure interval happened on the follower too: no drift, so no rebuild.
+    expect(w.status.filter((s) => s.phase === "catching-up")).toHaveLength(rebuilds);
+    expect(w.status.some((s) => s.phase === "cant-follow")).toBe(false);
+    driver.dispose();
+  });
+
+  it("the host editing, then removing, the saved simulation while followed: the follower stays on", () => {
+    const { host, driver, w } = hostAndGuest();
+    const hostSync = new LiveSync(host);
+    const guestSync = new LiveSync(w.controller);
+    guestSync.setFollowing(true);
+    hostSync.simulations([steady], () => undefined);
+    guestSync.simulations([steady], () => undefined);
+    // Edited (a faster entry rate): the document reaches both, the run's change comes as the host's op.
+    const edited: Simulation = {
+      ...steady,
+      traffic: [{ ...steady.traffic[0], shape: { kind: "constant", ratePerSec: 450, durationMs: 120_000 } }],
+    };
+    guestSync.simulations([edited], () => undefined);
+    hostSync.simulations([edited], () => undefined);
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 900);
+    sameAfterPause(host, w);
+    expect(w.controller.getState().simulation).toEqual(edited);
+    // Removed: the host goes to free play (a new run), and the follower with it.
+    const before = driver.runId;
+    guestSync.simulations([], () => undefined);
+    hostSync.simulations([], () => undefined);
+    expect(driver.runId).not.toBe(before);
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 300);
+    sameAfterPause(host, w);
+    expect(w.controller.getState().simulation).toBeNull();
+    expect(w.local).toBe(0);
+    // Following ends: what waited is reconciled, and nothing's left to change.
+    const ops = w.controller.controlLog().length;
+    guestSync.setFollowing(false);
+    expect(w.controller.controlLog()).toHaveLength(ops);
+    driver.dispose();
+  });
+
+  it("an unsaved host draft: the guest's saved list doesn't have it, and following goes on", () => {
+    const draft: Simulation = { ...steady, id: "draft", title: "A draft" };
+    const { host, driver, w } = hostAndGuest(draft);
+    const guestSync = new LiveSync(w.controller);
+    guestSync.setFollowing(true);
+    guestSync.simulations([steady], () => undefined);
+    guestSync.simulations([steady, { ...steady, id: "other" }], () => undefined);
+    framesUntil(host, [w], () => tickOf(host) >= 900);
+    sameAfterPause(host, w);
+    expect(w.local).toBe(0);
+    expect(w.controller.getState().simulation?.id).toBe("draft");
+    // Watching on their own from here: the draft they were shown stays theirs.
+    guestSync.setFollowing(false);
+    expect(w.controller.getState().simulation?.id).toBe("draft");
+    driver.dispose();
+  });
+
+  it("a restart while the host's connection is down: its next beacon names a run the follower asks for", () => {
+    const { room, host, driver, w } = hostAndGuest();
+    const before = driver.runId;
+    room.hostOnline = false;
+    host.restart();
+    for (let i = 0; i < 30; i++) frame(host, [w]);
+    room.hostOnline = true;
+    const asked = room.delivered.filter((d) => d.m.t === "hello").length;
+    framesUntil(host, [w], () => room.delivered.filter((d) => d.m.t === "hello").length > asked);
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 300);
+    expect(driver.runId).not.toBe(before);
+    sameAfterPause(host, w);
+    driver.dispose();
+  });
+
+  it("restores the host's paused state after catching up (a simulation selected while paused)", () => {
+    const { host, driver, w } = hostAndGuest();
+    host.setPlaying(false);
+    host.selectSimulation(short);
+    framesUntil(host, [w], () => w.follower.phase === "following" && seenOf(w.follower) >= 1);
+    for (let i = 0; i < 30; i++) frame(host, [w]);
+    expect(host.getState().playing).toBe(false);
+    expect(w.controller.getState().playing).toBe(false);
+    host.setPlaying(true);
+    framesUntil(host, [w], () => tickOf(host) >= 150);
+    sameAfterPause(host, w);
+    driver.dispose();
+  });
+});
+
+describe("Watch together: catching up", () => {
+  const long: Simulation = {
+    ...steady,
+    id: "long",
+    durationMs: 600_000,
+    traffic: [{ ...steady.traffic[0], shape: { kind: "constant", ratePerSec: 2, durationMs: 600_000 } }],
+  };
+
+  it("ten minutes of catch-up log no synthetic ops and publish no state per step", () => {
+    const room = new Room();
+    const host = new LiveController(diagram);
+    host.selectSimulation(long);
+    host.seek(590_000);
+    const driver = new LiveDriver(room.channel("host"), session(host), () => {}, undefined, timers);
+    const late = watcher(room, "late");
+    let publishes = 0;
+    late.controller.subscribe(() => publishes++);
+    framesUntil(host, [late], () => late.follower.phase === "following");
+    expect(tickOf(late.controller)).toBe(tickOf(host));
+    expect(digestOf(late.controller)).toBe(digestOf(host));
+    // The host's own ops (the rebuild's few, and the seek), not one per stretch of ten ticks.
+    expect(late.controller.controlLog().length).toBeLessThanOrEqual(6);
+    expect(publishes).toBeLessThan(40);
+    driver.dispose();
+  });
+
+  it("catch-up yields at its deadline, and a follower disposed between slices replays no more", () => {
+    const room = new Room();
+    const host = new LiveController(diagram);
+    host.selectSimulation(long);
+    host.seek(300_000);
+    const driver = new LiveDriver(room.channel("host"), session(host), () => {}, undefined, timers);
+    // A clock that moves with the work done: each stretch of catch-up costs 3 ms.
+    let now = 0;
+    const clock: LiveTimers = { ...timers, now: () => now };
+    const late = watcher(room, "late", clock);
+    const advance = late.controller.advanceTo.bind(late.controller);
+    let calls = 0;
+    late.controller.advanceTo = (tick: number) => {
+      calls++;
+      now += 3;
+      advance(tick);
+    };
+    // The host's answer (start, log, clock), then the first slice.
+    vi.advanceTimersToNextTimer();
+    expect(calls).toBe(Math.ceil(CATCH_UP_SLICE_MS / 3));
+    expect(tickOf(late.controller)).toBeLessThan(tickOf(host));
+    expect(late.status.at(-1)?.phase).toBe("catching-up");
+    // The next slice is queued; disposed, it never runs.
+    late.follower.dispose();
+    vi.advanceTimersByTime(1_000);
+    expect(calls).toBe(Math.ceil(CATCH_UP_SLICE_MS / 3));
+    driver.dispose();
+  });
+});
+
+describe("Watch together: what a follower takes, and what it keeps", () => {
+  it("a seek whose target says more than its tick does no more work than its tick says", () => {
+    const { room, host, driver, w } = hostAndGuest();
+    host.setPlaying(false);
+    framesUntil(host, [w], () => tickOf(w.controller) === tickOf(host));
+    const at = tickOf(w.controller);
+    rawFromHost(room, {
+      t: "op",
+      run: driver.runId,
+      entry: { seq: seenOf(w.follower) + 1, tick: at, op: { kind: "seek", targetMs: 600_000 } },
+    });
+    for (let i = 0; i < 5; i++) frame(host, [w]);
+    expect(tickOf(w.controller)).toBeLessThanOrEqual(at + 1);
+    // And one whose tick is past its target isn't taken at all.
+    expect(
+      parseMessage({
+        t: "op",
+        run: driver.runId,
+        entry: { seq: 9, tick: 60_000, op: { kind: "seek", targetMs: 1_000 } },
+      }),
+    ).toBeUndefined();
+    driver.dispose();
+  });
+
+  it("a run past the receive bounds ends following, saying why; waiting digests are bounded and kept once", () => {
+    const { room, host, driver, w } = hostAndGuest();
+    host.setPlaying(false);
+    framesUntil(host, [w], () => tickOf(w.controller) === tickOf(host));
+    const run = driver.runId;
+    const ahead = tickOf(w.controller) + 10_000;
+    for (let i = 0; i < 100; i++) {
+      const digest = { t: "digest", run, tick: ahead + i, seq: 1, hash: 1 };
+      rawFromHost(room, digest);
+      rawFromHost(room, digest);
+    }
+    expect((w.follower as unknown as { digests: unknown[] }).digests).toHaveLength(MAX_DIGESTS);
+    const first = seenOf(w.follower) + 1;
+    for (let i = 0; i < 130; i++)
+      rawFromHost(room, {
+        t: "op",
+        run,
+        entry: {
+          seq: first + i,
+          tick: ahead,
+          op: { kind: "props", node: "payments", patch: { note: "x".repeat(9_000) } },
+        },
+      });
+    expect(w.status.at(-1)).toMatchObject({ phase: "cant-follow", reason: "too-large" });
+    driver.dispose();
+  });
+
+  it("rebuilds after one digest mismatch, and stops after a second on the same run", () => {
+    const { room, host, driver, w } = hostAndGuest();
+    const wrong = () =>
+      rawFromHost(room, {
+        t: "digest",
+        run: driver.runId,
+        tick: tickOf(w.controller) + 20,
+        seq: seenOf(w.follower),
+        hash: (digestOf(w.controller) + 1) % 2 ** 32,
+      });
+    const before = w.status.length;
+    wrong();
+    framesUntil(host, [w], () => w.status.slice(before).some((s) => s.phase === "catching-up"));
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 900);
+    sameAfterPause(host, w);
+    wrong();
+    framesUntil(host, [w], () => w.follower.phase === "cant-follow");
+    driver.dispose();
+  });
+
+  it("a new run starts the mismatch count over", () => {
+    const { room, host, driver, w } = hostAndGuest();
+    const wrong = () =>
+      rawFromHost(room, {
+        t: "digest",
+        run: driver.runId,
+        tick: tickOf(w.controller) + 20,
+        seq: seenOf(w.follower),
+        hash: (digestOf(w.controller) + 1) % 2 ** 32,
+      });
+    let before = w.status.length;
+    wrong();
+    framesUntil(host, [w], () => w.status.slice(before).some((s) => s.phase === "catching-up"));
+    framesUntil(host, [w], () => w.follower.phase === "following");
+    host.restart();
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 300);
+    before = w.status.length;
+    wrong();
+    framesUntil(host, [w], () => w.status.slice(before).some((s) => s.phase === "catching-up"));
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 600);
+    expect(w.status.some((s) => s.phase === "cant-follow")).toBe(false);
+    sameAfterPause(host, w);
+    driver.dispose();
   });
 });
 

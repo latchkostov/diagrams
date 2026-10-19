@@ -49,7 +49,7 @@ export interface WatchRoom {
   subscribe(fn: () => void): () => void;
 }
 
-export type WatchMessage = "own" | "cant-follow" | "version" | "too-large";
+export type WatchMessage = "own" | "cant-follow" | "version" | "too-large" | "follow-too-large" | "ended";
 
 export interface WatchNotices {
   /** A run to watch: offered once (never automatic). */
@@ -337,7 +337,8 @@ export class WatchTogether {
         if (!made.follower || this.follower !== made.follower) return;
         this.set({ following: status });
         if (status.phase === "cant-follow") {
-          this.notices.told(status.version ? "version" : "cant-follow", alias());
+          const why = status.reason === "too-large" ? "follow-too-large" : (status.reason ?? "cant-follow");
+          this.notices.told(why, alias());
           this.watchOnMyOwn();
         }
       },
@@ -348,7 +349,7 @@ export class WatchTogether {
     );
     made.follower = follower;
     this.follower = follower;
-    bridge.watchBridge.follower = { pace: (ms) => follower.pace(ms) };
+    bridge.watchBridge.setFollower({ pace: (ms) => follower.pace(ms) });
     // The view taken back (their own pan or zoom, a note's focus): following the host's view ends there.
     this.followStop = watched.camera.subscribe(() => {
       if (this.state.followView && this.viewing && watched.camera.state.owner !== "host")
@@ -365,7 +366,7 @@ export class WatchTogether {
     this.follower = undefined;
     this.followStop?.();
     this.followStop = undefined;
-    if (this.bridge) this.bridge.watchBridge.follower = null;
+    this.bridge?.watchBridge.setFollower(null);
     if (this.state.followView) watched?.camera.dispatch({ type: "host.view", view: null });
     if (!this.driver) this.attached = undefined;
     this.viewing = false;
@@ -390,9 +391,16 @@ export class WatchTogether {
     const host = hostOf(this.session.peers());
     const show = host?.live;
     const previous = this.state.host;
+    const wasShowing = !!this.state.show;
     this.set({ host, show });
     if (this.follower && (!host || host.sender !== previous?.sender)) {
       // The host left (not a dropped connection: their presence is gone). Their run stays with this person.
+      this.watchOnMyOwn();
+      return;
+    }
+    if (this.follower && wasShowing && !show) {
+      // The host is here and stopped showing Live (back to editing, another diagram): not a dropped connection.
+      this.notices.told("ended", host?.alias ?? "");
       this.watchOnMyOwn();
       return;
     }

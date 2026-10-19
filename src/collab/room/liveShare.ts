@@ -1,4 +1,4 @@
-import type { Simulation } from "../../model/types";
+import type { DiagramFile, Simulation } from "../../model/types";
 import type { LiveController } from "../../live/controller";
 import type { LiveOp, LogEntry } from "../../live/controlLog";
 import { createFollowClock, TICK_MS, type SimClock } from "../../live/simClock";
@@ -18,13 +18,17 @@ const tickTime = (tick: number) => tick * TICK_MS;
 // ticks, with a clock beacon twice a second and a state digest every few simulated seconds.
 //
 // Every run starts the same way for everyone, whether it's a new run (Restart, another simulation, Play after the
-// run ended) or someone joining one under way: the run's start, its log so far, and the host's clock with the last
-// slice ("bootstrap"). A follower rebuilds from that and catches up; it rebuilds the same way when its digest
-// differs, or when it finds an op missing (it asks for the run again). Twice drifted on one run, it watches on its
-// own.
+// run ended) or someone joining one under way: the run's start (its settings and the diagram's node props then),
+// its log so far, and the host's clock with the last slice ("bootstrap"). A follower rebuilds from that and catches
+// up; it rebuilds the same way when its digest differs, or when it finds an op missing (it asks for the run again).
+// Twice drifted on one run, it watches on its own.
+//
+// A follower applies the host's ops through its controller's own remote-op API (`applyRemote`), which logs them as
+// the host's: only this person's own changes end following.
 //
 // Cooperative: frames are the room's (encrypted, any member could have sent them), and followers trust the host
-// presence names. Signed roles come later (P4). What arrives is checked in full first (./liveWire.ts).
+// presence names. Signed roles come later (P4). What arrives is checked in full first (./liveWire.ts), and what a
+// follower keeps of a run is bounded.
 
 /** How far behind the host a follower plays: room for the network's jitter, so ops arrive before their tick. */
 export const PLAYOUT_MS = 500;
@@ -39,16 +43,19 @@ export const ASK_MS = 2_500;
 export const MAX_RESYNCS = 5;
 /** A run's log is sent in slices of about this many bytes of JSON (each one frame, or a few parts). */
 const SLICE_BYTES = 12 * 1024;
-/** A run whose log has grown past this isn't sent any more (the next run is): about seventy frames to send it. */
+/** A run whose log has grown past either of these isn't sent any more (the next run is); nor is it kept. */
 export const MAX_RUN_BYTES = 1024 * 1024;
+export const MAX_RUN_ENTRIES = 20_000;
+/** Digests a follower keeps waiting for their tick, at most. */
+export const MAX_DIGESTS = 32;
 /** One peer's requests for the whole run: at most one per this long (a follower asks every ASK_MS). */
 const REQUEST_MS = 2_000;
 /** A follower's catch-up advances this many ticks at a time, checking its deadline between them. */
-const CATCH_UP_TICKS = 10;
+export const CATCH_UP_TICKS = 10;
 /** And yields to the page after about this many ms. */
-const CATCH_UP_SLICE_MS = 8;
-/** A seek this far (in ticks) or less is applied at once (a checkpoint is never further back); further, it's replayed. */
-const NEAR_SEEK_TICKS = 500;
+export const CATCH_UP_SLICE_MS = 8;
+/** A seek that runs at most this much simulated time at once is applied as it is; longer, it goes in slices. */
+const NEAR_SEEK_MS = 5_000;
 
 export interface RunStart {
   engine: string;
@@ -58,13 +65,18 @@ export interface RunStart {
   inputs: LiveInputs;
   speed: number;
   title: string;
+  /** The diagram's node props (by node id) as the run started: the log's edits apply to these, on their ticks. */
+  props: Record<string, Record<string, unknown>>;
 }
 
 export type WireEntry = Pick<LogEntry, "seq" | "tick" | "op">;
 export interface HostClock {
   tick: number;
+  /** The run's clock moves (playing, not at a pausing note, not finished). */
   playing: boolean;
   speed: number;
+  /** The host's play button: on (playing, or waiting at a note to go on), or paused. */
+  on: boolean;
 }
 
 export type LiveMessage =
@@ -110,19 +122,48 @@ const digestOf = (c: LiveController) => {
 };
 
 const titleOf = (sim: Simulation | null) => sim?.title ?? "Free play";
-const wire = ({ seq, tick, op }: WireEntry): WireEntry => ({ seq, tick, op });
+const sizeOf = (e: WireEntry) => JSON.stringify(e).length;
 /** Entries in one slice of a run's log, at most (./liveWire.ts takes up to 500). */
 const ENTRIES_PER_SLICE = 400;
 
-/** Whether the run's clock moves: playing, not at a pausing note, not finished. */
-function playingNow(c: LiveController): boolean {
-  const state = c.getState();
-  return state.playing && !state.run?.waiting && !state.run?.done;
+/**
+ * An entry as it goes on the wire. A diagram edit's removed keys are `undefined` in its patch, which JSON drops:
+ * they travel as null (./liveWire.ts allows it there) and come back as undefined (`fromWire`).
+ */
+function wire({ seq, tick, op }: WireEntry): WireEntry {
+  if (op.kind !== "patch") return { seq, tick, op };
+  const patches = Object.fromEntries(
+    Object.entries(op.patches).map(([id, patch]) => [
+      id,
+      Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, v === undefined ? null : v])),
+    ]),
+  );
+  return { seq, tick, op: { ...op, patches } as LiveOp };
 }
 
-/** The host's clock now. */
+function fromWire(op: LiveOp): LiveOp {
+  if (op.kind !== "patch") return op;
+  const patches = Object.fromEntries(
+    Object.entries(op.patches).map(([id, patch]) => [
+      id,
+      Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, v === null ? undefined : v])),
+    ]),
+  );
+  return { ...op, patches } as LiveOp;
+}
+
+/** The diagram's node props, by node id. */
+const propsOf = (d: DiagramFile) => Object.fromEntries(d.nodes.map((n) => [n.id, n.props ?? {}]));
+
+/** Whether the run's clock moves: playing, not at a pausing note, not finished. */
+function playingNow(c: LiveController): boolean {
+  const run = c.runNow;
+  return c.isPlaying && !run?.waiting && !run?.done;
+}
+
+/** The host's clock now (as the controller is, published or not: an op's listener hears it first). */
 function clockOf(c: LiveController): HostClock {
-  return { tick: c.tick, playing: playingNow(c), speed: c.getState().speed };
+  return { tick: c.tick, playing: playingNow(c), speed: c.settings.speed, on: c.isPlaying };
 }
 
 // ---------------------------------------------------------------- the host's side
@@ -138,7 +179,8 @@ export interface DriverShow {
  * How the controller's current run started, when its log still says (the host's session usually joins the room as
  * it mounts, its log a few ops long): the defaults for a session's first run, or the run's first op (another
  * simulation, Restart, an edit, Play after the end). Undefined when it can't be told (an Inputs change since, of
- * which the log keeps only the latest; a changed saved definition): that run isn't shared, the next one is.
+ * which the log keeps only the latest; a changed saved definition, a saved Inputs or a diagram edit, which the
+ * diagram now includes): that run isn't shared, the next one is.
  */
 export function runOrigin(c: LiveController): RunStart | undefined {
   const log = c.controlLog();
@@ -147,6 +189,7 @@ export function runOrigin(c: LiveController): RunStart | undefined {
   if (!fresh && !first) return undefined;
   const inputs = log.filter((e) => e.op.kind === "inputs");
   if (inputs.length > 1 || (inputs[0] && inputs[0].tick > 0)) return undefined;
+  if (log.some((e) => e.op.kind === "patch" || e.op.kind === "commit")) return undefined;
   if (!fresh && log.some((e) => e.op.kind === "base")) return undefined;
   const state = c.getState();
   const traffic = log.find((e) => e.op.kind === "traffic");
@@ -160,6 +203,7 @@ export function runOrigin(c: LiveController): RunStart | undefined {
     inputs: fresh || select ? { props: {}, rates: {} } : state.inputs,
     speed: fresh ? 1 : state.speed,
     title: titleOf(select ? select.simulation : fresh ? null : state.simulation),
+    props: propsOf(c.currentDiagram),
   };
 }
 
@@ -221,7 +265,7 @@ export class LiveDriver {
       number,
       start,
       entries: copies,
-      bytes: JSON.stringify(copies).length,
+      bytes: copies.reduce((n, e) => n + sizeOf(e), 0),
       broken: false,
     };
     this.nextDigest = this.watched.controller.tick + DIGEST_EVERY_TICKS;
@@ -230,26 +274,28 @@ export class LiveDriver {
     this.show();
   }
 
+  /** The run's start as the controller is now (its published state isn't updated yet when an op starts a run). */
+  private startNow(select?: Simulation | null): RunStart {
+    const c = this.watched.controller;
+    const state = c.settings;
+    const simulation = select !== undefined ? select : state.simulation;
+    return {
+      engine: ENGINE_VERSION,
+      simulation,
+      traffic: state.traffic,
+      // Another simulation starts with no what-ifs; a restart or an edit keeps them.
+      inputs: select !== undefined ? { props: {}, rates: {} } : state.inputs,
+      speed: state.speed,
+      title: titleOf(simulation),
+      props: propsOf(c.currentDiagram),
+    };
+  }
+
   private logged(entry: LogEntry): void {
     if (entry.run !== this.number) {
       // A new run (Restart, another simulation, an edit, Play after the end): it starts from the state just before
-      // this op (the published state isn't updated yet).
-      const state = this.watched.controller.getState();
-      const select = entry.op.kind === "select" ? entry.op : undefined;
-      const simulation = select ? select.simulation : state.simulation;
-      this.begin(
-        entry.run,
-        {
-          engine: ENGINE_VERSION,
-          simulation,
-          traffic: state.traffic,
-          // Another simulation starts with no what-ifs; a restart or an edit keeps them.
-          inputs: select ? { props: {}, rates: {} } : state.inputs,
-          speed: state.speed,
-          title: titleOf(simulation),
-        },
-        [entry],
-      );
+      // this op, and everyone gets it from its start.
+      this.begin(entry.run, this.startNow(entry.op.kind === "select" ? entry.op.simulation : undefined), [entry]);
       return;
     }
     const run = this.run;
@@ -258,8 +304,8 @@ export class LiveDriver {
     if (entry.op.kind === "seek") run.entries = run.entries.filter((e) => e.tick <= entry.tick);
     const copy = wire(entry);
     run.entries.push(copy);
-    run.bytes += JSON.stringify(copy).length;
-    if (run.bytes > MAX_RUN_BYTES) return this.broke();
+    run.bytes += sizeOf(copy);
+    if (run.bytes > MAX_RUN_BYTES || run.entries.length > MAX_RUN_ENTRIES) return this.broke();
     // Not sent now (the room busy or closed): followers find it missing and ask for the run.
     if (this.channel.send({ t: "op", run: run.id, entry: copy }) === "too-large") return this.broke();
     if (entry.op.kind === "play" || entry.op.kind === "resume") this.show();
@@ -296,7 +342,7 @@ export class LiveDriver {
     let slice: WireEntry[] = [];
     let bytes = 0;
     for (const e of run.entries) {
-      const size = JSON.stringify(e).length;
+      const size = sizeOf(e);
       if (slice.length && (bytes + size > SLICE_BYTES || slice.length >= ENTRIES_PER_SLICE)) {
         if (!send({ t: "log", run: run.id, entries: slice, done: false })) return;
         slice = [];
@@ -330,32 +376,19 @@ export class LiveDriver {
     // A new run with no op yet (free play starts over when its Inputs change): nothing has changed it since it
     // started (every change is an op), so it's shared from its start with the settings it has now.
     if (c.runId !== this.number) {
-      const state = c.getState();
-      if (!c.controlLog().length)
-        this.begin(
-          c.runId,
-          {
-            engine: ENGINE_VERSION,
-            simulation: state.simulation,
-            traffic: state.traffic,
-            inputs: state.inputs,
-            speed: state.speed,
-            title: titleOf(state.simulation),
-          },
-          [],
-        );
+      if (!c.controlLog().length) this.begin(c.runId, this.startNow(), []);
       else this.withdraw(c.runId);
     }
     const run = this.run;
     if (!run || run.broken) return;
-    // Replaying (an Inputs change rewrites the run from its start): the engine is behind the ops already logged.
-    // Its clock and state aren't the run's until it's back, so nothing's said about them meanwhile.
+    // Replaying (an Inputs change rewrites the run from its start), or about to: the engine isn't at the logged
+    // ops' state, so nothing's said about its clock or state meanwhile.
     const last = run.entries.at(-1);
-    if (last && c.tick < last.tick) return;
+    if (c.busy || (last && c.tick < last.tick)) return;
     const clock = clockOf(c);
     this.channel.send({ t: "beacon", run: run.id, ...clock });
     if (clock.tick >= this.nextDigest) {
-      const seq = run.entries.at(-1)?.seq ?? 0;
+      const seq = last?.seq ?? 0;
       this.channel.send({ t: "digest", run: run.id, tick: clock.tick, seq, hash: digestOf(c) });
       this.nextDigest = clock.tick + DIGEST_EVERY_TICKS;
     }
@@ -386,8 +419,8 @@ export interface FollowStatus {
   phase: FollowPhase;
   /** While catching up: how far (ms of simulated time) of how far. */
   progress?: { at: number; of: number };
-  /** The host's engine differs (another release of Live Diagrams). */
-  version?: boolean;
+  /** Why it can't follow, when it's more than drift: the host's engine differs, or the run is too large to keep. */
+  reason?: "version" | "too-large";
 }
 
 interface FollowedRun {
@@ -397,7 +430,18 @@ interface FollowedRun {
   entries: WireEntry[];
   /** The run's log so far has arrived (its last slice, with the host's clock). */
   complete: boolean;
+  /** Received of this run so far (bootstrap and ops, whatever a seek cut since): bounded. */
+  bytes: number;
+  count: number;
 }
+
+/** The diagram with the run's starting node props in place of its own (its structure is the room's). */
+function withBaseline(d: DiagramFile, props: Record<string, Record<string, unknown>>): DiagramFile {
+  return { ...d, nodes: d.nodes.map((n) => (props[n.id] ? { ...n, props: props[n.id] } : n)) };
+}
+
+/** Ops that rewrite the run's history: the controller replays it; that replay runs now, not after its pause. */
+const REWRITES = new Set<LiveOp["kind"]>(["inputs", "base", "commit"]);
 
 /**
  * Follows the host's run. While following, the bridge's pace hook moves this browser's run toward the host's tick
@@ -413,7 +457,6 @@ export class LiveFollower {
   private seen = 0;
   private digests: { tick: number; seq: number; hash: number; at: number }[] = [];
   private beacon?: HostClock & { at: number };
-  private applying = false;
   /** Asked for the run, and not had it whole yet. */
   private asking = false;
   /** An op is missing (the next one received skipped it): holding still, asking for the run. */
@@ -424,6 +467,7 @@ export class LiveFollower {
   private rebuilds = 0;
   private status: FollowStatus = { phase: "joining" };
   private announced = false;
+  private disposed = false;
   private cancelCatchUp?: () => void;
   private readonly clock: SimClock;
   private readonly stops: (() => void)[] = [];
@@ -443,8 +487,9 @@ export class LiveFollower {
       channel.onMessage((sender, _from, message) => {
         if (sender === this.host) this.receive(message);
       }),
-      watched.controller.onOp(() => {
-        if (!this.applying) this.onLocal();
+      // Only this person's own changes: the host's (applyRemote) and the document's sync are neither.
+      watched.controller.onOp((_entry, origin) => {
+        if (origin === "user") this.onLocal();
       }),
       timers.every(BEACON_MS, () => this.check()),
     );
@@ -453,12 +498,17 @@ export class LiveFollower {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.stopCatchUp();
     for (const stop of this.stops.splice(0)) stop();
   }
 
   get phase(): FollowPhase {
     return this.status.phase;
+  }
+
+  private get c(): LiveController {
+    return this.watched.controller;
   }
 
   /** The frame's pace: what the run may advance now (0: hold still). */
@@ -470,8 +520,7 @@ export class LiveFollower {
       return 0;
     }
     if (!this.applyDue()) return 0;
-    const c = this.watched.controller;
-    return this.clock.pace(proposedMs, { tick: c.tick, speed: c.getState().speed });
+    return this.clock.pace(proposedMs, { tick: this.c.tick, speed: this.c.getState().speed });
   }
 
   /** Twice a second: a wait that's gone on too long (for the run, or for an op a digest names) asks again. */
@@ -489,13 +538,17 @@ export class LiveFollower {
   // -------------------------------------------------------------- messages
 
   private receive(m: LiveMessage): void {
+    if (this.status.phase === "cant-follow") return;
     switch (m.t) {
       case "start":
-        if (m.start.engine !== ENGINE_VERSION) return this.fail(true);
+        if (m.start.engine !== ENGINE_VERSION) return this.fail("version");
         // This run again, not asked for: someone else's answer.
         if (m.run === this.run?.id && !this.asking) return;
         // Another run, or this one again as asked: rebuilt from it.
-        this.reset({ id: m.run, start: m.start, entries: [], complete: false }, m.run !== this.run?.id);
+        this.reset(
+          { id: m.run, start: m.start, entries: [], complete: false, bytes: 0, count: 0 },
+          m.run !== this.run?.id,
+        );
         return;
       case "log": {
         const run = this.run;
@@ -503,6 +556,7 @@ export class LiveFollower {
         for (const e of m.entries) {
           // The host's log as it is now: in order, with gaps where a seek back cut it (and older Inputs went).
           if (e.seq <= this.seen) continue;
+          if (!this.keep(e)) return;
           run.entries.push(e);
           this.seen = e.seq;
         }
@@ -516,22 +570,24 @@ export class LiveFollower {
         return;
       }
       case "op":
-        if (m.run !== this.run?.id) {
-          // An op of a run this browser hasn't been told about: ask for it.
-          if (!this.asking) this.resync();
-          return;
-        }
+        if (m.run !== this.run?.id) return this.unfamiliar();
         // While the run arrives, its ops so far are in its log, and those after come after its last slice.
         if (this.run.complete) this.add(m.entry);
         return;
       case "beacon":
-        if (m.run !== this.run?.id || !this.run.complete) return;
-        this.beacon = { tick: m.tick, playing: m.playing, speed: m.speed, at: this.timers.now() };
+        if (m.run !== this.run?.id) return this.unfamiliar();
+        if (!this.run.complete) return;
+        this.beacon = { tick: m.tick, playing: m.playing, speed: m.speed, on: m.on, at: this.timers.now() };
         return;
-      case "digest":
-        if (m.run !== this.run?.id) return;
+      case "digest": {
+        if (m.run !== this.run?.id) return this.unfamiliar();
+        // Bounded, and each once: a digest already waiting (the same tick and op) isn't kept again.
+        if (this.digests.some((d) => d.tick === m.tick && d.seq === m.seq)) return;
+        if (this.digests.length >= MAX_DIGESTS) this.digests.shift();
         this.digests.push({ tick: m.tick, seq: m.seq, hash: m.hash, at: this.timers.now() });
+        this.digests.sort((a, b) => a.tick - b.tick || a.seq - b.seq);
         return;
+      }
       case "stop":
         if (m.run === this.run?.id) {
           this.beacon = undefined;
@@ -541,6 +597,22 @@ export class LiveFollower {
       default:
         return;
     }
+  }
+
+  /** The host is on a run this browser hasn't been told about (it restarted while the connection was down). */
+  private unfamiliar(): void {
+    if (!this.asking) this.resync();
+  }
+
+  /** Counts an entry against the run's bounds: false (and following ends) past them. */
+  private keep(e: WireEntry): boolean {
+    const run = this.run;
+    if (!run) return false;
+    run.bytes += sizeOf(e);
+    run.count++;
+    if (run.bytes <= MAX_RUN_BYTES && run.count <= MAX_RUN_ENTRIES) return true;
+    this.fail("too-large");
+    return false;
   }
 
   /** Starts over on `run`: every per-run state reset, holding still until it's rebuilt. */
@@ -575,6 +647,7 @@ export class LiveFollower {
       this.missing = true;
       return this.resync();
     }
+    if (!this.keep(e)) return;
     this.seen = e.seq;
     if (e.op.kind === "seek") {
       const kept: WireEntry[] = [];
@@ -606,10 +679,10 @@ export class LiveFollower {
     this.channel.send({ t: "hello" });
   }
 
-  private fail(version = false): void {
+  private fail(reason?: FollowStatus["reason"]): void {
     this.stopCatchUp();
     this.asking = false;
-    this.publish(version ? { phase: "cant-follow", version } : { phase: "cant-follow" });
+    this.publish(reason ? { phase: "cant-follow", reason } : { phase: "cant-follow" });
   }
 
   // -------------------------------------------------------------- lockstep
@@ -637,34 +710,34 @@ export class LiveFollower {
     return goal;
   }
 
+  /** A seek whose synchronous work is small (judged by the tick the host's seek reached, which is where it goes). */
+  private near(e: WireEntry): boolean {
+    return this.c.seekCost(tickTime(e.tick)) <= NEAR_SEEK_MS;
+  }
+
   /**
    * Applies the ops due on this tick, in order, comparing a digest at its point among them. False when the run
-   * can't go on as it is (it's rebuilding or catching up).
+   * can't go on as it is (it's replaying an Inputs change, rebuilding or catching up).
    */
   private applyDue(): boolean {
     const run = this.run;
     if (!run) return false;
-    const c = this.watched.controller;
     for (;;) {
+      if (this.c.busy) return false;
       if (!this.checkDigest()) return false;
       const e = run.entries[this.next];
       if (!e) return true;
       if (e.op.kind === "seek") {
-        const distance = e.tick - c.tick;
-        // Far ahead: there in slices (catching up), and applied there.
-        if (distance > NEAR_SEEK_TICKS) {
-          this.catchUp();
-          return false;
-        }
-        // Far back: further than a checkpoint is kept, so the run is replayed from its start.
-        if (distance < -NEAR_SEEK_TICKS) {
-          this.rebuild();
+        if (!this.near(e)) {
+          // Far ahead: there in slices (catching up), and applied there. Far back: replayed from the start.
+          if (e.tick > this.c.tick) this.catchUp();
+          else this.rebuild();
           return false;
         }
       } else {
-        if (e.tick > c.tick) return true;
+        if (e.tick > this.c.tick) return true;
         // This browser passed the op's tick before it arrived: the run as it is can't take it.
-        if (e.tick < c.tick) {
+        if (e.tick < this.c.tick) {
           this.rebuild();
           return false;
         }
@@ -673,24 +746,29 @@ export class LiveFollower {
     }
   }
 
+  /** One of the host's ops, through the controller's remote-op API (logged as the host's). */
   private applyEntry(e: WireEntry): void {
     this.next++;
     this.appliedSeq = e.seq;
-    this.apply(e.op);
+    try {
+      this.c.applyRemote({ tick: e.tick, op: fromWire(e.op) });
+      if (REWRITES.has(e.op.kind)) this.c.flush();
+    } catch {
+      // Refused here as it can't have been there (a budget, a removed node): the digest will say if it matters.
+    }
   }
 
   /** The digest at this tick, once the ops it covers are applied; a mismatch rebuilds, a second one gives up. */
   private checkDigest(): boolean {
-    const c = this.watched.controller;
     while (this.digests.length) {
       const d = this.digests[0];
-      if (d.tick < c.tick) {
+      if (d.tick < this.c.tick) {
         this.digests.shift();
         continue;
       }
-      if (d.tick > c.tick || this.appliedSeq < d.seq) return true;
+      if (d.tick > this.c.tick || this.appliedSeq < d.seq || this.c.busy) return true;
       this.digests.shift();
-      if (digestOf(c) === d.hash) continue;
+      if (digestOf(this.c) === d.hash) continue;
       if (++this.mismatches >= 2) {
         this.fail();
         return false;
@@ -701,55 +779,6 @@ export class LiveFollower {
     return true;
   }
 
-  /** One of the host's ops, on this browser's run (the same tick). */
-  private apply(op: LiveOp): void {
-    const c = this.watched.controller;
-    this.applying = true;
-    try {
-      switch (op.kind) {
-        case "play":
-          return c.setPlaying(op.on);
-        case "speed":
-          return c.setSpeed(op.speed);
-        case "step":
-          return c.step(op.simMs);
-        case "seek":
-          return c.seek(op.targetMs);
-        case "resume":
-          return c.resume();
-        case "inputs":
-          return c.setInputs(op.inputs);
-        case "base":
-          return c.setBase(op.simulation);
-        case "patch":
-          c.updateDiagram(this.watched.getDiagram());
-          return;
-        case "traffic":
-          return c.setTraffic(op.on);
-        case "inject":
-          return c.inject(op.node, op.count, op.opts);
-        case "injectSources":
-          c.injectAtSources(op.count);
-          return;
-        case "sendOne":
-          return c.sendOne(op.node, op.type);
-        case "fault":
-          return c.setFault(op.fault);
-        case "status":
-          return c.setNodeStatus(op.node, op.status);
-        case "props":
-          return c.setNodeProps(op.node, op.patch);
-        default:
-          // select, restart and reload start a run (its start describes them); commit changes nothing here.
-          return;
-      }
-    } catch {
-      // Refused here as it can't have been there (a budget, a removed node): the digest will say if it matters.
-    } finally {
-      this.applying = false;
-    }
-  }
-
   // -------------------------------------------------------------- the run from its start
 
   /** This browser's run from the host's run's start, then caught up through its log, in slices. */
@@ -758,24 +787,23 @@ export class LiveFollower {
     if (!run?.complete) return this.resync();
     this.stopCatchUp();
     if (++this.rebuilds > MAX_RESYNCS) return this.fail();
-    const c = this.watched.controller;
+    const c = this.c;
     const s = run.start;
-    this.applying = true;
     try {
-      c.updateDiagram(this.watched.getDiagram());
-      c.setTraffic(s.traffic);
-      c.selectSimulation(s.simulation);
-      if (hasInputs(s.inputs)) c.setInputs(s.inputs);
-      c.setSpeed(s.speed);
-      // Restart builds with the inputs, as the host's run was built.
-      c.restart();
-      c.setPlaying(true);
-      c.flush();
+      c.as("remote", () => {
+        // The room's diagram, with its node props as they were when the run started: the log's edits follow.
+        c.updateDiagram(withBaseline(this.watched.getDiagram(), s.props));
+        c.setTraffic(s.traffic);
+        c.selectSimulation(s.simulation);
+        if (hasInputs(s.inputs)) c.setInputs(s.inputs);
+        c.setSpeed(s.speed);
+        // Restart builds with the inputs, as the host's run was built.
+        c.restart();
+        c.flush();
+      });
     } catch {
-      this.applying = false;
       return this.fail();
     }
-    this.applying = false;
     this.next = 0;
     this.appliedSeq = 0;
     this.digests = this.digests.filter((d) => d.tick >= c.tick);
@@ -784,24 +812,32 @@ export class LiveFollower {
 
   /**
    * Plays the log up to where the host is (less the delay), or to a far seek's target, a few ticks at a time with
-   * the deadline checked between them, yielding to the page every CATCH_UP_SLICE_MS; then follows.
+   * the deadline checked between them, yielding to the page every CATCH_UP_SLICE_MS (the run published once a
+   * slice); then follows, playing or paused as the host is.
    */
   private catchUp(): void {
     this.cancelCatchUp = undefined;
     const run = this.run;
-    if (!run) return;
-    const c = this.watched.controller;
+    if (!run || this.disposed) return;
+    const c = this.c;
     const started = this.timers.now();
     this.progress();
+    const later = () => {
+      c.publish();
+      this.progress();
+      this.cancelCatchUp = this.timers.soon(() => this.catchUp());
+    };
     for (;;) {
+      // Its own replay (an Inputs change on the way) first.
+      if (c.busy) return later();
       if (!this.checkDigest()) return;
       const e = run.entries[this.next];
       if (e?.op.kind === "seek") {
-        if (e.tick < c.tick - NEAR_SEEK_TICKS) return this.rebuild();
-        if (e.tick <= c.tick + NEAR_SEEK_TICKS) {
+        if (this.near(e)) {
           this.applyEntry(e);
           continue;
         }
+        if (e.tick < c.tick) return this.rebuild();
       } else if (e && e.tick <= c.tick) {
         if (e.tick < c.tick) return this.rebuild();
         this.applyEntry(e);
@@ -810,31 +846,39 @@ export class LiveFollower {
       // To the host's tick, or (a seek far ahead next) to the seek's own, never past an op or a digest.
       const host = e?.op.kind === "seek" ? e.tick : this.hostTick();
       const goal = Math.min(host, e ? e.tick : Infinity, this.digests[0]?.tick ?? Infinity);
-      if (c.tick >= goal || c.getState().run?.done) break;
-      const stop = Math.min(goal, c.tick + CATCH_UP_TICKS);
+      if (c.tick >= goal) break;
       const before = c.tick;
-      this.applying = true;
-      try {
-        if (c.getState().run) c.seek(tickTime(stop));
-        else c.step(tickTime(stop - c.tick));
-      } finally {
-        this.applying = false;
-      }
-      // Held still (a pausing note it can't pass, slow motion): it follows from here.
+      c.advanceTo(Math.min(goal, c.tick + CATCH_UP_TICKS));
+      // Held still (a pausing note the host's resume op passes, the run's end): it follows from here.
       if (c.tick <= before) break;
-      if (this.timers.now() - started >= CATCH_UP_SLICE_MS) {
-        this.progress();
-        this.cancelCatchUp = this.timers.soon(() => this.catchUp());
-        return;
-      }
+      if (this.timers.now() - started >= CATCH_UP_SLICE_MS) return later();
     }
+    c.publish();
     this.resyncs = 0;
+    this.restorePlaying();
     this.publish({ phase: this.fresh() ? "following" : "host-dropped" });
   }
 
+  /** Caught up: playing or paused as the host is (once level with a host that's holding still). */
+  private restorePlaying(): void {
+    const b = this.beacon;
+    const c = this.c;
+    if (!b || (!b.playing && c.tick < b.tick)) return;
+    const want = b.playing || b.on;
+    const state = c.getState();
+    if (state.playing === want || (want && state.run?.done)) return;
+    try {
+      c.as("remote", () => c.setPlaying(want));
+    } catch {
+      // A refused rebuild says so in the live view.
+    }
+  }
+
   private progress(): void {
-    const c = this.watched.controller;
-    this.publish({ phase: "catching-up", progress: { at: tickTime(c.tick), of: tickTime(this.hostTick()) } });
+    this.publish({
+      phase: "catching-up",
+      progress: { at: tickTime(this.c.tick), of: tickTime(this.hostTick()) },
+    });
   }
 
   private stopCatchUp(): void {
@@ -850,7 +894,7 @@ export class LiveFollower {
       status.phase === was.phase &&
       status.progress?.at === was.progress?.at &&
       status.progress?.of === was.progress?.of &&
-      status.version === was.version
+      status.reason === was.reason
     )
       return;
     this.announced = true;

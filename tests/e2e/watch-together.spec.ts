@@ -23,6 +23,17 @@ async function box(page: Page) {
   return b;
 }
 
+/** The pane's centre in flow coordinates, and the zoom (what Follow the host's view matches). */
+const viewOf = (page: Page) =>
+  page.getByTestId("canvas-wrap").evaluate((wrap) => {
+    const flow = wrap.querySelector<HTMLElement>(".react-flow");
+    const transform = wrap.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform ?? "";
+    const [, x, y, zoom] = /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/.exec(transform) ?? [];
+    const w = flow?.clientWidth ?? 0;
+    const h = flow?.clientHeight ?? 0;
+    return { x: (w / 2 - Number(x)) / Number(zoom), y: (h / 2 - Number(y)) / Number(zoom), zoom: Number(zoom) };
+  });
+
 async function startRoom(page: Page): Promise<string> {
   await page.evaluate(() => window.dispatchEvent(new Event("diagrams:edit-together")));
   await expect(page.getByTestId("room-start-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -247,23 +258,32 @@ test.describe("Watch together", () => {
       const guest = await twoInARoom(page, context, other);
       await hostPlays(page, null);
       await guestWatches(guest, "toast");
-      // The host zooms in: the guest's view doesn't move (no yanking).
+      // The host zooms in (Ctrl+wheel; a plain wheel pans): the guest's view doesn't move (no yanking).
       await waitForStableViewport(guest);
       const before = await viewportTransform(guest);
+      const hostBefore = await viewOf(page);
       const pane = await box(page);
-      await page.mouse.move(pane.x + pane.width / 2, pane.y + pane.height / 2);
+      await page.mouse.move(pane.x + pane.width / 3, pane.y + pane.height / 3);
+      await page.keyboard.down("Control");
       await page.mouse.wheel(0, -400);
-      await expect.poll(() => viewportTransform(page)).not.toBe(before);
+      await page.keyboard.up("Control");
+      await expect.poll(async () => (await viewOf(page)).zoom).not.toBeCloseTo(hostBefore.zoom, 2);
+      await waitForStableViewport(page);
+      const host = await viewOf(page);
       await guest.waitForTimeout(800);
       expect(await viewportTransform(guest)).toBe(before);
-      // Opt in: the guest's view takes the host's zoom.
+      // Opt in: the guest's view takes the host's zoom and centre.
       await chip(guest).click();
       const follow = guest.getByTestId("room-follow-view");
       await expect(follow).toHaveAttribute("aria-checked", "false");
       await follow.click();
-      const zoom = (t: string) => Number(/scale\(([\d.]+)\)/.exec(t)?.[1] ?? NaN);
-      const hostZoom = zoom(await viewportTransform(page));
-      await expect.poll(async () => zoom(await viewportTransform(guest))).toBeCloseTo(hostZoom, 2);
+      await chip(guest).click();
+      await expect(guest.getByTestId("room-follow-view")).toHaveAttribute("aria-checked", "true");
+      await guest.keyboard.press("Escape");
+      await expect.poll(async () => (await viewOf(guest)).zoom).toBeCloseTo(host.zoom, 2);
+      const followed = await viewOf(guest);
+      expect(Math.abs(followed.x - host.x)).toBeLessThan(2);
+      expect(Math.abs(followed.y - host.y)).toBeLessThan(2);
       // The guest pans on their own: following the view ends there.
       const g = await box(guest);
       await guest.mouse.move(g.x + g.width / 2, g.y + g.height / 2);

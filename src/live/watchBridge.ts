@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { DiagramFile } from "../model/types";
 import type { LiveController } from "./controller";
 
@@ -45,6 +45,8 @@ export interface Follower {
 
 let session: WatchedSession | null = null;
 const listeners = new Set<() => void>();
+let follower: Follower | null = null;
+const followListeners = new Set<() => void>();
 
 export const watchBridge = {
   session: (): WatchedSession | null => session,
@@ -53,8 +55,30 @@ export const watchBridge = {
     return () => listeners.delete(listener);
   },
   /** Set by the room while this person follows: their frames go at its pace, and their edits wait for the driver. */
-  follower: null as Follower | null,
+  get follower(): Follower | null {
+    return follower;
+  },
+  setFollower(next: Follower | null): void {
+    if (follower === next) return;
+    follower = next;
+    for (const l of followListeners) l();
+  },
+  subscribeFollowing(listener: () => void): () => void {
+    followListeners.add(listener);
+    return () => followListeners.delete(listener);
+  },
 };
+
+const following = () => follower !== null;
+
+/**
+ * Following someone's shared run: the live view's sync with the editor's document (diagram edits, saved
+ * simulations) waits while it's true (the host's ops bring those changes, on their ticks), and catches up when
+ * following ends.
+ */
+export function useFollowing(): boolean {
+  return useSyncExternalStore(watchBridge.subscribeFollowing, following);
+}
 
 /** Publishes a live session (the hook below, or a test); returns its withdrawal. */
 export function publishWatched(watched: WatchedSession): () => void {
@@ -63,7 +87,7 @@ export function publishWatched(watched: WatchedSession): () => void {
   return () => {
     if (session !== watched) return;
     session = null;
-    watchBridge.follower = null;
+    watchBridge.setFollower(null);
     for (const l of listeners) l();
   };
 }

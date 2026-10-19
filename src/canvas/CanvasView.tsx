@@ -34,8 +34,6 @@ import { ConnectedQuickAddMenu } from "./ConnectedQuickAddMenu";
 
 import { edgeMarks } from "./edgeMarks";
 import {
-  lazy,
-  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -116,6 +114,8 @@ import { PresenceLayer } from "./PresenceLayer";
 /** A room's cursor is sent at most this often (src/collab/limits.ts, cursorIntervalMs; the canvas doesn't import it). */
 const COLLAB_CURSOR_MS = 67;
 import { t as tr, useLocale } from "../i18n";
+import { lazyComponent } from "../lib/lazyLoad";
+import { ShortcutsShell } from "../components/ShortcutsShell";
 import { CopyNotice } from "./CopyNotice";
 import {
   CameraContext,
@@ -132,9 +132,13 @@ import type { EditorRoom } from "../editor/room";
 import { remoteTargetRemoved } from "../editor/remoteSnapshot";
 import { targetRemoved } from "./menus/menuTargets";
 
-/** The keyboard shortcuts sheet (?) loads when it's first opened: it isn't part of the canvas's first view. */
-const ShortcutsDialog = lazy(() =>
-  import("../components/ShortcutsDialog").then((m) => ({ default: m.ShortcutsDialog })),
+/**
+ * The keyboard shortcuts sheet (?) loads when it's first opened: it isn't part of the canvas's first view. Until it
+ * arrives (or if its download fails) a dialog of the same name stands in: Esc and Close dismiss it, Retry tries again.
+ */
+const ShortcutsDialog = lazyComponent(
+  () => import("../components/ShortcutsDialog").then((m) => m.ShortcutsDialog),
+  ({ onClose }, status) => <ShortcutsShell onClose={onClose} status={status} />,
 );
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
@@ -1259,11 +1263,7 @@ function CanvasInner({
             ) : (
               <ContextMenu {...menu} items={menuItems} onClose={closeMenu} returnFocus={false} />
             ))}
-          {shortcutsOpen && (
-            <Suspense fallback={null}>
-              <ShortcutsDialog onClose={closeShortcuts} />
-            </Suspense>
-          )}
+          {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} />}
           {!readOnly && (
             <div
               className="sr-only"

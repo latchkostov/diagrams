@@ -2485,6 +2485,8 @@ const en = {
   "collab.cantFollow": "This browser can't follow exactly, so you're watching on your own.",
   "collab.versionDiffers": "Reload to watch: {alias} has a newer Live Diagrams.",
   "collab.watchTooLarge": "This run is too large to share with the room. The next one is shared.",
+  "collab.followTooLarge": "This run is too large to follow, so you're watching on your own.",
+  "collab.watchEnded": "{alias} stopped showing Live. You're watching on your own.",
   "collab.announceCatchingUp": "Catching up with {alias}'s Live…",
   "collab.startRoom": "Start room",
   "collab.starting": "Starting…",

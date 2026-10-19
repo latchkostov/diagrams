@@ -80,6 +80,30 @@ describe("the control log", () => {
     expect(c.controlLog().map((e) => e.op.kind)).toEqual(["restart"]);
   });
 
+  it("each op reaches listeners with who made it: this person, the room's host, or the document", () => {
+    const c = controller();
+    const seen: string[] = [];
+    c.onOp((e, origin) => seen.push(`${e.op.kind}:${origin}`));
+    c.setNodeStatus("payments", "down");
+    c.applyRemote({ tick: c.tick, op: { kind: "status", node: "payments", status: "up" } });
+    c.as("sync", () => c.setBase(steady));
+    expect(seen).toEqual(["status:user", "status:remote", "base:sync"]);
+  });
+
+  it("advanceTo moves the run on without logging or publishing; a remote seek goes to the tick the host reached", () => {
+    const c = controller();
+    let published = 0;
+    c.subscribe(() => published++);
+    const ops = c.controlLog().length;
+    c.advanceTo(3_000);
+    expect(c.tick).toBe(3_000);
+    expect(c.controlLog()).toHaveLength(ops);
+    expect(published).toBe(0);
+    c.applyRemote({ tick: 1_000, op: { kind: "seek", targetMs: 600_000 } });
+    expect(c.tick).toBe(1_000);
+    expect(c.seekCost(tickTime(2_000))).toBe(10_000);
+  });
+
   it("each op reaches listeners as it's logged", () => {
     const c = controller();
     const seen: string[] = [];

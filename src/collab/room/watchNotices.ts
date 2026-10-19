@@ -17,7 +17,11 @@ export const watchNotices: WatchNotices = {
           ? t("collab.versionDiffers", { alias })
           : message === "too-large"
             ? t("collab.watchTooLarge")
-            : t("collab.cantFollow"),
-      { kind: message === "own" ? "info" : "error" },
+            : message === "follow-too-large"
+              ? t("collab.followTooLarge")
+              : message === "ended"
+                ? t("collab.watchEnded", { alias })
+                : t("collab.cantFollow"),
+      { kind: message === "own" || message === "ended" ? "info" : "error" },
     ),
 };

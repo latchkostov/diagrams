@@ -44,7 +44,7 @@ import { autoScale } from "../sim/scale";
 import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
 import { snapshotContinuity } from "./snapshotContinuity";
-import { own, replayed, tickTime, timeTick, type LiveOp, type LogEntry } from "./controlLog";
+import { own, replayed, tickTime, timeTick, type LiveOp, type LogEntry, type OpOrigin } from "./controlLog";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
 /** Sim time one press of "step" advances. */
@@ -143,6 +143,11 @@ function sameScript(a: Simulation, b: Simulation): boolean {
   return strip(a) === strip(b);
 }
 
+/** Every op kind is handled: a new one fails to compile until it is. */
+function unreachable(op: never): void {
+  void op;
+}
+
 export class LiveController {
   private diagram: DiagramFile;
   /** What runs: the selected simulation with the panel's inputs applied. */
@@ -172,9 +177,11 @@ export class LiveController {
   /** Logged tweaks a newer panel or diagram edit replaced, by seq: the props keys (and "status") replay skips. */
   private superseded = new Map<number, Set<string>>();
   /** Live tweaks that arrived while a replay was catching up: applied, in order, on the tick it reaches. */
-  private queued: LiveOp[] = [];
+  private queued: { op: LiveOp; origin: OpOrigin }[] = [];
   private run = 0;
-  private opListeners = new Set<(entry: LogEntry) => void>();
+  /** Who the ops being made now come from (`as`). */
+  private origin: OpOrigin = "user";
+  private opListeners = new Set<(entry: LogEntry, origin: OpOrigin) => void>();
   private runState: SimulationRunState | null = null;
   private dirty = true;
   private playing = false;
@@ -220,10 +227,115 @@ export class LiveController {
     return this.log;
   }
 
-  /** Each op as it's logged (shared Live sends them; nothing else listens yet). */
-  onOp(listener: (entry: LogEntry) => void): () => void {
+  /** Each op as it's logged, with who made it (shared Live sends them; nothing else listens yet). */
+  onOp(listener: (entry: LogEntry, origin: OpOrigin) => void): () => void {
     this.opListeners.add(listener);
     return () => this.opListeners.delete(listener);
+  }
+
+  /** Runs `fn` with the ops it makes attributed to `origin` (a document sync, the room's host). */
+  as<T>(origin: OpOrigin, fn: () => T): T {
+    const was = this.origin;
+    this.origin = origin;
+    try {
+      return fn();
+    } finally {
+      this.origin = was;
+    }
+  }
+
+  /** A replay or a rebuild is on its way or under way: the engine isn't at the logged ops' state yet. */
+  get busy(): boolean {
+    return this.replayTarget !== null || this.replayTimer !== undefined;
+  }
+
+  /**
+   * One of the room's host's ops (Watch together), applied here as the host's controller applied it, on the same
+   * tick, through the same methods, and logged as remote. A seek goes to the tick the host's seek reached. Ops that
+   * start a run (restart, another simulation, a structural edit) do nothing here: the follower rebuilds from the
+   * run's start.
+   */
+  applyRemote(entry: { tick: number; op: LiveOp }): void {
+    const op = entry.op;
+    this.as("remote", () => {
+      switch (op.kind) {
+        case "play":
+          return this.setPlaying(op.on);
+        case "speed":
+          return this.setSpeed(op.speed);
+        case "step":
+          return this.step(op.simMs);
+        case "seek":
+          return this.seek(tickTime(entry.tick));
+        case "resume":
+          return this.resume();
+        case "inputs":
+          return this.setInputs(op.inputs);
+        case "base":
+          return this.setBase(op.simulation);
+        case "commit":
+          return this.commitInputs(op.simulation, op.props ? this.withProps(op.props) : undefined);
+        case "patch":
+          return this.patchRemote(op.patches, op.statuses, op.nodes ?? {});
+        case "traffic":
+          return this.setTraffic(op.on);
+        case "inject":
+          return this.inject(op.node, op.count, op.opts);
+        case "injectSources":
+          this.injectAtSources(op.count);
+          return;
+        case "sendOne":
+          return this.sendOne(op.node, op.type);
+        case "fault":
+          return this.setFault(op.fault);
+        case "status":
+          return this.setNodeStatus(op.node, op.status);
+        case "props":
+          return this.setNodeProps(op.node, op.patch);
+        case "restart":
+        case "select":
+        case "reload":
+          return;
+        default:
+          return unreachable(op);
+      }
+    });
+  }
+
+  /** The diagram with these node props (by id) in place of its own. */
+  private withProps(props: Record<string, Record<string, unknown>>): DiagramFile {
+    return { ...this.diagram, nodes: this.diagram.nodes.map((n) => (props[n.id] ? { ...n, props: props[n.id] } : n)) };
+  }
+
+  /**
+   * Shared Live's catch-up: the run forward to `tick` (never back), neither logged nor published (the caller
+   * publishes once per slice). It stops at a pausing note, as the host's run did: the host's resume op passes it.
+   */
+  advanceTo(tick: number): void {
+    if (this.needsRestart || this.held || this.replayTarget !== null) return;
+    const target = tickTime(tick);
+    if (this.runner) {
+      for (let guard = 0; guard < 10_000; guard++) {
+        const s = this.runner.state();
+        if (s.done || s.waiting || s.time >= target - 5) break;
+        const before = s.time;
+        if (!this.updateRunner(() => this.runner?.step(Math.min(1000, target - s.time) / this.speed))) return;
+        this.captureCheckpoint();
+        if (this.runner.state().time <= before) break;
+      }
+    } else {
+      const ms = target - this.engine.metrics().time;
+      if (ms > 0 && !this.updateRunner(() => this.engine.step(ms / this.speed))) return;
+    }
+    this.dirty = true;
+  }
+
+  /** Simulated ms a seek to `targetMs` would run at once: forward from now, or back from the nearest checkpoint. */
+  seekCost(targetMs: number): number {
+    const now = this.engine.metrics().time;
+    if (targetMs >= now - 1) return Math.max(0, targetMs - now);
+    const found = [...this.checkpoints].reverse().find((p) => p.cp.time <= targetMs);
+    return targetMs - (found ? found.cp.time : 0);
   }
 
   /**
@@ -242,7 +354,7 @@ export class LiveController {
     if (this.needsRestart) return;
     // Behind a replay, or behind earlier ops still waiting (a refused Continue): in order, after them.
     if (this.replayTarget !== null || this.queued.length) {
-      this.queued.push(own(op));
+      this.queued.push({ op: own(op), origin: this.origin });
       this.publish();
       return;
     }
@@ -258,12 +370,13 @@ export class LiveController {
    */
   private applyQueued(): void {
     while (!this.needsRestart && this.queued.length) {
-      const op = structuredClone(this.queued[0]) as LiveOp;
+      const { origin } = this.queued[0];
+      const op = structuredClone(this.queued[0].op) as LiveOp;
       if (op.kind === "resume") {
         if (!this.continueRun()) return;
       } else if (!this.updateRunner(() => this.execute(op))) return;
       this.queued.shift();
-      this.record(op);
+      this.record(op, origin);
     }
   }
 
@@ -273,7 +386,7 @@ export class LiveController {
   }
 
   /** Logs an op on this tick. The log keeps its own frozen copy, and only the latest Inputs snapshot. */
-  private record(op: LiveOp): void {
+  private record(op: LiveOp, origin = this.origin): void {
     // During a replay, an op (play, pause, Inputs…) belongs on the tick the replay is heading for.
     const tick = this.replayTarget !== null ? timeTick(this.replayTarget) : this.tick;
     const entry: LogEntry = Object.freeze({ run: this.run, seq: ++this.seq, tick, op: own(op) });
@@ -281,7 +394,7 @@ export class LiveController {
     this.log.push(entry);
     // Live, every op is reflected at once; a replay advances `applied` as it reaches each one.
     if (this.replayTarget === null) this.applied = this.seq;
-    for (const listener of this.opListeners) listener(entry);
+    for (const listener of this.opListeners) listener(entry, origin);
   }
 
   /** A new run: its log starts empty. */
@@ -301,13 +414,14 @@ export class LiveController {
   private supersede(changed: ReadonlyMap<string, ReadonlySet<string>>): void {
     if (!changed.size) return;
     // Tweaks still waiting on a replay: the same keys go, the rest (and the order) stay.
-    this.queued = this.queued.flatMap((op): LiveOp[] => {
+    this.queued = this.queued.flatMap((q): { op: LiveOp; origin: OpOrigin }[] => {
+      const op = q.op;
       const keys = (op.kind === "props" || op.kind === "status") && changed.get(op.node);
-      if (!keys) return [op];
-      if (op.kind === "status") return keys.has("status") ? [] : [op];
-      if (op.kind !== "props") return [op];
+      if (!keys) return [q];
+      if (op.kind === "status") return keys.has("status") ? [] : [q];
+      if (op.kind !== "props") return [q];
       const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => !keys.has(k)));
-      return Object.keys(patch).length ? [{ ...op, patch: patch as NodeSimProps }] : [];
+      return Object.keys(patch).length ? [{ ...q, op: { ...op, patch: patch as NodeSimProps } }] : [];
     });
     for (const e of this.log) {
       if (e.op.kind !== "props" && e.op.kind !== "status") continue;
@@ -486,7 +600,7 @@ export class LiveController {
 
   private queuedTraffic(): boolean | undefined {
     for (let i = this.queued.length - 1; i >= 0; i--) {
-      const op = this.queued[i];
+      const op = this.queued[i].op;
       if (op.kind === "traffic") return op.on;
     }
     return undefined;
@@ -494,6 +608,32 @@ export class LiveController {
 
   get isPlaying(): boolean {
     return this.playing;
+  }
+
+  /**
+   * The run's settings as they are now, published or not (an op's listeners hear it before the state is
+   * republished): the selected simulation, traffic, the what-ifs, speed and play.
+   */
+  get settings(): {
+    simulation: Simulation | null;
+    traffic: boolean;
+    inputs: LiveInputs;
+    speed: number;
+    playing: boolean;
+  } {
+    return {
+      simulation: this.base,
+      traffic: this.traffic,
+      inputs: this.inputs,
+      speed: this.speed,
+      playing: this.playing,
+    };
+  }
+
+  /** The saved simulation's run as it is now (waiting at a note, finished), published or not; null in free play. */
+  get runNow(): SimulationRunState | null {
+    this.snapshot();
+    return this.runState;
   }
 
   get currentDiagram(): DiagramFile {
@@ -949,7 +1089,12 @@ export class LiveController {
     this.inputs = emptyInputs();
     if (saved) this.base = saved;
     if (!saved && diagram) this.freeApplied = {};
-    this.record({ kind: "commit" });
+    // What a follower needs to do the same: the saved simulation, and the node props the save wrote.
+    this.record({
+      kind: "commit",
+      simulation: saved,
+      ...(diagram ? { props: Object.fromEntries(diagram.nodes.map((n) => [n.id, n.props ?? {}])) } : {}),
+    });
     this.applyInputs();
   }
 
@@ -1220,7 +1365,10 @@ export class LiveController {
         if (Object.keys(delta).length) changed.set(id, new Set(Object.keys(delta)));
       for (const id of Object.keys(statuses)) changed.set(id, (changed.get(id) ?? new Set()).add("status"));
       this.supersede(changed);
-      this.record({ kind: "patch", patches, statuses });
+      const nodes = Object.fromEntries(
+        next.nodes.filter((n) => n.id in patches || n.id in statuses).map((n) => [n.id, n.props ?? {}]),
+      );
+      this.record({ kind: "patch", patches, statuses, nodes });
       if (!this.sim) this.applyInputs();
       this.checkpoints = [];
       this.captureCheckpoint(true);
@@ -1228,6 +1376,41 @@ export class LiveController {
       this.publish();
     }
     return patched ? "patched" : "none";
+  }
+
+  /**
+   * A diagram edit the room's host's run took (its `patch` op): the same props and statuses, on this tick, whatever
+   * this editor's copy of the diagram says by now (a later edit comes as its own op).
+   */
+  private patchRemote(
+    patches: Record<string, NodeSimProps>,
+    statuses: Record<string, NodeStatus>,
+    nodes: Record<string, Record<string, unknown>>,
+  ): void {
+    if (this.needsRestart) return;
+    for (const [id, status] of Object.entries(statuses)) this.engine.setNodeStatus(id, status);
+    this.engine.setNodePropsBatch(patches);
+    // The diagram as the host's run had it after the edit: free play's inputs and the next edit read it.
+    this.diagram = {
+      ...this.diagram,
+      nodes: this.diagram.nodes.map((n) => {
+        const props = nodes[n.id];
+        if (!props) return n;
+        this.nodeProps.set(n.id, propsKey(props));
+        return { ...n, props };
+      }),
+    };
+    const changed = new Map<string, Set<string>>();
+    for (const [id, delta] of Object.entries(patches))
+      if (Object.keys(delta).length) changed.set(id, new Set(Object.keys(delta)));
+    for (const id of Object.keys(statuses)) changed.set(id, (changed.get(id) ?? new Set()).add("status"));
+    this.supersede(changed);
+    this.record({ kind: "patch", patches, statuses, nodes });
+    if (!this.sim) this.applyInputs();
+    this.checkpoints = [];
+    this.captureCheckpoint(true);
+    this.dirty = true;
+    this.publish();
   }
 
   // ---------------------------------------------------------------- internals

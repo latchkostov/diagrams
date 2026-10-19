@@ -295,7 +295,9 @@ What the production feature adds to the model above.
     and state digests;
   - the channel's own sender subkeys and rate bound (`liveFramesPerWindow`);
   - JSON checked in full before use (every nested op, with bounded numbers, sizes and depth; parts reassembled within
-    byte and time bounds), each op applied through the live controller's ordinary methods.
+    byte and time bounds), each op applied through the live controller's remote-op API (`applyRemote`), logged as
+    the host's; what a follower keeps of a run is bounded too (1 MiB or 20,000 entries, 32 waiting digests), and a
+    seek's synchronous work is judged by the controller from the tick it reached.
 
   Only Live on the room's own diagram is attached: a session on any other diagram, or one that becomes Private, sends
   nothing and is detached at once (every send checks). Presence carries `host`, the shown run's title and the host's

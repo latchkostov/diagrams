@@ -31,21 +31,32 @@ const secret: Simulation = {
 };
 const shared: Simulation = { ...secret, id: "shared", title: "Steady checkouts" };
 
-function fakeSession(peers: PeerPresence[] = []) {
+function fakeSession(initial: PeerPresence[] = []) {
   const sent: string[] = [];
   const presence: Record<string, unknown>[] = [];
+  let peers = initial;
+  const changes = new Set<() => void>();
   const session = {
     presenceRevision: 0,
     peers: () => peers,
     setPresence: (p: Record<string, unknown>) => presence.push(p),
-    onChange: () => () => {},
+    onChange: (fn: () => void) => {
+      changes.add(fn);
+      return () => changes.delete(fn);
+    },
     sendLive: (payload: Uint8Array) => {
       sent.push(bytesToText(payload));
       return true;
     },
     onLive: () => () => {},
   };
-  return { session: session as unknown as CollabSession, sent, presence };
+  /** The room's people change (a presence update). */
+  const setPeers = (next: PeerPresence[]) => {
+    peers = next;
+    session.presenceRevision++;
+    for (const fn of changes) fn();
+  };
+  return { session: session as unknown as CollabSession, sent, presence, setPeers };
 }
 
 function live(documentId: string, isPrivate: boolean, sim: Simulation): WatchedSession {
@@ -205,6 +216,26 @@ describe("Watch together's lifetime", () => {
     expect(watch.getState().following?.phase).toBe("joining");
     expect(sent.map((m) => JSON.parse(m).t)).toEqual(["hello"]);
     watch.watchOnMyOwn();
+    expect(watch.getState().following).toBeUndefined();
+    watch.dispose();
+  });
+
+  it("the host stops showing Live (still here): following ends, told so, not as a dropped connection", async () => {
+    const host = {
+      sender: "h",
+      alias: "Heron",
+      host: true,
+      live: { run: "r.1", title: "Steady checkouts", playing: true },
+    } as unknown as PeerPresence;
+    const { session, setPeers } = fakeSession([host]);
+    show(live("room-a", false, shared), false);
+    const told = vi.fn();
+    const watch = new WatchTogether(session, "joiner", room(), { offer: vi.fn(), told });
+    watch.watch();
+    await settle();
+    expect(watch.getState().following).toBeDefined();
+    setPeers([{ ...host, live: undefined }]);
+    expect(told).toHaveBeenCalledWith("ended", "Heron");
     expect(watch.getState().following).toBeUndefined();
     watch.dispose();
   });

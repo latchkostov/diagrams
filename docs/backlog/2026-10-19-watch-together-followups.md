@@ -18,5 +18,8 @@
 - **Slow motion stays local,** for the host and followers alike (owner decision 16, P7).
 - **The host's view is shared at most four times a second, while in Live,** in presence (its centre and zoom).
   Outside Live it isn't shared.
+- **A rebuild uses the room's structure now.** The run's start carries the node props it started with, but not the
+  diagram's structure: a structural edit that races a rebuild shows up as a digest mismatch (and the host's reload
+  starts a new run anyway). The pinned input above would close this too.
 - **A large run is re-sent whole.** A follower that missed an op asks for the whole run (up to 1 MiB of log, about
   seventy frames). Asking for the log after a sequence number would make that a few frames.

@@ -32,6 +32,7 @@ import type {
  * | Z1  | zoomToSelection               |                                            | zoomToSelection; owner manual; priority |
  * | Z2  | reveal.requested              | Zoom to selection owns the view            | nothing                                 |
  * | Z3  | reveal.requested              | otherwise                                  | reveal (selection)                      |
+ * | H3  | reveal.requested              | owner host (following the host's view)     | owner manual; reveal (Z3)               |
  * | I1  | input                         |                                            | Zoom to selection's priority ends       |
  * | U1  | user.moved, zoom100           |                                            | owner manual (zoom100: zoom100)         |
  * | F1  | fit, mode.changed             | (not slow motion staying live, W3)         | fit; owner fit; pending := none         |
@@ -174,7 +175,12 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       return next({}, { type: "follow", view: event.view });
     case "reveal.requested":
       if (state.zoomPriority) return next({});
-      return next({}, { type: "reveal", cause: event.cause, withEdges: false });
+      // Keyboard navigation or a focus reveal takes the view back from the host's: following their view ends.
+      return next(state.owner === "host" ? { owner: "manual" } : {}, {
+        type: "reveal",
+        cause: event.cause,
+        withEdges: false,
+      });
     case "pane.settled": {
       const work = state.pending;
       if (!work || (state.menu && waitsForMenu(work))) return next({});

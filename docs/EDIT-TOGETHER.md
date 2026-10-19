@@ -52,7 +52,8 @@ reaches the room: not its simulation's name, not its run.
   Each browser runs the same simulation itself, and the host's checks every few seconds catch any drift, so your
   run matches theirs exactly.
 - **Your own view.** The view stays yours: the host panning or zooming doesn't move it. To follow it anyway, turn on
-  **Follow Sam's view** in the chip's menu. Your own pan or zoom turns it off again. Hover, the inspector, traces
+  **Follow Sam's view** in the chip's menu. Your own pan or zoom turns it off again, and so does moving to a node
+  with the keyboard. Hover, the inspector, traces
   and the event log are your own too.
 - **Joining late, and new runs.** If you start watching in the middle of a run, your page replays it from the start
   to catch up ("Catching up… 0:42 of 3:10"). The same happens when the host restarts, picks another simulation or
@@ -60,8 +61,8 @@ reaches the room: not its simulation's name, not its run.
 - **Watch on my own.** This, in the chip's menu, keeps your run where it is and makes it yours to change. Changing
   the run yourself (a tweak, play or pause) does the same.
 - **If the host's connection drops,** your run waits where it is: "Sam's connection dropped. Waiting…". It goes on
-  when they're back, and asks the host for the run again if it missed anything meanwhile. Nobody else takes over. If
-  the host leaves the room, you keep watching on your own.
+  when they're back, and asks the host for the run again if it missed anything meanwhile (a restart included).
+  Nobody else takes over. If the host leaves the room, or stops showing Live, you keep watching on your own.
 - **When it can't follow.** A browser that drifts from the host's run twice, can't get the run from the host, or
   finds the host on a newer release of Live Diagrams gets a message, and you watch on your own. A run too large to
   send (a very long one) isn't shown; the host is told, and their next run is shown.

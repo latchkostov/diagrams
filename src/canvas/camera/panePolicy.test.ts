@@ -905,4 +905,16 @@ describe("panePolicy: Watch together's Follow the host's view (host.view)", () =
     const fit = state({ owner: "fit" });
     expect(decide(fit, { type: "host.view", view: null }).state).toEqual(fit);
   });
+
+  it("H3 keyboard navigation or a focus reveal takes the view back: following the host's view ends", () => {
+    const following = decide(state({ mode: "live" }), { type: "host.view", view }).state;
+    for (const cause of ["navigation", "focus"] as const) {
+      const d = decide(following, { type: "reveal.requested", cause });
+      expect(d.state.owner).toBe("manual");
+      expect(d.commands).toEqual([{ type: "reveal", cause, withEdges: false }]);
+    }
+    // Not following the host: a reveal leaves the owner as it was (Z3).
+    const fit = state({ owner: "fit" });
+    expect(decide(fit, { type: "reveal.requested", cause: "navigation" }).state.owner).toBe("fit");
+  });
 });

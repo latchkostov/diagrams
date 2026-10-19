@@ -4,7 +4,7 @@ import { faultProblem } from "../../model/faults";
 import type { Simulation } from "../../model/types";
 import type { LiveOp } from "../../live/controlLog";
 import type { LiveInputs } from "../../live/capacityModel";
-import type { LiveMessage, RunStart, WireEntry } from "./liveShare";
+import type { HostClock, LiveMessage, RunStart, WireEntry } from "./liveShare";
 
 // Watch together's wire format (shared Live P2): JSON, checked in full before anything uses it, and split into
 // parts when it's larger than one frame. Every message is the host's (or a follower's request): untrusted, since
@@ -178,9 +178,10 @@ export function parseOp(v: unknown): LiveOp | undefined {
         return num(v.targetMs, 0, LIMITS.seekMs);
       case "restart":
       case "resume":
-      case "commit":
       case "reload":
         return true;
+      case "commit":
+        return (v.simulation === null || simulation(v.simulation)) && (v.props === undefined || nodeProps(v.props));
       case "select":
         return v.simulation === null || simulation(v.simulation);
       case "base":
@@ -190,6 +191,7 @@ export function parseOp(v: unknown): LiveOp | undefined {
       case "patch":
         return (
           nodeProps(v.patches) &&
+          (v.nodes === undefined || nodeProps(v.nodes)) &&
           isRecord(v.statuses) &&
           Object.entries(v.statuses).length <= LIMITS.nodes &&
           Object.values(v.statuses).every((s) => STATUSES.has(s as string))
@@ -225,18 +227,30 @@ export function parseOp(v: unknown): LiveOp | undefined {
 function entry(v: unknown): WireEntry | undefined {
   if (!isRecord(v) || !int(v.seq, 1, 1e9) || !int(v.tick, 0, LIMITS.seekMs / 10)) return undefined;
   const op = parseOp(v.op);
+  // A seek's tick is where it reached, never past its target (a run that ended first stops short of it).
+  if (op?.kind === "seek" && (v.tick as number) * 10 > op.targetMs + 5) return undefined;
   return op ? { seq: v.seq as number, tick: v.tick as number, op } : undefined;
 }
 
 function start(v: unknown): RunStart | undefined {
   if (!isRecord(v) || !str(v.engine, 64) || typeof v.traffic !== "boolean" || !num(v.speed, 0.25, 8)) return undefined;
   if (typeof v.title !== "string" || v.title.length > 200) return undefined;
-  if (!(v.simulation === null || simulation(v.simulation)) || !inputs(v.inputs)) return undefined;
+  if (!(v.simulation === null || simulation(v.simulation)) || !inputs(v.inputs) || !nodeProps(v.props))
+    return undefined;
   return v as unknown as RunStart;
 }
 
 const clock = (v: Record<string, unknown>) =>
-  int(v.tick, 0, LIMITS.seekMs / 10) && typeof v.playing === "boolean" && num(v.speed, 0.25, 8);
+  int(v.tick, 0, LIMITS.seekMs / 10) &&
+  typeof v.playing === "boolean" &&
+  typeof v.on === "boolean" &&
+  num(v.speed, 0.25, 8);
+const clockOf = (v: Record<string, unknown>): HostClock => ({
+  tick: v.tick as number,
+  playing: v.playing as boolean,
+  speed: v.speed as number,
+  on: v.on as boolean,
+});
 
 /** A whole message, checked in full (every nested op too), or undefined. */
 export function parseMessage(v: unknown): LiveMessage | undefined {
@@ -260,7 +274,7 @@ export function parseMessage(v: unknown): LiveMessage | undefined {
         run,
         entries: entries as WireEntry[],
         done: v.done,
-        ...(v.done ? { clock: v.clock as { tick: number; playing: boolean; speed: number } } : {}),
+        ...(v.done ? { clock: clockOf(v.clock as Record<string, unknown>) } : {}),
       };
     }
     case "op": {
@@ -268,9 +282,7 @@ export function parseMessage(v: unknown): LiveMessage | undefined {
       return e ? { t: "op", run, entry: e } : undefined;
     }
     case "beacon":
-      return clock(v)
-        ? { t: "beacon", run, tick: v.tick as number, playing: v.playing as boolean, speed: v.speed as number }
-        : undefined;
+      return clock(v) ? { t: "beacon", run, ...clockOf(v) } : undefined;
     case "digest":
       return int(v.tick, 0, LIMITS.seekMs / 10) && int(v.seq, 0, 1e9) && int(v.hash, 0, 2 ** 32 - 1)
         ? { t: "digest", run, tick: v.tick as number, seq: v.seq as number, hash: v.hash as number }
