@@ -350,9 +350,9 @@ export class Bench {
           const y = cy + r * Math.sin((a * Math.PI) / 12);
           const el = document.elementFromPoint(x, y);
           // The canvas itself: nothing with a test id of its own (a node, an edge, a card, a control) in between, only
-          // React Flow's own wrapper (rf__wrapper) or the canvas's.
+          // React Flow's own pane (canvas-pane) or wrapper (rf__wrapper), or the canvas's.
           const owner = el?.closest("[data-testid]")?.getAttribute("data-testid");
-          if (owner === "rf__wrapper" || owner === "canvas-wrap") return { x, y };
+          if (owner === "canvas-pane" || owner === "rf__wrapper" || owner === "canvas-wrap") return { x, y };
         }
       return null;
     }, at);
