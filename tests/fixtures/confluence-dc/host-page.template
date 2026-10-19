@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Confluence Data Center macro host</title>
+  </head>
+  <body>
+    <main data-testid="confluence-page">
+      <h1>Order flow documentation</h1>
+      __MACROS__
+    </main>
+  </body>
+</html>
