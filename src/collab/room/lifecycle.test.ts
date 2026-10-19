@@ -21,7 +21,7 @@ import { parseRoster } from "./roomRoster";
 import { serializeNative } from "../../interop/native";
 import { CONNECTION_WAIT_MS } from "../session";
 
-it.each(["server-unreachable", "room-full"] as const)(
+it.each(["server-unreachable", "room-full", "server-full"] as const)(
   "surfaces relay failure %s and retains the local copy",
   async (failure) => {
     const clock = new FakeClock();

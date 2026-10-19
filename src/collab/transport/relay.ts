@@ -89,9 +89,16 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
       const disconnect = (code?: number) => {
         if (socket !== ws) return;
         retire();
-        changed(code === RELAY_CLOSE.full ? "room-full" : "server-unreachable");
+        changed(
+          code === RELAY_CLOSE.full
+            ? "room-full"
+            : code === RELAY_CLOSE.serverFull
+              ? "server-full"
+              : "server-unreachable",
+        );
         if (
           code !== RELAY_CLOSE.full &&
+          code !== RELAY_CLOSE.serverFull &&
           code !== RELAY_CLOSE.origin &&
           code !== RELAY_CLOSE.badFrame &&
           code !== RELAY_CLOSE.tooBig

@@ -10,12 +10,17 @@ import { readConfig } from "../../services/server/src/config";
 import { createLog } from "../../services/server/src/log";
 import { selfHostHeadersFor } from "../../scripts/self-host-headers";
 
-export const test = base.extend<object, { relayBuild: string }>({
+export const test = base.extend<object, { relayBuild: string; relayShareLinks: string }>({
+  relayShareLinks: ["1", { scope: "worker", option: true }],
   relayBuild: [
-    async ({ browserName }, use) => {
+    async ({ browserName, relayShareLinks }, use) => {
       const directory = await mkdtemp(join(tmpdir(), `ld-relay-${browserName}-`));
       try {
-        const output = await productionBuild({ VITE_E2E: "1", VITE_COLLAB: "server", VITE_DISABLE_SHARE_LINKS: "1" });
+        const output = await productionBuild({
+          VITE_E2E: "1",
+          VITE_COLLAB: "server",
+          VITE_DISABLE_SHARE_LINKS: relayShareLinks,
+        });
         expect(
           output.chunks.some((chunk) =>
             Object.keys(chunk.modules).some((id) => /[/\\]transport[/\\]tracker\.ts$/.test(id)),
@@ -38,9 +43,9 @@ export const test = base.extend<object, { relayBuild: string }>({
 });
 
 /** Real relay behind the preview origin; no browser WebSocket routing or public infrastructure. */
-export async function relayPreview(directory: string) {
+export async function relayPreview(directory: string, env: Record<string, string> = {}) {
   const relay = createRelayServer({
-    config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC: "off" }),
+    config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC: "off", ...env }),
     log: createLog(() => {}),
   });
   const target = await relay.listen();

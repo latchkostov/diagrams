@@ -933,9 +933,14 @@ export class CollabSession {
     if (this.status === "left") return;
     const next: SessionStatus = this.roomPeers().length ? "connected" : "waiting";
     const connectivity = next === "connected" ? "connected" : (this.transport.connectivity?.() ?? "waiting");
-    const failed = ["trackers-unreachable", "no-answer", "ice-failed", "server-unreachable", "room-full"].includes(
-      connectivity,
-    );
+    const failed = [
+      "trackers-unreachable",
+      "no-answer",
+      "ice-failed",
+      "server-unreachable",
+      "room-full",
+      "server-full",
+    ].includes(connectivity);
     const changed = connectivity !== this.connectivity;
     this.connectivity = connectivity;
     if (!failed) {

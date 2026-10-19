@@ -2473,7 +2473,8 @@ const en = {
   "collab.joinIpServer":
     "This site's collaboration server ({host}) will see your IP address and when you're in a room, never the diagram or the link.",
   "collab.serverUnreachable": "Could not reach the collaboration server. Try again or ask whoever runs this copy.",
-  "collab.roomFull": "This room is full ({count} people). Try again after someone leaves.",
+  "collab.roomFull": "This room is full.",
+  "collab.serverFull": "The collaboration server is at capacity. Try again later.",
   "collab.ipPeers": "Everyone in the room can see your IP address.",
   "collab.ipTrackers":
     "The services below, which introduce you to the others, see your IP address too, but never the diagram or the link.",

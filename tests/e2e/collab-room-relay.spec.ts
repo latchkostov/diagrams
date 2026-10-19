@@ -119,7 +119,7 @@ test("relay: full room and unreachable server explain why and offer Retry", asyn
     await expect.poll(() => guestSocket.isClosed()).toBe(true);
     await expect(guest.getByTestId("room-connecting")).toHaveAttribute("data-connectivity", "room-full");
     await guest.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
-    await expect(guest.getByTestId("room-connecting-failed")).toContainText("This room is full (8 people)");
+    await expect(guest.getByTestId("room-connecting-failed")).toContainText("This room is full.");
     await expect(guest.getByTestId("room-connecting-retry")).toBeVisible();
     for (const socket of occupants) socket.terminate();
     occupants.length = 0;
@@ -162,6 +162,62 @@ test("relay: Private diagrams offer no room or privacy escape and contact no rel
     await expect(page.getByTestId("room-start-confirm")).toHaveCount(0);
     expect(fixture.relay.wss.clients.size).toBe(0);
   } finally {
+    await page.goto("about:blank");
+    await fixture.close();
+  }
+});
+
+test("relay: full room with custom capacity", async ({ relayBuild, context, page }) => {
+  const fixture = await relayPreview(relayBuild, { LD_ROOM_CAP: "2" });
+  let occupant: WebSocket | undefined;
+  try {
+    const link = await start(page, fixture.origin);
+    const keys = await deriveRoomKeys(parseRoomValue(new URL(link).hash.slice("#room=".length)));
+    occupant = new WebSocket(`${fixture.origin.replace("http:", "ws:")}/collab/v1`, RELAY_SUBPROTOCOL, {
+      origin: fixture.origin,
+    });
+    await once(occupant, "open");
+    const welcome = once(occupant, "message");
+    occupant.send(JSON.stringify({ t: "hello", v: 1, room: keys.roomId }));
+    await welcome;
+    await expect.poll(() => fixture.relay.rooms.get(keys.roomId)?.peers.size).toBe(2);
+    const guest = await context.newPage();
+    await guest.clock.install();
+    await guest.goto(link);
+    await guest.getByTestId("room-join-accept").click();
+    await expect(guest.getByTestId("room-connecting")).toHaveAttribute("data-connectivity", "room-full");
+    await guest.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+    await expect(guest.getByTestId("room-connecting-explanation")).toHaveText("This room is full.");
+    await expect(guest.getByTestId("room-connecting-failed")).not.toContainText(/8|eight/);
+    await guest.close();
+  } finally {
+    occupant?.terminate();
+    await page.goto("about:blank");
+    await fixture.close();
+  }
+});
+
+test("relay: server at capacity does not claim an empty room is full", async ({ relayBuild, page }) => {
+  const fixture = await relayPreview(relayBuild, { LD_MAX_ROOMS: "1" });
+  let occupant: WebSocket | undefined;
+  try {
+    occupant = new WebSocket(`${fixture.origin.replace("http:", "ws:")}/collab/v1`, RELAY_SUBPROTOCOL, {
+      origin: fixture.origin,
+    });
+    await once(occupant, "open");
+    const welcome = once(occupant, "message");
+    occupant.send(JSON.stringify({ t: "hello", v: 1, room: "A".repeat(43) }));
+    await welcome;
+    await page.clock.install();
+    await start(page, fixture.origin);
+    await expect(page.getByTestId("room-chip")).toHaveAttribute("data-connectivity", "server-full");
+    await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+    await expect(page.getByTestId("room-alert")).toContainText(
+      "The collaboration server is at capacity. Try again later.",
+    );
+    await expect(page.getByTestId("room-alert")).not.toContainText("someone leaves");
+  } finally {
+    occupant?.terminate();
     await page.goto("about:blank");
     await fixture.close();
   }

@@ -18,7 +18,8 @@ export type Connectivity =
   | "ice-failed"
   | "peer-left"
   | "server-unreachable"
-  | "room-full";
+  | "room-full"
+  | "server-full";
 
 export interface TransportCapabilities {
   /** What it is, for diagnostics ("memory", "webrtc-tracker"). */

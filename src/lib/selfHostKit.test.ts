@@ -13,7 +13,7 @@ import {
 } from "../../scripts/security-headers";
 import { archiveTar, offlineBuildEnv, stageOffline } from "../../scripts/offline-package";
 import { prepareSite } from "../../scripts/prepare-site";
-import { DEPLOYMENT_VARIABLES } from "../../scripts/deployment-env";
+import { readDeployment, DEPLOYMENT_VARIABLES } from "../../scripts/deployment-env";
 import { imageBuildArgs } from "../../scripts/self-host-image";
 import { headersFile, selfHostCsp, selfHostFlatCsp, selfHostHeadersFor } from "../../scripts/self-host-headers";
 import { hostingBase, hostingTemplates, nginxServer } from "../../scripts/self-host-templates";
@@ -203,6 +203,16 @@ describe("self-host kit", () => {
     expect(
       offlineBuildEnv({ VITE_GOOGLE_CLIENT_ID: "" }, { VITE_GOOGLE_CLIENT_ID: "overridden" }).VITE_GOOGLE_CLIENT_ID,
     ).toBe("");
+  });
+
+  it.each(["shell", "env files"])("forces collaboration off over settings from %s", (source) => {
+    for (const settings of [{ VITE_ENABLE_COLLAB: "1" }, { VITE_COLLAB: "public" }, { VITE_COLLAB: "server" }]) {
+      const files = source === "env files" ? settings : {};
+      const shell = source === "shell" ? settings : {};
+      const env: Record<string, string | undefined> = { ...files, ...offlineBuildEnv(shell, files) };
+      expect(env.VITE_COLLAB).toBe("off");
+      expect(readDeployment(env).collab).toBe(false);
+    }
   });
 
   it("uses the native Windows archive tool with case-insensitive environment keys", () => {

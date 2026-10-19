@@ -168,10 +168,12 @@ const CHIP_TEXT: Record<RoomState, (peers: number) => string> = {
 /** Why nothing can connect, when this build names no tracker: said plainly, with the fix for whoever runs it. */
 const connectionFailure = (state: string) =>
   state === "room-full"
-    ? t("collab.roomFull", { count: 8 })
-    : state === "server-unreachable"
-      ? t("collab.serverUnreachable")
-      : t("collab.connectionFailed");
+    ? t("collab.roomFull")
+    : state === "server-full"
+      ? t("collab.serverFull")
+      : state === "server-unreachable"
+        ? t("collab.serverUnreachable")
+        : t("collab.connectionFailed");
 
 const noServers = () => t("collab.noServers", { app: BRAND_NAME });
 
@@ -1148,7 +1150,7 @@ function ConnectingFailure({
           {noServers()} {t("collab.noServersHint")}
         </p>
       ) : (
-        <p>
+        <p data-testid="room-connecting-explanation">
           {unanswered ? t("collab.noAnswer") : connectionFailure(session.connectivity)}
           {!unanswered && session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
         </p>
