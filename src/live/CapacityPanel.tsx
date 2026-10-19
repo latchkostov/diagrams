@@ -51,10 +51,12 @@ import { BottleneckCallout } from "./CapacityLayer";
 import { formatRate, formatScale } from "./format";
 import { LiveIcon } from "./icons";
 import { usePanelEscape } from "./usePanelEscape";
+import type { ElementHandle } from "../canvas/interaction/types";
 
 const FieldValidation = createContext<(id: string, valid: boolean) => void>(() => {});
 
 interface Props {
+  opener?: ElementHandle | null;
   controller: LiveController;
   diagram: DiagramFile;
   base: Simulation | null;
@@ -97,6 +99,7 @@ export const CapacityPanel = memo(function CapacityPanel({
   onAddEntry,
   onAddConsumer,
   disabledHint,
+  opener,
 }: Props) {
   const locale = useLocale();
   const [inputError, setInputError] = useState<string | null>(null);
@@ -116,7 +119,7 @@ export const CapacityPanel = memo(function CapacityPanel({
       }),
     [],
   );
-  usePanelEscape(onClose);
+  usePanelEscape(onClose, undefined, opener);
 
   const set = (next: LiveInputs) => {
     if (disabledHint) return;

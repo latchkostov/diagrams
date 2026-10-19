@@ -1275,6 +1275,7 @@ export class LiveController {
       } catch (error) {
         if (!this.recoverBudget(error)) throw error;
         this.needsRestart = true;
+        this.cancelReplay();
         return "refused";
       }
       this.engine = this.runner.engine;

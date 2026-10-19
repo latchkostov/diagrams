@@ -5,3 +5,5 @@ When a rebuild or scripted traffic operation exceeds its work budget, Live keeps
 Slow motion now exits a refused look-ahead without arming or resuming Live. Regression coverage includes asynchronous replay refusal and rising/falling ramp startup volume at the sampling budget boundary.
 
 Normal simulation and export outputs are unchanged; no parity goldens changed.
+
+Node hover explanations and the Inputs panel now load on demand. Existing file-format helpers stay together in their preloaded model chunk, preserving the startup chunk contract and bundle budgets without increasing either limit.

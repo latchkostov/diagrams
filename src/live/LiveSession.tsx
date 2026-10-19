@@ -9,7 +9,7 @@ import { useSettings } from "../harness/settings";
 import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
 import { BottleneckCallout, TroubleCallout } from "./CapacityLayer";
-import { CapacityPanel } from "./CapacityPanel";
+import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";
 import { EventLog } from "./EventLog";
 import { InjectDialog } from "./InjectDialog";

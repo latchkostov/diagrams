@@ -190,6 +190,13 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             canvas.group,
+            // These file-format helpers are already preloaded by native validation. Keep them in
+            // that existing model request when hover-only Live code gains another lazy importer.
+            {
+              name: "kedaBindings",
+              test: /[/\\]src[/\\](?:model[/\\](?:kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes)|stencils[/\\]roles)\.ts$/,
+              includeDependenciesRecursively: false,
+            },
             // Keep the model-level admission validator in the existing preloaded native chunk.
             // Headless simulation imports the model directly; browsers need no extra startup request.
             {
