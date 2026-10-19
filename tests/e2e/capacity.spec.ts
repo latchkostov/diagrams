@@ -209,7 +209,7 @@ test.describe("inputs & capacity", () => {
     await page.getByTestId("lab-open-editor").click();
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-notice")).toHaveText(
-      "Nothing is sending traffic yet. Click a node to send a request, or add a source.",
+      "Nothing is sending traffic yet. Right-click a node and choose Inject to send a request, or add a traffic source.",
     );
     await page.getByTestId("live-capacity").click();
 
