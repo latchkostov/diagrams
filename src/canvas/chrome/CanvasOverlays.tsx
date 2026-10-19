@@ -3,6 +3,7 @@ import { safeStorage } from "../../lib/storage";
 import { useCovered, useOverlayTestIds } from "../useOverlayFit";
 import { useBelow } from "../checks/useBelow";
 import { Icon } from "../../components/Icon";
+import { MarkdownView } from "../../components/markdown/lazy";
 import { UNTITLED } from "../../lib/diagramIO";
 import { PRIVACY_REQUEST } from "../../lib/usePrivacy";
 import { t as tr } from "../../i18n";
@@ -114,7 +115,11 @@ export function CanvasOverlays({
           {meta.title}
         </h1>
         {privacy && !hideChrome && <PrivateBadge kind={privacy} />}
-        {meta.description && <p dir="auto">{meta.description}</p>}
+        {meta.description && (
+          <div dir="auto" className="diagram-description" data-testid="diagram-description">
+            <MarkdownView text={meta.description} />
+          </div>
+        )}
         {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
         {!hideChrome && (
           <DiagramCardMeta

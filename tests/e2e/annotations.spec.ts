@@ -13,6 +13,8 @@ import {
   waitForSelectionSettled,
   savedDiagram,
   emptyCanvasPoint,
+  waitForCameraIdle,
+  waitForStableViewport,
 } from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
@@ -239,7 +241,7 @@ test.describe("annotations", () => {
     await expect.poll(focused).toBe(true);
     await page.keyboard.press("F2");
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
-    await page.getByTestId("inspector-field-text").click();
+    await page.getByTestId("inspector-field-text-rendered").click();
     await expect(page.getByTestId("inspector-field-text")).toBeFocused();
     await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
     await annotation(page, "note-1").click();
@@ -270,7 +272,9 @@ test.describe("annotations", () => {
     const field = page.getByTestId("inspector-field-text");
     await field.fill("x".repeat(10050));
     await expect.poll(async () => (await field.inputValue()).length).toBe(10000);
-    await page.waitForTimeout(700);
+    await expect
+      .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === "note-1")?.text.length)
+      .toBe(10000);
     await page.reload();
     await expect(annotation(page, "note-1")).toBeVisible();
     await expect.poll(async () => (await size()).height).toBe("20000px");
@@ -309,7 +313,7 @@ test.describe("annotations", () => {
     await page.keyboard.press(`${MOD}+Shift+z`);
     await clear();
     await expect.poll(top).toBe("node-service");
-    await page.waitForTimeout(700);
+    await expect.poll(async () => (await savedDiagram(page)).layerOrder?.at(-1)).toBe("service");
     await page.reload();
     await expect(page.getByTestId("node-service")).toBeVisible();
     await expect.poll(top).toBe("node-service");
@@ -618,4 +622,584 @@ test.describe("annotations", () => {
       })
       .toBeGreaterThan(0);
   });
+
+  test("renders markdown and supports formatting shortcuts in diagram description, text, and note annotations", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Markdown Architecture",
+      description: "Handles **orders** via `gRPC` — see [Runbook](https://example.com/runbook).",
+      nodes: [{ id: "api", stencil: "service.go", label: "Orders API", x: 80, y: 220 }],
+      edges: [],
+      annotations: [
+        {
+          id: "caption-1",
+          kind: "text",
+          text: "### Tier 1\nSupports *async* `events`",
+          x: 80,
+          y: 120,
+          width: 220,
+          height: 60,
+        },
+        {
+          id: "note-1",
+          kind: "note",
+          text: "## SLOs\n- [x] 99.95% uptime\n- [ ] Multi-region\n\n| Metric | Target |\n| :--- | ---: |\n| p99 | 45ms |",
+          x: 360,
+          y: 160,
+          width: 260,
+          height: 180,
+        },
+      ],
+    });
+    await gotoCanvas(page, SLUG);
+
+    // 1. Diagram description renders rich markdown on the diagram card
+    const desc = page.getByTestId("diagram-description");
+    await expect(desc).toBeVisible();
+    await expect(desc.locator("strong")).toHaveText("orders");
+    await expect(desc.locator("code.md-inline-code")).toHaveText("gRPC");
+    await expect(desc.locator("a.md-link")).toHaveAttribute("href", "https://example.com/runbook");
+
+    // 2. Text annotation renders markdown on the canvas
+    const textContent = page.getByTestId("annotation-text-caption-1");
+    await expect(textContent.locator("h3.md-h3")).toHaveText("Tier 1");
+    await expect(textContent.locator("em")).toHaveText("async");
+    await expect(textContent.locator("code.md-inline-code")).toHaveText("events");
+
+    // 3. Note annotation renders headings, task lists, and tables on the canvas
+    const noteContent = page.getByTestId("annotation-text-note-1");
+    await expect(noteContent.locator("h2.md-h2")).toHaveText("SLOs");
+    await expect(noteContent.locator("input.md-task-checkbox")).toHaveCount(2);
+    await expect(noteContent.locator("table.md-table th")).toHaveText(["Metric", "Target"]);
+    await expect(noteContent.locator("table.md-table td")).toHaveText(["p99", "45ms"]);
+
+    // 4. Inline annotation editor supports Markdown shortcuts (Ctrl/Cmd+B and smart list Enter)
+    await annotation(page, "caption-1").dblclick();
+    const inlineEditor = page.getByTestId("annotation-editor");
+    await expect(inlineEditor).toBeFocused();
+    await inlineEditor.fill("critical");
+    await inlineEditor.selectText();
+    await page.keyboard.press(`${MOD}+b`);
+    await expect(inlineEditor).toHaveValue("**critical**");
+    await page.keyboard.press("Escape");
+    await expect(textContent.locator("strong")).toHaveText("critical");
+
+    // 5. Inspector MarkdownEditor shows Preview first when populated, switches to Edit on click, and supports Ctrl/Cmd+K
+    await page.getByTestId("canvas-wrap").click({ position: await emptySpot(page) });
+    await page.getByTestId("inspector-toggle").click();
+    await expect(page.getByTestId("inspector-field-description-rendered")).toBeVisible();
+    const descField = page.getByTestId("inspector-field-description");
+    await page.getByTestId("inspector-field-description-rendered").click();
+    await expect(page.getByTestId("inspector-field-description-rendered")).toHaveCount(0);
+    await descField.fill("https://example.com/docs");
+    await descField.selectText();
+    await page.keyboard.press(`${MOD}+k`);
+    await expect(page.getByTestId("command-palette")).toHaveCount(0);
+    await expect(descField).toHaveValue("[title](https://example.com/docs)");
+    await expect(desc.locator("a.md-link")).toHaveAttribute("href", "https://example.com/docs");
+    await page.getByTestId("inspector-field-description-tab-preview").click();
+    await expect(page.getByTestId("inspector-field-description-rendered").locator("a.md-link")).toHaveAttribute(
+      "href",
+      "https://example.com/docs",
+    );
+
+    // 6. Node documentation starts in Edit mode when empty, renders Preview & top-right badge when populated, and previews in tooltip
+    await expect(page.getByTestId("doc-badge-api")).toHaveCount(0);
+    await page.getByTestId("node-api").click();
+    const nodeDoc = page.getByTestId("inspector-field-node-description");
+    await expect(nodeDoc).toBeVisible();
+    await expect(page.getByTestId("inspector-field-node-description-rendered")).toHaveCount(0);
+    await nodeDoc.click();
+    await nodeDoc.fill("### Endpoints\n- `POST /orders`\n- **Idempotent**");
+    await expect(page.getByTestId("doc-badge-api")).toBeVisible();
+    await page.getByTestId("inspector-field-node-description-tab-preview").click();
+    const nodeDocPreview = page.getByTestId("inspector-field-node-description-rendered");
+    await expect(nodeDocPreview).toBeVisible();
+    await expect(nodeDocPreview.locator("h3.md-h3")).toHaveText("Endpoints");
+    await expect(nodeDocPreview.locator("code.md-inline-code")).toHaveText("POST /orders");
+    await expect(nodeDocPreview.locator("strong")).toHaveText("Idempotent");
+
+    // Hovering the documented node shows its rendered Markdown in the tooltip
+    await page.getByTestId("node-api").hover();
+    const tooltipDoc = page.getByTestId("node-tooltip-doc");
+    await expect(tooltipDoc).toBeVisible();
+    await expect(tooltipDoc.locator("h3.md-h3")).toHaveText("Endpoints");
+    await expect(tooltipDoc.locator("code.md-inline-code")).toHaveText("POST /orders");
+
+    // Clicking the documentation badge when the inspector is folded reopens the inspector on the node
+    await page.getByTestId("inspector-toggle").click();
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+    await page.getByTestId("doc-badge-api").click();
+    await expect(page.getByTestId("inspector-field-node-description-rendered")).toBeVisible();
+
+    // In Live mode, documentation badges are hidden to keep simulation telemetry clean
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("canvas-view")).toHaveClass(/is-live/);
+    await expect(page.getByTestId("doc-badge-api")).toBeHidden();
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("doc-badge-api")).toBeVisible();
+
+    // In Present mode, documentation badges remain visible and hovering renders the markdown tooltip
+    await page.getByTestId("present-toggle").click();
+    await expect(page.getByTestId("canvas-view")).toHaveClass(/is-presenting/);
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("doc-badge-api")).toBeVisible();
+    await page.getByTestId("node-api").hover();
+    await expect(page.getByTestId("node-tooltip-doc")).toBeVisible();
+    await page.getByTestId("present-exit").click();
+    await expect(page.getByTestId("canvas-view")).not.toHaveClass(/is-presenting/);
+
+    expectNoErrors(consoleErrors);
+  });
+});
+
+async function documentedNode(page: Page, source = "- alpha\n- beta") {
+  await seed(page, {
+    format: "diagrams/v1",
+    title: "Documentation",
+    nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 220, description: source }],
+    edges: [],
+  });
+  await gotoCanvas(page, SLUG);
+}
+
+test("documentation badge supports native keyboard activation", async ({ page }) => {
+  await documentedNode(page);
+  const badge = page.getByTestId("doc-badge-api");
+  await expect(badge).toHaveAttribute("aria-label", "Open documentation");
+  expect(await badge.evaluate((el) => el.tagName)).toBe("BUTTON");
+  await badge.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-node-description-rendered")).toBeVisible();
+});
+
+test("Markdown previews scroll over rendered text", async ({ page }) => {
+  await documentedNode(page, Array.from({ length: 80 }, (_, i) => "- Item " + i).join("\n"));
+  await page.getByTestId("node-api").click();
+  const preview = page.getByTestId("inspector-field-node-description-rendered");
+  await expect(preview).toBeVisible();
+  await preview.hover();
+  await page.mouse.wheel(0, 500);
+  await expect.poll(() => preview.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});
+
+test("keyboard editing preserves navigation, selection and focus", async ({ page }) => {
+  await documentedNode(page);
+  await page.getByTestId("node-api").click();
+  const preview = page.getByTestId("inspector-field-node-description-rendered");
+  await page.getByTestId("inspector-field-node-description-tab-edit").click();
+  const field = page.getByTestId("inspector-field-node-description");
+  await field.fill("- alpha\n- beta");
+  await field.selectText();
+  await page.keyboard.press("ControlOrMeta+]");
+  await expect(field).toHaveValue("  - alpha\n  - beta");
+  await expect.poll(() => field.evaluate((el: HTMLTextAreaElement) => el.selectionEnd - el.selectionStart)).toBe(16);
+  await page.keyboard.press("ControlOrMeta+[");
+  await expect(field).toHaveValue("- alpha\n- beta");
+  await page.keyboard.press("Shift+Tab");
+  await expect(field).not.toBeFocused();
+  await expect(field).toHaveValue("- alpha\n- beta");
+  await field.focus();
+  await page.keyboard.press("Tab");
+  await expect(field).not.toBeFocused();
+  await expect(field).toHaveValue("- alpha\n- beta");
+  await field.focus();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("inspector-field-node-description-tab-preview")).toBeFocused();
+  await expect(preview).toBeVisible();
+});
+
+for (const enter of ["Enter", "Shift+Enter"]) {
+  test(`cold annotation editing takes caret movement and ${enter} immediately`, async ({ page, consoleErrors }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Captions",
+      nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 80 }],
+      annotations: [{ id: "caption", kind: "text", text: "Caption", x: 80, y: 220, width: 240, height: 80 }],
+      edges: [],
+    });
+    await gotoCanvas(page, SLUG);
+    await waitForStableViewport(page);
+    await annotation(page, "caption").dblclick();
+    // No readiness wait: these keys belong to the editor from the instant it is opened.
+    await page.keyboard.press(TEXT_END);
+    await page.keyboard.press(enter);
+    await page.keyboard.type("second line");
+    await expect(page.getByTestId("annotation-editor")).toHaveValue("Caption\nsecond line");
+    await page.keyboard.press(`${MOD}+Enter`);
+    await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+    await expect(page.getByTestId("annotation-text-caption")).toHaveText("Caption\nsecond line");
+    expectNoErrors(consoleErrors);
+  });
+}
+
+test("annotation typing and selection survive a delayed formatting chunk", async ({ page, consoleErrors }) => {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let intercepted = false;
+  await page.route(
+    /\/(?:assets\/AnnotationFormatting-[\w-]+\.js|src\/canvas\/nodes\/AnnotationFormatting\.tsx)(?:\?.*)?$/,
+    async (route) => {
+      intercepted = true;
+      await gate;
+      await route.continue();
+    },
+  );
+  try {
+    await seed(page, annotatedKafka);
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "title").dblclick();
+    const editor = page.getByTestId("annotation-editor");
+    await expect(editor).toBeFocused();
+    await expect.poll(() => intercepted).toBe(true);
+    const original = await editor.elementHandle();
+    await page.keyboard.type("alpha");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("bravo");
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("charlie");
+    for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowLeft");
+    await page.keyboard.type("_");
+    for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowRight");
+    const text = "alpha\nbravo\nchar_lie";
+    await expect(editor).toHaveValue(text);
+    await expect(editor).not.toHaveAttribute("data-markdown-ready");
+    await page.keyboard.press(`${MOD}+b`);
+    await expect(editor).toHaveValue(text);
+    const selection = await editor.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd]);
+    expect(selection).toEqual([text.length - 3, text.length]);
+
+    release();
+    await expect(editor).toHaveAttribute("data-markdown-ready", "");
+    expect(await editor.evaluate((el, before) => el === before, original)).toBe(true);
+    await expect(editor).toBeFocused();
+    await expect(editor).toHaveValue(text);
+    expect(await editor.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd])).toEqual(selection);
+    await page.keyboard.press(`${MOD}+b`);
+    await expect(editor).toHaveValue("alpha\nbravo\nchar_**lie**");
+    await page.keyboard.press("Escape");
+    await expect(editor).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  } finally {
+    release();
+  }
+});
+
+test("cold Markdown keeps annotation geometry and image exports await the rendered text", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let requested = false;
+  await page.route(
+    /\/(?:assets\/MarkdownView-[\w-]+\.js|src\/components\/markdown\/MarkdownView\.tsx)(?:\?.*)?$/,
+    async (route) => {
+      requested = true;
+      await held;
+      await route.continue();
+    },
+  );
+  await seed(page, {
+    format: "diagrams/v1",
+    title: "Runbook",
+    description: "**Orders** via `gRPC`",
+    nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 220 }],
+    annotations: [
+      {
+        id: "cold-note",
+        kind: "note",
+        text: "**Retry** <script>plain</script>",
+        x: 340,
+        y: 220,
+        width: 240,
+        height: 120,
+      },
+    ],
+    edges: [],
+  });
+  await gotoCanvas(page, SLUG);
+  await expect.poll(() => requested).toBe(true);
+  const note = page.getByTestId("annotation-text-cold-note");
+  await expect(note).toHaveText("**Retry** <script>plain</script>");
+  expect(await note.evaluate((el) => el.getElementsByTagName("script").length)).toBe(0);
+  await waitForStableViewport(page);
+  const before = await box(annotation(page, "cold-note"));
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-options-toggle").click();
+  await page.getByTestId("image-format-svg").click();
+  const exporter = page.waitForResponse(/\/(?:assets\/image-[\w-]+\.js|src\/interop\/image\.ts)(?:\?.*)?$/);
+  const downloaded = page.waitForEvent("download");
+  let completed = false;
+  page.on("download", () => (completed = true));
+  await page.getByTestId("image-export").click();
+  await (await exporter).finished();
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
+  // Starting the export must leave its annotation fallback untouched until the held renderer arrives.
+  await expect(page.getByTestId("image-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("export-header")).toBeVisible();
+  expect(completed).toBe(false);
+  await expect(note).toHaveText("**Retry** <script>plain</script>");
+  release();
+  const download = await downloaded;
+  const path = await download.path();
+  if (!path) throw new Error("SVG download did not complete");
+  const svg = readFileSync(path, "utf8");
+  expect(svg).toContain('data-testid="export-header-description"');
+  expect(svg).toMatch(/<strong[^>]*>Orders<\/strong>/);
+  expect(svg).not.toContain("**Orders**");
+  expect(svg).toMatch(/<strong[^>]*>Retry<\/strong>/);
+  expect(svg).not.toContain("data-markdown-pending");
+  expect(await box(annotation(page, "cold-note"))).toEqual(before);
+  await expect(page.getByTestId("export-header")).toHaveCount(0);
+});
+
+test("Markdown preview tab order reaches its region and links", async ({ page }) => {
+  await documentedNode(page, "[Runbook](https://example.com/runbook)");
+  await page.getByTestId("node-api").click();
+  const preview = page.getByTestId("inspector-field-node-description-rendered");
+  await page.getByTestId("inspector-field-node-description-tab-edit").focus();
+  await page.keyboard.press("Tab");
+  await expect(preview).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(preview.getByTestId("markdown-link")).toBeFocused();
+  await expect(preview).toBeVisible();
+});
+
+test("Markdown editing leaves IME Escape and indentation to composition", async ({ page }) => {
+  await documentedNode(page);
+  await page.getByTestId("node-api").click();
+  await page.getByTestId("inspector-field-node-description-tab-edit").click();
+  const field = page.getByTestId("inspector-field-node-description");
+  await expect(field).toBeFocused();
+  await field.evaluate((el) => {
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", isComposing: true, bubbles: true }));
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: "]", ctrlKey: true, isComposing: true, bubbles: true }));
+  });
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue("- alpha\n- beta");
+  await expect(page.getByTestId("inspector-field-node-description-rendered")).toHaveCount(0);
+});
+
+test("node documentation survives reload and stays cleared", async ({ page }) => {
+  await documentedNode(page, "Imported runbook");
+  const source = "# Endpoints\n\n**Orders** via `gRPC`";
+  await page.getByTestId("node-api").click();
+  await page.getByTestId("inspector-field-node-description-tab-edit").click();
+  await page.getByTestId("inspector-field-node-description").fill(source);
+  await expect.poll(async () => (await savedDiagram(page, SLUG))?.nodes[0].description).toBe(source);
+  await page.reload();
+  await page.getByTestId("node-api").click();
+  await expect(page.getByTestId("inspector-field-node-description")).toHaveValue(source);
+  await page.getByTestId("inspector-field-node-description-tab-edit").click();
+  await page.getByTestId("inspector-field-node-description").fill("");
+  await expect.poll(async () => (await savedDiagram(page, SLUG))?.nodes[0].description).toBeUndefined();
+  await page.reload();
+  await page.getByTestId("node-api").click();
+  await expect(page.getByTestId("inspector-field-node-description")).toHaveValue("");
+  await expect(page.getByTestId("doc-badge-api")).toHaveCount(0);
+});
+
+test("node documentation remains copyable at the length limit", async ({ page }) => {
+  await documentedNode(page, "");
+  await page.getByTestId("node-api").click();
+  const field = page.getByTestId("inspector-field-node-description");
+  const source = "a".repeat(49_996) + "TAIL";
+  await field.fill(source + "overflow");
+  await expect(field).toHaveValue(source);
+  await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 1));
+  await page.keyboard.press("ControlOrMeta+b");
+  await expect(field).toHaveValue(source);
+  expect(
+    await field.evaluate(
+      (el: HTMLTextAreaElement) =>
+        new Promise((resolve) => requestAnimationFrame(() => resolve([el.selectionStart, el.selectionEnd]))),
+    ),
+  ).toEqual([0, 1]);
+  await page.keyboard.press("Escape");
+  await page.getByTestId("node-api").click();
+  await page.keyboard.press("ControlOrMeta+c");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect
+    .poll(async () => (await savedDiagram(page, SLUG))?.nodes.map((n) => n.description))
+    .toEqual([source, source]);
+});
+
+test("full annotations refuse formatting in both editors without losing text", async ({ page }) => {
+  const source = "a".repeat(9_996) + "TAIL";
+  await seed(page, {
+    format: "diagrams/v1",
+    nodes: [],
+    edges: [],
+    annotations: [{ id: "note", kind: "note", text: source, x: 0, y: 0, width: 240, height: 160 }],
+  });
+  await gotoCanvas(page, SLUG);
+  await annotation(page, "note").dblclick();
+  const inline = page.getByTestId("annotation-editor");
+  await expect(inline).toBeFocused();
+  await inline.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 1));
+  await page.keyboard.press("ControlOrMeta+b");
+  await expect(inline).toHaveValue(source);
+  await page.keyboard.press("Escape");
+  await annotation(page, "note").click();
+  await page.getByTestId("inspector-field-text-tab-edit").click();
+  const field = page.getByTestId("inspector-field-text");
+  await expect(field).toBeFocused();
+  await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 1));
+  await page.keyboard.press("ControlOrMeta+b");
+  await expect(field).toHaveValue(source);
+});
+
+test("canvas Tab visits annotation links before the next node", async ({ page }) => {
+  await seed(page, {
+    format: "diagrams/v1",
+    nodes: [{ id: "after", stencil: "service.go", x: 500, y: 44 }],
+    edges: [],
+    annotations: [
+      {
+        id: "links",
+        kind: "note",
+        text: "[First](https://example.com/1) [Second](https://example.com/2)",
+        x: 0,
+        y: 0,
+        width: 240,
+        height: 160,
+      },
+    ],
+  });
+  await gotoCanvas(page, SLUG);
+  await annotation(page, "links").click();
+  await waitForSelectionSettled(page);
+  const wrapper = annotation(page, "links");
+  await wrapper.evaluate((el) => (el.parentElement as HTMLElement).focus());
+  const links = wrapper.getByTestId("markdown-link");
+  await page.keyboard.press("Tab");
+  await expect(links.nth(0)).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(links.nth(1)).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(links.nth(0)).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  expect(await wrapper.evaluate((el) => document.activeElement === el.parentElement)).toBe(true);
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect
+    .poll(() => page.getByTestId("node-after").evaluate((el) => document.activeElement === el.parentElement))
+    .toBe(true);
+});
+
+test("documentation tooltips fit the viewport using their rendered height", async ({ page }) => {
+  await documentedNode(page, "# Runbook\n" + "Detailed documentation\n\n".repeat(20));
+  for (const presenting of [false, true]) {
+    if (presenting) await page.getByTestId("present-toggle").click();
+    await waitForCameraIdle(page);
+    const node = page.getByTestId("node-api");
+    const before = await box(node);
+    await page.getByTestId("canvas-wrap").hover();
+    await page.mouse.wheel(0, before.y - 150);
+    await waitForStableViewport(page);
+    await expect.poll(async () => (await box(node)).y).toBeLessThan(200);
+    await node.hover();
+    const tip = page.getByTestId("node-tooltip");
+    await expect(page.getByTestId("node-tooltip-doc")).toBeVisible();
+    await expect
+      .poll(async () => {
+        const bounds = await box(tip);
+        const viewport = page.viewportSize();
+        if (!viewport) throw new Error("Expected viewport dimensions");
+        return (
+          bounds.x >= 0 &&
+          bounds.y >= 0 &&
+          bounds.x + bounds.width <= viewport.width &&
+          bounds.y + bounds.height <= viewport.height
+        );
+      })
+      .toBe(true);
+  }
+});
+
+test("Markdown export measures decoded header images", async ({ page, context }) => {
+  const response = Promise.withResolvers<undefined>();
+  await page.route("**/header-readiness.svg", async (route) => {
+    await response.promise;
+    await route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180"><rect width="300" height="180" fill="orange"/></svg>',
+    });
+  });
+  await page.addInitScript(() => {
+    const nativeDecode = HTMLImageElement.prototype.decode;
+    const release = Promise.withResolvers<undefined>();
+    (window as unknown as { releaseHeaderDecode: () => void }).releaseHeaderDecode = () => release.resolve(undefined);
+    HTMLImageElement.prototype.decode = function () {
+      const decoded = nativeDecode.call(this);
+      if (!this.closest('[data-testid="export-header"]')) return decoded;
+      this.dataset.decodeWaiting = "1";
+      return decoded.then(() => release.promise);
+    };
+  });
+  await seed(page, {
+    format: "diagrams/v1",
+    title: "Runbook",
+    description:
+      "## Orders\n\nSeveral lines of **documentation** wrap above the diagram.\n\n![Readiness](/header-readiness.svg)\n\nLast line.",
+    nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 220 }],
+    edges: [],
+  });
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-options-toggle").click();
+  await page.getByTestId("image-format-svg").click();
+  const pendingDownload = page.waitForEvent("download");
+  await page.getByTestId("image-export").click();
+  const header = page.getByTestId("export-header");
+  const image = header.getByTestId("markdown-image");
+  await expect(image).toHaveAttribute("data-decode-waiting", "1");
+  // Even after layout has had an opportunity to run, measurement awaits decode.
+  await image.evaluate(() => new Promise(requestAnimationFrame));
+  expect(await header.evaluate((el) => el.style.top)).toBe("");
+  response.resolve(undefined);
+  await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.naturalHeight)).toBe(180);
+  await image.evaluate(() => new Promise(requestAnimationFrame));
+  expect(await header.evaluate((el) => el.style.top)).toBe("");
+  await page.evaluate(() => (window as unknown as { releaseHeaderDecode: () => void }).releaseHeaderDecode());
+  const download = await pendingDownload;
+  const path = await download.path();
+  if (!path) throw new Error("SVG download did not complete");
+  const svg = readFileSync(path, "utf8");
+  const exported = await context.newPage();
+  try {
+    await exported.setContent(svg);
+    const exportedHeader = exported.getByTestId("export-header");
+    const exportedNode = exported.getByTestId("node-api");
+    const geometry = await exportedHeader.evaluate((el) => {
+      const root = el.ownerDocument.documentElement;
+      const svg = root.getElementsByTagName("svg")[0];
+      const bounds = svg.getBoundingClientRect();
+      const header = el.getBoundingClientRect();
+      return {
+        bounds: { x: bounds.x, y: bounds.y, right: bounds.right, bottom: bounds.bottom },
+        header: { x: header.x, y: header.y, right: header.right, bottom: header.bottom },
+      };
+    });
+    const node = await box(exportedNode);
+    const { bounds, header: h } = geometry;
+    expect(h.x).toBeGreaterThanOrEqual(bounds.x);
+    expect(h.y).toBeGreaterThanOrEqual(bounds.y);
+    expect(h.right).toBeLessThanOrEqual(bounds.right);
+    expect(h.bottom).toBeLessThan(node.y);
+    expect(node.x).toBeGreaterThanOrEqual(bounds.x);
+    expect(node.x + node.width).toBeLessThanOrEqual(bounds.right);
+    expect(node.y + node.height).toBeLessThanOrEqual(bounds.bottom);
+    await expect(exportedHeader.getByTestId("markdown-image")).toBeVisible();
+  } finally {
+    await exported.close();
+  }
 });

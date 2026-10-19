@@ -10,6 +10,7 @@
 // stays.
 
 const en = {
+  "node.openDocumentation": "Open documentation",
   "latency.heading": "Async latency",
   "latency.p50": "p50 {duration}",
   "latency.p95": "p95 {duration}",

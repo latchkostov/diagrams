@@ -1,7 +1,8 @@
 import { stencilLabel, stencilDescription } from "../i18n/stencils";
 import { useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
-import { useSyncExternalStore, type RefObject } from "react";
+import { useSyncExternalStore, useRef, useLayoutEffect, type RefObject } from "react";
+import { MarkdownView } from "../components/markdown/lazy";
 import { NODE_TIP_ID, useTipDescribes, type TipStore } from "./useNodeTooltip";
 
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */
@@ -12,20 +13,40 @@ export interface NodeTip {
   label: string;
   sublabel?: string;
   stencil: string;
+  description?: string;
 }
 
 export function NodeTooltip({ tip }: { tip: NodeTip }) {
   useLocale();
   const stencil = getStencil(tip.stencil);
-  const above = tip.rect.top > 120;
-  const style = {
-    left: tip.rect.left + tip.rect.width / 2,
-    top: above ? tip.rect.top - 8 : tip.rect.bottom + 8,
-  };
+  const hasDoc = Boolean(tip.description?.trim());
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const position = () => {
+      const pad = 8;
+      const { width, height } = el.getBoundingClientRect();
+      const aboveSpace = tip.rect.top - pad * 2;
+      const belowSpace = window.innerHeight - tip.rect.bottom - pad * 2;
+      const above = aboveSpace >= height || (belowSpace < height && aboveSpace > belowSpace);
+      const top = above ? tip.rect.top - pad - height : tip.rect.bottom + pad;
+      el.style.left = `${Math.max(pad, Math.min(tip.rect.left + tip.rect.width / 2 - width / 2, window.innerWidth - width - pad))}px`;
+      el.style.top = `${Math.max(pad, Math.min(top, window.innerHeight - height - pad))}px`;
+    };
+    position();
+    const observer = new ResizeObserver(position);
+    observer.observe(el);
+    window.addEventListener("resize", position);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", position);
+    };
+  }, [tip]);
   return (
     <div
-      className={`node-tip${above ? " is-above" : " is-below"}`}
-      style={style}
+      ref={ref}
+      className={`node-tip${hasDoc ? " has-doc" : ""}`}
       id={NODE_TIP_ID}
       role="tooltip"
       data-testid="node-tooltip"
@@ -34,6 +55,11 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
       {tip.sublabel && <span className="node-tip-sub mono">{tip.sublabel}</span>}
       <span className="node-tip-kind">{stencilLabel(stencil)}</span>
       {stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>}
+      {hasDoc && (
+        <div className="node-tip-doc" data-testid="node-tooltip-doc">
+          <MarkdownView text={tip.description!} className="node-tip-md" />
+        </div>
+      )}
     </div>
   );
 }

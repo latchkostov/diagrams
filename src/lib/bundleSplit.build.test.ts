@@ -12,6 +12,14 @@ import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  [
+    "Markdown rendering and parsing",
+    /[/\\]src[/\\]components[/\\]markdown[/\\](MarkdownView\.tsx|markdownParser\.ts)$/,
+  ],
+  ["inspector Markdown editing", /[/\\]src[/\\]components[/\\]markdown[/\\]MarkdownEditor\.tsx$/],
+  ["annotation editing", /[/\\]src[/\\]canvas[/\\]nodes[/\\]AnnotationEditor\.tsx$/],
+  ["annotation Markdown enhancement", /[/\\]src[/\\]canvas[/\\]nodes[/\\]AnnotationFormatting\.tsx$/],
+  ["Markdown formatting keys", /[/\\]src[/\\]components[/\\]markdown[/\\]markdownKeys\.ts$/],
   ["stencil display messages", /[/\\]src[/\\]i18n[/\\]stencils\.ts$/],
   ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
   ["canvas File actions", /[/\\]src[/\\]interop[/\\]fileActions\.ts$/],
@@ -104,6 +112,8 @@ const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
       "the stencil search index",
       "canvas File actions",
       "stencil display messages",
+      // Inline editing must take the very first key after a double-click, including caret movement.
+      "annotation editing",
     ].includes(what),
 );
 
@@ -249,6 +259,32 @@ describe("production bundle split", () => {
     // not a dozen small ones that the first view queues for.
     const loading = [...canvas].filter((c) => !startup().has(c));
     expect(loading.map((c) => c.name).sort()).toEqual(["CanvasView", "canvas-shared"]);
+  });
+
+  it("loads the Markdown parser with its view, without the editor or its keys", () => {
+    const view = chunks.find((c) =>
+      Object.keys(c.modules).some((id) => /[/\\]markdown[/\\]MarkdownView\.tsx$/.test(id)),
+    );
+    expect(view).toBeDefined();
+    expect(Object.keys(view!.modules).some((id) => /[/\\]markdownParser\.ts$/.test(id))).toBe(true);
+    const editing = NOT_AT_STARTUP.filter(([what]) =>
+      ["inspector Markdown editing", "annotation editing", "Markdown formatting keys"].includes(what),
+    );
+    expect(found(bundled(closure([view!])), editing)).toEqual([]);
+    expect(found(bundled(chunks), editing)).toEqual([
+      "inspector Markdown editing",
+      "annotation editing",
+      "Markdown formatting keys",
+    ]);
+  });
+
+  it("keeps the plain annotation editor in the canvas while its formatting downloads separately", () => {
+    for (const build of [plain(), rooms]) {
+      const ids = bundled(closure([canvasChunk(build)], build));
+      expect(ids.some((id) => /[/\\]nodes[/\\]AnnotationEditor\.tsx$/.test(id))).toBe(true);
+      expect(ids.some((id) => /[/\\](AnnotationFormatting\.tsx|markdownKeys\.ts)$/.test(id))).toBe(false);
+      expect(bundled(build.chunks).some((id) => /[/\\]nodes[/\\]AnnotationFormatting\.tsx$/.test(id))).toBe(true);
+    }
   });
 
   it("opens Live without the simulation editor and drill preset controls", () => {

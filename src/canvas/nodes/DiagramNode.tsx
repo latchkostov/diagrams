@@ -1,5 +1,6 @@
 import { memo, type CSSProperties } from "react";
-import { useLocale } from "../../i18n";
+import { Icon } from "../../components/Icon";
+import { t, useLocale } from "../../i18n";
 import { stencilLabel } from "../../i18n/stencils";
 import { Handle, useStore, type NodeProps, type ReactFlowState } from "@xyflow/react";
 import { FALLBACK_STENCIL, getStencil } from "../../stencils/registry";
@@ -49,16 +50,17 @@ function DiagramNodeImpl({
 }: NodeProps<DiagramFlowNode>) {
   useLocale();
   const { nodeVariant } = useSettings();
-  const { rename, grow, presenting } = useDiagram();
+  const { rename, openDoc, grow, presenting } = useDiagram();
   const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
   const stencil = getStencil(data.stencil);
   const unknown = stencil === FALLBACK_STENCIL;
   const { Component } = getNodeVariant(nodeVariant);
   const showDeps = useShowDependencies();
+  const hasDoc = Boolean(data.description?.trim());
 
   return (
     <div
-      className={`dn dn-${nodeVariant}`}
+      className={`dn dn-${nodeVariant}${hasDoc ? " has-doc" : ""}`}
       data-testid={`node-${id}`}
       onDoubleClick={(e) => {
         e.stopPropagation();
@@ -74,6 +76,26 @@ function DiagramNodeImpl({
         selected={selected && !presenting}
         unknown={unknown}
       />
+      {hasDoc &&
+        (openDoc ? (
+          <button
+            type="button"
+            className="dn-doc-badge nodrag nopan"
+            data-testid={`doc-badge-${id}`}
+            aria-label={t("node.openDocumentation")}
+            onClick={(e) => {
+              e.stopPropagation();
+              openDoc(id);
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            <Icon name="note" size={11} />
+          </button>
+        ) : (
+          <span className="dn-doc-badge" data-testid={`doc-badge-${id}`} aria-hidden>
+            <Icon name="note" size={11} />
+          </span>
+        ))}
       {SIDES.map((side) => (
         <Handle
           key={side}

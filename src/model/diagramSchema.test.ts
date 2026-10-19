@@ -47,6 +47,7 @@ const node: Required<DiagramNode> = {
   stencil: "service.dotnet",
   label: "API",
   sublabel: "orders",
+  description: "Handles orders and payments.",
   x: 100,
   y: 80,
   group: "cloud",
@@ -245,3 +246,22 @@ it.each([undefined, "p1", "p2", "p3", "p3-a1"] as const)(
     }
   },
 );
+
+it("limits authored node documentation while preserving longer native imports", () => {
+  for (const length of [50_000, 50_001]) {
+    const node = { id: "api", stencil: "service.go", label: "API", x: 0, y: 0, description: "x".repeat(length) };
+    const file = { format: "diagrams/v1", nodes: [node], edges: [] };
+    if (length === 50_000) expect(() => check(node, "Node")).not.toThrow();
+    else expect(() => check(node, "Node")).toThrow();
+    expect(parseNative(JSON.stringify(file)).ok).toBe(true);
+  }
+});
+
+it("limits authored descriptions while preserving longer native imports", () => {
+  for (const length of [2000, 2001]) {
+    const file = { format: "diagrams/v1", title: "Runbook", description: "x".repeat(length), nodes: [], edges: [] };
+    if (length === 2000) expect(() => check(file)).not.toThrow();
+    else expect(() => check(file)).toThrow();
+    expect(parseNative(JSON.stringify(file)).ok).toBe(true);
+  }
+});

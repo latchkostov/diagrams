@@ -107,6 +107,7 @@ export function AiMount({
     if (!docked) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.isComposing || e.repeat || !matches(e, AI_PANEL_COMBO)) return;
+      if (e.target instanceof Element && e.target.closest("[data-markdown-input]")) return;
       if (document.querySelector('[aria-modal="true"]')) return;
       e.preventDefault();
       e.stopPropagation();

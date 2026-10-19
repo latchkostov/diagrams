@@ -1,3 +1,4 @@
+import { validDocumentation } from "../model/documentation";
 import {
   DIAGRAM_FORMAT,
   type DiagramAnnotation,
@@ -145,6 +146,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
     (n): n is DiagramNode =>
       isObj(n) && typeof n.id === "string" && typeof n.stencil === "string" && isCoordinate(n.x) && isCoordinate(n.y),
   );
+  if (nodes.some((n) => !validDocumentation(n.description))) return null;
   if (nodes.some((n) => n.props !== undefined && (unsupportedPreset(n.props) || propsProblem(n.props)))) return null;
   if (
     createResourceValidator({ fragment: true })({

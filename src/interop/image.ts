@@ -1,3 +1,7 @@
+import { createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
+import { MarkdownView, loadMarkdown } from "../components/markdown/lazy";
 // PNG / SVG export of the live canvas with html-to-image. We render React Flow's viewport element
 // at 1:1 zoom, cropped to the diagram's bounds, so the image doesn't depend on the current pan/zoom
 // or window size. html-to-image is loaded on demand (only when someone exports an image), and its clone runs in
@@ -41,19 +45,32 @@ function addHeader(viewport: HTMLElement, b: Bounds, header: { title: string; de
   const h = document.createElement("h1");
   h.textContent = header.title;
   el.append(h);
+  let descriptionRoot: ReturnType<typeof createRoot> | undefined;
   if (header.description) {
-    const p = document.createElement("p");
-    p.textContent = header.description;
-    el.append(p);
+    const text = header.description;
+    const description = document.createElement("div");
+    el.append(description);
+    const root = createRoot(description);
+    descriptionRoot = root;
+    flushSync(() => root.render(createElement(MarkdownView, { text, testId: "export-header-description" })));
   }
   el.style.left = `${b.x}px`;
   el.style.overflowWrap = "anywhere";
   el.style.maxWidth = `${Math.max(b.width, 420)}px`;
   viewport.append(el);
-  // offsetWidth / offsetHeight are layout sizes, unaffected by the viewport's zoom.
-  const rect = { x: b.x, y: b.y - HEADER_GAP - el.offsetHeight, width: el.offsetWidth, height: el.offsetHeight };
-  el.style.top = `${rect.y}px`;
-  return { rect, remove: () => el.remove() };
+  return {
+    ready: () => Promise.all(Array.from(el.getElementsByTagName("img"), (image) => image.decode().catch(() => {}))),
+    measure: () => {
+      // Layout sizes ignore viewport zoom. Images must finish decoding before this measurement.
+      const rect = { x: b.x, y: b.y - HEADER_GAP - el.offsetHeight, width: el.offsetWidth, height: el.offsetHeight };
+      el.style.top = `${rect.y}px`;
+      return rect;
+    },
+    remove: () => {
+      descriptionRoot?.unmount();
+      el.remove();
+    },
+  };
 }
 
 function unionBounds(a: Bounds, b: Bounds): Bounds {
@@ -106,26 +123,32 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
   const header = opts.header?.title.trim() ? addHeader(viewport, content, opts.header) : undefined;
-  const b = header ? unionBounds(content, header.rect) : content;
-  const pad = opts.padding ?? 48;
-  const width = Math.ceil(b.width + pad * 2);
-  const height = Math.ceil(b.height + pad * 2);
-  let scale = opts.scale ?? 2;
-  if (width * height * scale * scale > MAX_PIXELS) scale = Math.max(0.5, Math.sqrt(MAX_PIXELS / (width * height)));
-
-  const css = getComputedStyle(viewport.closest(".canvas-wrap") ?? document.body);
-  const bg = opts.transparent
-    ? undefined
-    : css.backgroundColor && css.backgroundColor !== "rgba(0, 0, 0, 0)"
-      ? css.backgroundColor
-      : getComputedStyle(document.body).backgroundColor;
-
   let defsClone: SVGElement | undefined;
   let unselect = () => {};
   const paint = new SvgPaint();
   const releaseInput = holdInput(opts.onEscape);
   let slicer: import("./imageClone").Slicer | undefined;
   try {
+    // Insert the header before yielding, then finish its Markdown before finding images or measuring it.
+    // Loading belongs inside the input hold and cleanup, including cancellation and failed downloads.
+    await unlessCancelled(loadMarkdown(), opts.signal);
+    opts.check?.();
+    if (header) await unlessCancelled(header.ready(), opts.signal);
+    opts.check?.();
+    const b = header ? unionBounds(content, header.measure()) : content;
+    const pad = opts.padding ?? 48;
+    const width = Math.ceil(b.width + pad * 2);
+    const height = Math.ceil(b.height + pad * 2);
+    let scale = opts.scale ?? 2;
+    if (width * height * scale * scale > MAX_PIXELS) scale = Math.max(0.5, Math.sqrt(MAX_PIXELS / (width * height)));
+
+    const css = getComputedStyle(viewport.closest(".canvas-wrap") ?? document.body);
+    const bg = opts.transparent
+      ? undefined
+      : css.backgroundColor && css.backgroundColor !== "rgba(0, 0, 0, 0)"
+        ? css.backgroundColor
+        : getComputedStyle(document.body).backgroundColor;
+
     const [{ toPng, toSvgText, Slicer }, { getWebFontCSS }] = await unlessCancelled(
       Promise.all([import("./imageClone"), import("html-to-image/es/embed-webfonts")]),
       opts.signal,

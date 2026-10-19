@@ -973,3 +973,28 @@ describe("A3 cloud bindings share the one editor validation path", () => {
     expect(binding(t.api.getDiagram(), "worker").kind).toBe("cloudRun");
   });
 });
+
+it("keeps accepted documentation copyable and rejects oversized editor updates", () => {
+  const t = setup();
+  const node = t.api.getDiagram().nodes[0];
+  const description = "x".repeat(50_000);
+  t.api.updateNode(node.id, { description });
+  t.commit();
+  expect(t.api.getDiagram().nodes[0].description).toBe(description);
+  expect(parsePayload(JSON.stringify(makePayload(t.api.getDiagram(), [node.id])))?.nodes[0].description).toBe(
+    description,
+  );
+  t.api.updateNode(node.id, { description: description + "overflow" });
+  t.commit();
+  expect(t.api.getDiagram().nodes[0].description).toBe(description);
+});
+
+it("keeps diagram descriptions within their authoring boundary", () => {
+  const t = setup();
+  const description = "x".repeat(2000);
+  t.api.updateMeta({ description });
+  t.commit();
+  t.api.updateMeta({ description: description + "overflow" });
+  t.commit();
+  expect(t.api.getDiagram().description).toBe(description);
+});

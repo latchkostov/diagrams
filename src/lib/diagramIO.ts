@@ -1,7 +1,7 @@
 import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
 import { examples, getLoadedExample } from "../examples";
 import { RETIRED_EXAMPLES } from "../examples/retired";
-import { LIMITS, parseNative, preserveUnknown, validateDiagram } from "../interop/native";
+import { parseNative, preserveUnknown, validateDiagram } from "../interop/native";
 import { notify } from "../interop/ui/toast";
 import { safeStorage } from "./storage";
 import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
@@ -73,7 +73,8 @@ function read<T>(key: string): T | undefined {
 function readDiagram(key: string, identity?: string): DiagramFile | undefined {
   try {
     const raw = safeStorage.getItem(key);
-    if (!raw || raw.length > LIMITS.maxTextChars) return undefined;
+    // Import size limits do not apply to documents already saved on this device.
+    if (!raw) return undefined;
     const stored: unknown = JSON.parse(raw);
     const envelope = stored as Partial<DocumentSession>;
     const session = envelope?.sessionFormat === SESSION_FORMAT ? envelope : undefined;

@@ -1,3 +1,4 @@
+import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { useState, useSyncExternalStore, type FocusEvent, type CSSProperties } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
 import { stencilMenu } from "../../editor/builtinActions";
@@ -20,6 +21,7 @@ import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 import { Icon } from "../../components/Icon";
+import { MarkdownEditor } from "../../components/markdown/lazy";
 import { StencilIcon } from "../../components/StencilIcon";
 import { stencilLabel, vendorLabel } from "../../i18n/stencils";
 
@@ -237,6 +239,23 @@ export function NodeIdentity({
           />
         </Field>
       )}
+      <Field label={t("inspector.description")} group>
+        <MarkdownEditor
+          value={node.data.description ?? ""}
+          placeholder={t("inspector.writeSomething")}
+          onChange={(val) =>
+            editor.updateNode(
+              node.id,
+              { description: val || undefined },
+              { merge: `inspector:node:${node.id}:description` },
+            )
+          }
+          maxLength={DOCUMENTATION_LIMITS.maxLength}
+          name="node-description"
+          ariaLabel={t("inspector.description")}
+          testId="inspector-field-node-description"
+        />
+      </Field>
       <Field label={t("inspector.boundary")}>
         <select
           className="insp-input"

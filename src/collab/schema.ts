@@ -58,7 +58,7 @@ export const hasNestedProps = (kind: RecordKind) => kind === "nodes" || kind ===
 
 /** Field order in a projected record (the rest follow, sorted): the editor's own export order. */
 const FIELD_ORDER: Record<RecordKind, readonly string[]> = {
-  nodes: ["id", "stencil", "label", "sublabel", "x", "y", "group", "props"],
+  nodes: ["id", "stencil", "label", "sublabel", "description", "x", "y", "group", "props"],
   edges: ["id", "from", "to", "label", "kind", "relation", "relationOrigin", "sourceSide", "targetSide", "props"],
   groups: ["id", "label", "tone", "x", "y", "width", "height", "group"],
   annotations: ["id", "kind", "text", "shape", "color", "textSize", "x", "y", "width", "height", "group"],

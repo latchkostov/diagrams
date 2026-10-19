@@ -158,12 +158,66 @@
   text-overflow: ellipsis;
 }
 
+/* Documentation badge: subtle top-right note icon when a node has a description. */
+.dn-doc-badge {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--text-3);
+  opacity: 0.65;
+  cursor: pointer;
+  transition:
+    opacity var(--dur-1),
+    color var(--dur-1),
+    background-color var(--dur-1);
+}
+
+.dn:hover .dn-doc-badge,
+.react-flow__node.selected .dn-doc-badge {
+  opacity: 1;
+  color: var(--text-2);
+}
+
+.dn-doc-badge:hover {
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 14%, var(--node-bg));
+}
+
+.dn-compact .dn-doc-badge {
+  top: 3px;
+  right: 4px;
+  width: 15px;
+  height: 15px;
+}
+
+.dn-iconOnly .dn-doc-badge {
+  top: 2px;
+  right: 2px;
+  width: 15px;
+  height: 15px;
+}
+
+/* Live mode hides the documentation badge so simulations stay focused on runtime telemetry without editing cues. */
+.is-live .dn-doc-badge {
+  display: none;
+}
+
 /* ---------- node tooltip (replaces the native title) ---------- */
 
 .node-tip {
   position: fixed;
   z-index: 60;
-  max-width: 280px;
+  max-width: min(280px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
   display: grid;
   gap: 2px;
   padding: 8px 10px;
@@ -177,12 +231,8 @@
   animation: tip-in var(--dur-2) var(--ease-out);
 }
 
-.node-tip.is-above {
-  transform: translate(-50%, -100%);
-}
-
-.node-tip.is-below {
-  transform: translate(-50%, 0);
+.node-tip.has-doc {
+  max-width: min(320px, calc(100vw - 16px));
 }
 
 @keyframes tip-in {
@@ -209,6 +259,34 @@
 
 .node-tip-desc {
   color: var(--text-3);
+}
+
+.node-tip-doc {
+  margin-top: 5px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  max-height: 150px;
+  overflow: hidden;
+}
+
+.node-tip-md {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.node-tip-md :is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6) {
+  font-size: 11.5px;
+  margin: 0 0 2px;
+  color: var(--text);
+}
+
+.node-tip-md p,
+.node-tip-md ul,
+.node-tip-md ol,
+.node-tip-md blockquote,
+.node-tip-md .md-table-wrap {
+  margin: 2px 0;
 }
 
 /* A hover card inside the viewport shows above everything else there: React Flow paints nodes in order, each its
@@ -250,4 +328,10 @@
 /* Keep handles measured for routing while presentation hides editing affordances. */
 .is-presenting .dn .dn-handle {
   visibility: hidden;
+}
+
+button.dn-doc-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  opacity: 1;
 }

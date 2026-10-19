@@ -32,6 +32,8 @@ export interface DiagramUi {
   setEditing: (target: InlineEdit | null) => void;
   /** Edit or live (not presenting or read-only): a double-click names a node, connection or boundary in the inspector. */
   rename?: (target: RenameTarget) => void;
+  /** Opens the inspector for a node's documentation when its corner badge is clicked. */
+  openDoc?: (nodeId: string) => void;
   /** Opens the edge context menu (edge labels live outside the edge's SVG group). */
   openEdgeMenu: (e: MouseEvent | ReactMouseEvent, edgeId: string) => void;
   /** A text's edit is done: if it grew over a node or edge it didn't cover at `before`, move it clear. */

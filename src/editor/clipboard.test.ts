@@ -314,3 +314,18 @@ describe("untrusted boundary clipboard hierarchy", () => {
     expect(pasted.groups.slice(0, 2).map((g) => g.group)).toEqual(["existing", "existing"]);
   });
 });
+
+it.each([123, null, {}, [], true, "x".repeat(50_001)])(
+  "rejects malformed clipboard documentation: %j",
+  (description) => {
+    expect(
+      parsePayload(
+        JSON.stringify({
+          format: CLIP_FORMAT,
+          nodes: [{ id: "a", stencil: "service.go", x: 0, y: 0, description }],
+          edges: [],
+        }),
+      ),
+    ).toBeNull();
+  },
+);

@@ -1,6 +1,8 @@
+import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { useState, type CSSProperties } from "react";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
+import { MarkdownEditor } from "../../components/markdown/lazy";
 import { t } from "../../i18n";
 import { colorLabel } from "../../i18n/chrome";
 import { PlanningUpgrade, RequestRoutesSection } from "../../planning/lazy";
@@ -15,6 +17,8 @@ export function DiagramPanel({ editor, meta, counts, focus, takeFocus }: Inspect
   const color = meta.color;
   const isCustomColor = !!color && !ANNOTATION_COLOR_IDS.includes(color as (typeof ANNOTATION_COLOR_IDS)[number]);
   const resolved = color ? resolveAnnotationColor(color) : null;
+  const setDescription = (val: string) =>
+    editor.updateMeta({ description: val || undefined }, { merge: "inspector:meta:description" });
 
   return (
     <>
@@ -36,17 +40,15 @@ export function DiagramPanel({ editor, meta, counts, focus, takeFocus }: Inspect
             data-testid="inspector-field-title"
           />
         </Field>
-        <Field label={t("inspector.description")}>
-          <textarea
-            className="insp-input"
-            rows={3}
+        <Field label={t("inspector.description")} group>
+          <MarkdownEditor
             value={meta.description ?? ""}
             placeholder={t("inspector.whatDoesThisDiagramShow")}
-            onChange={(e) =>
-              editor.updateMeta({ description: e.target.value || undefined }, { merge: "inspector:meta:description" })
-            }
+            onChange={setDescription}
+            maxLength={DOCUMENTATION_LIMITS.maxDiagramLength}
             name="description"
-            data-testid="inspector-field-description"
+            ariaLabel={t("inspector.description")}
+            testId="inspector-field-description"
           />
         </Field>
         <Field label={t("inspector.colour")} hint={t("chrome.canvasBackgroundTint")} group>

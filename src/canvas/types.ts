@@ -16,6 +16,7 @@ export type DiagramNodeData = {
   stencil: string;
   label: string;
   sublabel?: string;
+  description?: string;
   /** Id of the DiagramGroup (file id, not the React Flow node id) the node sits in. */
   group?: string;
   props?: Record<string, unknown>;

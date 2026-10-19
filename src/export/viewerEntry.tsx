@@ -3,6 +3,7 @@
 // stores before any app module is evaluated (some read storage as they load); then the viewer's set-up.
 import "./viewer/storage";
 import "./viewer/sandbox";
+import { MarkdownOfflineContext } from "../components/markdown/MarkdownImageContext";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@xyflow/react/dist/style.css";
@@ -17,7 +18,9 @@ import { ViewerApp } from "./viewer/ViewerApp";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <SettingsProvider>
-      <ViewerApp />
+      <MarkdownOfflineContext value={true}>
+        <ViewerApp />
+      </MarkdownOfflineContext>
     </SettingsProvider>
   </StrictMode>,
 );

@@ -164,7 +164,31 @@ export function useCanvasShortcuts(
           // Tab steps between nodes only from a node, an edge or the canvas; elsewhere it's the page's.
           const nav = optsRef.current.onNavigate;
           if (!nav || !onCanvasItem(e.target)) return;
-          if (nav(id === "select-next" ? "next" : "prev", e.target)) handled();
+          // Enter an annotation's link surface before stepping to the next canvas item.
+          // This runs in window capture, before any link's own keyboard handler.
+          const target = e.target instanceof HTMLElement ? e.target : null;
+          const node = target?.closest<HTMLElement>(".react-flow__node");
+          const links = Array.from(node?.querySelectorAll<HTMLAnchorElement>("[data-caption-root] a[href]") ?? []);
+          const current = target ? links.indexOf(target as HTMLAnchorElement) : -1;
+          const backwards = id === "select-prev";
+          if (current >= 0) {
+            const next = links[current + (backwards ? -1 : 1)];
+            if (next) {
+              handled();
+              next.focus();
+              return;
+            }
+            if (backwards && node) {
+              handled();
+              node.focus();
+              return;
+            }
+          } else if (!backwards && links[0]) {
+            handled();
+            links[0].focus();
+            return;
+          }
+          if (nav(backwards ? "prev" : "next", e.target)) handled();
           break;
         }
         case "select-toward":

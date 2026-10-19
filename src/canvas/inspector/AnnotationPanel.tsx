@@ -1,9 +1,11 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useInteractionOrLocal } from "../interaction";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
+import { MarkdownEditor } from "../../components/markdown/lazy";
 import { t } from "../../i18n";
 import { colorLabel, shapeLabel } from "../../i18n/chrome";
-import { ANNOTATION_LIMITS } from "../../model/annotations";
+import { ANNOTATION_LIMITS, annotationText } from "../../model/annotations";
 import {
   ANNOTATION_COLORS,
   ANNOTATION_COLOR_IDS,
@@ -25,6 +27,9 @@ export function AnnotationPanel({
   groups,
   onTextSettled,
 }: InspectorProps & { note: AnnotationFlowNode }) {
+  const { controller } = useInteractionOrLocal();
+  // A focus request made while this panel downloads can now find its field.
+  useLayoutEffect(() => controller.rendered());
   const id = note.id;
   const { kind } = note.data;
   const merge = (f: string) => ({ merge: `inspector:annotation:${id}:${f}` });
@@ -33,6 +38,8 @@ export function AnnotationPanel({
   const isCustomColor = !resolved.isPreset;
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const min = minSize[kind];
+  const supportsMarkdown = kind === "note" || kind === "text";
+  const setText = (text: string) => editor.updateAnnotation(id, { text: annotationText(text) }, merge("text"));
   /** The text's box as it is now (before an edit that may grow it). */
   const boxNow = () => ({
     x: note.position.x,
@@ -44,7 +51,7 @@ export function AnnotationPanel({
   const typedFrom = useRef<ReturnType<typeof boxNow> | null>(null);
   return (
     <Section>
-      <Field label={kind === "zone" ? t("inspector.label") : t("inspector.text")}>
+      <Field label={kind === "zone" ? t("inspector.label") : t("inspector.text")} group={supportsMarkdown}>
         {kind === "zone" ? (
           <input
             className="insp-input"
@@ -55,10 +62,8 @@ export function AnnotationPanel({
             name="annotation-text"
             data-testid="inspector-field-label"
           />
-        ) : (
-          <textarea
-            className="insp-input"
-            rows={3}
+        ) : supportsMarkdown ? (
+          <MarkdownEditor
             value={note.data.text}
             placeholder={t("inspector.writeSomething")}
             onFocus={() => (typedFrom.current = kind === "text" ? boxNow() : null)}
@@ -66,6 +71,18 @@ export function AnnotationPanel({
               if (typedFrom.current) onTextSettled?.(id, typedFrom.current);
               typedFrom.current = null;
             }}
+            onChange={setText}
+            maxLength={ANNOTATION_LIMITS.maxAnnotationText}
+            name="annotation-text"
+            ariaLabel={t("inspector.text")}
+            testId="inspector-field-text"
+          />
+        ) : (
+          <textarea
+            className="insp-input"
+            rows={3}
+            value={note.data.text}
+            placeholder={t("inspector.writeSomething")}
             onChange={(e) => editor.updateAnnotation(id, { text: e.target.value }, merge("text"))}
             maxLength={ANNOTATION_LIMITS.maxAnnotationText}
             name="annotation-text"
