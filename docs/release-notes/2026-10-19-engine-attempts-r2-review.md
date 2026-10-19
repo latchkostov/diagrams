@@ -29,3 +29,10 @@ step fails all twelve restored timing checks. Full parity passes: 2,712 goldens,
 missing or stale (1,596 Node tests and 93 Linux browser tests). No further scale>1 W1 golden changes:
 scale-1 and older outputs, and the existing R2 scale>1 W1 goldens, remain unchanged. Production build
 and bundle budgets pass: entry 109.0 kB gzip / 123.5 kB; viewer 593.4 kB / 805.0 kB.
+
+The one full Linux gate passed 12,363 unit tests and 1,802 browser tests, with two browser failures:
+slow-motion entry with Inputs open, and the trace sequence/export test's whole-test backstop. Both
+affected specs passed twice on clean master (56 passes). Their pre-existing status remains unconfirmed;
+the exact summaries and follow-up are in the
+[verification backlog fragment](../backlog/2026-10-19-engine-attempts-r2-browser-verification.md).
+Per the verification budget, no full suite was repeated and no browser assertion or timeout was weakened.
