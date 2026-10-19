@@ -704,6 +704,8 @@ test.describe("selecting text with the mouse", () => {
     // The diagram's description, a textarea: the triple-click takes its line.
     await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
+    // Populated Markdown starts in Preview; click it to open the textarea for native selection.
+    await page.getByTestId("inspector-field-description-rendered").click();
     const description = page.getByTestId("inspector-field-description");
     await expect(description).toBeVisible();
     await expectNativeSelection(description, "Platform", "Platform overview");
