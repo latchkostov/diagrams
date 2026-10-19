@@ -24,6 +24,20 @@ import { emulateTracker } from "./collab-tracker";
 // app's own origin: no server, no public network), speaking the WebTorrent tracker protocol the transport uses.
 // Selectors are data-testid only.
 
+/** A tracker that is there but never answers: every socket to it closes at once (matchmaking unreachable). */
+async function deadTracker(context: BrowserContext) {
+  await context.addInitScript(() => {
+    window.__collabEndpoints = {
+      trackers: [`${location.origin.replace(/^http/, "ws")}/__dead-tracker`],
+      iceServers: [],
+    };
+  });
+  await context.routeWebSocket(
+    (url) => url.pathname === "/__dead-tracker",
+    (ws) => void ws.close(),
+  );
+}
+
 /** Counts the page's peer connections (none may exist before consent). */
 async function countPeerConnections(context: BrowserContext) {
   await context.addInitScript(() => {
@@ -64,9 +78,12 @@ async function startRoom(page: Page): Promise<string> {
   await expect(dialog).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("room-start-disclosure")).toContainText("Everyone in the room can see your IP address");
   // What this page's room contacts, whoever runs it: the endpoints this page has (one tracker, the test's own, on
-  // this origin; none in tests without a tracker), by host.
+  // this origin), by host; with none (tests without a tracker), that this copy has no collaboration servers.
   await expect(page.getByTestId("room-start-disclosure")).toContainText("The services below");
-  await expect(page.getByTestId("room-services")).toHaveText(`Services: ${await trackerHosts(page)}`);
+  const hosts = await trackerHosts(page);
+  await expect(page.getByTestId("room-services")).toHaveText(
+    hosts ? `Services: ${hosts}` : "This copy of Live Diagrams has no collaboration servers set up.",
+  );
   await page.getByTestId("room-start-confirm").click();
   await expect(page.getByTestId("room-started-dialog")).toBeVisible();
   await expect(page.getByTestId("room-link-copy")).toBeFocused();
@@ -661,9 +678,11 @@ test("Ctrl+K finds Edit together; a Private diagram has no room row and explains
 });
 
 test("matchmaking unreachable: the alert says so, offers a file, and Retry keeps the keyboard on the chip", async ({
+  context,
   page,
   consoleErrors,
 }) => {
+  await deadTracker(context);
   await page.clock.install();
   await page.goto("./?view=canvas&example=kafka-order-pipeline");
   await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -673,6 +692,7 @@ test("matchmaking unreachable: the alert says so, offers a file, and Retry keeps
   const alert = page.getByTestId("room-alert");
   await expect(alert).toContainText("Could not connect to this room");
   await expect(alert).toContainText("You can send a diagram file instead");
+  await expect(page.getByTestId("room-no-servers")).toHaveCount(0);
   await page.clock.resume();
   await expectAxeClean(page, "room-alert");
   const downloading = page.waitForEvent("download");
@@ -684,6 +704,51 @@ test("matchmaking unreachable: the alert says so, offers a file, and Retry keeps
   await expect(alert).toHaveCount(0);
   await expect(chip(page)).toBeFocused();
   expectNoErrors(consoleErrors);
+});
+
+test("a build with no trackers says so plainly, to the one who starts a room and to a joiner", async ({
+  browser,
+  page,
+  consoleErrors,
+}) => {
+  // No endpoints at all: the e2e build given none, as a copy built without any would be.
+  const NO_SERVERS = "This copy of Live Diagrams has no collaboration servers set up.";
+  const other = await browser.newContext();
+  try {
+    await page.clock.install();
+    await page.goto("./?view=canvas&example=kafka-order-pipeline");
+    await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    await page.evaluate(() => window.dispatchEvent(new Event("diagrams:edit-together")));
+    await expect(page.getByTestId("room-services")).toHaveText(NO_SERVERS);
+    await page.getByTestId("room-start-confirm").click();
+    const link = await page.getByTestId("room-link").inputValue();
+    await page.getByTestId("room-started-done").click();
+    await pauseClock(page);
+    await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+    const alert = page.getByTestId("room-alert");
+    await expect(alert).toContainText(NO_SERVERS);
+    await expect(alert).toContainText("VITE_COLLAB_TRACKERS");
+    await expect(alert).not.toContainText("Could not connect");
+    await expect(chip(page)).toContainText("No collaboration servers");
+    await page.clock.resume();
+    await expectAxeClean(page, "room-alert");
+    // A joiner of the same copy: told before joining, and again once the wait is over.
+    const guest = await other.newPage();
+    await guest.clock.install();
+    await guest.goto(link);
+    await expect(guest.getByTestId("room-services")).toHaveText(NO_SERVERS);
+    await guest.getByTestId("room-join-accept").click();
+    await expect(chip(guest)).toHaveAttribute("data-state", "connecting");
+    await pauseClock(guest);
+    await guest.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
+    const said = guest.getByTestId("room-connecting-failed");
+    await expect(said).toHaveAttribute("data-reason", "no-trackers");
+    await expect(said).toContainText(NO_SERVERS);
+    await expect(said).not.toContainText("Could not connect");
+    expectNoErrors(consoleErrors);
+  } finally {
+    await other.close();
+  }
 });
 
 test("a peer that leaves shows Reconnecting…, then Everyone else left; a joiner nobody answers is told so", async ({

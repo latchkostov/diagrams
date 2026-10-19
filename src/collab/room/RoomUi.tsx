@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import type { CanvasHandle } from "../../canvas/CanvasView";
 import { t, useLocale } from "../../i18n";
+import { BRAND_NAME } from "../../lib/deployment";
 import { appBaseUrl } from "../../interop/share";
 import { copyText } from "../../interop/ui/copyText";
 import { Dialog } from "../../interop/ui/Dialog";
@@ -28,7 +29,7 @@ import { createInteractionController } from "../../canvas/interaction/controller
 import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
 import { interactionJournal } from "../../canvas/interaction/journal";
 import { RECONNECT_MS } from "./timing";
-import { roomEndpoints, serviceHosts } from "./endpoints";
+import { hasTrackers, roomEndpoints, serviceHosts } from "./endpoints";
 import "./room.css";
 
 // The room's controls (collaboration plan §2.2–2.6): the consent dialogs (start and join), what a joiner sees while
@@ -149,8 +150,11 @@ const CHIP_TEXT: Record<RoomState, (peers: number) => string> = {
   here: (peers) => t("collab.chipHere", { count: peers + 1 }),
   reconnecting: () => t("collab.chipReconnecting"),
   alone: () => t("collab.chipAlone"),
-  failed: () => t("collab.chipFailed"),
+  failed: () => (hasTrackers() ? t("collab.chipFailed") : t("collab.chipNoServers")),
 };
+
+/** Why nothing can connect, when this build names no tracker: said plainly, with the fix for whoever runs it. */
+const noServers = () => t("collab.noServers", { app: BRAND_NAME });
 
 const LINK_PROBLEMS: Record<RoomLinkProblem, () => string> = {
   missing: () => t("collab.linkDamaged"),
@@ -404,7 +408,7 @@ function StartDialog({
       </ul>
       <NameField value={alias} onChange={setAlias} testId="room-start-alias" />
       <p className="ix-muted" data-testid="room-services">
-        {t("collab.services", { list: services() })}
+        {hasTrackers() ? t("collab.services", { list: services() }) : noServers()}
       </p>
     </Dialog>
   );
@@ -490,7 +494,7 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
       <NameField value={alias} onChange={setAlias} testId="room-join-alias" />
       <p className="ix-muted">{t("collab.unverified")}</p>
       <p className="ix-muted" data-testid="room-services">
-        {t("collab.services", { list: services() })}
+        {hasTrackers() ? t("collab.services", { list: services() }) : noServers()}
       </p>
     </Dialog>
   );
@@ -708,10 +712,16 @@ function RoomAlert({
   if (state !== "failed") return null;
   return (
     <div className="room-alert" role="alert" data-testid="room-alert" style={{ insetBlockStart: top + 8 }}>
-      <p>
-        <strong>{t("collab.connectionFailed")}</strong>
-        {open.session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
-      </p>
+      {hasTrackers() ? (
+        <p>
+          <strong>{t("collab.connectionFailed")}</strong>
+          {open.session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
+        </p>
+      ) : (
+        <p data-testid="room-no-servers">
+          <strong>{noServers()}</strong> {t("collab.noServersHint")}
+        </p>
+      )}
       <p className="ix-muted">{t("collab.fileFallback")}</p>
       <div className="room-alert-actions">
         <button className="btn" onClick={() => saveRoomCopy(open, canvas)} data-testid="room-alert-file">
@@ -776,16 +786,23 @@ function ConnectingFailure({
   // attempt (Retry starts a fresh wait).
   const unanswered = session.noAnswer;
   if (!session.connectionFailed && !unanswered) return null;
+  const servers = hasTrackers();
   return (
     <div
       role="alert"
       data-testid="room-connecting-failed"
-      data-reason={unanswered ? "no-answer" : session.connectivity}
+      data-reason={!servers ? "no-trackers" : unanswered ? "no-answer" : session.connectivity}
     >
-      <p>
-        {unanswered ? t("collab.noAnswer") : t("collab.connectionFailed")}
-        {!unanswered && session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
-      </p>
+      {!servers ? (
+        <p data-testid="room-no-servers">
+          {noServers()} {t("collab.noServersHint")}
+        </p>
+      ) : (
+        <p>
+          {unanswered ? t("collab.noAnswer") : t("collab.connectionFailed")}
+          {!unanswered && session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
+        </p>
+      )}
       <button
         className="btn"
         onClick={() => {

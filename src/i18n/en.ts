@@ -2467,6 +2467,10 @@ const en = {
   "collab.encrypted": "The diagram is end-to-end encrypted. Your copy stays on this device when you leave.",
   "collab.yourName": "Your name in the room",
   "collab.services": "Services: {list}",
+  "collab.noServers": "This copy of {app} has no collaboration servers set up.",
+  "collab.noServersHint":
+    "If you run it, name them with VITE_COLLAB_TRACKERS when you build it (see the self-hosting guide).",
+  "collab.chipNoServers": "No collaboration servers",
   "collab.startRoom": "Start room",
   "collab.starting": "Starting…",
   "collab.roomOpenWaiting": "Room open · waiting for someone to join",
