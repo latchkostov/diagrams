@@ -570,7 +570,9 @@ it("the JSON launcher runs only related tests, forwards options and rejects inva
   } finally {
     rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
-});
+  // Two real Vitest startups plus four rejected invocations measured 2.0 s locally.
+  // Allow 15x that startup cost under concurrent CI processes; this is a hang backstop.
+}, 30_000);
 
 it("subsets include dependencies, no-docker keeps Node parity and cannot stamp", () => {
   expect(names(["--only", "e2e"])).toEqual(["e2e-build", "preview-build", "internal-build", "locked-build", "e2e-1"]);

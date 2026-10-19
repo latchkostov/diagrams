@@ -166,6 +166,7 @@ export function useOverlayTestIds(root: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = root.current;
     if (!el) return;
+    el.querySelector(".react-flow__pane")?.setAttribute("data-testid", "canvas-pane");
     const minimap = el.querySelector(".react-flow__panel.react-flow__minimap");
     minimap?.setAttribute("data-testid", "canvas-minimap");
     // A toast stacks above the minimap rather than over it (src/interop/ui/toastStack.ts).

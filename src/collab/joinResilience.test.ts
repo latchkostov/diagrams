@@ -135,6 +135,7 @@ async function join(opts: {
 function expectConverged({ host, joiner }: { host: TestClient; joiner: TestClient }): void {
   expect(joiner.session.hasDocument, why(joiner)).toBe(true);
   expect(joiner.projection()).toBe(host.projection());
+  expect(joiner.diagram).toEqual(host.diagram);
 }
 
 const why = (c: TestClient) => JSON.stringify(c.session.stats.rejected);
@@ -357,5 +358,6 @@ describe("someone whose replies were dropped before they could count", () => {
     expect(joiner.session.stats.rejected["held-dropped"] ?? 0).toBeGreaterThan(0);
     expect(joiner.session.stats.rejected.quarantined ?? 0).toBe(0);
     expect(joiner.projection()).toBe(editor.projection());
+    expect(joiner.diagram).toEqual(editor.diagram);
   });
 });

@@ -2663,3 +2663,9 @@ details[open] > summary .lv-disclosure-chevron {
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* Particles are clickable (to trace their message). */
+.react-flow[data-live-particle="hover"] .react-flow__pane,
+.react-flow[data-live-particle="hover"] .react-flow__edge {
+  cursor: pointer;
+}

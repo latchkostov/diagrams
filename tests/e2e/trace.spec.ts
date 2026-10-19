@@ -6,6 +6,7 @@ import { pseudoText } from "../../src/i18n/pseudo";
 import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
 import {
   interactionJournalMark,
+  interactionLog,
   liveKeyLevels,
   waitForStableViewport,
   waitForCameraIdle,
@@ -98,16 +99,109 @@ const hopAttr = (page: Page, name: string) =>
   hops(page).evaluateAll((els, n) => els.map((e) => e.getAttribute(n)), name);
 
 /** Traces the next message from the Kafka storefront and waits for its whole journey. */
-async function traceKafkaOrder(page: Page) {
+async function traceKafkaOrder(page: Page, controlled = false) {
+  if (controlled) await page.clock.install();
   await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
   await openNodeMenu(page, "shopper", "sim.trace-next");
   await expect(card(page)).toHaveAttribute("data-state", "waiting");
   await expect(page.getByTestId("trace-waiting")).toContainText("Storefront");
+  if (controlled) await pauseClock(page);
   await page.getByTestId("trace-send-one").click();
-  await expect(card(page)).toHaveAttribute("data-state", "done", { timeout: 20_000 });
+  if (controlled) {
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(1000);
+        return card(page).getAttribute("data-state");
+      })
+      .toBe("done");
+  } else await expect(card(page)).toHaveAttribute("data-state", "done", { timeout: 20_000 });
 }
 
 test.describe("message trace", () => {
+  test("Live downloads TraceCard only when tracing starts", async ({ page }) => {
+    const downloads: string[] = [];
+    page.on("request", (request) => {
+      if (/\/(?:assets\/TraceCard-[A-Za-z0-9_-]+\.js|src\/live\/TraceCard\.tsx)(?:\?.*)?$/.test(request.url()))
+        downloads.push(request.url());
+    });
+    await page.clock.install();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&paused=1`);
+    await pauseClock(page);
+    // Flush both whenIdle's delay and its idle-callback fallback with the controlled clock.
+    await page.clock.runFor(4000);
+    expect(downloads).toEqual([]);
+    await page.getByTestId("rf__wrapper").evaluate((root) => root.setAttribute("data-live-particle", "hover"));
+    await expect(page.getByTestId("canvas-pane")).toHaveCSS("cursor", "pointer");
+    await page.clock.resume();
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-trace-message").click();
+    await page.getByTestId("live-trace-next").click();
+    await expect(card(page)).toHaveAttribute("data-state", "waiting");
+    expect(downloads).toHaveLength(1);
+  });
+
+  test("Escape in Live's more menu returns focus through the interaction controller", async ({ page }) => {
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+    const button = page.getByTestId("live-more");
+    await button.click();
+    await page.getByTestId("live-traffic").focus();
+    const mark = await interactionJournalMark(page);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-more-menu")).toHaveCount(0);
+    await expect(button).toBeFocused();
+    expect(await liveKeyLevels(page, mark)).toEqual(["escape:owner"]);
+    expect(await interactionLog(page, mark)).toContain("live.menu.closed:escape -> focus:element@now");
+  });
+
+  for (const key of ["Shift+F10", "ContextMenu"]) {
+    test(`${key}: keyboard shortcuts open a focused SVG edge menu`, async ({ page }) => {
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+      const edge = page.getByTestId("relationship-wrapper-order-events-to-inventory");
+      for (const live of [true, false]) {
+        if (!live) await page.getByTestId("live-toggle").click();
+        await expect(edge).toBeVisible();
+        expect(await edge.evaluate((el) => el instanceof SVGElement)).toBe(true);
+        await edge.focus();
+        await page.keyboard.press(key);
+        await expect(page.getByTestId("context-menu")).toBeFocused();
+        await expect(menuItem(page, "edge.edit-label")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(edge).toBeFocused();
+        await edge.dispatchEvent("keydown", {
+          key: key === "ContextMenu" ? key : "F10",
+          shiftKey: key !== "ContextMenu",
+        });
+        await expect(page.getByTestId("context-menu")).toBeFocused();
+        await expect(menuItem(page, "edge.edit-label")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(edge).toBeFocused();
+      }
+    });
+
+    test(`${key} opens the focused canvas node's menu in Edit and Live`, async ({ page }) => {
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+      for (const live of [true, false]) {
+        if (!live) await page.getByTestId("live-toggle").click();
+        const node = page.getByTestId(/^(rf__node-|node-live-focus-)shopper$/);
+        await node.focus();
+        await page.keyboard.press(key);
+        await expect(page.getByTestId("context-menu")).toBeFocused();
+        if (live) await expect(menuItem(page, "sim.inject")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(node).toBeFocused();
+        // Some browsers don't synthesize a pointer contextmenu event for these keys.
+        // The controller must handle the key itself as well as the physical shortcut.
+        await node.dispatchEvent("keydown", {
+          key: key === "ContextMenu" ? key : "F10",
+          shiftKey: key !== "ContextMenu",
+        });
+        await expect(page.getByTestId("context-menu")).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(node).toBeFocused();
+      }
+    });
+  }
+
   test("focus in the trace card never moves or deletes the selected canvas node", async ({ page }) => {
     await traceKafkaOrder(page);
     const node = page.getByTestId("node-shopper");
@@ -210,7 +304,8 @@ test.describe("message trace", () => {
     consoleErrors,
   }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await traceKafkaOrder(page);
+    await traceKafkaOrder(page, true);
+    await page.clock.resume();
     await page.getByTestId("trace-sequence").click();
     const dialog = page.getByTestId("sequence-dialog");
     await expect(dialog).toBeVisible();

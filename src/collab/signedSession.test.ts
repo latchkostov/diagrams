@@ -76,6 +76,37 @@ function onlyTo(from: TestClient, to: TestClient): () => void {
 }
 
 describe("signed rooms", () => {
+  it("a dropped sender admitted later is asked again and recovers the full diagram", async () => {
+    const r = await signedRoom(49, { viewOnly: true });
+    const [host] = r.clients;
+    const viewer = await r.join("viewer", 492);
+    const sendHost = host.session as unknown as { sendDoc(message: Uint8Array, to?: string): void };
+    const send = sendHost.sendDoc.bind(sendHost);
+    const spy = vi.spyOn(sendHost, "sendDoc").mockImplementation((message, to) => {
+      if (message[0] !== DOC.syncReply) send(message, to);
+    });
+    onTestFinished(() => spy.mockRestore());
+    const joiner = await r.join("joiner", 493);
+    expect(joiner.session.hasDocument).toBe(false);
+    // A valid reply from a viewer cannot count yet. Its held reply expires, without a quarantine.
+    (viewer.session as unknown as { sendDoc(message: Uint8Array, to?: string): void }).sendDoc(
+      frame(DOC.syncReply, Y.encodeStateAsUpdate(viewer.session.doc.ydoc)),
+      joiner.session.transport.self,
+    );
+    await r.settle();
+    r.clock.advance(COLLAB_LIMITS.heldMs);
+    await r.settle();
+    expect(rejected(joiner, "held-dropped")).toBeGreaterThan(0);
+    expect(joiner.session.diagnostics().behind).toBeGreaterThan(0);
+    expect(joiner.session.hasDocument).toBe(false);
+    expect(await host.session.appendRoster("admit", { who: viewer.session.signed!.key })).toBe(true);
+    await r.settle();
+    expect(joiner.session.hasDocument).toBe(true);
+    expect(joiner.diagram).toEqual(host.diagram);
+    expect(joiner.projection()).toBe(host.projection());
+    expect(rejected(joiner, "quarantined")).toBe(0);
+  });
+
   it("newcomers in a room where new people may edit are admitted, and their edits reach everyone", async () => {
     const r = await signedRoom(31);
     const b = await r.join("b", 312);

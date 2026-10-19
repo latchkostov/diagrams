@@ -25,3 +25,11 @@ Investigate slow-motion entry readiness with Inputs open under broader load;
 retain the exact state assertion and zero retries. The separate fault-style
 and arrow-scroll fixes passed 200 runs per case and five affected/neighbour
 repetitions (790 tests). No slow-motion or live-session implementation was changed.
+
+## Follow-ups 13 investigation
+
+A separate, deterministic Inputs race is now covered and fixed: a delayed rebuild could discard a newly started slow-motion capture. Capture now flushes the debounce and waits for a yielded replay before borrowing the engine. Unit regressions cover the origin and a later replay position; restoring the previous implementation makes the origin regression finish with slow motion off.
+
+This does **not** establish the cause of the incident above. Its traffic-only change patches the existing run; the deterministic reproduction also changes dot scale to require a rebuild. Keep the original incident open until its failure can be observed with capture/rebuild evidence.
+
+After syncing onto engine R2 (#204), the unchanged original Inputs/Apply fix browser test passed five Linux load repetitions with eight workers and eight CPUs, alongside the affected specs and camera, drawing, keyboard and inspector neighbours. The complete load sweep passed 925 tests, with zero failures, flakes or skips. No engine behavior, assertion deadline or retry policy changed.

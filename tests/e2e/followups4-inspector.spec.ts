@@ -279,11 +279,12 @@ async function pendingPlacementPoint(page: Page) {
   return page.getByTestId("canvas-wrap").evaluate((pane) => {
     const b = pane.getBoundingClientRect();
     const flow = pane.querySelector('[data-testid="rf__wrapper"]');
+    const surface = pane.querySelector('[data-testid="canvas-pane"]');
     // Leave room for the new item when its selection opens the Inspector.
     const x = Math.min(b.width / 2, 400);
     for (const y of [90, 160, 200, b.height * 0.4, b.height * 0.6]) {
       const hit = document.elementFromPoint(b.x + x, b.y + y)?.closest("[data-testid]");
-      if (hit === flow || hit === pane) return { x, y };
+      if (hit === surface || hit === flow || hit === pane) return { x, y };
     }
     throw new Error("Expected an uncovered placement point");
   });

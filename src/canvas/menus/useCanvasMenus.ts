@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   type Dispatch,
   type MouseEvent as ReactMouseEvent,
@@ -96,7 +97,11 @@ export function useCanvasContextMenus(
   // ---------------------------------------------------------------- context menus
 
   const openMenu = useCallback(
-    (e: ReactMouseEvent | MouseEvent, ctx: Omit<ActionContext, "editor" | "point">) => {
+    (
+      e: Pick<MouseEvent, "preventDefault" | "clientX" | "clientY">,
+      ctx: Omit<ActionContext, "editor" | "point">,
+      via: "pointer" | "keyboard" = "pointer",
+    ) => {
       e.preventDefault();
       if (readOnly) return;
       const full: ActionContext = {
@@ -121,7 +126,7 @@ export function useCanvasContextMenus(
             return tr("menu.valueNodeValueEdgeValueGroupValueSelectionValueAnnotation", { target: ctx.target });
           },
         },
-        { via: "pointer", platform: platform() },
+        { via, platform: platform() },
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state setters are stable; preserve CanvasView's original dependencies
@@ -172,5 +177,60 @@ export function useCanvasContextMenus(
     (e: ReactMouseEvent) => openMenu(e, { target: "selection", selection: editor.getSelection() }),
     [openMenu, editor],
   );
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing || !(e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) return;
+      const target = e.target;
+      if (
+        !(target instanceof Element) ||
+        !target.closest('[data-testid="canvas-wrap"]') ||
+        !target.matches(".react-flow__node, .react-flow__edge")
+      )
+        return;
+      const id = target.getAttribute("data-id");
+      if (!id || readOnly) return;
+      let selection = editor.getSelection();
+      const groupId = id.startsWith("group:") ? id.slice("group:".length) : undefined;
+      const selected =
+        selection.nodeIds.includes(id) ||
+        selection.edgeIds.includes(id) ||
+        (!!groupId && selection.groupIds.includes(groupId));
+      const multiple = selected && selection.nodeIds.length + selection.edgeIds.length + selection.groupIds.length > 1;
+      const ctx: Omit<ActionContext, "editor" | "point"> | undefined = editor.getNode(id)
+        ? { target: "node", nodeId: id, selection }
+        : editor.getEdge(id)
+          ? { target: "edge", edgeId: id, selection }
+          : editor.getAnnotation(id)
+            ? { target: "annotation", nodeId: id, selection }
+            : groupId && editor.getGroup(groupId)
+              ? { target: "group", groupId, selection }
+              : undefined;
+      if (!ctx) return;
+      if (multiple) ctx.target = "selection";
+      else {
+        menus.selecting("keyboard");
+        selection = {
+          ...EMPTY,
+          ...(ctx.target === "edge"
+            ? { edgeIds: [id] }
+            : ctx.target === "group"
+              ? { groupIds: [groupId!] }
+              : { nodeIds: [id] }),
+        };
+        editor.select(selection);
+        ctx.selection = selection;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      const box = target.getBoundingClientRect();
+      openMenu(
+        { preventDefault: () => {}, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 },
+        ctx,
+        "keyboard",
+      );
+    };
+    window.addEventListener("keydown", key, true);
+    return () => window.removeEventListener("keydown", key, true);
+  }, [editor, openMenu, readOnly, menus]);
   return [onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu] as const;
 }

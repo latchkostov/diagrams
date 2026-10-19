@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import type { DiagramFile, Simulation } from "../../model/types";
 import type { SimEngine } from "../../sim/types";
@@ -17,8 +17,8 @@ const now = (work: () => void) => {
   return () => {};
 };
 
-function setup(opts: { traffic: boolean; play?: number; sim?: string }) {
-  const c = new LiveController(kafka, { replayDelayMs: 0 });
+function setup(opts: { traffic: boolean; play?: number; sim?: string; replayDelayMs?: number }) {
+  const c = new LiveController(kafka, { replayDelayMs: opts.replayDelayMs ?? 0 });
   if (opts.sim) c.selectSimulation(kafka.simulations!.find((s) => s.id === opts.sim)!);
   c.setTraffic(opts.traffic);
   c.setPlaying(true);
@@ -39,6 +39,32 @@ const fingerprint = (engine: SimEngine) => {
 };
 
 describe("slow motion session", () => {
+  it.each([0, 2000])("starting from paused Inputs waits for the rebuild before recording (at %s)", (at) => {
+    vi.useFakeTimers();
+    try {
+      const { c, slow } = setup({ traffic: true, sim: "black-friday", replayDelayMs: 250 });
+      c.seek(at);
+      vi.runAllTimers();
+      c.setPlaying(false);
+      c.subscribe(() => {
+        if (c.getState().generation !== generation) {
+          generation = c.getState().generation;
+          slow.drop();
+        }
+      });
+      let generation = c.getState().generation;
+      c.setInputs({ ...c.getState().inputs, traffic: 14, scale: 10 });
+      expect(c.busy).toBe(true);
+      slow.start({ kind: "next", node: "shopper" });
+      vi.runAllTimers();
+      expect(c.busy).toBe(false);
+      expect(slow.getState().status).toBe("on");
+      expect(c.isPlaying).toBe(false);
+      c.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("restores live speed when a new watch request leaves replay waiting for a message", () => {
     const { c, slow } = setup({ traffic: true, play: 30 });
     c.setSpeed(8);

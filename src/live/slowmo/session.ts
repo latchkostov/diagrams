@@ -91,6 +91,7 @@ export class SlowMotion {
   private sandbox: LookAhead | null = null;
   private cached: { t: number; script: SlowScript; frame: SlowFrame } | null = null;
   private take = 0;
+  private pendingStart: SlowSource | null = null;
 
   constructor(
     private controller: LiveController,
@@ -100,6 +101,13 @@ export class SlowMotion {
   /** Armed: start as soon as the awaited message is on its way. Returns the unsubscribe. */
   watch(): () => void {
     return this.controller.subscribe(() => {
+      if (this.pendingStart && !this.controller.busy) {
+        const source = this.pendingStart;
+        this.pendingStart = null;
+        if (this.controller.getState().needsRestart) this.end();
+        else this.start(source);
+        return;
+      }
       if (this.state.status === "armed" && this.controller.getState().trace?.current) this.start({ kind: "followed" });
     });
   }
@@ -136,6 +144,9 @@ export class SlowMotion {
 
   /** Record the chosen message's journey, then replay it. */
   start(source: SlowSource): void {
+    // Flush a debounced Inputs rebuild before taking the checkpoint. A replay to a
+    // later time can yield: wait for it before borrowing the engine for recording.
+    this.controller.flush();
     if (this.controller.getState().needsRestart) return;
     const prev = this.state.status;
     if (prev === "capturing") this.abortCapture();
@@ -143,6 +154,11 @@ export class SlowMotion {
     if (prev === "armed") this.wasPlaying = this.wasPlaying || this.controller.isPlaying;
     // Capturing before pausing: pausing publishes, and an armed session must not start twice.
     this.set({ ...OFF, status: "capturing", take: this.take });
+    if (this.controller.busy) {
+      this.pendingStart = source;
+      return;
+    }
+    this.pendingStart = null;
     this.controller.setPlaying(false);
     this.controller.hold(true);
     const sandbox = this.controller.lookAhead();
@@ -218,6 +234,7 @@ export class SlowMotion {
 
   /** Back to live: exactly where it was, playing if it was. */
   end(): void {
+    this.pendingStart = null;
     const status = this.state.status;
     if (status === "off") return;
     if (status === "capturing") this.abortCapture();
@@ -227,9 +244,12 @@ export class SlowMotion {
     this.controller.setPlaying(this.wasPlaying);
   }
 
-  /** The engine was rebuilt (restart, a structural edit): drop slow motion without touching play. */
-  drop(): void {
-    if (this.state.status === "off") return;
+  /** Drop an invalidated journey without touching play; false means a pending capture survives this rebuild. */
+  drop(): boolean {
+    // This rebuild is the one a requested capture is waiting for.
+    if (this.pendingStart && this.controller.busy) return false;
+    this.pendingStart = null;
+    if (this.state.status === "off") return true;
     if (this.state.status === "capturing") {
       this.cancel?.();
       this.cancel = null;
@@ -238,6 +258,7 @@ export class SlowMotion {
     this.set(OFF);
     this.restoreSpeed();
     this.controller.hold(false);
+    return true;
   }
 
   private restoreSpeed(): void {
@@ -248,6 +269,7 @@ export class SlowMotion {
 
   /** The live view unmounted: stop any look-ahead in progress (the engine goes with the view). */
   dispose(): void {
+    this.pendingStart = null;
     this.cancel?.();
     this.cancel = null;
   }

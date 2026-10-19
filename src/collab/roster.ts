@@ -176,6 +176,20 @@ const entryBytes = (roomId: string, scope: Scope, e: Omit<RosterEntry, "sig">) =
 /** An entry's scope: its epoch (P4), or its epoch's start (`<epoch>:<start signature>`, knock-to-join). */
 export type Scope = number | string;
 
+/** A signature checked for one room and scope; authority still depends on its causal past. */
+export class VerifiedRosterEntry {
+  private constructor(
+    readonly entry: RosterEntry,
+    readonly roomId: string,
+    readonly scope: Scope,
+  ) {}
+
+  static async verify(entry: RosterEntry, roomId: string, scope: Scope): Promise<VerifiedRosterEntry | undefined> {
+    if (!(await verify(entry.by, base64UrlToBytes(entry.sig), entryBytes(roomId, scope, entry)))) return undefined;
+    return new VerifiedRosterEntry(entry, roomId, scope);
+  }
+}
+
 /** An entry signed by `identity` for this room and epoch (whatever its authority: its past decides). */
 export async function signEntry(
   identity: Identity,
@@ -532,25 +546,48 @@ export class SignedRoster {
         result.throttled++;
         continue;
       }
-      if (!(await verify(e.by, base64UrlToBytes(e.sig), entryBytes(this.roomId, this.epoch, e)))) {
+      if (!(await VerifiedRosterEntry.verify(e, this.roomId, this.epoch))) {
         result.refused++;
         continue;
       }
-      if (e.deps.every((d) => this.known(d))) {
-        this.settle(e, result);
-        if (this.pending.size) this.drainReady(result);
-        continue;
-      }
-      this.pending.set(e.sig, e);
-      // Bounded: only entries genuinely missing their past wait; the oldest goes first (sent again, it's checked again).
-      for (const old of this.pending.keys()) {
-        if (this.pending.size <= MAX_PENDING) break;
-        this.pending.delete(old);
-      }
+      this.accept(e, result);
     }
     result.waiting = [...seen].filter((sig) => this.pending.has(sig)).length;
     if (result.changed) for (const l of this.listeners) l();
     return result;
+  }
+
+  /** Resolve already checked entries without spending the peer supplying their missing authority's budget. */
+  addVerified(list: readonly VerifiedRosterEntry[]): AddResult {
+    const result: AddResult = { added: 0, refused: 0, throttled: 0, waiting: 0, changed: false };
+    const seen = new Set<string>();
+    for (const verified of [...list].sort((a, b) => order(a.entry, b.entry))) {
+      const e = verified.entry;
+      if (verified.roomId !== this.roomId || verified.scope !== this.epoch) {
+        result.refused++;
+        continue;
+      }
+      if (this.known(e.sig) || this.pending.has(e.sig) || seen.has(e.sig)) continue;
+      seen.add(e.sig);
+      this.accept(e, result);
+    }
+    result.waiting = [...seen].filter((sig) => this.pending.has(sig)).length;
+    if (result.changed) for (const l of this.listeners) l();
+    return result;
+  }
+
+  private accept(e: RosterEntry, result: AddResult): void {
+    if (e.deps.every((d) => this.known(d))) {
+      this.settle(e, result);
+      if (this.pending.size) this.drainReady(result);
+      return;
+    }
+    this.pending.set(e.sig, e);
+    // Bounded: only entries genuinely missing their past wait; the oldest goes first.
+    for (const old of this.pending.keys()) {
+      if (this.pending.size <= MAX_PENDING) break;
+      this.pending.delete(old);
+    }
   }
 
   /** Whether `key` may make an entry of `op` now. */

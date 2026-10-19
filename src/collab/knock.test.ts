@@ -540,7 +540,7 @@ describe("remove with re-key: edge cases", () => {
     expect(host.session.signed!.roster.log()).toHaveLength(before);
   }, 60_000);
 
-  it("full-capacity epoch chains fit lobby messages and converge: a member, a newcomer, a denial, in any order", async () => {
+  it("every full-capacity chain piece seals into one lobby frame, then converges in any order", async () => {
     const r = await knockRoom(94);
     const host = r.host.client!;
     const m = await r.join("m");
@@ -627,7 +627,23 @@ describe("remove with re-key: edge cases", () => {
     const data = host.session.signed!.knock!.chain.data(host.session.signed!.current);
     expect(data.starts).toHaveLength(MAX_EPOCHS);
     expect(JSON.stringify(data).length).toBeGreaterThan(MAX_LOBBY_MESSAGE_BYTES);
-    const pieces = chainMessages(data, []);
+    const current = host.session.signed!.current!;
+    const secret = host.session.signed!.knock!.chain.secretOf(current)!;
+    const wraps = await Promise.all(
+      Array.from({ length: 64 }, async () => {
+        const identity = await newIdentity();
+        const agreement = await newAgreement();
+        return wrapFor(r.lobbyKeys.roomId, scopeOf(current), r.host, { key: identity.key, x: agreement.x }, secret);
+      }),
+    );
+    const pieces = chainMessages(data, wraps);
+    const lobby = (host.session as unknown as { lobby: Lobby }).lobby;
+    for (const piece of pieces) {
+      const frames = await lobby.seal(piece);
+      expect(frames).toHaveLength(1);
+      expect(frames[0].byteLength).toBeLessThanOrEqual(COLLAB_LIMITS.maxDocFrameBytes);
+    }
+    expect(pieces.at(-1)!.wraps).toHaveLength(64);
     expect(pieces.length).toBeGreaterThan(1);
     for (const piece of pieces) expect(textToBytes(JSON.stringify(piece)).length).toBeLessThan(MAX_LOBBY_MESSAGE_BYTES);
     host.edit((d) => ({ ...d, title: "Thirty-one" }));
