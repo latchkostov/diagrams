@@ -59,7 +59,6 @@ import {
   type EdgeTypes,
   type IsValidConnection,
 } from "@xyflow/react";
-import { examples } from "../examples";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import { DRAFT_SLUG, getDiagramIdentity, isLibrarySlug, setDiagramPrivate, setOnDeviceAllowed } from "../lib/diagramIO";
@@ -1155,7 +1154,6 @@ function CanvasInner({
                 {(nodeCount > 0 || live) && (
                   <LiveView
                     readOnly={readOnly}
-                    example={!initial && !modified && examples.some((example) => example.slug === slug)}
                     initial={viewer?.live}
                     onHandle={receiveLiveHandle}
                     editor={readOnly ? undefined : editor}

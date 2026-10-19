@@ -448,14 +448,17 @@ test("fault markers and expectations show names, and overflow supports arrow key
   await expect(page.getByTestId("live-traffic")).toBeFocused();
 });
 
-test("Go Live on an example starts its first simulation, with Free play one choice away", async ({ page }) => {
+test("Go Live opens Free play on examples and personal diagrams, with saved drills one choice away", async ({
+  page,
+}) => {
   await page.goto("./?view=canvas&example=zone-outage-drill");
   await page.getByTestId("live-toggle").click();
-  await expect(page.getByTestId("live-sim-picker")).toHaveValue("health-checks");
-  await page.getByTestId("live-sim-picker").selectOption("");
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
   await expect(page.getByTestId("live-timeline-input")).toHaveCount(0);
-  // A saved personal copy has the same simulations, but keeps the existing Free play default.
+  await page.getByTestId("live-sim-picker").selectOption("health-checks");
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("health-checks");
+  await expect(page.getByTestId("live-timeline-input")).toBeVisible();
+  // A saved personal copy has the same Free play default.
   await page.getByTestId("live-toggle").click();
   await page.getByTestId("import-input").setInputFiles({
     name: "own-diagram.json",

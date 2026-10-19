@@ -28,6 +28,7 @@ const en = {
   "liveSession.lookAhead": "30 s",
   "liveSession.workBudget": "Too much traffic for this sampling; restart with more messages per dot.",
   "liveSession.noFinishedMessage": "No message has finished its journey yet. Try again in a moment.",
+  "liveSession.noTrafficSources": "Nothing is sending traffic yet. Click a node to send a request, or add a source.",
   "liveSession.recordedFor": "Recorded for {duration} of simulated time: {summary}.",
   "liveSession.longReplay": "This slow motion runs {duration}: → skips to the next hop.",
   "liveSession.restarted": "The diagram changed, so the simulation restarted.",

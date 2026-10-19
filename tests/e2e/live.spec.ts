@@ -143,6 +143,28 @@ const processed = async (page: Page, nodeId: string) =>
   Number(await page.getByTestId(`node-badge-${nodeId}`).getAttribute("data-processed"));
 
 test.describe("live view", () => {
+  test("traffic=0 keeps Free play idle until traffic is enabled", async ({ page }) => {
+    await page.clock.install();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await pauseClock(page);
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
+    await page.getByTestId("live-more").click();
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "false");
+    await page.getByTestId("live-more").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await page.clock.runFor(1000);
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-particles", "0");
+    await expect(page.getByTestId("live-notice")).toHaveCount(0);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-traffic").click();
+    await page.clock.runFor(1000);
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")))
+      .toBeGreaterThan(0);
+  });
+
   test("the Live toggle (and L) shows and hides the controls", async ({ page, consoleErrors }) => {
     await page.clock.install();
     await gotoCanvas(page, KAFKA);
@@ -150,14 +172,14 @@ test.describe("live view", () => {
     await page.getByTestId("live-toggle").click();
     await waitForLiveSession(page);
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
-    // Public examples start their first saved simulation; Free play remains in the picker.
+    // Every diagram opens Free play; saved simulations remain in the picker.
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
     // The less common controls live behind "⋯".
     await expect(page.getByTestId("live-traffic")).toHaveCount(0);
     await page.getByTestId("live-more").click();
-    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "false");
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "true");
     await page.getByTestId("live-more").click();
-    await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
     await expect(page).toHaveURL(/live=1/);
 
     await page.keyboard.press("l");

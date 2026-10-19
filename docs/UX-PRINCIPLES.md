@@ -44,6 +44,10 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   itself (`VITE_BRAND_NAME`, docs/SELF-HOSTING.md): the top bar and the page title then say that name.
 - **Live** is the mode where messages flow (toggle, L). A **simulation** is a saved, scripted run you
   replay in it. "Free play" is live without one. The picker, panel and Live menu use **Simulations**.
+  Going Live always opens Free play with traffic running at the diagram's configured source rates.
+  Saved simulations stay in the picker; an explicit **Run it** or simulation link starts the named run.
+  With no traffic sources, the existing hint slot explains how to send a request or add a source.
+  Explicit traffic-off links, click-to-play embeds and a Watch together host's state keep their intent.
 - A **Fault** is an action that takes down, slows, fails or cuts part of a system. A **Drill** is a saved
   simulation with fault steps. Use "drill" in gallery tags and example copy; the Live UI keeps "Simulations".
 - **Boundary** (never "group") for the box around nodes: Add boundary, Remove boundary, Colour.

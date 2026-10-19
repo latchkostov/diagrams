@@ -208,6 +208,9 @@ test.describe("inputs & capacity", () => {
     await page.getByTestId("lab-json-apply").click();
     await page.getByTestId("lab-open-editor").click();
     await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-notice")).toHaveText(
+      "Nothing is sending traffic yet. Click a node to send a request, or add a source.",
+    );
     await page.getByTestId("live-capacity").click();
 
     // Not a dead end: it names where traffic could enter.
@@ -215,6 +218,7 @@ test.describe("inputs & capacity", () => {
     await expect(page.getByTestId("capacity-add-entry-orders")).toHaveCount(0);
     await page.getByTestId("capacity-add-entry-api").click();
     await expect(page.getByTestId("capacity-no-entries")).toHaveCount(0);
+    await expect(page.getByTestId("live-notice")).toHaveCount(0);
     const rate = page.locator('[data-testid^="capacity-rate-"]:not([data-testid*="slider"])').first();
     await expect(rate).toBeFocused();
     await rate.fill("5k");
