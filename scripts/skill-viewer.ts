@@ -35,7 +35,7 @@ export async function bundleModule(root: string, entry: string, header: string[]
     plugins: [i18n()],
     build: {
       write: false,
-      minify: false,
+      minify: true,
       copyPublicDir: false,
       reportCompressedSize: false,
       lib: { entry: path.join(root, entry), formats: ["es"], fileName: path.basename(entry, ".ts") },

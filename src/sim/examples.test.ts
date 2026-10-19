@@ -8,7 +8,6 @@ import { exampleTestLabel } from "./exampleLabels";
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
 /** Most examples tell two stories; these tell more. */
 const SIMULATIONS: Record<string, number> = {
-  "../examples/blocking-call.json": 1,
   "../examples/where-the-time-goes.json": 3,
   "../examples/aws-serverless-orders.json": 3,
   "../examples/black-friday-commerce.json": 3,
@@ -24,12 +23,14 @@ describe("saved example simulations with the real stencil registry", () => {
     it(`${label} has the expected number of presentations and valid node references`, () => {
       expect(diagram.simulations?.length).toBe(SIMULATIONS[path] ?? 2);
       const ids = new Set(diagram.nodes.map((node) => node.id));
+      const edgeIds = new Set(diagram.edges.map((edge) => edge.id));
       for (const node of diagram.nodes) expect(getStencil(node.stencil).id).toBe(node.stencil);
       for (const simulation of diagram.simulations ?? []) {
         expect(simulation.seed).toBeTypeOf("number");
         for (const profile of simulation.traffic) expect(ids.has(profile.node)).toBe(true);
         for (const id of Object.keys(simulation.setup?.props ?? {})) expect(ids.has(id)).toBe(true);
         for (const id of Object.keys(simulation.setup?.status ?? {})) expect(ids.has(id)).toBe(true);
+        for (const id of Object.keys(simulation.setup?.edges ?? {})) expect(edgeIds.has(id)).toBe(true);
         for (const step of simulation.timeline ?? []) {
           if (step.action.do === "note") {
             for (const id of step.action.focus ?? []) expect(ids.has(id)).toBe(true);
