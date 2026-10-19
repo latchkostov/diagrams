@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { FakeClock } from "./clock";
 import { COLLAB_LIMITS } from "./limits";
@@ -7,6 +7,8 @@ import { newAgreement, newIdentity } from "./signing";
 import { commitEpoch, signStart } from "./epochs";
 import { deriveRoomKeys, newEpochSecret } from "./keys";
 import { seededBytes } from "./random";
+import { DOC } from "./protocol";
+import { CollabSession } from "./session";
 import { canaryDiagram, openClient, roomFor, type TestClient } from "./transport/conformance";
 import { MemoryNetwork, type Faults } from "./transport/memory";
 import type { CollabTransport } from "./transport/types";
@@ -230,8 +232,22 @@ describe("a joiner always gets the document from a reachable host", () => {
   });
 
   it("a healthy join asks for the document once: no extra full request when the host's binding arrives", async () => {
+    // Every document message a session sends, with the session and its clock's time (the joiner's are picked out
+    // once it exists): its sync requests during the handshake, before any periodic anti-entropy.
+    const sent: { session: CollabSession; type: number; at: number }[] = [];
+    const proto = CollabSession.prototype as unknown as { sendDoc: (message: Uint8Array, to?: string) => void };
+    const sendDoc = proto.sendDoc;
+    const spy = vi.spyOn(proto, "sendDoc").mockImplementation(function (this: CollabSession, message, to) {
+      const at = (this as unknown as { clock: { now(): number } }).clock.now();
+      sent.push({ session: this, type: message[0], at });
+      return sendDoc.call(this, message, to);
+    });
+    onTestFinished(() => spy.mockRestore());
     const joined = await join({ seed: 11 });
     expectConverged(joined);
+    const mine = sent.filter((m) => m.session === joined.joiner.session);
+    const handshake = mine.filter((m) => m.at < mine[0].at + COLLAB_LIMITS.antiEntropyMs);
+    expect(handshake.filter((m) => m.type === DOC.syncRequest)).toHaveLength(1);
     // One sync reply's worth, not two: the binding arriving doesn't ask again.
     expect(joined.joiner.session.stats.rejected["held-dropped"] ?? 0).toBe(0);
     expect(joined.joiner.session.diagnostics()).toMatchObject({ waiting: "none", held: 0, behind: 0 });

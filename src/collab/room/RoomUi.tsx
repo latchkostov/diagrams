@@ -183,6 +183,7 @@ const NOTICES: Record<RoomNotice, () => string> = {
   denied: () => t("collab.deniedNotice"),
   removed: () => t("collab.removedNotice"),
   unsupported: () => t("collab.unsupportedBrowser"),
+  "unsupported-start": () => t("collab.unsupportedStart"),
 };
 
 /**
@@ -1151,34 +1152,10 @@ function WatchLayer(): ReactNode {
     (fn) => (session ? session.onChange(fn) : () => {}),
     () => (session ? [...session.knocks.keys()].join(",") : ""),
   );
-  if (!watch || !state || !session) return null;
-  const knocks = knocking ? [...session.knocks.values()] : [];
-  return (
-    <>
-      {(state.prompts.length > 0 || knocks.length > 0) && (
-        <RequestCards watch={watch} prompts={state.prompts} knocks={knocks} session={session} />
-      )}
-      {state.inert && state.following && <DrivingPopover watch={watch} state={state} at={state.inert} />}
-    </>
-  );
-}
-
-/** The request cards under the chip (the toolbar measured only while there are some). */
-function RequestCards({
-  watch,
-  prompts,
-  knocks,
-  session,
-}: {
-  watch: WatchTogether;
-  prompts: Prompt[];
-  knocks: Knock[];
-  session: CollabSession;
-}) {
-  const top = useToolbarBottom();
-  const stack = useRef<HTMLDivElement>(null);
   // Focus was in a card that went (answered, or its newcomer left): it moves to the next card, else to the room chip,
-  // never to the page. Focus anywhere else is left alone.
+  // never to the page. Focus anywhere else is left alone. Here, not in the cards' stack: the last card going takes the
+  // stack with it.
+  const stack = useRef<HTMLDivElement>(null);
   const focusInside = useRef(false);
   useLayoutEffect(() => {
     if (!focusInside.current) return;
@@ -1194,8 +1171,45 @@ function RequestCards({
     next?.focus();
     focusInside.current = !!next && !!stack.current?.contains(next);
   });
+  if (!watch || !state || !session) return null;
+  const knocks = knocking ? [...session.knocks.values()] : [];
+  return (
+    <>
+      {(state.prompts.length > 0 || knocks.length > 0) && (
+        <RequestCards
+          watch={watch}
+          prompts={state.prompts}
+          knocks={knocks}
+          session={session}
+          stack={stack}
+          focusIn={(inside) => (focusInside.current = inside)}
+        />
+      )}
+      {state.inert && state.following && <DrivingPopover watch={watch} state={state} at={state.inert} />}
+    </>
+  );
+}
+
+/** The request cards under the chip (the toolbar measured only while there are some). */
+function RequestCards({
+  watch,
+  prompts,
+  knocks,
+  session,
+  stack,
+  focusIn,
+}: {
+  watch: WatchTogether;
+  prompts: Prompt[];
+  knocks: Knock[];
+  session: CollabSession;
+  /** The stack, and whether focus is in it: kept by the layer (./WatchLayer), which outlives the last card. */
+  stack: RefObject<HTMLDivElement | null>;
+  focusIn: (inside: boolean) => void;
+}) {
+  const top = useToolbarBottom();
   const answered = (act: () => void) => () => {
-    focusInside.current = true;
+    focusIn(true);
     act();
   };
   return (
@@ -1204,14 +1218,14 @@ function RequestCards({
       className="room-prompts"
       // Within the viewport, however many there are: the stack scrolls.
       style={{ insetBlockStart: top + 8, maxBlockSize: `calc(100vh - ${top + 24}px)`, overflowY: "auto" }}
-      onFocus={() => (focusInside.current = true)}
+      onFocus={() => focusIn(true)}
       // Focus taken elsewhere on purpose (the element that had it is still there): left alone from here.
       onBlur={(e) => {
         const from = e.target;
         const to = e.relatedTarget as Node | null;
         if (to && stack.current?.contains(to)) return;
         queueMicrotask(() => {
-          if (from.isConnected) focusInside.current = false;
+          if (from.isConnected) focusIn(false);
         });
       }}
     >
@@ -1236,10 +1250,20 @@ function KnockCard({ knock, onAdmit, onDeny }: { knock: Knock; onAdmit: () => vo
     <div className="room-prompt" role="status" data-testid="room-knock-card">
       <p>{t("collab.knockPrompt", { alias: knock.alias })}</p>
       <div className="room-alert-actions">
-        <button className="btn" onClick={onDeny} data-testid="room-knock-deny">
+        <button
+          className="btn"
+          onClick={onDeny}
+          aria-label={t("collab.denyNamed", { alias: knock.alias })}
+          data-testid="room-knock-deny"
+        >
           {t("collab.deny")}
         </button>
-        <button className="btn btn-primary" onClick={onAdmit} data-testid="room-knock-admit">
+        <button
+          className="btn btn-primary"
+          onClick={onAdmit}
+          aria-label={t("collab.admitNamed", { alias: knock.alias })}
+          data-testid="room-knock-admit"
+        >
           {t("collab.admit")}
         </button>
       </div>

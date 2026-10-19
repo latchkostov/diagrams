@@ -285,6 +285,8 @@ export class CollabSession {
   private connectionWait?: () => void;
   recovery?: RoomRecovery;
   private synced = new Set<PeerId>();
+  /** When this session last asked each peer for what it lacks (a full sync request), until the peer replies. */
+  private readonly asked = new Map<PeerId, number>();
   private revision = 0;
   private elementIds = 0;
 
@@ -805,6 +807,7 @@ export class CollabSession {
         },
         leave: (peer) => {
           this.memberPeers.delete(peer);
+          this.asked.delete(peer);
           this.lobby?.forget(peer);
           for (const [key, k] of this.knocks) if (k.peer === peer) this.knocks.delete(key);
           this.synced.delete(peer);
@@ -840,7 +843,8 @@ export class CollabSession {
     );
     if (this.lobby) this.sayHello();
     if (this.signed) this.sendPresence();
-    this.requestSync();
+    // Everyone here already asked as they appeared (subscribing names those already connected): once is enough.
+    if (this.roomPeers().some((p) => !this.asked.has(p))) this.requestSync();
     if (!this.signed) this.sendPresence();
     this.prepareBye();
     this.updateStatus();
@@ -904,7 +908,15 @@ export class CollabSession {
     this.stats.rejected[reason] = (this.stats.rejected[reason] ?? 0) + 1;
   }
 
+  /** Whether a full sync request this session sent `peer` is still to be answered (and recent: it may have been lost). */
+  private awaiting(peer: PeerId): boolean {
+    const at = this.asked.get(peer);
+    return at !== undefined && this.clock.now() - at < COLLAB_LIMITS.antiEntropyMs;
+  }
+
   private requestSync(to?: PeerId): void {
+    const now = this.clock.now();
+    for (const peer of to === undefined ? this.roomPeers() : [to]) this.asked.set(peer, now);
     this.sendDoc(frame(DOC.syncRequest, this.doc.stateVector()), to);
     void this.proveSync(to);
   }
@@ -1509,6 +1521,7 @@ export class CollabSession {
       this.held.clear();
       this.reassembler.clear();
       this.synced.clear();
+      this.asked.clear();
       this.framesSinceBye = 0;
       // The local copy, under the new epoch's storage key from here (the old one's last save first). At the door
       // there was none: the room's copy on this device (another tab's) is read now the secret is known.
@@ -1900,11 +1913,13 @@ export class CollabSession {
           if (this.replies.take(opened.sender, diff.length)) this.sendDoc(frame(DOC.syncReply, diff), from);
           else this.reject("reply-throttled");
         }
-        if (this.doc.lacksFrom(sv)) this.requestSync(from);
+        // It has what this one lacks: asked for, unless this one's request to it is still to be answered.
+        if (this.doc.lacksFrom(sv) && !this.awaiting(from)) this.requestSync(from);
         return;
       }
       case DOC.syncReply:
       case DOC.update: {
+        if (msg.type === DOC.syncReply) this.asked.delete(from);
         const result = this.doc.applyRemote(msg.payload);
         if (!result.ok) {
           this.quarantine(opened.sender, from);

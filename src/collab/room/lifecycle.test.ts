@@ -1108,6 +1108,49 @@ describe("knock-to-join rooms (P5)", () => {
     expect(session(a).knocks.size).toBe(0);
   });
 
+  it("a duplicated tab of a member signs as someone new and knocks: none of the original's secrets come with it", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 95),
+      b = knocky(net, clock, 96);
+    await start(a);
+    await knock(b, linkOf(a));
+    for (let i = 0; i < 100 && !session(a).knocks.size; i++) {
+      await settle(net, a);
+      await new Promise((r) => setTimeout(r, 1));
+    }
+    for (const k of [...session(a).knocks.values()]) expect(await session(a).admit(k.key)).toBe(true);
+    await settle(net, a, b);
+    expect(session(b).knocking).toBe(false);
+    const original = b.room.getSnapshot().open!.roster.get();
+    expect(b.tab.read()?.roster?.signed?.knock?.secret).toBeDefined();
+    // The tab is duplicated: its record (identity, epoch secret, key-agreement key) copied with it.
+    const copy = knocky(net, clock, 97, b);
+    (copy.room as unknown as { deps: { memberTaken?: (m: string) => Promise<boolean> } }).deps.memberTaken = async (
+      m,
+    ) => m === original.signed!.identity.key;
+    await copy.room.resume();
+    await settle(net, a, b, copy);
+    expect(keyOf(copy)).not.toBe(keyOf(b));
+    expect(session(copy).knocking).toBe(true);
+    expect(session(copy).hasDocument).toBe(false);
+    expect(session(copy).signed!.knock!.agreement.x).not.toBe(session(b).signed!.knock!.agreement.x);
+    expect(session(a).signed!.state().members.has(keyOf(copy))).toBe(false);
+    // It waits at the door like anyone: the host sees it, and can let it in.
+    for (let i = 0; i < 100 && !session(a).knocks.has(keyOf(copy)); i++) {
+      await settle(net, a, copy);
+      await new Promise((r) => setTimeout(r, 1));
+    }
+    expect(session(a).knocks.has(keyOf(copy))).toBe(true);
+    expect(await session(a).admit(keyOf(copy))).toBe(true);
+    await settle(net, a, b, copy);
+    expect(session(copy).knocking).toBe(false);
+    expect(titleOf(copy)).toBe(titleOf(a));
+    // The original keeps its identity and its place.
+    expect(keyOf(b)).toBe(original.signed!.identity.key);
+    expect(session(b).knocking).toBe(false);
+  });
+
   it("removed: the room ends for them with a notice, and their copy stays; a reload after the re-key opens the new epoch", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();
@@ -1169,6 +1212,31 @@ describe("a browser that can't sign", () => {
     expect(b.room.getSnapshot().open).toBeUndefined();
     expect(b.room.getSnapshot().opening).toBeUndefined();
   });
+
+  for (const missing of ["X25519", "Ed25519"])
+    it(`starting a room without ${missing} says so, and starts nothing: never a room anyone with the link walks into`, async () => {
+      const net = new MemoryNetwork(),
+        clock = new FakeClock();
+      const a = browser(net, clock, missing === "X25519" ? 98 : 99, undefined, true, true);
+      const generateKey = crypto.subtle.generateKey.bind(crypto.subtle);
+      const spy = vi.spyOn(crypto.subtle, "generateKey").mockImplementation(((
+        algorithm: AlgorithmIdentifier,
+        ...rest: [boolean, KeyUsage[]]
+      ) => {
+        if ((typeof algorithm === "string" ? algorithm : algorithm.name) === missing)
+          return Promise.reject(new DOMException("Not supported", "NotSupportedError"));
+        return generateKey(algorithm as never, ...rest);
+      }) as typeof crypto.subtle.generateKey);
+      onTestFinished(() => spy.mockRestore());
+      const slug = a.library.create(canaryDiagram());
+      expect(await a.room.start({ slug, diagram: canaryDiagram() })).toBeUndefined();
+      expect(a.room.getSnapshot()).toMatchObject({ notice: { kind: "unsupported-start", slug } });
+      expect(a.room.getSnapshot().open).toBeUndefined();
+      expect(a.room.getSnapshot().opening).toBeUndefined();
+      // Nothing was contacted, and nothing recorded.
+      expect(a.transports).toHaveLength(0);
+      expect(a.tab.read()).toBeUndefined();
+    });
 
   it("joining a knock-to-join room without key agreement (X25519) says so too", async () => {
     const net = new MemoryNetwork(),

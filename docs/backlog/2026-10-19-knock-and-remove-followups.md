@@ -23,3 +23,9 @@ former co-host's backdated entries now end at the next removal.
   them (not just demoting) closes it.
 - **Concurrent removals** converge by the winning side carrying out the other's removal: one extra epoch, and the
   losing side's members wait for it.
+- **Carry-over after a demotion.** Someone let in at the same moment as a removal is let back in on their own only if
+  whoever let them in still hosts or co-hosts; otherwise they knock and wait. Rare, and safe; a host-signed summary
+  at each epoch's close would let the room carry them over regardless.
+- **The door's pool under churn.** People at the door share a pool of 32 lobby sender places, the least recently
+  heard going first: a link holder with many connections can push knockers out, who come back on their next hello
+  (every 5 s), as with knock cards. A cap per tracker peer would bound it further.

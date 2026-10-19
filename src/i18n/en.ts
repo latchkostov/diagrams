@@ -2522,6 +2522,8 @@ const en = {
   "collab.knockPrompt": "{alias} wants to join",
   "collab.admit": "Admit",
   "collab.deny": "Deny",
+  "collab.admitNamed": "Admit {alias}",
+  "collab.denyNamed": "Deny {alias}",
   "collab.removePerson": "Remove from room",
   "collab.askBeforeJoin": "Ask before people join",
   "collab.deniedNotice": "The host didn't let you in to this room.",
@@ -2530,6 +2532,8 @@ const en = {
   "collab.waitDocument": "Connected. Waiting for the diagram…",
   "collab.unsupportedBrowser":
     "This browser can't join this room: it can't check the room's signatures. Update it, or open the link in another browser.",
+  "collab.unsupportedStart":
+    "This browser can't start a room: it can't make the keys that let you choose who joins. Update it, or use another browser.",
   "collab.refusedViewOnly":
     "Your change was undone: you can view this room, not edit it. Ask the host to let you edit.",
   "collab.watchTooLarge": "This run is too large to share with the room. The next one is shared.",

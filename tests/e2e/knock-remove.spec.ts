@@ -62,7 +62,14 @@ test.describe("Knock-to-join and Remove", () => {
       await expect(card(page, "Wren")).toBeVisible({ timeout: pageLoadTimeout() });
       await expect(page.getByTestId("room-knock-admit")).not.toBeFocused();
       await expect(guest.getByTestId("node-gateway")).toHaveCount(0);
-      await card(page, "Wren").getByTestId("room-knock-admit").click();
+      // Each button says whose admission it is.
+      await expect(card(page, "Wren").getByTestId("room-knock-admit")).toHaveAccessibleName("Admit Wren");
+      await expect(card(page, "Wren").getByTestId("room-knock-deny")).toHaveAccessibleName("Deny Wren");
+      // From the keyboard: the card goes with the answer, and focus goes to the room chip (never the page).
+      await card(page, "Wren").getByTestId("room-knock-admit").focus();
+      await page.keyboard.press("Enter");
+      await expect(card(page, "Wren")).toHaveCount(0, { timeout: pageLoadTimeout() });
+      await expect(chip(page)).toBeFocused();
       await expect(guest.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
       await expect(chip(guest)).toHaveAttribute("data-knocking", "false");
       await expect(card(page, "Wren")).toHaveCount(0);
@@ -85,14 +92,28 @@ test.describe("Knock-to-join and Remove", () => {
       await emulateTracker([context, other]);
       const link = await hostRoom(page);
       const guest = await knock(other, link, "Otter");
-      await card(page, "Otter").getByTestId("room-knock-deny").click({ timeout: pageLoadTimeout() });
+      // From the keyboard, the only card: answered, focus goes to the room chip.
+      await card(page, "Otter").getByTestId("room-knock-deny").focus({ timeout: pageLoadTimeout() });
+      await page.keyboard.press("Enter");
       await expect(guest.getByTestId("toast").filter({ hasText: "didn't let you in" })).toBeVisible({
         timeout: pageLoadTimeout(),
       });
+      await expect(card(page, "Otter")).toHaveCount(0);
+      await expect(chip(page)).toBeFocused();
       await expect(guest.getByTestId("room-connecting")).toHaveCount(0);
       await expect(chip(guest)).toHaveCount(0);
       await expect(guest.getByTestId("node-gateway")).toHaveCount(0);
       await expect(chip(page)).toHaveAttribute("data-peers", "0");
+      // A card that goes while focus is elsewhere (its newcomer left) leaves focus where it is.
+      const fox = await knock(other, link, "Fox");
+      await expect(card(page, "Fox")).toBeVisible({ timeout: pageLoadTimeout() });
+      await page.getByTestId("node-gateway").click();
+      const field = page.getByTestId("inspector-field-label");
+      await expect(field).toBeVisible();
+      await field.focus();
+      await fox.close();
+      await expect(card(page, "Fox")).toHaveCount(0, { timeout: pageLoadTimeout() });
+      await expect(field).toBeFocused();
     } finally {
       await other.close();
     }

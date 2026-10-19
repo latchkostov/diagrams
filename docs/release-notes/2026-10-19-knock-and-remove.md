@@ -23,7 +23,7 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   no entry from before counts in it, which ends P4's residual (a former co-host's backdated entries).
 - **Edge cases.** Two removals on two sides of a partition resolve to one chain everywhere (its first removal; the
   other removal is made again); someone let in just as someone else is removed knocks again and is let back in on
-  its own; a member away during a re-key (or reloading after one) is handed the new secret when they're back, and a
+  its own, if whoever let them in still hosts or co-hosts; a member away during a re-key (or reloading after one) is handed the new secret when they're back, and a
   removed one coming back is told; a reload keeps the current epoch (its secret in the tab's record).
 - **Hardened in review** (one P0, nine P1s):
   - Epochs only move forward. A session moves only to a later epoch that brings back nobody its own path removed,
@@ -40,6 +40,22 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   - Presence ordering restarts on a re-key.
   - A removal made at the same moment as another is carried out once, by the winning side.
   - Waiting to be let in no longer reads as "nobody answered", and admit cards keep focus and fit the viewport.
+- **Hardened in a second review** (one P0, nine P1s that came down to six issues):
+  - Closed epochs are frozen at their close for what they grant now: being let back in on one's own, or a concurrent
+    removal carried out, needs its signer to host or co-host in the current epoch. A removed co-host's backdated join
+    in an epoch it once led lets nobody in; the newcomer knocks and waits for an answer.
+  - A chain goes in epoch by epoch (each start, then its roster, before the next), so a room past 16 removals still
+    reloads and lets people in, through every supported epoch.
+  - The local copy is keyed by the epoch's scope, so two tabs on two sides of a partition don't delete each other's.
+  - Someone removed and let back in no longer stops the next removal reaching everyone.
+  - The lobby is bounded per transport peer before anything is decrypted or verified: a budget per peer, two sender
+    ids per peer, a pool of its own for people at the door, places freed when a peer goes, and bounded buckets.
+  - A browser without X25519 (or Ed25519) can't start a room, and says so, instead of quietly making one anyone with
+    the link walks into.
+  - A duplicated tab starts at the door with keys of its own, none of the original's secrets.
+  - Answering the last card from the keyboard puts focus on the room chip; Admit and Deny name whom they're for.
+  - A healthy join sends one sync request: none again on joining for a peer already asked, nor while a request to
+    that peer is still to be answered.
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.
@@ -60,7 +76,8 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   client can still do, and what it adds to the crypto review's scope.
 
 Bundles: all new code is in the room's lazy chunk; startup, canvas first view and the Live session don't grow. i18n:
-nine new strings (`collab.knockingTitle`, `collab.knockingHint`, `collab.knockPrompt`, `collab.admit`, `collab.deny`,
-`collab.removePerson`, `collab.askBeforeJoin`, `collab.deniedNotice`, `collab.removedNotice`) and two changed
+twelve new strings (`collab.knockingTitle`, `collab.knockingHint`, `collab.knockPrompt`, `collab.admit`,
+`collab.deny`, `collab.admitNamed`, `collab.denyNamed`, `collab.removePerson`, `collab.askBeforeJoin`,
+`collab.deniedNotice`, `collab.removedNotice`, `collab.unsupportedStart`) and two changed
 (`share.editTogetherDesc`, `collab.startLead`: the link lets people knock, not join), so the catalogs golden is
 re-recorded.

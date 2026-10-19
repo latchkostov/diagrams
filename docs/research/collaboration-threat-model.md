@@ -451,10 +451,18 @@ Meeting hosts design §2, owner decision 11 (knock on for new rooms, "Ask me bef
   removal isn't here yet waits in a small evictable pool (16); only starts with that authority take a place in the
   chain (64), so someone with only the link can't fill it and disable Remove (review P1). Resolution walks from the
   starts already placed, in passes bounded by the pool and the chain, whatever a peer sends (review P1: unplaceable
-  starts made it exponential).
+  starts made it exponential; its work is counted, and a test bounds the count rather than the time). A chain from a
+  peer or a record goes in in ancestor order: each epoch's starts, then its roster (the removals its children name),
+  before the next epoch's starts, so each start is placed as it arrives and the pool holds only starts genuinely out
+  of order (second review P1: a 17-start chain evicted its own epoch 0 from the pool, so past 16 removals a reload or
+  a newcomer got no chain at all; every supported epoch, through 31, now round-trips).
 - **Epochs only move forward** (review P0). Each session decides its own epoch: a start at a higher epoch than its
   own, on a path from epoch 0 that brings back nobody a removal on its own path took out and that none of them signed,
-  with this person a member and the secret known (of several, the highest epoch, then the lower signature). It never
+  with this person a member and the secret known (of several, the highest epoch, then the lower signature). Someone
+  removed on its path and let back in since (a join that counts in its current epoch's roster, by a host or co-host)
+  is a member again, so a later removal's epoch keeping them is followed; everyone else removed stays out of any path
+  forward, so a fork that kept them can't bring them back (second review P1: a readmission stranded everyone but the
+  remover at the old epoch on the next removal). It never
   moves to an earlier epoch or a sibling of its own, and never seals again under a scope it has sealed under, so no
   (key, sender, counter) is used twice. Its roster (every check) is its own epoch's, not whatever else the chain
   holds: a removed co-host sending an earlier removal in a closed epoch, or a start of its own, changes nothing.
@@ -472,8 +480,17 @@ Meeting hosts design §2, owner decision 11 (knock on for new rooms, "Ask me bef
   sender's key and that key's signature over the room id, the frame's header (channel, epoch, sender id, counter) and
   the message, inside the encryption; the frame's counter is recorded and its sender counted only once that verifies,
   so a message can't be replayed under another counter, nor a window poisoned by a malformed frame (review P1); a
-  message's fragments all have one signer. Frames are rate-limited per sender (256 per 10 s) before any check, and
-  bounded (4 MiB, fragmented as document messages).
+  message's fragments all have one signer. Messages are bounded (4 MiB, fragmented as document messages). What the
+  lobby keeps is bounded before anything is decrypted or verified (second review P1s: invalid frames under fresh
+  sender ids each kept a bucket, and one link holder's 64 sender ids from one connection took every sender slot for
+  the session's life): a budget per transport peer (512 frames per 10 s, two senders' worth) is taken before a frame
+  is decrypted or its signature checked; a transport peer speaks under 2 sender ids at most, each bound to the one key
+  that signs its frames (the same id from another peer is refused before decryption); a sender keeps anything (a
+  place, a 256-per-10-s bucket, a replay window) only once its frame verifies; senders go in two pools, members' and
+  the host's (64, as any room) and everyone else's (32, the least recently heard going first), so knockers can never
+  take the places members need; a transport peer gone frees its senders' places (their replay windows stay, for the
+  last 1024 senders gone, so the same session back counts on and its old frames stay refused); and every token-bucket
+  map is bounded (idle buckets go first).
 - **Wraps are signed** by their wrapper over room, scope, recipient, wrapper key and ciphertext, and count only from a
   member of their epoch. One for this person is opened and checked against the epoch's commitment as it arrives (a
   bad one is dropped and suppresses nothing); one for someone else is kept (64 at most, one per epoch, recipient and
@@ -487,8 +504,18 @@ Meeting hosts design §2, owner decision 11 (knock on for new rooms, "Ask me bef
 - **Admission.** A host's or co-host's Admit first wraps the current secret for the newcomer's key-agreement key (a
   key that can't be agreed with, an all-zero one say, is refused before anything is signed: review P1), then signs
   `join` (and `admit` unless view only), then sends the newcomer a bundle with the wrap. With "ask" off, the host's page (else the earliest co-host's here)
-  admits on its own; someone who was a member of an earlier epoch and was never removed (let in at the same moment as a
-  removal) is let back in on their own.
+  admits on its own. Someone let in during an earlier epoch on the session's path (at the same moment as a removal, so
+  not carried into the next one), not removed since, is let back in on their own only if whoever let them in is the
+  host or a co-host now: **closed epochs are frozen at their close for what they grant now.** A closed epoch's roster
+  still takes entries (a concurrent removal there is how the two sides of a partition converge), but nothing in it
+  creates authority in the current epoch: carrying someone over (admission) and carrying out a concurrent removal
+  both need their signer to hold that authority in the current epoch (second review P0: a removed co-host signed a
+  join for a fresh identity into an epoch it once led, backdated before its removal, and the fresh identity was let in
+  without asking, the current secret with it). What this changes: an entry that arrives late in a closed epoch counts
+  only as its signer's current authority allows, whenever it arrives; someone admitted at the same moment as a removal
+  by a co-host who has since been removed or demoted knocks again and waits for an answer; a current host or co-host
+  gains nothing from a late entry they couldn't do directly. Arrival time isn't used: an honest concurrent admission
+  routinely arrives after the next epoch was adopted.
 - **Remove with re-key.** The remover signs `remove`, draws the next epoch's secret, signs its start, wraps the secret
   for every member left (absent ones too: everyone keeps the wraps and hands them to a member who comes back on an
   old epoch; a member whose key can't be agreed with is left out), and only then, with everything prepared, places the
@@ -500,8 +527,17 @@ Meeting hosts design §2, owner decision 11 (knock on for new rooms, "Ask me bef
   removal on a path forward (made by a host or co-host of its epoch) and leaves.
 - **No local copy at the door.** A knocking session reads and writes no recovery record (its keys aren't the room's):
   it opens one once it's let in and knows the epoch's secret (review P1: it deleted another tab's checkpoint as
-  corrupt). While someone's here and has been asked, the wait says it's waiting to be let in, not that nobody
-  answered.
+  corrupt). A member's local copy is keyed by the room and its epoch's scope (`<roomId>:<epoch>:<start signature>`,
+  in its record id and its AES-GCM associated data), not the epoch number: two epochs with one number (each side of a
+  partition) have different secrets, and a tab on one side read the other's copy as corrupt and deleted it (second
+  review P1). Rooms before knock-to-join keep their numeric ids. While someone's here and has been asked, the wait
+  says it's waiting to be let in, not that nobody answered.
+- **Fail closed without the cryptography.** New rooms are knock-to-join rooms; a browser without Ed25519 or X25519 in
+  WebCrypto starts nothing and says so (second review P1: without X25519 it silently made a v2 room anyone with the
+  link walks into, while the Share and start dialogs promised newcomers wait to be let in).
+- **A duplicated tab** takes its identity and its knock record from one roster: the copy has an identity of its own
+  and no knock record, so it starts at the door with a key-agreement key of its own, and none of the original's
+  secrets (second review P1: it took the original's epoch secret and agreement key under its own identity).
 
 What it holds, against peers running an honest copy: someone with only the link gets nothing of the room until a
 host or co-host lets them in, and can't fill the chain or the knock cards; a removed person's old secret opens nothing
@@ -509,7 +545,9 @@ sent after their removal, their frames under it are refused, and nothing they si
 epoch, a start of their own) moves anyone back; a former co-host's entries from before a removal never count after it.
 What a modified client can still do: a co-host demoted (not removed) in the last closed epoch can still sign entries
 in that epoch claiming to predate the demotion, and from them an epoch of its own; members only follow it forward,
-and only if it brings back nobody their own path removed (P4's residual, now bounded to people still in the room); a member can pass the current secret, or the content, to anyone (readers can copy), though honest pages
+and only if it brings back nobody their own path removed (P4's residual, now bounded to people still in the room);
+such entries let nobody in on their own and carry out no removal, since both need authority in the current epoch;
+a co-host can still sign entries in the current epoch claiming to predate a demotion there (P4's residual); a member can pass the current secret, or the content, to anyone (readers can copy), though honest pages
 ignore a non-member's presence and requests; a member can replay another member's hello proof from its own transport
 peer, which gets that peer content frames it can't read (metadata only); someone removed keeps everything they had
 before; anyone with the link can knock, as often as the lobby's bounds allow (the host says no); the host and
@@ -536,12 +574,18 @@ with a removal; a member away during a re-key, and a removed member coming back;
 rollback refused with no (key, nonce) reused; link holders' starts take no place; unplaceable starts cost bounded
 work; a forged wrap suppresses nothing; a replayed or tampered lobby frame refused without moving the window; knocks
 bounded; an unusable agreement key refused; presence after a re-key; a wrong wrapped secret refused before the right
-one is taken; a removal not repeated after someone is let back in; waiting to be let in isn't "nobody answered"),
-`epochs.test.ts` (starts and their
-signers; the commitment; the next epoch's base; wraps bound to recipient, room, scope and wrapper; lobby messages
-checked), `room/lifecycle.test.ts` (knocking, admitted, denied, Leave while knocking, removed with a notice, a reload
-after a re-key), and `tests/e2e/knock-remove.spec.ts` (two browsers: knock and admit, knock and deny, remove and
-re-key with the remaining member unaffected).
+one is taken; a removal not repeated after someone is let back in; waiting to be let in isn't "nobody answered"; and
+the second review's: a removed co-host's backdated join in a closed epoch lets nobody in; past sixteen removals a
+reload and a newcomer still get in; someone removed and let back in doesn't strand anyone on the next removal (one
+epoch, edits and Live for all); invalid lobby frames under endless sender ids cost their peer's budget and keep
+nothing; a link holder can't take members' sender places, and a peer gone frees its own; unplaceable starts' work
+counted), `epochs.test.ts` (starts and their signers; the commitment; the next epoch's base; every supported epoch
+round-trips; wraps bound to recipient, room, scope and wrapper; lobby messages checked), `recovery.test.ts` (two
+epochs with one number keep their own copies; a knock-to-join session's copy keyed by its scope),
+`room/lifecycle.test.ts` (knocking, admitted, denied, Leave while knocking, removed with a notice, a reload after a
+re-key, a duplicated member's tab at the door, starting without X25519 or Ed25519 refused), and
+`tests/e2e/knock-remove.spec.ts` (two browsers: knock and admit, knock and deny, from the keyboard with focus kept,
+remove and re-key with the remaining member unaffected).
 
 ## Residual risks and open items for C1
 

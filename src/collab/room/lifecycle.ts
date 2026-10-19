@@ -84,7 +84,8 @@ export interface RoomDeps {
   knockRooms?: boolean;
 }
 
-export type RoomNotice = "left" | "private" | "failed" | "storage-full" | "denied" | "removed" | "unsupported";
+export type RoomNotice =
+  "left" | "private" | "failed" | "storage-full" | "denied" | "removed" | "unsupported" | "unsupported-start";
 
 export interface OpenRoom {
   role: RoomRole;
@@ -172,8 +173,8 @@ async function identityFor(
 }
 
 /**
- * Whether this browser can sign and agree keys (Ed25519 and X25519 in WebCrypto): new rooms are knock-to-join rooms
- * then (v3, P5); one that can only sign makes signed rooms (v2); else rooms without roles.
+ * Whether this browser can sign and agree keys (Ed25519 and X25519 in WebCrypto). New rooms are knock-to-join rooms
+ * (v3, P5): a browser without both can't start one (./start), never a room anyone with the link walks into.
  */
 async function signingIdentity(): Promise<{ identity: Identity; knock: boolean } | undefined> {
   let identity: Identity;
@@ -315,11 +316,18 @@ export class RoomLifecycle {
   async start(o: { slug: string; diagram: DiagramFile; alias?: string }): Promise<OpenRoom | undefined> {
     this.invite = undefined;
     await this.leaveActive("left");
-    // A signed room (P4) when this browser can sign: the creator's identity is its root, named in its link. With
-    // knock-to-join (P5) unless this copy says otherwise.
+    // A knock-to-join room (P5): the creator's identity is its root, named in its link. Its Share and start dialogs
+    // promise newcomers wait to be let in, so a browser that can't sign and agree keys starts nothing (it's told
+    // plainly), never a room anyone with the link walks into. (Signed rooms without knock-to-join (v2), and rooms
+    // without roles, only where this copy says so.)
+    const knock = this.deps.signedRooms !== false && this.deps.knockRooms !== false;
     const signing = this.deps.signedRooms === false ? undefined : await signingIdentity();
+    if (knock && !signing?.knock) {
+      this.set({ opening: undefined, notice: this.notice("unsupported-start", o.slug) });
+      return undefined;
+    }
     const link = newRoom(this.random, signing?.identity.key);
-    if (signing?.knock && this.deps.knockRooms !== false) link.knock = true;
+    if (knock) link.knock = true;
     return this.open({
       link,
       role: "creator",
@@ -384,10 +392,13 @@ export class RoomLifecycle {
         const log = roster.signed?.identity.key === id.stored.key ? roster.signed.log : [];
         roster = { ...roster, signed: { identity: id.stored, log } };
         signed = { identity: id.identity, log };
-        // Knock-to-join: this member's epoch, from its record; a new room's first one; or, at the door, let in.
+        // Knock-to-join: this member's epoch, from its record; a new room's first one; or, at the door, let in. The
+        // identity and the knock record come from one roster (a duplicated tab's has an identity of its own and no
+        // knock record: it starts at the door, with a key-agreement key of its own).
         if (o.link.knock && o.link.hostKey) {
-          const kept = o.roster?.signed?.knock ?? o.record?.roster?.signed?.knock;
-          const own = kept && (o.roster ?? o.record?.roster)?.signed?.identity.key === id.stored.key ? kept : undefined;
+          const source = o.roster ?? o.record?.roster;
+          const kept = source?.signed?.knock;
+          const own = kept && source?.signed?.identity.key === id.stored.key ? kept : undefined;
           const loaded = own && (await loadAgreement(own.agreement));
           const agreement = loaded || (await newAgreement());
           agreementStored = loaded ? own!.agreement : await storeAgreement(agreement);

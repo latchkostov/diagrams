@@ -37,7 +37,8 @@ If they say no, you're told, and nothing is left behind. **Cancel** stops waitin
   host's page (or, with the host away, a co-host's) lets people in on its own. With neither here, people knock until
   one of them is back.
 - **Coming back.** Someone already let in comes back without knocking (a reload keeps their place). Someone let in
-  just as someone else was removed knocks again, and is let back in on its own.
+  just as someone else was removed knocks again, and is let back in on its own if whoever let them in still hosts or
+  co-hosts (otherwise they wait to be let in again). A duplicated tab is someone new: it knocks.
 
 ## Remove someone
 
@@ -202,6 +203,7 @@ anyone. To work together again, start a new room.
 | "Connected. Checking who's here…"                                 | Connected, and checking the others' signatures before using what they send | Wait: it asks again on its own until it can check them                      |
 | "Connected. Waiting for the diagram…"                             | Connected and checked; the diagram is on its way                           | Wait (a large diagram takes a few seconds)                                  |
 | "This browser can't join this room…"                              | The browser can't check the room's signatures (Ed25519)                    | Update the browser, or open the link in another one                         |
+| "This browser can't start a room…"                                | The browser can't make the keys rooms use (Ed25519 and X25519)             | Update the browser, or start the room in another one                        |
 
 Some company networks, VPNs and mobile hotspots block the direct connections rooms use. livediagrams.dev doesn't
 run a relay server for them. A self-hosted copy can configure its own (a TURN server).
