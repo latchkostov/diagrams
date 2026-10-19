@@ -465,6 +465,9 @@ export interface EngineOptions {
   onLoss?: (loss: LossProvenance) => void;
   /** Optional per-step diagnostic; excluded from ordinary playback. */
   verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
+  verifyLedger?: (state: import("./resourceInvariants").LedgerInvariantState) => void;
+  /** R2 supplies write-once attempt outcomes to this opt-in diagnostic. */
+  verifyOutcomes?: (state: import("./resourceInvariants").OutcomeInvariantState) => void;
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */

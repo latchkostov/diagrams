@@ -3,6 +3,93 @@ import type { AutoscalingConfig, ComputeResources } from "../model/autoscaling";
 import { MAX_CPU_PARTS, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";
 import type { ResourceWork } from "./resourceWork";
+import type { LedgerState } from "./ledger";
+
+export interface LedgerInvariantState {
+  time: number;
+  ledger: LedgerState;
+  nodes: Iterable<{ id: string; activeMs: number }>;
+  edges: Iterable<{
+    id: string;
+    poolUsed: number;
+    poolLeases: ReadonlyMap<number, number>;
+    poolPending: readonly unknown[];
+  }>;
+  inSystem: number;
+  admissionInFlight: ReadonlyMap<string, number>;
+  partBudget: CpuPartBudget;
+  logical: readonly { id: number; end: number }[];
+}
+export interface OutcomeInvariantState {
+  time: number;
+  /** Populated by the attempts migration (R2); R1 has no attempt outcomes. */
+  attempts: Iterable<{
+    id: number;
+    node: string;
+    outcome?: { ok: boolean; code?: number; at: number };
+    committed: boolean;
+  }>;
+}
+
+/** Independent index/ownership oracle. Only tests opt into this traversal. */
+export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInvariantState): void {
+  const check = (ok: boolean, message: string) => {
+    if (!ok) throw new Error(`Ledger @${time}: ${message}`);
+  };
+  const clocks = new Map([...nodes].map((node) => [node.id, node.activeMs]));
+  const pools = new Map<string, number>();
+  for (const [id, reservation] of ledger.reservations) {
+    const owner = ledger.owners.get(reservation.owner);
+    check(id === reservation.id && !!owner?.reservations.has(id), "orphan reservation");
+    check(
+      Number.isFinite(reservation.weight) && reservation.weight > 0 && reservation.weight <= reservation.represented,
+      "invalid weight",
+    );
+    check(clocks.has(reservation.owner), "unknown owner");
+    if (reservation.releaseAt !== undefined) {
+      check(Number.isFinite(reservation.releaseAt), "invalid release time");
+      check(reservation.weight < reservation.represented, "full-weight reservation retained a release");
+      check(owner!.indices.has(id), "retired reservation has no release");
+    } else check(!owner!.indices.has(id), "live reservation has a release");
+    if (reservation.scope === "pool") {
+      check(reservation.edge !== undefined, "pool has no edge");
+      pools.set(reservation.edge!, (pools.get(reservation.edge!) ?? 0) + reservation.weight);
+    }
+  }
+  for (const [ownerId, owner] of ledger.owners) {
+    check(owner.reservations.size > 0, "empty owner retained");
+    for (const id of owner.reservations)
+      check(ledger.reservations.get(id)?.owner === ownerId, "owner points to missing reservation");
+    check(owner.heap.length === owner.indices.size, "heap index size disagrees");
+    owner.heap.forEach((due, index) => {
+      const reservation = ledger.reservations.get(due.id);
+      check(reservation?.owner === ownerId && reservation.releaseAt === due.end, "orphan release");
+      check(owner.indices.get(due.id) === index, "heap index disagrees");
+      check(due.end > clocks.get(ownerId)! + 1e-9, "due release retained");
+      if (index) {
+        const parent = owner.heap[(index - 1) >>> 1];
+        check(parent.end < due.end || (parent.end === due.end && parent.id < due.id), "heap order disagrees");
+      }
+    });
+  }
+  for (const edge of edges) {
+    check(Math.abs(edge.poolUsed - (pools.get(edge.id) ?? 0)) < 1e-8, "pool occupancy disagrees");
+    for (const id of edge.poolLeases.values())
+      check(ledger.reservations.get(id)?.edge === edge.id, "pool points to missing reservation");
+    pools.delete(edge.id);
+  }
+  check(pools.size === 0, "unknown pool edge");
+}
+
+/** R2's attempt oracle: an outcome can be committed only after it is decided, once per attempt. */
+export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
+  const seen = new Set<number>();
+  for (const attempt of state.attempts) {
+    if (seen.has(attempt.id) || (attempt.committed && !attempt.outcome) || (attempt.outcome?.at ?? 0) > state.time)
+      throw new Error(`Outcome @${state.time}: invalid attempt ${attempt.id} at ${attempt.node}`);
+    seen.add(attempt.id);
+  }
+}
 
 interface Work extends ResourceWork {
   slotted?: boolean;
