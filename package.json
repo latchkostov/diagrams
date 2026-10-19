@@ -25,6 +25,7 @@
     "parity": "node scripts/parity.mjs",
     "parity:update": "node scripts/parity.mjs --update",
     "parity:node": "node scripts/parity.mjs --tier node",
+    "test:engines": "playwright test -c tests/engines/playwright.config.ts",
     "parity:browser": "node scripts/parity.mjs --tier browser",
     "size": "pnpm build:viewer-bundle && node scripts/bundle-budget.mjs",
     "bench": "node scripts/bench/run.mjs",

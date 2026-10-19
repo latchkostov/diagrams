@@ -107,7 +107,11 @@ import type {
 const STEP = 10;
 /** A refusal by a token bucket ("orders-limit: requests"): a 429, not a 404 or a concurrency cap. */
 const quotaReason = (reason: string) => QUOTA_UNITS.some((unit) => reason.endsWith(`: ${unit}`));
-const EWMA_ALPHA = 1 - Math.exp(-STEP / 1000);
+/**
+ * 1 - Math.exp(-STEP / 1000) as V8 computes it, written out: Math.exp may differ in the last bit between JS
+ * engines, and throughput (which expectations read) is built on this (shared Live, docs/PARITY.md).
+ */
+const EWMA_ALPHA = 0.009950166250831893;
 const EVENT_CAP = 200;
 /** A headless run created more messages than its shared budget (EngineOptions.messageBudget). */
 export class WorkBudgetError extends Error {}
@@ -297,6 +301,11 @@ function isBroker(node: Node): boolean {
 const seedSetters = new WeakMap<SimEngine, (seed: number) => void>();
 export function seedEngine(engine: SimEngine, seed: number): void {
   seedSetters.get(engine)?.(seed);
+}
+// How many numbers the engine's generator has drawn this run (its state is part of a run digest, src/sim/digest.ts).
+const drawCounters = new WeakMap<SimEngine, () => number>();
+export function randomDraws(engine: SimEngine): number {
+  return drawCounters.get(engine)?.() ?? 0;
 }
 
 /** Fixed-step, DOM-free engine. Drawing limits never affect message delivery. */
@@ -2569,5 +2578,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   seedSetters.set(engine, (value) => {
     seed = value;
   });
+  drawCounters.set(engine, () => randomCalls);
   return engine;
 }

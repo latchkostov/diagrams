@@ -460,13 +460,37 @@ Every source of variation is removed at the input rather than tolerated at the o
   each language itself. Dates are formatted in UTC. The browser runs in English, UTC, light scheme, reduced
   motion, 1440 × 900 at a device scale of 1.
 - **Floats are compared exactly**, everywhere: the engine, analysis and router use IEEE arithmetic and V8's
-  `Math.exp`/`Math.hypot`/`Math.log10` (fdlibm, the same on every platform). The Node tier gives identical goldens
+  `Math.exp`/`Math.hypot`/`Math.log10` (fdlibm, the same on every platform). The simulator itself calls none of
+  them (see "Across engines"). The Node tier gives identical goldens
   on Windows with Node 20, and on Linux with Node 22 and Node 24, `Intl` output included. `-0` prints as `0`;
   `Infinity` and `NaN` (capacity's "can't keep up") print as strings, since JSON has neither.
 - **The event stream is recorded whole or not at all.** The engine keeps only its 200 latest events, so the harness
   reads the log after every tick and fails if a tick could have overflowed it. (That's why the corpus's 513-copies
   diagram, which exists for the planning budget, is pinned by planning and checks only.)
 - **The one tolerance** is the PNG comparison, below.
+
+### Across engines
+
+The goldens are V8's (Node and Chromium). Shared Live needs more: every follower runs the driver's simulation in its
+own browser, so a run must be bit-identical in Chromium, Firefox and WebKit too.
+
+- **IEEE arithmetic and `Math.sqrt` are exactly rounded in every engine.** Math's transcendental functions aren't
+  specified to the bit. The simulator (`src/sim`, and the model it reads in `src/model`) therefore calls none of
+  them, and no `**`. `src/sim/determinism.test.ts` fails a pull request that adds one.
+- **The three that were there, and what replaced them** (2026-10-18):
+  - The throughput smoothing constant is now the literal V8 computed for `1 - Math.exp(-0.01)`.
+  - The latency buckets compare against a literal table of the powers of 1.12 (`src/sim/latencyBounds.ts`)
+    instead of `Math.log`. That fixed a real difference: WebKit's `Math.log` put some latencies in other buckets,
+    and 23 of the 77 example runs differed in WebKit before the fix.
+  - `autoScale` finds its power of ten by multiplying instead of `Math.log10`.
+
+  No golden changed.
+
+- **The check.** `pnpm test:engines` (`tests/engines`, Nightly's "Engine determinism" job) plays every public
+  example's saved simulations to 60 s, in 1 s frames. On the way it makes a live tweak, an injection, an outage and
+  a scrub back. In each of the three browsers the run digests (`src/sim/digest.ts`, every 5 s) and the latency
+  percentiles must equal Node's. The run takes about 30 s locally. It's Nightly rather than per pull request because
+  installing Firefox and WebKit costs more than the run.
 
 ### Browser tier
 
