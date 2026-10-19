@@ -598,6 +598,7 @@ const MenuRow = memo(function MenuRow({
       aria-disabled={n.disabled || undefined}
       aria-haspopup={n.children ? "menu" : undefined}
       aria-expanded={n.children ? open : undefined}
+      title={n.title}
       className={`cm-item${n.className ? ` ${n.className}` : ""}${active ? " is-active" : ""}${n.disabled ? " is-disabled" : ""}${n.danger ? " is-danger" : ""}${open ? " is-open" : ""}`}
       data-testid={`context-menu-item-${n.id}`}
       data-active={active || undefined}

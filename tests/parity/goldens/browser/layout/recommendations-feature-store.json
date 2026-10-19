@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(51.8881px, 230.224px) scale(0.297203)",
+    "viewport": "translate(95.3753px, 238.583px) scale(0.284382)",
     "nodes": {
       "group:aws": { "kind": "group", "box": "translate(-40px, -88px) 3150×1480", "text": "AWS us-east-1 · production" },
       "group:serving": { "kind": "group", "box": "translate(778px, -24px) 1542×1256", "text": "EKS · home page serving" },
@@ -187,7 +187,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-390.699px, 230.224px) scale(0.297203)",
+    "viewport": "translate(-357.238px, 238.583px) scale(0.284382)",
     "nodes": {
       "group:aws": { "kind": "group", "box": "translate(400px, 32px) 4459×1840", "text": "AWS us-east-1 · production" },
       "group:serving": { "kind": "group", "box": "translate(860px, 96px) 1660×1016", "text": "EKS · home page serving" },

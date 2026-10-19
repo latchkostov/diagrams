@@ -51,6 +51,8 @@ const paths = {
   hash: "M6.25 2.5 5 13.5M11 2.5 9.75 13.5M2.5 6h11M2 10.5h11",
   "chevron-right": "M6 3.5 10.5 8 6 12.5",
   "chevron-down": "M3.5 6 8 10.5 12.5 6",
+  "chevrons-left": "M7.5 4 3.5 8l4 4M12.5 4l-4 4 4 4",
+  "chevrons-right": "M3.5 4 7.5 8l-4 4M8.5 4l4 4-4 4",
   check: "M3 8.5 6.5 12 13 4.5",
   tag: "M2.5 2.5h5l6 6-5 5-6-6zM5.5 5.5h.01",
   bolt: "M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z",

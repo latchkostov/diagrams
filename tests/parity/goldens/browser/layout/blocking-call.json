@@ -13,7 +13,7 @@
     "labels": {}
   },
   "tidy": {
-    "viewport": "translate(16.457px, 343.954px) scale(0.588575)",
+    "viewport": "translate(16.457px, 303.421px) scale(0.588575)",
     "nodes": {
       "source": { "kind": "node", "box": "translate(0px, 240px) 233×72", "text": "Applications submitted User" },
       "applications": { "kind": "node", "box": "translate(310px, 240px) 220×72", "text": "Applications Topic" },

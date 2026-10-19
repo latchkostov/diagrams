@@ -171,8 +171,6 @@ export function useOverlayTestIds(root: RefObject<HTMLElement | null>) {
     // A toast stacks above the minimap rather than over it (src/interop/ui/toastStack.ts).
     minimap?.setAttribute("data-toast-avoid", "");
     el.querySelector(".react-flow__panel.react-flow__controls")?.setAttribute("data-testid", "canvas-controls");
-    el.querySelector(".react-flow__controls-zoomin")?.setAttribute("data-testid", "zoom-in-button");
-    el.querySelector(".react-flow__controls-zoomout")?.setAttribute("data-testid", "zoom-out-button");
     el.querySelector(".react-flow__panel.react-flow__attribution")?.setAttribute("data-testid", "canvas-attribution");
   });
 }

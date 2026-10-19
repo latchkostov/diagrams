@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(20.7073px, 113.587px) scale(0.982318)",
+    "viewport": "translate(45.6503px, 121.037px) scale(0.958743)",
     "nodes": {
       "group:snowflake": { "kind": "group", "box": "translate(377px, 156px) 681×356", "text": "Snowflake · ANALYTICS" },
       "airflow": { "kind": "node", "box": "translate(40px, 40px) 223×72", "text": "Airflow Nightly DAG · 02:00 UTC" },
@@ -40,7 +40,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-695.55px, 113.587px) scale(0.982318)",
+    "viewport": "translate(-669.617px, 121.037px) scale(0.958743)",
     "nodes": {
       "group:snowflake": { "kind": "group", "box": "translate(760px, 280px) 1100×152", "text": "Snowflake · ANALYTICS" },
       "airflow": { "kind": "node", "box": "translate(800px, 40px) 223×72", "text": "Airflow Nightly DAG · 02:00 UTC" },

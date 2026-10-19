@@ -1143,6 +1143,8 @@ function CanvasInner({
                 {!hideChrome && (
                   <CanvasControls
                     editor={editor}
+                    menus={interaction}
+                    menu={menu}
                     fit={fit}
                     zoomedByButton={zoomedByButton}
                     onShortcuts={showShortcuts}

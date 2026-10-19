@@ -209,7 +209,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             <section key={g}>
               <h3>{GROUP_NAMES[g]()}</h3>
               {SHORTCUTS.filter((s) => s.group === g).map((s) => (
-                <div key={s.id} className="sc-row">
+                <div key={s.id} className="sc-row" data-testid={`shortcut-${s.id}`}>
                   <span>{LABELS[s.id]()}</span>
                   <span className="sc-keys">
                     {displayKeys(s).map((k) => (

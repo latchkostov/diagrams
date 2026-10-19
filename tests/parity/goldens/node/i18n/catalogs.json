@@ -1,6 +1,6 @@
 {
   "ar": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 414,
     "areas": {
       "admission": "1585747777b2",
@@ -8,7 +8,7 @@
       "autoscaling": "f2d296ff4e81",
       "broker": "f5d42b383610",
       "canvas": "254825751491",
-      "chrome": "8e07f737faff",
+      "chrome": "cf2cb742e865",
       "clear": "7052f081d17e",
       "cloud": "b72847aa935a",
       "collab": "69990a1028d1",
@@ -66,7 +66,7 @@
     }
   },
   "bg": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "339cd5287f25",
@@ -74,7 +74,7 @@
       "autoscaling": "9c821f76890d",
       "broker": "c2285b4b209f",
       "canvas": "2e2ddf5140f6",
-      "chrome": "faeb004300d3",
+      "chrome": "aa009dce9cd1",
       "clear": "4aceb49f616a",
       "cloud": "90ffa94ecac4",
       "collab": "89d2f04274cd",
@@ -132,7 +132,7 @@
     }
   },
   "cs": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "c8683cb1d947",
@@ -140,7 +140,7 @@
       "autoscaling": "51d4a90f9c84",
       "broker": "acab48ce0be7",
       "canvas": "4e14fd49b2df",
-      "chrome": "6788b2936556",
+      "chrome": "c2087fae0745",
       "clear": "afc0d46e8d96",
       "cloud": "400a0a1bc313",
       "collab": "783e8b268c50",
@@ -198,7 +198,7 @@
     }
   },
   "da": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "2309322c7e25",
@@ -206,7 +206,7 @@
       "autoscaling": "09fce1b5437a",
       "broker": "8b204714298e",
       "canvas": "35cf7853d643",
-      "chrome": "f5a18566a59c",
+      "chrome": "fbb2ca345d70",
       "clear": "505424a1a99a",
       "cloud": "1d1ce85c77ec",
       "collab": "0625190b85f8",
@@ -264,7 +264,7 @@
     }
   },
   "de": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "866ad98895eb",
@@ -272,7 +272,7 @@
       "autoscaling": "fc551322a031",
       "broker": "74ee3d884708",
       "canvas": "3cdfa621c3bf",
-      "chrome": "85d0245a1dac",
+      "chrome": "5e97daeb88e3",
       "clear": "bced4ab6f102",
       "cloud": "c119367a1c80",
       "collab": "b37f1120e323",
@@ -330,7 +330,7 @@
     }
   },
   "el": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "c85e9b1328ba",
@@ -338,7 +338,7 @@
       "autoscaling": "573cc49c17b5",
       "broker": "276c35a5cf51",
       "canvas": "21c0b554744f",
-      "chrome": "41fc0f38ba6d",
+      "chrome": "b06754bdb366",
       "clear": "3409a67358e5",
       "cloud": "578df76008d3",
       "collab": "4a4452d8b153",
@@ -396,7 +396,7 @@
     }
   },
   "en-XA": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
@@ -404,7 +404,7 @@
       "autoscaling": "7f7a09cb5984",
       "broker": "dd16f518c35c",
       "canvas": "eaad7f668ee2",
-      "chrome": "771bd1db57ec",
+      "chrome": "41aca8317fa2",
       "clear": "59b65d650ed0",
       "cloud": "855529070b7d",
       "collab": "27cad99c9904",
@@ -462,7 +462,7 @@
     }
   },
   "es": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "8275061ad675",
@@ -470,7 +470,7 @@
       "autoscaling": "3c10828aa487",
       "broker": "a4567406a078",
       "canvas": "b14e6391fc52",
-      "chrome": "fe32b51451b8",
+      "chrome": "f8efba7a5358",
       "clear": "67f0ef80c72d",
       "cloud": "7015496d4b04",
       "collab": "adf5c5b0092e",
@@ -528,7 +528,7 @@
     }
   },
   "et": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "bcda9d352f6d",
@@ -536,7 +536,7 @@
       "autoscaling": "ed2d2a05d653",
       "broker": "0c94c40fa2b5",
       "canvas": "417d954ff382",
-      "chrome": "07a1081231f5",
+      "chrome": "97e88c9bc59e",
       "clear": "e1fa436a6cc9",
       "cloud": "1eb248749157",
       "collab": "3e52a6eb7bec",
@@ -594,7 +594,7 @@
     }
   },
   "fi": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "639abadda530",
@@ -602,7 +602,7 @@
       "autoscaling": "ed031704526d",
       "broker": "c9a0598fa964",
       "canvas": "40e087ce9690",
-      "chrome": "2ad5463c7a19",
+      "chrome": "cc18baf65157",
       "clear": "0307a74980c6",
       "cloud": "64c9aeac535b",
       "collab": "39a63e0f756f",
@@ -660,7 +660,7 @@
     }
   },
   "fr": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "c0da5634d917",
@@ -668,7 +668,7 @@
       "autoscaling": "8400622f7ade",
       "broker": "ddd1d83d8edf",
       "canvas": "a6bbc82dec09",
-      "chrome": "cddd8d1b1923",
+      "chrome": "7b84c383ee61",
       "clear": "ebfa4fbb7765",
       "cloud": "c127f9334062",
       "collab": "7ee95ad46a0c",
@@ -726,7 +726,7 @@
     }
   },
   "he": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "60a5b99830c3",
@@ -734,7 +734,7 @@
       "autoscaling": "b92dbd7b5fa4",
       "broker": "2c29042b4c08",
       "canvas": "bab60d0efa1e",
-      "chrome": "570cdeb63723",
+      "chrome": "dd5889e2ce10",
       "clear": "7634e787d609",
       "cloud": "0b1b322a8e49",
       "collab": "7e89fb22ede0",
@@ -792,7 +792,7 @@
     }
   },
   "hi": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "81b5998e2d74",
@@ -800,7 +800,7 @@
       "autoscaling": "b9b4704367bd",
       "broker": "48608388990e",
       "canvas": "335963b5e4ee",
-      "chrome": "5ce5d564b088",
+      "chrome": "951f4a6e945b",
       "clear": "9d29df0462a5",
       "cloud": "003e89f05fca",
       "collab": "973dd8e14756",
@@ -858,7 +858,7 @@
     }
   },
   "hr": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "250278672ecf",
@@ -866,7 +866,7 @@
       "autoscaling": "906d69c99ed1",
       "broker": "33c20c340aa9",
       "canvas": "487af354a55e",
-      "chrome": "7a31dcc54ee9",
+      "chrome": "dee6fcc011ee",
       "clear": "46b0abc5a335",
       "cloud": "d886cf868b9f",
       "collab": "c960b4d123c3",
@@ -924,7 +924,7 @@
     }
   },
   "hu": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "a173caaa787a",
@@ -932,7 +932,7 @@
       "autoscaling": "1c21beb69961",
       "broker": "11712e341b05",
       "canvas": "81a382db8d62",
-      "chrome": "dd2e05640945",
+      "chrome": "80c374e5cc94",
       "clear": "9f0815298681",
       "cloud": "8c992a64fcb6",
       "collab": "95c5c8df8fc6",
@@ -990,7 +990,7 @@
     }
   },
   "id": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "93080e86188c",
@@ -998,7 +998,7 @@
       "autoscaling": "6950ba47db62",
       "broker": "b80cb9b38721",
       "canvas": "2fda290dc14c",
-      "chrome": "727c8b8c9e14",
+      "chrome": "96e7273090c4",
       "clear": "6a490e267875",
       "cloud": "9485b3763d56",
       "collab": "aa2fe3106378",
@@ -1056,7 +1056,7 @@
     }
   },
   "it": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "9016b7c98d05",
@@ -1064,7 +1064,7 @@
       "autoscaling": "7eb305758981",
       "broker": "1e1b6beffa1a",
       "canvas": "e2c9a91a0072",
-      "chrome": "f498b3334257",
+      "chrome": "3f1943faed4f",
       "clear": "4d5fe344f73b",
       "cloud": "e7cc1b2a2b8d",
       "collab": "ed6884ce11e3",
@@ -1122,7 +1122,7 @@
     }
   },
   "ja": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "03ac6ff46fda",
@@ -1130,7 +1130,7 @@
       "autoscaling": "87d857f93075",
       "broker": "c8f5a8b68f7e",
       "canvas": "9da9d2835a24",
-      "chrome": "e1ee64604c6f",
+      "chrome": "092d4887ae8b",
       "clear": "b75cf3e662c8",
       "cloud": "e01dd1aab509",
       "collab": "b0879f6b9650",
@@ -1188,7 +1188,7 @@
     }
   },
   "ko": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "9668a36595b4",
@@ -1196,7 +1196,7 @@
       "autoscaling": "7dbda88021de",
       "broker": "47886d6b6de4",
       "canvas": "14bf51cdb387",
-      "chrome": "ded6f1709661",
+      "chrome": "59101cc243c0",
       "clear": "1972f875cc48",
       "cloud": "48d32f11c18d",
       "collab": "c67ee2c0285b",
@@ -1254,7 +1254,7 @@
     }
   },
   "lt": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "d340551a2a22",
@@ -1262,7 +1262,7 @@
       "autoscaling": "fcc25945a0a7",
       "broker": "a6b34ba75b3b",
       "canvas": "55234b234890",
-      "chrome": "2f8f3f9b19d2",
+      "chrome": "4b35860ca92c",
       "clear": "17da608d5eb5",
       "cloud": "1bc90b3fd9ad",
       "collab": "c5b2ca2d17bc",
@@ -1320,7 +1320,7 @@
     }
   },
   "lv": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "78e387261dc3",
@@ -1328,7 +1328,7 @@
       "autoscaling": "db4ac558738a",
       "broker": "32c2f016e0b9",
       "canvas": "56c202d22f57",
-      "chrome": "45d1aa25b746",
+      "chrome": "53d6d38eb910",
       "clear": "84c32082ea93",
       "cloud": "72ff4208950e",
       "collab": "8b7d4b475dd3",
@@ -1386,7 +1386,7 @@
     }
   },
   "nb": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "4c2373a03104",
@@ -1394,7 +1394,7 @@
       "autoscaling": "6b08381f6368",
       "broker": "3531a562d619",
       "canvas": "89484ca81ced",
-      "chrome": "a9a41654eabb",
+      "chrome": "f16f5231067a",
       "clear": "b8ba44f0f64d",
       "cloud": "b05356c26c45",
       "collab": "cd4eea9b42f5",
@@ -1452,7 +1452,7 @@
     }
   },
   "nl": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "9dca014cc22e",
@@ -1460,7 +1460,7 @@
       "autoscaling": "68feed60f334",
       "broker": "d508f900c835",
       "canvas": "0d55c0be3737",
-      "chrome": "9da856b81b22",
+      "chrome": "610af2fd0d48",
       "clear": "af4958252cad",
       "cloud": "f3ec5f3295c8",
       "collab": "f4219195aef3",
@@ -1518,7 +1518,7 @@
     }
   },
   "pl": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "570713cc3f9c",
@@ -1526,7 +1526,7 @@
       "autoscaling": "258b723dde9d",
       "broker": "30921f4bdb9c",
       "canvas": "4df13e6160ea",
-      "chrome": "9bbad062ca76",
+      "chrome": "55cb3213be41",
       "clear": "b3cf507fd0fd",
       "cloud": "300bfbfc5d70",
       "collab": "a4afa64dfeae",
@@ -1584,7 +1584,7 @@
     }
   },
   "pt-BR": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "b1b3aa0fdcce",
@@ -1592,7 +1592,7 @@
       "autoscaling": "086f672e6837",
       "broker": "44f9a3fc6f78",
       "canvas": "6dfc0a02461e",
-      "chrome": "107211b339fd",
+      "chrome": "e234e0131b4e",
       "clear": "3021ec2aa8da",
       "cloud": "f9923e928a37",
       "collab": "3dd25e42f358",
@@ -1650,7 +1650,7 @@
     }
   },
   "pt-PT": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "269f381da119",
@@ -1658,7 +1658,7 @@
       "autoscaling": "fb846d1841a5",
       "broker": "7e73bb2c945f",
       "canvas": "ad9e85bff0c6",
-      "chrome": "0da3cabef78a",
+      "chrome": "1d660c9b4844",
       "clear": "e211bdefdac6",
       "cloud": "654726331cce",
       "collab": "1e928406e5b2",
@@ -1716,7 +1716,7 @@
     }
   },
   "ro": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "2fc367bfb234",
@@ -1724,7 +1724,7 @@
       "autoscaling": "ff880559b00c",
       "broker": "c88ed99d2904",
       "canvas": "588812a1de8a",
-      "chrome": "ce4d3d06f5c6",
+      "chrome": "d521f62fb151",
       "clear": "b4c4e12e940b",
       "cloud": "7fcb9f8e7e56",
       "collab": "7d679e76b598",
@@ -1782,7 +1782,7 @@
     }
   },
   "ru": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "dd2155d35792",
@@ -1790,7 +1790,7 @@
       "autoscaling": "8b739703c223",
       "broker": "defa09e14bed",
       "canvas": "15b578745447",
-      "chrome": "8dbb54b845f3",
+      "chrome": "c06d3e1a2916",
       "clear": "9153e0dd2c1f",
       "cloud": "40c4bc75d269",
       "collab": "8177f509c861",
@@ -1848,7 +1848,7 @@
     }
   },
   "sk": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "de282cafe657",
@@ -1856,7 +1856,7 @@
       "autoscaling": "d522131d951c",
       "broker": "e44f86fe31c7",
       "canvas": "d86828a10d00",
-      "chrome": "e8a4bb80dd95",
+      "chrome": "e0805209b699",
       "clear": "07edd87e9908",
       "cloud": "b178788d3ab0",
       "collab": "fb273d2a40ed",
@@ -1914,7 +1914,7 @@
     }
   },
   "sl": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "46736cefd0aa",
@@ -1922,7 +1922,7 @@
       "autoscaling": "36cceddc55f6",
       "broker": "24fea16334a8",
       "canvas": "93728f084a27",
-      "chrome": "c67ddef1a67d",
+      "chrome": "171d8bdc82b9",
       "clear": "4565356e2b6a",
       "cloud": "b856a5103588",
       "collab": "2b55f285b088",
@@ -1980,7 +1980,7 @@
     }
   },
   "sr-Latn": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "b1f254245925",
@@ -1988,7 +1988,7 @@
       "autoscaling": "a4db316164a9",
       "broker": "9efdaa7c4c65",
       "canvas": "7ce51a2e614f",
-      "chrome": "6619ae699a55",
+      "chrome": "43c5234673c7",
       "clear": "ad6a6230ed98",
       "cloud": "746f09644e3f",
       "collab": "5ffbe56e7b84",
@@ -2046,7 +2046,7 @@
     }
   },
   "sv": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "a1faad44500b",
@@ -2054,7 +2054,7 @@
       "autoscaling": "7a844c2af12b",
       "broker": "bb3004dcedcf",
       "canvas": "e229cb2a101d",
-      "chrome": "b0a40182f183",
+      "chrome": "55c7f0077ffc",
       "clear": "49b8d2a2ba71",
       "cloud": "294ff7d73ef6",
       "collab": "bf5b385e805b",
@@ -2112,7 +2112,7 @@
     }
   },
   "th": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "4c7152546e6f",
@@ -2120,7 +2120,7 @@
       "autoscaling": "56a20e43cd24",
       "broker": "006f226776f8",
       "canvas": "f96766d37a59",
-      "chrome": "8dd51bf64c1a",
+      "chrome": "7aec68f6574d",
       "clear": "9500fccd1a35",
       "cloud": "a8be55aceebb",
       "collab": "45a34eb27333",
@@ -2178,7 +2178,7 @@
     }
   },
   "tr": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "c9ba84e9fc81",
@@ -2186,7 +2186,7 @@
       "autoscaling": "fd3b3f94f828",
       "broker": "6ac7d93b8b69",
       "canvas": "40a1775f62b9",
-      "chrome": "815c1609dabd",
+      "chrome": "f742a7754601",
       "clear": "7b073b22d41e",
       "cloud": "b16bc41d84ce",
       "collab": "041701b68c0f",
@@ -2244,7 +2244,7 @@
     }
   },
   "uk": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "01c3b2a9ea61",
@@ -2252,7 +2252,7 @@
       "autoscaling": "0a66777dd718",
       "broker": "43024a75a936",
       "canvas": "6fcccf14826e",
-      "chrome": "2055e4f65ceb",
+      "chrome": "3aedb6303f76",
       "clear": "dbc3753ea6c4",
       "cloud": "c7db739efffb",
       "collab": "1ff40af7d8df",
@@ -2310,7 +2310,7 @@
     }
   },
   "vi": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "e4040b83feb7",
@@ -2318,7 +2318,7 @@
       "autoscaling": "3cbf10e4e71e",
       "broker": "29be0d811866",
       "canvas": "b2cbedf2595c",
-      "chrome": "389b1f55ad43",
+      "chrome": "6932400e4d1d",
       "clear": "1715cc54fae9",
       "cloud": "c0051b59c72c",
       "collab": "f06757915770",
@@ -2376,7 +2376,7 @@
     }
   },
   "zh-CN": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "320934d4f256",
@@ -2384,7 +2384,7 @@
       "autoscaling": "df8468e5e828",
       "broker": "d2e8c8d65536",
       "canvas": "aed4ac3fbf38",
-      "chrome": "c3c08743294b",
+      "chrome": "77398c7a9d34",
       "clear": "c27c0626e770",
       "cloud": "b7a9a10f5f64",
       "collab": "187663c33fe0",
@@ -2442,7 +2442,7 @@
     }
   },
   "zh-TW": {
-    "messages": 2432,
+    "messages": 2436,
     "fallback": 487,
     "areas": {
       "admission": "b8f5dc48650d",
@@ -2450,7 +2450,7 @@
       "autoscaling": "9f505b26feda",
       "broker": "4a47ec750e03",
       "canvas": "9e0b62a504f7",
-      "chrome": "9f0a1135818d",
+      "chrome": "0a12ecc560dd",
       "clear": "104c0850cf58",
       "cloud": "eab3c52670c3",
       "collab": "8207b89ba250",

@@ -7,6 +7,12 @@ import {
   waitForStableViewport,
   gotoLive,
   pageLoadTimeout,
+  cameraJournal,
+  cameraJournalMark,
+  interactionJournal,
+  interactionJournalMark,
+  waitForCameraIdle,
+  waitForSelectionSettled,
 } from "./fixtures";
 
 // Polish and reliability: the selection stays in view when the inspector opens, the live bar
@@ -126,6 +132,122 @@ test.describe("polish", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await panAway(page);
     expect(await transformsAfter(page, "fit-view-button")).toBe(2);
+  });
+
+  test("collapsed toolbar skips every hidden control and expansion restores zoom", async ({ page }) => {
+    await gotoCanvas(page, KAFKA);
+    await waitForCameraIdle(page);
+    const collapse = page.getByTestId("collapse-toolbar-button");
+    const tools = [
+      "zoom-in-button",
+      "zoom-out-button",
+      "fit-view-button",
+      "view-tools-menu-button",
+      "undo-button",
+      "redo-button",
+      "shortcuts-button",
+    ];
+    await collapse.click();
+    await expect(collapse).toHaveAttribute("aria-expanded", "false");
+    const before = await viewportTransform(page);
+    // Inert tools cannot receive focus even when explicitly asked. Enter cannot activate hidden zoom.
+    for (const id of tools) {
+      await page.getByTestId("canvas-wrap").focus();
+      const tool = page.getByTestId(id);
+      if (await tool.count()) await tool.evaluate((el: HTMLElement) => el.focus());
+      await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+      if (id.startsWith("zoom-")) await page.keyboard.press("Enter");
+    }
+    expect(await viewportTransform(page)).toBe(before);
+    for (const key of ["Tab", "Shift+Tab"]) {
+      await collapse.focus();
+      // Cross both ends of the toolbar: no collapsed tool is a hidden stop in either direction.
+      for (let i = 0; i < tools.length + 1; i++) {
+        await page.keyboard.press(key);
+        const focused = await page.evaluate(() => document.activeElement?.getAttribute("data-testid"));
+        expect(tools).not.toContain(focused);
+      }
+    }
+    await collapse.click();
+    await expect(collapse).toHaveAttribute("aria-expanded", "true");
+    await page.getByTestId("zoom-out-button").click();
+    await expect.poll(() => viewportTransform(page)).not.toBe(before);
+    await waitForStableViewport(page);
+    await collapse.click();
+    await page.reload();
+    await expect(collapse).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("Fit view flyout applies both camera commands and has a separate accessible target", async ({ page }) => {
+    await gotoCanvas(page, KAFKA);
+    await waitForCameraIdle(page);
+    const trigger = page.getByTestId("view-tools-menu-button");
+    const fit = page.getByTestId("fit-view-button");
+    const target = await box(trigger);
+    expect(target.width).toBeGreaterThanOrEqual(24);
+    expect(target.height).toBeGreaterThanOrEqual(24);
+    expect(overlaps(target, await box(fit))).toBe(false);
+    for (const divider of ["history", "shortcuts", "collapse"]) {
+      await expect(page.getByTestId(`toolbar-divider-${divider}`)).toBeVisible();
+    }
+    const menu = page.getByTestId("view-tools-menu");
+    const zoom100 = page.getByTestId("context-menu-item-toolbar-view:zoom-100");
+    const zoomSelection = page.getByTestId("context-menu-item-toolbar-view:zoom-selection");
+    await trigger.click();
+    await expect(menu).toBeVisible();
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "menu-open");
+    await expect(zoomSelection).toHaveAttribute("aria-disabled", "true");
+    await expect(zoomSelection).toHaveAttribute("title", "Select something first");
+    let mark = await cameraJournalMark(page);
+    await zoom100.click();
+    await expect(menu).toBeHidden();
+    await expect.poll(async () => (await cameraJournal(page, mark)).map((e) => e.command)).toContain("zoom100");
+    await waitForCameraIdle(page);
+    expect(await viewportTransform(page)).toMatch(/scale\(1\)/);
+    // Fit again before clicking a node: 100% can put it beyond the pane.
+    await fit.click();
+    await waitForCameraIdle(page);
+    const selected = page.getByTestId("node-dashboard");
+    await selected.click();
+    await waitForSelectionSettled(page);
+    await trigger.click();
+    await expect(zoomSelection).not.toHaveAttribute("aria-disabled", "true");
+    mark = await cameraJournalMark(page);
+    await zoomSelection.click();
+    await expect(menu).toBeHidden();
+    await expect.poll(async () => (await cameraJournal(page, mark)).map((e) => e.command)).toContain("zoomToSelection");
+    await waitForCameraIdle(page);
+    const pane = await box(page.getByTestId("canvas-wrap"));
+    const content = await box(selected);
+    expect(content.x).toBeGreaterThanOrEqual(pane.x);
+    expect(content.y).toBeGreaterThanOrEqual(pane.y);
+    expect(content.x + content.width).toBeLessThanOrEqual(pane.x + pane.width);
+    expect(content.y + content.height).toBeLessThanOrEqual(pane.y + pane.height);
+    await trigger.click();
+    await fit.click();
+    await expect(menu).toBeHidden();
+    await waitForCameraIdle(page);
+    // Keyboard dismissal is owned by the interaction controller and restores the flyout trigger.
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeVisible();
+    const focusMark = await interactionJournalMark(page);
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
+    expect((await interactionJournal(page, focusMark)).map((e) => e.event)).toContain("menu.closed:escape");
+    await trigger.click();
+    await trigger.click();
+    await expect(menu).toBeHidden();
+    await trigger.click();
+    await page.getByTestId("collapse-toolbar-button").click();
+    await expect(menu).toBeHidden();
+    await page.getByTestId("collapse-toolbar-button").click();
+    await page.getByTestId("shortcuts-button").click();
+    await expect(page.getByTestId("shortcut-zoom-100")).toContainText("Zoom to 100%");
+    await expect(page.getByTestId("shortcut-zoom-100")).toContainText("0");
+    await expect(page.getByTestId("shortcut-zoom-selection")).toContainText("Zoom to selection");
+    await expect(page.getByTestId("shortcut-zoom-selection")).toContainText("2");
   });
 
   test("React Flow's credit stays visible, clear of the live bar and the first-run hint", async ({ page }) => {

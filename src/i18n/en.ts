@@ -1591,6 +1591,10 @@ const en = {
   "chrome.addedValueOtherValueNodesToValueAndTookValue":
     "Added {count, plural, one {1 node} other {{count} nodes}} to {name} and took {released, plural, one {{released}} other {{released}}} out",
   "chrome.fitViewValue": "Fit view ({combo})",
+  "chrome.zoomIn": "Zoom in",
+  "chrome.zoomOut": "Zoom out",
+  "chrome.collapseToolbar": "Collapse toolbar",
+  "chrome.expandToolbar": "Expand toolbar",
   "chrome.doubleClickTheCanvasToAddANodeOrOpen":
     "Double-click the canvas to add a node, or open the stencil panel on the left.",
   "chrome.dragAStencilFromTheLeftOrDoubleClickThe":
