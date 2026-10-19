@@ -18,6 +18,7 @@ without a numeric meter, empty bar or infinite ceiling formula.
 Sampled resource admission reads held work lazily, only when cohort compaction or splitting needs its owners.
 Invisible animation echoes retain aggregated expiry counts rather than message graphs; active-edge counts
 and checkpoint replay remain exact. Emission mappings use own-property lookup for inherited property names.
+Gallery regressions include the waiting showcase in the Reliability theme and the eight autoscaling examples.
 
 ### Deliberate golden changes
 
