@@ -1,9 +1,6 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { build, type Rollup } from "vite";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEPLOYMENT_VARIABLES, INTERNAL_DEFAULTS } from "../../scripts/deployment-env";
+import { beforeAll, describe, expect, it } from "vitest";
+import { INTERNAL_DEFAULTS } from "../../scripts/deployment-env";
+import { productionBuild, startupChunks } from "../test/productionBuild";
 
 // The self-hosting switches (src/lib/deployment.ts) remove code, not just menu rows: real builds of the app with
 // and without them. A copy built without share links carries no code that makes a link (the dialogs, the
@@ -19,42 +16,24 @@ interface Output {
   modules: string[];
   html: string;
   files: string[];
+  /** The startup JavaScript: the entry and what it imports statically. */
+  startup: string;
 }
 
-/** No .env files: a fixture is exactly its variables, whatever the checkout's .env.local says. */
-let noEnvFiles: string;
-afterAll(() => rmSync(noEnvFiles, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
-
+/** A production build with exactly these deployment variables (src/test/productionBuild.ts). */
 async function buildWith(env: Record<string, string>): Promise<Output> {
-  // A production build, as `pnpm build` makes it (Vitest runs with NODE_ENV=test, which Vite reads as development),
-  // with exactly the fixture's deployment variables: none from the shell (a developer's or CI's) or a .env file.
-  const saved = { ...process.env };
-  for (const key of DEPLOYMENT_VARIABLES) Reflect.deleteProperty(process.env, key);
-  Object.assign(process.env, { NODE_ENV: "production", ...env });
-  let result: Awaited<ReturnType<typeof build>>;
-  try {
-    result = await build({
-      configFile: resolve("vite.config.ts"),
-      envDir: noEnvFiles,
-      logLevel: "silent",
-      build: { write: false },
-    });
-  } finally {
-    for (const key of Object.keys(process.env)) if (!(key in saved)) Reflect.deleteProperty(process.env, key);
-    Object.assign(process.env, saved);
-  }
-  const output = (Array.isArray(result) ? result : [result]).flatMap((r) => (r as Rollup.RolldownOutput).output);
-  const chunks = output.filter((o): o is Rollup.OutputChunk => o.type === "chunk");
-  const page = output.find((o): o is Rollup.OutputAsset => o.type === "asset" && o.fileName === "index.html");
+  const { chunks, assets, html } = await productionBuild(env);
+  const catalog = (c: (typeof chunks)[number]) =>
+    Object.keys(c.modules).some((id) => id.startsWith("\0virtual:i18n/catalog/"));
   return {
     // Locale dictionaries use English lookup keys even for features absent from this copy. Check executable
     // feature chunks separately: those lookup keys do not contain the feature's implementation.
     code: chunks
-      .filter((c) => !Object.keys(c.modules).some((id) => id.startsWith("\0virtual:i18n/catalog/")))
+      .filter((c) => !catalog(c))
       .map((c) => c.code)
       .join("\n"),
     catalogCode: chunks
-      .filter((c) => Object.keys(c.modules).some((id) => id.startsWith("\0virtual:i18n/catalog/")))
+      .filter(catalog)
       .map((c) => c.code)
       .join("\n"),
     modules: chunks.flatMap((c) =>
@@ -62,8 +41,11 @@ async function buildWith(env: Record<string, string>): Promise<Output> {
         .filter(([, m]) => m.renderedLength > 0)
         .map(([id]) => id.replaceAll("\\", "/")),
     ),
-    html: String(page?.source ?? ""),
-    files: output.map((o) => o.fileName),
+    html,
+    files: [...chunks, ...assets].map((o) => o.fileName),
+    startup: startupChunks({ chunks, assets, html })
+      .map((c) => c.code)
+      .join("\n"),
   };
 }
 
@@ -129,21 +111,23 @@ const OWN = {
   VITE_COLLAB_TURN_USERNAME: "rooms",
   VITE_COLLAB_TURN_CREDENTIAL: "intranet-only",
 };
+/** What a build must never carry outside a room's code: the copy's endpoints and the TURN credential. */
+const OWN_VALUES = ["tracker.intranet.example", "stun.intranet.example", "turn.intranet.example", "intranet-only"];
 
 /** What a developer's shell or CI might have set: the fixtures must not see it. */
 const AMBIENT = { VITE_BRAND_NAME: "Ambient Brand", VITE_DISABLE_SHARE_LINKS: "1", VITE_DISABLE_ONDEVICE: "1" };
 
 beforeAll(async () => {
-  noEnvFiles = mkdtempSync(join(tmpdir(), "deployment-build-"));
   const saved = { ...process.env };
   Object.assign(process.env, AMBIENT);
   try {
     publicBuild = await buildWith({});
-    // Edit together asked for, but without share links: still none (a room is a kind of link).
+    // Edit together asked for, with a copy's own endpoints, but without share links: still none (a room is a kind
+    // of link), and none of the endpoints either.
     internal = await buildWith({
       ...INTERNAL_DEFAULTS,
+      ...OWN,
       VITE_BRAND_NAME: "Acme Diagrams (internal)",
-      VITE_ENABLE_COLLAB: "1",
     } as Record<string, string>);
     locked = await buildWith({
       VITE_DISABLE_SHARE_LINKS: "1",
@@ -221,9 +205,10 @@ describe("Edit together in the production build", () => {
     }
   });
 
-  it("asked for without share links: still none", () => {
+  it("asked for without share links: still none, and none of the copy's endpoints", () => {
     expect(roomModules(internal)).toEqual([]);
     expect(internal.code).not.toMatch(/tracker\.(?:openwebtorrent\.com|webtorrent\.dev)|stun\.cloudflare\.com/);
+    for (const value of OWN_VALUES) expect(internal.code, value).not.toContain(value);
   });
 
   it("on, with a copy's own trackers, STUN and TURN instead of the approved ones", () => {
@@ -232,6 +217,8 @@ describe("Edit together in the production build", () => {
       expect(ownRooms.code, value).toContain(value);
     expect(ownRooms.code).toContain("turns:turn.intranet.example:5349");
     expect(ownRooms.code).toContain("intranet-only");
+    // Only in the room's own code: not at startup (the import.meta.env object startup modules read included).
+    for (const value of OWN_VALUES) expect(ownRooms.startup, value).not.toContain(value);
     expect(ownRooms.code).not.toMatch(/tracker\.(?:openwebtorrent\.com|webtorrent\.dev)|stun\.cloudflare\.com/);
   });
 });

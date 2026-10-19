@@ -124,12 +124,16 @@ const TRACKER = new RegExp(String.raw`^(?:wss://${HOST}|ws://(?:localhost|127\.0
 const STUN = new RegExp(String.raw`^stuns?:${HOST}${PORT}$`, "i");
 const TURN = new RegExp(String.raw`^turns?:${HOST}${PORT}(?:\?transport=(?:udp|tcp))?$`, "i");
 
-/** VITE_COLLAB_TRACKERS as the build reads it; unset, the approved trackers. Anything else throws. */
+/**
+ * VITE_COLLAB_TRACKERS as the build reads it, each URL in its canonical form (a lower-case scheme and host, and a
+ * path: `WSS://T.example.com` is `wss://t.example.com/`), so the transport takes every one it accepts; unset, the
+ * approved trackers. Anything else throws.
+ */
 export function trackerList(value: string | undefined): string[] {
   const urls = list(value);
   const bad = urls.filter((url) => !TRACKER.test(url));
   if (bad.length) throw new Error(`VITE_COLLAB_TRACKERS takes wss:// tracker URLs, not: ${bad.join(", ")}`);
-  return urls.length ? urls : [...APPROVED_TRACKERS];
+  return urls.length ? [...new Set(urls.map((url) => new URL(url).href))] : [...APPROVED_TRACKERS];
 }
 
 /**
@@ -253,6 +257,12 @@ export function deploymentSwitches(): Plugin {
       const env = resolveDeploymentEnv(mode, config.envDir || config.root || process.cwd());
       brand = readDeployment(env).brandName;
       return { define: deploymentDefines(env) };
+    },
+    configResolved(config) {
+      // Vite also puts every VITE_* variable in import.meta.env, an object any module may read whole. A room's
+      // endpoints (a TURN credential among them) reach the app only as the constants above, in the room's own chunk:
+      // never in that object, so never at startup and never in a build without rooms.
+      for (const key of COLLAB_VARIABLES) Reflect.deleteProperty(config.env, key);
     },
     transformIndexHtml: (html) => brandHtml(html, brand),
     generateBundle: {

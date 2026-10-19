@@ -53,12 +53,20 @@ async function rename(page: Page, id: string, value: string) {
   await field.press("Enter");
 }
 
+/** The hosts of the trackers this page was given (window.__collabEndpoints), as the consent dialogs list them. */
+const trackerHosts = (page: Page) =>
+  page.evaluate(() => (window.__collabEndpoints?.trackers ?? []).map((url) => new URL(url).hostname).join(", "));
+
 /** Starts a room on the open diagram (the event Share's row will send), through its consent dialog. */
 async function startRoom(page: Page): Promise<string> {
   await page.evaluate(() => window.dispatchEvent(new Event("diagrams:edit-together")));
   const dialog = page.getByTestId("room-start-dialog");
   await expect(dialog).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("room-start-disclosure")).toContainText("Everyone in the room can see your IP address");
+  // What this page's room contacts, whoever runs it: the endpoints this page has (one tracker, the test's own, on
+  // this origin; none in tests without a tracker), by host.
+  await expect(page.getByTestId("room-start-disclosure")).toContainText("The services below");
+  await expect(page.getByTestId("room-services")).toHaveText(`Services: ${await trackerHosts(page)}`);
   await page.getByTestId("room-start-confirm").click();
   await expect(page.getByTestId("room-started-dialog")).toBeVisible();
   await expect(page.getByTestId("room-link-copy")).toBeFocused();
@@ -485,6 +493,8 @@ async function twoInARoom(page: Page, context: BrowserContext, other: BrowserCon
   const link = await startRoom(page);
   const guest = await other.newPage();
   await guest.goto(link);
+  await expect(guest.getByTestId("room-services")).toHaveText(`Services: ${new URL(page.url()).hostname}`);
+  await expect(guest.getByTestId("room-join-dialog")).toContainText("The services below");
   await guest.getByTestId("room-join-accept").click();
   await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(chip(page)).toHaveAttribute("data-peers", "1");

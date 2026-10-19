@@ -64,11 +64,12 @@ describe("reading the switches", () => {
   it("a room's trackers: wss:// URLs, deduplicated; unset, the approved two; anything else stops the build", () => {
     expect(trackerList(undefined)).toEqual(APPROVED_TRACKERS);
     expect(trackerList(" ")).toEqual(APPROVED_TRACKERS);
-    expect(trackerList("wss://t.example.com, wss://t2.example.com:8443/announce wss://t.example.com")).toEqual([
-      "wss://t.example.com",
+    // Canonical: lower-case scheme and host, a path; the same tracker spelled twice is one.
+    expect(trackerList("wss://t.example.com, wss://t2.example.com:8443/announce WSS://T.example.com/")).toEqual([
+      "wss://t.example.com/",
       "wss://t2.example.com:8443/announce",
     ]);
-    expect(trackerList("ws://localhost:8000")).toEqual(["ws://localhost:8000"]);
+    expect(trackerList("ws://localhost:8000")).toEqual(["ws://localhost:8000/"]);
     for (const bad of ["https://t.example.com", "ws://t.example.com", "wss://t.example.com/a?b", "wss://*.example.com"])
       expect(() => trackerList(bad), bad).toThrow(/VITE_COLLAB_TRACKERS/);
   });

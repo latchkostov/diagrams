@@ -2463,7 +2463,7 @@ const en = {
   "collab.startLead": "Anyone with the link can see and edit this diagram while at least one person is in the room.",
   "collab.ipPeers": "Everyone in the room can see your IP address.",
   "collab.ipTrackers":
-    "Two public matchmaking services, run by other people, see your IP address too, but never the diagram or the link.",
+    "The services below, which introduce you to the others, see your IP address too, but never the diagram or the link.",
   "collab.encrypted": "The diagram is end-to-end encrypted. Your copy stays on this device when you leave.",
   "collab.yourName": "Your name in the room",
   "collab.services": "Services: {list}",

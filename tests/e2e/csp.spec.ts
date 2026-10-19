@@ -1,5 +1,8 @@
 import { waitForStableViewport } from "./fixtures";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Page, Response } from "@playwright/test";
 import { test, expect, STORAGE_KEYS, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
@@ -7,6 +10,7 @@ import { installFakeSpeech, openAdvanced } from "./ai-helpers";
 import { recordFor } from "./recording-clock";
 import { emulateTracker } from "./collab-tracker";
 import { COLLAB_TRACKERS } from "../../src/collab/transport/tracker";
+import { contentSecurityPolicy } from "../../scripts/security-headers";
 
 // The Content-Security-Policy and the other security headers (scripts/security-headers.ts), on the production
 // build: `vite preview` sends exactly what vercel.json does. Each test walks part of the app and expects zero
@@ -297,8 +301,10 @@ test.describe("Content-Security-Policy", () => {
     context,
     page,
   }) => {
-    // The trackers are the approved public URLs, answered here (nothing leaves the machine): the page's CSP decides
-    // whether it may open them (collaboration plan §1.3 #7). STUN isn't a fetch; the peers connect over host candidates.
+    // The trackers are the approved public URLs, answered here (nothing leaves the machine) by routeWebSocket, which
+    // replaces those sockets before the browser's CSP check: this checks the headers and the room under them, and the
+    // test after it checks that native sockets obey the same tracker source. STUN isn't a fetch; the peers connect
+    // over host candidates.
     test.slow();
     const other = await browser.newContext();
     try {
@@ -326,13 +332,77 @@ test.describe("Content-Security-Policy", () => {
       expect(tracker.opened).toBeGreaterThanOrEqual(2 * COLLAB_TRACKERS.length);
       expect(await csp.violations()).toEqual([]);
       expect(await guestCsp.violations()).toEqual([]);
-      // Any other tracker is refused: the list is exact.
+      // Any other tracker (not routed, so checked natively) is refused: the list is exact.
       await page.evaluate(() => void new WebSocket("wss://tracker.btorrent.xyz"));
       await expect
         .poll(async () => (await csp.violations()).join("\n"))
         .toMatch(/connect-src blocked wss:\/\/tracker\.btorrent\.xyz/);
     } finally {
       await other.close();
+    }
+  });
+
+  test("native tracker sockets obey connect-src: the tracker source admits a handshake, its absence blocks it", async ({
+    page,
+  }) => {
+    // The test above answers the trackers inside the browser (routeWebSocket), which skips the browser's own CSP
+    // check for those sockets. Here nothing is emulated: a page served with the app's policy, a real WebSocket
+    // server on another origin, and the policy's tracker source built the same way (cspDirectives' `collab`).
+    const listen = (server: Server) =>
+      new Promise<number>((done) => server.listen(0, "127.0.0.1", () => done((server.address() as AddressInfo).port)));
+    let handshakes = 0;
+    const tracker = createServer();
+    tracker.on("upgrade", (req, socket) => {
+      handshakes++;
+      const accept = createHash("sha1")
+        .update(`${req.headers["sec-websocket-key"]}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`)
+        .digest("base64");
+      socket.write(
+        `HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`,
+      );
+    });
+    const trackerUrl = `ws://127.0.0.1:${await listen(tracker)}/announce`;
+    let policy = "";
+    const site = createServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "text/html", "Content-Security-Policy": policy });
+      res.end("<!doctype html><title>tracker socket</title>");
+    });
+    const origin = `http://127.0.0.1:${await listen(site)}`;
+    try {
+      const open = async () => {
+        await page.goto(origin);
+        return page.evaluate(
+          (url) =>
+            new Promise<string>((done) => {
+              const violations: string[] = [];
+              document.addEventListener("securitypolicyviolation", (e) => violations.push(e.effectiveDirective));
+              try {
+                const ws = new WebSocket(url);
+                ws.onopen = () => done("open");
+                ws.onerror = () => setTimeout(() => done(`error ${violations.join(",")}`), 100);
+              } catch {
+                done(`refused ${violations.join(",")}`);
+              }
+            }),
+          trackerUrl,
+        );
+      };
+      policy = contentSecurityPolicy({ embed: false, collab: [trackerUrl] });
+      expect(policy).toContain(`connect-src 'self'`);
+      expect(await open()).toBe("open");
+      expect(handshakes).toBe(1);
+      // The same policy without the tracker (a build without rooms, or an embed): blocked before any handshake.
+      for (const without of [
+        contentSecurityPolicy({ embed: false }),
+        contentSecurityPolicy({ embed: true, collab: [trackerUrl] }),
+      ]) {
+        policy = without;
+        expect(await open()).toMatch(/connect-src/);
+      }
+      expect(handshakes).toBe(1);
+    } finally {
+      tracker.close();
+      site.close();
     }
   });
 

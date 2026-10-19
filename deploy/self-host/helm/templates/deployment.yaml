@@ -12,7 +12,10 @@ spec:
       labels:
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
-        livediagrams.dev/build: {{ .Values.build | toJson | quote }}
+        {{- /* The TURN credential is a build input, not metadata: never in the annotation. */}}
+        {{- $build := deepCopy .Values.build }}
+        {{- $_ := unset $build.switches "VITE_COLLAB_TURN_CREDENTIAL" }}
+        livediagrams.dev/build: {{ $build | toJson | quote }}
     spec:
       securityContext:
         runAsNonRoot: true

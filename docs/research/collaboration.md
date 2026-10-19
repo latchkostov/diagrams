@@ -810,6 +810,17 @@ focus gracefully, and failure copy distinguishes live edits from completed saves
 status/recovery controls, leaving the production chrome budget unchanged. No new assistive-technology
 walkthrough was performed in this slice.
 
+**Production status (2026-10-18).** The production slices E1–E8 replace C1b–C1d's gating. Edit together ships as
+a normal feature with graceful failure, not as a beta:
+
+- Behind the build switch `VITE_ENABLE_COLLAB`, which livediagrams.dev turns on with a Vercel variable once the
+  [runbook](../COLLABORATION-RUNBOOK.md)'s prerequisites are met.
+- Using the two approved public trackers and Cloudflare STUN, with honest failure states and a file fallback.
+- TURN only after evidence (the manual network matrix, the Nightly smoke) and with the owner's approval.
+- Private diagrams stay excluded pending independent review.
+
+User docs: [EDIT-TOGETHER.md](../EDIT-TOGETHER.md). Self-hosting: [SELF-HOSTING.md](../SELF-HOSTING.md#edit-together).
+
 All costs and effort below are **planning estimates**, not bids. A phase is incomplete until privacy,
 accessibility, docs, failure recovery and the specified tests pass. Engineering time includes tests
 and docs but excludes waiting for independent cryptographic review. Each future fix gets a regression
