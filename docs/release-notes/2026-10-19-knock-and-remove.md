@@ -93,6 +93,9 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   ever raised) until it has it, and decides nothing irreversible meanwhile: not leaving, not knocking again, not
   taking a no; a promise nobody keeps lapses after 20 s without progress. Leaving sends the chain to the lobby only
   after a re-key.
+- **A ninth review** (two causes): decisions that read the chain wait, in the inbox, for whatever's being received
+  to be validated; leaving sends the chain to the lobby whenever an entry since the last re-key may not have reached
+  a member; one catch-up deadline since the chain last grew, which nobody can renew by promising more.
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.

@@ -320,6 +320,10 @@ export class CollabSession {
   private readonly queuedFrom = new Map<PeerId, number>();
   /** Set as leave() starts: nothing more is taken in. */
   private leaving = false;
+  /** Knock-to-join: the key each proved transport peer proved (this epoch), and whether this page has committed a
+   *  roster entry since its last re-key (one its members may not have had, if they haven't proved themselves yet). */
+  private readonly provedKeys = new Map<PeerId, string>();
+  private committedSinceRekey = false;
   /** Leaving, with roster writes already asked for still to finish: nothing new comes in or is asked for. */
   private closing = false;
   private leaveJob?: Promise<void>;
@@ -517,8 +521,10 @@ export class CollabSession {
     const room = this.signed!;
     const job = this.outbox.then(async () => {
       const entry = await room.append(op, fields);
-      if (entry) await this.deliver("doc", frame(DOC.roster, textToBytes(JSON.stringify({ e: [entry] }))));
-      return !!entry;
+      if (!entry) return false;
+      this.committedSinceRekey = true;
+      await this.deliver("doc", frame(DOC.roster, textToBytes(JSON.stringify({ e: [entry] }))));
+      return true;
     });
     this.outbox = job.then(
       () => {},
@@ -784,13 +790,15 @@ export class CollabSession {
     // re-key, then the handover as the host leaves, in the epoch that left it in) finish first. Then the goodbye.
     this.closing = true;
     const room = this.signed;
-    const before = room?.scope;
     await room?.settled;
-    // A re-key meanwhile (a removal under way): the new epoch's members haven't proved themselves to this page, so a
-    // handover after it reached nobody: the chain (the handover in it) to everyone in the lobby before this page goes.
-    // In an unchanged epoch, the handover went to everyone with it (commitEntry).
-    if (room?.knock && room.current && before !== room.scope)
-      await this.sendLobby(chainMessages(room.knock.chain.data(room.current), []));
+    // An entry since the last re-key (a handover as the host leaves) that a member may not have had: content frames go
+    // only to members proved in this epoch, and one hasn't (a re-key just now; or away). The chain (the entry in it) to
+    // everyone in the lobby before this page goes. With every member proved, the entry went to them all.
+    if (room?.knock && room.current && this.committedSinceRekey) {
+      const proved = new Set(this.provedKeys.values());
+      if ([...room.state().members].some((k) => k !== room.key && !proved.has(k)))
+        await this.sendLobby(chainMessages(room.knock.chain.data(room.current), []));
+    }
     this.leaving = true;
     try {
       this.sendDoc(frame(DOC.bye));
@@ -859,6 +867,7 @@ export class CollabSession {
         },
         leave: (peer) => {
           this.memberPeers.delete(peer);
+          this.provedKeys.delete(peer);
           // The last member who answered a knock gone: waiting for an answer again (the no-answer wait restarts).
           this.answeredBy.delete(peer);
           this.asked.delete(peer);
@@ -874,10 +883,7 @@ export class CollabSession {
       this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => {
         this.expireKnocks();
         // A chain promised and still not here (or its wait run out): what waited on it is looked at again.
-        if (this.lobby && (this.pendingDeny || this.catchUp.size)) {
-          this.checkDeny();
-          void this.follow();
-        }
+        if (this.lobby && (this.pendingDeny || this.catchUp.size)) this.decideOnChain();
         // Anyone not yet proved a member (a hello lost, a peer behind on epochs) hears from this one again.
         if (this.lobby) for (const peer of this.transport.peers()) if (!this.memberPeers.has(peer)) this.sayHello(peer);
         // Without the document yet: who this is goes with each request (a lost binding never stalls the answer).
@@ -1142,7 +1148,22 @@ export class CollabSession {
     // any order) it waits (who said it and which epoch, nothing more: the latest one only).
     await room.knock.chain.add(deny.chain, () => this.verifies.take(m.sender, 1));
     this.pendingDeny = { by: m.key, tip: deny.tip };
-    this.checkDeny();
+    this.decideOnChain();
+  }
+
+  /**
+   * Every decision that reads the chain (a no waiting, leaving as removed, knocking again, moving on): in the inbox,
+   * after whatever's being received has validated its chain, rosters and wraps, never in the middle of it (a timer, a
+   * re-key and a message all come here).
+   */
+  private decideOnChain(): void {
+    this.inbox = this.inbox
+      .then(async () => {
+        if (this.status === "left" || this.leaving || this.closing) return;
+        this.checkDeny();
+        await this.follow();
+      })
+      .catch(() => this.reject("internal"));
   }
 
   /**
@@ -1189,6 +1210,7 @@ export class CollabSession {
       if (!(await checkMemberProof(this.keys, m.senderBytes, proof))) return this.reject("bad-proof");
       const known = this.memberPeers.get(m.from) === m.sender;
       this.memberPeers.set(m.from, m.sender);
+      this.provedKeys.set(m.from, m.key);
       if (this.knocks.delete(m.key)) this.emit();
       if (known) return;
       // A member, proved: what the room has, as on any peer appearing (and this one's own hello, if it lacks it).
@@ -1492,8 +1514,7 @@ export class CollabSession {
     }
     // The chain this piece is part of, as its sender said (only ever raised: ./chainCatchUp.ts).
     this.catchUp.note(m.sender, bundle.tip, this.clock.now());
-    this.checkDeny();
-    await this.follow();
+    this.decideOnChain();
   }
 
   /** Whether a chain a peer has said it's sending is still to arrive (each checked against what's validated now). */
@@ -1544,6 +1565,7 @@ export class CollabSession {
       this.knocking = true;
       this.answeredBy.clear();
       this.memberPeers.clear();
+      this.provedKeys.clear();
       this.sayHello();
       this.updateStatus();
       this.emit();
@@ -1651,6 +1673,8 @@ export class CollabSession {
       this.opener = new Opener(keys, sender);
       room.rekey(keys, start);
       this.memberPeers.clear();
+      this.provedKeys.clear();
+      this.committedSinceRekey = false;
       for (const q of this.held.values()) q.stop();
       this.held.clear();
       this.reassembler.clear();
@@ -1678,7 +1702,7 @@ export class CollabSession {
     this.updateStatus();
     this.emit();
     // The chain may already go further (a later epoch known meanwhile), or leave this person out of it.
-    await this.follow();
+    this.decideOnChain();
   }
 
   /** The current epoch, its secret, and the wraps this member holds: what a reload needs to come back. */
@@ -2075,7 +2099,7 @@ export class CollabSession {
         for (let i = 0; i < (added?.refused ?? 0); i++) this.reject("roster-refused");
         for (let i = 0; i < (added?.throttled ?? 0); i++) this.reject("verify-throttled");
         // A removal that may now be the epoch's first, or a new current epoch: followed.
-        if (room.knock) await this.follow();
+        if (room.knock) this.decideOnChain();
         return;
       }
       case DOC.bye:

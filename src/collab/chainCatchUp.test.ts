@@ -62,4 +62,26 @@ describe("a page catching up on the room's chain", () => {
     expect(h.pending(2 * CATCH_UP_MS - 2)).toBe(true);
     expect(h.pending(2 * CATCH_UP_MS - 1)).toBe(false);
   });
+
+  it("raising a promised tip without progress does not renew its deadline", () => {
+    const c = new ChainCatchUp();
+    c.note("a", tip(1), 0);
+    c.note("a", tip(2), CATCH_UP_MS - 1);
+    expect(c.pending(CATCH_UP_MS - 1)).toBe(true);
+    expect(c.pending(CATCH_UP_MS)).toBe(false);
+  });
+
+  it("senders taking turns promising far tips can't renew the wait: one deadline since the chain last grew", () => {
+    const c = new ChainCatchUp();
+    c.settle(0, 0);
+    for (let t = 0; t < 5 * CATCH_UP_MS; t += 10_000) {
+      c.note(t % 20_000 ? "b" : "a", tip(20 + ((t / 10_000) % 5)), t);
+      expect(c.pending(t)).toBe(t < CATCH_UP_MS);
+    }
+    // Real progress starts a fresh wait for what's still promised.
+    c.note("a", tip(30), 5 * CATCH_UP_MS);
+    c.settle(1, 5 * CATCH_UP_MS);
+    expect(c.pending(5 * CATCH_UP_MS + 1)).toBe(true);
+    expect(c.pending(6 * CATCH_UP_MS)).toBe(false);
+  });
 });

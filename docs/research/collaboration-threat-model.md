@@ -542,9 +542,12 @@ host removes), which makes the epochs a single line.
   chain reaches it, and decides nothing irreversible (leaving as removed, knocking again, taking a no) while any is
   outstanding, nor while this person is a member at the end of the line (seventh and eighth review P1s: a page
   catching up was ejected by a piece showing its removal before the piece that let it back in, and a stale bundle in
-  between undid the guard; a former co-host's no landed between pieces and was checked against the partial chain). A
-  promise left 20 s without the validated chain growing lapses, so a peer lying about its tip stalls these decisions
-  that long at most; an honest catch-up, checked at a page's signature budget, keeps its wait while it grows. A no names the epoch it waits for, but that only says when to look: its chain is taken once, as
+  between undid the guard; a former co-host's no landed between pieces and was checked against the partial chain). One
+  deadline covers the whole wait: 20 s from the first promise since the validated chain last grew (adding, raising
+  or re-making promises never moves it, so peers taking turns lying stall these decisions 20 s at most); an honest
+  catch-up, checked at a page's signature budget, keeps its wait while the chain grows. Every decision that reads
+  the chain (a no, leaving, knocking again, moving on) runs in the inbox, after whatever's being received has
+  validated its chain, rosters and wraps, never from a timer in the middle of it (ninth review P1). A no names the epoch it waits for, but that only says when to look: its chain is taken once, as
   any is, and what waits is who said it and that epoch; it counts only from someone who hosts or co-hosts in the
   newest epoch the page knows (`EpochChain.leadsNow`, the one place current authority is read), so a removed
   co-host naming an epoch it once led denies nobody (seventh review P1s, the no's chain re-read with every later
@@ -557,8 +560,9 @@ host removes), which makes the epochs a single line.
   that silently didn't happen) and an action after a removal lands in its successor epoch; a removal that can't be
   made (the room changed meanwhile) is said plainly to the host. Leaving closes first (nothing new in or out), lets
   the roster writes already asked for finish (a removal with its re-key, then the handover in the epoch that left
-  it, sent to everyone in the lobby only when a re-key happened meanwhile: otherwise its roster entry reached
-  everyone as any does), then says goodbye (seventh review P1: a
+  it), then, if this page committed a roster entry since its last re-key while a member hasn't proved themselves
+  to it in this epoch (its content frames went only to proved members), sends the chain to everyone in the lobby,
+  then says goodbye (ninth review P1: an awaited Remove, then a handover and Leave at once, lost the handover) (seventh review P1: a
   Remove and Leave together left the room's new epoch with the departed host still hosting). The re-key itself: the same document, sender id and Live run; a new sealer and opener (frames from any other epoch are
   refused before decryption), bindings reset (they're signed per epoch), presence ordering restarted for the members
   left (their counters restart under the new keys) and dropped for the one removed (review P1), and the local copy
