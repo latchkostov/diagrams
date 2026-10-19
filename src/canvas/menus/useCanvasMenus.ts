@@ -182,7 +182,7 @@ export function useCanvasContextMenus(
       if (e.defaultPrevented || e.isComposing || !(e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) return;
       const target = e.target;
       if (
-        !(target instanceof HTMLElement) ||
+        !(target instanceof Element) ||
         !target.closest('[data-testid="canvas-wrap"]') ||
         !target.matches(".react-flow__node, .react-flow__edge")
       )

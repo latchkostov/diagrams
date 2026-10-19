@@ -121,7 +121,8 @@ test.describe("message trace", () => {
   test("Live downloads TraceCard only when tracing starts", async ({ page }) => {
     const downloads: string[] = [];
     page.on("request", (request) => {
-      if (/\/TraceCard-[^/]+\.js(?:\?|$)/.test(request.url())) downloads.push(request.url());
+      if (/\/(?:assets\/TraceCard-[A-Za-z0-9_-]+\.js|src\/live\/TraceCard\.tsx)(?:\?.*)?$/.test(request.url()))
+        downloads.push(request.url());
     });
     await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&paused=1`);
@@ -153,6 +154,30 @@ test.describe("message trace", () => {
   });
 
   for (const key of ["Shift+F10", "ContextMenu"]) {
+    test(`${key}: keyboard shortcuts open a focused SVG edge menu`, async ({ page }) => {
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+      const edge = page.getByTestId("relationship-wrapper-order-events-to-inventory");
+      for (const live of [true, false]) {
+        if (!live) await page.getByTestId("live-toggle").click();
+        await expect(edge).toBeVisible();
+        expect(await edge.evaluate((el) => el instanceof SVGElement)).toBe(true);
+        await edge.focus();
+        await page.keyboard.press(key);
+        await expect(page.getByTestId("context-menu")).toBeFocused();
+        await expect(menuItem(page, "edge.edit-label")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(edge).toBeFocused();
+        await edge.dispatchEvent("keydown", {
+          key: key === "ContextMenu" ? key : "F10",
+          shiftKey: key !== "ContextMenu",
+        });
+        await expect(page.getByTestId("context-menu")).toBeFocused();
+        await expect(menuItem(page, "edge.edit-label")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(edge).toBeFocused();
+      }
+    });
+
     test(`${key} opens the focused canvas node's menu in Edit and Live`, async ({ page }) => {
       await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
       for (const live of [true, false]) {

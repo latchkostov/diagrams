@@ -144,6 +144,8 @@ export function useSlowMotion(opts: {
 
   const start = useCallback(
     (source: SlowSource) => {
+      // Rebuild before saving the camera; a surviving asynchronous capture keeps this checkpoint too.
+      controller.flush();
       if (session.getState().status === "off" || session.getState().status === "armed") {
         const [x, y, zoom] = store.getState().transform;
         before.current ??= { x, y, zoom };
@@ -152,7 +154,7 @@ export function useSlowMotion(opts: {
       store.getState().unselectNodesAndEdges();
       session.start(source);
     },
-    [session, store],
+    [controller, session, store],
   );
   const end = useCallback(() => {
     const was = session.getState().status;
@@ -170,8 +172,7 @@ export function useSlowMotion(opts: {
       const g = controller.getState().generation;
       if (g === generation) return;
       generation = g;
-      session.drop();
-      before.current = null;
+      if (session.drop()) before.current = null;
     });
   }, [controller, session]);
 

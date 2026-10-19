@@ -39,7 +39,9 @@ describe("epochs", () => {
     const data = chain.data(start);
     const received = new EpochChain(host.key, ROOM);
     for (let i = data.starts.length - 1; i >= 0; i--) {
-      await received.add({ starts: [data.starts[i]], logs: [data.logs[i]] });
+      let checks = 0;
+      await received.add({ starts: [data.starts[i]], logs: [data.logs[i]] }, () => ++checks > 0);
+      expect(checks).toBe(1 + data.logs[i].entries.length);
     }
     expect(received.data(received.deepest())).toEqual(data);
     expect(received.rosterOf(start)!.state().ask).toBe(false);
@@ -59,15 +61,57 @@ describe("epochs", () => {
         prev: entry.sig,
       });
       await chain.addStarts([start]);
-      const entries = Array.from({ length: MAX_LOG_ENTRIES + 1 }, (_, i) => ({
-        ...entry,
-        sig: bytesToBase64Url(seededBytes(epoch * 10_000 + i)(64)),
-      }));
+      const entries = await Promise.all(
+        Array.from({ length: epoch === 20 ? MAX_LOG_ENTRIES + 1 : 1 }, (_, i) =>
+          signEntry(host, ROOM, scopeOf(start), { n: i + 1, op: "ask", ask: true, deps: [] }),
+        ),
+      );
       await chain.addEntries(scopeOf(start), entries);
     }
     expect(pending.size).toBe(16);
     expect([...pending.values()].every((entries) => entries.size <= MAX_LOG_ENTRIES)).toBe(true);
     expect([...pending.values()].at(-1)!.size).toBe(MAX_LOG_ENTRIES);
+  });
+
+  it("junk buffered for three epochs spends its sender's budget, leaving the honest chain's allowance intact", async () => {
+    const host = await newIdentity();
+    const chain = new EpochChain(host.key, ROOM);
+    let start = await startOf(host, newEpochSecret(seededBytes(900)));
+    await chain.addStarts([start]);
+    for (let epoch = 1; epoch <= 3; epoch++) {
+      const roster = chain.rosterOf(start)!;
+      const away = await newIdentity();
+      await roster.append(host, "join", { who: away.key, x: (await newAgreement()).x });
+      const removal = (await roster.append(host, "remove", { who: away.key }))!;
+      start = await signStart(host, ROOM, {
+        epoch,
+        kc: await commitEpoch(newEpochSecret(seededBytes(900 + epoch)), ROOM, epoch),
+        prev: removal.sig,
+      });
+      await chain.addStarts([start]);
+    }
+    const data = chain.data(start);
+    const received = new EpochChain(host.key, ROOM);
+    let attackerChecks = 0;
+    const attackerBudget = () => attackerChecks < 2048 && ++attackerChecks > 0;
+    await received.addStarts(data.starts.slice(1), attackerBudget);
+    for (const successor of data.starts.slice(1)) {
+      const junk = Array.from({ length: MAX_LOG_ENTRIES }, (_, i) => ({
+        n: i + 1,
+        by: host.key,
+        op: "ask",
+        ask: false,
+        deps: [],
+        sig: bytesToBase64Url(seededBytes(successor.epoch * 10_000 + i)(64)),
+      }));
+      await received.addEntries(scopeOf(successor), junk, attackerBudget);
+    }
+    let honestChecks = 0;
+    await received.add(data, () => honestChecks < 2048 && ++honestChecks > 0);
+    expect(received.deepest()?.epoch).toBe(3);
+    expect(received.data(received.deepest())).toEqual(data);
+    expect(attackerChecks).toBe(2048);
+    expect(honestChecks).toBe(1 + data.logs.reduce((n, log) => n + log.entries.length, 0));
   });
 
   it("epoch 0 starts with the link's host; a start by anyone else, or a forged one, isn't the room's", async () => {

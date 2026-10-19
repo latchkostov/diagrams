@@ -244,12 +244,12 @@ export class SlowMotion {
     this.controller.setPlaying(this.wasPlaying);
   }
 
-  /** The engine was rebuilt (restart, a structural edit): drop slow motion without touching play. */
-  drop(): void {
+  /** Drop an invalidated journey without touching play; false means a pending capture survives this rebuild. */
+  drop(): boolean {
     // This rebuild is the one a requested capture is waiting for.
-    if (this.pendingStart && this.controller.busy) return;
+    if (this.pendingStart && this.controller.busy) return false;
     this.pendingStart = null;
-    if (this.state.status === "off") return;
+    if (this.state.status === "off") return true;
     if (this.state.status === "capturing") {
       this.cancel?.();
       this.cancel = null;
@@ -258,6 +258,7 @@ export class SlowMotion {
     this.set(OFF);
     this.restoreSpeed();
     this.controller.hold(false);
+    return true;
   }
 
   private restoreSpeed(): void {
