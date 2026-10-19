@@ -2,6 +2,9 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import * as planning from "../sim/waitingPlan";
 import { waitingDetails } from "./waitingDetails";
+import { simulationEdges } from "../sim/simulationEdges";
+import { waitingFixture } from "../lab/waitingFixture";
+import type { Simulation } from "../model/types";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -29,4 +32,22 @@ it("shares one deferred waiting plan across detail views and invalidates either 
   expect(compute).toHaveBeenCalledTimes(3);
   expect(waitingDetails({ ...diagram, planning: undefined }, configuration)).toBeUndefined();
   expect(compute).toHaveBeenCalledTimes(3);
+});
+
+it("keeps one effective waiting plan across remounted hovers with simulation overrides", () => {
+  const diagram = waitingFixture();
+  const simulation: Simulation = {
+    id: "run",
+    title: "Run",
+    traffic: [],
+    setup: { edges: { call: { caller: { wait: "non-blocking" } } } },
+  };
+  const configuration = {};
+  const compute = vi.spyOn(planning, "waitingPlan");
+  const first = waitingDetails(simulationEdges(diagram, simulation), configuration);
+  expect(waitingDetails(simulationEdges(diagram, { ...simulation }), configuration)).toBe(first);
+  expect(compute).toHaveBeenCalledTimes(1);
+  const edited = { ...simulation, setup: { edges: { call: { caller: { wait: "blocking" as const } } } } };
+  expect(waitingDetails(simulationEdges(diagram, edited), configuration)).not.toBe(first);
+  expect(compute).toHaveBeenCalledTimes(2);
 });

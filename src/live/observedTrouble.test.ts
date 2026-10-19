@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { realSnapshot } from "../sim/units";
 import { TroubleWatcher, pickTrouble, troubleLeads, type Trouble } from "./observedTrouble";
+import { waitingFixture } from "../lab/waitingFixture";
 import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
 
 // What playback shows going wrong, read from seeded runs: rising lag, lost messages, a node that's down.
@@ -39,6 +40,26 @@ function watch(d: DiagramFile, seconds: number, setup?: (e: ReturnType<typeof cr
 }
 
 describe("trouble seen in playback", () => {
+  it("keeps the exhausted-thread fix visible across reply/admission gaps while the queue rises", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 100;
+    const e = createEngine({ seed: 17 });
+    e.load(d);
+    e.setTraffic(true);
+    const watcher = new TroubleWatcher();
+    const memory = { shown: new Set<string>(), ended: new Set<string>(), dismissed: new Set<string>() };
+    let shown = false;
+    for (let i = 0; i < 120; i++) {
+      e.step(100);
+      const trouble = pickTrouble(watcher.observe(realSnapshot(e.snapshot()), d), memory, watcher.warm);
+      if (trouble) {
+        expect(trouble).toMatchObject({ kind: "threads-exhausted", action: { kind: "free-thread", edge: "call" } });
+        memory.shown.add(trouble.key);
+        shown = true;
+      } else expect(shown).toBe(false);
+    }
+    expect(shown).toBe(true);
+  });
   it("a healthy run has none", () => {
     expect(watch(diagram(6), 30)).toEqual([]);
   });

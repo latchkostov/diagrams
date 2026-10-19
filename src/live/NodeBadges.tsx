@@ -1,6 +1,6 @@
 import { revisionAtLeast } from "../model/revisions";
 import { profileOf } from "../stencils/profiles";
-import { ThreadMeter } from "./ThreadMeter";
+import { ThreadMeter, CallPills } from "./lazyWaitingVisuals";
 import { nodeFaultLabels } from "../model/faultWords";
 import { useInteraction } from "../canvas/interaction";
 import { compileTopology } from "../sim/topology";
@@ -82,11 +82,17 @@ export function NodeBadges({
   }
   const boundaryFault = state.snapshot.faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
+  const activeCalls = Object.entries(state.snapshot.edges).flatMap(([id, edge]) =>
+    edge.calls && (edge.calls.held || edge.calls.inFlight)
+      ? [{ id, held: edge.calls.held, inFlight: edge.calls.inFlight }]
+      : [],
+  );
   return (
     <div
       className={`lv-badges${presenting ? " is-presenting" : ""}`}
       style={{ "--inv": inv.toFixed(3) } as CSSProperties}
     >
+      {activeCalls.length > 0 && <CallPills calls={activeCalls} readoutScale={inv} presenting={presenting} />}
       {nodes.map((n) => {
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];
@@ -323,6 +329,11 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
 
       {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
         <div className="lv-strip">
+          {!!s.threads?.inFlight && (
+            <span className="lv-metric" data-testid={`thread-flight-${node.id}`}>
+              ↗ {t("threads.inFlight", { count: s.threads.inFlight })}
+            </span>
+          )}
           {s.threads && threadBusy > 0 && threadBusy >= 0.8 * s.threads.slots && (
             <span className="lv-metric" data-testid={`thread-chip-${node.id}`}>
               ⌛ {t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })}

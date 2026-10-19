@@ -148,7 +148,7 @@ export function explainNode(
       return spec?.partitioned ? [{ broker, spec, count: analysis.resolved[broker].partitions }] : [];
     }),
     slots: props.concurrency,
-    seconds: (n.waits?.holdMs ?? props.latencyMs) / 1000,
+    seconds: (n.waits?.threadHoldMs ?? props.latencyMs) / 1000,
     utilization: n.utilization,
     growth: Math.max(0, n.offered - n.capacity),
     contributors,

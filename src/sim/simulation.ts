@@ -1,4 +1,5 @@
 import { faultLabel } from "../model/faultWords";
+import { simulationEdges } from "./simulationEdges";
 import { faultTimelineProblem, FaultTimelineError } from "../model/faultRuntime";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
@@ -310,7 +311,7 @@ export function createSimulationRun(
       throw new WorkBudgetError("The simulation exceeds its scripted traffic budget");
     scriptedSamples = 0;
     seedEngine(engine, seed);
-    engine.load(diagram);
+    engine.load(simulationEdges(diagram, simulation));
     multipliers = {
       traffic: resolveMultiplier(simulation.multipliers?.traffic),
       capacity: resolveMultiplier(simulation.multipliers?.capacity),

@@ -4,6 +4,8 @@ import { brokerFeeds, compileTopology, deadLetterRoutes, type CompiledGroup } fr
 import type { NodeStatus } from "../sim/types";
 import { formatCount } from "./format";
 import { brokerList, waitDetail } from "./capacityModel";
+import { t } from "../i18n";
+import type { NodeSimState } from "../sim/types";
 
 // What playback shows going wrong, whatever the plan says (docs/research/sim-flows-review.md, F-1, F-5, F-32): a node
 // that's down, a node losing messages, a broker whose lag keeps rising. The live callout reports it on its own, with
@@ -13,8 +15,9 @@ import { brokerList, waitDetail } from "./capacityModel";
 export const WINDOW_MS = 10_000;
 const SAMPLE_MS = 1_000;
 
-export type TroubleKind = "down" | "dropping" | "lag";
+export type TroubleKind = "down" | "dropping" | "threads-exhausted" | "lag";
 export type TroubleAction =
+  | { kind: "free-thread"; edge: string }
   | { kind: "restore-boundary"; boundary: string; label: string }
   | { kind: "clear-fault"; node: string }
   | { kind: "revive"; node: string }
@@ -40,6 +43,8 @@ export interface Trouble {
 
 /** What the watcher reads of a node: a real-unit snapshot's node (RealSimSnapshot["nodes"][id]). */
 export interface WatchedNode {
+  threads?: NodeSimState["threads"];
+  backlog?: number;
   status: NodeStatus;
   lag: Record<string, number>;
   dropped: number;
@@ -54,6 +59,7 @@ export interface WatchedFrame {
 }
 
 interface Sample {
+  exhausted: Map<string, { edge: string; count: number }>;
   time: number;
   lag: Map<string, number>;
   dropped: Map<string, number>;
@@ -61,8 +67,8 @@ interface Sample {
 }
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["queue", "topic", "stream"]);
-const maxLag = (n: WatchedNode) => Math.max(0, ...Object.values(n.lag));
-const KIND_ORDER: Record<TroubleKind, number> = { down: 0, dropping: 1, lag: 2 };
+const maxLag = (n: WatchedNode) => Math.max(n.backlog ?? 0, ...Object.values(n.lag), 0);
+const KIND_ORDER: Record<TroubleKind, number> = { down: 0, dropping: 1, "threads-exhausted": 2, lag: 3 };
 
 /**
  * Samples snapshots about once a simulated second and reports the trouble they show, worst first: down, then
@@ -94,14 +100,18 @@ export class TroubleWatcher {
     let sampled = false;
     if (!last || jumped || frame.time - last.time >= SAMPLE_MS) {
       const lag = new Map<string, number>(),
+        exhausted = new Map<string, { edge: string; count: number }>(),
         dropped = new Map<string, number>(),
         outageDropped = new Map<string, number>();
       for (const [id, n] of Object.entries(frame.nodes)) {
         lag.set(id, maxLag(n));
+        const t = n.threads;
+        if (t && t.waiting > 0 && t.waiting >= t.slots / 2 && t.working + t.waiting >= t.slots && t.waitingOn[0])
+          exhausted.set(id, { edge: t.waitingOn[0][0], count: t.waitingOn[0][1] });
         dropped.set(id, n.dropped);
         outageDropped.set(id, n.outageDropped ?? 0);
       }
-      this.samples.push({ time: frame.time, lag, dropped, outageDropped });
+      this.samples.push({ time: frame.time, lag, dropped, outageDropped, exhausted });
       while (this.samples.length > 2 && this.samples[1].time <= frame.time - WINDOW_MS) this.samples.shift();
       sampled = true;
     }
@@ -109,6 +119,7 @@ export class TroubleWatcher {
       losses = "";
     for (const [id, n] of Object.entries(frame.nodes)) {
       if (n.status !== "up") statuses += `${id}:${n.status};`;
+      if (n.threads) statuses += `${id}:${n.threads.waiting}:${n.threads.working};`;
       if (n.dropped) losses += `${id}:${n.dropped}:${n.outageDropped ?? 0};`;
     }
     const cached = this.last;
@@ -134,6 +145,7 @@ interface Shape {
   /** Brokers with a dead-letter route of their own. */
   hasDeadLetterRoute: Set<string>;
   groups: Map<string, CompiledGroup[]>;
+  targets: Map<string, string>;
 }
 
 const shapes = new WeakMap<DiagramFile, Shape>();
@@ -167,6 +179,7 @@ function shapeOf(d: DiagramFile): Shape {
     deadLetterTargets,
     hasDeadLetterRoute,
     groups: compiled.groups,
+    targets: new Map(d.edges.map((e) => [e.id, e.to])),
   };
   shapes.set(d, shape);
   return shape;
@@ -235,6 +248,27 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       continue;
     }
     if (!spanned) continue;
+    let exhausted: { edge: string; count: number } | undefined;
+    for (let i = samples.length - 1; i >= 0 && !exhausted; i--) exhausted = samples[i].exhausted.get(id);
+    if (n.threads && exhausted) {
+      const { edge } = exhausted;
+      const feeds = d.memberships.get(id) ?? [];
+      const rising =
+        maxLag(n) > (oldest.lag.get(id) ?? 0) ||
+        feeds.some(({ broker }) => maxLag(frame.nodes[broker]) > (oldest.lag.get(broker) ?? 0));
+      if (edge && rising) {
+        out.push({
+          key: `threads-exhausted:${id}`,
+          kind: "threads-exhausted",
+          node: id,
+          headline: t("threads.exhausted", { name: name(id) }),
+          announce: t("threads.exhausted", { name: name(id) }),
+          detail: t("threads.exhaustedDetail", { count: exhausted.count, name: name(d.targets.get(edge) ?? edge) }),
+          action: { kind: "free-thread", edge },
+        });
+        continue;
+      }
+    }
     // A dead-letter queue keeps what it gets on purpose, read or not: its backlog is no trouble.
     if (!BROKERS.has(r) || (n.noConsumer && r !== "queue") || d.deadLetterTargets.has(id)) continue;
     const now = maxLag(n),

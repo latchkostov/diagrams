@@ -23,7 +23,7 @@ it.each([undefined, "p1", "p2", "p3", "p3-a1"] as const)(
     expect(next.planning?.revision).toBe("p3-w1");
     expect(validateDiagram(next).ok).toBe(true);
     expect(next.simulations).toEqual(d.simulations);
-    expect(analyzeCapacity(next).nodes.caller.waits?.holdMs).toBe(260);
+    expect(analyzeCapacity(next).nodes.caller.waits?.threadHoldMs).toBe(260);
     expect(analyzeCapacity(d).nodes.caller.waits).toBeUndefined();
     expect(legacyExport(next).losses).toContain("requests hold caller threads");
   },
@@ -44,7 +44,7 @@ it("computes hold time over a shared diamond and refuses a finite ceiling for lo
     { id: "fan", from: "caller", to: "other", kind: "sync" },
     { id: "join", from: "other", to: "partner", kind: "sync" },
   );
-  expect(analyzeCapacity(d).nodes.caller.waits?.holdMs).toBe(270);
+  expect(analyzeCapacity(d).nodes.caller.waits?.threadHoldMs).toBe(270);
   d.edges.push({ id: "loop", from: "other", to: "caller", kind: "sync" });
   expect(analyzeCapacity(d).converged).toBe(false);
   expect(analyzeCapacity(d).nodes.caller.capacity).toBe(0);
@@ -59,7 +59,7 @@ it("uses the called endpoint's duration in the hold-time ceiling", () => {
   const d = waitingFixture();
   d.nodes[2].props!.endpoints = [{ id: "score", method: "POST", path: "/score", behaviour: { latencyMs: 500 } }];
   d.edges[1].props!.endpointId = "score";
-  expect(analyzeCapacity(d).nodes.caller.waits?.holdMs).toBe(510);
+  expect(analyzeCapacity(d).nodes.caller.waits?.threadHoldMs).toBe(510);
 });
 
 it("keeps four sampled dots in the actual initial caller pool, including an HPA fleet", () => {

@@ -92,7 +92,7 @@
     "store": { "latencyMs": 1, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Case store", "healthChecks": false }
   },
   "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "caller.props.resources", "caller.props.autoscaling", "caller.props.preset", "caller.props.presetRevision", "partner.props.preset", "partner.props.presetRevision", "partner.props.api"] },
-  "autoScale": { "freePlay": 10, "blocking": 10 },
+  "autoScale": { "freePlay": 10, "blocking": 10, "free-thread": 20 },
   "brokerAssignments": {
     "brokers": {
       "applications": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
@@ -294,6 +294,73 @@
       "sizing": "(same as edit)",
       "redundancy": "(same as edit)",
       "resolved": "(same as edit)"
+    },
+    "free-thread": {
+      "configured": "(same as edit)",
+      "simulation": "free-thread",
+      "analysis": {
+        "bottleneck": "caller",
+        "suggestion": "Decision service: 11% utilized",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 700, 0, 1, 1, 0], "applications": [6400, 700, 0.109375, 1, 1, 0], "caller": [6400, 700, 0.109375, 4, 4, 0], "partner": ["Infinity", 700, 0, 1, 1, 0], "decisions": ["Infinity", 700, 0, 1, 1, 0], "store": ["Infinity", 700, 0, 1, 1, 0] },
+        "connections": { "submit": 700, "consume": 700, "call": 700, "publish": 700, "save": 700 },
+        "offeredTypes": { "source": ["ApplicationSubmitted"], "applications": ["ApplicationSubmitted"], "caller": ["ApplicationSubmitted"], "partner": ["ApplicationSubmitted"], "decisions": ["ApplicationSubmitted"], "store": ["ApplicationSubmitted"] }
+      },
+      "explanations": {
+        "caller": {
+          "id": "caller",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 6400,
+          "offered": 700,
+          "replicas": 4,
+          "baseReplicas": 4,
+          "omittedContributors": 0,
+          "activeReplicas": 4,
+          "assignments": [],
+          "slots": 16,
+          "seconds": 0.01,
+          "utilization": 0.109375,
+          "growth": 0,
+          "contributors": [{ "edge": "consume", "node": "applications", "label": "Applications", "rate": 700 }],
+          "target": 0.5,
+          "minimumReplicas": 4,
+          "changes": null,
+          "converged": true
+        },
+        "partner": {
+          "managed": "api",
+          "id": "partner",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 700,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.25,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "call", "node": "caller", "label": "Decision service", "rate": 700 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
     }
   },
   "capacity": {
@@ -398,6 +465,23 @@
         "partner": ["idle", "Limits unknown; enter measured or contracted values."],
         "decisions": ["idle", "400/s · no limit"],
         "store": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    },
+    "free-thread": {
+      "tone": "ok",
+      "top": "caller",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Decision service at 11% · 700/s of 6.4k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "700/s · no limit", { "modeled": false }],
+        "applications": ["ok", "11% · 700/s of 6.4k/s"],
+        "caller": ["ok", "11% · 700/s of 6.4k/s"],
+        "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+        "decisions": ["idle", "700/s · no limit"],
+        "store": ["idle", "700/s · no limit", { "modeled": false }]
       }
     }
   }

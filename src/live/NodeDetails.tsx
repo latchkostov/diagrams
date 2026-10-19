@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, type CSSProperties } from "react";
 import { useStore } from "@xyflow/react";
 import { waitingDetails } from "./waitingDetails";
+import { simulationEdges } from "../sim/simulationEdges";
 import { profileOf } from "../stencils/profiles";
 import { t, useLocale } from "../i18n";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
@@ -42,7 +43,10 @@ export function NodeDetails({
   configuration,
 }: BadgeProps) {
   useLocale();
-  const wait = waitingDetails(diagram, configuration)?.nodes.get(node.id);
+  const live = useLive();
+  const running = live.controller.getState().running;
+  const effective = useMemo(() => simulationEdges(diagram, running ?? undefined), [diagram, running]);
+  const wait = waitingDetails(effective, configuration)?.nodes.get(node.id);
   const edge = diagram.edges.find((e) => e.id === s.threads?.waitingOn[0]?.[0]);
   const waitingLabel = diagram.nodes.find((n) => n.id === edge?.to)?.label ?? edge?.to ?? "";
   const threadNoun = t("threads.noun", {
@@ -186,11 +190,16 @@ export function NodeDetails({
       )}
       {s.threads && Number.isFinite(s.threads.slots) && wait && (
         <ThreadCeiling
-          wait={{ ...wait, slots: s.threads.slots, ceiling: (s.threads.slots * 1000) / wait.holdMs }}
+          wait={{ ...wait, slots: s.threads.slots, ceiling: (s.threads.slots * 1000) / wait.threadHoldMs }}
           noun={threadNoun}
         />
       )}
       {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
+      {!!s.threads?.inFlight && (
+        <p>
+          {t("threads.inFlight", { count: s.threads.inFlight })} · {t("threads.memoryHint")}
+        </p>
+      )}
       {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}
       <HoverExplanation id={node.id} />
       {properties && (

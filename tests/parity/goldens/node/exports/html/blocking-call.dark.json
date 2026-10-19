@@ -1,12 +1,12 @@
 {
-  "file": { "sha256": "75302773308576d22ce77309ab3761e29f440c397c1be1817af9015cf09707ca", "bytes": 12986 },
+  "file": { "sha256": "d6672c305d5b6af5884db114cf77def6ce79820482dcd402a149ffddf784e950", "bytes": 13129 },
   "payload": {
     "version": 1,
     "diagram": {
       "format": "diagrams/v2",
       "planning": { "revision": "p3-w1" },
       "title": "A blocking call caps throughput",
-      "description": "Decision service holds 64 threads while Partner scoring API replies. The queue grows while CPU stays below its scaling target. More CPU is not what this service needs.",
+      "description": "Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.",
       "nodes": [
         {
           "id": "source",
@@ -124,16 +124,16 @@
       ],
       "simulations": [
         {
-          "id": "blocking",
-          "title": "Blocking: CPU says all is well",
-          "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
+          "id": "free-thread",
+          "title": "Free the thread while waiting",
+          "description": "Calls wait off-thread. Reply handling uses a small CPU slice. A spike at 15 seconds makes CPU the limit again, so CPU scaling adds replicas.",
           "seed": 17,
           "scale": 1,
-          "durationMs": 20000,
+          "durationMs": 60000,
           "traffic": [
             {
               "node": "source",
-              "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 20000 },
+              "shape": { "kind": "spike", "baseRate": 400, "peakRate": 700, "atMs": 15000, "peakMs": 30000, "durationMs": 60000 },
               "id": "applications-0",
               "label": "Applications",
               "messageType": "ApplicationSubmitted"
@@ -142,13 +142,14 @@
           "expectations": [
             {
               "id": "lag",
-              "label": "Applications lag stays below 1,000",
+              "label": "Applications lag stays below 100",
               "metric": { "node": "applications", "field": "backlog" },
               "op": "<",
-              "value": 1000,
+              "value": 100,
               "when": "end"
             }
-          ]
+          ],
+          "setup": { "edges": { "call": { "caller": { "wait": "non-blocking" } } } }
         }
       ]
     },
@@ -159,6 +160,6 @@
       "generic-service": { "sha256": "3fe5e72fd8c35eb0ef93e590677e2e7ffb6b3d31449533176a4e82fe9b6d0add", "bytes": 579 },
       "generic-topic": { "sha256": "377145cfe7f38bdd4d9c509e0e054e2b130bb8b30867cf051a505e0a3952cc6e", "bytes": 707 }
     },
-    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": "blocking", "exportedOn": "2026-01-01" }
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
   }
 }

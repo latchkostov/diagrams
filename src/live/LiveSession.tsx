@@ -8,11 +8,17 @@ import { actionRegistry } from "../editor/actions";
 import { useSettings } from "../harness/settings";
 import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
-import { BottleneckCallout, TroubleCallout } from "./CapacityLayer";
+import { BottleneckCallout } from "./CapacityLayer";
+import { lazyComponent } from "../lib/lazyLoad";
+const TroubleCallout = lazyComponent(() => import("./TroubleCallout").then((m) => m.TroubleCallout));
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";
-import { EventLog } from "./EventLog";
-import { InjectDialog } from "./InjectDialog";
+const EventLog = lazyComponent(() => import("./EventLog").then((m) => m.EventLog));
+import { InjectLoading } from "./InjectLoading";
+const InjectDialog = lazyComponent(
+  () => import("./InjectDialog").then((m) => m.InjectDialog),
+  (props, status) => <InjectLoading {...props} status={status} />,
+);
 import { NodeBadges } from "./NodeBadges";
 import { NoteCallout } from "./NoteCallout";
 import { SimPanelFrame } from "./SimPanelFrame";

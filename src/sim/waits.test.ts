@@ -98,13 +98,23 @@ it("never leaks slots across seeded workloads, fan-out, failures or sampling", (
       fc.boolean(),
       fc.constantFrom(1, 2, 10),
       fc.boolean(),
-      (count, concurrency, duration, failing, scale, fanout) => {
+      fc.constantFrom("blocking", "non-blocking", "mixed"),
+      fc.boolean(),
+      (count, concurrency, duration, failing, scale, fanout, waiting, managed) => {
         const d = waitingFixture();
         d.nodes[1].props!.concurrency = concurrency * scale;
+        d.edges[1].props!.caller = { wait: waiting === "blocking" ? "blocking" : "non-blocking", replyMs: 11 };
+        if (managed) d.nodes[1].props!.api = { maxInFlight: concurrency * scale };
         d.nodes[2].props = { latencyMs: duration * 10, jitter: 0, status: failing ? "down" : "up" };
         if (fanout) {
           d.nodes.push({ ...d.nodes[2], id: "sibling", props: { latencyMs: 300, jitter: 0 } });
-          d.edges.push({ id: "sibling-call", from: "caller", to: "sibling", kind: "sync" });
+          d.edges.push({
+            id: "sibling-call",
+            from: "caller",
+            to: "sibling",
+            kind: "sync",
+            props: { caller: { wait: waiting === "non-blocking" ? "non-blocking" : "blocking" } },
+          });
         }
         const e = start(d, scale);
         e.inject("source", count);

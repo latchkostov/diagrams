@@ -60,13 +60,14 @@ export function resourcePlan(
   assigned: number,
   multiplier = 1,
   timing: ResolvedTiming = resolvedTiming(p),
+  admitted = Infinity,
 ) {
   const r = p.resources;
   if (!r) return undefined;
   const c = p.autoscaling?.mode === "on" ? p.autoscaling.controller : undefined;
   const range = c ? replicaRange(c, multiplier) : undefined;
   const fixed = Math.max(1, Math.min(10_000, Math.round(p.replicas * multiplier)));
-  const perReplica = resourceCapacity(r, p.concurrency, timing.holdMs);
+  const perReplica = resourceCapacity(r, p.concurrency, timing.threadHoldMs);
   const metrics = c && "settings" in c ? c.settings.metrics : [];
   const targetValue = (m: (typeof metrics)[number]) =>
     m.target.kind === "averageValue"
@@ -75,7 +76,18 @@ export function resourcePlan(
           m.target.percentOfRequest) /
         100;
   const cpuMilli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
-  const residenceSeconds = Math.max(timing.holdMs / 1000, (r.cpuMsPerMessage * p.concurrency) / cpuMilli);
+  const residenceSeconds = Math.max(timing.memoryResidenceMs / 1000, (r.cpuMsPerMessage * p.concurrency) / cpuMilli);
+  const memoryOccupancy =
+    timing.memoryResidenceMs > timing.threadHoldMs
+      ? Math.min(
+          (admitted / Math.max(1, assigned)) * residenceSeconds,
+          Math.max(
+            p.concurrency,
+            (Math.min(offered, assigned * perReplica) / Math.max(1, assigned)) * residenceSeconds,
+          ),
+        )
+      : p.concurrency;
+  const memoryPeakMiB = r.baselineMemoryMiB + memoryOccupancy * r.memoryMiBPerMessage;
   const needed = [
     ...metrics.flatMap((m) => {
       const target = targetValue(m);
@@ -111,9 +123,8 @@ export function resourcePlan(
     cpuRequestPct: r.cpuRequestMilli
       ? ((offered * r.cpuMsPerMessage) / Math.max(1, assigned) / r.cpuRequestMilli) * 100
       : undefined,
-    memoryPeakMiB: r.baselineMemoryMiB + p.concurrency * r.memoryMiBPerMessage,
-    memoryRisk:
-      r.memoryLimitMiB !== undefined && r.baselineMemoryMiB + p.concurrency * r.memoryMiBPerMessage > r.memoryLimitMiB,
+    memoryPeakMiB,
+    memoryRisk: r.memoryLimitMiB !== undefined && memoryPeakMiB > r.memoryLimitMiB,
     baselineAboveTarget: metrics.some(
       (m) =>
         m.source.resource === "memory" &&

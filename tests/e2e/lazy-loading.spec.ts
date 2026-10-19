@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLive, expectNoErrors, waitForStableViewport } from "./fixtures";
 import { MOD, SLUG } from "./ai-helpers";
 
 // Code that loads on use (src/lib/lazyLoad.tsx): while it downloads, and when the download fails, what
@@ -13,6 +13,31 @@ const DIALOGS = chunk("dialogs", "src/interop/ui/dialogs.tsx");
 const SESSION = chunk("LiveSession", "src/live/LiveSession.tsx");
 const MESSAGES = chunk("fileMessages", "src/interop/ui/fileMessages.ts");
 const SHORTCUTS = chunk("ShortcutsDialog", "src/components/ShortcutsDialog.tsx");
+
+test("a pending custom injection is modal, cancellable and returns focus to its node", async ({ page }) => {
+  const dialogChunk = chunk("InjectDialog", "src/live/InjectDialog.tsx");
+  const download = await gate(page, dialogChunk);
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&paused=1`);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.inject").click();
+  await page.getByTestId("context-menu-item-sim.inject:custom").click();
+  await expect.poll(download.requested).toBe(true);
+  await expect(page.getByTestId("inject-loading")).toHaveAttribute("aria-modal", "true");
+  await expect(page.getByTestId("inject-loading-status")).toHaveAttribute("role", "status");
+  expect(await page.getByTestId("live-play").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("inject-loading")).toHaveCount(0);
+  expect(await page.getByTestId("node-payments").evaluate((el) => el.parentElement === document.activeElement)).toBe(
+    true,
+  );
+  const response = page.waitForResponse((r) => dialogChunk.test(r.url()));
+  download.release();
+  await (await response).finished();
+  await settle(page);
+  await expect(page.getByTestId("live-inject-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("live-hud")).toBeVisible();
+});
 
 for (const failed of [false, true]) {
   for (const action of ["save", "download"] as const) {

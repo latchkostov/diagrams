@@ -15,7 +15,7 @@
     },
     "explanations": {
       "caller": {
-        "waits": { "workMs": 10, "callMs": "Infinity", "holdMs": "Infinity", "slots": 1, "ceiling": 0 },
+        "waits": { "workMs": 10, "callMs": "Infinity", "threadHoldMs": "Infinity", "memoryResidenceMs": "Infinity", "slots": 1, "ceiling": 0 },
         "id": "caller",
         "role": "processor",
         "status": "up",
@@ -145,7 +145,7 @@
       },
       "explanations": {
         "caller": {
-          "waits": { "workMs": 10, "callMs": "Infinity", "holdMs": "Infinity", "slots": 1, "ceiling": 0 },
+          "waits": { "workMs": 10, "callMs": "Infinity", "threadHoldMs": "Infinity", "memoryResidenceMs": "Infinity", "slots": 1, "ceiling": 0 },
           "id": "caller",
           "role": "processor",
           "status": "up",

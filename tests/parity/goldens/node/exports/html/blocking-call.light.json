@@ -1,12 +1,12 @@
 {
-  "file": { "sha256": "1d923fd124b56d49dce01ff6fef7c7fa67eeff7f5707e43bcc128483941a925c", "bytes": 12945 },
+  "file": { "sha256": "f04a77f73e30b1dc7b66772c196961032ac11383067c708b90ebf7b5b567eea1", "bytes": 13652 },
   "payload": {
     "version": 1,
     "diagram": {
       "format": "diagrams/v2",
       "planning": { "revision": "p3-w1" },
       "title": "A blocking call caps throughput",
-      "description": "Decision service holds 64 threads while Partner scoring API replies. The queue grows while CPU stays below its scaling target. More CPU is not what this service needs.",
+      "description": "Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.",
       "nodes": [
         {
           "id": "source",
@@ -149,6 +149,34 @@
               "when": "end"
             }
           ]
+        },
+        {
+          "id": "free-thread",
+          "title": "Free the thread while waiting",
+          "description": "Calls wait off-thread. Reply handling uses a small CPU slice. A spike at 15 seconds makes CPU the limit again, so CPU scaling adds replicas.",
+          "seed": 17,
+          "scale": 1,
+          "durationMs": 60000,
+          "traffic": [
+            {
+              "node": "source",
+              "shape": { "kind": "spike", "baseRate": 400, "peakRate": 700, "atMs": 15000, "peakMs": 30000, "durationMs": 60000 },
+              "id": "applications-0",
+              "label": "Applications",
+              "messageType": "ApplicationSubmitted"
+            }
+          ],
+          "expectations": [
+            {
+              "id": "lag",
+              "label": "Applications lag stays below 100",
+              "metric": { "node": "applications", "field": "backlog" },
+              "op": "<",
+              "value": 100,
+              "when": "end"
+            }
+          ],
+          "setup": { "edges": { "call": { "caller": { "wait": "non-blocking" } } } }
         }
       ]
     },

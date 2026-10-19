@@ -24,7 +24,7 @@ import { simReviewFixture, simReviewTrafficFixture } from "./simReviewFixture";
 import { exportFixture } from "./exportFixture";
 import { textFieldsFixture } from "./textFieldsFixture";
 import { InspectorFocusLab } from "./InspectorFocusLab";
-import { TroubleCallout } from "../live/CapacityLayer";
+import { TroubleCallout } from "../live/TroubleCallout";
 import "../styles/capacity.css";
 import { FilePrompts } from "./FilePrompts";
 import { CollabLab, CollabEditorLab } from "./CollabLab";

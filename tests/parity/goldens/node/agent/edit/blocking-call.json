@@ -209,7 +209,7 @@
     "format": "diagrams/v2",
     "planning": { "revision": "p3-w1" },
     "title": "Parity edit",
-    "description": "Decision service holds 64 threads while Partner scoring API replies. The queue grows while CPU stays below its scaling target. More CPU is not what this service needs.",
+    "description": "Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.",
     "nodes": [
       {
         "id": "source",
@@ -359,6 +359,34 @@
             "when": "end"
           }
         ]
+      },
+      {
+        "id": "free-thread",
+        "title": "Free the thread while waiting",
+        "description": "Calls wait off-thread. Reply handling uses a small CPU slice. A spike at 15 seconds makes CPU the limit again, so CPU scaling adds replicas.",
+        "seed": 17,
+        "scale": 1,
+        "durationMs": 60000,
+        "traffic": [
+          {
+            "node": "source",
+            "shape": { "kind": "spike", "baseRate": 400, "peakRate": 700, "atMs": 15000, "peakMs": 30000, "durationMs": 60000 },
+            "id": "applications-0",
+            "label": "Applications",
+            "messageType": "ApplicationSubmitted"
+          }
+        ],
+        "expectations": [
+          {
+            "id": "lag",
+            "label": "Applications lag stays below 100",
+            "metric": { "node": "applications", "field": "backlog" },
+            "op": "<",
+            "value": 100,
+            "when": "end"
+          }
+        ],
+        "setup": { "edges": { "call": { "caller": { "wait": "non-blocking" } } } }
       },
       {
         "id": "sim-1",

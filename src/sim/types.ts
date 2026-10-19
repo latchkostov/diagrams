@@ -44,7 +44,14 @@ export interface Particle {
 
 /** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
 export interface NodeSimState {
-  threads?: { slots: number; working: number; waiting: number; waitingOn: [string, number][]; queued: number };
+  threads?: {
+    slots: number;
+    working: number;
+    waiting: number;
+    waitingOn: [string, number][];
+    queued: number;
+    inFlight?: number;
+  };
   /** Successful async root-to-node paths since restart. Sample counts and durations are never scaled. */
   latency?: LatencyMetrics;
   resources?: import("./autoscaling").ResourceReadout;
@@ -101,6 +108,8 @@ export interface LatencySummary {
   readonly waitMs: number;
   readonly workMs: number;
   readonly travelMs: number;
+  /** Logical time spent awaiting calls; absent on historical paths. */
+  readonly callMs?: number;
 }
 
 /** Immutable value view, shared between frames until the next successful sample. */
@@ -246,7 +255,13 @@ export interface NodeSimProps {
 /** Per-edge tunables from DiagramEdge.props. */
 export interface EdgeSimProps {
   endpointId?: string;
-  caller?: { deadlineMs?: number; retry?: import("../model/admission").RetryPolicy; poolConnections?: number };
+  caller?: {
+    wait?: "blocking" | "non-blocking";
+    replyMs?: number;
+    deadlineMs?: number;
+    retry?: import("../model/admission").RetryPolicy;
+    poolConnections?: number;
+  };
   /** Log consumer group, pub/sub subscription or exchange binding name. Each name receives a copy; readers sharing a name compete. Queues always compete; DLQ routes never subscribe. Default = edge id. */
   group?: string;
   /** Inferred groups follow the consumer id when a connection is copied or reconnected. */
