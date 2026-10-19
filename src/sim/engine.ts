@@ -932,7 +932,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     let request = ledger.get(work.requestLease);
     const represented = request?.represented ?? recovery?.request.represented ?? scale;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
-    const cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
+    let cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
     let requestCapacity = recovery?.request ?? work.lease;
     let threadCapacity = recovery?.thread ?? work.threadLease;
     if (recovery) {
@@ -948,6 +948,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!leases) return false;
       requestCapacity = leases.request;
       threadCapacity = leases.thread;
+      cap = leases.thread.weight;
     }
     const thread = ledger.reserve<Group>(
       {
@@ -975,7 +976,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           keys: requestCapacity?.keys,
         },
         represented,
-        recovery?.request.weight ?? thread.weight,
+        requestCapacity?.weight ?? thread.weight,
         Infinity,
         work.admissibleActive ?? node.activeMs,
       )!;
@@ -2527,12 +2528,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** Every location that can own a live message, including exclusive continuations. */
   function* liveWork(node: Node): IterableIterator<Work> {
     const seen = new Set<Work>();
-    for (const work of [
-      ...node.working,
-      ...node.takeovers,
-      ...queuedWork(node),
-      ...[...node.calls.values()].map((c) => c.work),
-    ])
+    for (const collection of [node.working, node.takeovers, queuedWork(node)])
+      for (const work of collection)
+        if (!seen.has(work)) {
+          seen.add(work);
+          yield work;
+        }
+    for (const { work } of node.calls.values())
       if (!seen.has(work)) {
         seen.add(work);
         yield work;
@@ -3173,6 +3175,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       admission: {
         inFlight: admission.inFlight,
         limits: admissionLimits(admission),
+        retainedExcess: admission.retainedExcess,
         leases: [
           ...ledger.state.reservations.values(),
           ...[...nodes.values()].flatMap((node) =>
@@ -3375,7 +3378,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         outcomeChecks,
         injections,
         events,
-        admission: { buckets: admission.buckets, inFlight: admission.inFlight },
+        admission: {
+          buckets: admission.buckets,
+          inFlight: admission.inFlight,
+          retainedExcess: admission.retainedExcess,
+        },
         lineage: lineage.state,
         routeCounts,
         faults,

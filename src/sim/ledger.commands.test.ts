@@ -81,7 +81,7 @@ type Action =
   | { kind: "Step"; ticks: number }
   | { kind: "SetStatus"; index: number; status: NodeStatus; tick: boolean }
   | { kind: "Cut/Restore"; index: number; cut: boolean }
-  | { kind: "SetProps"; index: number; concurrency: number }
+  | { kind: "SetProps"; index: number; concurrency: number; maxInFlight?: number }
   | { kind: "SetScale"; scale: number }
   | { kind: "Checkpoint" }
   | { kind: "Restore" };
@@ -119,7 +119,11 @@ class WaitCommand implements fc.Command<Model, Real> {
         case "SetProps": {
           const id = tiers[action.index % tiers.length].id;
           const current = e.effectiveProps(id).concurrency as number;
-          e.setNodeProps(id, { concurrency: Math.min(current, action.concurrency) });
+          const api = e.effectiveProps(id).api;
+          e.setNodeProps(id, {
+            concurrency: Math.min(current, action.concurrency),
+            ...(api ? { api: { ...api, maxInFlight: action.maxInFlight } } : {}),
+          });
           break;
         }
         case "SetScale":
@@ -158,6 +162,7 @@ function commands(scaleOne: boolean) {
       kind: fc.constant("SetProps" as const),
       index: fc.nat(3),
       concurrency: fc.integer({ min: 1, max: 8 }),
+      maxInFlight: fc.option(fc.integer({ min: 1, max: 8 }), { nil: undefined }),
     }),
     fc.record({
       kind: fc.constant("SetScale" as const),
@@ -243,7 +248,10 @@ it("I3: healthy generated graphs drain naturally, including admission keys and C
 /** A generated outage command guarantees coverage of the admission/backoff boundary;
  * the ordinary command generator also explores adjacent SetStatus calls without a tick. */
 class BackoffOutage implements fc.Command<Model, Real> {
-  constructor(readonly ticksDown: number) {}
+  constructor(
+    readonly ticksDown: number,
+    readonly cap: number,
+  ) {}
   check(): boolean {
     return true;
   }
@@ -270,7 +278,7 @@ class BackoffOutage implements fc.Command<Model, Real> {
       e.setNodeStatus("sibling", "up");
       e.inject("sibling", 1);
       expect(e.snapshot().nodes.sibling.rejected).toBe(0);
-      e.setNodeProps("tier0", { api: { ...api, errorRate: 0 } });
+      e.setNodeProps("tier0", { concurrency: this.cap, api: { ...api, maxInFlight: this.cap, errorRate: 0 } });
       expect(e.metrics().time).toBeLessThan(deadline!);
       e.setNodeStatus("tier0", "up");
       e.step(10);
@@ -279,7 +287,7 @@ class BackoffOutage implements fc.Command<Model, Real> {
     compare(real, model);
   }
   toString(): string {
-    return `DownUpDuringSharedBackoff(${this.ticksDown})`;
+    return `DownUpDuringSharedBackoff(${this.ticksDown}, cap=${this.cap})`;
   }
 }
 
@@ -287,18 +295,24 @@ it("generated shared callers recover from down/up during backoff", () => {
   let hits = 0;
   const scenarios = arbWaitDiagram.filter(({ diagram }) => !!diagram.planning?.sharedAllocations?.length);
   fc.assert(
-    fc.property(scenarios, fc.integer({ min: 0, max: 4 }), fc.integer(), ({ diagram, scale }, ticksDown, seed) => {
-      const model: Model = { scale };
-      const real: Real = { diagram, probes: [probe(diagram, scale, seed), probe(diagram, scale, seed)] };
-      fc.modelRun(() => ({ model, real }), [new BackoffOutage(ticksDown)]);
-      for (const p of real.probes) {
-        drain(p);
-        const recovered = p.engine.snapshot().nodes.tier0;
-        expect(recovered.processed + recovered.failed).toBeGreaterThan(1);
-        expect(p.engine.snapshot().nodes.sibling.processed).toBe(1);
-      }
-      hits++;
-    }),
+    fc.property(
+      scenarios,
+      fc.integer({ min: 0, max: 4 }),
+      fc.integer({ min: 1, max: 8 }),
+      fc.integer(),
+      ({ diagram, scale }, ticksDown, cap, seed) => {
+        const model: Model = { scale };
+        const real: Real = { diagram, probes: [probe(diagram, scale, seed), probe(diagram, scale, seed)] };
+        fc.modelRun(() => ({ model, real }), [new BackoffOutage(ticksDown, cap)]);
+        for (const p of real.probes) {
+          drain(p);
+          const recovered = p.engine.snapshot().nodes.tier0;
+          expect(recovered.processed + recovered.failed).toBeGreaterThan(1);
+          expect(p.engine.snapshot().nodes.sibling.processed).toBe(1);
+        }
+        hits++;
+      },
+    ),
     { numRuns: propertyRuns(40) },
   );
   expect(hits).toBe(propertyRuns(40));

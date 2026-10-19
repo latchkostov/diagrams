@@ -139,6 +139,7 @@ export interface ResourceState {
   admission?: {
     inFlight: ReadonlyMap<string, number>;
     limits: ReadonlyMap<string, number>;
+    retainedExcess?: ReadonlyMap<string, number>;
     leases: Iterable<{ keys?: string[]; weight: number }>;
   };
   nodes: Iterable<{
@@ -180,7 +181,7 @@ export function assertAdmissionInvariants(state: Pick<ResourceState, "time" | "a
     if (!ok) throw new Error(message);
   };
   if (state.admission) {
-    const { inFlight, limits, leases } = state.admission;
+    const { inFlight, limits, leases, retainedExcess } = state.admission;
     const held = new Map<string, number>();
     for (const lease of leases) for (const key of lease.keys ?? []) held.set(key, (held.get(key) ?? 0) + lease.weight);
     for (const key of new Set([...held.keys(), ...inFlight.keys()])) {
@@ -190,7 +191,7 @@ export function assertAdmissionInvariants(state: Pick<ResourceState, "time" | "a
         `Admission @${state.time}: lease occupancy disagrees for ${key}`,
       );
       check(
-        occupancy <= (limits.get(key) ?? Infinity) + 1e-8,
+        occupancy <= (limits.get(key) ?? Infinity) + (retainedExcess?.get(key) ?? 0) + 1e-8,
         `Admission @${state.time}: capacity exceeded for ${key}`,
       );
     }

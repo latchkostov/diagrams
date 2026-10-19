@@ -20,7 +20,7 @@ export const arbWaitDiagram = fc
   .record({
     tiers: fc.array(tier, { minLength: 2, maxLength: 4 }),
     sharedAllocation: fc.boolean(),
-    scale: fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 10),
+    scale: fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 4, 10),
     deadlineMs: fc.option(fc.integer({ min: 100, max: 2000 }), { nil: undefined }),
   })
   .map(({ tiers, sharedAllocation, scale, deadlineMs }) => {

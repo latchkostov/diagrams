@@ -156,13 +156,13 @@ describe("P3 managed admission", () => {
     expect(capacity.get("api")).toBe(10);
     expect(endpoints.reads()).toBeLessThan(500 * 8);
   });
-  it("checkpoint cloning contains only mutable admission buckets and reservations", () => {
+  it("checkpoint cloning contains only mutable admission buckets and occupancy", () => {
     const e = load(diagram({ quotas: [q(2)], maxInFlight: 1 }));
     e.inject("api", 1);
     const clone = vi.spyOn(globalThis, "structuredClone");
     const saved = e.checkpoint();
     const graph = clone.mock.calls.map(([value]) => value as { admission?: object }).find((value) => value.admission);
-    expect(Object.keys(graph!.admission!).sort()).toEqual(["buckets", "inFlight"]);
+    expect(Object.keys(graph!.admission!).sort()).toEqual(["buckets", "inFlight", "retainedExcess"]);
     clone.mockRestore();
     e.setNodeProps("api", { api: { quotas: [q(100)], maxInFlight: 10 } });
     e.restore(saved);
