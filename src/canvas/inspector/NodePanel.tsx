@@ -1,3 +1,4 @@
+import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { useState, useSyncExternalStore, type FocusEvent, type CSSProperties } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
 import { stencilMenu } from "../../editor/builtinActions";
@@ -249,6 +250,7 @@ export function NodeIdentity({
               { merge: `inspector:node:${node.id}:description` },
             )
           }
+          maxLength={DOCUMENTATION_LIMITS.maxLength}
           name="node-description"
           ariaLabel={t("inspector.description")}
           testId="inspector-field-node-description"

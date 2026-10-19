@@ -251,7 +251,7 @@ function AnnotationEditor({
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     e.stopPropagation();
     if (supportsMarkdown && ref.current) {
-      if (handleMarkdownKeyDown(e, ref.current, v, (next) => setV(annotationText(next)))) {
+      if (handleMarkdownKeyDown(e, ref.current, v, setV)) {
         return;
       }
     }

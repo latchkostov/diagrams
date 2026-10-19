@@ -76,6 +76,7 @@ function InlineContent({ tokens }: { tokens: InlineToken[] }): ReactNode {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="md-link"
+                data-testid="markdown-link"
                 onClick={(e) => e.stopPropagation()}
                 onDoubleClick={(e) => e.stopPropagation()}
               >
@@ -239,6 +240,9 @@ function ListItemNode({
         </span>
       )}
       {item.subList && <BlockNode block={item.subList} index={itemIdx} />}
+      {item.subLists?.map((list, index) => (
+        <BlockNode key={index} block={list} index={index} />
+      ))}
     </li>
   );
 }

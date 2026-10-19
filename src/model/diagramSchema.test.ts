@@ -246,3 +246,22 @@ it.each([undefined, "p1", "p2", "p3", "p3-a1"] as const)(
     }
   },
 );
+
+it("shares node documentation boundaries with native imports", () => {
+  for (const length of [50_000, 50_001]) {
+    const node = { id: "api", stencil: "service.go", label: "API", x: 0, y: 0, description: "x".repeat(length) };
+    const file = { format: "diagrams/v1", nodes: [node], edges: [] };
+    if (length === 50_000) expect(() => check(node, "Node")).not.toThrow();
+    else expect(() => check(node, "Node")).toThrow();
+    expect(parseNative(JSON.stringify(file)).ok).toBe(length === 50_000);
+  }
+});
+
+it("enforces diagram description length in schema and native imports", () => {
+  for (const length of [2000, 2001]) {
+    const file = { format: "diagrams/v1", title: "Runbook", description: "x".repeat(length), nodes: [], edges: [] };
+    if (length === 2000) expect(() => check(file)).not.toThrow();
+    else expect(() => check(file)).toThrow();
+    expect(parseNative(JSON.stringify(file)).ok).toBe(length === 2000);
+  }
+});

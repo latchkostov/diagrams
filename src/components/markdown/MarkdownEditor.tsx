@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MarkdownView } from "./MarkdownView";
-import { handleMarkdownKeyDown, indentMarkdown } from "./markdownKeys";
+import { handleMarkdownKeyDown } from "./markdownKeys";
 
 export interface MarkdownEditorProps {
   value: string;
@@ -67,6 +67,7 @@ export function MarkdownEditor({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.nativeEvent.isComposing) return;
       const el = e.currentTarget;
 
       if (e.key === "Escape") {
@@ -78,19 +79,9 @@ export function MarkdownEditor({
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && (e.key === "]" || e.key === "[")) {
-        e.preventDefault();
-        e.stopPropagation();
-        const next = indentMarkdown(value, el.selectionStart, el.selectionEnd, e.key === "[");
-        if (maxLength !== undefined && next.value.length > maxLength) return;
-        onChange(next.value);
-        requestAnimationFrame(() => el.setSelectionRange(next.start, next.end));
-        return;
-      }
-
       handleMarkdownKeyDown(e, el, value, onChange);
     },
-    [value, onChange, maxLength],
+    [value, onChange],
   );
 
   return (
@@ -135,6 +126,7 @@ export function MarkdownEditor({
           value={value}
           placeholder={placeholder}
           maxLength={maxLength}
+          tabIndex={showPreview ? -1 : 0}
           name={name}
           aria-label={ariaLabel}
           onFocus={() => {

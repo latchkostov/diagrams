@@ -215,7 +215,9 @@
 .node-tip {
   position: fixed;
   z-index: 60;
-  max-width: 280px;
+  max-width: min(280px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
   display: grid;
   gap: 2px;
   padding: 8px 10px;
@@ -230,15 +232,7 @@
 }
 
 .node-tip.has-doc {
-  max-width: 320px;
-}
-
-.node-tip.is-above {
-  transform: translate(-50%, -100%);
-}
-
-.node-tip.is-below {
-  transform: translate(-50%, 0);
+  max-width: min(320px, calc(100vw - 16px));
 }
 
 @keyframes tip-in {

@@ -1,3 +1,4 @@
+import { DOCUMENTATION_LIMITS, validDocumentation } from "../model/documentation";
 import { DRILL_PRESETS, faultProblem, faultTarget, type Fault } from "../model/faults";
 import { createResourceValidator } from "../model/resourceValidation";
 import { validateRouting } from "../model/routingValidation";
@@ -152,6 +153,13 @@ export function validateDiagram(data: unknown): NativeResult {
     }
   }
   if (!Array.isArray(raw.nodes)) return { ok: false, error: "The diagram needs both a nodes and an edges list." };
+  if (raw.nodes.some((node) => isObj(node) && !validDocumentation(node.description)))
+    return { ok: false, error: "Node documentation must be text of at most 50,000 characters." };
+  if (
+    typeof raw.description === "string" &&
+    !validDocumentation(raw.description, DOCUMENTATION_LIMITS.maxDiagramLength)
+  )
+    return { ok: false, error: "Diagram description must be at most 2,000 characters." };
   const counts: [unknown, number, string][] = [
     [raw.nodes, LIMITS.maxNodes, "nodes"],
     [raw.edges, LIMITS.maxEdges, "edges"],

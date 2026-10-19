@@ -21,6 +21,7 @@ export type ListItem = {
   tokens: InlineToken[];
   checked?: boolean; // undefined = standard list, true/false = GFM task list checkbox
   subList?: ListBlock;
+  subLists?: ListBlock[];
 };
 
 export type TableAlign = "left" | "center" | "right";
@@ -42,13 +43,14 @@ export type BlockToken =
   | { type: "paragraph"; tokens: InlineToken[] };
 
 // Shared by block, list and inline parsing, including their combined AST depth.
-export const MARKDOWN_LIMITS = { depth: 24, columns: 32, cells: 1024, workPerChar: 128 } as const;
+export const MARKDOWN_LIMITS = { depth: 24, columns: 32, cells: 1024, workPerChar: 128, tokens: 2048 } as const;
 export interface MarkdownWork {
   work: number;
 }
 interface Budget {
   left: number;
   cells: number;
+  tokens: number;
   stats?: MarkdownWork;
 }
 class BudgetExceeded extends Error {}
@@ -59,7 +61,13 @@ function spend(budget: Budget, work: number) {
 }
 function budgetFor(text: string, stats?: MarkdownWork): Budget {
   if (stats) stats.work = 0;
-  return { left: Math.max(1, text.length) * MARKDOWN_LIMITS.workPerChar, cells: 0, stats };
+  return { left: Math.max(1, text.length) * MARKDOWN_LIMITS.workPerChar, cells: 0, tokens: 0, stats };
+}
+class OutputExceeded extends BudgetExceeded {}
+function emit<T>(budget: Budget, target: T[], ...values: T[]) {
+  budget.tokens += values.length;
+  if (budget.tokens > MARKDOWN_LIMITS.tokens) throw new OutputExceeded();
+  target.push(...values);
 }
 function literal(text: string): BlockToken[] {
   return [{ type: "paragraph", tokens: [{ type: "text", text }] }];
@@ -225,175 +233,156 @@ export function parseInline(text: string, stats?: MarkdownWork): InlineToken[] {
   }
 }
 function inline(text: string, budget: Budget, depth: number): InlineToken[] {
-  if (depth >= MARKDOWN_LIMITS.depth) return [{ type: "text", text }];
-  if (!text) return [];
+  try {
+    return scanInline(text, budget, depth);
+  } catch (error) {
+    // A local work fallback must not discard earlier headings or other blocks.
+    if (!(error instanceof BudgetExceeded) || error instanceof OutputExceeded) throw error;
+    const tokens: InlineToken[] = [];
+    emit(budget, tokens, { type: "text", text });
+    return tokens;
+  }
+}
 
+function scanInline(text: string, budget: Budget, depth: number): InlineToken[] {
   const tokens: InlineToken[] = [];
-  let remaining = text;
+  if (!text) return tokens;
+  if (depth >= MARKDOWN_LIMITS.depth) {
+    emit(budget, tokens, { type: "text", text });
+    return tokens;
+  }
   const pairs = delimiterPairs(text, budget);
-
-  const pushText = (str: string) => {
-    if (!str) return;
+  const markers = ["`", "***", "___", "**", "__", "~~", "~", "^", "==", "*", "_"];
+  // Index each delimiter once. A lookup never rescans the remaining paragraph.
+  const ends = new Map<string, Int32Array>();
+  for (const marker of markers) {
+    const next = new Int32Array(text.length + 1);
+    let found = -1;
+    next[text.length] = -1;
+    for (let at = text.length - 1; at >= 0; at--) {
+      if (text.startsWith(marker, at)) found = at;
+      next[at] = found;
+    }
+    spend(budget, text.length);
+    ends.set(marker, next);
+  }
+  const forbidden = new Int32Array(text.length + 1);
+  const whitespace = new Int32Array(text.length + 1);
+  const newline = new Int32Array(text.length + 1);
+  const special = new Int32Array(text.length + 1);
+  special[text.length] = text.length;
+  forbidden[text.length] = whitespace[text.length] = newline[text.length] = text.length;
+  for (let at = text.length - 1; at >= 0; at--) {
+    forbidden[at] = /[*_]/.test(text[at]) ? at : forbidden[at + 1];
+    whitespace[at] = /\s/.test(text[at]) ? at : whitespace[at + 1];
+    newline[at] = text[at] === "\n" ? at : newline[at + 1];
+    special[at] =
+      /[\n`*_~[\\^]/.test(text[at]) ||
+      text.startsWith("![", at) ||
+      text.startsWith("==", at) ||
+      /^https?:\/\//i.test(text.slice(at, at + 8))
+        ? at
+        : special[at + 1];
+  }
+  spend(budget, text.length);
+  const pushText = (value: string) => {
+    if (!value) return;
     const last = tokens[tokens.length - 1];
-    if (last && last.type === "text") {
-      last.text += str;
-    } else {
-      tokens.push({ type: "text", text: str });
-    }
+    if (last?.type === "text") last.text += value;
+    else emit(budget, tokens, { type: "text", text: value });
   };
-
-  while (remaining.length > 0) {
-    spend(budget, remaining.length);
-    // 0. Hard line break via backslash + newline: \\\n
-    if (remaining.startsWith("\\\n")) {
-      tokens.push({ type: "br" });
-      remaining = remaining.slice(2);
-      continue;
-    }
-
-    // 0b. Escaped characters: \* \_ \[ \] \( \) \` \# \+ \- \~ \\ \!
-    if (remaining.startsWith("\\") && remaining.length > 1) {
-      const nextChar = remaining[1];
-      if (/[`*_~[\]()#+\-\\!]/.test(nextChar)) {
-        pushText(nextChar);
-        remaining = remaining.slice(2);
+  const styles = [
+    ["***", "boldItalic"],
+    ["___", "boldItalic"],
+    ["**", "bold"],
+    ["__", "bold"],
+    ["~~", "strike"],
+    ["~", "subscript"],
+    ["^", "superscript"],
+    ["==", "highlight"],
+    ["*", "italic"],
+    ["_", "italic"],
+  ] as const;
+  const autoLink = /https?:\/\/[^\s<)\]]+/iy;
+  let cursor = 0;
+  while (cursor < text.length) {
+    spend(budget, 1);
+    const char = text[cursor];
+    if (char === "\\" && cursor + 1 < text.length) {
+      const next = text[cursor + 1];
+      if (next === "\n") {
+        emit(budget, tokens, { type: "br" });
+        cursor += 2;
+        continue;
+      }
+      if (/[`*_~[\]()#+\-\\!]/.test(next)) {
+        pushText(next);
+        cursor += 2;
         continue;
       }
     }
-
-    // 1. Inline code: `code`
-    const codeMatch = remaining.match(/^`([^`]+)`/);
-    if (codeMatch) {
-      tokens.push({ type: "code", text: codeMatch[1] });
-      remaining = remaining.slice(codeMatch[0].length);
-      continue;
+    if (char === "`") {
+      const close = ends.get("`")![cursor + 1];
+      if (close > cursor + 1) {
+        emit(budget, tokens, { type: "code", text: text.slice(cursor + 1, close) });
+        cursor = close + 1;
+        continue;
+      }
     }
-
-    // 2. Bold + Italic: ***text*** or ___text___
-    const boldItalicMatch = remaining.match(/^(\*\*\*|___)(.+?)\1/);
-    if (boldItalicMatch) {
-      tokens.push({ type: "boldItalic", children: inline(boldItalicMatch[2], budget, depth + 1) });
-      remaining = remaining.slice(boldItalicMatch[0].length);
-      continue;
-    }
-
-    // 3. Bold: **text** or __text__
-    const boldMatch = remaining.match(/^(\*\*|__)(.+?)\1/);
-    if (boldMatch) {
-      tokens.push({ type: "bold", children: inline(boldMatch[2], budget, depth + 1) });
-      remaining = remaining.slice(boldMatch[0].length);
-      continue;
-    }
-
-    // 4. Strikethrough: ~~text~~
-    const strikeMatch = remaining.match(/^~~(.+?)~~/);
-    if (strikeMatch) {
-      tokens.push({ type: "strike", children: inline(strikeMatch[1], budget, depth + 1) });
-      remaining = remaining.slice(strikeMatch[0].length);
-      continue;
-    }
-
-    // 4b. Subscript: ~text~ (checked after strikethrough ~~)
-    const subMatch = remaining.match(/^~([^~\s]+)~/);
-    if (subMatch) {
-      tokens.push({ type: "subscript", children: inline(subMatch[1], budget, depth + 1) });
-      remaining = remaining.slice(subMatch[0].length);
-      continue;
-    }
-
-    // 4c. Superscript: ^text^
-    const supMatch = remaining.match(/^\^([^^\s]+)\^/);
-    if (supMatch) {
-      tokens.push({ type: "superscript", children: inline(supMatch[1], budget, depth + 1) });
-      remaining = remaining.slice(supMatch[0].length);
-      continue;
-    }
-
-    // 4d. Highlight: ==text==
-    const highlightMatch = remaining.match(/^==(.+?)==/);
-    if (highlightMatch) {
-      tokens.push({ type: "highlight", children: inline(highlightMatch[1], budget, depth + 1) });
-      remaining = remaining.slice(highlightMatch[0].length);
-      continue;
-    }
-
-    // 5. Italic: *text* or _text_
-    const italicMatch = remaining.match(/^(\*|_)([^*_]+?)\1/);
-    if (italicMatch) {
-      tokens.push({ type: "italic", children: inline(italicMatch[2], budget, depth + 1) });
-      remaining = remaining.slice(italicMatch[0].length);
-      continue;
-    }
-
-    // 6. Image: ![alt](url "title")
-    const imgMatch = matchLink(text, text.length - remaining.length, pairs, true);
-    if (imgMatch) {
-      tokens.push({
-        type: "image",
-        src: imgMatch.href,
-        alt: imgMatch.label,
-        title: imgMatch.title,
-      });
-      remaining = remaining.slice(imgMatch.length);
-      continue;
-    }
-
-    // 7. Link: [label](url "title") with balanced parentheses
-    const linkMatch = matchLink(text, text.length - remaining.length, pairs, false);
-    if (linkMatch) {
-      tokens.push({
-        type: "link",
-        href: sanitizeUrl(linkMatch.href),
-        title: linkMatch.title,
-        children: inline(linkMatch.label, budget, depth + 1),
-      });
-      remaining = remaining.slice(linkMatch.length);
-      continue;
-    }
-
-    // 8. Autolink: https://... or http://...
-    const autoLinkMatch = remaining.match(/^(https?:\/\/[^\s<)\]]+)/i);
-    if (autoLinkMatch) {
-      const url = autoLinkMatch[1];
-      tokens.push({
-        type: "link",
-        href: sanitizeUrl(url),
-        children: [{ type: "text", text: url }],
-      });
-      remaining = remaining.slice(url.length);
-      continue;
-    }
-
-    // 9. Line break inside paragraph (GFM soft/hard break)
-    const brMatch = remaining.match(/^ *\n/);
-    if (brMatch) {
-      tokens.push({ type: "br" });
-      remaining = remaining.slice(brMatch[0].length);
-      continue;
-    }
-
-    // 10. Plain text up to next special character
-    const specialIndex = remaining.search(/[\n`*_~[\\]|!\[|\^|==|https?:\/\//i);
-    if (specialIndex === -1) {
-      pushText(remaining);
+    let styled = false;
+    for (const [marker, type] of styles) {
+      if (!text.startsWith(marker, cursor)) continue;
+      const begin = cursor + marker.length;
+      const narrow = type === "subscript" || type === "superscript" || type === "italic";
+      const close = begin < text.length ? ends.get(marker)![begin + (narrow ? 0 : 1)] : -1;
+      if (close <= begin || (type !== "italic" && newline[begin] < close)) continue;
+      if (type === "italic" && forbidden[begin] < close) continue;
+      if ((type === "subscript" || type === "superscript") && whitespace[begin] < close) continue;
+      emit(budget, tokens, { type, children: inline(text.slice(begin, close), budget, depth + 1) });
+      cursor = close + marker.length;
+      styled = true;
       break;
-    } else if (specialIndex === 0) {
-      // Character didn't match any syntax, consume 1 char as plain text
-      pushText(remaining[0]);
-      remaining = remaining.slice(1);
-    } else {
-      pushText(remaining.slice(0, specialIndex));
-      remaining = remaining.slice(specialIndex);
     }
-  }
-
-  // Replace emoji shortcodes and emoticons in text tokens
-  for (const t of tokens) {
-    if (t.type === "text") {
-      t.text = replaceEmojis(t.text);
+    if (styled) continue;
+    if (char === "!" || char === "[") {
+      const image = char === "!";
+      const link = matchLink(text, cursor, pairs, image);
+      if (link) {
+        if (image) emit(budget, tokens, { type: "image", src: link.href, alt: link.label, title: link.title });
+        else
+          emit(budget, tokens, {
+            type: "link",
+            href: sanitizeUrl(link.href),
+            title: link.title,
+            children: inline(link.label, budget, depth + 1),
+          });
+        cursor += link.length;
+        continue;
+      }
     }
+    if (char === "h" || char === "H") {
+      autoLink.lastIndex = cursor;
+      const match = autoLink.exec(text);
+      if (match) {
+        const children: InlineToken[] = [];
+        emit(budget, children, { type: "text", text: match[0] });
+        emit(budget, tokens, { type: "link", href: sanitizeUrl(match[0]), children });
+        cursor += match[0].length;
+        continue;
+      }
+    }
+    let breakAt = cursor;
+    while (text[breakAt] === " ") breakAt++;
+    if (text[breakAt] === "\n") {
+      emit(budget, tokens, { type: "br" });
+      cursor = breakAt + 1;
+      continue;
+    }
+    const stop = special[cursor] === cursor ? cursor + 1 : special[cursor];
+    pushText(text.slice(cursor, stop));
+    cursor = stop;
   }
-
+  for (const token of tokens) if (token.type === "text") token.text = replaceEmojis(token.text);
   return tokens;
 }
 
@@ -484,12 +473,14 @@ function parseListBlock(
       if (items.length > 0) {
         if (depth + 1 >= MARKDOWN_LIMITS.depth) {
           const raw = lines.slice(i).join("\n");
-          items.push({ text: raw, tokens: [{ type: "text", text: raw }] });
+          emit(budget, items, { text: raw, tokens: [{ type: "text", text: raw }] });
           i = lines.length;
           break;
         }
         const subResult = parseListBlock(lines, i, indent, budget, depth + 1);
-        items[items.length - 1].subList = subResult.list;
+        const parent = items[items.length - 1];
+        if (!parent.subList) parent.subList = subResult.list;
+        else (parent.subLists ??= []).push(subResult.list);
         i = subResult.nextIndex;
         continue;
       }
@@ -504,7 +495,7 @@ function parseListBlock(
       content = taskMatch[2];
     }
 
-    items.push({
+    emit(budget, items, {
       text: content,
       tokens: inline(content, budget, depth + 1),
       checked,
@@ -567,7 +558,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
         codeLines.push(lines[i]);
         i++;
       }
-      blocks.push({ type: "code", lang, code: codeLines.join("\n") });
+      emit(budget, blocks, { type: "code", lang, code: codeLines.join("\n") });
       continue;
     }
 
@@ -585,7 +576,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
           rawText = rawText.slice(0, idStart).trim();
         }
       }
-      blocks.push({
+      emit(budget, blocks, {
         type: "heading",
         level,
         id,
@@ -609,7 +600,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
     ) {
       const nextTrimmed = lines[i + 1].trim();
       if (/^={2,}$/.test(nextTrimmed)) {
-        blocks.push({
+        emit(budget, blocks, {
           type: "heading",
           level: 1,
           tokens: inline(trimmed, budget, depth + 1),
@@ -618,7 +609,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
         continue;
       }
       if (/^-{2,}$/.test(nextTrimmed)) {
-        blocks.push({
+        emit(budget, blocks, {
           type: "heading",
           level: 2,
           tokens: inline(trimmed, budget, depth + 1),
@@ -630,7 +621,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
 
     // 4. Thematic break (horizontal rule): ---, ***, ___
     if (isThematicBreak(trimmed)) {
-      blocks.push({ type: "hr" });
+      emit(budget, blocks, { type: "hr" });
       i++;
       continue;
     }
@@ -648,11 +639,13 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
           headerCells.length > MARKDOWN_LIMITS.columns ||
           cellsNeeded > MARKDOWN_LIMITS.cells - budget.cells
         ) {
-          blocks.push(...literal(lines.slice(i, end).join("\n")));
+          emit(budget, blocks, ...literal(lines.slice(i, end).join("\n")));
           i = end;
           continue;
         }
         budget.cells += cellsNeeded;
+        budget.tokens += cellsNeeded;
+        if (budget.tokens > MARKDOWN_LIMITS.tokens) throw new OutputExceeded();
         const headers = headerCells.map((h) => ({ text: h, tokens: inline(h, budget, depth + 1) }));
         const rows: { text: string; tokens: InlineToken[] }[][] = [];
         i += 2;
@@ -666,7 +659,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
             }),
           );
         }
-        blocks.push({ type: "table", headers, aligns, rows });
+        emit(budget, blocks, { type: "table", headers, aligns, rows });
         continue;
       }
     }
@@ -685,7 +678,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
           break;
         }
       }
-      blocks.push({
+      emit(budget, blocks, {
         type: "blockquote",
         children: markdown(quoteLines.join("\n"), budget, depth + 1),
       });
@@ -696,7 +689,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
     const listMatch = line.match(LIST_LINE);
     if (listMatch) {
       const { list, nextIndex } = parseListBlock(lines, i, listMatch[1].length, budget, depth + 1);
-      blocks.push(list);
+      emit(budget, blocks, list);
       i = Math.max(i + 1, nextIndex);
       continue;
     }
@@ -715,7 +708,7 @@ function markdown(src: string, budget: Budget, depth: number): BlockToken[] {
 
     if (!paraLines.length) paraLines.push(lines[i++]);
     if (paraLines.length) {
-      blocks.push({
+      emit(budget, blocks, {
         type: "paragraph",
         tokens: inline(paraLines.join("\n"), budget, depth + 1),
       });

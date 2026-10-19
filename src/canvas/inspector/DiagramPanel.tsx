@@ -1,3 +1,4 @@
+import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { useState, type CSSProperties } from "react";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
@@ -44,6 +45,7 @@ export function DiagramPanel({ editor, meta, counts, focus, takeFocus }: Inspect
             value={meta.description ?? ""}
             placeholder={t("inspector.whatDoesThisDiagramShow")}
             onChange={setDescription}
+            maxLength={DOCUMENTATION_LIMITS.maxDiagramLength}
             name="description"
             ariaLabel={t("inspector.description")}
             testId="inspector-field-description"

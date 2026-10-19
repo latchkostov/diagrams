@@ -44,6 +44,14 @@ function astDepth(value: unknown): number {
 }
 
 describe("untrusted Markdown", () => {
+  it("bounds total output across flat blocks and recursive inline tokens", async () => {
+    const inputs = ["---\n".repeat(1_000_000), "> " + "**x** ".repeat(20_000)];
+    const results = await parseInWorker(inputs);
+    for (const { ast } of results) {
+      expect(ast).toHaveLength(1);
+      expect(ast[0].type).toBe("paragraph");
+    }
+  });
   it.each([
     "# Heading\rbody",
     "# Heading\r\nbody",

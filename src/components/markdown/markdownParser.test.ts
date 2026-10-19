@@ -324,3 +324,27 @@ describe("markdownParser", () => {
     });
   });
 });
+
+describe("Markdown review regressions", () => {
+  it("renders hundreds of formatted spans without losing preceding blocks", () => {
+    const blocks = parseMarkdown("# Runbook\n\n" + Array(300).fill("**service**").join(" "));
+    expect(blocks[0].type).toBe("heading");
+    expect(blocks[1].type === "paragraph" && blocks[1].tokens.filter((t) => t.type === "bold")).toHaveLength(300);
+  });
+  it("keeps nested items when indentation decreases, including mixed list kinds", () => {
+    const blocks = parseMarkdown("- parent\n    - first\n  1. second");
+    expect(JSON.stringify(blocks)).toContain("first");
+    expect(JSON.stringify(blocks)).toContain("second");
+  });
+});
+
+it.each(["~~~[x](https://example.com)~", "*a\nb*", "a  \nb", "**a** \nb"])(
+  "keeps inline scanning semantics for %j",
+  (source) => {
+    const tokens = parseInline(source);
+    if (source.startsWith("~~~")) expect(tokens[0]).toEqual({ type: "text", text: "~~" });
+    else if (source.startsWith("*a")) expect(tokens[0].type).toBe("italic");
+    else if (source.startsWith("a")) expect(tokens[0]).toEqual({ type: "text", text: "a  " });
+    else expect(tokens[1]).toEqual({ type: "br" });
+  },
+);

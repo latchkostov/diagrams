@@ -9,6 +9,20 @@ function scheduleSelection(textarea: HTMLTextAreaElement, start: number, end: nu
   });
 }
 
+/** Refuse a transformation atomically: existing content and selection must survive. */
+export function applyMarkdownEdit(
+  textarea: HTMLTextAreaElement,
+  onChange: (value: string) => void,
+  value: string,
+  start: number,
+  end = start,
+): boolean {
+  if (textarea.maxLength >= 0 && value.length > textarea.maxLength) return false;
+  onChange(value);
+  scheduleSelection(textarea, start, end);
+  return true;
+}
+
 export function applyMarkdownWrap(
   textarea: HTMLTextAreaElement,
   value: string,
@@ -34,27 +48,29 @@ export function applyMarkdownWrap(
   if (isWrappedInside) {
     const unwrapped = selected.slice(prefix.length, -suffix.length);
     const nextVal = value.slice(0, start) + unwrapped + value.slice(end);
-    onChange(nextVal);
-    scheduleSelection(textarea, start, start + unwrapped.length);
+    applyMarkdownEdit(textarea, onChange, nextVal, start, start + unwrapped.length);
     return;
   }
 
   if (isWrappedOutside) {
     const nextVal = value.slice(0, start - prefix.length) + selected + value.slice(end + suffix.length);
-    onChange(nextVal);
-    scheduleSelection(textarea, start - prefix.length, end - prefix.length);
+    applyMarkdownEdit(textarea, onChange, nextVal, start - prefix.length, end - prefix.length);
     return;
   }
 
   const textToWrap = selected || defaultPlaceholder;
   const replacement = `${prefix}${textToWrap}${suffix}`;
   const nextVal = value.slice(0, start) + replacement + value.slice(end);
-  onChange(nextVal);
-
   if (selected) {
-    scheduleSelection(textarea, start + prefix.length, start + prefix.length + selected.length);
+    applyMarkdownEdit(textarea, onChange, nextVal, start + prefix.length, start + prefix.length + selected.length);
   } else {
-    scheduleSelection(textarea, start + prefix.length, start + prefix.length + defaultPlaceholder.length);
+    applyMarkdownEdit(
+      textarea,
+      onChange,
+      nextVal,
+      start + prefix.length,
+      start + prefix.length + defaultPlaceholder.length,
+    );
   }
 }
 
@@ -66,19 +82,16 @@ export function applyMarkdownLink(textarea: HTMLTextAreaElement, value: string, 
   if (selected.startsWith("http://") || selected.startsWith("https://")) {
     const replacement = `[title](${selected})`;
     const nextVal = value.slice(0, start) + replacement + value.slice(end);
-    onChange(nextVal);
-    scheduleSelection(textarea, start + 1, start + 6);
+    applyMarkdownEdit(textarea, onChange, nextVal, start + 1, start + 6);
   } else if (selected) {
     const replacement = `[${selected}](url)`;
     const nextVal = value.slice(0, start) + replacement + value.slice(end);
-    onChange(nextVal);
     const urlStart = start + selected.length + 3;
-    scheduleSelection(textarea, urlStart, urlStart + 3);
+    applyMarkdownEdit(textarea, onChange, nextVal, urlStart, urlStart + 3);
   } else {
     const replacement = `[text](url)`;
     const nextVal = value.slice(0, start) + replacement + value.slice(end);
-    onChange(nextVal);
-    scheduleSelection(textarea, start + 1, start + 5);
+    applyMarkdownEdit(textarea, onChange, nextVal, start + 1, start + 5);
   }
 }
 
@@ -90,8 +103,7 @@ export function applyMarkdownCode(textarea: HTMLTextAreaElement, value: string, 
   if (selected.includes("\n")) {
     const replacement = `\`\`\`\n${selected}\n\`\`\``;
     const nextVal = value.slice(0, start) + replacement + value.slice(end);
-    onChange(nextVal);
-    scheduleSelection(textarea, start + 4, start + 4 + selected.length);
+    applyMarkdownEdit(textarea, onChange, nextVal, start + 4, start + 4 + selected.length);
   } else {
     applyMarkdownWrap(textarea, value, onChange, "`");
   }
@@ -116,15 +128,13 @@ export function handleMarkdownListEnter(
     const content = taskMatch[2];
     if (!content.trim()) {
       const nextVal = value.slice(0, lineStart) + value.slice(start);
-      onChange(nextVal);
-      scheduleSelection(textarea, lineStart, lineStart);
+      applyMarkdownEdit(textarea, onChange, nextVal, lineStart, lineStart);
       return true;
     }
     const newPrefix = prefix.replace(/\[[xX]\]/, "[ ]");
     const nextVal = value.slice(0, start) + "\n" + newPrefix + value.slice(start);
-    onChange(nextVal);
     const pos = start + 1 + newPrefix.length;
-    scheduleSelection(textarea, pos, pos);
+    applyMarkdownEdit(textarea, onChange, nextVal, pos);
     return true;
   }
 
@@ -135,14 +145,12 @@ export function handleMarkdownListEnter(
     const content = bulletMatch[2];
     if (!content.trim()) {
       const nextVal = value.slice(0, lineStart) + value.slice(start);
-      onChange(nextVal);
-      scheduleSelection(textarea, lineStart, lineStart);
+      applyMarkdownEdit(textarea, onChange, nextVal, lineStart, lineStart);
       return true;
     }
     const nextVal = value.slice(0, start) + "\n" + prefix + value.slice(start);
-    onChange(nextVal);
     const pos = start + 1 + prefix.length;
-    scheduleSelection(textarea, pos, pos);
+    applyMarkdownEdit(textarea, onChange, nextVal, pos);
     return true;
   }
 
@@ -155,15 +163,13 @@ export function handleMarkdownListEnter(
     const content = orderedMatch[4];
     if (!content.trim()) {
       const nextVal = value.slice(0, lineStart) + value.slice(start);
-      onChange(nextVal);
-      scheduleSelection(textarea, lineStart, lineStart);
+      applyMarkdownEdit(textarea, onChange, nextVal, lineStart, lineStart);
       return true;
     }
     const newPrefix = `${indent}${num + 1}${dot}`;
     const nextVal = value.slice(0, start) + "\n" + newPrefix + value.slice(start);
-    onChange(nextVal);
     const pos = start + 1 + newPrefix.length;
-    scheduleSelection(textarea, pos, pos);
+    applyMarkdownEdit(textarea, onChange, nextVal, pos);
     return true;
   }
 
@@ -181,6 +187,14 @@ export function handleMarkdownKeyDown(
   onChange: (val: string) => void,
 ): boolean {
   if (e.nativeEvent.isComposing) return false;
+
+  if ((e.ctrlKey || e.metaKey) && (e.key === "]" || e.key === "[")) {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = indentMarkdown(value, textarea.selectionStart, textarea.selectionEnd, e.key === "[");
+    applyMarkdownEdit(textarea, onChange, next.value, next.start, next.end);
+    return true;
+  }
 
   // Smart Enter in lists (plain Enter without modifiers)
   if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {

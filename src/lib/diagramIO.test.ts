@@ -678,7 +678,14 @@ describe("first example edit", () => {
         request: "Keep words",
         kind: "explain" as const,
         changed: [],
-        after: { ...good, description: "x".repeat(100_000) },
+        after: {
+          ...good,
+          nodes: Array.from({ length: 2 }, (_, index) => ({
+            ...good.nodes[0],
+            id: `node-${index}`,
+            description: "x".repeat(50_000),
+          })),
+        },
       },
     ];
     storage.quotaBytes = 90_000;

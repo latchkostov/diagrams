@@ -1,3 +1,4 @@
+import { DOCUMENTATION_LIMITS } from "./documentation";
 import { faultSchema, DRILL_PRESETS } from "./faults";
 import { nodeSimPropsSchema, edgeSimPropsSchema } from "./simProps";
 import { EDGE_RELATIONS, MAX_SETTINGS, MAX_SETTING_KEY } from "./relations";
@@ -68,7 +69,7 @@ function diagramSchema(a1 = false) {
       format: { type: "string", enum: ["diagrams/v1", "diagrams/v2"] },
       planning: planningSchema,
       title: str(200),
-      description: str(2000),
+      description: str(DOCUMENTATION_LIMITS.maxDiagramLength),
       color: {
         type: "string",
         pattern: COLOR_PATTERN,
@@ -135,7 +136,7 @@ function diagramSchema(a1 = false) {
           },
           label: str(200),
           sublabel: str(200, "Second line, e.g. a topic name."),
-          description: str(50_000, "Markdown documentation and technical details."),
+          description: str(DOCUMENTATION_LIMITS.maxLength, "Markdown documentation and technical details."),
           x: num,
           y: num,
           group: { type: "string", description: "Id of the boundary it sits in." },

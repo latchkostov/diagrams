@@ -119,9 +119,14 @@ it("uses descriptive links for external images in the app and same-origin images
   expect(offline).toContain("Local</a>");
 });
 
-it("preserves newlines when a work-budget fallback renders literal text", () => {
+it("preserves newlines when a budget fallback renders literal text", () => {
   const source = "x\n".repeat(1300);
   const html = renderToString(<MarkdownView text={source} />);
   expect(html).toContain("white-space:pre-wrap");
   expect(html).toContain(source);
+});
+
+it("removes the hidden editor from preview tab order", () => {
+  const html = renderToString(<MarkdownEditor value="Runbook" onChange={() => {}} testId="doc" />);
+  expect(html).toMatch(/<textarea[^>]*tabindex="-1"/i);
 });

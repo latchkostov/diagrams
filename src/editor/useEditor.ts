@@ -1,3 +1,4 @@
+import { DOCUMENTATION_LIMITS, validDocumentation } from "../model/documentation";
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
 import { changeNodeStencil } from "../model/changeNodeStencil";
 import { t } from "../i18n";
@@ -1017,6 +1018,7 @@ export function createEditor(
       );
     },
     updateNode: (id, patch, opts) => {
+      if (!validDocumentation(patch.description)) return;
       const nodes = currentNodes().map((n) => {
         if (n.id !== id || !isDiagram(n)) return n;
         const data = patch.stencil ? changeNodeStencil(n.data, patch.stencil) : { ...n.data };
@@ -1114,6 +1116,7 @@ export function createEditor(
       });
     },
     updateMeta: (patch, opts) => {
+      if (!validDocumentation(patch.description, DOCUMENTATION_LIMITS.maxDiagramLength)) return;
       if (
         ("planning" in patch || "simulations" in patch) &&
         !acceptNodes(currentNodes(), currentEdges(), { ...deps().meta, ...patch })
