@@ -75,7 +75,7 @@ it("Free play explains missing traffic sources in the existing hint slot", () =>
         <Notice {...props} />
       </ReactFlowProvider>,
     );
-  expect(render()).toContain("Nothing is sending traffic yet. Click a node to send a request, or add a source.");
+  expect(render()).toContain("Nothing is sending traffic yet. Right-click a node and choose Inject to send a request, or add a traffic source.");
   expect(render({ source: true })).toBe("<p></p>");
   expect(render({ traffic: false })).toBe("<p></p>");
   expect(render({ simulation: {} })).toBe("<p></p>");
