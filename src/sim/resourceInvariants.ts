@@ -136,6 +136,11 @@ export interface ResourceState {
   scale: number;
   capacityMultiplier: number;
   partBudget: CpuPartBudget;
+  admission?: {
+    inFlight: ReadonlyMap<string, number>;
+    limits: ReadonlyMap<string, number>;
+    leases: Iterable<{ keys?: string[]; weight: number }>;
+  };
   nodes: Iterable<{
     id: string;
     status: string;
@@ -169,11 +174,35 @@ const previousDesired = new WeakMap<Fleet, number>();
 /** A3: cooldown clocks as they stood before this step, to judge the step's own decision. */
 const previousCloud = new WeakMap<Fleet, { inCooldownUntil?: number[]; lastScaleAt?: number }>();
 const reservationAttempts = new WeakMap<Fleet, Map<Work, number>>();
+/** Admission ownership oracle shared by the resource and command-model checks. */
+export function assertAdmissionInvariants(state: Pick<ResourceState, "time" | "admission">): void {
+  const check = (ok: boolean, message: string) => {
+    if (!ok) throw new Error(message);
+  };
+  if (state.admission) {
+    const { inFlight, limits, leases } = state.admission;
+    const held = new Map<string, number>();
+    for (const lease of leases) for (const key of lease.keys ?? []) held.set(key, (held.get(key) ?? 0) + lease.weight);
+    for (const key of new Set([...held.keys(), ...inFlight.keys()])) {
+      const occupancy = inFlight.get(key) ?? 0;
+      check(
+        Math.abs(occupancy - (held.get(key) ?? 0)) < 1e-8,
+        `Admission @${state.time}: lease occupancy disagrees for ${key}`,
+      );
+      check(
+        occupancy <= (limits.get(key) ?? Infinity) + 1e-8,
+        `Admission @${state.time}: capacity exceeded for ${key}`,
+      );
+    }
+  }
+}
+
 /** Opt-in diagnostic: independent ownership/counting oracle, never run in ordinary playback. */
 export function assertResourceInvariants(state: ResourceState) {
   const check = (ok: boolean, message: string) => {
     if (!ok) throw new Error(message);
   };
+  assertAdmissionInvariants(state);
   let parts = 0;
   for (const node of state.nodes) {
     const f = node.fleet;

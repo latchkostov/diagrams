@@ -3,7 +3,12 @@ import { expect, it } from "vitest";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
 import { createEngine, randomDraws } from "./engine";
-import { assertLedgerInvariants, assertOutcomeInvariants, type LedgerInvariantState } from "./resourceInvariants";
+import {
+  assertLedgerInvariants,
+  assertAdmissionInvariants,
+  assertOutcomeInvariants,
+  type LedgerInvariantState,
+} from "./resourceInvariants";
 import type { DiagramFile } from "../model/types";
 import type { EngineCheckpoint, NodeStatus, SimEngine } from "./types";
 
@@ -31,17 +36,35 @@ function probe(diagram: DiagramFile, scale: number, seed: number): Probe {
       state = { ...s, nodes: [...s.nodes] };
       assertLedgerInvariants(state);
     },
+    verifyResources: assertAdmissionInvariants,
     verifyOutcomes: assertOutcomeInvariants,
   });
   engine.load(diagram);
   engine.step(10);
   return { engine, state: () => state };
 }
+/** A delivery group points back to the whole engine graph. Compare its stable identity,
+ * while retaining every ledger field and checking broker state in the engine snapshot. */
+function ledgerSnapshot(state: LedgerInvariantState): LedgerInvariantState["ledger"] {
+  return structuredClone({
+    ...state.ledger,
+    reservations: new Map(
+      [...state.ledger.reservations].map(([id, reservation]) => {
+        const group = reservation.group as { name: string; edges: { id: string }[] } | undefined;
+        return [
+          id,
+          { ...reservation, group: group && { name: group.name, edges: group.edges.map((edge) => edge.id) } },
+        ];
+      }),
+    ),
+  });
+}
+
 function compare(real: Real, model: Model): void {
   const [a, b] = real.probes;
   expect(a.engine.snapshot()).toEqual(b.engine.snapshot());
   expect(a.engine.snapshot().scale).toBe(model.scale);
-  expect(a.state().ledger).toEqual(b.state().ledger);
+  expect(ledgerSnapshot(a.state())).toEqual(ledgerSnapshot(b.state()));
   expect(randomDraws(a.engine)).toBe(randomDraws(b.engine));
   for (const p of real.probes) {
     assertLedgerInvariants({ ...p.state(), nodes: [...p.state().nodes] });
@@ -56,7 +79,7 @@ function compare(real: Real, model: Model): void {
 type Action =
   | { kind: "Inject"; count: number }
   | { kind: "Step"; ticks: number }
-  | { kind: "SetStatus"; index: number; status: NodeStatus }
+  | { kind: "SetStatus"; index: number; status: NodeStatus; tick: boolean }
   | { kind: "Cut/Restore"; index: number; cut: boolean }
   | { kind: "SetProps"; index: number; concurrency: number }
   | { kind: "SetScale"; scale: number }
@@ -109,8 +132,8 @@ class WaitCommand implements fc.Command<Model, Real> {
           e.restore(p.checkpoint!);
           break;
       }
-      e.step(10);
-      const result = { snapshot: e.snapshot(), ledger: structuredClone(p.state().ledger), draws: randomDraws(e) };
+      if (action.kind !== "SetStatus" || action.tick) e.step(10);
+      const result = { snapshot: e.snapshot(), ledger: ledgerSnapshot(p.state()), draws: randomDraws(e) };
       if (action.kind === "Checkpoint") p.saved = result;
       if (action.kind === "Restore") expect(result).toEqual(p.saved);
     }
@@ -128,6 +151,7 @@ function commands(scaleOne: boolean) {
       kind: fc.constant("SetStatus" as const),
       index: fc.nat(3),
       status: fc.constantFrom<NodeStatus>("down", "paused", "up"),
+      tick: fc.boolean(),
     }),
     fc.record({ kind: fc.constant("Cut/Restore" as const), index: fc.nat(3), cut: fc.boolean() }),
     fc.record({
@@ -191,6 +215,10 @@ it.each([false, true])(
         // Cuts have no deadlines in R1. Down explicitly cancels unanswered calls before draining.
         for (const p of real.probes) {
           for (const node of diagram.nodes) p.engine.setNodeStatus(node.id, "down");
+          // Brokers retain queued deliveries while down. Cancel the outstanding calls,
+          // then restore delivery paths so their backlog can drain too.
+          for (const node of diagram.nodes) p.engine.setNodeStatus(node.id, "up");
+          for (const edge of diagram.edges) p.engine.setFault({ kind: "link", edge: edge.id, cut: false });
           drain(p);
           if (scaleOne) expect([...p.state().ledger.owners.values()].every((o) => o.heap.length === 0)).toBe(true);
         }
@@ -210,4 +238,69 @@ it("I3: healthy generated graphs drain naturally, including admission keys and C
     }),
     { numRuns: propertyRuns(40) },
   );
+});
+
+/** A generated outage command guarantees coverage of the admission/backoff boundary;
+ * the ordinary command generator also explores adjacent SetStatus calls without a tick. */
+class BackoffOutage implements fc.Command<Model, Real> {
+  constructor(readonly ticksDown: number) {}
+  check(): boolean {
+    return true;
+  }
+  run(model: Model, real: Real): void {
+    for (const p of real.probes) {
+      const e = p.engine;
+      e.setNodeStatus("sibling", "down");
+      const api = real.diagram.nodes.find((n) => n.id === "tier0")!.props!.api!;
+      e.setNodeProps("tier0", { api: { ...api, errorRate: 1 } });
+      e.inject("source", 1);
+      const backoff = () => {
+        const node = [...p.state().nodes].find((n) => n.id === "tier0") as unknown as {
+          working: { retryAdmissionAt?: number }[];
+        };
+        return node.working.find((w) => (w.retryAdmissionAt ?? 0) > e.metrics().time)?.retryAdmissionAt;
+      };
+      for (let tick = 0; tick < 200 && !backoff(); tick++) e.step(10);
+      const deadline = backoff();
+      expect(deadline).toBeDefined();
+      e.setNodeStatus("tier0", "down");
+      // Both zero-tick outages and outages spanning ticks must preserve the deadline.
+      e.step(this.ticksDown * 10);
+      e.setNodeProps("sibling", { api: { latencyMs: 2000, sharedConcurrency: "callers" } });
+      e.setNodeStatus("sibling", "up");
+      e.inject("sibling", 1);
+      expect(e.snapshot().nodes.sibling.rejected).toBe(0);
+      e.setNodeProps("tier0", { api: { ...api, errorRate: 0 } });
+      expect(e.metrics().time).toBeLessThan(deadline!);
+      e.setNodeStatus("tier0", "up");
+      e.step(10);
+      expect(e.snapshot().nodes.tier0.processed).toBe(0);
+    }
+    compare(real, model);
+  }
+  toString(): string {
+    return `DownUpDuringSharedBackoff(${this.ticksDown})`;
+  }
+}
+
+it("generated shared callers recover from down/up during backoff", () => {
+  let hits = 0;
+  const scenarios = arbWaitDiagram.filter(({ diagram }) => !!diagram.planning?.sharedAllocations?.length);
+  fc.assert(
+    fc.property(scenarios, fc.integer({ min: 0, max: 4 }), fc.integer(), ({ diagram, scale }, ticksDown, seed) => {
+      const model: Model = { scale };
+      const real: Real = { diagram, probes: [probe(diagram, scale, seed), probe(diagram, scale, seed)] };
+      fc.modelRun(() => ({ model, real }), [new BackoffOutage(ticksDown)]);
+      for (const p of real.probes) {
+        drain(p);
+        const recovered = p.engine.snapshot().nodes.tier0;
+        expect(recovered.processed + recovered.failed).toBeGreaterThan(1);
+        expect(p.engine.snapshot().nodes.sibling.processed).toBe(1);
+      }
+      hits++;
+    }),
+    { numRuns: propertyRuns(40) },
+  );
+  expect(hits).toBe(propertyRuns(40));
+  console.info(`Shared-allocation down/up during backoff: ${hits} generated runs`);
 });

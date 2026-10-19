@@ -94,6 +94,9 @@ import {
   attemptQuotas,
   reconfigureQuotas,
   reserveContinuation,
+  reacquire,
+  admissionLimits,
+  restoreAdmission,
   type QuotaRequirement,
 } from "./admission";
 import { QUOTA_UNITS } from "../model/admission";
@@ -528,13 +531,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             node: trip.kind === "reply" || trip.kind === "retry" ? trip.edge.to.id : trip.edge.from.id,
           };
       for (const node of nodes.values()) {
-        let work = node.working.find((w) => test(w.message)) ?? node.pending.find((w) => test(w.message));
-        if (!work && node.staged)
-          for (const group of groupsByConsumer.get(node.id) ?? []) {
-            work = group.staged.get(node.id)?.find((w) => test(w.message));
-            if (work) break;
-          }
-        if (work) return { message: work.message, node: node.id };
+        for (const work of liveWork(node)) if (test(work.message)) return { message: work.message, node: node.id };
         for (const group of node.groups) {
           const queued = group.pending.find(test);
           if (queued) return { message: queued, node: node.id };
@@ -827,13 +824,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   /** Owner shutdown invalidates every logical reference alongside ledger ownership. */
   function shutdownOwner(node: Node): void {
-    const workSet = new Set([
-      ...node.working,
-      ...node.takeovers,
-      ...queuedWork(node),
-      ...[...node.calls.values()].map((c) => c.work),
-    ]);
-    for (const work of workSet) {
+    for (const work of liveWork(node)) {
       const request = ledger.get(work.requestLease);
       const thread = ledger.get(work.thread);
       if (request)
@@ -942,12 +933,28 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const represented = request?.represented ?? recovery?.request.represented ?? scale;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
     const cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
+    let requestCapacity = recovery?.request ?? work.lease;
+    let threadCapacity = recovery?.thread ?? work.threadLease;
+    if (recovery) {
+      const leases = reacquire(admission, {
+        node: node.id,
+        policy: node.props.admission,
+        endpointId: work.via?.endpointId,
+        slots: slots(node),
+        room,
+        request: request ? undefined : requestCapacity,
+        thread: { represented, weight: Math.min(represented, room, cap), keys: threadCapacity?.keys ?? [] },
+      });
+      if (!leases) return false;
+      requestCapacity = leases.request;
+      threadCapacity = leases.thread;
+    }
     const thread = ledger.reserve<Group>(
       {
         owner: node.id,
         scope: "thread",
         startActive: node.activeMs,
-        keys: recovery?.thread?.keys ?? work.threadLease?.keys,
+        keys: threadCapacity?.keys,
       },
       represented,
       room,
@@ -965,7 +972,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           owner: node.id,
           scope: "request",
           startActive: node.activeMs,
-          keys: recovery?.request.keys ?? work.lease?.keys,
+          keys: requestCapacity?.keys,
         },
         represented,
         recovery?.request.weight ?? thread.weight,
@@ -976,11 +983,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.lease = undefined;
     }
     thread.requestWeight = request.weight;
-    if (recovery) {
-      for (const r of [thread, request])
-        for (const key of r.keys ?? []) admission.inFlight.set(key, (admission.inFlight.get(key) ?? 0) + r.weight);
-      work.recoveryCapacity = undefined;
-    }
+    work.recoveryCapacity = undefined;
     return true;
   }
 
@@ -1833,12 +1836,27 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         node.threadTails.delete(tail.id);
         ledger.release(tail);
         const request = ledger.get<Group>(work.requestLease)!;
-        const r = ledger.reserve<Group>(
-          { owner: node.id, scope: "thread", startActive: node.activeMs, keys: tail.keys },
-          request.represented,
-          slots(node) - node.threadWeight.work - node.threadWeight.wait,
-          request.weight,
-        );
+        const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
+        const leases = reacquire(admission, {
+          node: node.id,
+          policy: node.props.admission,
+          endpointId: work.via?.endpointId,
+          slots: slots(node),
+          room,
+          thread: {
+            represented: request.represented,
+            weight: Math.min(request.represented, room, request.weight),
+            keys: tail.keys ?? [],
+          },
+        });
+        const r =
+          leases &&
+          ledger.reserve<Group>(
+            { owner: node.id, scope: "thread", startActive: node.activeMs, keys: leases.thread.keys },
+            request.represented,
+            room,
+            leases.thread.weight,
+          );
         // Releasing the old reservation may make room. A live shrink can still
         // leave the node overbooked, so the continuation waits for capacity.
         if (r) {
@@ -1850,8 +1868,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             0,
             ((tail.releaseAt! + (tail.admissionLagMs ?? 0) - node.activeMs) * tail.weight) / tail.represented,
           );
-          if (r.keys)
-            for (const key of r.keys) admission.inFlight.set(key, (admission.inFlight.get(key) ?? 0) + r.weight);
         }
       }
       if (ledger.get<Group>(work.thread)) threadPhase(node, ledger.get<Group>(work.thread), "work");
@@ -2508,6 +2524,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  /** Every location that can own a live message, including exclusive continuations. */
+  function* liveWork(node: Node): IterableIterator<Work> {
+    const seen = new Set<Work>();
+    for (const work of [
+      ...node.working,
+      ...node.takeovers,
+      ...queuedWork(node),
+      ...[...node.calls.values()].map((c) => c.work),
+    ])
+      if (!seen.has(work)) {
+        seen.add(work);
+        yield work;
+      }
+  }
+
   function* nodeWork(node: Node): IterableIterator<ResourceWork> {
     yield* node.working;
     yield* node.takeovers;
@@ -3139,6 +3170,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       scale,
       capacityMultiplier,
       partBudget,
+      admission: {
+        inFlight: admission.inFlight,
+        limits: admissionLimits(admission),
+        leases: [
+          ...ledger.state.reservations.values(),
+          ...[...nodes.values()].flatMap((node) =>
+            [...liveWork(node)].flatMap((work) =>
+              [work.lease, work.threadLease].filter((lease): lease is AdmissionLease => !!lease),
+            ),
+          ),
+        ],
+      },
     });
     opts.verifyLedger?.({
       time,
@@ -3406,8 +3449,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           planning,
           clock.time,
         );
-        admission.buckets = copy.admission.buckets;
-        admission.inFlight = copy.admission.inFlight;
+        restoreAdmission(admission, copy.admission);
         ({
           time,
           accumulator,

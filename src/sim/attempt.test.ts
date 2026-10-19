@@ -450,7 +450,9 @@ it("I7: spaced logical outcomes are independent of ledger holds", () => {
       };
       const probes = [probe(), probe("none")];
       for (let i = 0; i < 3; i++) {
-        for (const p of probes) p.e.inject("source", 1);
+        // I7 compares a single attempt family without broker redelivery. Managed
+        // scenarios may have a broker source; its retries intentionally wait for capacity.
+        for (const p of probes) p.e.inject("tier0", 1);
         let idle = false;
         for (let tick = 0; tick < 3000 && !idle; tick++) {
           for (const p of probes) p.e.step(10);

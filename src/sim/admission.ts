@@ -6,6 +6,7 @@ import {
   quotaKey,
   quotaSignature,
   slotsKey,
+  sharedConcurrencyKey,
   transactionRequirements,
   uniqueRequirements,
   type CompiledCall,
@@ -129,6 +130,11 @@ export const emptyAdmission = (): AdmissionState => ({
   compiled: new Map(),
   owners: new Map(),
 });
+/** Checkpoint replacement keeps admission state mutations within its owner. */
+export function restoreAdmission(state: AdmissionState, saved: Pick<AdmissionState, "buckets" | "inFlight">): void {
+  state.buckets = saved.buckets;
+  state.inFlight = saved.inFlight;
+}
 export interface AdmissionLease extends CallerOccupancy {
   keys: string[];
 }
@@ -143,6 +149,54 @@ function separateAdmission(lease: AdmissionLease, slot?: string): AdmissionLease
     request: { ...lease, keys: lease.keys.filter((key) => key !== slot) },
     thread: { ...lease, keys: lease.keys.filter((key) => key === slot) },
   };
+}
+
+/** Capacity-only transaction: no buckets, clocks, or attempt timing are touched. */
+export function reacquire(
+  state: AdmissionState,
+  capacity: {
+    node: string;
+    policy?: AdmissionPolicy;
+    endpointId?: string;
+    slots: number;
+    room: number;
+    request?: AdmissionLease;
+    thread: AdmissionLease;
+  },
+): { request?: AdmissionLease; thread: AdmissionLease } | null {
+  const { node, policy, room, slots } = capacity;
+  const compiled = policy
+    ? (state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy))
+    : undefined;
+  const call = compiled?.calls.get(capacity.endpointId);
+  if (policy && (!call || call.rejected)) return null;
+  const request = capacity.request
+    ? { ...capacity.request, keys: [...new Set([...capacity.request.keys, ...(call?.limits.keys() ?? [])])] }
+    : undefined;
+  const thread = {
+    ...capacity.thread,
+    keys: [...new Set([...capacity.thread.keys, ...(policy ? [slotsKey(node)] : [])])],
+  };
+  if (thread.weight > room + 1e-9 || thread.weight < Math.min(1, thread.represented)) return null;
+  const limits = new Map(call?.limits);
+  limits.set(slotsKey(node), slots);
+  const additions = new Map<string, number>();
+  for (const lease of [request, thread])
+    for (const key of lease?.keys ?? []) additions.set(key, (additions.get(key) ?? 0) + lease!.weight);
+  for (const [key, weight] of additions)
+    if ((state.inFlight.get(key) ?? 0) + weight > (limits.get(key) ?? Infinity) + 1e-9) return null;
+  for (const [key, weight] of additions) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + weight);
+  return { request, thread };
+}
+
+/** Limits used by the diagnostic oracle, including endpoints not yet called. */
+export function admissionLimits(state: AdmissionState): Map<string, number> {
+  const limits = new Map([...state.allocations].map(([id, cap]) => [sharedConcurrencyKey(id), cap]));
+  for (const nodes of state.compiled.values())
+    for (const node of nodes.values())
+      for (const call of node.calls.values())
+        for (const [key, cap] of call.limits) limits.set(key, Math.min(limits.get(key) ?? Infinity, cap));
+  return limits;
 }
 
 /** Resume an already admitted request: reserve execution capacity without another quota transaction. */

@@ -1,4 +1,6 @@
 import { expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { sharedConcurrencyKey, slotsKey } from "./admissionPolicy";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { assertResourceInvariants, assertLedgerInvariants, type LedgerInvariantState } from "./resourceInvariants";
@@ -236,4 +238,135 @@ it("fails a saved burst queued at zero concurrency when the service goes down", 
   expect(() => run.step(960)).not.toThrow();
   expect(run.units.realSnapshot().nodes.caller.failed).toBe(4);
   expect(run.units.realSnapshot().inSystem).toBe(0);
+});
+
+it("engine never writes admission inFlight outside admission", () => {
+  const source = readFileSync(new URL("./engine.ts", import.meta.url), "utf8");
+  expect(source).not.toMatch(/admission\.inFlight\s*(?:\.\s*(?:set|delete|clear)\s*\(|[+*/-]?=|\+\+|--)/);
+});
+
+it("recovered retry exhausts two-attempt quota", () => {
+  const p = managedRecovery(1000, true);
+  while (p.engine.metrics().time < 4000) p.tick();
+  expect(p.engine.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, rejected: 0 });
+  fullyReleased(p);
+  p.engine.inject("caller", 1);
+  p.tick();
+  expect(p.engine.snapshot().nodes.caller).toMatchObject({
+    rejected: 1,
+    rejectionReasons: { "attempts: requests": 1 },
+  });
+  fullyReleased(p);
+});
+
+it("local recovery preserves remaining service time", () => {
+  const d = waitingFixture();
+  d.nodes[1].props!.latencyMs = 100;
+  const p = checkedEngine(1);
+  p.engine.load(d);
+  p.engine.inject("caller", 1);
+  p.tick(5);
+  p.engine.setNodeStatus("caller", "down");
+  p.engine.setNodeStatus("caller", "up");
+  while (p.engine.metrics().time < 110) p.tick();
+  expect(p.engine.snapshot().edges.call.active).toBe(0);
+  p.tick();
+  expect(p.engine.metrics().time).toBe(120);
+  expect(p.engine.snapshot().edges.call.active).toBe(1);
+  p.tick(300);
+  fullyReleased(p);
+});
+
+it("recovered off-thread continuation reacquires its execution slot", () => {
+  const d = waitingFixture();
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = { maxConcurrency: 1, scaling: "fixed", api: { latencyMs: 10 }, jitter: 0 };
+  d.nodes[2].props = { api: { latencyMs: 10 }, jitter: 0 };
+  d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking", replyMs: 100 } };
+  const p = checkedEngine(1);
+  p.engine.load(d);
+  p.engine.inject("caller", 1);
+  // The reply settles after admission, leaving the continuation queued until the next tick.
+  for (let i = 0; i < 100 && !p.engine.snapshot().nodes.caller.threads?.queued; i++) p.tick();
+  expect(p.engine.snapshot().nodes.caller.threads?.queued).toBe(1);
+  p.engine.setNodeStatus("caller", "down");
+  p.engine.setNodeStatus("caller", "up");
+  p.tick();
+  expect(p.state().admissionInFlight.get(slotsKey("caller"))).toBe(1);
+  expect(() => p.engine.inject("caller", 1)).not.toThrow();
+  p.tick(200);
+  fullyReleased(p);
+});
+
+it("recovery waits when a sibling took the shared allocation", () => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 2 };
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    maxConcurrency: 1,
+    scaling: "fixed",
+    retry: "inplace",
+    retryBackoffMs: 1000,
+    jitter: 0,
+    api: { latencyMs: 100, errorRate: 1, sharedConcurrency: "account" },
+  };
+  d.nodes.push({
+    id: "sibling",
+    stencil: "aws.lambda",
+    label: "Sibling",
+    x: 330,
+    y: 500,
+    props: { maxConcurrency: 1, scaling: "fixed", jitter: 0, api: { latencyMs: 2000, sharedConcurrency: "account" } },
+  });
+  d.planning!.sharedAllocations = [{ id: "account", maxInFlight: 1 }];
+  const p = checkedEngine(1);
+  p.engine.load(d);
+  p.engine.inject("source", 1);
+  p.tick(12);
+  expect(p.engine.snapshot().nodes.caller.failed).toBe(1);
+  const caller = () =>
+    [...p.state().nodes].find((n) => n.id === "caller") as unknown as {
+      working: { remaining: number; retryAdmissionAt?: number }[];
+      pending: Iterable<{ remaining: number; retryAdmissionAt?: number }>;
+    };
+  const key = sharedConcurrencyKey("account");
+  p.engine.setNodeStatus("caller", "down");
+  p.engine.inject("sibling", 1);
+  p.tick();
+  const timing = { remaining: caller().working[0].remaining, retryAdmissionAt: caller().working[0].retryAdmissionAt };
+  p.engine.setNodeStatus("caller", "up");
+  p.engine.setNodeProps("caller", { api: { ...d.nodes[1].props!.api!, errorRate: 0 } });
+  while (p.engine.metrics().time < 2000) {
+    p.tick();
+    expect([...caller().pending][0]).toMatchObject(timing);
+    expect(p.state().admissionInFlight.get(key)).toBe(1);
+    expect(p.engine.snapshot().nodes.caller.processed).toBe(0);
+  }
+  p.tick(400);
+  expect(p.engine.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, rejected: 0 });
+  expect(p.engine.snapshot().nodes.sibling.processed).toBe(1);
+  fullyReleased(p);
+});
+
+it.each(["follow", "followRoot"])("%s finds live work awaiting exclusive takeover", (method) => {
+  const d = waitingFixture();
+  Object.assign(d.nodes[1].props!, { concurrency: 1, latencyMs: 100 });
+  d.nodes[2].props = { api: { latencyMs: 10 }, jitter: 0 };
+  d.edges[1].props = { caller: { wait: "non-blocking", replyMs: 100 } };
+  const p = checkedEngine(4);
+  p.engine.load(d);
+  p.engine.inject("caller", 4);
+  p.tick(12);
+  const node = [...p.state().nodes].find((n) => n.id === "caller") as unknown as {
+    takeovers: { message: { id: number; family: { root: number } } }[];
+  };
+  expect(node.takeovers).toHaveLength(1);
+  const { id, family } = node.takeovers[0].message;
+  if (method === "follow") expect(p.engine.tracer.follow(id)).toBe(family.root);
+  else p.engine.tracer.followRoot(family.root);
+  expect(p.engine.tracer.followed()).toBe(family.root);
+  expect(p.engine.tracer.current()?.done).toBe(false);
+  p.tick(500);
+  fullyReleased(p);
 });
