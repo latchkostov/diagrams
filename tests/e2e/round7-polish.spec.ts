@@ -132,23 +132,26 @@ test("the canvas right-click leaves out what the canvas controls already do", as
   await expect(page.getByTestId("context-menu").getByRole("menuitem")).toHaveCount(11);
 });
 
-test("the start card keeps one row of actions, clear of the canvas controls with the AI panel open", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await page.goto("./");
-  await expect(page.getByTestId("start-card")).toBeVisible();
-  const rows = async () => {
-    const ys = await Promise.all(["start-blank", "start-open"].map((t) => box(page, t)));
-    return new Set(ys.map((b) => Math.round(b.y))).size;
-  };
-  // Polled: the card slides in.
-  await expect.poll(rows).toBe(1);
-  await expect(page.getByTestId("start-paste")).toBeVisible();
-  await openAiPanel(page);
-  await expect.poll(rows).toBe(1);
-  await expect.poll(async () => apart(await box(page, "start-card"), await box(page, "canvas-controls"))).toBe(true);
-});
+for (const width of [1024, 1280, 1440]) {
+  test(`the start card keeps one row of actions, clear of the canvas controls with the AI panel open at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await page.goto("./");
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    const rows = async () => {
+      const ys = await Promise.all(["start-blank", "start-open"].map((t) => box(page, t)));
+      return new Set(ys.map((b) => Math.round(b.y))).size;
+    };
+    // Polled: the card slides in.
+    await expect.poll(rows).toBe(1);
+    await expect(page.getByTestId("start-paste")).toBeVisible();
+    await openAiPanel(page);
+    await expect.poll(rows).toBe(1);
+    await expect.poll(async () => apart(await box(page, "start-card"), await box(page, "canvas-controls"))).toBe(true);
+    expect(inside(await box(page, "start-card"), await box(page, "canvas-wrap"))).toBe(true);
+  });
+}
 
 test("slow motion keeps the hop at work out from under the trace card", async ({ page }) => {
   test.slow();
