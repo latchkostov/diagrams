@@ -44,9 +44,10 @@ export class SampledLedger {
     cap = Infinity,
   ): Reservation | undefined {
     const weight = Math.min(represented, room, cap);
-    // Decimal scales leave usable fractions of a connection. Ignore only floating
-    // point residue, which would otherwise create a near-zero, effectively immortal lease.
-    if (!Number.isFinite(represented) || !Number.isFinite(weight) || !(weight > 1e-9)) return;
+    // A partial dot needs at least one real request's room. Tiny fractional
+    // leftovers must not create leases whose residence is effectively permanent.
+    if (!Number.isFinite(represented) || !Number.isFinite(weight) || weight < Math.min(1, represented) || !(weight > 0))
+      return;
     const reservation: Reservation = {
       ...scope,
       id: this.state.nextReservation++,
@@ -67,6 +68,8 @@ export class SampledLedger {
 
   retire(reservation: Reservation, clock: { activeMs: number; time?: number; sampledDelayMs?: number }): number {
     if (this.state.reservations.get(reservation.id) !== reservation || reservation.releaseAt !== undefined) return 0;
+    if (reservation.startTime !== undefined && !Number.isFinite(clock.time))
+      throw new Error("A wall-time reservation requires the wall clock");
     const elapsed =
       reservation.startTime === undefined
         ? clock.activeMs - reservation.startActive

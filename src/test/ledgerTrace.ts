@@ -1,7 +1,7 @@
 import { ledgerFixture } from "../lab/ledgerFixture";
 import type { createEngine } from "../sim/engine";
 
-export const ledgerTraceCases = [
+const sampledCases = [
   { name: "reply-during-pause", scale: 10, nested: false, pause: 10, resume: 610, until: 6000, count: 5 },
   { name: "nested-reply-during-pause", scale: 10, nested: true, pause: 150, resume: 1350, until: 8000, count: 5 },
   { name: "reply-deadline-during-pause", scale: 10, nested: false, pause: 10, resume: 2000, until: 6000, count: 5 },
@@ -17,6 +17,10 @@ export const ledgerTraceCases = [
   })),
   { name: "fractional-nested-pause", scale: 1.5, nested: true, pause: 30, resume: 130, until: 4000, count: 10 },
 ];
+export const ledgerTraceCases = [
+  ...sampledCases,
+  ...sampledCases.map((scenario) => ({ ...scenario, name: `scale-1-${scenario.name}`, scale: 1 })),
+];
 
 export function ledgerTrace(factory: typeof createEngine, scenario: (typeof ledgerTraceCases)[number]) {
   const diagram = ledgerFixture(scenario.nested);
@@ -26,7 +30,7 @@ export function ledgerTrace(factory: typeof createEngine, scenario: (typeof ledg
   engine.inject("caller", scenario.count);
   const trace: [time: number, delivered: number[], processed: number[], inSystem: number][] = [];
   let previous = "";
-  for (let time = 0; time < scenario.until; time += 10) {
+  for (let time = 0; time < 200_000; time += 10) {
     if (time === scenario.pause) engine.setNodeStatus("caller", "paused");
     if (time === scenario.resume) engine.setNodeStatus("caller", "up");
     engine.step(10);
@@ -40,6 +44,7 @@ export function ledgerTrace(factory: typeof createEngine, scenario: (typeof ledg
     const value = JSON.stringify(state);
     if (value !== previous) trace.push([snapshot.time, state.delivered, state.processed, state.inSystem]);
     previous = value;
+    if (time >= scenario.until && !snapshot.inSystem) return trace;
   }
-  return trace;
+  throw new Error(`Differential trace did not finish: ${scenario.name}`);
 }

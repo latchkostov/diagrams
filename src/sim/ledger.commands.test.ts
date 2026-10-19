@@ -166,13 +166,20 @@ function drain(p: Probe): void {
   // allowance on already-idle ticks obscures the transitions these commands test.
   for (let batch = 0; batch < 200; batch++) {
     p.engine.step(1000);
-    if (!p.engine.metrics().inSystem && !p.state().ledger.reservations.size && !p.state().logical.length) break;
+    if (
+      !p.engine.metrics().inSystem &&
+      !p.state().ledger.reservations.size &&
+      !p.state().logical.length &&
+      !p.state().partBudget.used &&
+      Object.values(p.engine.snapshot().nodes).every((n) => !n.inFlight)
+    )
+      break;
   }
   idle(p);
 }
 
 it.each([false, true])(
-  "I3/I5/I6: command interleavings are deterministic and release all leases (scaleOne=%s)",
+  "I2/I3/I5/I6: command interleavings are write-once, deterministic and release all leases (scaleOne=%s)",
   (scaleOne) => {
     fc.assert(
       fc.property(arbWaitDiagram, commands(scaleOne), fc.integer(), ({ diagram, scale }, sequence, seed) => {

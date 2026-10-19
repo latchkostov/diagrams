@@ -22,7 +22,6 @@ export interface LedgerInvariantState {
 }
 export interface OutcomeInvariantState {
   time: number;
-  /** Populated by the attempts migration (R2); R1 has no attempt outcomes. */
   attempts: Iterable<{
     id: number;
     node: string;
@@ -82,12 +81,18 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
 }
 
 /** R2's attempt oracle: an outcome can be committed only after it is decided, once per attempt. */
+const observedOutcomes = new WeakMap<object, { outcome?: string; committed: boolean }>();
 export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
   const seen = new Set<number>();
   for (const attempt of state.attempts) {
     if (seen.has(attempt.id) || (attempt.committed && !attempt.outcome) || (attempt.outcome?.at ?? 0) > state.time)
       throw new Error(`Outcome @${state.time}: invalid attempt ${attempt.id} at ${attempt.node}`);
     seen.add(attempt.id);
+    const before = observedOutcomes.get(attempt);
+    const outcome = attempt.outcome && JSON.stringify(attempt.outcome);
+    if ((before?.outcome !== undefined && before.outcome !== outcome) || (before?.committed && !attempt.committed))
+      throw new Error(`Outcome @${state.time}: attempt ${attempt.id} changed after settlement`);
+    observedOutcomes.set(attempt, { outcome, committed: attempt.committed });
   }
 }
 
