@@ -315,17 +315,17 @@ export class RoomLifecycle {
   /** Start room: a new room seeded with `diagram`, kept in Your diagrams' entry `slug`. */
   async start(o: { slug: string; diagram: DiagramFile; alias?: string }): Promise<OpenRoom | undefined> {
     this.invite = undefined;
-    await this.leaveActive("left");
     // A knock-to-join room (P5): the creator's identity is its root, named in its link. Its Share and start dialogs
     // promise newcomers wait to be let in, so a browser that can't sign and agree keys starts nothing (it's told
-    // plainly), never a room anyone with the link walks into. (Signed rooms without knock-to-join (v2), and rooms
-    // without roles, only where this copy says so.)
+    // plainly, and a room it's in stays as it is), never a room anyone with the link walks into. (Signed rooms
+    // without knock-to-join (v2), and rooms without roles, only where this copy says so.)
     const knock = this.deps.signedRooms !== false && this.deps.knockRooms !== false;
     const signing = this.deps.signedRooms === false ? undefined : await signingIdentity();
     if (knock && !signing?.knock) {
       this.set({ opening: undefined, notice: this.notice("unsupported-start", o.slug) });
       return undefined;
     }
+    await this.leaveActive("left");
     const link = newRoom(this.random, signing?.identity.key);
     if (knock) link.knock = true;
     return this.open({
