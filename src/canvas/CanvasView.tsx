@@ -1,3 +1,4 @@
+import { preloadMarkdown } from "../components/markdown/lazy";
 import { useCanvasMenuItems, useCanvasContextMenus, type CanvasSurface } from "./menus/useCanvasMenus";
 import {
   InteractionContext,
@@ -228,6 +229,17 @@ function CanvasInner({
   const { original, flow, originalJson, loadedJson, identity } = useDocumentLoad(initial, slug);
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  useEffect(() => {
+    if (
+      flow.nodes.some(
+        (node) =>
+          node.type === "annotation" &&
+          (node.data.kind === "text" || node.data.kind === "note") &&
+          node.data.text.trim(),
+      )
+    )
+      preloadMarkdown();
+  }, [flow.nodes]);
   useCaptionContrast(wrapper, nodes, theme, meta.color);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(loadedJson !== originalJson);

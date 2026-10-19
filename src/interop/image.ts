@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
-import { MarkdownView } from "../components/markdown/MarkdownView";
+import { MarkdownView, loadMarkdown } from "../components/markdown/lazy";
 // PNG / SVG export of the live canvas with html-to-image. We render React Flow's viewport element
 // at 1:1 zoom, cropped to the diagram's bounds, so the image doesn't depend on the current pan/zoom
 // or window size. html-to-image is loaded on demand (only when someone exports an image), and its clone runs in
@@ -118,6 +118,8 @@ const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 /** The picture as a file: a PNG, or the SVG's text (what its data URL would decode to). */
 export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<Blob> {
   opts.signal?.throwIfAborted();
+  opts.check?.();
+  await unlessCancelled(loadMarkdown(), opts.signal);
   opts.check?.();
   const viewport = findViewport();
   const content = bounds(viewport);

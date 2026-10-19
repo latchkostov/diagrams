@@ -12,6 +12,14 @@ import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  [
+    "Markdown rendering and parsing",
+    /[/\\]src[/\\]components[/\\]markdown[/\\](MarkdownView\.tsx|markdownParser\.ts)$/,
+  ],
+  [
+    "Markdown editing and keys",
+    /[/\\]src[/\\](?:components[/\\]markdown[/\\](MarkdownEditor\.tsx|markdownKeys\.ts)|canvas[/\\]nodes[/\\]AnnotationEditor\.tsx)$/,
+  ],
   ["stencil display messages", /[/\\]src[/\\]i18n[/\\]stencils\.ts$/],
   ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
   ["canvas File actions", /[/\\]src[/\\]interop[/\\]fileActions\.ts$/],
@@ -249,6 +257,17 @@ describe("production bundle split", () => {
     // not a dozen small ones that the first view queues for.
     const loading = [...canvas].filter((c) => !startup().has(c));
     expect(loading.map((c) => c.name).sort()).toEqual(["CanvasView", "canvas-shared"]);
+  });
+
+  it("loads the Markdown parser with its view, without the editor or its keys", () => {
+    const view = chunks.find((c) =>
+      Object.keys(c.modules).some((id) => /[/\\]markdown[/\\]MarkdownView\.tsx$/.test(id)),
+    );
+    expect(view).toBeDefined();
+    expect(Object.keys(view!.modules).some((id) => /[/\\]markdownParser\.ts$/.test(id))).toBe(true);
+    const editing = NOT_AT_STARTUP.filter(([what]) => what === "Markdown editing and keys");
+    expect(found(bundled(closure([view!])), editing)).toEqual([]);
+    expect(found(bundled(chunks), editing)).toEqual(["Markdown editing and keys"]);
   });
 
   it("opens Live without the simulation editor and drill preset controls", () => {

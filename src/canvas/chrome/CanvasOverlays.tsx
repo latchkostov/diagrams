@@ -3,7 +3,7 @@ import { safeStorage } from "../../lib/storage";
 import { useCovered, useOverlayTestIds } from "../useOverlayFit";
 import { useBelow } from "../checks/useBelow";
 import { Icon } from "../../components/Icon";
-import { MarkdownView } from "../../components/markdown";
+import { MarkdownView } from "../../components/markdown/lazy";
 import { UNTITLED } from "../../lib/diagramIO";
 import { PRIVACY_REQUEST } from "../../lib/usePrivacy";
 import { t as tr } from "../../i18n";

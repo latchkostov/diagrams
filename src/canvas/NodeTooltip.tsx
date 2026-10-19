@@ -2,7 +2,7 @@ import { stencilLabel, stencilDescription } from "../i18n/stencils";
 import { useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
 import { useSyncExternalStore, useRef, useLayoutEffect, type RefObject } from "react";
-import { MarkdownView } from "../components/markdown";
+import { MarkdownView } from "../components/markdown/lazy";
 import { NODE_TIP_ID, useTipDescribes, type TipStore } from "./useNodeTooltip";
 
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */

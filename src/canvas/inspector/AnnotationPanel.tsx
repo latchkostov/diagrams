@@ -1,7 +1,8 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useInteractionOrLocal } from "../interaction";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
-import { MarkdownEditor } from "../../components/markdown";
+import { MarkdownEditor } from "../../components/markdown/lazy";
 import { t } from "../../i18n";
 import { colorLabel, shapeLabel } from "../../i18n/chrome";
 import { ANNOTATION_LIMITS, annotationText } from "../../model/annotations";
@@ -26,6 +27,9 @@ export function AnnotationPanel({
   groups,
   onTextSettled,
 }: InspectorProps & { note: AnnotationFlowNode }) {
+  const { controller } = useInteractionOrLocal();
+  // A focus request made while this panel downloads can now find its field.
+  useLayoutEffect(() => controller.rendered());
   const id = note.id;
   const { kind } = note.data;
   const merge = (f: string) => ({ merge: `inspector:annotation:${id}:${f}` });

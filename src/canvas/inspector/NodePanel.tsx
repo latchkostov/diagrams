@@ -21,7 +21,7 @@ import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 import { Icon } from "../../components/Icon";
-import { MarkdownEditor } from "../../components/markdown";
+import { MarkdownEditor } from "../../components/markdown/lazy";
 import { StencilIcon } from "../../components/StencilIcon";
 import { stencilLabel, vendorLabel } from "../../i18n/stencils";
 

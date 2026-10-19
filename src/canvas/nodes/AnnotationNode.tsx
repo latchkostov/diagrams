@@ -1,23 +1,15 @@
-import {
-  memo,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { memo, useLayoutEffect, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { Handle, NodeResizeControl, ResizeControlVariant, useReactFlow, type NodeProps } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { resolveAnnotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
-import { useSelectOnMount } from "../../components/useSelectOnMount";
-import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
-import { MarkdownView, handleMarkdownKeyDown } from "../../components/markdown";
-import { keepInPane } from "../keepInPane";
+import { MarkdownView } from "../../components/markdown/lazy";
+import { lazyComponent } from "../../lib/lazyLoad";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
+
+const AnnotationEditor = lazyComponent(() => import("./AnnotationEditor").then((m) => m.AnnotationEditor));
 
 /**
  * Text, notes, zones and shapes. Documentation only: no simulation role, no badges.
@@ -217,69 +209,6 @@ export function ShapeOutline({ shape, w, h }: { shape: AnnotationShape; w: numbe
     <svg className="ann-shape-svg" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
       {body}
     </svg>
-  );
-}
-
-/**
- * Multi-line editor in place of the text, with every editor's keys (editKeys.ts): Enter adds a line (a
- * zone's name is one line, so Enter saves there); Esc, Ctrl/Cmd+Enter, Tab and clicking away save.
- * Reports how far the text overflows.
- */
-function AnnotationEditor({
-  value,
-  kind,
-  onDone,
-}: {
-  value: string;
-  kind: AnnotationKind;
-  /** The text, and how many pixels it overflows the box by (0 when it fits). */
-  onDone: (text: string | null, overflow: number) => void;
-}) {
-  const [v, setV] = useState(value);
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const done = useRef(false);
-  const supportsMarkdown = kind === "note" || kind === "text";
-  const finish = () => {
-    if (done.current) return;
-    done.current = true;
-    const el = ref.current;
-    onDone(v, el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0);
-  };
-  useSelectOnMount(ref);
-  // Magnified when zoomed out (a zone: its name chip), it stays inside the canvas.
-  useLayoutEffect(() => keepInPane(kind === "zone" ? (ref.current?.parentElement ?? null) : ref.current), [kind]);
-  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    e.stopPropagation();
-    if (supportsMarkdown && ref.current) {
-      if (handleMarkdownKeyDown(e, ref.current, v, setV)) {
-        return;
-      }
-    }
-    if (editKeyAction(e.nativeEvent, { multiline: kind !== "zone" }) !== "save") return;
-    e.preventDefault();
-    const wrapper = ref.current?.closest(".react-flow__node");
-    finish();
-    // Keyboard commits return to the canvas object; blur commits leave the new control focused.
-    refocusAfterEdit(wrapper);
-  };
-  return (
-    <textarea
-      ref={ref}
-      className="ann-editor nodrag nopan nowheel"
-      value={v}
-      maxLength={ANNOTATION_LIMITS.maxAnnotationText}
-      rows={kind === "zone" ? 1 : undefined}
-      onChange={(e) => setV(annotationText(e.target.value))}
-      onKeyDown={onKey}
-      onBlur={finish}
-      onDoubleClick={(e) => e.stopPropagation()}
-      placeholder={kind === "zone" ? "Zone name" : "Write something"}
-      aria-label={`${kindLabel[kind]} text`}
-      name="annotation-text"
-      spellCheck
-      data-markdown-input={supportsMarkdown ? "" : undefined}
-      data-testid="annotation-editor"
-    />
   );
 }
 

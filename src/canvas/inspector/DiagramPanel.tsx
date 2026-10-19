@@ -2,7 +2,7 @@ import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { useState, type CSSProperties } from "react";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
-import { MarkdownEditor } from "../../components/markdown";
+import { MarkdownEditor } from "../../components/markdown/lazy";
 import { t } from "../../i18n";
 import { colorLabel } from "../../i18n/chrome";
 import { PlanningUpgrade, RequestRoutesSection } from "../../planning/lazy";

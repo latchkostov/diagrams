@@ -812,27 +812,73 @@ test("keyboard editing preserves navigation, selection and focus", async ({ page
   await expect(preview).toBeVisible();
 });
 
-test("image exports render Markdown descriptions before measuring the header", async ({ page }) => {
+test("cold Markdown keeps annotation geometry and image exports await the rendered text", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let requested = false;
+  await page.route(
+    /\/(?:assets\/MarkdownView-[\w-]+\.js|src\/components\/markdown\/MarkdownView\.tsx)(?:\?.*)?$/,
+    async (route) => {
+      requested = true;
+      await held;
+      await route.continue();
+    },
+  );
   await seed(page, {
     format: "diagrams/v1",
     title: "Runbook",
     description: "**Orders** via `gRPC`",
     nodes: [{ id: "api", stencil: "service.go", label: "API", x: 80, y: 220 }],
+    annotations: [
+      {
+        id: "cold-note",
+        kind: "note",
+        text: "**Retry** <script>plain</script>",
+        x: 340,
+        y: 220,
+        width: 240,
+        height: 120,
+      },
+    ],
     edges: [],
   });
   await gotoCanvas(page, SLUG);
+  await expect.poll(() => requested).toBe(true);
+  const note = page.getByTestId("annotation-text-cold-note");
+  await expect(note).toHaveText("**Retry** <script>plain</script>");
+  expect(await note.evaluate((el) => el.getElementsByTagName("script").length)).toBe(0);
+  await waitForStableViewport(page);
+  const before = await box(annotation(page, "cold-note"));
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-more-formats").click();
   await page.getByTestId("export-image").click();
   await page.getByTestId("image-options-toggle").click();
   await page.getByTestId("image-format-svg").click();
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("image-export").click()]);
+  const exporter = page.waitForResponse(/\/(?:assets\/image-[\w-]+\.js|src\/interop\/image\.ts)(?:\?.*)?$/);
+  const downloaded = page.waitForEvent("download");
+  let completed = false;
+  page.on("download", () => (completed = true));
+  await page.getByTestId("image-export").click();
+  await (await exporter).finished();
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
+  // Starting the export must leave its annotation fallback untouched until the held renderer arrives.
+  await expect(page.getByTestId("image-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("export-header")).toHaveCount(0);
+  expect(completed).toBe(false);
+  await expect(note).toHaveText("**Retry** <script>plain</script>");
+  release();
+  const download = await downloaded;
   const path = await download.path();
   if (!path) throw new Error("SVG download did not complete");
   const svg = readFileSync(path, "utf8");
   expect(svg).toContain('data-testid="export-header-description"');
   expect(svg).toMatch(/<strong[^>]*>Orders<\/strong>/);
   expect(svg).not.toContain("**Orders**");
+  expect(svg).toMatch(/<strong[^>]*>Retry<\/strong>/);
+  expect(svg).not.toContain("data-markdown-pending");
+  expect(await box(annotation(page, "cold-note"))).toEqual(before);
   await expect(page.getByTestId("export-header")).toHaveCount(0);
 });
 
