@@ -21,7 +21,7 @@ import { flowEdges } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
-import { createEngine } from "../sim/engine";
+import { createEngine, randomDraws } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
 import type {
   EngineOptions,
@@ -165,7 +165,8 @@ export class LiveController {
   private applied = 0;
   /** Logged tweaks a newer panel or diagram edit replaced, by seq: the props keys (and "status") replay skips. */
   private superseded = new Map<number, Set<string>>();
-  private replayChunk: ((budgetMs: number) => void) | undefined;
+  /** Live tweaks that arrived while a replay was catching up: applied, in order, on the tick it reaches. */
+  private queued: LiveOp[] = [];
   private run = 0;
   private opListeners = new Set<(entry: LogEntry) => void>();
   private runState: SimulationRunState | null = null;
@@ -219,25 +220,45 @@ export class LiveController {
   }
 
   /**
-   * The engine the run is on, for shared Live's digests (src/sim/digest.ts `runDigest`: two runs that played the
-   * same ticks with the same ops agree on it, in any browser). Shared Live loads the digest with its own code.
+   * What a run digest is made of, detached (src/sim/digest.ts `snapshotDigest`): two runs that played the same
+   * ticks with the same ops agree on it, in any browser. Shared Live loads the digest with its own code.
    */
-  get simEngine(): SimEngine {
-    return this.engine;
+  digestInputs(): { snapshot: SimSnapshot; draws: number } {
+    return { snapshot: this.engine.snapshot(), draws: randomDraws(this.engine) };
   }
 
-  /** Applies an engine tweak now and logs it on this tick (after any replay in progress has caught up). */
+  /**
+   * Applies an engine tweak now and logs it on this tick. While a replay is catching up it waits, in order, for the
+   * tick the replay is heading for (the replay keeps its slices: nothing runs it to the end at once).
+   */
   private apply(op: LiveOp): void {
-    this.finishReplay();
+    if (this.replayTarget !== null) {
+      this.queued.push(own(op));
+      this.publish();
+      return;
+    }
     this.execute(op);
     this.record(op);
     this.dirty = true;
     this.publish();
   }
 
+  /** The replay reached its tick: the tweaks that waited for it apply and are logged there, in order. */
+  private applyQueued(): void {
+    const queued = this.queued;
+    this.queued = [];
+    for (const op of queued) {
+      const copy = structuredClone(op) as LiveOp;
+      this.execute(copy);
+      this.record(copy);
+    }
+  }
+
   /** Logs an op on this tick. The log keeps its own frozen copy, and only the latest Inputs snapshot. */
   private record(op: LiveOp): void {
-    const entry: LogEntry = Object.freeze({ run: this.run, seq: ++this.seq, tick: this.tick, op: own(op) });
+    // During a replay, an op (play, pause, Inputs…) belongs on the tick the replay is heading for.
+    const tick = this.replayTarget !== null ? timeTick(this.replayTarget) : this.tick;
+    const entry: LogEntry = Object.freeze({ run: this.run, seq: ++this.seq, tick, op: own(op) });
     if (op.kind === "inputs") this.log = this.log.filter((e) => e.op.kind !== "inputs");
     this.log.push(entry);
     // Live, every op is reflected at once; a replay advances `applied` as it reaches each one.
@@ -252,6 +273,7 @@ export class LiveController {
     this.applied = 0;
     this.log = [];
     this.superseded = new Map();
+    this.queued = [];
   }
 
   /**
@@ -303,14 +325,6 @@ export class LiveController {
     if (op.kind !== "props") return op;
     const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => !gone.has(k)));
     return Object.keys(patch).length ? { ...op, patch: patch as NodeSimProps } : null;
-  }
-
-  /** Runs a replay in progress to its end now (a live op must land after it, on the run's real tick). */
-  private finishReplay(): void {
-    if (this.replayTarget === null || !this.replayChunk) return;
-    this.replayFrame?.();
-    this.replayFrame = undefined;
-    this.replayChunk(Infinity);
   }
 
   /** What an engine op does, live or replayed on its tick. */
@@ -683,6 +697,7 @@ export class LiveController {
   /** Continue after a pausing note. */
   resume(): void {
     if (this.held) return;
+    if (this.replayTarget !== null) return this.apply({ kind: "resume" });
     if (!this.updateRunner(() => this.runner?.resume())) return;
     this.record({ kind: "resume" });
     this.dirty = true;
@@ -956,8 +971,10 @@ export class LiveController {
     this.replayTimer = undefined;
     this.replayFrame?.();
     this.replayFrame = undefined;
-    this.replayChunk = undefined;
-    if (!keepTarget) this.replayTarget = null;
+    if (keepTarget) return;
+    // The replay is abandoned (a restart, another simulation, a seek, the view gone): so are the tweaks waiting on it.
+    this.replayTarget = null;
+    this.queued = [];
   }
 
   private yieldReplay(work: () => void): void {
@@ -983,6 +1000,7 @@ export class LiveController {
       else this.reapply(this.pendingAfter(0, 0), 0);
       this.applied = this.seq;
       this.replayTarget = null;
+      this.applyQueued();
       this.publish();
       return;
     }
@@ -991,30 +1009,29 @@ export class LiveController {
     // The rebuilt origin reflects no op yet: checkpoints taken on the way record how far the replay got.
     const pending = this.pendingAfter(0, timeTick(target));
     let cursor = 0;
-    const chunk = (budgetMs: number) => {
+    const chunk = () => {
       this.replayFrame = undefined;
       const start = performance.now();
-      for (let slices = 0; budgetMs === Infinity || slices < 20; slices++) {
+      for (let slices = 0; slices < 20; slices++) {
         cursor = this.reapply(pending, cursor);
         const s = runner.state();
         if (s.done || s.time >= target - 5) {
           this.replayTarget = null;
-          this.replayChunk = undefined;
           this.applied = this.seq;
+          this.applyQueued();
           break;
         }
         if (s.waiting) runner.resume();
         else runner.step(Math.min(100, target - s.time, this.untilNext(pending, cursor)) / this.speed);
         this.captureCheckpoint();
-        if (performance.now() - start >= budgetMs) break;
+        if (performance.now() - start >= 6) break;
       }
       this.dirty = true;
       this.publish();
-      if (this.replayTarget !== null) this.yieldReplay(() => chunk(6));
+      if (this.replayTarget !== null) this.yieldReplay(chunk);
     };
-    this.replayChunk = chunk;
     // The first slice is bounded too; even replayDelayMs: 0 never seeks synchronously.
-    chunk(6);
+    chunk();
   }
 
   // ---------------------------------------------------------------- live tweaks (engine only)

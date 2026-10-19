@@ -38,8 +38,18 @@ fixes. There's no collaboration UI yet; that comes in P2, Watch together.
   Tweaks of other properties still replay.
 - **The log owns its ops.** It keeps a frozen copy of each op, so changing an object after passing it changes
   neither the engine nor history. It keeps only the latest Inputs snapshot, so a slider drag doesn't grow it.
-- **The digest covers fault overlays,** and moves out of the live view's chunk. The controller exposes `simEngine`
-  and shared Live loads `runDigest` with its own code.
+- **The digest covers fault overlays,** and moves out of the live view's chunk. The controller exposes detached
+  `digestInputs()` (a snapshot and the generator's draw count, never the engine itself), and shared Live loads
+  `snapshotDigest` with its own code.
+
+### Review round 2
+
+- **A tweak during a rebuild no longer blocks.** Round 1 made a tweak wait for a rebuild to finish, and it finished
+  it synchronously, inside the click (one probe blocked for 16 s). Now a tweak, injection, fault or note resume that
+  arrives while a rebuild is catching up waits in a queue, in order. The rebuild keeps its bounded slices (20 of
+  about 6 ms per frame) and can still be cancelled. When it reaches its tick, the waiting ops apply and are logged
+  on that tick. Play and pause still change at once, and are logged on the tick the rebuild is heading for. A
+  restart, another simulation, a seek or closing the view drops the queue.
 - **`ENGINE_VERSION` and the determinism guard** now cover `src/stencils` too: roles, device throughput and family
   defaults decide what a tick does.
 
@@ -77,5 +87,12 @@ fixes. There's no collaboration UI yet; that comes in P2, Watch together.
 
   Each of the first three fails with its fix reverted.
 
-- **Bundle:** the live session is 134,736 B gzip against a 135,000 B budget (master: 133,112 B; this round added
-  174 B). The startup and the canvas's first view are unchanged.
+- **Review round 2 tests:**
+  - "keeps replay bounded when a tweak arrives mid-rebuild": a tweak, an injection, a fault and a pause during a
+    rate rebuild. No replay work runs synchronously for them, each later timer step moves at most 200 ticks, and
+    afterwards everything is logged on 40 s and the digest equals the uninterrupted run's;
+  - a restart cancels the waiting tweaks;
+  - a fault-only difference changes the digest, and lifting it restores the digest.
+
+- **Bundle:** the live session is under its 135,000 B gzip budget (master: 133,112 B; review round 1
+  added 174 B, round 2 another 77 B: 134,813 B). The startup and the canvas's first view are unchanged.

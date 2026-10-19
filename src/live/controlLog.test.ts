@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile, Simulation } from "../model/types";
 import kafka from "../examples/kafka-order-pipeline.json";
-import { runDigest } from "../sim/digest";
+import { snapshotDigest } from "../sim/digest";
 import { LiveController } from "./controller";
 import { emptyInputs } from "./capacityModel";
 import { tickTime } from "./controlLog";
+
+/** A run's digest, from the controller's detached digest inputs (as shared Live computes it). */
+const digestOf = (c: LiveController) => {
+  const { snapshot, draws } = c.digestInputs();
+  return snapshotDigest(snapshot, draws);
+};
 
 // The control log (shared Live design, P1): every change to a run is an op on the tick it lands on, and a scrub
 // back or a rebuild applies the logged tweaks again on their ticks. The run digest (src/sim/digest.ts) says whether
@@ -47,7 +53,7 @@ function playTo(c: LiveController, ms: number) {
 function digestAt(c: LiveController, ms: number) {
   c.seek(ms);
   expect(tickTime(c.tick)).toBe(ms);
-  return runDigest(c.simEngine);
+  return digestOf(c);
 }
 
 const TWEAK = { node: "inventory", patch: { replicas: 1, latencyMs: 400 } };
@@ -140,7 +146,7 @@ describe("the control log", () => {
       faults: c.snapshot().faults,
       inventory: c.snapshot().nodes.inventory.status,
       processed: c.snapshot().nodes.inventory.processed,
-      digest: runDigest(c.simEngine),
+      digest: digestOf(c),
     });
     const straight = controller();
     act(straight);
@@ -248,6 +254,68 @@ describe("the control log", () => {
     expect(entry?.op.kind === "props" && Object.isFrozen(entry.op.patch)).toBe(true);
   });
 
+  it("keeps replay bounded when a tweak arrives mid-rebuild", () => {
+    vi.useFakeTimers();
+    const rates = { ...emptyInputs(), rates: { shopper: 450 } };
+    // What the run must end as: the rate from the start, on to 40 s, then the tweak, an injection, a fault and a
+    // pause at 40 s.
+    const act = (c: LiveController) => {
+      c.setNodeProps(TWEAK.node, TWEAK.patch);
+      c.inject("gateway", 25);
+      c.setFault({ kind: "slow", node: "payments", factor: 5 });
+      c.setPlaying(false);
+    };
+    const straight = controller();
+    straight.setInputs(rates);
+    vi.runAllTimers();
+    playTo(straight, 40_000);
+    act(straight);
+    const expected = digestOf(straight);
+    // At 40 s the rate changes: the rebuild starts with one bounded chunk and yields.
+    const c = controller();
+    playTo(c, 40_000);
+    c.setInputs(rates);
+    const midway = c.tick;
+    expect(tickTime(midway)).toBeLessThan(40_000);
+    const unpaused = () => c.controlLog().filter((e) => e.op.kind !== "play").length;
+    const logged = unpaused();
+    // The tweaks arrive mid-rebuild: no replay work runs for them now, and they wait unlogged; the pause shows at once.
+    act(c);
+    expect(c.tick).toBe(midway);
+    expect(c.isPlaying).toBe(false);
+    expect(unpaused()).toBe(logged);
+    // Each later slice is bounded too: one timer step moves at most 20 slices of 100 ms.
+    vi.advanceTimersByTime(1);
+    expect(c.tick - midway).toBeLessThanOrEqual(200);
+    vi.runAllTimers();
+    // Caught up: the tweaks applied and logged on 40 s, in order, and the run is the uninterrupted one.
+    expect(tickTime(c.tick)).toBe(40_000);
+    // The pause was logged at once (on the tick the rebuild was heading for); the tweaks after it, in order.
+    expect(
+      c
+        .controlLog()
+        .slice(-3)
+        .map((e) => e.op.kind),
+    ).toEqual(["props", "inject", "fault"]);
+    for (const kind of ["props", "inject", "fault", "play"])
+      expect([...c.controlLog()].reverse().find((e) => e.op.kind === kind)?.tick).toBe(4000);
+    expect(digestOf(c)).toBe(expected);
+    expect(c.effectiveProps(TWEAK.node)).toMatchObject(TWEAK.patch);
+  });
+
+  it("a restart cancels the tweaks waiting on a rebuild", () => {
+    vi.useFakeTimers();
+    const c = controller();
+    playTo(c, 40_000);
+    c.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    c.setNodeProps(TWEAK.node, TWEAK.patch);
+    c.restart();
+    vi.runAllTimers();
+    expect(c.controlLog().some((e) => e.op.kind === "props")).toBe(false);
+    expect(c.getState().tweaks.size).toBe(0);
+    expect(c.effectiveProps(TWEAK.node).latencyMs).not.toBe(TWEAK.patch.latencyMs);
+  });
+
   it("keeps only the latest Inputs snapshot (a slider drag doesn't grow the log)", () => {
     const c = controller();
     playTo(c, 2_000);
@@ -287,7 +355,7 @@ describe("the control log", () => {
     c.setInputs(inputs);
     vi.runAllTimers();
     expect(tickTime(c.tick)).toBe(30_000);
-    expect(runDigest(c.simEngine)).toBe(expected);
+    expect(digestOf(c)).toBe(expected);
     expect(c.getState().tweaks.get(TWEAK.node)?.props).toMatchObject(TWEAK.patch);
   });
 
@@ -303,13 +371,29 @@ describe("the control log", () => {
 });
 
 describe("the run digest", () => {
+  it("changes the digest for fault-only differences before the next tick", () => {
+    const a = controller();
+    const b = controller();
+    playTo(a, 10_000);
+    playTo(b, 10_000);
+    const same = digestOf(a);
+    expect(digestOf(b)).toBe(same);
+    // A slowdown on one, no tick run: every count is the same, the digest isn't.
+    b.setFault({ kind: "slow", node: "inventory", factor: 5 });
+    expect(b.snapshot().nodes.inventory.processed).toBe(a.snapshot().nodes.inventory.processed);
+    expect(digestOf(b)).not.toBe(same);
+    // Lifting it (factor 1) gives the same digest again.
+    b.setFault({ kind: "slow", node: "inventory", factor: 1 });
+    expect(digestOf(b)).toBe(same);
+  });
+
   it("doesn't depend on frame length: one long step equals many short frames", () => {
     const frames = controller();
     playTo(frames, 20_000);
     const long = controller();
     long.advance(20_000);
     expect(tickTime(long.tick)).toBe(tickTime(frames.tick));
-    expect(runDigest(long.simEngine)).toBe(runDigest(frames.simEngine));
+    expect(digestOf(long)).toBe(digestOf(frames));
   });
 
   it("is the same for the same run, and moves as the run does", () => {
@@ -317,11 +401,11 @@ describe("the run digest", () => {
     const b = controller();
     playTo(a, 10_000);
     playTo(b, 10_000);
-    expect(runDigest(a.simEngine)).toBe(runDigest(b.simEngine));
-    const at10 = runDigest(a.simEngine);
+    expect(digestOf(a)).toBe(digestOf(b));
+    const at10 = digestOf(a);
     playTo(a, 15_000);
-    expect(runDigest(a.simEngine)).not.toBe(at10);
-    expect(runDigest(a.simEngine)).toBeGreaterThanOrEqual(0);
-    expect(Number.isInteger(runDigest(a.simEngine))).toBe(true);
+    expect(digestOf(a)).not.toBe(at10);
+    expect(digestOf(a)).toBeGreaterThanOrEqual(0);
+    expect(Number.isInteger(digestOf(a))).toBe(true);
   });
 });

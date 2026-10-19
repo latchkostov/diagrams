@@ -3,9 +3,15 @@
 // digest (src/sim/digest.ts) every 5 simulated seconds and each node's latency percentiles at the end.
 
 import type { DiagramFile, Simulation } from "../../src/model/types";
-import { runDigest } from "../../src/sim/digest";
+import { snapshotDigest } from "../../src/sim/digest";
 import { LiveController } from "../../src/live/controller";
 import { tickTime } from "../../src/live/controlLog";
+
+/** A run's digest, from the controller's detached digest inputs (as shared Live computes it). */
+const digestOf = (c: LiveController) => {
+  const { snapshot, draws } = c.digestInputs();
+  return snapshotDigest(snapshot, draws);
+};
 
 export interface EngineRun {
   digests: [ms: number, digest: number][];
@@ -54,12 +60,12 @@ export function playDigests(diagram: DiagramFile, simulation: Simulation, untilM
     // Every 5 s of simulated time (a note's pause shifts the ticks it lands on: the same in every engine).
     const t = tickTime(c.tick);
     if (t >= nextDigest) {
-      digests.push([t, runDigest(c.simEngine)]);
+      digests.push([t, digestOf(c)]);
       while (nextDigest <= t) nextDigest += 5_000;
     }
   }
   // And where it ended (a short simulation may end before its first 5 s).
-  digests.push([tickTime(c.tick), runDigest(c.simEngine)]);
+  digests.push([tickTime(c.tick), digestOf(c)]);
   const snapshot = c.snapshot();
   const latency: EngineRun["latency"] = {};
   for (const [id, node] of Object.entries(snapshot.nodes))

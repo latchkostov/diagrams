@@ -1,6 +1,6 @@
 ## Shared Live P1 follow-ups (control log and determinism)
 
-- **The live session's bundle budget is nearly used.** It's at 134,736 of 135,000 B gzip after P1, which added
+- **The live session's bundle budget is nearly used.** It's at 134,813 of 135,000 B gzip after P1, which added
   about 1.4 KB for the controller's log and 0.3 KB for the simulator. #189 (requests that wait) and P2 will need
   room. Raise the budget deliberately in the PR that needs it, or move the digest and the op listener into P2's
   room chunk.
@@ -17,3 +17,6 @@
 - **Supersession is by property, for the newer edit's keys.** Changing an Inputs override back to the diagram's
   value doesn't revive the older tweak: the newer choice keeps precedence. Link faults aren't exercised by the
   replay test, because the example has no network links. Add a link cut to it with a network example.
+- **A flaky style test, on master too.** fault-drills' "cut and restored Request and Message styles are distinct"
+  sometimes reads the restored edge style before it settles under load. It failed 2 of 196 runs on master, and once
+  in some of the runs here.
