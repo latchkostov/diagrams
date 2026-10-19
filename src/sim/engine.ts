@@ -1859,7 +1859,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       const copies = fanOut(node, work.message, feeds.length);
       feeds.forEach((edge, i) => deliver(edge, copies[i], "message"));
-    } else forward(node, work.outputMessage ?? work.message, work.route, work.outputs);
+    } else {
+      // Output renaming happens before the call. Carry the completed path's timing
+      // into that copy after its wait and continuation have finished.
+      const output = work.outputMessage;
+      forward(
+        node,
+        output && output !== work.message
+          ? { ...output, workMs: work.message.workMs, callMs: work.message.callMs }
+          : work.message,
+        work.route,
+        work.outputs,
+      );
+    }
   }
 
   function reserveAdmission(node: Node, work: Work): boolean {

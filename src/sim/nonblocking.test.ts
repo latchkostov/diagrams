@@ -178,3 +178,30 @@ it("does not let broker prefetch impose an implicit cap on off-thread calls", ()
   e.step(30000);
   expect(e.snapshot().inSystem).toBe(0);
 });
+
+it.each([undefined, "DecisionRecorded"])("carries call and continuation time into emitted messages (%s)", (emits) => {
+  const d = fixture(40);
+  d.nodes[0].props!.messageType = "ApplicationSubmitted";
+  d.nodes[1].props!.emits = emits;
+  const e = createEngine({ seed: 17 });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1000);
+  const { caller, result } = e.snapshot().nodes;
+  expect(caller.latency).toMatchObject({ samples: 1, callMs: 250, workMs: 50 });
+  expect(result.latency).toMatchObject({ samples: 1, callMs: 250, workMs: 50 });
+  expect(result.latency!.byType[emits ?? "ApplicationSubmitted"]).toMatchObject({ callMs: 250, workMs: 50 });
+});
+
+it("records source response time only after the caller's continuation finishes", () => {
+  const d = fixture(40);
+  d.edges[0].kind = "sync";
+  d.edges[0].props = { travelMs: 2000, networkDelayMs: 20 };
+  const e = createEngine({ seed: 17 });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(300);
+  expect(e.snapshot().nodes.source.latency).toBeUndefined();
+  e.step(100);
+  expect(e.snapshot().nodes.source.latency).toMatchObject({ samples: 1, waitMs: 0, workMs: 0, callMs: 350 });
+});

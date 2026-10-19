@@ -14,6 +14,8 @@ Live shows calls in flight on the meter and connection pill. A growing queue wit
 waiting threads offers one undoable **Free the thread while waiting** fix. The warning survives
 brief reply/admission gaps. Latency separates queued time from call time and sources record
 response times. Saved simulations can override connection caller policies in `setup.edges`.
+Renaming an emitted message preserves its completed call-wait and continuation timings, so
+downstream latency keeps the same queued/work/call split as the caller.
 
 The public **A blocking call caps throughput** example now includes **Free the thread while
 waiting**: calls wait off-thread within ten seconds; the 15-second traffic spike later makes CPU
@@ -44,8 +46,9 @@ No existing simulation golden was changed to accommodate a failure.
 
 ## Validation and download budgets
 
-Targeted engine, sampling, planner, round-trip, example and trouble tests pass. A deliberate
-blocking-policy reversal rejects 13 regressions; restoring the feature passes. Production browser
+The focused engine, sampling, planner, round-trip, example, trouble and latency run passes 360
+tests. The renamed-output regression fails without timing propagation and passes with it; a source
+response test waits for continuation completion and excludes animation travel. Production browser
 tests cover the toggle, meter, pill, continuation ceiling and one-step callout undo.
 
 No bundle budget is raised. Caller-family records remain shared; advanced/custom property editors,
