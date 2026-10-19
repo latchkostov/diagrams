@@ -28,6 +28,7 @@ import { createInteractionController } from "../../canvas/interaction/controller
 import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
 import { interactionJournal } from "../../canvas/interaction/journal";
 import { RECONNECT_MS } from "./timing";
+import { roomEndpoints, serviceHosts } from "./endpoints";
 import "./room.css";
 
 // The room's controls (collaboration plan §2.2–2.6): the consent dialogs (start and join), what a joiner sees while
@@ -49,7 +50,8 @@ const roomFocus = createInteractionController(
 const dialogClosed = (opener: HTMLElement | null) =>
   roomFocus.dispatch({ type: "dialog.closed", dialog: "room", opener });
 
-const services = () => ["tracker.openwebtorrent.com", "tracker.webtorrent.dev", "stun.cloudflare.com"].join(", ");
+/** What a room contacts, as the consent dialogs name it: this build's trackers and ICE servers, by host. */
+const services = () => serviceHosts(roomEndpoints()).join(", ");
 
 function useRoom(room: RoomLifecycle) {
   return useSyncExternalStore(room.subscribe, room.getSnapshot);

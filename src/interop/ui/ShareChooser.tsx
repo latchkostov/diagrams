@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { SHARE_LINKS } from "../../lib/deployment";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
-import { COLLABORATION_LAB, type Privacy } from "../../lib/localOnly";
+import { ROOMS, type Privacy } from "../../lib/localOnly";
 import { Dialog } from "./Dialog";
 import { Glyph, type GlyphName } from "./glyphs";
 import { t, useLocale } from "../../i18n";
@@ -13,8 +13,8 @@ import "./shareChooser.css";
 // dialog that already does it (Interactive HTML, Embed code, Link with password, Share link) or saves the file.
 // The public ones (anyone with the link can open what they make) sit last, folded behind one more step, and never
 // take the keyboard first. A private diagram lists only what it allows; a copy built without share links
-// (src/lib/deployment.ts) has no link rows and no public section at all. Where rooms are on (COLLABORATION_LAB, for
-// now), "Edit together…" follows Link with password behind its own rule: anyone with its link can edit, so it is
+// (src/lib/deployment.ts) has no link rows and no public section at all. Where rooms are on (ROOMS: VITE_ENABLE_COLLAB, or
+// a development or e2e build), "Edit together…" follows Link with password behind its own rule: anyone with its link can edit, so it is
 // never the first row and never what Enter does first.
 
 export type EmbedScope = "private" | "public";
@@ -122,7 +122,7 @@ export function ShareChooser({
   const list = useRef<HTMLDivElement>(null);
   const privacy = privacyNow();
   const links = SHARE_LINKS && !privacy;
-  const rooms = COLLABORATION_LAB && !!onEditTogether;
+  const rooms = ROOMS && !!onEditTogether;
   // A row that went away with the keyboard on it (the diagram turned private): the first row takes it, not the page.
   useLayoutEffect(() => {
     const active = document.activeElement;

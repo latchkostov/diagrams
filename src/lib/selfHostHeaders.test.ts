@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { contentSecurityPolicy, EMBED_SCRIPT_HEADERS, PROVIDER_CONNECT } from "../../scripts/security-headers";
 import {
+  collabTrackers,
   EXAMPLE_FRAME_ANCESTORS,
   frameAncestorList,
   headersFile,
@@ -50,6 +51,25 @@ describe("self-hosting headers", () => {
     expect(directive(selfHostCsp({ embed: false, providers: true }), "connect-src")).toEqual(
       directive(contentSecurityPolicy({ embed: false }), "connect-src"),
     );
+  });
+
+  it("Edit together: off unless the copy is built with it; then its trackers in the app's connect-src only", () => {
+    expect(collabTrackers({})).toEqual([]);
+    expect(collabTrackers({ VITE_ENABLE_COLLAB: "1", VITE_DISABLE_SHARE_LINKS: "1" })).toEqual([]);
+    expect(collabTrackers({ VITE_ENABLE_COLLAB: "1" })).toEqual([
+      "wss://tracker.openwebtorrent.com",
+      "wss://tracker.webtorrent.dev",
+    ]);
+    const own = collabTrackers({ VITE_ENABLE_COLLAB: "1", VITE_COLLAB_TRACKERS: "wss://t.acme.com:8443/announce" });
+    expect(own).toEqual(["wss://t.acme.com:8443/announce"]);
+    expect(directive(selfHostCsp({ embed: false, collab: own }), "connect-src")).toEqual([
+      "'self'",
+      "wss://t.acme.com:8443",
+    ]);
+    expect(directive(selfHostCsp({ embed: true, collab: own }), "connect-src")).toEqual(["'self'"]);
+    expect(nginxHeaders({ collab: own })).toContain("Edit together: build with VITE_ENABLE_COLLAB=1");
+    expect(selfHostHeadersFor("/", { collab: own })["Content-Security-Policy"]).toContain("wss://t.acme.com:8443");
+    expect(selfHostHeadersFor("/?embed=1", { collab: own })["Content-Security-Policy"]).not.toContain("wss:");
   });
 
   it("lets only this site frame the app, and embeds only this site and the listed domains", () => {

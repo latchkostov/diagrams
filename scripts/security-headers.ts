@@ -1,4 +1,5 @@
 import type { Plugin } from "vite";
+import { APPROVED_TRACKERS } from "./deployment-env";
 
 /**
  * The site's security headers, in one place. Everything that serves the production build reads them here:
@@ -17,6 +18,9 @@ import type { Plugin } from "vite";
  *  - connect-src: exactly the endpoints the storage providers call (src/interop/storage, src/interop/gdrive).
  *    OneDrive's file downloads come from pre-authenticated URLs on Microsoft's content hosts, hence the
  *    wildcards: *.1drv.com and *.microsoftpersonalcontent.com (personal), *.sharepoint.com (work or school).
+ *    With Edit together (`collab`), the matchmaking trackers' origins too: on livediagrams.dev exactly the two
+ *    approved ones (PUBLIC_SITE), never in an embed (it has no rooms). STUN and TURN aren't fetches: CSP can't
+ *    govern them, so src/collab/room/endpoints.ts fixes them at build time instead.
  *  - frame-src: the embed dialog's preview (this site), the Google Picker and Identity Services frames.
  *  - frame-ancestors: embeds (`?embed=1`, including the host-supplied `?embed=1&host=1`) may be framed by any
  *    site; the app itself only by this site. The host-supplied embed keeps connect-src as it is: the page that
@@ -58,9 +62,23 @@ const DROPBOX = {
 /** Every origin a storage provider's code calls with fetch (the unit test checks the providers' source). */
 export const PROVIDER_CONNECT = [...GOOGLE.connect, ...MICROSOFT.connect, ...DROPBOX.connect];
 
-export function cspDirectives({ embed }: { embed: boolean }): [string, string[]][] {
+/** The connect-src sources for a room's trackers: each one's origin (scheme, host and port), once. */
+export function trackerSources(trackers: readonly string[]): string[] {
+  return [...new Set(trackers.map((url) => new URL(url)).map((u) => `${u.protocol}//${u.host}`))];
+}
+
+export interface CspOptions {
+  embed: boolean;
+  /** Edit together's trackers (wss:// URLs), when the build has rooms; none otherwise. */
+  collab?: readonly string[];
+}
+
+/** livediagrams.dev: Edit together on (the owner's decision), with exactly the approved trackers. */
+export const PUBLIC_SITE = { collab: APPROVED_TRACKERS } as const;
+
+export function cspDirectives({ embed, collab = [] }: CspOptions): [string, string[]][] {
   // An embed (a link's, an example's or one its host page supplies) never saves, opens or signs in anywhere: it
-  // talks to this site only, so no storage provider's script, frame or endpoint is allowed in it.
+  // talks to this site only, so no storage provider's script, frame or endpoint is allowed in it, and no tracker.
   const providers = <T>(list: readonly T[]): T[] => (embed ? [] : [...list]);
   return [
     ["default-src", ["'self'"]],
@@ -68,7 +86,7 @@ export function cspDirectives({ embed }: { embed: boolean }): [string, string[]]
     ["style-src", ["'self'", "'unsafe-inline'", ...providers(GOOGLE.style)]],
     ["img-src", ["'self'", "data:", "blob:"]],
     ["font-src", ["'self'", "data:"]],
-    ["connect-src", ["'self'", ...providers(PROVIDER_CONNECT)]],
+    ["connect-src", ["'self'", ...providers(PROVIDER_CONNECT), ...providers(trackerSources(collab))]],
     ["media-src", ["'self'", "blob:"]],
     ["worker-src", ["'self'"]],
     ["frame-src", ["'self'", ...providers(GOOGLE.frame)]],
@@ -79,7 +97,7 @@ export function cspDirectives({ embed }: { embed: boolean }): [string, string[]]
   ];
 }
 
-export const contentSecurityPolicy = (o: { embed: boolean }) =>
+export const contentSecurityPolicy = (o: CspOptions) =>
   cspDirectives(o)
     .map(([name, values]) => `${name} ${values.join(" ")}`)
     .join("; ");
@@ -154,7 +172,7 @@ export function securityHeadersFor(url: string): Record<string, string> {
   const u = new URL(url, "http://localhost");
   return {
     ...COMMON_HEADERS,
-    "Content-Security-Policy": contentSecurityPolicy({ embed: isEmbed(u.search) }),
+    "Content-Security-Policy": contentSecurityPolicy({ ...PUBLIC_SITE, embed: isEmbed(u.search) }),
     ...(isAuthPage(u.pathname) ? {} : { "Cross-Origin-Opener-Policy": OPENER_POLICY }),
     ...(isEmbedScript(u.pathname) ? EMBED_SCRIPT_HEADERS : {}),
   };
@@ -180,12 +198,12 @@ export function vercelConfig() {
       {
         source: "/(.*)",
         missing: EMBED_QUERY,
-        headers: pairs({ "Content-Security-Policy": contentSecurityPolicy({ embed: false }) }),
+        headers: pairs({ "Content-Security-Policy": contentSecurityPolicy({ ...PUBLIC_SITE, embed: false }) }),
       },
       {
         source: "/(.*)",
         has: EMBED_QUERY,
-        headers: pairs({ "Content-Security-Policy": contentSecurityPolicy({ embed: true }) }),
+        headers: pairs({ "Content-Security-Policy": contentSecurityPolicy({ ...PUBLIC_SITE, embed: true }) }),
       },
       { source: "/((?!auth\\.html).*)", headers: pairs({ "Cross-Origin-Opener-Policy": OPENER_POLICY }) },
       { source: "/embed/([^/]+\\.js)", headers: pairs(EMBED_SCRIPT_HEADERS) },

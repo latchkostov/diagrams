@@ -15,6 +15,7 @@ declare const __DEPLOYMENT_PRIVATE_BY_DEFAULT__: boolean;
 declare const __DEPLOYMENT_BRAND_NAME__: string;
 declare const __DEPLOYMENT_LOCALES__: string;
 declare const __DEPLOYMENT_LANGUAGE_CHOICE__: boolean;
+declare const __DEPLOYMENT_COLLAB__: boolean;
 
 /**
  * Share links, links with a password and embed codes made here (VITE_DISABLE_SHARE_LINKS=1 turns them off: the
@@ -54,6 +55,14 @@ export const LOCALES = __DEPLOYMENT_LOCALES__;
 
 /** More than one language: the View menu's Language… and Ctrl+K's. */
 export const LANGUAGE_CHOICE = __DEPLOYMENT_LANGUAGE_CHOICE__;
+
+/**
+ * Edit together (rooms) in a production build: VITE_ENABLE_COLLAB=1, opt-in (livediagrams.dev sets it; a self-hosted
+ * copy only if it does too), and never without share links. Where a room finds the others (its trackers, STUN and
+ * TURN) is fixed at build time too, but read by the room's own code only (src/collab/room/endpoints.ts), so that list
+ * never ships at startup or in a build without rooms.
+ */
+export const COLLAB = __DEPLOYMENT_COLLAB__;
 
 /** Why a link can't be made, when this copy makes none. */
 export const LINKS_OFF_MESSAGE = "Share links are turned off here. Export Interactive HTML instead.";

@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  APPROVED_STUN,
+  APPROVED_TRACKERS,
   brandHtml,
   brandName,
+  iceServerList,
+  trackerList,
   DEFAULT_BRAND,
   localeList,
   DEPLOYMENT_KEYS,
@@ -27,6 +31,9 @@ const PUBLIC: Deployment = {
   brandName: DEFAULT_BRAND,
   locales: "",
   languageChoice: true,
+  collab: false,
+  collabTrackers: [...APPROVED_TRACKERS],
+  collabIceServers: APPROVED_STUN.map((urls) => ({ urls })),
 };
 
 describe("reading the switches", () => {
@@ -41,9 +48,62 @@ describe("reading the switches", () => {
       expect(readDeployment({ VITE_DISABLE_AI_TOOLS: value })).toEqual({ ...PUBLIC, aiTools: false });
       expect(readDeployment({ VITE_DISABLE_ONDEVICE: value })).toEqual({ ...PUBLIC, onDevice: false });
       expect(readDeployment({ VITE_PRIVATE_BY_DEFAULT: value })).toEqual({ ...PUBLIC, privateByDefault: true });
+      expect(readDeployment({ VITE_ENABLE_COLLAB: value })).toEqual({ ...PUBLIC, collab: true });
     }
     for (const value of ["", "0", "false", "no", "off", "2"])
       expect(readDeployment({ VITE_DISABLE_SHARE_LINKS: value, VITE_PRIVATE_BY_DEFAULT: value })).toEqual(PUBLIC);
+  });
+
+  it("Edit together is opt-in, and never without share links", () => {
+    expect(readDeployment({}).collab).toBe(false);
+    expect(readDeployment({ VITE_ENABLE_COLLAB: "0" }).collab).toBe(false);
+    expect(readDeployment({ VITE_ENABLE_COLLAB: "1", VITE_DISABLE_SHARE_LINKS: "1" }).collab).toBe(false);
+    expect(readDeployment({ ...INTERNAL_DEFAULTS, VITE_ENABLE_COLLAB: "1" }).collab).toBe(false);
+  });
+
+  it("a room's trackers: wss:// URLs, deduplicated; unset, the approved two; anything else stops the build", () => {
+    expect(trackerList(undefined)).toEqual(APPROVED_TRACKERS);
+    expect(trackerList(" ")).toEqual(APPROVED_TRACKERS);
+    expect(trackerList("wss://t.example.com, wss://t2.example.com:8443/announce wss://t.example.com")).toEqual([
+      "wss://t.example.com",
+      "wss://t2.example.com:8443/announce",
+    ]);
+    expect(trackerList("ws://localhost:8000")).toEqual(["ws://localhost:8000"]);
+    for (const bad of ["https://t.example.com", "ws://t.example.com", "wss://t.example.com/a?b", "wss://*.example.com"])
+      expect(() => trackerList(bad), bad).toThrow(/VITE_COLLAB_TRACKERS/);
+  });
+
+  it("a room's ICE servers: the approved STUN unless named or none; TURN only with its username and credential", () => {
+    expect(iceServerList({})).toEqual([{ urls: "stun:stun.cloudflare.com:3478" }]);
+    expect(iceServerList({ VITE_COLLAB_STUN: "none" })).toEqual([]);
+    expect(iceServerList({ VITE_COLLAB_STUN: "stun:stun.example.com:3478, stuns:stun2.example.com" })).toEqual([
+      { urls: "stun:stun.example.com:3478" },
+      { urls: "stuns:stun2.example.com" },
+    ]);
+    expect(
+      iceServerList({
+        VITE_COLLAB_STUN: "none",
+        VITE_COLLAB_TURN: "turn:turn.example.com:3478?transport=udp turns:turn.example.com:5349",
+        VITE_COLLAB_TURN_USERNAME: "rooms",
+        VITE_COLLAB_TURN_CREDENTIAL: "s3cret",
+      }),
+    ).toEqual([
+      {
+        urls: ["turn:turn.example.com:3478?transport=udp", "turns:turn.example.com:5349"],
+        username: "rooms",
+        credential: "s3cret",
+      },
+    ]);
+    expect(() => iceServerList({ VITE_COLLAB_STUN: "https://stun.example.com" })).toThrow(/VITE_COLLAB_STUN/);
+    expect(() => iceServerList({ VITE_COLLAB_TURN: "turn:turn.example.com" })).toThrow(/USERNAME/);
+    expect(() =>
+      iceServerList({
+        VITE_COLLAB_TURN: "stun:x.example.com",
+        VITE_COLLAB_TURN_USERNAME: "u",
+        VITE_COLLAB_TURN_CREDENTIAL: "c",
+      }),
+    ).toThrow(/VITE_COLLAB_TURN takes/);
+    expect(() => iceServerList({ VITE_COLLAB_TURN_USERNAME: "u" })).toThrow(/need VITE_COLLAB_TURN/);
   });
 
   it("the AI panel goes only when both AI tools and the on-device model are off", () => {
@@ -99,6 +159,10 @@ describe("this build (no switches set)", () => {
       brandName: deployment.BRAND_NAME,
       locales: deployment.LOCALES,
       languageChoice: deployment.LANGUAGE_CHOICE,
+      collab: deployment.COLLAB,
+      // Not in src/lib/deployment.ts: only the room's own code reads them (src/collab/room/endpoints.ts).
+      collabTrackers: PUBLIC.collabTrackers,
+      collabIceServers: PUBLIC.collabIceServers,
     }).toEqual(PUBLIC);
   });
 });

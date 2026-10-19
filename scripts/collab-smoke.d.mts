@@ -7,11 +7,15 @@ export interface SmokeResult {
   pair?: { local?: string; remote?: string; protocol?: string };
   trackers?: Record<string, { opened: number; framesReceived: number }>;
   connectivity?: { creator?: string; joiner?: string };
+  /** Whether the joiner's peer connection ever reached "connected". */
+  peerConnected?: boolean;
   errors?: string[];
   message?: string;
 }
 export const ALERT_AFTER: number;
 export function readResult(path: string): SmokeResult;
+export function classify(result: SmokeResult): "tracker-unreachable" | "ice-nat" | "app-error";
+export function timeFrom(act: () => Promise<unknown>, until: () => Promise<unknown>): Promise<number>;
 export function ensure(path: string): void;
 export function summary(result: SmokeResult): string;
 export function streak(results: readonly SmokeResult[]): number;

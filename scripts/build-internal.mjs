@@ -29,7 +29,8 @@ console.log(
   [
     `build:internal: "${d.brandName}"`,
     `  share links ${on(d.shareLinks)}, opening links ${on(d.linkOpen)}, AI tools ${on(d.aiTools)},`,
-    `  on-device model ${on(d.onDevice)}, new diagrams private ${on(d.privateByDefault)}, languages ${d.locales || "all"}`,
+    `  on-device model ${on(d.onDevice)}, new diagrams private ${on(d.privateByDefault)}, languages ${d.locales || "all"},`,
+    `  edit together ${on(d.collab)}${d.collab ? ` (trackers ${d.collabTrackers.join(", ")})` : ""}`,
     `  (${Object.entries(resolved)
       .map(([k, v]) => `${k}=${v}`)
       .join(" ")})`,

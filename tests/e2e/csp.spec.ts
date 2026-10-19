@@ -5,6 +5,8 @@ import type { Page, Response } from "@playwright/test";
 import { test, expect, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
 import { installFakeSpeech, openAdvanced } from "./ai-helpers";
 import { recordFor } from "./recording-clock";
+import { emulateTracker } from "./collab-tracker";
+import { COLLAB_TRACKERS } from "../../src/collab/transport/tracker";
 
 // The Content-Security-Policy and the other security headers (scripts/security-headers.ts), on the production
 // build: `vite preview` sends exactly what vercel.json does. Each test walks part of the app and expects zero
@@ -288,6 +290,50 @@ test.describe("Content-Security-Policy", () => {
     await page.getByTestId("import-report-chip-1-generic.external-api").click();
     await page.getByTestId("import-report-done").click();
     expect(await csp.violations()).toEqual([]);
+  });
+
+  test("Edit together: two browsers meet through the approved trackers under the real policy", async ({
+    browser,
+    context,
+    page,
+  }) => {
+    // The trackers are the approved public URLs, answered here (nothing leaves the machine): the page's CSP decides
+    // whether it may open them (collaboration plan §1.3 #7). STUN isn't a fetch; the peers connect over host candidates.
+    test.slow();
+    const other = await browser.newContext();
+    try {
+      const tracker = await emulateTracker([context, other], { trackers: COLLAB_TRACKERS });
+      const csp = await watch(page);
+      const res = await page.goto(`./?view=canvas&example=${KAFKA}`);
+      expectPolicy(res);
+      const connect = (res?.headers()["content-security-policy"] ?? "")
+        .split("; ")
+        .find((d) => d.startsWith("connect-src "))
+        ?.split(" ")
+        .filter((src) => /^wss?:/.test(src));
+      expect(connect).toEqual([...COLLAB_TRACKERS]);
+      await expect(page.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
+      await shareVia(page, "edit-together");
+      await page.getByTestId("room-start-confirm").click();
+      const link = await page.getByTestId("room-link").inputValue();
+      await page.getByTestId("room-started-done").click();
+      const guest = await other.newPage();
+      const guestCsp = await watch(guest);
+      await guest.goto(link);
+      await guest.getByTestId("room-join-accept").click();
+      await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
+      await expect(page.getByTestId("room-chip")).toHaveAttribute("data-peers", "1");
+      expect(tracker.opened).toBeGreaterThanOrEqual(2 * COLLAB_TRACKERS.length);
+      expect(await csp.violations()).toEqual([]);
+      expect(await guestCsp.violations()).toEqual([]);
+      // Any other tracker is refused: the list is exact.
+      await page.evaluate(() => void new WebSocket("wss://tracker.btorrent.xyz"));
+      await expect
+        .poll(async () => (await csp.violations()).join("\n"))
+        .toMatch(/connect-src blocked wss:\/\/tracker\.btorrent\.xyz/);
+    } finally {
+      await other.close();
+    }
   });
 
   test("the policy is enforced, and the watcher sees it: injected code and outside requests are blocked", async ({
