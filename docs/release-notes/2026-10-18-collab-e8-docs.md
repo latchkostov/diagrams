@@ -51,6 +51,17 @@ in Vercel.
   no arguments, the way the app does at startup. It checks every value and all three registry entries. Removing a
   key from the config's named list fails it.
 
+- **Parity golden.** `node/i18n/catalogs.json` is re-recorded for one intended change:
+  `["en-XA"].areas.collab` moves from `34850e93446c` to `633bdaf907be`. The pseudo-locale is derived from English,
+  so it follows the new consent line (`collab.ipTrackers`). No other catalog changed.
+- **The local-use privacy check named a chunk by its hash.** In CI, "local use makes no network requests and never
+  loads the collaboration code" failed. Its watcher matched `/yjs/i` against whole URLs, and this build's UI chunk is
+  `ui-ClYjsHrZ.js`: its content hash happens to spell "Yjs". The trace shows no collaboration code loaded, no
+  request leaving the origin and no Yjs global. The watcher now reads a chunk's name without its hash. It also
+  counts any script that holds the room key schedule's salt (`livediagrams/collab/v1`, `src/collab/keys.ts`), so it
+  catches collaboration code whatever its chunk is called. A new test checks that the watcher does see the room code
+  arrive when a room is asked for.
+
 ### E7 review fixes
 
 - **Tracker URLs are canonical.** `WSS://T.example.com` becomes `wss://t.example.com/`, and `ws://localhost` becomes
