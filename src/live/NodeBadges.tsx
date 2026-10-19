@@ -92,7 +92,7 @@ export function NodeBadges({
       className={`lv-badges${presenting ? " is-presenting" : ""}`}
       style={{ "--inv": inv.toFixed(3) } as CSSProperties}
     >
-      {activeCalls.length > 0 && <CallPills calls={activeCalls} />}
+      {activeCalls.length > 0 && <CallPills calls={activeCalls} readoutScale={inv} presenting={presenting} />}
       {nodes.map((n) => {
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];

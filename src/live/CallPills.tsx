@@ -2,8 +2,7 @@ import { memo, useMemo } from "react";
 import { useStore, type InternalNode } from "@xyflow/react";
 import { routeInputFromStore, useAllRoutes, useRoutingOptions } from "../canvas/edges/useEdgeRoute";
 import type { FlowNode } from "../canvas/types";
-import { pointAlong } from "../canvas/geometry/path";
-import { inflate, intersects, type Rect } from "../canvas/geometry/rect";
+import { callPillObstacles, placeCallPills, type PillSize } from "./callPillPlacement";
 import { t, useLocale } from "../i18n";
 export { ThreadMeter } from "./ThreadMeter";
 
@@ -15,16 +14,37 @@ export interface ActiveCall {
 
 /** One shared placement pass: inactive connections never mount routing consumers. */
 export const CallPills = memo(
-  function CallPills({ calls }: { calls: ActiveCall[] }) {
+  function CallPills({
+    calls,
+    readoutScale = 1,
+    presenting = false,
+  }: {
+    calls: ActiveCall[];
+    readoutScale?: number;
+    presenting?: boolean;
+  }) {
     useLocale();
     const options = useRoutingOptions();
     const routes = useAllRoutes(options);
     const nodes = useStore((s) => s.nodeLookup as Map<string, InternalNode<FlowNode>>);
+    const [tx, ty, zoom] = useStore((s) => s.transform);
+    const viewWidth = useStore((s) => s.width);
+    const viewHeight = useStore((s) => s.height);
     const { style, direction, captions, hideDependencies } = options;
     const obstacles = useMemo(() => {
       const input = routeInputFromStore(nodes.values(), [], { style, direction, captions, hideDependencies });
-      return [
-        ...input.nodes.flatMap((n) => [n.rect, ...(n.extra ? [n.extra] : [])]),
+      return callPillObstacles([
+        ...input.nodes.flatMap((n) => [
+          n.rect,
+          ...(n.extra ? [n.extra] : []),
+          // Reserve the live busy-thread / in-flight strips, including their counter-scaling.
+          {
+            x: n.rect.x,
+            y: n.rect.y + n.rect.height + 7,
+            width: Math.max(320, n.rect.width) * readoutScale,
+            height: (presenting ? 26 : 21) * readoutScale,
+          },
+        ]),
         ...(input.groups ?? []).map((g) => g.header),
         ...[...routes.values()].flatMap((r) =>
           r.label
@@ -38,43 +58,27 @@ export const CallPills = memo(
               ]
             : [],
         ),
-      ];
-    }, [nodes, routes, style, direction, captions, hideDependencies]);
-    const occupied = [...obstacles];
-    return calls.map(({ id, held, inFlight }) => {
-      const route = routes.get(id);
-      if (!route) return null;
-      const text = held ? t("threads.pillHeld", { count: held }) : t("threads.pillFlight", { count: inFlight });
-      // Conservative text bounds cover every digit and the glyph without per-frame DOM measurement.
-      const width = text.length * 7 + 16,
-        height = 20;
-      let box: Rect | undefined;
-      for (const distance of [16, 40, 64]) {
-        for (const fraction of [0.4, 0.6, 0.2, 0.8, 0.5]) {
-          const { point, segment } = pointAlong(route.points, fraction);
-          const a = route.points[segment],
-            b = route.points[segment + 1] ?? a;
-          const tangent = { x: b.x - a.x, y: b.y - a.y };
-          const length = Math.hypot(tangent.x, tangent.y) || 1;
-          for (const side of [1, -1]) {
-            const candidate = {
-              x: point.x - ((side * tangent.y) / length) * distance - width / 2,
-              y: point.y + ((side * tangent.x) / length) * distance - height / 2,
-              width,
-              height,
-            };
-            if (!occupied.some((r) => intersects(inflate(r, 4), candidate))) {
-              box = candidate;
-              break;
-            }
-          }
-          if (box) break;
-        }
-        if (box) break;
-      }
-      // Dense drawings wait for room instead of covering their labels.
+      ]);
+    }, [nodes, routes, style, direction, captions, hideDependencies, readoutScale, presenting]);
+    const labels = calls.map(({ id, held, inFlight }) => ({
+      id,
+      text: held ? t("threads.pillHeld", { count: held }) : t("threads.pillFlight", { count: inFlight }),
+    }));
+    // Count changes of the same text dimensions reuse the entire placement pass.
+    const dimensions = JSON.stringify(labels.map(({ id, text }) => ({ id, width: text.length * 7 + 16, height: 20 })));
+    const placements = useMemo(
+      () =>
+        placeCallPills(JSON.parse(dimensions) as PillSize[], routes, obstacles, {
+          x: -tx / zoom,
+          y: -ty / zoom,
+          width: viewWidth / zoom,
+          height: viewHeight / zoom,
+        }),
+      [dimensions, routes, obstacles, tx, ty, zoom, viewWidth, viewHeight],
+    );
+    return labels.map(({ id, text }) => {
+      const box = placements.get(id);
       if (!box) return null;
-      occupied.push(box);
       return (
         <span key={id} className="lv-call-pill" style={{ left: box.x, top: box.y }} data-testid={`call-pill-${id}`}>
           {text}
@@ -83,6 +87,8 @@ export const CallPills = memo(
     });
   },
   (a, b) =>
+    a.readoutScale === b.readoutScale &&
+    a.presenting === b.presenting &&
     a.calls.length === b.calls.length &&
     a.calls.every((c, i) => c.id === b.calls[i].id && c.held === b.calls[i].held && c.inFlight === b.calls[i].inFlight),
 );

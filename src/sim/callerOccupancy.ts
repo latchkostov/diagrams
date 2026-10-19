@@ -5,8 +5,12 @@ export interface CallerOccupancy {
   represented: number;
 }
 
-export function reserveCallerOccupancy(represented: number, available: number): CallerOccupancy {
-  return { weight: Math.min(represented, available), represented };
+export function reserveCallerOccupancy(
+  represented: number,
+  available: number,
+  retained?: CallerOccupancy,
+): CallerOccupancy {
+  return { weight: Math.min(represented, available, retained?.weight ?? Infinity), represented };
 }
 
 export function occupancyFraction(reservation: CallerOccupancy): number {

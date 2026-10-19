@@ -2357,7 +2357,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             policy.fixedSlotsPerReplica === undefined
               ? policy.slots
               : Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica);
-          next.threadLease = reserveContinuation(admission, node.id, policy, scale, ceiling ?? Infinity, scale > 1);
+          next.threadLease = reserveContinuation(
+            admission,
+            node.id,
+            policy,
+            scale,
+            ceiling ?? Infinity,
+            scale > 1,
+            next.lease,
+          );
           if (!next.threadLease) break;
         }
         if (node.status === "up" && !startResources(node, next)) break;

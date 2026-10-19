@@ -60,6 +60,7 @@ export function resourcePlan(
   assigned: number,
   multiplier = 1,
   timing: ResolvedTiming = resolvedTiming(p),
+  admitted = Infinity,
 ) {
   const r = p.resources;
   if (!r) return undefined;
@@ -78,7 +79,13 @@ export function resourcePlan(
   const residenceSeconds = Math.max(timing.memoryResidenceMs / 1000, (r.cpuMsPerMessage * p.concurrency) / cpuMilli);
   const memoryOccupancy =
     timing.memoryResidenceMs > timing.threadHoldMs
-      ? Math.max(p.concurrency, (Math.min(offered, assigned * perReplica) / Math.max(1, assigned)) * residenceSeconds)
+      ? Math.min(
+          (admitted / Math.max(1, assigned)) * residenceSeconds,
+          Math.max(
+            p.concurrency,
+            (Math.min(offered, assigned * perReplica) / Math.max(1, assigned)) * residenceSeconds,
+          ),
+        )
       : p.concurrency;
   const memoryPeakMiB = r.baselineMemoryMiB + memoryOccupancy * r.memoryMiBPerMessage;
   const needed = [

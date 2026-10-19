@@ -15,26 +15,31 @@ export function effectiveCallerPolicy(
 ) {
   const edge = editor.getEdge(edgeId);
   if (!edge) return undefined;
-  const active = live?.controller.getState().running;
+  const state = live?.controller.getState();
+  const active = state?.running;
   const override = active?.setup?.edges?.[edgeId];
   const caller = { ...(edge.props?.caller as EdgeSimProps["caller"]), ...override?.caller };
-  const saved = override && editor.getDiagram().simulations?.find((s) => s.id === active?.id);
+  const saved = editor.getDiagram().simulations?.find((s) => s.id === state?.simulation?.id);
+  const draft = !!state?.simulation && (!saved || JSON.stringify(state.simulation) !== JSON.stringify(saved));
   // An unsaved draft owns its overrides; a base-only edit cannot change that run.
-  const editable = !live?.slowmo.active && (!override || !!saved);
+  const editable = !live?.slowmo.active && !draft;
   return {
     caller,
     policy: callPolicy(editor.getNode(edge.from)?.stencil ?? "", caller),
     editable,
     set(patch: EdgeSimProps["caller"]) {
       if (!editable) return;
-      if (saved) {
+      const normalized = Object.fromEntries(
+        Object.entries({ ...override?.caller, ...patch }).filter(([, v]) => v !== undefined),
+      );
+      if (saved && override) {
         const next = {
           ...saved,
           setup: {
             ...saved.setup,
             edges: {
               ...saved.setup?.edges,
-              [edgeId]: { ...saved.setup?.edges?.[edgeId], caller: { ...override?.caller, ...patch } },
+              [edgeId]: { ...saved.setup?.edges?.[edgeId], caller: normalized },
             },
           },
         };

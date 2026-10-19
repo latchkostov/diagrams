@@ -13,6 +13,78 @@ function fixture(replyMs = 10, poolConnections?: number) {
   return d;
 }
 
+function limitedFixture(scope: string, replyMs: number) {
+  const d = fixture(replyMs);
+  if (scope === "endpoint") {
+    d.nodes[1].props!.endpoints = [{ id: "work", method: "GET", path: "/", behaviour: { maxInFlight: 1 } }];
+    d.edges[0].props!.endpointId = "work";
+    d.edges[0].kind = "sync";
+  } else if (scope === "shared") {
+    d.nodes[1].props!.api = { sharedConcurrency: "account" };
+    d.planning!.sharedAllocations = [{ id: "account", maxInFlight: 1 }];
+  } else d.nodes[1].props!.api = { maxInFlight: 1 };
+  return d;
+}
+
+it.each(["api", "endpoint", "shared"])("bounds sampled continuations by retained %s occupancy", (scope) => {
+  const d = limitedFixture(scope, 1000);
+  d.nodes[0].props!.ratePerSec = 100;
+  d.nodes[2].props = { latencyMs: 10, api: { latencyMs: 10 }, jitter: 0 };
+  const rate = (scale: number) => {
+    const e = createEngine({ seed: 17, scale, maxParticles: 0 });
+    e.load(d);
+    e.setTraffic(true);
+    e.step(20000);
+    const before = realSnapshot(e.snapshot()).nodes.caller.processed;
+    e.step(100000);
+    return (realSnapshot(e.snapshot()).nodes.caller.processed - before) / 100;
+  };
+  const sampled = rate(10);
+  expect(Math.abs(sampled / rate(1) - 1)).toBeLessThan(0.15);
+  expect(sampled).toBeLessThanOrEqual(analyzeCapacity(d).nodes.caller.capacity * 1.15);
+});
+
+it.each(["api", "endpoint", "shared", "quota"])("plans retained memory from admitted %s demand", (scope) => {
+  const d = limitedFixture(scope, 10);
+  d.nodes[0].props!.ratePerSec = 100;
+  if (scope === "quota")
+    d.nodes[1].props!.api = {
+      quotas: [{ id: "requests", unit: "requests", amount: 1, windowMs: 3000, algorithm: "token-bucket" }],
+    };
+  d.nodes[1].props!.resources = { ...resourceLesson(), cpuMsPerMessage: 1, memoryLimitMiB: 256 };
+  d.nodes[2].props = { latencyMs: 2500, api: { latencyMs: 2500 }, jitter: 0 };
+  const plan = analyzeCapacity(d).nodes.caller.resourcePlan!;
+  expect(plan.memoryRisk).toBe(false);
+  expect(plan.memoryPeakMiB).toBeLessThanOrEqual(132);
+  const e = createEngine({ seed: 17 });
+  e.load(d);
+  e.setTraffic(true);
+  let peak = 0;
+  for (let i = 0; i < 600; i++) {
+    e.step(10);
+    peak = Math.max(peak, e.snapshot().nodes.caller.resources!.memoryMiB);
+  }
+  expect(Math.abs(plan.memoryPeakMiB - peak)).toBeLessThanOrEqual(2);
+});
+
+it.each(["api", "endpoint", "shared"])("retains %s request concurrency while reply handling executes", (scope) => {
+  const e = createEngine({ seed: 17 });
+  e.load(limitedFixture(scope, 100));
+  e.inject("source", 1);
+  e.step(300);
+  expect(e.snapshot().nodes.caller.processed).toBe(0);
+  expect(e.snapshot().nodes.caller.threads!.working).toBe(1);
+  e.inject("source", 1);
+  e.step(20);
+  expect(e.snapshot().nodes.caller.rejected).toBe(1);
+  e.step(100);
+  expect(e.snapshot().nodes.caller.processed).toBe(1);
+  e.inject("source", 1);
+  e.step(1000);
+  expect(e.snapshot().nodes.caller.processed).toBe(2);
+  expect(e.snapshot().nodes.caller.rejected).toBe(1);
+});
+
 it("defaults by caller family and safely handles unknown stencil names", () => {
   for (const id of [
     "generic.service",

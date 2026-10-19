@@ -151,12 +151,13 @@ export function reserveContinuation(
   weight: number,
   slots: number,
   partial: boolean,
+  retained?: CallerOccupancy,
 ): AdmissionLease | undefined {
   const key = (state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy))
     .slots;
   const available = slots - (state.inFlight.get(key) ?? 0);
   if (available <= 0 || (!partial && available + 1e-9 < weight)) return undefined;
-  const reservation = reserveCallerOccupancy(weight, available);
+  const reservation = reserveCallerOccupancy(weight, available, retained);
   state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
   return { ...reservation, keys: [key] };
 }

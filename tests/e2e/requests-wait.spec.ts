@@ -307,39 +307,52 @@ test("typing a fractional connection pool always saves a valid integer", async (
     .toMatchObject({ poolConnections: 2 });
 });
 
-test("call pills avoid labels, nodes and each other in a vertical join", async ({ page }) => {
-  const d = waitingFixture();
-  d.direction = "TB";
-  d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
-  d.nodes[1].x = d.nodes[2].x = 330;
-  d.nodes[1].y = 0;
-  d.nodes[2].y = 200;
-  d.edges[1].label = "Score application";
-  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
-    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
-    d,
+for (const wait of ["blocking", "non-blocking"] as const) {
+  test(`simultaneous call pills avoid each other and live readouts (${wait})`, async ({ page }) => {
+    const d = waitingFixture();
+    d.direction = "TB";
+    d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
+    d.nodes[1].x = d.nodes[2].x = 330;
+    d.nodes[1].y = 0;
+    d.nodes[2].y = 200;
+    d.edges[1].label = "Score application";
+    d.edges[1].props = { ...d.edges[1].props, caller: { wait } };
+    d.edges.push({ ...d.edges[1], id: "second-call" });
+    await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+      key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+      d,
+    });
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    await pauseClock(page);
+    await page.getByTestId("live-play").click();
+    await page.clock.runFor(1000);
+    await page.getByTestId("live-play").click();
+    const pill = await page.getByTestId("call-pill-call").boundingBox();
+    expect(pill).not.toBeNull();
+    const boxes = await page.getByTestId("edge-label-call").boundingBox();
+    expect(boxes).not.toBeNull();
+    const overlap = (a: NonNullable<typeof pill>, b: NonNullable<typeof pill>) =>
+      Math.min(a.x + a.width, b.x + b.width) > Math.max(a.x, b.x) &&
+      Math.min(a.y + a.height, b.y + b.height) > Math.max(a.y, b.y);
+    if (!pill || !boxes) throw new Error("Missing call pill or label");
+    expect(overlap(pill, boxes)).toBe(false);
+    const second = await page.getByTestId("call-pill-second-call").boundingBox();
+    if (!second) throw new Error("Missing simultaneous call pill");
+    expect(overlap(pill, second)).toBe(false);
+    const readout = await page
+      .getByTestId(wait === "blocking" ? "thread-chip-caller" : "thread-flight-caller")
+      .boundingBox();
+    if (!readout) throw new Error("Missing live thread readout");
+    expect(overlap(pill, readout)).toBe(false);
+    expect(overlap(second, readout)).toBe(false);
+    for (const id of ["caller", "partner"]) {
+      const node = await page.getByTestId(`node-${id}`).boundingBox();
+      if (!node) throw new Error(`Missing node ${id}`);
+      expect(overlap(pill, node)).toBe(false);
+    }
   });
-  await page.clock.install();
-  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
-  await pauseClock(page);
-  await page.getByTestId("live-play").click();
-  await page.clock.runFor(1000);
-  await page.getByTestId("live-play").click();
-  const pill = await page.getByTestId("call-pill-call").boundingBox();
-  expect(pill).not.toBeNull();
-  const boxes = await page.getByTestId("edge-label-call").boundingBox();
-  expect(boxes).not.toBeNull();
-  const overlap = (a: NonNullable<typeof pill>, b: NonNullable<typeof pill>) =>
-    Math.min(a.x + a.width, b.x + b.width) > Math.max(a.x, b.x) &&
-    Math.min(a.y + a.height, b.y + b.height) > Math.max(a.y, b.y);
-  if (!pill || !boxes) throw new Error("Missing call pill or label");
-  expect(overlap(pill, boxes)).toBe(false);
-  for (const id of ["caller", "partner"]) {
-    const node = await page.getByTestId(`node-${id}`).boundingBox();
-    if (!node) throw new Error(`Missing node ${id}`);
-    expect(overlap(pill, node)).toBe(false);
-  }
-});
+}
 
 test("unsupported gateway callers hide reply handling", async ({ page }) => {
   const d = waitingFixture();

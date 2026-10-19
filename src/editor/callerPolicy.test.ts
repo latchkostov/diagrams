@@ -35,3 +35,61 @@ it.each([true, false])("edits a saved override once and withholds an unsaved ove
   expect(diagram.edges[1].props?.caller).toEqual({ wait: "non-blocking", replyMs: 30 });
   controller.dispose();
 });
+
+it("withholds caller edits on a changed draft sharing its saved simulation ID", () => {
+  const diagram = waitingFixture();
+  const saved = {
+    id: "run",
+    title: "Run",
+    durationMs: 1000,
+    traffic: [],
+    setup: { edges: { call: { caller: { wait: "blocking" as const } } } },
+  };
+  diagram.simulations = [saved];
+  const draft = { ...saved, durationMs: 9000 };
+  const controller = new LiveController(diagram, { replayDelayMs: 0 });
+  controller.selectSimulation(draft);
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn(),
+    setEdgeProps: vi.fn(),
+  };
+  const effective = effectiveCallerPolicy(editor, "call", { controller, slowmo: { active: false } })!;
+  expect(effective.editable).toBe(false);
+  effective.set({ wait: "non-blocking" });
+  expect(editor.updateMeta).not.toHaveBeenCalled();
+  expect(editor.setEdgeProps).not.toHaveBeenCalled();
+  expect(controller.getState().simulation).toEqual(draft);
+  expect(controller.getState().running?.durationMs).toBe(9000);
+  controller.dispose();
+});
+
+it("clearing saved caller overrides inherits diagram values before and after reload", () => {
+  const diagram = waitingFixture();
+  diagram.edges[1].props!.caller = { poolConnections: 2, replyMs: 30 };
+  const simulation = {
+    id: "run",
+    title: "Run",
+    traffic: [],
+    setup: { edges: { call: { caller: { poolConnections: 4, replyMs: 100 } } } },
+  };
+  diagram.simulations = [simulation];
+  const controller = new LiveController(diagram, { replayDelayMs: 0 });
+  controller.selectSimulation(simulation);
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn<EditorApi["updateMeta"]>((patch) => Object.assign(diagram, patch)),
+    setEdgeProps: vi.fn(),
+  };
+  const live = { controller, slowmo: { active: false } };
+  effectiveCallerPolicy(editor, "call", live)!.set({ poolConnections: undefined, replyMs: undefined });
+  const caller = effectiveCallerPolicy(editor, "call", live)!.caller;
+  expect(caller).toMatchObject({ poolConnections: 2, replyMs: 30 });
+  expect(diagram.simulations[0].setup!.edges!.call.caller).toEqual({});
+  expect(JSON.parse(JSON.stringify(diagram.simulations[0]))).toEqual(diagram.simulations[0]);
+  controller.dispose();
+});

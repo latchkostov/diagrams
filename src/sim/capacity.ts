@@ -804,6 +804,16 @@ export function analyzeCapacity(
       );
     }
     nodes[id].utilization = ratio(nodes[id].offered, nodes[id].capacity);
+    // Retained off-thread memory belongs only to requests admitted by the shared ledger.
+    if (entry.wait && entry.props.resources)
+      nodes[id].resourcePlan = resourcePlan(
+        entry.props,
+        nodes[id].offered,
+        entry.active,
+        capacityMultiplier,
+        nodes[id].waits,
+        Math.min(nodes[id].offered, nodes[id].capacity),
+      );
   }
   // Prefer the service over its broker when their limits tie; it is the actionable diagnosis.
   const ranked = Object.values(nodes)
