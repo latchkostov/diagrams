@@ -25,3 +25,9 @@ their regressions fail; removing the CSP/assets fixes fails the build contract. 
 skip with its artifact absent fails on development. Restored code passes; development skips all eight bundle
 cases. Output parity checks 2,530 goldens unchanged. The Linux load-repeat gate was attempted with eight
 workers and CPUs, but exited 75 because the shared gate budget was busy; no capacity wait was queued.
+
+The subsequent full Linux gate passed static checks, all 11,432 units and all 2,530 unchanged goldens,
+but failed five main-editor browser cases. The three failing spec files passed twice on clean master
+(110 passes), so the failures remain unconfirmed rather than being labelled pre-existing. Evidence and
+follow-up are in `docs/backlog/2026-10-18-viewer-review-full-gate-load.md`. No full-suite rerun or assertion
+relaxation was used.
