@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commitEpoch, EpochChain, parseStart, scopeOf, signStart, type EpochStart } from "./epochs";
+import { commitEpoch, EpochChain, MAX_EPOCHS, parseStart, scopeOf, signStart, type EpochStart } from "./epochs";
 import { newEpochSecret } from "./keys";
 import { seededBytes } from "./random";
 import { afterRemoval, rootState, SignedRoster } from "./roster";
@@ -74,6 +74,39 @@ describe("epochs", () => {
     expect(again.deepest()?.sig).toBe(real.sig);
     expect(scopeOf(again.deepest()!)).toBe(scopeOf(real));
   });
+
+  it("round-trips every supported epoch: a chain through epoch 31 comes back in full, its membership with it", async () => {
+    const host = await newIdentity();
+    const stays = await newIdentity();
+    const chain = new EpochChain(host.key, ROOM);
+    let start = await startOf(host, newEpochSecret(seededBytes(40)));
+    await chain.addStarts([start]);
+    await chain.rosterOf(start)!.append(host, "join", { who: stays.key, x: (await newAgreement()).x });
+    for (let epoch = 1; epoch < MAX_EPOCHS; epoch++) {
+      const roster = chain.rosterOf(start)!;
+      const goes = await newIdentity();
+      await roster.append(host, "join", { who: goes.key, x: (await newAgreement()).x });
+      const removal = (await roster.append(host, "remove", { who: goes.key }))!;
+      const secret = newEpochSecret(seededBytes(40 + epoch));
+      const next = await signStart(host, ROOM, {
+        epoch,
+        kc: await commitEpoch(secret, ROOM, epoch),
+        prev: removal.sig,
+      });
+      await chain.addStarts([next]);
+      expect(chain.rosterOf(next)).toBeDefined();
+      start = next;
+      // What a member keeps (or a bundle carries), taken by a page that has nothing yet.
+      const again = new EpochChain(host.key, ROOM);
+      await again.add(chain.data(start));
+      expect(again.deepest()?.sig).toBe(start.sig);
+      expect(again.deepest()?.epoch).toBe(epoch);
+      expect(again.validated()).toHaveLength(epoch + 1);
+      expect([...again.rosterOf(start)!.state().members].sort()).toEqual([host.key, stays.key].sort());
+      expect(again.rosterOf(start)!.state().members.has(goes.key)).toBe(false);
+    }
+    expect(start.epoch).toBe(MAX_EPOCHS - 1);
+  }, 60_000);
 
   it("starts are checked in full", async () => {
     const host = await newIdentity();

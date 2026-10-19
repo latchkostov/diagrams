@@ -2,7 +2,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { base64UrlToBytes } from "../interop/codec";
 import { FakeClock } from "./clock";
 import { Sealer } from "./envelope";
-import { commitEpoch, scopeOf, signStart, type ChainData } from "./epochs";
+import { commitEpoch, MAX_EPOCHS, scopeOf, signStart, type ChainData } from "./epochs";
 import { Opener } from "./envelope";
 import { signEntry } from "./roster";
 import { deriveEpochKeys, deriveRoomKeys, newEpochSecret } from "./keys";
@@ -10,6 +10,7 @@ import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import { Lobby, wrapFor, type LobbyBody } from "./lobby";
 import { DOC, frame } from "./protocol";
+import { textToBytes } from "../interop/codec";
 import { seededBytes } from "./random";
 import type { KnockMember } from "./session";
 import { newAgreement, newIdentity, type Agreement, type Identity } from "./signing";
@@ -385,6 +386,38 @@ describe("remove with re-key: edge cases", () => {
     expect(title(k.client)).toBe("All here");
   });
 
+  it("past sixteen removals, a member's reload comes back to the room and a newcomer is still let in", async () => {
+    const r = await knockRoom(87);
+    const host = r.host.client!;
+    const wren = await r.join("wren");
+    for (let i = 0; i < 17; i++) {
+      const goes = await r.join(`goes${i}`);
+      expect(await host.session.remove(goes.session.signed!.key)).toBe(true);
+      await r.settle();
+    }
+    expect(host.session.keys.epoch).toBe(17);
+    expect(wren.session.keys.epoch).toBe(17);
+    const record = wren.session.memberRecord()!;
+    expect(record.chain.starts).toHaveLength(18);
+    await wren.session.leave();
+    await r.settle();
+    host.edit((d) => ({ ...d, title: "Epoch 17" }));
+    await r.settle();
+    const wrenP = r.people[1];
+    const back = await r.open(
+      wrenP,
+      { agreement: wrenP.agreement, chain: record.chain, secret: secretOf(record), wraps: record.wraps },
+      r.net.connect(),
+    );
+    await r.settle();
+    expect(back.session.knocking).toBe(false);
+    expect(back.session.keys.epoch).toBe(17);
+    expect(title(back)).toBe("Epoch 17");
+    const otter = await r.join("otter");
+    expect(otter.session.keys.epoch).toBe(17);
+    expect(title(otter)).toBe("Epoch 17");
+  }, 60_000);
+
   it("a member away during a re-key comes back (an old record) and follows; someone removed who comes back is told", async () => {
     const r = await knockRoom(66);
     const host = r.host.client!;
@@ -503,6 +536,113 @@ describe("knock-to-join and re-key, against someone who doesn't follow the rules
     expect(repeats).toBe(0);
   });
 
+  it("a removed co-host's backdated join in an epoch it once led lets nobody in: the newcomer still knocks and waits", async () => {
+    const r = await knockRoom(84);
+    const host = r.host.client!;
+    const rco = await r.join("rco");
+    await r.join("m");
+    expect(await host.session.appendRoster("cohost", { who: rco.session.signed!.key })).toBe(true);
+    await r.settle();
+    const held = rco.session.memberRecord()!;
+    const cohostEntry = held.chain.logs[0].entries.find((e) => (e as { op: string }).op === "cohost") as {
+      sig: string;
+      n: number;
+    };
+    expect(await host.session.remove(rco.session.signed!.key)).toBe(true);
+    await r.settle();
+    expect(host.session.keys.epoch).toBe(1);
+    // The removed co-host signs a join for an identity of its own in epoch 0, where its authority checks.
+    const fresh = { identity: await newIdentity(), agreement: await newAgreement() };
+    const scope0 = `0:${held.chain.starts[0].sig}`;
+    const backdated = await signEntry(rco.session.signed!.identity, r.lobbyKeys.roomId, scope0, {
+      n: cohostEntry.n + 1,
+      op: "join",
+      who: fresh.identity.key,
+      x: fresh.agreement.x,
+      deps: [cohostEntry.sig],
+    });
+    const evil = await r.rogue(rco.session.signed!.identity);
+    await evil.send({
+      t: "bundle",
+      chain: {
+        starts: held.chain.starts,
+        logs: [{ scope: scope0, entries: [...held.chain.logs[0].entries, backdated] }],
+      },
+      wraps: [],
+    });
+    // The backdated join counts in epoch 0's roster (it's well signed), and grants nothing now.
+    const chain = host.session.signed!.knock!.chain;
+    expect(chain.rosterOf(r.start)!.joinsOf(fresh.identity.key)).toHaveLength(1);
+    const p = { name: "fresh", ...fresh };
+    r.people.push(p);
+    const transport = r.net.connect();
+    const client = await r.open(p, { agreement: p.agreement, chain: { starts: [], logs: [] } }, transport);
+    for (let i = 0; i < 3; i++) {
+      r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+      await r.settle();
+    }
+    expect(client.session.knocking).toBe(true);
+    expect(host.session.knocks.has(fresh.identity.key)).toBe(true);
+    expect(host.session.signed!.state().members.has(fresh.identity.key)).toBe(false);
+    expect(client.session.hasDocument).toBe(false);
+    // The host answers: now it's in.
+    expect(await host.session.admit(fresh.identity.key)).toBe(true);
+    await r.settle();
+    expect(client.session.knocking).toBe(false);
+    expect(client.session.keys.epoch).toBe(1);
+  });
+
+  it("someone removed and let back in doesn't stop a later removal: everyone left reaches one epoch, edits and Live", async () => {
+    const r = await knockRoom(85);
+    const host = r.host.client!;
+    const a = await r.join("a");
+    const b = await r.join("b");
+    const c = await r.join("c");
+    const aKey = a.session.signed!.key;
+    expect(await host.session.remove(aKey)).toBe(true);
+    await r.settle();
+    const aP = r.people[1];
+    const again = await r.open(aP, { agreement: aP.agreement, chain: { starts: [], logs: [] } }, r.net.connect());
+    await r.settle();
+    expect(await host.session.admit(aKey)).toBe(true);
+    await r.settle();
+    expect(again.session.knocking).toBe(false);
+    expect(await host.session.remove(b.session.signed!.key)).toBe(true);
+    for (let i = 0; i < 3; i++) {
+      r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+      await r.settle();
+    }
+    expect(b.session.removed).toBe(true);
+    const epoch2 = host.session.signed!.current!;
+    expect(epoch2.epoch).toBe(2);
+    for (const x of [again, c]) {
+      expect(x.session.removed).toBe(false);
+      expect(x.session.signed!.current!.sig).toBe(epoch2.sig);
+      expect(x.session.keys.epoch).toBe(2);
+    }
+    host.edit((d) => ({ ...d, title: "From the host" }));
+    await r.settle();
+    expect(title(again)).toBe("From the host");
+    expect(title(c)).toBe("From the host");
+    again.edit((d) => ({ ...d, title: "From a" }));
+    await r.settle();
+    expect(title(host)).toBe("From a");
+    expect(title(c)).toBe("From a");
+    const heard: string[] = [];
+    for (const [name, x] of [
+      ["host", host],
+      ["a", again],
+      ["c", c],
+    ] as const)
+      onTestFinished(x.session.onLive(() => heard.push(name)));
+    expect(host.session.sendLive(textToBytes("{}"))).toBe(true);
+    expect(c.session.sendLive(textToBytes("{}"))).toBe(true);
+    await r.settle();
+    expect(heard.filter((n) => n === "a")).toHaveLength(2);
+    expect(heard.filter((n) => n === "c")).toHaveLength(1);
+    expect(heard.filter((n) => n === "host")).toHaveLength(1);
+  });
+
   it("starts from someone with only the link take no room: a removal after them still moves the room on", async () => {
     const r = await knockRoom(72);
     const host = r.host.client!;
@@ -542,10 +682,42 @@ describe("knock-to-join and re-key, against someone who doesn't follow the rules
     for (let epoch = 1; epoch < 32; epoch++)
       for (let i = 0; i < 2; i++)
         starts.push(await signStart(evil.id, roomId, { epoch, kc: "A".repeat(43), prev: sig() }));
-    const before = performance.now();
     await evil.send({ t: "bundle", chain: { starts: starts.slice(0, 62), logs: [] }, wraps: [] });
-    expect(performance.now() - before).toBeLessThan(3_000);
     expect(host.session.signed!.knock!.chain.validated()).toHaveLength(1);
+  }, 20_000);
+
+  it("unplaceable starts require bounded resolution work: counted, within what the pool and the chain allow, however many epochs they claim", async () => {
+    const r = await knockRoom(86);
+    const host = r.host.client!;
+    await r.join("wren");
+    const chain = host.session.signed!.knock!.chain;
+    const roomId = r.lobbyKeys.roomId;
+    const sig = (n: number) =>
+      Array.from(
+        seededBytes(8600 + n)(64),
+        (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"[b & 63],
+      )
+        .join("")
+        .slice(0, 85) + "A";
+    // Each sender a bundle of unplaceable starts (a parent's removal that's nowhere), claiming `epochs` epochs.
+    const flood = async (epochs: number) => {
+      const evil = await r.rogue();
+      const starts = [];
+      for (let epoch = 1; epoch <= epochs; epoch++)
+        for (let i = 0; i < 2; i++)
+          starts.push(await signStart(evil.id, roomId, { epoch, kc: "A".repeat(43), prev: sig(epoch * 2 + i) }));
+      const before = chain.work.lookups;
+      await evil.send({ t: "bundle", chain: { starts, logs: [] }, wraps: [] });
+      return chain.work.lookups - before;
+    };
+    const few = await flood(4);
+    const all = await flood(31);
+    expect(chain.validated()).toHaveLength(1);
+    // Each resolution looks at no more than the waiting pool (16) against the chain's starts, once per epoch: never
+    // the product of what was claimed.
+    const bound = 16 * chain.validated().length * MAX_EPOCHS * 2;
+    expect(few).toBeLessThanOrEqual(bound);
+    expect(all).toBeLessThanOrEqual(bound);
   }, 20_000);
 
   it("a forged wrap (claiming the host wrapped it) doesn't stop the host's own from letting the newcomer in", async () => {

@@ -105,6 +105,8 @@ export class EpochChain {
   private readonly rosters = new Map<string, SignedRoster>();
   private readonly secrets = new Map<string, Uint8Array>();
   private readonly listeners = new Set<() => void>();
+  /** Resolution's work so far: each placed start looked at for a waiting one (bounded by the pool and the chain). */
+  readonly work = { lookups: 0 };
 
   constructor(
     /** The room's root: the host key in its link. */
@@ -170,11 +172,13 @@ export class EpochChain {
       progress = false;
       for (const s of [...this.waiting.values()]) {
         if (this.starts.size >= MAX_STARTS) return placed;
+        this.work.lookups++;
         let base;
         let parent: EpochStart | undefined;
         if (s.epoch === 0) base = s.by === this.hostKey ? rootState(this.hostKey, s.x) : undefined;
         else
           for (const p of this.starts.values()) {
+            this.work.lookups++;
             if (p.epoch !== s.epoch - 1) continue;
             const removal = this.rosters.get(p.sig)?.entry(s.prev!);
             if (removal?.op !== "remove" || removal.by !== s.by) continue;
@@ -229,14 +233,20 @@ export class EpochChain {
     return result;
   }
 
-  /** Starts and logs together (a peer's bundle, a record), in epoch order: each epoch's removals before its children. */
+  /**
+   * Starts and logs together (a peer's bundle, a record), in ancestor order: each epoch's starts, then its roster (the
+   * removals its children name), before the next epoch's starts. Each start is placed as it arrives, so a whole chain
+   * (every supported epoch) goes in however long it is; only a start whose parent or removal isn't here waits.
+   */
   async add(data: ChainData, budget?: () => boolean): Promise<void> {
-    await this.addStarts(data.starts, budget);
-    const logs = [...data.logs].sort((a, b) => parseInt(a.scope) - parseInt(b.scope));
-    for (const log of logs) {
-      await this.addEntries(log.scope, log.entries, budget);
-      // A start of the next epoch may only have been placeable now.
-      await this.addStarts(data.starts, budget);
+    const starts = data.starts.slice(0, MAX_STARTS);
+    const epochOf = (v: unknown) => (v && typeof v === "object" ? (v as { epoch?: unknown }).epoch : undefined);
+    for (let epoch = 0; epoch < MAX_EPOCHS; epoch++) {
+      const these = starts.filter((s) => epochOf(s) === epoch);
+      if (these.length) await this.addStarts(these, budget);
+      for (const log of data.logs)
+        if (typeof log.scope === "string" && parseInt(log.scope, 10) === epoch)
+          await this.addEntries(log.scope, log.entries, budget);
     }
     this.changed();
   }

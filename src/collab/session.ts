@@ -1099,7 +1099,7 @@ export class CollabSession {
       return;
     }
     // Someone removed, back with an old epoch: the chain (no secret) tells their page it's out.
-    if (hello.scope && this.removedOnPath(m.key)) {
+    if (hello.scope && this.removedOnPath().has(m.key)) {
       if (this.bundles.take(m.sender, 1)) this.sendBundle(m.from, []);
       return;
     }
@@ -1168,18 +1168,40 @@ export class CollabSession {
     return out;
   }
 
-  /** Whether a removal on this session's path took `key` out. */
-  private removedOnPath(key: string): boolean {
-    return this.closingRemovals().some((r) => r.who === key);
+  /**
+   * Who's out: each person a removal on this session's path took out, unless they've been let back in since (a member
+   * of this epoch, by a join that counts in its roster: a host's or co-host's).
+   */
+  private removedOnPath(): Set<string> {
+    const members = this.signed?.state().members;
+    return new Set(
+      this.closingRemovals()
+        .map((r) => r.who!)
+        .filter((k) => !members?.has(k)),
+    );
   }
 
-  /** Whether `key` was a member in an earlier epoch on this session's path and no removal on it took them out. */
+  /**
+   * Whether `key` may be let back in without asking: let in during an earlier epoch on this session's path (just as
+   * someone else was removed, so not carried into the next epoch), not removed since, and let in by someone who is the
+   * host or a co-host now. An earlier epoch's roster is frozen at its close for anything it grants now: an entry there,
+   * however late it arrives, counts only with authority its signer holds in this epoch, so someone removed (or no
+   * longer a co-host) can't sign a backdated join into an epoch they once led and have it let anyone in.
+   */
   private wasMember(key: string): boolean {
-    const chain = this.signed?.knock?.chain;
-    if (!chain || this.removedOnPath(key)) return false;
+    const room = this.signed!;
+    const chain = room.knock?.chain;
+    if (!chain || this.removedOnPath().has(key)) return false;
+    const s = room.state();
+    const leads = new Set([s.host, ...s.cohosts]);
     return this.path()
       .slice(0, -1)
-      .some((st) => chain.rosterOf(st)?.state().members.has(key));
+      .some((st) =>
+        chain
+          .rosterOf(st)
+          ?.joinsOf(key)
+          .some((j) => leads.has(j.by)),
+      );
   }
 
   /** This person is the one to let people in on its own: the host if here, else the earliest co-host here. */
@@ -1314,7 +1336,9 @@ export class CollabSession {
     const chain = room?.knock?.chain;
     if (!room || !chain || this.leaving) return;
     const current = room.current;
-    const removed = new Set(this.closingRemovals().map((r) => r.who!));
+    // Who's out stays out on any path forward (a fork that kept them can't bring them back); someone let back in since
+    // by this epoch's roster is a member again, and a later removal's epoch keeps them.
+    const removed = this.removedOnPath();
     const forward = chain
       .validated()
       .filter((st) => !current || st.epoch > current.epoch)

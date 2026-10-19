@@ -363,6 +363,11 @@ export class SignedRoster {
     return this.entries.get(sig);
   }
 
+  /** The joins that count in this roster letting `key` in. */
+  joinsOf(key: string): RosterEntry[] {
+    return [...this.entries.values()].filter((e) => e.op === "join" && e.who === key);
+  }
+
   /** The removals that count in this roster (each could close the epoch on some branch). */
   removals(): RosterEntry[] {
     return [...this.entries.values()].filter((e) => e.op === "remove").sort(order);
