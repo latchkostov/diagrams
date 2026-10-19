@@ -33,6 +33,7 @@ for (const source of ["attachment", "inline"] as const) {
   }) => {
     const requests: { url: string; body: string }[] = [];
     const cookies: string[] = [];
+    let deferredFetches = 0;
     const violations: string[] = [];
     await page.clock.install();
     await page.exposeFunction("recordMacroCsp", (message: string) => violations.push(message));
@@ -57,6 +58,10 @@ for (const source of ["attachment", "inline"] as const) {
           res.end(body);
         };
         if (req.headers.host?.startsWith("127.0.0.1:")) {
+          if (path === attachment.replace("order-flow", "deferred-flow")) {
+            deferredFetches++;
+            return send("application/json", JSON.stringify({ ...diagram, title: " " }));
+          }
           if (path === attachment) {
             cookies.push(req.headers.cookie ?? "");
             return send(
@@ -72,7 +77,7 @@ for (const source of ["attachment", "inline"] as const) {
           );
           const markup = macro(viewer, source === "inline" ? JSON.stringify(scripted) : attachment, true);
           const still = macro(viewer, JSON.stringify({ ...diagram, title: "Inventory overview" }), false);
-          const offscreen = macro(viewer, JSON.stringify({ ...diagram, title: " " }), true);
+          const offscreen = macro(viewer, attachment.replace("order-flow", "deferred-flow"), true);
           return send(
             "text/html",
             readFileSync("tests/fixtures/confluence-dc/host-page.template", "utf8").replace(
@@ -130,13 +135,24 @@ for (const source of ["attachment", "inline"] as const) {
       // Off-screen macros create neither a viewer frame nor its React application until scrolled into view.
       await expect(macros.nth(2).getByTestId("live-diagram-frame")).toHaveCount(0);
       const deferredHeight = await macros.nth(2).evaluate((el) => el.getBoundingClientRect().height);
-      await macros.nth(2).scrollIntoViewIfNeeded();
+      expect(deferredFetches).toBe(0);
+      // Suppress intersection activation: keyboard focus itself must initialize the deferred diagram.
+      await macros
+        .nth(2)
+        .evaluate((el) => (el as HTMLElement & { observer: IntersectionObserver }).observer.disconnect());
+      await macros.nth(2).focus();
       await expect(
         macros.nth(2).getByTestId("live-diagram-frame").contentFrame().getByTestId("host-embed-view"),
       ).toHaveAttribute("data-status", "ready");
       await expect(macros.nth(2).getByTestId("live-diagram-frame")).toHaveAttribute("title", "Untitled diagram");
       await expect(macros.nth(2).getByTestId("confluence-play")).toHaveAccessibleName("Play diagram: Untitled diagram");
       expect(await macros.nth(2).evaluate((el) => el.getBoundingClientRect().height)).toBe(deferredHeight);
+      expect(deferredFetches).toBe(1);
+      // A diagram without saved simulations still offers click-to-play (free play).
+      const deferred = macros.nth(2).getByTestId("live-diagram-frame").contentFrame();
+      await expect(deferred.getByTestId("host-embed-view")).not.toHaveAttribute("data-live", "1");
+      await macros.nth(2).getByTestId("confluence-play").click();
+      await expect(deferred.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
       await macros.nth(0).scrollIntoViewIfNeeded();
       await pauseClock(page);
       await page.clock.runFor(10_000);

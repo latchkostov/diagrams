@@ -34,7 +34,7 @@ const RESOLVED = "\0" + VIRTUAL;
 /** Where the template lives in the dev server (the build hashes the name). */
 const DEV_PATH = "export/interactive-viewer.html";
 
-const FONTS: { family: string; file: string }[] = [
+export const FONTS: { family: string; file: string }[] = [
   {
     family: "Mona Sans Variable",
     file: "node_modules/@fontsource-variable/mona-sans/files/mona-sans-latin-wght-normal.woff2",
@@ -45,7 +45,7 @@ const FONTS: { family: string; file: string }[] = [
   },
 ];
 /** Fontsource's "latin" unicode-range. */
-const LATIN =
+export const LATIN =
   "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD";
 
 /** Modules that must never be in the exported file: they reach the network, AI, or the app's storage. */
@@ -137,7 +137,7 @@ const NO_LOCAL = "\0interactive-viewer:no-local-examples";
 const WORKER = 'new Worker(new URL("./particleWorker.ts", import.meta.url), { type: "module", name: "particles" })';
 
 /** The swaps that make the app's modules fit a file with no network (see the header). */
-function viewerSwaps(root: string): Plugin {
+export function viewerSwaps(root: string): Plugin {
   const own = (id: string, path: string) => id.replaceAll("\\", "/").endsWith(path);
   return {
     name: "interactive-viewer-swaps",

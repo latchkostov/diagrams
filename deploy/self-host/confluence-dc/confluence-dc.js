@@ -29,6 +29,11 @@ class ConfluenceLiveDiagram extends HTMLElement {
       this.initialize();
     });
     this.observer.observe(this);
+    // A deferred canvas must remain reachable without a pointer or scrolling first.
+    this.tabIndex = 0;
+    this.setAttribute("role", "region");
+    this.setAttribute("aria-label", "Diagram");
+    this.onfocus = () => this.initialize();
   }
 
   initialize() {
@@ -39,6 +44,9 @@ class ConfluenceLiveDiagram extends HTMLElement {
     const error = this.querySelector('[data-testid="confluence-error"]');
     if (!viewer || !play || !error) return;
     this.initialized = true;
+    this.observer?.disconnect();
+    this.observer = null;
+    this.onfocus = null;
     viewer.setAttribute("height", String(this.height));
     play.hidden = this.dataset.clickToPlay === "false";
     let simulation;
