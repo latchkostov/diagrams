@@ -52,6 +52,8 @@ export function snapshotDigest(snapshot: SimSnapshot, draws: number): number {
   hash = mixNumber(hash, snapshot.time);
   hash = mixNumber(hash, draws);
   hash = mixNumber(hash, snapshot.inSystem);
+  // Fault overlays (a slowdown, a cut link, a boundary down) before they show in any count.
+  hash = mixText(hash, JSON.stringify(snapshot.faults ?? []));
   for (const [id, node] of Object.entries(snapshot.nodes)) {
     hash = mixText(hash, id);
     hash = mixText(hash, node.status);

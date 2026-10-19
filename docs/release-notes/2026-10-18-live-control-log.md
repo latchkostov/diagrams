@@ -27,6 +27,22 @@ fixes. There's no collaboration UI yet; that comes in P2, Watch together.
   - A sim clock (`src/live/simClock.ts`) lets a follower track the driver's tick, up to 5% faster or slower and
     never past it.
 
+### Review round 1
+
+- **Checkpoints record the replay position.** Each checkpoint now records how far the replay had got, not the
+  newest op logged. Before, a checkpoint taken while a rebuild was catching up claimed ops it hadn't reached yet, so
+  a later scrub back skipped them. Seek and the rebuild share one cursor, the last op applied, and every checkpoint
+  saves it, the rebuilt start included. A live tweak made during a rebuild lets the rebuild finish first.
+- **A newer edit wins over an older tweak.** Say you tweak a property live, then set the same property in Inputs &
+  capacity or edit it in the diagram. A later rebuild now keeps your newer choice instead of reviving the tweak.
+  Tweaks of other properties still replay.
+- **The log owns its ops.** It keeps a frozen copy of each op, so changing an object after passing it changes
+  neither the engine nor history. It keeps only the latest Inputs snapshot, so a slider drag doesn't grow it.
+- **The digest covers fault overlays,** and moves out of the live view's chunk. The controller exposes `simEngine`
+  and shared Live loads `runDigest` with its own code.
+- **`ENGINE_VERSION` and the determinism guard** now cover `src/stencils` too: roles, device throughput and family
+  defaults decide what a tick does.
+
 ## Verification
 
 - **New unit tests in `src/live/controlLog.test.ts`:**
@@ -51,5 +67,15 @@ fixes. There's no collaboration UI yet; that comes in P2, Watch together.
 - **No golden changed:** `pnpm parity:node` reports 2426 goldens, 0 changed.
 - **Live e2e:** the capacity, fault drills, live, slow motion, simulation truth and clarity, trace, simulation
   checks and live labels specs pass, 124 of 124.
-- **Bundle:** the live session is 134,562 B gzip against a 135,000 B budget (master: 133,112 B). The startup and
-  the canvas's first view are unchanged.
+- **Review round 1 tests:**
+  - "scrubbing after a rate rebuild preserves later logged tweaks", covering a tweak and an outage;
+  - "fault overlays survive checkpoint seeks and rate rebuilds", with a slowdown changed once, a boundary down and
+    a failure rate;
+  - a newer Inputs edit winning over an older tweak after a rebuild;
+  - the log owning its ops;
+  - one Inputs snapshot.
+
+  Each of the first three fails with its fix reverted.
+
+- **Bundle:** the live session is 134,736 B gzip against a 135,000 B budget (master: 133,112 B; this round added
+  174 B). The startup and the canvas's first view are unchanged.

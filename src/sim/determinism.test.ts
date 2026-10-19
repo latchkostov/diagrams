@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { POWERS } from "./latencyBounds";
 import { latencyBucket } from "./latency";
+import { ENGINE_SOURCES } from "../../scripts/engine-version";
 
 // What keeps a simulation bit-identical in every JS engine (shared Live; docs/PARITY.md, "Across engines"): basic
 // IEEE arithmetic and Math.sqrt are exactly rounded everywhere, but Math.exp, Math.log, Math.pow and the other
@@ -26,9 +27,10 @@ function sources(dir: string): string[] {
 }
 
 describe("the simulator is bit-identical across JS engines", () => {
-  it("calls no transcendental Math function, and no ** (the engine's own code and the model it reads)", () => {
+  it("calls no transcendental Math function, and no ** (the engine, the model and the stencil data it reads)", () => {
     const found: string[] = [];
-    for (const file of [...sources("src/sim"), ...sources("src/model")]) {
+    // The same code the engine version hashes (scripts/engine-version.ts).
+    for (const file of ENGINE_SOURCES.flatMap(sources)) {
       if (NOT_SIMULATION.has(file)) continue;
       readFileSync(file, "utf8")
         .split("\n")

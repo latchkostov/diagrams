@@ -68,3 +68,15 @@ export const REPLAYED: ReadonlySet<LiveOpKind> = new Set<LiveOpKind>([
 ]);
 
 export const replayed = (entry: LogEntry) => REPLAYED.has(entry.op.kind);
+
+/** Frozen all the way down: what the log keeps can't change after it's logged, through any reader. */
+function freeze<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const item of Object.values(value)) freeze(item);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/** The log's own copy of an op: the caller may change its objects afterwards without changing history. */
+export const own = (op: LiveOp): LiveOp => freeze(structuredClone(op));

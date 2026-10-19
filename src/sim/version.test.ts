@@ -6,7 +6,7 @@ import { engineVersion } from "../../scripts/engine-version";
 import { ENGINE_VERSION } from "./version";
 
 describe("the engine version", () => {
-  it("is defined for this build: 12 hex digits of src/sim and src/model", () => {
+  it("is defined for this build: 12 hex digits of src/sim, src/model and src/stencils", () => {
     expect(ENGINE_VERSION).toMatch(/^[0-9a-f]{12}$/);
     expect(ENGINE_VERSION).toBe(engineVersion(process.cwd()));
   });
@@ -16,6 +16,7 @@ describe("the engine version", () => {
     onTestFinished(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, "src/sim"), { recursive: true });
     mkdirSync(join(root, "src/model"), { recursive: true });
+    mkdirSync(join(root, "src/stencils"), { recursive: true });
     writeFileSync(join(root, "src/sim/engine.ts"), "export const STEP = 10;\n");
     writeFileSync(join(root, "src/model/types.ts"), "export type X = 1;\n");
     const before = engineVersion(root);
@@ -24,6 +25,10 @@ describe("the engine version", () => {
     writeFileSync(join(root, "src/sim/engine.ts"), "export const STEP = 10;\r\n");
     expect(engineVersion(root)).toBe(before);
     writeFileSync(join(root, "src/sim/engine.ts"), "export const STEP = 20;\n");
-    expect(engineVersion(root)).not.toBe(before);
+    const changed = engineVersion(root);
+    expect(changed).not.toBe(before);
+    // The stencil data the engine runs on counts too (roles, device throughput, defaults).
+    writeFileSync(join(root, "src/stencils/roles.ts"), "export const ROLE = 1;\n");
+    expect(engineVersion(root)).not.toBe(changed);
   });
 });

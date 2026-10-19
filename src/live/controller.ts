@@ -43,8 +43,7 @@ import { autoScale } from "../sim/scale";
 import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
 import { snapshotContinuity } from "./snapshotContinuity";
-import { replayed, tickTime, timeTick, type LiveOp, type LogEntry } from "./controlLog";
-import { runDigest } from "../sim/digest";
+import { own, replayed, tickTime, timeTick, type LiveOp, type LogEntry } from "./controlLog";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
 /** Sim time one press of "step" advances. */
@@ -162,6 +161,11 @@ export class LiveController {
   private checkpoints: { cp: SimulationRunCheckpoint; seq: number }[] = [];
   private log: LogEntry[] = [];
   private seq = 0;
+  /** The last logged op the engine's state reflects: `seq` live, behind it while a replay catches up. */
+  private applied = 0;
+  /** Logged tweaks a newer panel or diagram edit replaced, by seq: the props keys (and "status") replay skips. */
+  private superseded = new Map<number, Set<string>>();
+  private replayChunk: ((budgetMs: number) => void) | undefined;
   private run = 0;
   private opListeners = new Set<(entry: LogEntry) => void>();
   private runState: SimulationRunState | null = null;
@@ -215,24 +219,29 @@ export class LiveController {
   }
 
   /**
-   * A digest of the run's state now (src/sim/digest.ts): two runs that played the same ticks with the same ops
-   * agree, in any browser. Shared Live compares them every few seconds.
+   * The engine the run is on, for shared Live's digests (src/sim/digest.ts `runDigest`: two runs that played the
+   * same ticks with the same ops agree on it, in any browser). Shared Live loads the digest with its own code.
    */
-  digest(): number {
-    return runDigest(this.engine);
+  get simEngine(): SimEngine {
+    return this.engine;
   }
 
-  /** Applies an engine tweak now and logs it on this tick. */
+  /** Applies an engine tweak now and logs it on this tick (after any replay in progress has caught up). */
   private apply(op: LiveOp): void {
+    this.finishReplay();
     this.execute(op);
     this.record(op);
     this.dirty = true;
     this.publish();
   }
 
+  /** Logs an op on this tick. The log keeps its own frozen copy, and only the latest Inputs snapshot. */
   private record(op: LiveOp): void {
-    const entry: LogEntry = { run: this.run, seq: ++this.seq, tick: this.tick, op };
+    const entry: LogEntry = Object.freeze({ run: this.run, seq: ++this.seq, tick: this.tick, op: own(op) });
+    if (op.kind === "inputs") this.log = this.log.filter((e) => e.op.kind !== "inputs");
     this.log.push(entry);
+    // Live, every op is reflected at once; a replay advances `applied` as it reaches each one.
+    if (this.replayTarget === null) this.applied = this.seq;
     for (const listener of this.opListeners) listener(entry);
   }
 
@@ -240,7 +249,68 @@ export class LiveController {
   private newRun(): void {
     this.run++;
     this.seq = 0;
+    this.applied = 0;
     this.log = [];
+    this.superseded = new Map();
+  }
+
+  /**
+   * A panel or diagram edit replaced these props (and statuses) from now on: older logged tweaks of the same
+   * node and key no longer apply when the run is replayed, so the newer choice keeps precedence.
+   */
+  private supersede(changed: ReadonlyMap<string, ReadonlySet<string>>): void {
+    if (!changed.size) return;
+    for (const e of this.log) {
+      if (e.op.kind !== "props" && e.op.kind !== "status") continue;
+      const keys = changed.get(e.op.node);
+      if (!keys) continue;
+      const hit =
+        e.op.kind === "props"
+          ? Object.keys(e.op.patch).filter((k) => keys.has(k))
+          : keys.has("status")
+            ? ["status"]
+            : [];
+      if (!hit.length) continue;
+      const set = this.superseded.get(e.seq) ?? new Set<string>();
+      for (const k of hit) set.add(k);
+      this.superseded.set(e.seq, set);
+    }
+  }
+
+  /** The node props keys whose values differ between two override maps (by node). */
+  private static changedKeys(
+    before: Record<string, Record<string, unknown>> | undefined,
+    after: Record<string, Record<string, unknown>> | undefined,
+  ): Map<string, Set<string>> {
+    const out = new Map<string, Set<string>>();
+    for (const id of new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])) {
+      const a = before?.[id] ?? {},
+        b = after?.[id] ?? {};
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
+        (k) => valueKey(a[k]) !== valueKey(b[k]),
+      );
+      if (keys.length) out.set(id, new Set(keys));
+    }
+    return out;
+  }
+
+  /** A logged op as a replay applies it: a copy, without what a newer edit superseded (null: nothing left). */
+  private replayOp(entry: LogEntry): LiveOp | null {
+    const gone = this.superseded.get(entry.seq);
+    const op = structuredClone(entry.op) as LiveOp;
+    if (!gone) return op;
+    if (op.kind === "status") return gone.has("status") ? null : op;
+    if (op.kind !== "props") return op;
+    const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => !gone.has(k)));
+    return Object.keys(patch).length ? { ...op, patch: patch as NodeSimProps } : null;
+  }
+
+  /** Runs a replay in progress to its end now (a live op must land after it, on the run's real tick). */
+  private finishReplay(): void {
+    if (this.replayTarget === null || !this.replayChunk) return;
+    this.replayFrame?.();
+    this.replayFrame = undefined;
+    this.replayChunk(Infinity);
   }
 
   /** What an engine op does, live or replayed on its tick. */
@@ -286,10 +356,15 @@ export class LiveController {
     return this.log.filter((e) => e.seq > seq && e.tick <= tick && replayed(e));
   }
 
-  /** Applies the pending ops whose tick the run has reached; returns the next cursor. */
+  /** Applies the pending ops whose tick the run has reached; returns the next cursor. `applied` follows. */
   private reapply(pending: readonly LogEntry[], cursor: number): number {
     const now = this.tick;
-    while (cursor < pending.length && pending[cursor].tick <= now) this.execute(pending[cursor++].op);
+    while (cursor < pending.length && pending[cursor].tick <= now) {
+      const entry = pending[cursor++];
+      const op = this.replayOp(entry);
+      if (op) this.execute(op);
+      this.applied = entry.seq;
+    }
     return cursor;
   }
 
@@ -634,7 +709,7 @@ export class LiveController {
     const target = Math.max(0, targetMs);
     this.continuity = {};
     this.cancelReplay();
-    let after = this.seq;
+    let after = this.applied;
     if (target < this.snapshot().time - 1) {
       const rootId = this.engine.tracer.followed(),
         pending = this.engine.tracer.pending();
@@ -650,7 +725,7 @@ export class LiveController {
         this.checkpoints = this.checkpoints.filter((p) => p.cp.time <= found.cp.time);
         this.applySpeed();
         this.engine.setTraffic(this.traffic);
-        after = found.seq;
+        after = this.applied = found.seq;
       } else {
         this.build();
         after = 0;
@@ -721,6 +796,9 @@ export class LiveController {
    * stay on top. Prop and multiplier changes patch the running run; anything else replays it.
    */
   setBase(sim: Simulation): void {
+    this.supersede(
+      LiveController.changedKeys(this.sim?.setup?.props, effectiveSimulation(sim, this.inputs).setup?.props),
+    );
     this.base = sim;
     this.record({ kind: "base", simulation: sim });
     this.applyInputs();
@@ -758,6 +836,7 @@ export class LiveController {
       )
     )
       throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
+    this.supersede(LiveController.changedKeys(previous, props));
     this.inputs = inputs;
     this.record({ kind: "inputs", inputs });
     this.applyInputs();
@@ -877,6 +956,7 @@ export class LiveController {
     this.replayTimer = undefined;
     this.replayFrame?.();
     this.replayFrame = undefined;
+    this.replayChunk = undefined;
     if (!keepTarget) this.replayTarget = null;
   }
 
@@ -901,35 +981,40 @@ export class LiveController {
       // Free play starts over (nothing to replay to); so does its log. A run at its start keeps tick 0's tweaks.
       if (!this.runner) this.newRun();
       else this.reapply(this.pendingAfter(0, 0), 0);
+      this.applied = this.seq;
       this.replayTarget = null;
       this.publish();
       return;
     }
     this.replayTarget = target;
     const runner = this.runner;
+    // The rebuilt origin reflects no op yet: checkpoints taken on the way record how far the replay got.
     const pending = this.pendingAfter(0, timeTick(target));
     let cursor = 0;
-    const chunk = () => {
+    const chunk = (budgetMs: number) => {
       this.replayFrame = undefined;
       const start = performance.now();
-      for (let slices = 0; slices < 20; slices++) {
+      for (let slices = 0; budgetMs === Infinity || slices < 20; slices++) {
         cursor = this.reapply(pending, cursor);
         const s = runner.state();
         if (s.done || s.time >= target - 5) {
           this.replayTarget = null;
+          this.replayChunk = undefined;
+          this.applied = this.seq;
           break;
         }
         if (s.waiting) runner.resume();
         else runner.step(Math.min(100, target - s.time, this.untilNext(pending, cursor)) / this.speed);
         this.captureCheckpoint();
-        if (performance.now() - start >= 6) break;
+        if (performance.now() - start >= budgetMs) break;
       }
       this.dirty = true;
       this.publish();
-      if (this.replayTarget !== null) this.yieldReplay(chunk);
+      if (this.replayTarget !== null) this.yieldReplay(() => chunk(6));
     };
+    this.replayChunk = chunk;
     // The first slice is bounded too; even replayDelayMs: 0 never seeks synchronously.
-    chunk();
+    chunk(6);
   }
 
   // ---------------------------------------------------------------- live tweaks (engine only)
@@ -1034,6 +1119,11 @@ export class LiveController {
     this.engine.setNodePropsBatch(patches);
     this.diagram = next;
     if (patched) {
+      const changed = new Map<string, Set<string>>();
+      for (const [id, delta] of Object.entries(patches))
+        if (Object.keys(delta).length) changed.set(id, new Set(Object.keys(delta)));
+      for (const id of Object.keys(statuses)) changed.set(id, (changed.get(id) ?? new Set()).add("status"));
+      this.supersede(changed);
       this.record({ kind: "patch", patches, statuses });
       if (!this.sim) this.applyInputs();
       this.checkpoints = [];
@@ -1067,7 +1157,7 @@ export class LiveController {
     const time = this.runner.state().time;
     const last = this.checkpoints.at(-1);
     if (!force && last && time < last.cp.time + 5000) return;
-    this.checkpoints.push({ cp: this.runner.checkpoint(), seq: this.seq });
+    this.checkpoints.push({ cp: this.runner.checkpoint(), seq: this.applied });
     // Keep the origin and at most 23 recent samples (~two minutes); old tokens are GC-able.
     if (this.checkpoints.length > 24) this.checkpoints.splice(1, 1);
   }
@@ -1109,6 +1199,8 @@ export class LiveController {
       this.diagram.planning,
     );
     this.checkpoints = [];
+    // A fresh engine reflects no logged op: whoever replays the log moves this on.
+    this.applied = 0;
     this.captureCheckpoint(true);
     this.generation++;
     this.dirty = true;

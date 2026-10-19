@@ -1,4 +1,4 @@
-// The simulation engine's version (scripts/engine-version.ts): a hash of src/sim and src/model, defined at build
+// The simulation engine's version (scripts/engine-version.ts): a hash of src/sim, src/model and src/stencils, defined at build
 // time. Copies with the same version run a simulation identically; shared Live won't follow across versions.
 // Code loaded without the app's build (a script's own loader) reads "unversioned".
 

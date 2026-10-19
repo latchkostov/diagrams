@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile, Simulation } from "../model/types";
 import kafka from "../examples/kafka-order-pipeline.json";
+import { runDigest } from "../sim/digest";
 import { LiveController } from "./controller";
 import { emptyInputs } from "./capacityModel";
 import { tickTime } from "./controlLog";
@@ -46,7 +47,7 @@ function playTo(c: LiveController, ms: number) {
 function digestAt(c: LiveController, ms: number) {
   c.seek(ms);
   expect(tickTime(c.tick)).toBe(ms);
-  return c.digest();
+  return runDigest(c.simEngine);
 }
 
 const TWEAK = { node: "inventory", patch: { replicas: 1, latencyMs: 400 } };
@@ -104,7 +105,7 @@ describe("the control log", () => {
     expect(digestAt(untouched, 29_000)).not.toBe(expected);
   });
 
-  it("injections, faults and statuses replay on their ticks too", () => {
+  it("injections and statuses replay on their ticks too", () => {
     const act = (c: LiveController) => {
       playTo(c, 16_000);
       c.inject("gateway", 400);
@@ -121,6 +122,137 @@ describe("the control log", () => {
     act(scrubbed);
     playTo(scrubbed, 40_000);
     expect(digestAt(scrubbed, 19_000)).toBe(expected);
+  });
+
+  it("fault overlays survive checkpoint seeks and rate rebuilds", () => {
+    vi.useFakeTimers();
+    const act = (c: LiveController) => {
+      playTo(c, 16_000);
+      c.setFault({ kind: "slow", node: "inventory", factor: 5 });
+      playTo(c, 17_000);
+      c.setFault({ kind: "slow", node: "inventory", factor: 10 });
+      playTo(c, 18_000);
+      c.setFault({ kind: "boundary", boundary: "aks", down: true });
+      playTo(c, 18_500);
+      c.setFault({ kind: "fail", node: "payments", rate: 0.5 });
+    };
+    const read = (c: LiveController) => ({
+      faults: c.snapshot().faults,
+      inventory: c.snapshot().nodes.inventory.status,
+      processed: c.snapshot().nodes.inventory.processed,
+      digest: runDigest(c.simEngine),
+    });
+    const straight = controller();
+    act(straight);
+    straight.seek(19_000);
+    const expected = read(straight);
+    // A slowdown (changed once), a boundary down and a failure rate. (This diagram has no network links to cut.)
+    expect(expected.faults).toEqual([
+      { kind: "slow", node: "inventory", factor: 10 },
+      { kind: "boundary", boundary: "aks", down: true },
+      { kind: "fail", node: "payments", rate: 0.5 },
+    ]);
+    // A seek back over all of them from 40 s.
+    const scrubbed = controller();
+    act(scrubbed);
+    playTo(scrubbed, 40_000);
+    scrubbed.seek(19_000);
+    expect(read(scrubbed)).toEqual(expected);
+    // A rebuild at 19 s (an entry rate): the overlays apply again on their ticks.
+    const rated = controller();
+    rated.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    vi.runAllTimers();
+    act(rated);
+    rated.seek(19_000);
+    const ratedExpected = read(rated);
+    const rebuilt = controller();
+    act(rebuilt);
+    rebuilt.seek(19_000);
+    rebuilt.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    vi.runAllTimers();
+    expect(read(rebuilt)).toEqual(ratedExpected);
+  });
+
+  it("scrubbing after a rate rebuild preserves later logged tweaks", () => {
+    vi.useFakeTimers();
+    const rates = { ...emptyInputs(), rates: { shopper: 450 } };
+    const act = (c: LiveController) => {
+      playTo(c, 27_000);
+      c.setNodeProps(TWEAK.node, TWEAK.patch);
+      playTo(c, 28_000);
+      c.setNodeStatus("payments", "down");
+    };
+    // Uninterrupted: the rate from the start (a rebuild rewrites history), the tweak and the outage, on to 29 s.
+    const straight = controller();
+    straight.setInputs(rates);
+    vi.runAllTimers();
+    act(straight);
+    const expected = digestAt(straight, 29_000);
+    // The tweak and outage, on to 40 s, the rate rebuilt to 40 s, then back to 29 s: the checkpoints the rebuild
+    // took record how far it had replayed, so the seek applies both again.
+    const c = controller();
+    act(c);
+    playTo(c, 40_000);
+    c.setInputs(rates);
+    vi.runAllTimers();
+    expect(tickTime(c.tick)).toBe(40_000);
+    expect(digestAt(c, 29_000)).toBe(expected);
+    expect(c.effectiveProps(TWEAK.node)).toMatchObject(TWEAK.patch);
+    expect(c.snapshot().nodes.payments.status).toBe("down");
+  });
+
+  it("a newer Inputs & capacity edit of a property wins over an older live tweak, after any rebuild", () => {
+    vi.useFakeTimers();
+    const c = controller();
+    playTo(c, 20_000);
+    c.setNodeProps("inventory", { latencyMs: 400 });
+    playTo(c, 25_000);
+    const props = { inventory: { latencyMs: 200 } };
+    c.setInputs({ ...emptyInputs(), props });
+    expect(c.effectiveProps("inventory").latencyMs).toBe(200);
+    playTo(c, 30_000);
+    c.setInputs({ ...emptyInputs(), props, rates: { shopper: 450 } });
+    vi.runAllTimers();
+    expect(tickTime(c.tick)).toBe(30_000);
+    // The engine agrees with the panel, and the superseded tweak isn't listed as one.
+    expect(c.effectiveProps("inventory").latencyMs).toBe(200);
+    expect(c.getState().inputs.props).toEqual(props);
+    expect(c.getState().tweaks.get("inventory")?.props.latencyMs).toBeUndefined();
+    // A tweak of another property, made before, still replays.
+    const d = controller();
+    playTo(d, 20_000);
+    d.setNodeProps("inventory", { latencyMs: 400, replicas: 1 });
+    playTo(d, 25_000);
+    d.setInputs({ ...emptyInputs(), props });
+    playTo(d, 30_000);
+    d.setInputs({ ...emptyInputs(), props, rates: { shopper: 450 } });
+    vi.runAllTimers();
+    expect(d.effectiveProps("inventory")).toMatchObject({ latencyMs: 200, replicas: 1 });
+  });
+
+  it("the log owns its ops: changing an object after passing it changes neither the engine nor history", () => {
+    const straight = controller();
+    playTo(straight, 27_000);
+    straight.setNodeProps(TWEAK.node, { ...TWEAK.patch });
+    const expected = digestAt(straight, 29_000);
+    const c = controller();
+    playTo(c, 27_000);
+    const patch: { replicas: number; latencyMs: number } = { ...TWEAK.patch };
+    c.setNodeProps(TWEAK.node, patch);
+    patch.latencyMs = 800;
+    playTo(c, 45_000);
+    expect(digestAt(c, 29_000)).toBe(expected);
+    expect(c.effectiveProps(TWEAK.node).latencyMs).toBe(TWEAK.patch.latencyMs);
+    const entry = c.controlLog().find((e) => e.op.kind === "props");
+    expect(Object.isFrozen(entry)).toBe(true);
+    expect(entry?.op.kind === "props" && Object.isFrozen(entry.op.patch)).toBe(true);
+  });
+
+  it("keeps only the latest Inputs snapshot (a slider drag doesn't grow the log)", () => {
+    const c = controller();
+    playTo(c, 2_000);
+    for (let i = 1; i <= 50; i++) c.setInputs({ ...emptyInputs(), traffic: 1 + i / 100 });
+    expect(c.controlLog().filter((e) => e.op.kind === "inputs")).toHaveLength(1);
   });
 
   it("a scrub back before a tweak cuts the log there: the tweak is a branch no longer taken", () => {
@@ -155,7 +287,7 @@ describe("the control log", () => {
     c.setInputs(inputs);
     vi.runAllTimers();
     expect(tickTime(c.tick)).toBe(30_000);
-    expect(c.digest()).toBe(expected);
+    expect(runDigest(c.simEngine)).toBe(expected);
     expect(c.getState().tweaks.get(TWEAK.node)?.props).toMatchObject(TWEAK.patch);
   });
 
@@ -177,7 +309,7 @@ describe("the run digest", () => {
     const long = controller();
     long.advance(20_000);
     expect(tickTime(long.tick)).toBe(tickTime(frames.tick));
-    expect(long.digest()).toBe(frames.digest());
+    expect(runDigest(long.simEngine)).toBe(runDigest(frames.simEngine));
   });
 
   it("is the same for the same run, and moves as the run does", () => {
@@ -185,11 +317,11 @@ describe("the run digest", () => {
     const b = controller();
     playTo(a, 10_000);
     playTo(b, 10_000);
-    expect(a.digest()).toBe(b.digest());
-    const at10 = a.digest();
+    expect(runDigest(a.simEngine)).toBe(runDigest(b.simEngine));
+    const at10 = runDigest(a.simEngine);
     playTo(a, 15_000);
-    expect(a.digest()).not.toBe(at10);
-    expect(a.digest()).toBeGreaterThanOrEqual(0);
-    expect(Number.isInteger(a.digest())).toBe(true);
+    expect(runDigest(a.simEngine)).not.toBe(at10);
+    expect(runDigest(a.simEngine)).toBeGreaterThanOrEqual(0);
+    expect(Number.isInteger(runDigest(a.simEngine))).toBe(true);
   });
 });
