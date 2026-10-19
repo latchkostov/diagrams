@@ -41,6 +41,18 @@ in Vercel.
   and with the owner's approval.
 - **README** has an Edit together feature line and the two new docs.
 
+### Switch-on
+
+- **Approval.** The owner approved switching Edit together on for livediagrams.dev on 18 October 2026, after testing
+  it on a production-mode preview. It goes live when `VITE_ENABLE_COLLAB=1` is set in Vercel and the site redeploys.
+- **Privacy policy.** Its effective date is now 18 October 2026, so it covers the Edit together paragraph. The
+  page's pinned markup hash is updated to match.
+- **Trackers.** Their terms are checked: both describe themselves as free public trackers, with no terms, usage
+  limits or attribution requirements published. `EDIT-TOGETHER.md` gains a Thanks section crediting OpenWebTorrent,
+  webtorrent.dev and Cloudflare's STUN.
+- **Runbook prerequisites.** Each is now marked with its date and status. The manual network matrix and the 7
+  Nightly nights weren't complete at switch-on, and the runbook says so.
+
 ### E8 review fixes
 
 - **Own endpoints don't confine peers.** SELF-HOSTING no longer says a room "contacts nothing outside your network".

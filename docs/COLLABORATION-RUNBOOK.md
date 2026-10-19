@@ -6,15 +6,22 @@ are in [EDIT-TOGETHER.md](EDIT-TOGETHER.md).
 
 ## Before switching on
 
-The plan's prerequisites:
+The plan's prerequisites, as they stood at switch-on (18 October 2026). The owner approved switching on that day,
+after testing rooms on a production-mode preview.
 
-- E1–E5, E7 and E8 have merged.
-- The manual network matrix (below) is recorded.
-- At least 7 nights of the Nightly network smoke are recorded, with no unexplained failures.
-- The owner has signed off on the decisions in §2.8 of the plan.
-- The two trackers' terms are checked, and their operators contacted and credited
-  ([threat model](research/collaboration-threat-model.md), residual risk 5).
-- Private diagrams stay blocked. Nothing here changes that.
+- [x] **E1–E5 and E7 merged** (E7, #186, on 18 October 2026). **E8** (#187) ships alongside the switch.
+- [ ] **The manual network matrix (below).** Not recorded as a table yet. The owner's preview test on 18 October
+      2026 stood in for it at switch-on. Record M1–M3 when you can: they decide whether TURN is needed.
+- [ ] **7 Nightly smoke nights.** The smoke started on 18 October 2026 (E6, #185), so fewer than 7 nights were
+      recorded at switch-on. Keep watching it (below).
+- [x] **The owner signed off** on the decisions in §2.8 of the plan, and approved switch-on (18 October 2026).
+- [x] **The trackers' terms were checked** (18 October 2026). OpenWebTorrent describes its tracker as "free for anyone
+      to use", with problems reported as issues on its `openwebtorrent-www` GitHub repository. webtorrent.dev describes
+      its tracker as "a free-to-use, public WebTorrent tracker", running Aquatic and not associated with WebTorrent LLC.
+      Neither publishes terms, usage limits or attribution requirements. Both are credited in
+      [EDIT-TOGETHER.md](EDIT-TOGETHER.md#thanks). Neither lists a contact other than that, so they haven't been
+      contacted ([threat model](research/collaboration-threat-model.md), residual risk 5).
+- [x] **Private diagrams stay blocked.** Nothing here changes that.
 
 The site's CSP already allows the two approved trackers (`vercel.json`, generated from
 `scripts/security-headers.ts`). STUN can't be governed by CSP: it is fixed in the build. Nothing contacts any of them

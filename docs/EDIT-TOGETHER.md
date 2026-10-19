@@ -77,3 +77,11 @@ run a relay server for them. A self-hosted copy can configure its own (a TURN se
 
 The details are in the [threat model](research/collaboration-threat-model.md) and the
 [privacy audit](PRIVACY-AUDIT.md).
+
+## Thanks
+
+On livediagrams.dev, rooms find each other through two free public WebTorrent trackers, run by volunteers:
+[OpenWebTorrent](https://openwebtorrent.com/) (`tracker.openwebtorrent.com`) and
+[webtorrent.dev](https://tracker.webtorrent.dev/) (`tracker.webtorrent.dev`, running Aquatic; it isn't associated
+with WebTorrent LLC). Browsers learn their public address from Cloudflare's free STUN service. Thank you to everyone
+who runs them.
