@@ -1,4 +1,6 @@
-## Benchmark off-pane setup under full-gate load
+## Benchmark off-pane setup (resolved)
+
+Root cause: the canvas-pane test id added in this PR made `Bench.emptySpot()` reject every point, because it accepted only rf__wrapper or canvas-wrap as the nearest test id. Fixed in tests/bench/ui/harness.ts. It was deterministic on this branch, not load-related; the clean-master comparison passed because master lacks the tag.
 
 The single full Linux gate for the Follow-ups 13 review fixes failed the unchanged
 `bench-harness.spec.ts` test “benchmark fits an off-pane card through the app before clicking it”.
