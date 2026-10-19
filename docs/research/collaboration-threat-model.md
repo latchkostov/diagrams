@@ -259,6 +259,11 @@ What the production feature adds to the model above.
   - **Where they ship.** They are defined only in the room's own lazy chunk, and kept out of `import.meta.env`, so
     they never ship at startup or in a build without rooms.
   - **Nothing in the app edits them.** That matters because CSP can't govern STUN or TURN.
+  - **They don't confine peer traffic.** The transport sets only `iceServers`. A browser still runs connectivity
+    checks to every candidate a peer advertises, and may connect to it directly. So a member with an outside
+    address, or one who advertises one deliberately, can draw traffic out of a network. Naming TURN adds a relay but
+    doesn't force relay-only (`iceTransportPolicy` stays `all`). Confining peers needs network egress controls; the
+    self-hosting guide says so.
 - **CSP.** In a rooms build, `connect-src` adds exactly the trackers' origins for the app, never for embeds
   (`scripts/security-headers.ts`, `src/collab/policy.test.ts`). `tests/e2e/csp.spec.ts` checks three things:
   - two browsers meet under the real headers;

@@ -116,17 +116,26 @@ A malformed value stops the build rather than shipping a copy that can't connect
 
 **On locked-down or corporate networks** (full-tunnel VPNs, strict firewalls, some mobile hotspots), browsers may
 not be able to connect directly. Peers then need a TURN server to relay their encrypted traffic. You can run your own,
-coturn for example, and name it with `VITE_COLLAB_TURN`. Set `VITE_COLLAB_STUN=none` to keep STUN on your
-network too.
+coturn for example, and name it with `VITE_COLLAB_TURN`. Set `VITE_COLLAB_STUN=none` (or name your own STUN server)
+so the browser doesn't ask a public one for its address.
 
 **Your own tracker.** Any WebTorrent-compatible WebSocket tracker works, for example
 [bittorrent-tracker](https://github.com/webtorrent/bittorrent-tracker) with WebSocket support. Serve it over `wss://`
 on a host your users' browsers can reach, and set `VITE_COLLAB_TRACKERS=wss://tracker.example.com`. With your own
-trackers, STUN set to `none` (or your own) and a TURN server if needed, a room contacts nothing outside your network.
+trackers, STUN set to `none` (or your own) and your own TURN server if needed, rooms no longer depend on public
+matchmaking or public ICE services.
+
+> **These settings don't confine where peers connect.** The browsers in a room still try every address the others
+> advertise. A member whose browser advertises an outside address (at home, on a VPN, or on purpose) can make the
+> others run connectivity checks to it, and possibly connect directly, outside your network. Setting TURN doesn't
+> force relay-only connections either: it adds a relay, and direct paths are still tried. To keep peer traffic
+> inside your network, use network egress controls (firewall rules for the browsers' UDP and TCP traffic), and keep
+> the site behind your sign-in so only your people can open a room link.
 
 **Headers.** `pnpm headers:self-host`, the build's `headers.json` and the Docker image follow the same variables. With
 the switch on, the app's `connect-src` allows the trackers' origins (never an embed's, on hosts that can tell them
-apart). STUN and TURN aren't page requests, so CSP can't govern them: the compiled list is their allowlist.
+apart). STUN and TURN aren't page requests, so CSP can't govern them. The compiled list names the only STUN and TURN
+servers the app uses, but it doesn't limit which peer addresses a browser tries (see above).
 
 **Coming:** a relay server you host (`services/server`) will be able to carry rooms without public trackers. Its
 setup will be documented here when it ships.

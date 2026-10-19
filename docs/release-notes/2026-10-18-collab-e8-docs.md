@@ -41,6 +41,16 @@ in Vercel.
   and with the owner's approval.
 - **README** has an Edit together feature line and the two new docs.
 
+### E8 review fixes
+
+- **Own endpoints don't confine peers.** SELF-HOSTING no longer says a room "contacts nothing outside your network".
+  Your own trackers, STUN and TURN remove the dependency on public matchmaking and public ICE services. But browsers
+  still try every address a peer advertises, and TURN doesn't force relay-only connections. Keeping peer traffic
+  inside a network needs egress controls. The threat model and the endpoints module say the same.
+- **Configured providers, through the default path.** A test sets the provider variables and reads each config with
+  no arguments, the way the app does at startup. It checks every value and all three registry entries. Removing a
+  key from the config's named list fails it.
+
 ### E7 review fixes
 
 - **Tracker URLs are canonical.** `WSS://T.example.com` becomes `wss://t.example.com/`, and `ws://localhost` becomes
