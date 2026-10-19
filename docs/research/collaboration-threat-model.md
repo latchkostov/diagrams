@@ -531,11 +531,18 @@ host removes), which makes the epochs a single line.
   review P1: the removal was recorded and sent before the successor was checked, so at the last epoch it stuck, the
   person stayed in under the old key, and no later removal could be made). At the last epoch (31) Remove signs and
   sends nothing, and the host is told the room has reached its removal limit and to start a new room. A chain
-  travels in pieces a lobby message holds (2 MiB of JSON each, whole epochs in ancestor order, the wraps in the
-  last): a receiver takes each as it comes and acts on the last, so a chain of every supported epoch with full
-  rosters (over 4 MiB) reaches a member, a member catching up and a newcomer (fifth review P1: it was one message
-  over the lobby's limit, refused silently, and the room moved on without them); a deny sends the chain the same way
-  first. The re-key itself: the same document, sender id and Live run; a new sealer and opener (frames from any other epoch are
+  travels in pieces, each inside one frame (never fragmented, so each arrives whole in any order: whole epochs in
+  ancestor order, the wraps in the last); a receiver takes each as it comes, holds a wrap or a no whose epoch hasn't
+  arrived yet (a few) and looks at them again with every piece, so a chain of every supported epoch with full
+  rosters (over 4 MiB) reaches a member, a member catching up and a newcomer whatever the order (fifth review P1: it
+  was one message over the lobby's limit, refused silently, and the room moved on without them; sixth review P2: a
+  no arriving before its chain was dropped). A no names the epoch it's checked against; someone told no who knocks
+  again (still checking the chain, or trying again) is told again, not asked about. **Roster writes are one queue**
+  (sixth review P1s): this member's entries, an admission (its wrap and its entries) and a whole removal (draft,
+  successor, wraps, sealed messages, commit, re-key) run one at a time, each drafting against everything the last
+  committed, so two of them never sign into one slot (the tie-break dropped one: a handover, a policy, a removal
+  that silently didn't happen) and an action after a removal lands in its successor epoch; a removal that can't be
+  made (the room changed meanwhile) is said plainly to the host. The re-key itself: the same document, sender id and Live run; a new sealer and opener (frames from any other epoch are
   refused before decryption), bindings reset (they're signed per epoch), presence ordering restarted for the members
   left (their counters restart under the new keys) and dropped for the one removed (review P1), and the local copy
   re-written under the new epoch's storage key. Members follow on the bundle; a removed member's page sees the

@@ -218,6 +218,33 @@ export class SignedRoom {
     return this.roster.add(list, budget);
   }
 
+  private queue: Promise<unknown> = Promise.resolve();
+  private pending = 0;
+
+  /**
+   * This member's roster writes, one at a time: an entry, or a removal with everything that goes with it (its epoch's
+   * successor, the re-key). Each drafts against everything the last one committed, so no two of them sign into one
+   * slot (a tie-break would drop one) and an action after a removal lands in its successor epoch. With none under
+   * way, it starts at once (its frames keep their place among what's sent after it); else it waits its turn.
+   */
+  transact<T>(fn: () => Promise<T>): Promise<T> {
+    const start = async () => {
+      try {
+        return await fn();
+      } finally {
+        this.pending--;
+      }
+    };
+    const run = ++this.pending === 1 ? start() : this.queue.then(start);
+    this.queue = run.catch(() => {});
+    return run;
+  }
+
+  /** Once every roster write queued so far is done. */
+  get settled(): Promise<unknown> {
+    return this.queue;
+  }
+
   /** A new entry by this member, signed but not kept yet (a removal, until its epoch's successor is ready). */
   draft(
     op: RosterOp,

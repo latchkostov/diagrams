@@ -80,6 +80,11 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   - Smaller: waiting to be let in ends when everyone who answered leaves (the no-answer wait and Retry come back);
     knock cards keep their order; half-delivered lobby messages expire on the room clock; tests for Ask before people
     join off (the host, a co-host, neither).
+- **A sixth review** (one bug, four P1s): the host's roster writes (an entry, an admission, a whole removal with its
+  re-key) are one queue, so a removal overlapping Make host, a policy change or an admission never drops either; a
+  removal that can't be made says so ("{alias} wasn't removed: the room changed meanwhile."). A long chain's pieces
+  each fit one frame and are taken in any order; a no waits for its chain, and someone told no who knocks again is
+  told again.
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.
@@ -100,8 +105,8 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   client can still do, and what it adds to the crypto review's scope.
 
 Bundles: all new code is in the room's lazy chunk; startup, canvas first view and the Live session don't grow. i18n:
-thirteen new strings (`collab.knockingTitle`, `collab.knockingHint`, `collab.knockPrompt`, `collab.admit`,
-`collab.deny`, `collab.admitNamed`, `collab.denyNamed`, `collab.removePerson`, `collab.removalLimit`, `collab.askBeforeJoin`,
+fourteen new strings (`collab.knockingTitle`, `collab.knockingHint`, `collab.knockPrompt`, `collab.admit`,
+`collab.deny`, `collab.admitNamed`, `collab.denyNamed`, `collab.removePerson`, `collab.removalLimit`, `collab.removeFailed`, `collab.askBeforeJoin`,
 `collab.deniedNotice`, `collab.removedNotice`, `collab.unsupportedStart`) and two changed
 (`share.editTogetherDesc`, `collab.startLead`: the link lets people knock, not join), so the catalogs golden is
 re-recorded.

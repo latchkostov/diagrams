@@ -102,7 +102,8 @@ export type LobbyBody =
   | { t: "hello"; x: string; alias: string; scope?: string; proof?: string }
   /** `more`: one piece of a chain too long for one message; the rest follows (the last carries the wraps). */
   | { t: "bundle"; chain: ChainData; wraps: Wrap[]; more?: true }
-  | { t: "deny"; to: string; chain: ChainData };
+  /** `tip`: the epoch whose roster says who may deny (its chain sent before, in pieces, when it's long). */
+  | { t: "deny"; to: string; chain: ChainData; tip?: string };
 
 export interface LobbyMessage {
   /** The sender's identity key (the message is signed by it). */
@@ -171,15 +172,21 @@ export function parseBody(v: unknown): LobbyBody | undefined {
     }
     case "deny": {
       const chain = parseChainData(v.chain);
-      return key(v.to) && chain ? { t: "deny", to: v.to, chain } : undefined;
+      if (v.tip !== undefined && (typeof v.tip !== "string" || v.tip.length >= 120)) return undefined;
+      return key(v.to) && chain
+        ? { t: "deny", to: v.to, chain, ...(typeof v.tip === "string" ? { tip: v.tip } : {}) }
+        : undefined;
     }
     default:
       return undefined;
   }
 }
 
-/** A chain piece's JSON at most: well inside a lobby message, whatever the wraps add. */
-const MAX_PIECE_BYTES = 2 * 1024 * 1024;
+/**
+ * A chain piece's JSON at most: inside one frame (whatever the wraps add), so a piece never travels in fragments and
+ * each arrives whole, in whatever order (one epoch's roster, at most a few hundred KiB, always fits).
+ */
+const MAX_PIECE_BYTES = COLLAB_LIMITS.maxFragmentBytes - 128 * 1024;
 
 /**
  * A chain (in epoch order, each start with its log) as bundles a lobby message holds: one, or bounded pieces in
