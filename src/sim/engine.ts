@@ -88,6 +88,7 @@ import {
 import { routeTableCapable } from "../model/requestRouting";
 import { quotaRequirements, attemptQuotas, reconfigureQuotas, type QuotaRequirement } from "./admission";
 import { QUOTA_UNITS } from "../model/admission";
+import { occupancyFraction, type CallerOccupancy } from "./callerOccupancy";
 
 import type {
   RouteCounts,
@@ -164,7 +165,7 @@ interface Delivery {
   original: Message;
 }
 interface Work {
-  slotStart?: { elapsed: number; clock: number; workClock: number; workMs: number };
+  slotStart?: { elapsed: number; clock: number; workClock: number; workMs: number; reservation?: CallerOccupancy };
   replyDelayMs?: number;
   waitingCall?: number;
   outputs?: Edge[];
@@ -208,6 +209,7 @@ interface Node {
   slotElapsed: number;
   slotCredit: number;
   slotReleases: Logical[];
+  reservationReleases: Logical[];
   latency?: LatencyRecorder;
   fleet?: Fleet;
   id: string;
@@ -780,15 +782,44 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function startSlot(node: Node, work: Work): void {
     if (!node.waits || node.role !== "processor" || scale === 1) return;
-    const credit = node.slotCredit / Math.max(1, Math.ceil(slots(node) / scale) - busy(node));
+    const reservation = work.lease;
+    const clock = reservation ? node.slotElapsed * occupancyFraction(reservation) : node.slotClock;
+    const credit = reservation ? 0 : node.slotCredit / Math.max(1, Math.ceil(slots(node) / scale) - busy(node));
     work.slotStart = {
       elapsed: node.slotElapsed,
-      clock: node.slotClock - credit,
-      workClock: node.slotClock,
-      workMs: work.remaining,
+      clock: clock - credit,
+      workClock: clock,
+      // Managed retries choose their endpoint's service time when admission renews after backoff.
+      workMs: work.retryAdmissionAt === undefined ? work.remaining : (work.waitRemaining ?? 0),
+      reservation,
     };
     work.replyDelayMs = undefined;
     node.slotCredit -= credit;
+  }
+
+  function callerClock(node: Node, work: Work): number {
+    const reservation = work.slotStart?.reservation;
+    return reservation ? node.slotElapsed * occupancyFraction(reservation) : node.slotClock;
+  }
+
+  function scheduleCallerRelease(call: Call, end: number): void {
+    const reservation = call.work.slotStart?.reservation;
+    pushDue(reservation ? call.node.reservationReleases : call.node.slotReleases, {
+      id: nextLogical++,
+      end: reservation ? end / occupancyFraction(reservation) : end,
+      call: call.id,
+    });
+  }
+
+  function drainCallerReleases(node: Node, releases: Logical[], clock: number): void {
+    while (releases.length && releases[0].end <= clock + 1e-9) {
+      const release = popDue(releases);
+      const call = calls.get(release.call!);
+      if (call) {
+        settleCall(call, call.ready!);
+        if (call.local && !node.fleet) admitPending(node);
+      }
+    }
   }
 
   /** Invisible decoration owns counts only, never messages or their connected graph. */
@@ -1298,19 +1329,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   /** Choose each branch once, then join Requests before publishing Messages or replying upstream. */
-  function beginCall(node: Node, work: Work): boolean {
+  function beginCall(node: Node, work: Work, ok = true): boolean {
     if (!node.waits) return false;
     let message = work.message;
     if (node.role === "processor" || node.role === "none") {
       message = rename(message, emittedType(node.props.emits, message.type));
     }
-    let outgoing = work.route
-      ? [work.route.edge]
-      : node.outgoing.filter(
-          (edge) =>
-            accepts(edge, edge.requestRoute ? addressedView(message, edge.requestRoute) : message) &&
-            (node.role === "gateway" || takesShare(edge)),
-        );
+    let outgoing = !ok
+      ? []
+      : work.route
+        ? [work.route.edge]
+        : node.outgoing.filter(
+            (edge) =>
+              accepts(edge, edge.requestRoute ? addressedView(message, edge.requestRoute) : message) &&
+              (node.role === "gateway" || takesShare(edge)),
+          );
     if (!work.route && node.role === "gateway" && outgoing.length) {
       const healthy = node.props.healthChecks ? outgoing.filter((e) => e.to.status !== "down" && !cut(e)) : outgoing;
       const pool = healthy.length ? healthy : outgoing;
@@ -1327,12 +1360,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // another per-request hold; charge the local clock's real work, rounded like scale 1.
       durationMs = Math.min(
         elapsed,
-        Math.ceil((Math.max(work.slotStart.workMs, node.slotClock - work.slotStart.workClock) - 1e-6) / STEP) * STEP,
+        Math.ceil((Math.max(work.slotStart.workMs, callerClock(node, work) - work.slotStart.workClock) - 1e-6) / STEP) *
+          STEP,
       );
       work.replyDelayMs = elapsed - durationMs;
     }
-    if (!requests.length && work.slotStart!.clock + durationMs! <= node.slotClock + 1e-9) {
-      node.slotCredit += Math.max(0, node.slotClock - work.slotStart!.clock - durationMs!);
+    if (!requests.length && work.slotStart!.clock + durationMs! <= callerClock(node, work) + 1e-9) {
+      if (!work.slotStart!.reservation)
+        node.slotCredit += Math.max(0, node.slotClock - work.slotStart!.clock - durationMs!);
       work.slotStart = undefined;
       return false;
     }
@@ -1366,10 +1401,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // Type filters can leave only local work. Its fractional residence is work,
       // and releasing it can admit the next batch on this tick, as at scale 1.
       call.local = true;
-      call.ready = true;
+      call.ready = ok;
       call.slotEnd = work.slotStart!.clock + durationMs!;
       node.localCalls++;
-      pushDue(node.slotReleases, { id: nextLogical++, end: call.slotEnd, call: call.id });
+      scheduleCallerRelease(call, call.slotEnd);
     }
     for (const edge of requests) {
       edge.calls.inFlight++;
@@ -1408,26 +1443,36 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       call.ready = ok;
       return;
     }
-    if (ok && call.held && work.slotStart && node.status === "up") {
+    if (call.held && work.slotStart && node.status === "up" && !work.terminating) {
       // One dot still represents `scale` real requests. With a partial pool it occupies
       // a fraction of that weight, for proportionally longer, including downstream wait.
       // Non-resource callers admit before replies settle, leaving one tick between batches.
       // Include its fractional part so that gap scales with the occupied pool too.
+      const retaining =
+        !ok &&
+        work.delivery &&
+        node.props.retry === "inplace" &&
+        work.message.attempts + 1 < work.delivery.broker.props.maxDeliveryCount &&
+        canRetain(node, work);
       const end =
         call.slotEnd ??
         work.slotStart.clock +
           (call.durationMs ?? node.slotElapsed - work.slotStart.elapsed) +
-          (node.fleet ? 0 : STEP * (1 - slotFraction(node)));
-      if (end > node.slotClock + 1e-9) {
+          (node.fleet || (retaining && !node.props.admission)
+            ? 0
+            : STEP *
+              (1 - (work.slotStart.reservation ? occupancyFraction(work.slotStart.reservation) : slotFraction(node))));
+      if (end > callerClock(node, work) + 1e-9) {
         if (call.slotEnd === undefined) {
           call.slotEnd = end;
           call.ready = ok;
-          pushDue(node.slotReleases, { id: nextLogical++, end, call: call.id });
+          scheduleCallerRelease(call, end);
         }
         return;
       }
       // Carry tick rounding forward rather than losing part of the pool every cycle.
-      if (call.slotEnd !== undefined) node.slotCredit += Math.max(0, node.slotClock - end);
+      if (call.slotEnd !== undefined && !work.slotStart.reservation)
+        node.slotCredit += Math.max(0, node.slotClock - end);
     }
     calls.delete(call.id);
     node.calls.delete(call.id);
@@ -1617,6 +1662,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         work.retained = true;
         if (node.props.admission) work.retryAdmissionAt = time + node.props.retryBackoffMs;
+        // Retaining the pool does not retain the previous attempt's completed residence.
+        if (node.status === "up") startSlot(node, work);
       } else {
         releaseAdmission(admission, work.lease);
         work.lease = undefined;
@@ -1652,6 +1699,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       (node.role === "processor" || node.props.admission || node.faultRate !== undefined) &&
       random() < (node.faultRate ?? work.errorRate ?? node.props.failureRate)
     ) {
+      if (work.slotStart && beginCall(node, work, false)) return;
       fail(node, work);
       return;
     }
@@ -1683,7 +1731,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function reserveAdmission(node: Node, work: Work): boolean {
     const policy = node.props.admission;
-    if (!policy) return true;
+    if (!policy) {
+      if (work.slotStart) work.slotStart.workMs += work.remaining;
+      return true;
+    }
     releaseAdmission(admission, work.lease);
     work.lease = undefined;
     const outcome = attemptAdmission(
@@ -1713,10 +1764,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       gone(node, work.message, "reject", outcome.rejected);
       return false;
     }
+    const start = work.slotStart;
+    if (start) {
+      // Preserve progress already earned during backoff, then use the renewed lease's
+      // actual occupancy, including a changed endpoint or shared concurrency ceiling.
+      const shift = node.slotElapsed * occupancyFraction(outcome.lease) - callerClock(node, work);
+      start.clock += shift;
+      start.workClock += shift;
+      start.reservation = outcome.lease;
+    }
     work.lease = outcome.lease;
     work.errorRate = outcome.errorRate;
     if (outcome.latencyMs !== undefined)
       work.remaining = outcome.latencyMs * (node.slowFactor ?? 1) * (1 + (random() * 2 - 1) * node.props.jitter);
+    if (start) start.workMs += work.remaining;
     return true;
   }
 
@@ -2214,7 +2275,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function tick(): void {
     time += STEP;
     for (const node of nodes.values()) {
-      if (!node.waits || scale === 1 || node.status !== "up" || held(node)) continue;
+      if (!node.waits || node.status !== "up" || held(node)) continue;
       node.slotElapsed += STEP;
       node.slotClock += STEP * slotFraction(node);
     }
@@ -2454,14 +2515,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (fleetChanges.size) assignReplicas(fleetChanges);
     for (const node of nodes.values()) {
       if (node.status !== "up") continue;
-      while (node.slotReleases.length && node.slotReleases[0].end <= node.slotClock + 1e-9) {
-        const release = popDue(node.slotReleases);
-        const call = calls.get(release.call!);
-        if (call) {
-          settleCall(call, call.ready!);
-          if (call.local && !node.fleet) admitPending(node);
-        }
-      }
+      drainCallerReleases(node, node.slotReleases, node.slotClock);
+      drainCallerReleases(node, node.reservationReleases, node.slotElapsed);
     }
     drainLogical();
     if (resourceClock) admitIncoming();
@@ -2560,6 +2615,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.calls.clear();
       node.slotClock = node.slotElapsed = node.slotCredit = 0;
       node.slotReleases = [];
+      node.reservationReleases = [];
       node.heldCalls = 0;
       node.localCalls = 0;
       node.heldBrokerCalls = 0;
@@ -2814,6 +2870,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           slotElapsed: 0,
           slotCredit: 0,
           slotReleases: [],
+          reservationReleases: [],
           heldCalls: 0,
           localCalls: 0,
           heldBrokerCalls: 0,

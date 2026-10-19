@@ -7,6 +7,180 @@ import { createEngine, SOURCE_VOLUME_CAP, WorkBudgetError } from "./engine";
 import { createSimulationRun } from "./simulation";
 import { autoScale } from "./scale";
 import { realSnapshot } from "./units";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+
+it.each(["reply", "local"])("sampled failed replies preserve caller capacity (%s)", (failure) => {
+  const d = waitingFixture();
+  d.nodes[1].props!.concurrency = 1;
+  if (failure === "reply") d.nodes[2].props!.api = { latencyMs: 250, errorRate: 1 };
+  else d.nodes[1].props!.failureRate = 1;
+  const counts = [1, 10].map((scale) => {
+    const e = createEngine({ scale, maxParticles: 0 });
+    e.load(d);
+    e.inject("source", 2000 / scale);
+    e.step(failure === "reply" ? 30_000 : 1000);
+    const failed = realSnapshot(e.snapshot()).nodes.caller.failed;
+    e.step(600_000);
+    expect(realSnapshot(e.snapshot()).nodes.caller.failed).toBe(2000);
+    expect(e.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
+    expect(e.snapshot().inSystem).toBe(0);
+    return failed;
+  });
+  expect(Math.abs(counts[1] - counts[0])).toBeLessThanOrEqual(10);
+});
+
+it.each(["reply", "local"])("sampled retained retries preserve caller capacity (%s)", (failure) => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props!.maxDeliveryCount = 2;
+  Object.assign(d.nodes[1].props!, { concurrency: 1, retry: "inplace", retryBackoffMs: 0 });
+  if (failure === "reply") d.nodes[2].props!.api = { latencyMs: 250, errorRate: 1 };
+  else d.nodes[1].props!.failureRate = 1;
+  const counts = [1, 10].map((scale) => {
+    const e = createEngine({ scale, maxParticles: 0 });
+    e.load(d);
+    e.inject("source", 1000 / scale);
+    e.step(failure === "reply" ? 300_000 : 1000);
+    const failed = realSnapshot(e.snapshot()).nodes.caller.failed;
+    e.step(600_000);
+    expect(realSnapshot(e.snapshot()).nodes.caller.failed).toBe(2000);
+    expect(e.snapshot().inSystem).toBe(0);
+    expect(e.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
+    return failed;
+  });
+  expect(Math.abs(counts[1] - counts[0])).toBeLessThanOrEqual(10);
+});
+
+it.each(["reply", "local"])("sampled managed retries preserve endpoint residence (%s)", (failure) => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props!.maxDeliveryCount = 2;
+  d.nodes[1].stencil = "aws.lambda";
+  Object.assign(d.nodes[1].props!, {
+    concurrency: 1,
+    maxConcurrency: 1,
+    scaling: "fixed",
+    retry: "inplace",
+    retryBackoffMs: 0,
+    api: { latencyMs: 10 },
+    endpoints: [
+      {
+        id: "one",
+        method: "GET",
+        path: "/",
+        behaviour: { maxInFlight: 1, latencyMs: 100, errorRate: failure === "local" ? 1 : 0 },
+      },
+    ],
+  });
+  d.edges[0].kind = "sync";
+  d.edges[0].props!.endpointId = "one";
+  if (failure === "reply") d.nodes[2].props!.api = { latencyMs: 250, errorRate: 1 };
+  const e = createEngine({ scale: 10, maxParticles: 0 });
+  e.load(d);
+  e.inject("source", 1);
+  const untilFailed = (count: number) => {
+    for (let i = 0; i < 1000 && e.snapshot().nodes.caller.failed < count; i++) e.step(10);
+    expect(e.snapshot().nodes.caller.failed).toBe(count);
+    return e.snapshot().time;
+  };
+  const first = untilFailed(1),
+    second = untilFailed(2);
+  expect(first / (100 + (failure === "reply" ? 250 : 0))).toBeGreaterThanOrEqual(10);
+  expect((second - first) / first).toBeGreaterThan(0.95);
+  e.step(1000);
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it.each(["shared", "endpoint"])("sampled callers preserve shared and endpoint concurrency capacity (%s)", (scope) => {
+  const d = waitingFixture();
+  d.nodes[1].stencil = "aws.lambda";
+  Object.assign(d.nodes[1].props!, { concurrency: 100, scaling: "fixed", maxConcurrency: 100, api: { latencyMs: 10 } });
+  if (scope === "shared") {
+    d.planning!.sharedAllocations = [{ id: "account", maxInFlight: 1 }];
+    d.nodes[1].props!.api = { latencyMs: 10, sharedConcurrency: "account" };
+  } else {
+    d.nodes[1].props!.endpoints = [{ id: "one", method: "GET", path: "/", behaviour: { maxInFlight: 1 } }];
+    d.edges[0].kind = "sync";
+    d.edges[0].props!.endpointId = "one";
+  }
+  const counts = [1, 10].map((scale) => {
+    const e = createEngine({ scale, maxParticles: 0 });
+    e.load(d);
+    for (let i = 0; i < 1000; i++) {
+      e.inject("source", 30 / scale);
+      e.step(30);
+    }
+    const processed = realSnapshot(e.snapshot()).nodes.caller.processed;
+    e.step(10_000);
+    expect(e.snapshot().inSystem).toBe(0);
+    return processed;
+  });
+  expect(Math.abs(counts[1] - counts[0])).toBeLessThanOrEqual(10);
+});
+
+it("retained caller retries use their renewed admission reservation", () => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props!.maxDeliveryCount = 2;
+  d.nodes[1].stencil = "aws.lambda";
+  Object.assign(d.nodes[1].props!, {
+    concurrency: 100,
+    maxConcurrency: 100,
+    scaling: "fixed",
+    retry: "inplace",
+    retryBackoffMs: 0,
+    api: { latencyMs: 10 },
+    endpoints: [{ id: "one", method: "GET", path: "/", behaviour: { maxInFlight: 2 } }],
+  });
+  d.edges[0].kind = "sync";
+  d.edges[0].props!.endpointId = "one";
+  d.nodes[2].props!.api = { latencyMs: 250, errorRate: 1 };
+  const e = createEngine({ scale: 10, maxParticles: 0 });
+  e.load(d);
+  e.inject("source", 1);
+  const untilFailed = (count: number) => {
+    for (let i = 0; i < 1000 && e.snapshot().nodes.caller.failed < count; i++) e.step(10);
+    expect(e.snapshot().nodes.caller.failed).toBe(count);
+    return e.snapshot().time;
+  };
+  const first = untilFailed(1);
+  e.setNodeProps("caller", {
+    endpoints: [{ id: "one", method: "GET", path: "/", behaviour: { maxInFlight: 1 } }],
+  });
+  const second = untilFailed(2);
+  expect((second - first) / first).toBeGreaterThan(1.8);
+  e.step(1000);
+  expect(e.snapshot().inSystem).toBe(0);
+  expect(e.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
+});
+
+it("changing setScale mid-run still drains sampled caller releases", () => {
+  const d = waitingFixture();
+  d.nodes[1].props!.concurrency = 1;
+  const e = createEngine({ scale: 10 });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(500);
+  expect(e.snapshot().nodes.caller.threads!.waiting).toBeGreaterThan(0);
+  e.setScale(1);
+  e.step(10_000);
+  expect(e.snapshot().nodes.caller.processed).toBe(1);
+  expect(e.snapshot().inSystem).toBe(0);
+  expect(e.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
+});
+
+it("counts ramp startup volume in linear stage reads", () => {
+  const reads = (count: number) => {
+    const stages = countingReads(Array.from({ length: count }, () => ({ durationMs: 1, targetRate: 0 })));
+    createSimulationRun(waitingFixture(), {
+      id: "ramp",
+      title: "Ramp",
+      traffic: [{ id: "r", node: "source", shape: { kind: "ramp", stages: stages.items } }],
+    });
+    return stages.reads();
+  };
+  expect(reads(100 * GROWTH_FACTOR) / reads(100)).toBeLessThan(LINEAR_LIMIT);
+});
 
 it.each([
   [3, 2],

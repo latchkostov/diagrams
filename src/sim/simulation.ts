@@ -90,6 +90,21 @@ function trafficArea(shape: TrafficShape, from: number, to: number): number {
   return area;
 }
 
+/** Startup needs the entire ramp, so integrate each stage directly instead of rescanning it per segment. */
+function trafficVolume(shape: TrafficShape): number {
+  if (shape.kind === "burst") return positive(shape.count);
+  if (shape.kind !== "ramp") return trafficArea(shape, 0, Infinity);
+  let rate = positive(shape.startRate ?? 0),
+    volume = 0;
+  for (const stage of shape.stages) {
+    const duration = positive(stage.durationMs),
+      target = positive(stage.targetRate);
+    volume += (duration * (rate + target)) / 2000;
+    rate = target;
+  }
+  return volume;
+}
+
 export function estimateTotalMs(simulation: Simulation): number {
   if (simulation.durationMs !== undefined) return Math.min(CAP, positive(simulation.durationMs));
   return Math.min(
@@ -281,7 +296,7 @@ export function createSimulationRun(
   function restart(): void {
     // Refuse unsafe raw callers too, before startup actions or bursts schedule anything.
     const messages = simulation.traffic.reduce(
-      (sum, { shape }) => sum + (shape.kind === "burst" ? positive(shape.count) : trafficArea(shape, 0, Infinity)),
+      (sum, { shape }) => sum + trafficVolume(shape),
       (simulation.timeline ?? []).reduce(
         (sum, { action }) => sum + (action.do === "inject" ? positive(action.count) : 0),
         0,
@@ -376,7 +391,15 @@ export function createSimulationRun(
       if (action.do === "props") properties.push(action);
     }
     if (properties.length) engine.validateLifecycleActions(properties);
-    update();
+    try {
+      update();
+    } catch (error) {
+      if (error instanceof WorkBudgetError) {
+        scheduler.reset();
+        refresh();
+      }
+      throw error;
+    }
   }
 
   restart();

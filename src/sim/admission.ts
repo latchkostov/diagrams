@@ -1,5 +1,6 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
+import { reserveCallerOccupancy, type CallerOccupancy } from "./callerOccupancy";
 import {
   normalizeCall,
   quotaKey,
@@ -128,9 +129,8 @@ export const emptyAdmission = (): AdmissionState => ({
   compiled: new Map(),
   owners: new Map(),
 });
-export interface AdmissionLease {
+export interface AdmissionLease extends CallerOccupancy {
   keys: string[];
-  weight: number;
 }
 
 /** Index each definition/reference once. Reference-only callers also participate in invalidation. */
@@ -319,8 +319,13 @@ export function attemptAdmission(
     if ((state.inFlight.get(key) ?? 0) + occupancy > limit + 1e-9) return { rejected: "concurrency" };
   for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
-  for (const key of keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + occupancy);
-  return { lease: { keys, weight: occupancy }, latencyMs: call.latencyMs, errorRate: call.errorRate };
+  const reservation = reserveCallerOccupancy(weight, occupancy);
+  for (const key of keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
+  return {
+    lease: { keys, ...reservation },
+    latencyMs: call.latencyMs,
+    errorRate: call.errorRate,
+  };
 }
 export function releaseAdmission(state: AdmissionState, lease?: AdmissionLease) {
   if (lease)

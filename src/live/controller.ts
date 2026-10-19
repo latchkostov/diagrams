@@ -22,7 +22,7 @@ import { flowEdges } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
-import { createEngine, randomDraws } from "../sim/engine";
+import { createEngine, randomDraws, WorkBudgetError } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
 import type {
   EngineOptions,
@@ -577,6 +577,7 @@ export class LiveController {
       engine = this.engine;
     const cp = runner ? runner.checkpoint() : engine.checkpoint();
     const time = () => (runner ? runner.state().time : engine.metrics().time);
+    let budgetError: unknown;
     runner?.setTraceActions(false);
     return {
       tracer: engine.tracer,
@@ -590,7 +591,8 @@ export class LiveController {
             for (let guard = 0; runner.state().waiting && guard < 1000; guard++) runner.resume();
             runner.step(simMs / this.speed);
           } catch (error) {
-            if (!(error instanceof LifecycleBudgetError)) throw error;
+            if (!(error instanceof LifecycleBudgetError) && !(error instanceof WorkBudgetError)) throw error;
+            budgetError = error;
             // Stop the forecast; its caller restores the sandbox before publishing anything.
             return false;
           }
@@ -617,6 +619,10 @@ export class LiveController {
         this.applySpeed();
         this.engine.setTraffic(this.traffic);
         this.dirty = true;
+        if (budgetError instanceof WorkBudgetError) {
+          this.recoverBudget(budgetError);
+          this.publish();
+        }
       },
     };
   }
@@ -651,7 +657,7 @@ export class LiveController {
         this.publish();
       }
     } else {
-      this.engine.step(wallMs);
+      if (!this.updateRunner(() => this.engine.step(wallMs))) return;
       this.dirty = true;
     }
   }
@@ -661,13 +667,19 @@ export class LiveController {
       update();
       return true;
     } catch (error) {
-      if (!(error instanceof LifecycleBudgetError)) throw error;
-      this.resourceError = error.message;
-      this.playing = false;
-      this.dirty = true;
+      if (!this.recoverBudget(error)) throw error;
       this.publish();
       return false;
     }
+  }
+
+  private recoverBudget(error: unknown): boolean {
+    if (!(error instanceof LifecycleBudgetError) && !(error instanceof WorkBudgetError)) return false;
+    this.resourceError = error instanceof WorkBudgetError ? t("liveSession.workBudget") : error.message;
+    this.playing = false;
+    this.cancelReplay();
+    this.dirty = true;
+    return true;
   }
 
   setPlaying(on: boolean): void {
@@ -676,7 +688,7 @@ export class LiveController {
     if (on && this.runState?.done) {
       this.cancelReplay();
       this.newRun();
-      this.build();
+      if (!this.build()) return;
     }
     this.playing = on;
     this.record({ kind: "play", on });
@@ -718,7 +730,7 @@ export class LiveController {
       if (this.runState?.waiting || this.runState?.done) return;
       if (!this.updateRunner(() => this.runner?.step(wall))) return;
       this.captureCheckpoint();
-    } else this.engine.step(wall);
+    } else if (!this.updateRunner(() => this.engine.step(wall))) return;
     this.dirty = true;
     this.publish();
   }
@@ -1028,7 +1040,7 @@ export class LiveController {
    */
   private replay(): void {
     const target = this.replayTarget ?? this.snapshot().time;
-    this.build();
+    if (!this.build()) return;
     if (!this.runner || target <= 0) {
       // Free play starts over (nothing to replay to); so does its log. A run at its start keeps tick 0's tweaks.
       if (!this.runner) this.newRun();
@@ -1056,8 +1068,12 @@ export class LiveController {
           this.applyQueued();
           break;
         }
-        if (s.waiting) runner.resume();
-        else runner.step(Math.min(100, target - s.time, this.untilNext(pending, cursor)) / this.speed);
+        if (
+          !this.updateRunner(() => {
+            if (s.waiting) runner.resume();
+            else runner.step(Math.min(100, target - s.time, this.untilNext(pending, cursor)) / this.speed);
+          })
+        ) return;
         this.captureCheckpoint();
         if (performance.now() - start >= 6) break;
       }
@@ -1214,7 +1230,7 @@ export class LiveController {
     if (this.checkpoints.length > 24) this.checkpoints.splice(1, 1);
   }
 
-  private build(): void {
+  private build(): boolean {
     this.continuity = {};
     this.resourceError = this.sim ? faultTimelineProblem(this.diagram, this.sim) : undefined;
     if (this.resourceError) {
@@ -1226,10 +1242,16 @@ export class LiveController {
       // No saved dot scale: pick one from the traffic (the 1/2/5 series, about 60 dots a second at
       // most), so dense runs stay readable as separate dots instead of merging into solid lines.
       const sim = this.sim.scale === undefined ? { ...this.sim, scale: autoScale(this.sim, this.diagram) } : this.sim;
-      this.runner = createSimulationRun(this.diagram, sim, {
-        ...engineOpts,
-        seed: this.opts.seed ?? DEFAULT_SEED,
-      });
+      try {
+        this.runner = createSimulationRun(this.diagram, sim, {
+          ...engineOpts,
+          seed: this.opts.seed ?? DEFAULT_SEED,
+        });
+      } catch (error) {
+        if (!this.recoverBudget(error)) throw error;
+        this.publish();
+        return false;
+      }
       this.engine = this.runner.engine;
     } else {
       this.runner = null;
@@ -1256,5 +1278,6 @@ export class LiveController {
     this.captureCheckpoint(true);
     this.generation++;
     this.dirty = true;
+    return true;
   }
 }

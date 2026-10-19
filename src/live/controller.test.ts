@@ -12,6 +12,91 @@ import { LifecycleBudgetError } from "../model/resourceBudget";
 import * as engines from "../sim/engine";
 import { snapshotContinuity } from "./snapshotContinuity";
 
+describe("runtime scripted traffic budget", () => {
+  function controller() {
+    const d = diagram();
+    d.edges = [];
+    const c = new LiveController(d, { roleOf, replayDelayMs: 0, maxParticles: 0 });
+    c.selectSimulation({
+      id: "budget",
+      title: "Budget",
+      scale: 1,
+      durationMs: 2000,
+      traffic: [{ id: "traffic", node: "api", shape: { kind: "constant", ratePerSec: 200_000, durationMs: 1000 } }],
+    });
+    c.step(500);
+    c.setInputs({ ...emptyInputs(), traffic: 10 });
+    c.setPlaying(true);
+    return c;
+  }
+  it.each(["advance", "step", "seek"] as const)(
+    "pauses and publishes recoverable budget exhaustion during %s",
+    (action) => {
+      const c = controller();
+      expect(() => c[action](1000)).not.toThrow();
+      expect(c.getState().playing).toBe(false);
+      expect(c.getState().resourceError).toContain("restart with more messages per dot");
+      expect(c.getState().snapshot).toEqual(c.realSnapshot());
+      expect(c.getState().run!.time).toBe(c.getState().snapshot.time);
+      c.setInputs({ ...emptyInputs(), traffic: 1 });
+      c.restart();
+      expect(c.getState().resourceError).toBeUndefined();
+      c.setPlaying(true);
+      c.advance(100);
+      expect(c.snapshot().time).toBe(100);
+      c.dispose();
+    },
+  );
+  it("stops budget-exhausted look-ahead and restores the published run", () => {
+    const c = controller(),
+      before = c.snapshot(),
+      look = c.lookAhead();
+    try {
+      expect(look.step(1000)).toBe(false);
+    } finally {
+      look.restore();
+    }
+    expect(c.snapshot()).toEqual(before);
+    expect(c.getState().playing).toBe(false);
+    expect(c.getState().resourceError).toContain("restart with more messages per dot");
+    c.dispose();
+  });
+  it("Continue pauses when multiplied timeline injections exhaust the budget", () => {
+    const d = diagram();
+    d.edges = [];
+    const c = new LiveController(d, { roleOf, maxParticles: 0 });
+    c.selectSimulation({
+      id: "continue",
+      title: "Continue",
+      scale: 1,
+      traffic: [],
+      durationMs: 2000,
+      timeline: [
+        { atMs: 500, action: { do: "note", text: "Wait", pause: true } },
+        { atMs: 500, action: { do: "inject", node: "api", count: 30_000 } },
+      ],
+    });
+    c.step(500);
+    c.setInputs({ ...emptyInputs(), traffic: 10 });
+    expect(() => c.resume()).not.toThrow();
+    expect(c.getState().playing).toBe(false);
+    expect(c.getState().resourceError).toContain("restart with more messages per dot");
+    expect(c.getState().run!.time).toBe(c.getState().snapshot.time);
+    c.dispose();
+  });
+  it("pauses budget-exhausted replay without leaving a replay pending", async () => {
+    const c = controller();
+    c.setInputs({ ...emptyInputs(), traffic: 10, scale: 2 });
+    await vi.waitFor(() => expect(c.getState().resourceError).toContain("restart with more messages per dot"));
+    expect(c.getState().playing).toBe(false);
+    c.setInputs({ ...emptyInputs(), traffic: 1, scale: 2 });
+    c.restart();
+    c.step(100);
+    expect(c.snapshot().time).toBe(100);
+    c.dispose();
+  });
+});
+
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
 const roleOf = (stencil: string) => roles[stencil] ?? "none";
 

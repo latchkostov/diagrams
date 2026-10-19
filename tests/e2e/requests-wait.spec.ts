@@ -9,7 +9,58 @@ import {
   waitForStableViewport,
   savedDiagram,
   STORAGE_KEYS,
+  expectNoErrors,
 } from "./fixtures";
+
+test("raising Traffic mid-run pauses at the work budget with an accessible recovery notice", async ({
+  page,
+  consoleErrors,
+}) => {
+  const d = waitingFixture();
+  // A terminal source keeps this test about scripted work and the animation loop, without a large queue.
+  d.nodes = [d.nodes[0]];
+  d.edges = [];
+  d.simulations = [
+    {
+      id: "budget",
+      title: "Budget",
+      scale: 1,
+      durationMs: 2000,
+      traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 200_000, durationMs: 1000 } }],
+    },
+  ];
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=budget");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(500);
+  await page.getByTestId("live-capacity").click();
+  await page.getByTestId("capacity-traffic-mult").fill("12"); // Traffic ×2.
+  await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("2×");
+  await page.clock.runFor(500);
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  await expect(page.getByTestId("live-notice")).toHaveAttribute("role", "status");
+  await expect(page.getByTestId("live-notice")).toContainText("restart with more messages per dot");
+  const stopped = Number(await page.getByTestId("live-clock").getAttribute("data-ms"));
+  expect(stopped).toBeGreaterThan(0);
+  await page.clock.runFor(100);
+  await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", String(stopped));
+  // Recovery exercises the same frame loop that used to die when the exception escaped.
+  await page.getByTestId("capacity-traffic-mult").fill("9"); // Traffic ×1.
+  await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("1×");
+  await page.getByTestId("live-restart").click();
+  await expect(page.getByTestId("live-notice")).toHaveCount(0);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(500);
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms")))
+    .toBeGreaterThan(0);
+  expectNoErrors(consoleErrors);
+});
 
 async function seed(page: import("@playwright/test").Page, older = false, empty = false) {
   const d = waitingFixture();
