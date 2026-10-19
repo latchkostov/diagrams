@@ -307,6 +307,16 @@ describe("production bundle split", () => {
     expect(found(bundled(closure([live!])), playback)).toEqual(playback.map(([what]) => what));
   });
 
+  it("loads the trace card on demand, apart from the Live session", () => {
+    const card: [string, RegExp][] = [["trace card", /[/\\]src[/\\]live[/\\]TraceCard\.tsx$/]];
+    for (const build of [plain(), rooms]) {
+      const live = build.chunks.find((c) => c.name === "LiveSession");
+      expect(live).toBeDefined();
+      expect(found(bundled(closure([live!], build)), card)).toEqual([]);
+      expect(found(bundled(build.chunks), card)).toEqual(["trace card"]);
+    }
+  });
+
   it("builds the Interactive HTML viewer apart: a file of its own, fetched only by the export", () => {
     const template = assets.filter((a) => /^export\/interactive-viewer-[0-9a-f]{10}\.html$/.test(a.fileName));
     expect(template).toHaveLength(1);
