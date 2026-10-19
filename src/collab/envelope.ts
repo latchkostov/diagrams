@@ -28,8 +28,11 @@ import { ReplayWindow } from "./replay";
 export const HEADER_BYTES = 32;
 const TAG_BYTES = 16;
 const VERSION = 1;
-const CHANNEL_CODE: Record<Channel, number> = { doc: 1, presence: 2, live: 3 };
-const CODE_CHANNEL: Record<number, Channel | undefined> = { 1: "doc", 2: "presence", 3: "live" };
+const CHANNEL_CODE: Record<Channel, number> = { doc: 1, presence: 2, live: 3, lobby: 4 };
+const CODE_CHANNEL: Record<number, Channel | undefined> = { 1: "doc", 2: "presence", 3: "live", 4: "lobby" };
+/** A frame's channel, read from its header before anything else (a room with knock-to-join opens lobby frames apart). */
+export const frameChannel = (frame: Uint8Array): Channel | undefined =>
+  frame.length > 3 ? CODE_CHANNEL[frame[3]] : undefined;
 export const SENDER_ID_BYTES = 16;
 /** What a signed room's frames carry after their message: an Ed25519 signature (./signing.ts). */
 export const FRAME_SIGNATURE_BYTES = 64;
@@ -63,7 +66,7 @@ export type Opened =
   | { ok: false; reason: Rejection };
 
 const maxFrame = (channel: Channel) =>
-  channel === "doc"
+  channel === "doc" || channel === "lobby"
     ? COLLAB_LIMITS.maxDocFrameBytes
     : channel === "live"
       ? COLLAB_LIMITS.maxLiveFrameBytes
@@ -114,7 +117,7 @@ class KeyCache {
 
 /** Seals frames for one session: its own sender id and counters. */
 export class Sealer {
-  private counters: Record<Channel, number> = { doc: 0, presence: 0, live: 0 };
+  private counters: Record<Channel, number> = { doc: 0, presence: 0, live: 0, lobby: 0 };
   private keys: KeyCache;
   readonly senderHex: string;
 

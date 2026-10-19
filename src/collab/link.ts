@@ -4,12 +4,16 @@ import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
 //
 //   https://<app>/#room=v1.<epoch>.<secret>              a room without roles (cooperative: P3)
 //   https://<app>/#room=v2.<epoch>.<secret>.<hostKey>    a signed room (meeting hosts design §2, P4)
+//   https://<app>/#room=v3.<secret>.<hostKey>            a signed room with knock-to-join (P5)
 //
 // - The room secret is 32 random bytes, base64url without padding (exactly 43 characters). Every key the room
 //   uses, and its public discovery id, is derived from it (./keys.ts); nothing else is needed to join.
 // - <hostKey> (v2) is the room's root: the creator's Ed25519 public key, base64url (43 characters, ./signing.ts).
 //   Every role in the room is a signed entry that traces back to it (./roster.ts). The key schedule is v1's.
 // - v1 links keep opening, as rooms without roles, for one more release (owner decision 12).
+// - v3: the secret opens only the lobby (the room's name, finding the others, and knocking). The room's content is
+//   under a key per epoch that the link doesn't carry: the host or a co-host hands it to each person they let in, and
+//   a removal moves the room to a new epoch with a new one (./epochs.ts). So a v3 link has no epoch.
 // - <epoch> is the key epoch, a decimal integer (0 for a new room). A future rotation hands out a new secret
 //   under a higher epoch; frames from any other epoch are refused before decryption (./envelope.ts).
 // - It lives only in the fragment, which browsers never send to a server, nor in a Referer header (the Fetch
@@ -23,6 +27,7 @@ import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
 export const ROOM_PARAM = "room";
 export const ROOM_LINK_VERSION = "v1";
 export const SIGNED_LINK_VERSION = "v2";
+export const KNOCK_LINK_VERSION = "v3";
 export const ROOM_SECRET_BYTES = 32;
 /** Epochs are u32 (the envelope header stores one). */
 export const MAX_EPOCH = 0xffff_ffff;
@@ -35,6 +40,8 @@ export interface RoomLink {
   secret: Uint8Array;
   /** A signed room's root key (v2 links): the creator's public key, base64url. Absent: a room without roles. */
   hostKey?: string;
+  /** Knock-to-join (v3 links): the secret is the lobby's; the content key comes with being let in. */
+  knock?: true;
 }
 
 export type RoomLinkProblem =
@@ -87,7 +94,14 @@ function canonical32(text: string): Uint8Array | undefined {
 export function parseRoomValue(value: string): RoomLink {
   if (value.length > MAX_VALUE_CHARS) throw new RoomLinkError("damaged");
   const version = /^(v\d+)\./.exec(value)?.[1];
-  if (version && version !== ROOM_LINK_VERSION && version !== SIGNED_LINK_VERSION) throw new RoomLinkError("newer");
+  if (version && ![ROOM_LINK_VERSION, SIGNED_LINK_VERSION, KNOCK_LINK_VERSION].includes(version))
+    throw new RoomLinkError("newer");
+  if (version === KNOCK_LINK_VERSION) {
+    const k = /^v3\.([A-Za-z0-9_-]{43})\.([A-Za-z0-9_-]{43})$/.exec(value);
+    const lobby = k && canonical32(k[1]);
+    if (!k || !lobby || !canonical32(k[2])) throw new RoomLinkError("damaged");
+    return { epoch: 0, secret: lobby, hostKey: k[2], knock: true };
+  }
   const m = VALUE.exec(value);
   // A v1 value has no host key; a v2 value must.
   if (!m || (m[1] === SIGNED_LINK_VERSION) !== (m[4] !== undefined)) throw new RoomLinkError("damaged");
@@ -106,6 +120,10 @@ export function formatRoomValue(room: RoomLink): string {
   if (!Number.isSafeInteger(room.epoch) || room.epoch < 0 || room.epoch > MAX_EPOCH)
     throw new Error("A room epoch is a u32.");
   if (room.hostKey !== undefined && !canonical32(room.hostKey)) throw new Error("A host key is 32 bytes.");
+  if (room.knock) {
+    if (!room.hostKey || room.epoch !== 0) throw new Error("A v3 room link has a host key and no epoch.");
+    return `${KNOCK_LINK_VERSION}.${bytesToBase64Url(room.secret)}.${room.hostKey}`;
+  }
   const base = `${room.epoch}.${bytesToBase64Url(room.secret)}`;
   return room.hostKey ? `${SIGNED_LINK_VERSION}.${base}.${room.hostKey}` : `${ROOM_LINK_VERSION}.${base}`;
 }

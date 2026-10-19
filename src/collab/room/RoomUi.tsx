@@ -31,7 +31,7 @@ import {
 import { canCollaborate } from "../../lib/localOnly";
 import { COLLAB_LIMITS } from "../limits";
 import { formatRoomLink, type RoomLinkProblem } from "../link";
-import type { CollabSession } from "../session";
+import type { CollabSession, Knock } from "../session";
 import type { OpenRoom, RoomLifecycle, RoomNotice } from "./lifecycle";
 import { createInteractionController } from "../../canvas/interaction/controller";
 import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
@@ -137,7 +137,8 @@ type RoomState = "connecting" | "waiting" | "here" | "reconnecting" | "alone" | 
 
 function useRoomState(session: CollabSession): { state: RoomState; peers: number } {
   useSessionState(session);
-  const peers = session.transport.peers().length;
+  // Others in the room (with knock-to-join, never someone at the door).
+  const peers = session.peerCount;
   const left = !peers && session.hasDocument && session.connectivity === "peer-left";
   const alone = useHeld(left, RECONNECT_MS);
   const state: RoomState = session.connectionFailed
@@ -179,6 +180,8 @@ const NOTICES: Record<RoomNotice, () => string> = {
   private: () => t("collab.leftPrivateNotice"),
   failed: () => t("collab.openFailed"),
   "storage-full": () => t("collab.storageFull"),
+  denied: () => t("collab.deniedNotice"),
+  removed: () => t("collab.removedNotice"),
   unsupported: () => t("collab.unsupportedBrowser"),
 };
 
@@ -669,11 +672,14 @@ function OpenChip({
     // Signed rooms (P4): whether this is one, and whether this person can edit there.
     "data-signed": watching?.signed ? "true" : "false",
     "data-can-edit": watching?.canEdit === false ? "false" : "true",
+    // Knock-to-join: the room's epoch (a removal moves it on), and whether this person is still at the door.
+    "data-epoch": session.keys.epoch,
+    "data-knocking": session.knocking ? "true" : "false",
     // For diagnostics (the Nightly network smoke classifies a failure by it): never shown.
     "data-connectivity": session.connectivity,
     // Why a joiner still waits (nobody, checking who's here, the diagram on its way), and what was refused, by reason.
     "data-waiting": session.waiting ?? "none",
-    "data-rejected": JSON.stringify(session.stats.rejected),
+    "data-diagnostics": JSON.stringify(session.diagnostics()),
   };
   if (state === "connecting" && !elsewhere)
     return (
@@ -700,6 +706,19 @@ function OpenChip({
     ...(watching?.signed && !watching.canEdit ? [{ type: "note" as const, text: t("collab.youViewOnly") }] : []),
     // The host (and, in a signed room, a co-host) acts on each person: their own row, with a menu of what they can do.
     ...(watch && watching && (watching.hosting || watching.lead) ? personEntries(watch, watching, session) : []),
+    // Knock-to-join: whether people knock and wait to be let in (on for new rooms).
+    ...(watch && watching?.signed && watching.lead && session.signed?.knock
+      ? [
+          {
+            type: "item" as const,
+            testId: "room-ask-join",
+            title: t("collab.askBeforeJoin"),
+            checkbox: true,
+            checked: session.signed.state().ask,
+            onSelect: () => watch.setAsk(!session.signed!.state().ask),
+          },
+        ]
+      : []),
     ...(watch && watching?.signed && watching.lead
       ? [
           {
@@ -866,6 +885,17 @@ function personEntries(watch: WatchTogether, w: WatchState, session: CollabSessi
               },
             ]
           : []),
+        // Knock-to-join: Remove (never the host): the room moves to a new key they don't have.
+        ...(session.signed?.knock && !roles.host
+          ? [
+              {
+                type: "item" as const,
+                testId: "room-remove",
+                title: t("collab.removePerson"),
+                onSelect: () => watch.remove(p.sender),
+              },
+            ]
+          : []),
       ],
     };
   });
@@ -1015,6 +1045,11 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
   useLocale();
   const snap = useRoom(room);
   const session = snap.open?.session;
+  // Knock-to-join: at the door (the session says when it's let in).
+  const knocking = useSyncExternalStore(
+    (fn) => (session ? session.onChange(fn) : () => {}),
+    () => !!session?.knocking,
+  );
   const waiting = useSyncExternalStore(
     (fn) => (session ? session.onChange(fn) : () => {}),
     () => session?.waiting,
@@ -1031,23 +1066,27 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
       className="room-connecting"
       data-testid="room-connecting"
       data-connectivity={session?.connectivity}
+      data-knocking={knocking ? "true" : "false"}
       // Why it's still waiting, for diagnostics (the hint below says it): nobody yet, checking who's here, or the
       // diagram on its way; and what this page refused so far, by reason.
       data-waiting={waiting ?? "none"}
-      data-rejected={session ? JSON.stringify(session.stats.rejected) : "{}"}
+      data-diagnostics={session ? JSON.stringify(session.diagnostics()) : "{}"}
       role="status"
     >
-      <strong>{t("collab.connectingTitle")}</strong>
+      {/* Knock-to-join: at the door until the host or a co-host lets this person in. */}
+      <strong>{knocking ? t("collab.knockingTitle") : t("collab.connectingTitle")}</strong>
       <p className="ix-muted" data-testid="room-connecting-hint">
-        {waiting === "verifying"
-          ? t("collab.waitVerifying")
-          : waiting === "document"
-            ? t("collab.waitDocument")
-            : t("collab.connectingHint")}
+        {knocking
+          ? t("collab.knockingHint")
+          : waiting === "verifying"
+            ? t("collab.waitVerifying")
+            : waiting === "document"
+              ? t("collab.waitDocument")
+              : t("collab.connectingHint")}
       </p>
       {session && <ConnectingFailure room={room} session={session} region={region} />}
       <button className="btn" onClick={() => void room.leave()} data-testid="room-connecting-leave">
-        {t("collab.leave")}
+        {knocking ? t("common.cancel") : t("collab.leave")}
       </button>
     </div>
   );
@@ -1106,23 +1145,104 @@ function ConnectingFailure({
 function WatchLayer(): ReactNode {
   useLocale();
   const { watch, state } = useWatch();
-  if (!watch || !state) return null;
+  const session = watch?.session;
+  // Knock-to-join: who's at the door (the host and co-hosts see them).
+  const knocking = useSyncExternalStore(
+    (fn) => (session ? session.onChange(fn) : () => {}),
+    () => (session ? [...session.knocks.keys()].join(",") : ""),
+  );
+  if (!watch || !state || !session) return null;
+  const knocks = knocking ? [...session.knocks.values()] : [];
   return (
     <>
-      {state.prompts.length > 0 && <RequestCards watch={watch} prompts={state.prompts} />}
+      {(state.prompts.length > 0 || knocks.length > 0) && (
+        <RequestCards watch={watch} prompts={state.prompts} knocks={knocks} session={session} />
+      )}
       {state.inert && state.following && <DrivingPopover watch={watch} state={state} at={state.inert} />}
     </>
   );
 }
 
 /** The request cards under the chip (the toolbar measured only while there are some). */
-function RequestCards({ watch, prompts }: { watch: WatchTogether; prompts: Prompt[] }) {
+function RequestCards({
+  watch,
+  prompts,
+  knocks,
+  session,
+}: {
+  watch: WatchTogether;
+  prompts: Prompt[];
+  knocks: Knock[];
+  session: CollabSession;
+}) {
   const top = useToolbarBottom();
+  const stack = useRef<HTMLDivElement>(null);
+  // Focus was in a card that went (answered, or its newcomer left): it moves to the next card, else to the room chip,
+  // never to the page. Focus anywhere else is left alone.
+  const focusInside = useRef(false);
+  useLayoutEffect(() => {
+    if (!focusInside.current) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && stack.current?.contains(active)) return;
+    if (active && active !== document.body) {
+      focusInside.current = false;
+      return;
+    }
+    const next =
+      stack.current?.querySelector<HTMLElement>("button") ??
+      document.querySelector<HTMLElement>('[data-testid="room-chip"]');
+    next?.focus();
+    focusInside.current = !!next && !!stack.current?.contains(next);
+  });
+  const answered = (act: () => void) => () => {
+    focusInside.current = true;
+    act();
+  };
   return (
-    <div className="room-prompts" style={{ insetBlockStart: top + 8 }}>
+    <div
+      ref={stack}
+      className="room-prompts"
+      // Within the viewport, however many there are: the stack scrolls.
+      style={{ insetBlockStart: top + 8, maxBlockSize: `calc(100vh - ${top + 24}px)`, overflowY: "auto" }}
+      onFocus={() => (focusInside.current = true)}
+      // Focus taken elsewhere on purpose (the element that had it is still there): left alone from here.
+      onBlur={(e) => {
+        const from = e.target;
+        const to = e.relatedTarget as Node | null;
+        if (to && stack.current?.contains(to)) return;
+        queueMicrotask(() => {
+          if (from.isConnected) focusInside.current = false;
+        });
+      }}
+    >
+      {knocks.map((k) => (
+        <KnockCard
+          key={k.key}
+          knock={k}
+          onAdmit={answered(() => void session.admit(k.key))}
+          onDeny={answered(() => session.deny(k.key))}
+        />
+      ))}
       {prompts.map((p) => (
         <RequestCard key={p.from} prompt={p} onAnswer={(yes) => watch.answer(p, yes)} />
       ))}
+    </div>
+  );
+}
+
+/** Someone at the door: Admit or Deny (never taking focus from what this person is doing). */
+function KnockCard({ knock, onAdmit, onDeny }: { knock: Knock; onAdmit: () => void; onDeny: () => void }) {
+  return (
+    <div className="room-prompt" role="status" data-testid="room-knock-card">
+      <p>{t("collab.knockPrompt", { alias: knock.alias })}</p>
+      <div className="room-alert-actions">
+        <button className="btn" onClick={onDeny} data-testid="room-knock-deny">
+          {t("collab.deny")}
+        </button>
+        <button className="btn btn-primary" onClick={onAdmit} data-testid="room-knock-admit">
+          {t("collab.admit")}
+        </button>
+      </div>
     </div>
   );
 }

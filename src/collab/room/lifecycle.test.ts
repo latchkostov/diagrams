@@ -115,6 +115,9 @@ function browser(
   seed: number,
   from?: Partial<Pick<Browser, "library" | "store" | "tab">>,
   signedRooms = true,
+  // Most of these tests are about the room's life in the page, in rooms anyone with the link joins (v2): knock-to-join
+  // rooms (v3, the default for new rooms) have their own below.
+  knockRooms = false,
 ): Browser {
   const b: Browser = {
     library: from?.library ?? new Library(),
@@ -136,6 +139,7 @@ function browser(
     clock,
     random: seededBytes(seed),
     signedRooms,
+    knockRooms,
   });
   b.room.configure({ navigate: (slug) => b.shown.push(slug) });
   onTestFinished(() => b.room.wipe());
@@ -1031,6 +1035,116 @@ describe("signed rooms (P4)", () => {
   });
 });
 
+describe("knock-to-join rooms (P5)", () => {
+  const knocky = (
+    net: MemoryNetwork,
+    clock: FakeClock,
+    seed: number,
+    from?: Partial<Pick<Browser, "library" | "store" | "tab">>,
+  ) => browser(net, clock, seed, from, true, true);
+  const keyOf = (b: Browser) => session(b).signed!.key;
+
+  /** Opens `link` in `b` and says Join: it knocks, and waits (the promise resolves once it's let in, or not). */
+  function knock(b: Browser, link: string) {
+    const url = new URL(link);
+    b.room.readAddress({ hash: url.hash, pathname: url.pathname, search: url.search }, nohistory);
+    return b.room.accept();
+  }
+
+  it("a new room has knock-to-join: a joiner waits at the door, with nothing of the room, until the host lets them in", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 81),
+      b = knocky(net, clock, 82);
+    await start(a);
+    expect(linkOf(a)).toMatch(/#room=v3\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
+    await knock(b, linkOf(a));
+    await settle(net, a, b);
+    // At the door: open (as a joiner waits for the diagram), knocking, with nothing of the room and no entry.
+    expect(session(b).knocking).toBe(true);
+    expect(b.room.getSnapshot().open).toMatchObject({ ready: false, slug: undefined });
+    expect(b.library.entries.size).toBe(0);
+    const [waiting] = [...session(a).knocks.values()];
+    expect(waiting).toBeDefined();
+    expect(await session(a).admit(waiting.key)).toBe(true);
+    await settle(net, a, b);
+    expect(session(b).knocking).toBe(false);
+    expect(titleOf(b)).toBe(titleOf(a));
+    edit(b, (d) => ({ ...d, title: "Let in" }));
+    await settle(net, a, b);
+    expect(titleOf(a)).toBe("Let in");
+  });
+
+  it("denied: the joiner is told so, and nothing of the room is left with them", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 83),
+      b = knocky(net, clock, 84);
+    await start(a);
+    await knock(b, linkOf(a));
+    await settle(net, a, b);
+    const [waiting] = [...session(a).knocks.values()];
+    session(a).deny(waiting.key);
+    await settle(net, a, b);
+    expect(b.room.getSnapshot()).toMatchObject({ notice: { kind: "denied" } });
+    expect(b.room.getSnapshot().open).toBeUndefined();
+    expect(b.tab.read()).toBeUndefined();
+    expect(b.library.entries.size).toBe(0);
+  });
+
+  it("Leave while waiting at the door stops knocking and leaves nothing", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 85),
+      b = knocky(net, clock, 86);
+    await start(a);
+    await knock(b, linkOf(a));
+    await settle(net, a, b);
+    expect(session(a).knocks.size).toBe(1);
+    await b.room.leave();
+    await settle(net, a);
+    expect(b.room.getSnapshot().open).toBeUndefined();
+    expect(b.tab.read()).toBeUndefined();
+    expect(session(a).knocks.size).toBe(0);
+  });
+
+  it("removed: the room ends for them with a notice, and their copy stays; a reload after the re-key opens the new epoch", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = knocky(net, clock, 87),
+      b = knocky(net, clock, 88),
+      c = knocky(net, clock, 89);
+    await start(a);
+    for (const x of [b, c]) {
+      await knock(x, linkOf(a));
+      // The newcomer's page gets to the door (its keys and identity first).
+      for (let i = 0; i < 100 && !session(a).knocks.size; i++) {
+        await settle(net, a);
+        await new Promise((r) => setTimeout(r, 1));
+      }
+      for (const k of [...session(a).knocks.values()]) await session(a).admit(k.key);
+      await settle(net, a, x);
+      expect(session(x).knocking).toBe(false);
+    }
+    const cSlug = c.room.getSnapshot().open!.slug!;
+    const cKey = keyOf(c);
+    expect(await session(a).remove(cKey)).toBe(true);
+    await settle(net, a, b, c);
+    expect(c.room.getSnapshot()).toMatchObject({ notice: { kind: "removed" } });
+    expect(c.room.getSnapshot().open).toBeUndefined();
+    expect(c.library.read(cSlug)).toBeDefined();
+    expect(session(b).keys.epoch).toBe(1);
+    // b reloads alone: its record has the new epoch, and it opens there before anyone answers.
+    b.room.pageHidden();
+    a.room.pageHidden();
+    await settle(net);
+    const b2 = knocky(net, clock, 90, b);
+    await b2.room.resume();
+    expect(session(b2).keys.epoch).toBe(1);
+    expect(session(b2).signed!.state().members.has(cKey)).toBe(false);
+  });
+});
+
 describe("a browser that can't sign", () => {
   it("joining a signed room says plainly that this browser can't, instead of waiting for ever", async () => {
     const net = new MemoryNetwork(),
@@ -1054,5 +1168,27 @@ describe("a browser that can't sign", () => {
     expect(b.room.getSnapshot()).toMatchObject({ notice: { kind: "unsupported" } });
     expect(b.room.getSnapshot().open).toBeUndefined();
     expect(b.room.getSnapshot().opening).toBeUndefined();
+  });
+
+  it("joining a knock-to-join room without key agreement (X25519) says so too", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 93, undefined, true, true),
+      b = browser(net, clock, 94, undefined, true, true);
+    await start(a);
+    expect(a.room.getSnapshot().open!.link.knock).toBe(true);
+    const generateKey = crypto.subtle.generateKey.bind(crypto.subtle);
+    const spy = vi.spyOn(crypto.subtle, "generateKey").mockImplementation(((
+      algorithm: AlgorithmIdentifier,
+      ...rest: [boolean, KeyUsage[]]
+    ) => {
+      if ((typeof algorithm === "string" ? algorithm : algorithm.name) === "X25519")
+        return Promise.reject(new DOMException("Not supported", "NotSupportedError"));
+      return generateKey(algorithm as never, ...rest);
+    }) as typeof crypto.subtle.generateKey);
+    onTestFinished(() => spy.mockRestore());
+    await join(b, linkOf(a));
+    expect(b.room.getSnapshot()).toMatchObject({ notice: { kind: "unsupported" } });
+    expect(b.room.getSnapshot().open).toBeUndefined();
   });
 });

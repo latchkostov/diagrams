@@ -10,11 +10,11 @@ site's owner. A self-hosted copy has it only if whoever builds that copy turns i
 ## Start a room
 
 1. Open the diagram, then choose **File ▸ Share… ▸ Edit together…**. You can also press Ctrl+K and type "Edit
-   together". The row comes after Link with password, because anyone with a room's link can edit.
+   together". The row comes after Link with password, because anyone with a room's link can ask to join.
 2. Read what the dialog says, and pick the name the others will see (you get one like "Anonymous Heron" until you
    change it). Then choose **Start room**.
 3. Copy the room link and send it the way you'd send a password: a direct message to the people who should edit, not
-   a public channel.
+   a public channel. The link lets people knock; you (or a co-host) let them in.
 
 The chip by the title shows the room's state, for example "Room open · waiting for others", "2 here" or
 "Reconnecting…". Its menu lists who is in the room. It also has **Copy room link** and **Leave room**.
@@ -23,7 +23,37 @@ The chip by the title shows the room's state, for example "Room open · waiting 
 
 Open the link someone sent. Before anything connects, a dialog asks whether to join. It says who can see your IP
 address and which services the room uses. Choose **Join** to connect, or **Don't join** to leave nothing behind.
-The diagram arrives from someone already in the room, and your own diagrams aren't changed.
+
+Then you knock: "Asking to join… The host or a co-host will let you in." Nothing of the room reaches you while you
+wait. Once you're let in, the diagram arrives from someone already in the room, and your own diagrams aren't changed.
+If they say no, you're told, and nothing is left behind. **Cancel** stops waiting.
+
+## Letting people in
+
+- **Admit or Deny.** When someone knocks, the host and co-hosts get a card under the chip: "Wren wants to join", with
+  **Admit** or **Deny**. It never takes the keyboard from what you're doing. Admit lets them in (as an editor, or as a
+  viewer while **New people can view only** is on).
+- **Ask before people join** is on for new rooms. The host or a co-host can turn it off in the chip's menu: then the
+  host's page (or, with the host away, a co-host's) lets people in on its own. With neither here, people knock until
+  one of them is back.
+- **Coming back.** Someone already let in comes back without knocking (a reload keeps their place). Someone let in
+  just as someone else was removed knocks again, and is let back in on its own.
+
+## Remove someone
+
+The host or a co-host chooses **Remove from room** on a person's row in the chip's menu (the host can't be removed).
+
+- **The room moves to a new key.** Everyone else's page switches to it at once, with the diagram and any shared Live
+  run as they are. The person removed has only the old key: nothing sent after this reaches them, and anything they
+  send under the old key is refused. They're told they were removed, and their copy stays in their diagrams.
+- **They can knock again** with the old link, as anyone can; the host and co-hosts see it and can say no.
+- **If they were driving Live,** the host drives from here.
+- **Someone away** when another person was removed catches up when they're back (a reload too): their page is
+  handed the new key, if they're still in the room.
+- **Two removals at the same moment** (on two sides of a dropped connection): one of them takes the room to its new
+  key, and the other is made again straight after, so both hold.
+- **What it doesn't undo:** the person removed keeps what they saw before (the diagram as it was then, a copy they
+  saved). Removing someone changes who gets what happens next.
 
 ## While you're in a room
 
@@ -111,21 +141,25 @@ reaches the room: not its simulation's name, not its run.
   join can see the diagram, its changes and everyone's pointers, and watch Live, but not edit: a change they try is
   undone at once, and a note says why. The people list says "can view". **Can edit** in the people menu lets them
   edit. People who could already edit keep that.
-- **Editing, once given, stays.** Someone who can edit can't be made a viewer again yet; that comes with removing
-  people from a room. That's also why a change made at the same moment elsewhere (the switch turned on, someone's
-  co-hosting taken back) never undoes a "Can edit" that was already given.
+- **Editing, once given, stays.** Someone who can edit can't be made a viewer again: remove them, and let them back
+  in as a viewer if they knock again. That's also why a change made at the same moment elsewhere (the switch turned
+  on, someone's co-hosting taken back) never undoes a "Can edit" that was already given.
 
 ## Signed roles
 
-Rooms started now are **signed rooms**. Who hosts, the co-hosts, who drives Live, who can edit and the "view only"
-switch are a list of changes, each signed by the person who made it, and every page in the room checks them. The
-room's link names the host's public key, so a page trusts only changes it can trace back to the host. Every message
-a person sends (an edit, a Live command, their presence) is signed by them too.
+Rooms started now are **signed rooms**. Who's in the room, who hosts, the co-hosts, who drives Live, who can edit and
+the room's switches are a list of changes, each signed by the person who made it, and every page in the room checks
+them. The room's link names the host's public key, so a page trusts only changes it can trace back to the host.
+Every message a person sends (an edit, a Live command, their presence) is signed by them too. The link itself opens
+only the door: the room's content is under a key the link doesn't carry, handed to each person let in, and changed
+when someone is removed.
 
 - **Each change says what its maker had seen.** Whether it counts depends only on that: the maker must have been
   the host or a co-host there. So everyone ends up with the same roles whatever order changes reach them in, and a
   change that counted always counts.
 - **What this holds, as long as the others run Live Diagrams as published:**
+  - someone with only the link gets nothing of the room until the host or a co-host lets them in;
+  - someone removed gets nothing more, and their old key opens nothing new;
   - a viewer's edits reach nobody;
   - only the host and co-hosts let people edit, so nobody else can get round "New people can view only";
   - only the driver moves the shared Live run, and handing it over only counts to someone the host or a co-host let
@@ -139,12 +173,16 @@ a person sends (an edit, a Live command, their presence) is signed by them too.
   - send a lot of messages: every page bounds what it takes from one person, but can't stop them sending;
   - claim another editor's place in the change history (attribution between editors is best-effort);
   - if it was a co-host, keep making role changes that claim to come from before its co-hosting was taken back:
-    that can't be told apart from a change made at the same moment, so it counts. Starting a new room, or removing
-    people (coming later), is what cuts it off.
-- **Older links.** A link made before signed rooms opens as before, as a room without roles, for one more release.
-  There, roles are what each page says, and a modified page could ignore them.
-- **Not yet independently reviewed.** The signing design hasn't had an independent review either. It only adds
-  protection to what rooms had, and Private diagrams stay out of rooms whatever the review finds.
+    that can't be told apart from a change made at the same moment, so it counts, until someone is removed: the new
+    key starts the room's list of changes afresh, and nothing signed before counts in it;
+  - if it's in the room, pass the room's key, or the diagram, to someone who isn't (anyone let in can copy what
+    they see); honest pages still ignore that person, as they weren't let in.
+- **Older links.** A link made before knock-to-join (`v2`) opens as before, as a signed room anyone with the link
+  joins; one made before signed rooms (`v1`) opens as a room without roles, for one more release. There, roles are
+  what each page says, and a modified page could ignore them.
+- **Not yet independently reviewed.** The signing, knocking and re-keying design hasn't had an independent review
+  either. It only adds protection to what rooms had, and Private diagrams stay out of rooms whatever the review
+  finds.
 
 ## Leave
 
@@ -182,11 +220,10 @@ run a relay server for them. A self-hosted copy can configure its own (a TURN se
 - **On this device.** While you're in a room, the app keeps an encrypted copy of the room's diagram in this
   browser's storage, so a reload loses nothing. It keeps the room's link in this tab only. **File ▸ Privacy ▸ Clear
   everything on this device…** removes both.
-- **Anyone with the link can see the diagram.** Whether they can edit is the host's choice (**Who can edit**, above),
-  but nobody can be removed from a room yet. If a link leaks, everyone should leave, and the people who should edit
-  should start a new room.
-- **Your signing key** stays in this tab, beside the room's link, and goes nowhere else. Leaving the room or closing
-  the tab removes it.
+- **The link only lets people knock.** Someone with a leaked link can ask to join, and the host or a co-host says no.
+  Someone let in by mistake can be removed: the room moves to a new key.
+- **Your keys** (for signing, and for being handed the room's key) and the room's current key stay in this tab,
+  beside the room's link, and go nowhere else. Leaving the room or closing the tab removes them.
 - **Not yet independently reviewed.** The encryption and signing design (its keys, messages, signatures and link
   format) hasn't had an independent cryptographic review yet. That is one reason Private diagrams stay out of rooms.
   For anything sensitive, use a file or a link with a password.

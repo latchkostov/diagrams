@@ -1,6 +1,8 @@
 import { COLLAB_LIMITS } from "../limits";
 import { MAX_LOG_ENTRIES, parseEntry, type RosterEntry } from "../roster";
-import { publicKeyBytes, type StoredIdentity } from "../signing";
+import { publicKeyBytes, type StoredAgreement, type StoredIdentity } from "../signing";
+import type { ChainData } from "../epochs";
+import type { Wrap } from "../lobby";
 import type { RoomRole } from "./tabRoom";
 
 // The room's roles as this tab holds them (P3, cooperative), owned by the room's lifecycle and kept in the tab's
@@ -29,6 +31,43 @@ export interface RosterRecord {
 export interface SignedRecord {
   identity: StoredIdentity;
   log: RosterEntry[];
+  /**
+   * A knock-to-join room's member (v3): its key-agreement key, the room's epochs, the current epoch's secret
+   * (base64url: the same class of secret as the room link, kept only in this tab) and the wraps it holds for others.
+   * Everything is checked again as the room opens.
+   */
+  knock?: KnockRecord;
+}
+
+export interface KnockRecord {
+  agreement: StoredAgreement;
+  chain: ChainData;
+  /** Absent: at the door (not let in yet). */
+  secret?: string;
+  /** The epoch the secret is for (its scope). */
+  scope?: string;
+  wraps: Wrap[];
+}
+
+function parseKnock(v: unknown): KnockRecord | undefined {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
+  const k = v as Record<string, unknown>;
+  const a = k.agreement as Record<string, unknown> | undefined;
+  const jwk = a?.jwk as Record<string, unknown> | undefined;
+  if (!a || typeof a.x !== "string" || !publicKeyBytes(a.x) || !jwk || jwk.kty !== "OKP" || jwk.crv !== "X25519")
+    return undefined;
+  const chain = k.chain as Record<string, unknown> | undefined;
+  if (!chain || !Array.isArray(chain.starts) || !Array.isArray(chain.logs)) return undefined;
+  if (k.secret !== undefined && (typeof k.secret !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(k.secret)))
+    return undefined;
+  if (!Array.isArray(k.wraps) || k.wraps.length > 64) return undefined;
+  return {
+    agreement: { x: a.x, jwk: jwk as JsonWebKey },
+    chain: { starts: chain.starts, logs: chain.logs as ChainData["logs"] },
+    ...(typeof k.secret === "string" ? { secret: k.secret } : {}),
+    ...(typeof k.scope === "string" && k.scope.length < 120 ? { scope: k.scope } : {}),
+    wraps: k.wraps as Wrap[],
+  };
 }
 
 const MEMBER = /^[0-9a-f]{16}$/;
@@ -45,7 +84,9 @@ function parseSigned(v: unknown): SignedRecord | undefined {
   if (!Array.isArray(r.log) || r.log.length > MAX_LOG_ENTRIES) return undefined;
   const log = r.log.map(parseEntry);
   if (log.some((e) => !e)) return undefined;
-  return { identity: { key: id.key, jwk: jwk as JsonWebKey }, log: log as RosterEntry[] };
+  const knock = r.knock === undefined ? undefined : parseKnock(r.knock);
+  if (r.knock !== undefined && !knock) return undefined;
+  return { identity: { key: id.key, jwk: jwk as JsonWebKey }, log: log as RosterEntry[], ...(knock ? { knock } : {}) };
 }
 
 /** The id other tabs are asked about (a duplicated tab's check): a signed room's key, else the member id. */

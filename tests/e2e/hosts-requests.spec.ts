@@ -26,11 +26,17 @@ async function startRoom(page: Page): Promise<string> {
   return link;
 }
 
-async function join(context: BrowserContext, link: string, alias: string): Promise<Page> {
+async function join(host: Page, context: BrowserContext, link: string, alias: string): Promise<Page> {
   const page = await context.newPage();
   await page.goto(link);
   await page.getByTestId("room-join-alias").fill(alias);
   await page.getByTestId("room-join-accept").click();
+  // Knock-to-join: the host lets them in (their card says who).
+  await host
+    .getByTestId("room-knock-card")
+    .filter({ hasText: alias })
+    .getByTestId("room-knock-admit")
+    .click({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
   return page;
 }
@@ -95,7 +101,7 @@ test.describe("Hosts and requests", () => {
     try {
       await emulateTracker([context, other]);
       const link = await hostRoom(page);
-      const guest = await join(other, link, "Heron");
+      const guest = await join(page, other, link, "Heron");
       await hostPlays(page);
       await watches(guest);
       // Following, the live bar is inert: using it says who drives, with Ask to drive.
@@ -141,7 +147,7 @@ test.describe("Hosts and requests", () => {
     try {
       await emulateTracker([context, other]);
       const link = await hostRoom(page);
-      const guest = await join(other, link, "Heron");
+      const guest = await join(page, other, link, "Heron");
       await hostPlays(page);
       await watches(guest);
       await chip(guest).click();
@@ -171,8 +177,8 @@ test.describe("Hosts and requests", () => {
     try {
       await emulateTracker([context, a, b]);
       const link = await hostRoom(page);
-      const first = await join(a, link, "Ada");
-      const second = await join(b, link, "Bea");
+      const first = await join(page, a, link, "Ada");
+      const second = await join(page, b, link, "Bea");
       await expect(chip(page)).toHaveAttribute("data-peers", "2");
       // The host makes the second to join a co-host.
       await chip(page).click();
@@ -201,13 +207,13 @@ test.describe("Hosts and requests", () => {
     try {
       await emulateTracker([context, other]);
       const link = await hostRoom(page);
-      // A signed room: the link names the host's key.
-      expect(link).toMatch(/#room=v2\.0\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
+      // A knock-to-join room: the link names the host's key (and carries no epoch).
+      expect(link).toMatch(/#room=v3\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
       await expect(chip(page)).toHaveAttribute("data-signed", "true");
       await chip(page).click();
       await page.getByTestId("room-new-view-only").click();
       await expect(page.getByTestId("room-menu")).toHaveCount(0);
-      const guest = await join(other, link, "Wren");
+      const guest = await join(page, other, link, "Wren");
       await expect(chip(guest)).toHaveAttribute("data-can-edit", "false");
       // The guest deletes a node: it comes back at once, and a note says why. The host never loses it.
       await guest.getByTestId("node-orders").click();

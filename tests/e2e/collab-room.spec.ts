@@ -88,10 +88,15 @@ async function startRoom(page: Page): Promise<string> {
   await expect(page.getByTestId("room-started-dialog")).toBeVisible();
   await expect(page.getByTestId("room-link-copy")).toBeFocused();
   const link = await page.getByTestId("room-link").inputValue();
-  // A signed room (P4): the secret, then the host's public key.
-  expect(link).toMatch(/#room=v2\.0\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
+  // A knock-to-join room (P5): the lobby's secret, then the host's public key (no epoch).
+  expect(link).toMatch(/#room=v3\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/);
   await page.getByTestId("room-started-done").click();
   return link;
+}
+
+/** Knock-to-join (P5): the host lets in whoever is at the door (a card under the chip: Admit). */
+async function admit(host: Page) {
+  await host.getByTestId("room-knock-admit").first().click({ timeout: pageLoadTimeout() });
 }
 
 const chip = (page: Page) => page.getByTestId("room-chip");
@@ -145,6 +150,11 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
     expect(sockets.opened).toBe(before);
     expect(await peerConnections(guest)).toBe(0);
     await guest.getByTestId("room-join-accept").click();
+    // At the door until the host lets them in: nothing of the room meanwhile.
+    await expect(guest.getByTestId("room-connecting")).toHaveAttribute("data-knocking", "true", {
+      timeout: pageLoadTimeout(),
+    });
+    await admit(page);
     await expect(guest.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(chip(guest)).toHaveAttribute("data-peers", "1");
     await expect(chip(page)).toHaveAttribute("data-peers", "1");
@@ -432,9 +442,11 @@ test("Clear everything stops the room's writers, an encryption started before it
     const guest = await other.newPage();
     await guest.goto(link);
     await guest.getByTestId("room-join-accept").click();
+    await admit(page);
     await expect(guest.getByTestId("node-gateway")).toContainText("Before the wipe", { timeout: pageLoadTimeout() });
     await late.goto(link);
     await late.getByTestId("room-join-accept").click();
+    await admit(page);
     await expect(late.getByTestId("node-gateway")).toContainText("Before the wipe", { timeout: pageLoadTimeout() });
 
     // An encryption started before Clear everything, in the late tab: held at its entry until after the wipe.
@@ -514,6 +526,7 @@ async function twoInARoom(page: Page, context: BrowserContext, other: BrowserCon
   await expect(guest.getByTestId("room-services")).toHaveText(`Services: ${new URL(page.url()).hostname}`);
   await expect(guest.getByTestId("room-join-dialog")).toContainText("The services below");
   await guest.getByTestId("room-join-accept").click();
+  await admit(page);
   await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(chip(page)).toHaveAttribute("data-peers", "1");
   return guest;
@@ -833,6 +846,8 @@ test("joining focuses the connecting status, then the canvas; focus moved to the
     await first.keyboard.press("Tab");
     await expect(first.getByTestId("room-connecting-leave")).toBeFocused();
     tracker.release();
+    // Knock-to-join: the host lets them in (on its own page: the guest's keyboard stays where it is).
+    await admit(page);
     await expect(first.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(first.getByTestId("canvas-wrap")).toBeFocused();
     await first.close();
@@ -842,6 +857,7 @@ test("joining focuses the connecting status, then the canvas; focus moved to the
     await join(second);
     await second.getByTestId("file-button").focus();
     tracker.release();
+    await admit(page);
     await expect(second.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect.poll(() => interactionLog(second)).toContainEqual(expect.stringMatching(/^room\.ready ->/));
     await expect(second.getByTestId("file-button")).toBeFocused();

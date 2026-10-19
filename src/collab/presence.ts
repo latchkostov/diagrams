@@ -270,6 +270,17 @@ export class PresenceTable {
     return true;
   }
 
+  /**
+   * A new epoch (knock-to-join): senders' frame counters start again under new keys. Those kept start over (their next
+   * presence counts whatever its counter); the others go.
+   */
+  restart(keep: (sender: string) => boolean): void {
+    for (const [sender, p] of this.peers)
+      if (keep(sender)) p.counter = 0;
+      else this.peers.delete(sender);
+    this.revision++;
+  }
+
   remove(sender: string): boolean {
     if (!this.peers.delete(sender)) return false;
     this.revision++;

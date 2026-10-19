@@ -3,9 +3,28 @@ import { canCollaborate, type CanvasPrivacyState } from "../lib/localOnly";
 import type { DiagramFile } from "../model/types";
 import { realClock, type Clock } from "./clock";
 import { CollabDoc, REMOTE } from "./doc";
-import { FRAME_SIGNATURE_BYTES, Opener, Sealer, SENDER_ID_BYTES, type Opened, type Rejection } from "./envelope";
+import {
+  frameChannel,
+  FRAME_SIGNATURE_BYTES,
+  Opener,
+  Sealer,
+  SENDER_ID_BYTES,
+  type Opened,
+  type Rejection,
+} from "./envelope";
 import { structClients, type GuardProblem } from "./guard";
-import { reserveRoomCreation, deriveRoomKeys, type Channel, type RoomKeys } from "./keys";
+import {
+  checkMemberProof,
+  deriveEpochKeys,
+  deriveRoomKeys,
+  memberProof,
+  newEpochSecret,
+  reserveRoomCreation,
+  type Channel,
+  type RoomKeys,
+} from "./keys";
+import { commitEpoch, EpochChain, scopeOf, signStart, type ChainData, type EpochStart } from "./epochs";
+import { Lobby, unwrap, wrapFor, wrapSigned, type LobbyBody, type LobbyMessage, type Wrap } from "./lobby";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import {
@@ -22,10 +41,10 @@ import { secureRandom, type RandomBytes } from "./random";
 import type { CollabTransport, Connectivity, PeerId } from "./transport/types";
 import { RoomRecovery } from "./recovery";
 import type { RecoveryStore } from "./recoveryStore";
-import { bytesToText, textToBytes } from "../interop/codec";
-import type { RosterOp } from "./roster";
+import { base64UrlToBytes, bytesToBase64Url, bytesToText, textToBytes } from "../interop/codec";
+import type { RosterEntry, RosterOp } from "./roster";
 import { SignedRoom } from "./signedRoom";
-import type { Identity } from "./signing";
+import type { Agreement, Identity } from "./signing";
 
 // A room session: one person's CollabDoc joined to a room over a transport, with the room's E2E envelopes on every
 // frame. Transport-neutral: it needs only the CollabTransport interface. All timing reads the room clock.
@@ -57,6 +76,19 @@ import type { Identity } from "./signing";
 //   round brings both sides' bindings ahead of the document.
 // - The roster travels as DOC.roster: in full to each peer that appears, each new entry to everyone, and a summary
 //   with every anti-entropy round (a peer whose roster differs sends its entries back).
+//
+// A knock-to-join room (a v3 link, P5: ./lobby.ts, ./epochs.ts) adds a lobby, sealed under the link's key:
+// - The content is under the current epoch's secret. Content frames go only to transport peers whose lobby hello
+//   proved they hold it (a member proof), and only members' presence and frames count: someone who knocks gets
+//   nothing of the room, and can't ask for it.
+// - A knock (a hello without that proof) from someone who isn't a member is shown to the host and co-hosts (Admit or
+//   Deny), or, with "ask" off, the host's (else the earliest co-host's) page lets them in. Letting in is a signed join
+//   entry, then a bundle to them: the room's epochs and the secret, wrapped for their key-agreement key.
+// - A member behind on epochs (back from a reload, or across a partition) is sent what it lacks; one no longer in the
+//   room (removed) is told so by the chain itself, and leaves.
+// - Remove: a signed removal, then a new epoch: a new secret, its start signed by the remover and committing to it,
+//   wrapped for each member left (absent ones too: kept and sent when they're back), and the session re-keyed in
+//   place (the same document, sender and Live run). Frames from any other epoch are refused.
 
 export class PrivateDiagramError extends Error {
   constructor() {
@@ -91,6 +123,12 @@ export type RejectReason =
   | "verify-throttled"
   | "unauthorised"
   | "roster-refused"
+  // Knock-to-join (P5):
+  | "not-member"
+  | "bad-proof"
+  | "bad-channel"
+  | "lobby-throttled"
+  | "bad-agreement"
   | "held-dropped";
 
 export interface SessionStats {
@@ -124,9 +162,38 @@ export interface SessionOptions {
    * A signed room's member (its link has a host key, P4): this tab's identity, and the roster entries it kept (from
    * its record: each is checked again).
    */
-  signed?: { identity: Identity; log?: readonly unknown[] };
+  signed?: { identity: Identity; log?: readonly unknown[]; knock?: KnockMember };
   presence?: Partial<PresenceState>;
 }
+
+/** A knock-to-join room's member (v3): its key-agreement key, the room's epochs, and the current one's secret. */
+export interface KnockMember {
+  agreement: Agreement;
+  chain: ChainData;
+  /** The epoch it's in (its scope): the record's; absent, the chain's deepest. */
+  scope?: string;
+  /** The current epoch's secret. Absent: this person is at the door, knocking, until someone lets them in. */
+  secret?: Uint8Array;
+  /** Wrapped secrets it holds for others (a re-key's, kept to hand to members who come back). */
+  wraps?: Wrap[];
+}
+
+/** Someone at the door, as the host and co-hosts see them. */
+export interface Knock {
+  key: string;
+  x: string;
+  alias: string;
+  peer: PeerId;
+  sender: string;
+  /** Room-clock time it was last said. */
+  at: number;
+}
+
+/** Knocks shown at most (one per transport peer), and how long one lasts without being said again. */
+const MAX_KNOCKS = 8;
+const KNOCK_TTL_MS = 60_000;
+/** Wrapped secrets a member keeps for others. */
+const MAX_KEPT_WRAPS = 64;
 
 /** A token bucket per sender on the room clock: `cap` bytes per window. */
 class RateLimit {
@@ -233,8 +300,8 @@ export class CollabSession {
   private revision = 0;
   private elementIds = 0;
 
-  private readonly sealer: Sealer;
-  private readonly opener: Opener;
+  private sealer: Sealer;
+  private opener: Opener;
   private readonly rate: RateLimit;
   /** What this session sends back to each requester: a member asking for the whole room again and again can't make
    *  it send megabytes per request. */
@@ -270,6 +337,32 @@ export class CollabSession {
   /** Newcomers this session is admitting (an entry being signed). */
   private readonly admitting = new Set<string>();
   private summary?: string;
+  /** Knock-to-join: the lobby, its keys, the recovery store (a new epoch writes under its own key). */
+  private lobby?: Lobby;
+  private lobbyKeys?: RoomKeys;
+  private recoveryStore?: RecoveryStore;
+  /** Transport peers whose hello proved they hold this epoch's secret (content goes to them only), by sender. */
+  private readonly memberPeers = new Map<PeerId, string>();
+  /** People knocking (shown to the host and co-hosts), by key. */
+  readonly knocks = new Map<string, Knock>();
+  /** Wrapped secrets this member holds (the current epoch's, for members who come back). */
+  private wraps: Wrap[] = [];
+  /** The current epoch's scope. */
+  private scope = "";
+  /** Bundles sent to one peer per window (a member behind on epochs asks again and again). */
+  private readonly bundles: RateLimit;
+  /** This person was removed from the room (the session has left). */
+  removed = false;
+  /** Knock-to-join: this person is at the door, waiting for the host or a co-host to let them in. */
+  knocking = false;
+  /** They said no (the session has left). */
+  denied = false;
+  /** Scopes this session has sealed content under: it never moves to one again (nor back to an older epoch). */
+  private readonly sealedScopes = new Set<string>();
+  /** At the door, a member answered (someone's here and has been asked): waiting to be let in, not for an answer. */
+  lobbyAnswered = false;
+  /** Carrying out a removal made at the same moment as another (one at a time). */
+  private carrying = false;
   /** Counts changes to the roster and to bindings: a held update that didn't count is checked again after one. */
   private authRevision = 0;
   private outbox: Promise<void> = Promise.resolve();
@@ -279,7 +372,7 @@ export class CollabSession {
   private listeners = new Set<() => void>();
 
   private constructor(
-    readonly keys: RoomKeys,
+    public keys: RoomKeys,
     readonly transport: CollabTransport,
     private readonly clock: Clock,
     sender: Uint8Array,
@@ -298,6 +391,7 @@ export class CollabSession {
     this.liveRate = new RateLimit(clock, COLLAB_LIMITS.liveFramesPerWindow);
     this.verifies = new RateLimit(clock, COLLAB_LIMITS.verifiesPerWindow);
     this.rosterReplies = new RateLimit(clock, COLLAB_LIMITS.rosterRepliesPerWindow);
+    this.bundles = new RateLimit(clock, COLLAB_LIMITS.rosterRepliesPerWindow);
     this.reassembler = new Reassembler(clock);
     this.presence = new PresenceTable(clock);
   }
@@ -313,17 +407,41 @@ export class CollabSession {
     let session: CollabSession | undefined;
     try {
       const random = opts.random ?? secureRandom;
-      const keys = await deriveRoomKeys(opts.room);
+      const lobbyKeys = await deriveRoomKeys(opts.room);
+      let keys = lobbyKeys;
+      let chain: EpochChain | undefined;
+      let current: EpochStart | undefined;
+      if (opts.room.knock) {
+        const k = opts.signed?.knock;
+        if (!k || !opts.room.hostKey) throw new Error("A knock-to-join room needs its epoch's secret.");
+        chain = new EpochChain(opts.room.hostKey, lobbyKeys.roomId);
+        await chain.add(k.chain);
+        if (k.secret) {
+          current = (k.scope && chain.byScope(k.scope)) || chain.deepest();
+          if (!current || !(await chain.learn(current, k.secret)))
+            throw new Error("That isn't this room's epoch secret.");
+          keys = await deriveEpochKeys(lobbyKeys, current.epoch, k.secret);
+        } else {
+          // At the door: content keys of its own that nobody else has (it sends no content to anyone anyway), until
+          // it's let in and follows the room's epoch.
+          keys = await deriveEpochKeys(lobbyKeys, 0, random(32));
+        }
+      }
       doc ??= new CollabDoc({ clientId: opts.clientId });
-      const recovery = opts.recovery
-        ? new RoomRecovery(opts.recovery, keys, () => session?.emit(), Date.now, opts.clock ?? realClock)
-        : undefined;
+      // At the door there's no local copy to read or write: its keys aren't the room's (./rekey makes one once in).
+      const atDoor = !!opts.room.knock && !current;
+      const recovery =
+        opts.recovery && !atDoor
+          ? new RoomRecovery(opts.recovery, keys, () => session?.emit(), Date.now, opts.clock ?? realClock)
+          : undefined;
       await recovery?.restore(doc);
       if (opts.allowed && !opts.allowed()) throw new PrivateDiagramError();
       if (creation && opts.initial && doc.isEmpty()) doc.hydrate(opts.initial);
       const me = { ...randomAlias(() => random(1)[0] / 256), ...opts.presence };
       session = new CollabSession(keys, opts.transport, opts.clock ?? realClock, random(SENDER_ID_BYTES), doc, me);
-      if (opts.room.hostKey && opts.signed) await session.setUpSigned(opts.room.hostKey, opts.signed);
+      if (opts.room.hostKey && opts.signed)
+        await session.setUpSigned(opts.room.hostKey, opts.signed, chain && { lobbyKeys, chain, current });
+      session.recoveryStore = opts.recovery;
       if (opts.allowed && !opts.allowed()) throw new PrivateDiagramError();
       session.recovery = recovery;
       session.start();
@@ -355,7 +473,10 @@ export class CollabSession {
    * everyone in order with what's sent after it (a goodbye goes after a handover). False when this member may not
    * make it now, it would change nothing, or this isn't a signed room.
    */
-  appendRoster(op: RosterOp, fields: { who?: string; viewOnly?: boolean } = {}): Promise<boolean> {
+  appendRoster(
+    op: RosterOp,
+    fields: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean } = {},
+  ): Promise<boolean> {
     const room = this.signed;
     if (!room || this.status === "left") return Promise.resolve(false);
     const job = this.outbox.then(async () => {
@@ -371,14 +492,35 @@ export class CollabSession {
   }
 
   /** Sets up a signed room before the session starts: its roster (from the record), its signer, its binding. */
-  private async setUpSigned(hostKey: string, s: { identity: Identity; log?: readonly unknown[] }): Promise<void> {
-    const room = new SignedRoom(this.keys, hostKey, s.identity);
-    await room.addEntries(s.log ?? []);
+  private async setUpSigned(
+    hostKey: string,
+    s: { identity: Identity; log?: readonly unknown[]; knock?: KnockMember },
+    knock?: { lobbyKeys: RoomKeys; chain: EpochChain; current?: EpochStart },
+  ): Promise<void> {
+    const room = new SignedRoom(
+      this.keys,
+      hostKey,
+      s.identity,
+      knock && s.knock ? { chain: knock.chain, agreement: s.knock.agreement } : undefined,
+    );
+    if (knock && s.knock) {
+      this.lobbyKeys = knock.lobbyKeys;
+      this.lobby = new Lobby(knock.lobbyKeys, s.identity, this.sealer.sender, this.clock);
+      this.wraps = s.knock.wraps ?? [];
+      this.knocking = !s.knock.secret;
+      if (knock.current) {
+        room.current = knock.current;
+        this.sealedScopes.add(scopeOf(knock.current));
+      }
+      this.scope = room.scope;
+    } else await room.addEntries(s.log ?? []);
     this.signed = room;
     this.sealer.sign = room.signFrame;
     await this.bind();
-    room.roster.subscribe(() => (this.summary = undefined));
-    room.subscribe(() => this.signedChanged());
+    room.subscribe(() => {
+      this.summary = undefined;
+      this.signedChanged();
+    });
   }
 
   /** This session's binding, for its sender id and its document's Yjs client id: carried by its presence. */
@@ -441,7 +583,7 @@ export class CollabSession {
 
   get roomStatus(): RoomStatus {
     if (this.status === "left") return this.recovery?.saved ? "saved-device" : "offline";
-    const peers = this.transport.peers();
+    const peers = this.roomPeers();
     if (peers.length && peers.every((peer) => this.synced.has(peer)) && this.hasDocument) return "synced";
     if (this.recovery?.saved) return "saved-device";
     return this.status === "connected" || !this.hasDocument ? "connecting" : "offline";
@@ -452,11 +594,37 @@ export class CollabSession {
    * (connected, but who they are hasn't checked yet, or something of theirs is waiting on it), "document" (connected
    * and checked, the diagram on its way). Undefined once it has the document.
    */
-  get waiting(): "peers" | "verifying" | "document" | undefined {
+  get waiting(): "peers" | "admission" | "verifying" | "document" | undefined {
     if (this.hasDocument) return undefined;
-    if (!this.transport.peers().length) return "peers";
+    // Knock-to-join: at the door, asked (someone's here), or still looking for anyone.
+    if (this.knocking) return this.lobbyAnswered ? "admission" : "peers";
+    if (!this.roomPeers().length && !this.transport.peers().length) return "peers";
     if (this.signed && (this.held.size || this.behind.size || !this.presence.list().length)) return "verifying";
     return "document";
+  }
+
+  /**
+   * One snapshot of this session's state for diagnostics (the wait and the chip carry it as data attributes, and e2e
+   * builds expose it): why it waits, its epoch, who's here, and what it refused, by reason.
+   */
+  diagnostics(): {
+    waiting: string;
+    knocking: boolean;
+    epoch: number;
+    peers: number;
+    held: number;
+    behind: number;
+    rejected: Partial<Record<RejectReason, number>>;
+  } {
+    return {
+      waiting: this.waiting ?? "none",
+      knocking: this.knocking,
+      epoch: this.keys.epoch,
+      peers: this.peerCount,
+      held: this.held.size,
+      behind: this.behind.size,
+      rejected: { ...this.stats.rejected },
+    };
   }
 
   /** Whether this session has a document yet (a joiner has none until a peer answers). */
@@ -621,6 +789,13 @@ export class CollabSession {
         connectivity: () => this.updateStatus(),
         frame: (from, bytes) => this.enqueue(from, bytes),
         join: (peer) => {
+          // Knock-to-join: who this is first; the room's content only once each side has proved it's a member.
+          if (this.lobby) {
+            this.sayHello(peer);
+            this.updateStatus();
+            this.emit();
+            return;
+          }
           // A signed room: who this is and the roster first, so what follows counts at once.
           if (this.signed) {
             this.sendPresence(peer);
@@ -632,6 +807,8 @@ export class CollabSession {
           this.emit();
         },
         leave: (peer) => {
+          this.memberPeers.delete(peer);
+          for (const [key, k] of this.knocks) if (k.peer === peer) this.knocks.delete(key);
           this.synced.delete(peer);
           this.updateStatus();
           this.emit();
@@ -640,6 +817,9 @@ export class CollabSession {
     );
     this.stops.push(
       this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => {
+        this.expireKnocks();
+        // Anyone not yet proved a member (a hello lost, a peer behind on epochs) hears from this one again.
+        if (this.lobby) for (const peer of this.transport.peers()) if (!this.memberPeers.has(peer)) this.sayHello(peer);
         // Without the document yet: who this is goes with each request (a lost binding never stalls the answer).
         if (this.signed && !this.hasDocument) this.sendPresence();
         this.requestSync();
@@ -660,6 +840,7 @@ export class CollabSession {
         if (this.presence.expire()) this.emit();
       }),
     );
+    if (this.lobby) this.sayHello();
     if (this.signed) this.sendPresence();
     this.requestSync();
     if (!this.signed) this.sendPresence();
@@ -673,7 +854,7 @@ export class CollabSession {
    */
   private updateStatus(): void {
     if (this.status === "left") return;
-    const next: SessionStatus = this.transport.peers().length ? "connected" : "waiting";
+    const next: SessionStatus = this.roomPeers().length ? "connected" : "waiting";
     const connectivity = next === "connected" ? "connected" : (this.transport.connectivity?.() ?? "waiting");
     const failed = ["trackers-unreachable", "no-answer", "ice-failed"].includes(connectivity);
     const changed = connectivity !== this.connectivity;
@@ -700,7 +881,8 @@ export class CollabSession {
 
   /** A joiner without a document and without a failure waits COLLAB_LIMITS.noAnswerMs, once per attempt. */
   private updateNoAnswer(): void {
-    const waiting = !this.hasDocument && !this.connectionFailed;
+    // At the door with someone here who's been asked: waiting to be let in, not for an answer.
+    const waiting = !this.hasDocument && !this.connectionFailed && !(this.knocking && this.lobbyAnswered);
     if (!waiting) {
       this.noAnswerWait?.();
       this.noAnswerWait = undefined;
@@ -779,12 +961,569 @@ export class CollabSession {
       // Every receiver keeps a window of a sender's counters: the cached goodbye stays well inside it.
       if (channel === "doc" && ++this.framesSinceBye >= COLLAB_LIMITS.replayWindow / 2) this.prepareBye();
       if (this.status === "left") return;
-      this.transport.send(sealed, to);
-      this.stats.framesSent++;
-      this.stats.bytesSent += sealed.length;
+      // Knock-to-join: the room's content only to proved members, never to someone at the door.
+      const targets = !this.lobby
+        ? [to]
+        : to === undefined
+          ? [...this.memberPeers.keys()]
+          : this.memberPeers.has(to)
+            ? [to]
+            : [];
+      for (const target of targets) {
+        this.transport.send(sealed, target);
+        this.stats.framesSent++;
+        this.stats.bytesSent += sealed.length;
+      }
     } catch {
       this.reject("too-large");
     }
+  }
+
+  /** How many others are in the room (with knock-to-join: proved members, never someone at the door). */
+  get peerCount(): number {
+    return this.roomPeers().length;
+  }
+
+  /** Transport peers in the room: all of them, or with knock-to-join the proved members. */
+  private roomPeers(): PeerId[] {
+    return this.lobby ? [...this.memberPeers.keys()] : [...this.transport.peers()];
+  }
+
+  // ---------------------------------------------------------------- knock-to-join (P5)
+
+  /** A lobby message, signed and sealed, in order with everything else this session sends. */
+  private sendLobby(body: LobbyBody | (() => Promise<LobbyBody>), to?: PeerId): void {
+    const lobby = this.lobby;
+    if (!lobby || this.status === "left") return;
+    this.outbox = this.outbox.then(async () => {
+      try {
+        for (const f of await lobby.seal(typeof body === "function" ? await body() : body)) {
+          if (this.status === "left") return;
+          this.transport.send(f, to);
+          this.stats.framesSent++;
+          this.stats.bytesSent += f.length;
+        }
+      } catch {
+        this.reject("too-large");
+      }
+    });
+  }
+
+  /** Who this is, and the proof it holds this epoch's secret. */
+  private sayHello(to?: PeerId): void {
+    const room = this.signed;
+    if (!room?.knock) return;
+    // At the door: who this is, and nothing else (a knock).
+    if (this.knocking) {
+      this.sendLobby({ t: "hello", x: room.knock.agreement.x, alias: this.me.alias }, to);
+      return;
+    }
+    this.sendLobby(
+      async () => ({
+        t: "hello",
+        x: room.knock!.agreement.x,
+        alias: this.me.alias,
+        scope: this.scope,
+        proof: bytesToBase64Url(await memberProof(this.keys, this.sealer.sender)),
+      }),
+      to,
+    );
+  }
+
+  /** A lobby frame: a hello (a member, or a knock), a bundle (epochs, secrets), a deny (for knockers only). */
+  private async receiveLobby(from: PeerId, bytes: Uint8Array): Promise<void> {
+    const lobby = this.lobby!;
+    const m = await lobby.open(from, bytes);
+    if (!m) {
+      if (lobby.refused) this.reject(lobby.refused as RejectReason);
+      return;
+    }
+    if (m.sender === this.senderId) return;
+    if (m.body.t === "hello") return this.lobbyHello(m, m.body);
+    if (m.body.t === "bundle") return this.lobbyBundle(m, m.body);
+    if (m.body.t === "deny") return this.lobbyDeny(m, m.body);
+  }
+
+  /** At the door, told no: only the host's or a co-host's no counts (checked on the chain it carries). */
+  private async lobbyDeny(m: LobbyMessage, deny: Extract<LobbyBody, { t: "deny" }>): Promise<void> {
+    const room = this.signed;
+    if (!this.knocking || !room || deny.to !== room.key) return;
+    const chain = new EpochChain(room.hostKey, this.keys.roomId);
+    await chain.add(deny.chain, () => this.verifies.take(m.sender, 1));
+    const deepest = chain.deepest();
+    const s = deepest && chain.rosterOf(deepest)?.state();
+    if (!s || !(s.host === m.key || s.cohosts.includes(m.key)) || s.members.has(room.key)) return;
+    this.denied = true;
+    this.emit();
+    void this.leave();
+  }
+
+  private async lobbyHello(m: LobbyMessage, hello: Extract<LobbyBody, { t: "hello" }>): Promise<void> {
+    const room = this.signed!;
+    // At the door: a member's hello means someone's here and has been asked; knock to them (once a window or so).
+    if (this.knocking) {
+      if (hello.scope && !this.lobbyAnswered) {
+        this.lobbyAnswered = true;
+        this.updateStatus();
+        this.emit();
+      }
+      if (hello.scope && this.bundles.take(m.sender, 1)) this.sayHello(m.from);
+      return;
+    }
+    const s = room.state();
+    if (hello.proof && hello.scope === this.scope) {
+      if (!s.members.has(m.key)) return this.reject("not-member");
+      let proof: Uint8Array;
+      try {
+        proof = base64UrlToBytes(hello.proof);
+      } catch {
+        return this.reject("bad-proof");
+      }
+      if (!(await checkMemberProof(this.keys, m.senderBytes, proof))) return this.reject("bad-proof");
+      const known = this.memberPeers.get(m.from) === m.sender;
+      this.memberPeers.set(m.from, m.sender);
+      if (this.knocks.delete(m.key)) this.emit();
+      if (known) return;
+      // A member, proved: what the room has, as on any peer appearing (and this one's own hello, if it lacks it).
+      this.sayHello(m.from);
+      this.sendPresence(m.from);
+      this.sendRoster(m.from);
+      this.requestSync(m.from);
+      this.updateStatus();
+      this.emit();
+      return;
+    }
+    // A member behind on epochs (or without this one's secret): sent what it lacks, a few times a window at most.
+    if (s.members.has(m.key)) {
+      if (this.bundles.take(m.sender, 1)) this.sendBundle(m.from, [{ key: m.key, x: s.xs.get(m.key) ?? hello.x }]);
+      return;
+    }
+    // Someone removed, back with an old epoch: the chain (no secret) tells their page it's out.
+    if (hello.scope && this.removedOnPath(m.key)) {
+      if (this.bundles.take(m.sender, 1)) this.sendBundle(m.from, []);
+      return;
+    }
+    // A peer on an epoch this one doesn't know (ahead, or the other side of a partition): it hears this one is
+    // behind, and sends what it has.
+    if (hello.scope) {
+      if (this.bundles.take(m.sender, 1)) this.sayHello(m.from);
+      return;
+    }
+    this.knocked({ key: m.key, x: hello.x, alias: hello.alias || "Someone", peer: m.from, sender: m.sender, at: 0 });
+  }
+
+  /**
+   * Someone at the door. The host and co-hosts are asked; with "ask" off, or for someone who was in the room in an
+   * earlier epoch and wasn't removed (let in just as someone else was removed), the host's page (else the earliest
+   * co-host's here) lets them in. Bounded: one knock per transport peer (another key from it replaces its last),
+   * MAX_KNOCKS in all (the oldest goes), and a knock not said again for KNOCK_TTL_MS goes.
+   */
+  private knocked(k: Knock): void {
+    const room = this.signed!;
+    const s = room.state();
+    if (!(s.host === room.key || s.cohosts.includes(room.key))) return;
+    if (!s.ask || this.wasMember(k.key)) {
+      if (this.designatedLead()) void this.admit(k.key, k);
+      return;
+    }
+    const known = this.knocks.get(k.key);
+    for (const [key, other] of this.knocks) if (other.peer === k.peer && key !== k.key) this.knocks.delete(key);
+    this.knocks.delete(k.key);
+    this.knocks.set(k.key, { ...k, at: this.clock.now() });
+    for (const key of this.knocks.keys()) {
+      if (this.knocks.size <= MAX_KNOCKS) break;
+      this.knocks.delete(key);
+    }
+    if (!known || known.peer !== k.peer) this.emit();
+  }
+
+  /** Knocks not said again for a while go (the newcomer left, or stopped waiting). */
+  private expireKnocks(): void {
+    const now = this.clock.now();
+    let gone = false;
+    for (const [key, k] of this.knocks)
+      if (now - k.at > KNOCK_TTL_MS) {
+        this.knocks.delete(key);
+        gone = true;
+      }
+    if (gone) this.emit();
+  }
+
+  /** The epochs this session has been through, to its current one. */
+  private path(): EpochStart[] {
+    const room = this.signed;
+    const current = room?.current;
+    return current && room!.knock ? room!.knock.chain.path(current) : [];
+  }
+
+  /** The removals that closed each epoch on this session's path (each the next start's `prev`). */
+  private closingRemovals(): RosterEntry[] {
+    const chain = this.signed?.knock?.chain;
+    const path = this.path();
+    const out: RosterEntry[] = [];
+    for (let i = 0; i + 1 < path.length; i++) {
+      const removal = chain?.rosterOf(path[i])?.entry(path[i + 1].prev!);
+      if (removal) out.push(removal);
+    }
+    return out;
+  }
+
+  /** Whether a removal on this session's path took `key` out. */
+  private removedOnPath(key: string): boolean {
+    return this.closingRemovals().some((r) => r.who === key);
+  }
+
+  /** Whether `key` was a member in an earlier epoch on this session's path and no removal on it took them out. */
+  private wasMember(key: string): boolean {
+    const chain = this.signed?.knock?.chain;
+    if (!chain || this.removedOnPath(key)) return false;
+    return this.path()
+      .slice(0, -1)
+      .some((st) => chain.rosterOf(st)?.state().members.has(key));
+  }
+
+  /** This person is the one to let people in on its own: the host if here, else the earliest co-host here. */
+  private designatedLead(): boolean {
+    const room = this.signed!;
+    const s = room.state();
+    const here = new Set([
+      room.key,
+      ...this.presence
+        .list()
+        .map((p) => room.keyOf(p.sender))
+        .filter((k): k is string => !!k),
+    ]);
+    const lead = here.has(s.host) ? s.host : s.cohosts.find((c) => here.has(c));
+    return lead === room.key;
+  }
+
+  /**
+   * Admit: someone at the door is let in (a join entry, and, while new people may edit, an admit), then sent the
+   * room's epochs and the secret, wrapped for them. Their key-agreement key is checked first (the wrap is made before
+   * anything is signed): one that can't be agreed with is refused. False when this person may not, nobody by that key
+   * knocked, or their key can't be used.
+   */
+  async admit(key: string, knock = this.knocks.get(key)): Promise<boolean> {
+    const room = this.signed;
+    const current = room?.current;
+    const secret = current && room!.knock!.chain.secretOf(current);
+    if (!room?.knock || !knock || !current || !secret) return false;
+    const s = room.state();
+    if (!(s.host === room.key || s.cohosts.includes(room.key))) return false;
+    this.knocks.delete(key);
+    this.emit();
+    let wrap: Wrap;
+    try {
+      wrap = await wrapFor(
+        this.keys.roomId,
+        scopeOf(current),
+        { identity: room.identity, agreement: room.knock.agreement },
+        { key, x: knock.x },
+        secret,
+      );
+    } catch {
+      this.reject("bad-agreement");
+      return false;
+    }
+    if (!s.members.has(key) && !(await this.appendRoster("join", { who: key, x: knock.x }))) return false;
+    if (!room.state().viewOnly && !room.state().editors.has(key)) await this.appendRoster("admit", { who: key });
+    this.keepWrap(wrap);
+    this.sendBundle(knock.peer, [{ key, x: knock.x }]);
+    return true;
+  }
+
+  /** Deny: someone at the door is told no (with the chain, so they can check who said it). */
+  deny(key: string): void {
+    const room = this.signed;
+    const knock = this.knocks.get(key);
+    if (!room?.knock || !knock) return;
+    this.knocks.delete(key);
+    this.sendLobby({ t: "deny", to: key, chain: room.knock.chain.data(room.current) }, knock.peer);
+    this.emit();
+  }
+
+  /** A wrap this member keeps (checked: signed by a member of its epoch), at most one per epoch, recipient and wrapper. */
+  private keepWrap(w: Wrap): void {
+    this.wraps = [...this.wraps.filter((h) => !(h.scope === w.scope && h.to === w.to && h.from === w.from)), w].slice(
+      -MAX_KEPT_WRAPS,
+    );
+  }
+
+  /** The path to the current epoch, and its secret wrapped for `to` (a newcomer, a member behind), to one peer. */
+  private sendBundle(peer: PeerId, to: { key: string; x: string }[]): void {
+    const room = this.signed;
+    const current = room?.current;
+    const secret = current && room!.knock!.chain.secretOf(current);
+    if (!room?.knock || !current || !secret) return;
+    const scope = scopeOf(current);
+    this.sendLobby(async () => {
+      const wraps = this.wraps.filter((w) => w.scope === scope && to.some((t) => t.key === w.to));
+      for (const t of to)
+        if (!wraps.some((w) => w.to === t.key))
+          try {
+            wraps.push(
+              await wrapFor(
+                this.keys.roomId,
+                scope,
+                { identity: room.identity, agreement: room.knock!.agreement },
+                t,
+                secret,
+              ),
+            );
+          } catch {
+            this.reject("bad-agreement");
+          }
+      return { t: "bundle", chain: room.knock!.chain.data(current), wraps };
+    }, peer);
+  }
+
+  /**
+   * A bundle: its epochs are checked and taken; each wrap counts only signed by whom it says wrapped it, a member of its
+   * epoch: one for this person is opened and checked against its epoch's commitment at once (a bad one is dropped and
+   * suppresses nothing), one for someone else is kept to pass on. Then this session follows the room forward, if it can.
+   */
+  private async lobbyBundle(m: LobbyMessage, bundle: Extract<LobbyBody, { t: "bundle" }>): Promise<void> {
+    const room = this.signed;
+    const chain = room?.knock?.chain;
+    if (!room || !chain) return;
+    await chain.add(bundle.chain, () => this.verifies.take(m.sender, 1));
+    for (const w of bundle.wraps) {
+      const start = chain.byScope(w.scope);
+      const roster = start && chain.rosterOf(start);
+      if (!start || !roster) continue;
+      if (!(roster.state().members.has(w.from) || roster.base.members.has(w.from) || start.by === w.from)) continue;
+      if (!this.verifies.take(m.sender, 1) || !(await wrapSigned(this.keys.roomId, w))) continue;
+      if (w.to === room.key) {
+        if (chain.secretOf(start)) continue;
+        const secret = await unwrap(this.keys.roomId, w, { key: room.key, agreement: room.knock!.agreement });
+        if (secret) await chain.learn(start, secret);
+      } else this.keepWrap(w);
+    }
+    await this.follow();
+  }
+
+  /**
+   * Where this session goes next, only ever forward: to a start that counts at a higher epoch than its own (at the
+   * door: any), whose epoch this person is a member of and has the secret for, and whose path brings back nobody a
+   * removal on this session's path took out, nor any start they signed. Of several, the highest epoch (then the
+   * lower signature). A removal on a path forward from here that names this person: they leave. Not a member forward
+   * from here, and not removed (let in just as someone was removed): they knock again.
+   */
+  private async follow(): Promise<void> {
+    const room = this.signed;
+    const chain = room?.knock?.chain;
+    if (!room || !chain || this.leaving) return;
+    const current = room.current;
+    const removed = new Set(this.closingRemovals().map((r) => r.who!));
+    const forward = chain
+      .validated()
+      .filter((st) => !current || st.epoch > current.epoch)
+      .filter((st) => {
+        const path = chain.path(st);
+        if (path[0]?.epoch !== 0) return false;
+        // Nobody this session's path removed comes back, nor signs a start on the way.
+        if (path.some((p) => removed.has(p.by))) return false;
+        const members = chain.rosterOf(st)?.state().members;
+        return !!members && ![...removed].some((k) => members.has(k));
+      })
+      .sort((a, b) => b.epoch - a.epoch || (a.sig < b.sig ? -1 : 1));
+    for (const st of forward) {
+      const s = chain.rosterOf(st)!.state();
+      if (!s.members.has(room.key)) continue;
+      const secret = chain.secretOf(st);
+      if (secret) return this.rekey(st, secret);
+    }
+    if (this.knocking || !current) return;
+    // Staying: a removal made at the same moment as one on this path may be this session's to carry out.
+    this.carryOut();
+    // Removed: a removal on a path forward that names this person, made by the host or a co-host of this epoch (a
+    // descendant's, or the other side of a partition's that won). Not a member forward from here, and not removed (let
+    // in just as someone was removed): they knock again.
+    const s = room.state();
+    const mine = new Set(this.closingRemovals().map((r) => r.sig));
+    const outOf = (st: EpochStart) =>
+      chain.path(st).some((p, i, path) => {
+        const next = path[i + 1];
+        const removal = next && chain.rosterOf(p)?.entry(next.prev!);
+        return (
+          !!removal &&
+          !mine.has(removal.sig) &&
+          removal.who === room.key &&
+          (removal.by === s.host || s.cohosts.includes(removal.by))
+        );
+      });
+    if (forward.some(outOf)) {
+      this.removed = true;
+      this.emit();
+      void this.leave();
+      return;
+    }
+    const descendants = forward.filter((st) => chain.path(st).some((p) => p.sig === current.sig));
+    if (!descendants.length) return;
+    if (descendants.every((st) => !chain.rosterOf(st)!.state().members.has(room.key))) {
+      this.knocking = true;
+      this.lobbyAnswered = false;
+      this.memberPeers.clear();
+      this.sayHello();
+      this.updateStatus();
+      this.emit();
+    }
+  }
+
+  /**
+   * Remove: the host or a co-host takes someone out of the room. A signed removal, then a new epoch: a new secret, its
+   * start signed by this person, wrapped for everyone left (all prepared before anything changes: a member whose key
+   * can't be agreed with is left out of the wraps), sent to everyone, and this session re-keyed. False when this
+   * person may not, or it changes nothing.
+   */
+  async remove(key: string): Promise<boolean> {
+    const room = this.signed;
+    if (!room?.knock || !room.current || !(await this.appendRoster("remove", { who: key }))) return false;
+    const removal = room.roster
+      .removals()
+      .filter((r) => r.by === room.key && r.who === key)
+      .at(-1);
+    return !!removal && (await this.nextEpoch(removal));
+  }
+
+  /** The next epoch after this person's removal: made in full, then handed out, then moved to. */
+  private async nextEpoch(removal: RosterEntry): Promise<boolean> {
+    const room = this.signed!;
+    const chain = room.knock!.chain;
+    const current = room.current;
+    const next = room.roster.next(removal);
+    if (!current || !next) return false;
+    const secret = newEpochSecret();
+    const epoch = current.epoch + 1;
+    const start = await signStart(room.identity, this.keys.roomId, {
+      epoch,
+      kc: await commitEpoch(secret, this.keys.roomId, epoch),
+      prev: removal.sig,
+    });
+    const scope = scopeOf(start);
+    const mine = { identity: room.identity, agreement: room.knock!.agreement };
+    const wraps: Wrap[] = [];
+    for (const [key, x] of next.xs) {
+      if (key === room.key) continue;
+      try {
+        wraps.push(await wrapFor(this.keys.roomId, scope, mine, { key, x }, secret));
+      } catch {
+        this.reject("bad-agreement");
+      }
+    }
+    // Everything's ready: only now does anything change.
+    await chain.addStarts([start]);
+    if (!chain.rosterOf(start) || !(await chain.learn(start, secret))) return false;
+    for (const w of wraps) this.keepWrap(w);
+    // Everyone hears of it (the one removed too: their page sees it's out, and can't read what follows).
+    this.sendLobby({ t: "bundle", chain: chain.data(start), wraps });
+    await this.rekey(start, secret);
+    return true;
+  }
+
+  /**
+   * Removals made at the same moment as the one that closed an epoch on this session's path (each side of a
+   * partition): they didn't close it, so they're carried out now, in the epoch this session is in, by the host here
+   * (else the earliest co-host here), if this session's path is the one that won (of an epoch's starts with one parent,
+   * the lower signature: the other side follows forward once this is done). Only a removal by someone who still hosts
+   * or co-hosts, of someone still in the room, and only once: a removal on the path since then that took them out
+   * means it's done (and someone let back in after it stays in).
+   */
+  private carryOut(): void {
+    const room = this.signed;
+    const chain = room?.knock?.chain;
+    const current = room?.current;
+    if (!room || !chain || !current || this.knocking || this.carrying || !this.designatedLead()) return;
+    const s = room.state();
+    const path = this.path();
+    for (let i = 0; i + 1 < path.length; i++) {
+      const next = path[i + 1];
+      if (chain.siblings(next).some((sib) => sib.sig < next.sig)) continue;
+      const roster = chain.rosterOf(path[i]);
+      const closing = roster?.entry(next.prev!);
+      const later = new Set(
+        path
+          .slice(i + 1)
+          .map((p, j) => chain.rosterOf(p)?.entry(path[i + 2 + j]?.prev ?? "")?.who)
+          .filter((k) => !!k),
+      );
+      for (const r of roster?.removals() ?? []) {
+        if (r.sig === closing?.sig || later.has(r.who) || closing?.who === r.who) continue;
+        if (!(r.by === s.host || s.cohosts.includes(r.by)) || r.who === s.host || !s.members.has(r.who!)) continue;
+        this.carrying = true;
+        void this.remove(r.who!).finally(() => (this.carrying = false));
+        return;
+      }
+    }
+  }
+
+  /**
+   * This session moves to a new epoch, in place: the same document, sender id and Live; new keys from here on. Only
+   * forward, and never to an epoch it has sealed under before: no (key, sender, counter) is ever used twice.
+   */
+  private async rekey(start: EpochStart, secret: Uint8Array): Promise<void> {
+    const room = this.signed!;
+    const scope = scopeOf(start);
+    const from = room.current;
+    if (this.sealedScopes.has(scope) || (from && start.epoch <= from.epoch)) return;
+    const keys = await deriveEpochKeys(this.lobbyKeys!, start.epoch, secret);
+    const members = room.knock!.chain.rosterOf(start)?.state().members;
+    const job = this.outbox.then(async () => {
+      if (this.leaving || this.status === "left" || this.sealedScopes.has(scope)) return;
+      if (room.current && start.epoch <= room.current.epoch) return;
+      this.sealedScopes.add(scope);
+      const sender = this.sealer.sender;
+      // Presence: who stays starts its ordering over (their counters restart under the new keys); who's out goes.
+      this.presence.restart((p) => !!members?.has(room.keyOf(p) ?? ""));
+      this.keys = keys;
+      this.scope = scope;
+      this.knocking = false;
+      this.sealer = new Sealer(keys, sender);
+      this.sealer.sign = room.signFrame;
+      this.opener = new Opener(keys, sender);
+      room.rekey(keys, start);
+      this.memberPeers.clear();
+      for (const q of this.held.values()) q.stop();
+      this.held.clear();
+      this.reassembler.clear();
+      this.synced.clear();
+      this.framesSinceBye = 0;
+      // The local copy, under the new epoch's storage key from here (the old one's last save first). At the door
+      // there was none: the room's copy on this device (another tab's) is read now the secret is known.
+      const old = this.recovery;
+      if (this.recoveryStore) {
+        this.recovery = new RoomRecovery(this.recoveryStore, keys, () => this.emit(), Date.now, this.clock);
+        if (!old) await this.recovery.restore(this.doc);
+        this.recovery.watch(this.doc);
+        // The old copy's last save runs on its own: the new epoch doesn't wait for storage to say who's here.
+        void old?.close(this.doc).catch(() => {});
+      }
+      await this.bind();
+    });
+    this.outbox = job.catch(() => this.reject("internal"));
+    await this.outbox;
+    if (this.scope !== scope) return;
+    this.authRevision++;
+    this.prepareBye();
+    this.sayHello();
+    this.updateStatus();
+    this.emit();
+    // The chain may already go further (a later epoch known meanwhile), or leave this person out of it.
+    await this.follow();
+  }
+
+  /** The current epoch, its secret, and the wraps this member holds: what a reload needs to come back. */
+  memberRecord(): { chain: ChainData; scope: string; secret: string; wraps: Wrap[] } | undefined {
+    const room = this.signed;
+    const current = room?.current;
+    const secret = current && room!.knock!.chain.secretOf(current);
+    if (!room?.knock || !current || !secret || this.knocking) return undefined;
+    return {
+      chain: room.knock.chain.data(current),
+      scope: scopeOf(current),
+      secret: bytesToBase64Url(secret),
+      wraps: this.wraps.filter((w) => w.scope === scopeOf(current)),
+    };
   }
 
   /** Bound again (a new Yjs client id), and said, before anything queued after it. */
@@ -840,6 +1579,9 @@ export class CollabSession {
   private async receive(from: PeerId, bytes: Uint8Array): Promise<void> {
     if (this.status === "left" || this.leaving) return;
     this.stats.framesReceived++;
+    // The lobby is opened apart (its own key); a room without knock-to-join has none.
+    if (frameChannel(bytes) === "lobby")
+      return this.lobby ? this.receiveLobby(from, bytes) : this.reject("bad-channel");
     const opened = await this.opener.open(bytes, !!this.signed);
     if (!opened.ok) return this.reject(opened.reason);
     if (this.quarantined.has(opened.sender)) return this.reject("quarantined");
@@ -886,6 +1628,8 @@ export class CollabSession {
       if (!state.key || state.client === undefined || !state.bind) return this.reject("unbound");
       const held = room.keyOf(sender);
       if (held && held !== state.key) return this.reject("rebound");
+      // Knock-to-join: only members' presence counts (someone holding a leaked secret isn't one).
+      if (!room.isMember(state.key)) return this.reject("not-member");
       if (!this.verifies.take(sender, held === state.key && room.clientOf(sender) === state.client ? 1 : 2))
         return this.reject("verify-throttled");
       if (!(await room.verifyFrame(state.key, opened.header, message, signature))) return this.reject("bad-signature");
@@ -898,9 +1642,9 @@ export class CollabSession {
       if (bound === "rebound" || bound === "bad-binding") return this.reject(bound);
       const accepted = this.opener.accept(opened);
       if (accepted !== true) return this.reject(accepted);
-      // A sender bound just now: if anything of theirs was dropped unchecked, or this session still lacks the
-      // document, it asks them for it at once (what's held is applied as the binding drains it).
-      if (bound === "bound" && (this.behind.has(sender) || !this.hasDocument)) {
+      // A sender bound just now: if anything of theirs was dropped unchecked, it's asked for again at once (what's
+      // only held is applied as the binding drains it; a healthy join asks nothing more).
+      if (bound === "bound" && this.behind.has(sender)) {
         this.behind.delete(sender);
         this.requestSync(from);
       }
@@ -914,6 +1658,7 @@ export class CollabSession {
       if (!this.liveRate.take(sender, 1)) return this.reject("live-throttled");
       const key = room.keyOf(sender);
       if (!key) return this.reject("unbound");
+      if (!room.isMember(key)) return this.reject("not-member");
       if (!this.verifies.take(sender, 1)) return this.reject("verify-throttled");
       if (!(await room.verifyFrame(key, opened.header, message, signature))) return this.reject("bad-signature");
       const accepted = this.opener.accept(opened);
@@ -1101,7 +1846,7 @@ export class CollabSession {
     switch (msg.type) {
       case DOC.syncProof:
       case DOC.syncAck: {
-        if (msg.payload.length !== 32 || !this.hasDocument || !this.transport.peers().includes(from)) return;
+        if (msg.payload.length !== 32 || !this.hasDocument || !this.roomPeers().includes(from)) return;
         if (!this.proofs.take(opened.sender, 1)) return this.reject("proof-throttled");
         const revision = this.revision;
         const proof = await this.doc.syncProof();
@@ -1156,8 +1901,10 @@ export class CollabSession {
           return;
         }
         const added = await room.addEntries(body.e, () => this.verifies.take(opened.sender, 1));
-        for (let i = 0; i < added.refused; i++) this.reject("roster-refused");
-        for (let i = 0; i < added.throttled; i++) this.reject("verify-throttled");
+        for (let i = 0; i < (added?.refused ?? 0); i++) this.reject("roster-refused");
+        for (let i = 0; i < (added?.throttled ?? 0); i++) this.reject("verify-throttled");
+        // A removal that may now be the epoch's first, or a new current epoch: followed.
+        if (room.knock) await this.follow();
         return;
       }
       case DOC.bye:

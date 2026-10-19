@@ -580,6 +580,17 @@ export class WatchTogether {
     if (key && this.isLead) void this.session.appendRoster("admit", { who: key });
   }
 
+  /** Knock-to-join: Remove someone (the host or a co-host; never the host). The room moves to a new epoch. */
+  remove(sender: string): void {
+    const key = this.keyOf(sender);
+    if (key && sender !== this.me && this.isLead) void this.session.remove(key);
+  }
+
+  /** Knock-to-join: "Ask before people join" (the host's or a co-host's switch). */
+  setAsk(on: boolean): void {
+    if (this.isLead) void this.session.appendRoster("ask", { ask: on });
+  }
+
   /** A signed room's "New people can view only" (the host's or a co-host's switch). */
   setViewOnly(on: boolean): void {
     if (this.isLead) void this.session.appendRoster("policy", { viewOnly: on });

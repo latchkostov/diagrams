@@ -52,6 +52,8 @@ async function twoInARoom(page: Page, context: BrowserContext, other: BrowserCon
   const guest = await other.newPage();
   await guest.goto(link);
   await guest.getByTestId("room-join-accept").click();
+  // Knock-to-join: the host lets them in.
+  await page.getByTestId("room-knock-admit").first().click({ timeout: pageLoadTimeout() });
   await expect(guest.getByTestId("node-orders")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(chip(page)).toHaveAttribute("data-peers", "1");
   return guest;

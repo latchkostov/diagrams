@@ -23,11 +23,19 @@ import { secureRandom, type RandomBytes } from "./random";
 // used once, across reloads and concurrent tabs alike, without coordinating counters between them.
 //
 // Every derived key is non-extractable. The secret itself is only ever held by the page (from the fragment).
+//
+//   lobby        HKDF base for the lobby channel (P5): knocking, letting people in, handing out an epoch's key. Its
+//                frames always carry epoch 0, so the lobby stays the same across epochs.
+//
+// Knock-to-join (v3 links, P5): the link's secret opens only the lobby (room id, discovery, signal, lobby). The content
+// (doc, presence, live, storage) is derived from the epoch's own 32-byte secret, which the link doesn't carry
+// (deriveEpochKeys): "livediagrams/collab/v3/<purpose>/epoch=<n>". With it, a member-proof key: a member shows it holds
+// the epoch's secret (an HMAC of its sender id) before anyone sends it the room's content.
 
 const SALT = textToBytes("livediagrams/collab/v1");
 const info = (purpose: string, epoch: number) => textToBytes(`livediagrams/collab/v1/${purpose}/epoch=${epoch}`);
 
-export type Channel = "doc" | "presence" | "live";
+export type Channel = "doc" | "presence" | "live" | "lobby";
 
 export interface RoomKeys {
   epoch: number;
@@ -42,6 +50,8 @@ export interface RoomKeys {
   storage: CryptoKey;
   /** Per-channel HKDF bases for sender subkeys. */
   channels: Record<Channel, CryptoKey>;
+  /** Knock-to-join: the epoch's member-proof key (HMAC-SHA-256). */
+  proof?: CryptoKey;
 }
 
 const subtle = () => {
@@ -89,7 +99,7 @@ async function hkdfBase(raw: Uint8Array): Promise<CryptoKey> {
 export async function deriveRoomKeys(room: RoomLink): Promise<RoomKeys> {
   if (room.secret.length !== ROOM_SECRET_BYTES) throw new Error("A room secret is 32 bytes.");
   const base = await hkdfBase(room.secret);
-  const [roomIdBytes, discovery, signalRaw, docRaw, presenceRaw, storageRaw, liveRaw] = await Promise.all([
+  const [roomIdBytes, discovery, signalRaw, docRaw, presenceRaw, storageRaw, liveRaw, lobbyRaw] = await Promise.all([
     bits(base, "room-id", room.epoch, 32),
     bits(base, "discovery", room.epoch, 20),
     bits(base, "signal", room.epoch, 32),
@@ -97,20 +107,18 @@ export async function deriveRoomKeys(room: RoomLink): Promise<RoomKeys> {
     bits(base, "presence", room.epoch, 32),
     bits(base, "storage", room.epoch, 32),
     bits(base, "live", room.epoch, 32),
+    bits(base, "lobby", 0, 32),
   ]);
-  const [signal, doc, presence, storage, live] = await Promise.all([
+  const [signal, doc, presence, storage, live, lobby] = await Promise.all([
     subtle().importKey("raw", signalRaw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]),
     hkdfBase(docRaw),
     hkdfBase(presenceRaw),
     subtle().importKey("raw", storageRaw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]),
     hkdfBase(liveRaw),
+    hkdfBase(lobbyRaw),
   ]);
   // The raw intermediate bytes are dropped here; only non-extractable keys survive.
-  signalRaw.fill(0);
-  docRaw.fill(0);
-  presenceRaw.fill(0);
-  storageRaw.fill(0);
-  liveRaw.fill(0);
+  for (const raw of [signalRaw, docRaw, presenceRaw, storageRaw, liveRaw, lobbyRaw]) raw.fill(0);
   return {
     epoch: room.epoch,
     roomId: bytesToBase64Url(roomIdBytes),
@@ -118,8 +126,62 @@ export async function deriveRoomKeys(room: RoomLink): Promise<RoomKeys> {
     discovery,
     signal,
     storage,
-    channels: { doc, presence, live },
+    channels: { doc, presence, live, lobby },
   };
+}
+
+/** A new epoch's secret (knock-to-join): 32 random bytes, never in a link. */
+export const newEpochSecret = (random: RandomBytes = secureRandom): Uint8Array => random(ROOM_SECRET_BYTES);
+
+const V3_SALT = textToBytes("livediagrams/collab/v3");
+
+/**
+ * A knock-to-join room's keys for one epoch: its lobby's name, finding and signalling (from the link), and the content
+ * channels, storage and member proof from the epoch's own secret.
+ */
+export async function deriveEpochKeys(lobby: RoomKeys, epoch: number, secret: Uint8Array): Promise<RoomKeys> {
+  if (secret.length !== ROOM_SECRET_BYTES) throw new Error("An epoch secret is 32 bytes.");
+  const base = await hkdfBase(secret);
+  const derive = async (purpose: string) =>
+    new Uint8Array(
+      await subtle().deriveBits(
+        {
+          name: "HKDF",
+          hash: "SHA-256",
+          salt: V3_SALT,
+          info: textToBytes(`livediagrams/collab/v3/${purpose}/epoch=${epoch}`),
+        },
+        base,
+        256,
+      ),
+    );
+  const [docRaw, presenceRaw, liveRaw, storageRaw, proofRaw] = await Promise.all(
+    ["doc", "presence", "live", "storage", "member-proof"].map(derive),
+  );
+  const [doc, presence, live, storage, proof] = await Promise.all([
+    hkdfBase(docRaw),
+    hkdfBase(presenceRaw),
+    hkdfBase(liveRaw),
+    subtle().importKey("raw", storageRaw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]),
+    subtle().importKey("raw", proofRaw as BufferSource, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]),
+  ]);
+  for (const raw of [docRaw, presenceRaw, liveRaw, storageRaw, proofRaw]) raw.fill(0);
+  return { ...lobby, epoch, storage, proof, channels: { doc, presence, live, lobby: lobby.channels.lobby } };
+}
+
+/** A member's proof that it holds the epoch's secret, bound to its sender id. */
+export async function memberProof(keys: RoomKeys, sender: Uint8Array): Promise<Uint8Array> {
+  if (!keys.proof) throw new Error("No member proof in this room.");
+  return new Uint8Array(await subtle().sign("HMAC", keys.proof, sender as BufferSource));
+}
+
+export async function checkMemberProof(keys: RoomKeys, sender: Uint8Array, proof: Uint8Array): Promise<boolean> {
+  if (!keys.proof || proof.length !== 32) return false;
+  try {
+    return await subtle().verify("HMAC", keys.proof, proof as BufferSource, sender as BufferSource);
+  } catch {
+    return false;
+  }
 }
 
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
