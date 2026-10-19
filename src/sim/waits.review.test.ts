@@ -210,3 +210,52 @@ it("uses the effective sampling weight for saved and manual real-count injection
   run.step(3000);
   expect(run.units.realSnapshot().nodes.caller.processed).toBe(24);
 });
+
+it.each([
+  { stencil: "generic.service", replicas: 1000, concurrency: 1, scaling: "fixed" },
+  { stencil: "aws.lambda", replicas: 1, concurrency: 1, scaling: "auto" },
+])("fits sampling to the total effective caller pool ($stencil)", (props) => {
+  const d = waitingFixture();
+  d.nodes[0].props!.ratePerSec = 200_000;
+  const { stencil, ...pool } = props;
+  d.nodes[1].stencil = stencil;
+  Object.assign(d.nodes[1].props!, pool, { maxConcurrency: 1000 });
+  const e = createEngine({ scale: 100 });
+  e.load(d);
+  expect(e.snapshot().scale).toBe(100);
+  expect(e.trafficLimit()).toBeUndefined();
+  expect(realSnapshot(e.snapshot()).nodes.caller.threads?.slots).toBe(1000);
+});
+
+it("fits a non-divisible per-replica limit to its divisible total pool", () => {
+  const d = waitingFixture();
+  Object.assign(d.nodes[1].props!, { replicas: 2, concurrency: 3 });
+  const e = createEngine({ scale: 2 });
+  e.load(d);
+  expect(e.snapshot().scale).toBe(2);
+});
+
+it("keeps a caller at zero replicas able to admit its first sampled request", () => {
+  const d = waitingFixture();
+  const worker = cloudFixture("cloud-run").nodes[1];
+  d.nodes[1].stencil = worker.stencil;
+  d.nodes[1].props = {
+    ...worker.props,
+    concurrency: 4,
+    latencyMs: 10,
+    jitter: 0,
+    resources: {
+      ...resourceLesson(),
+      modelRevision: "a2",
+      cpuMsPerMessage: 1,
+      startup: { delayMs: 0, jitterFraction: 0 },
+    },
+  };
+  const e = createEngine({ scale: 100 });
+  e.load(d);
+  expect(e.fleet("caller")?.ready).toBe(0);
+  expect(e.snapshot().scale).toBe(4);
+  e.inject("source", 1);
+  e.step(2000);
+  expect(e.snapshot().nodes.caller.processed).toBe(1);
+});

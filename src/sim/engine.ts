@@ -767,9 +767,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const pools: number[] = [];
     for (const node of nodes.values()) {
       if (!node.waits || node.role !== "processor") continue;
-      const p = node.props.admission;
-      pools.push(p?.fixedSlotsPerReplica ?? node.props.concurrency);
-      if (p) pools.push(p.slots ?? Infinity, p.api.maxInFlight ?? Infinity);
+      const pool = slots(node);
+      // A scale-to-zero caller must still admit a dot when its first replica becomes ready.
+      pools.push(pool === 0 ? (node.props.admission?.fixedSlotsPerReplica ?? node.props.concurrency) : pool);
     }
     return callerPoolScale(requested, pools);
   }
@@ -2412,7 +2412,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function reset(): void {
-    scale = samplingScale(requestedScale);
     partBudget = createCpuPartBudget();
     admission = emptyAdmission();
     reconfigureAdmission(
@@ -2486,6 +2485,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
     }
     assignReplicas(new Set(nodes.keys()));
+    const nextScale = samplingScale(requestedScale);
+    if (nextScale !== scale) {
+      scale = nextScale;
+      for (const node of nodes.values()) for (const group of node.groups) refreshGroupLimit(group);
+    }
     for (const edge of edges) {
       edge.calls = { inFlight: 0, held: 0, timedOut: 0, failed: 0, late: 0 };
       edge.delivered = 0;
