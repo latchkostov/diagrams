@@ -179,6 +179,7 @@ const NOTICES: Record<RoomNotice, () => string> = {
   private: () => t("collab.leftPrivateNotice"),
   failed: () => t("collab.openFailed"),
   "storage-full": () => t("collab.storageFull"),
+  unsupported: () => t("collab.unsupportedBrowser"),
 };
 
 /**
@@ -670,6 +671,9 @@ function OpenChip({
     "data-can-edit": watching?.canEdit === false ? "false" : "true",
     // For diagnostics (the Nightly network smoke classifies a failure by it): never shown.
     "data-connectivity": session.connectivity,
+    // Why a joiner still waits (nobody, checking who's here, the diagram on its way), and what was refused, by reason.
+    "data-waiting": session.waiting ?? "none",
+    "data-rejected": JSON.stringify(session.stats.rejected),
   };
   if (state === "connecting" && !elsewhere)
     return (
@@ -1011,6 +1015,10 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
   useLocale();
   const snap = useRoom(room);
   const session = snap.open?.session;
+  const waiting = useSyncExternalStore(
+    (fn) => (session ? session.onChange(fn) : () => {}),
+    () => session?.waiting,
+  );
   const region = useRef<HTMLDivElement>(null);
   // Joining removes the dialog and the canvas together: focus that fell to the page lands here instead (W1).
   useEffect(() => {
@@ -1023,10 +1031,20 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
       className="room-connecting"
       data-testid="room-connecting"
       data-connectivity={session?.connectivity}
+      // Why it's still waiting, for diagnostics (the hint below says it): nobody yet, checking who's here, or the
+      // diagram on its way; and what this page refused so far, by reason.
+      data-waiting={waiting ?? "none"}
+      data-rejected={session ? JSON.stringify(session.stats.rejected) : "{}"}
       role="status"
     >
       <strong>{t("collab.connectingTitle")}</strong>
-      <p className="ix-muted">{t("collab.connectingHint")}</p>
+      <p className="ix-muted" data-testid="room-connecting-hint">
+        {waiting === "verifying"
+          ? t("collab.waitVerifying")
+          : waiting === "document"
+            ? t("collab.waitDocument")
+            : t("collab.connectingHint")}
+      </p>
       {session && <ConnectingFailure room={room} session={session} region={region} />}
       <button className="btn" onClick={() => void room.leave()} data-testid="room-connecting-leave">
         {t("collab.leave")}

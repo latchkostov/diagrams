@@ -1030,3 +1030,29 @@ describe("signed rooms (P4)", () => {
     expect(a.room.getSnapshot().open!.roster.get().signed!.identity).toEqual(original.signed!.identity);
   });
 });
+
+describe("a browser that can't sign", () => {
+  it("joining a signed room says plainly that this browser can't, instead of waiting for ever", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 91),
+      b = browser(net, clock, 92);
+    await start(a);
+    expect(a.room.getSnapshot().open!.link.hostKey).toBeDefined();
+    // b's browser has no Ed25519 in its WebCrypto.
+    const generateKey = crypto.subtle.generateKey.bind(crypto.subtle);
+    const spy = vi.spyOn(crypto.subtle, "generateKey").mockImplementation(((
+      algorithm: AlgorithmIdentifier,
+      ...rest: [boolean, KeyUsage[]]
+    ) => {
+      if ((typeof algorithm === "string" ? algorithm : algorithm.name) === "Ed25519")
+        return Promise.reject(new DOMException("Not supported", "NotSupportedError"));
+      return generateKey(algorithm as never, ...rest);
+    }) as typeof crypto.subtle.generateKey);
+    onTestFinished(() => spy.mockRestore());
+    await join(b, linkOf(a));
+    expect(b.room.getSnapshot()).toMatchObject({ notice: { kind: "unsupported" } });
+    expect(b.room.getSnapshot().open).toBeUndefined();
+    expect(b.room.getSnapshot().opening).toBeUndefined();
+  });
+});

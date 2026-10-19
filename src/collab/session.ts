@@ -46,9 +46,15 @@ import type { Identity } from "./signing";
 //   only from an editor. Viewers never serve sync. These depend only on bytes and the roster, never on timing.
 // - What doesn't count yet (an editor's grant still on its way, a sender's binding not yet here) is held, per sender
 //   and bounded (COLLAB_LIMITS.maxHeldBytesPerSender, heldMs), and never applied before it counts: once it does
-//   (the roster or the binding changed) it's applied in order; past the bounds it's dropped and its sender
-//   quarantined. No honest peer applies an update another honest peer refuses, so honest peers can't diverge, and
-//   nothing is ever rolled back.
+//   (the roster or the binding changed) it's applied in order. Past the bounds, what was held only because this
+//   session couldn't check it yet (the sender's binding late or lost, a sync reply from someone not yet known as an
+//   editor) is dropped, never held against its sender: it's asked for again once it can count (a sync request as
+//   the binding or the grant arrives). Only updates from a sender this session can check, that never came to count,
+//   get their sender quarantined. No honest peer applies an update another honest peer refuses, so honest peers
+//   can't diverge, and nothing is ever rolled back.
+// - Each sync request is answered with the answerer's presence first (its binding), and a session without the
+//   document says who it is with each of its own: whatever the network lost or reordered, the next anti-entropy
+//   round brings both sides' bindings ahead of the document.
 // - The roster travels as DOC.roster: in full to each peer that appears, each new entry to everyone, and a summary
 //   with every anti-entropy round (a peer whose roster differs sends its entries back).
 
@@ -84,7 +90,8 @@ export type RejectReason =
   | "bad-signature"
   | "verify-throttled"
   | "unauthorised"
-  | "roster-refused";
+  | "roster-refused"
+  | "held-dropped";
 
 export interface SessionStats {
   framesSent: number;
@@ -258,6 +265,8 @@ export class CollabSession {
   private readonly rosterReplies: RateLimit;
   /** A signed room's document frames that don't count yet, per sender (see above). */
   private readonly held = new Map<string, HeldQueue>();
+  /** Senders whose frames were dropped before they could count (asked again, at their transport peer, once they can). */
+  private readonly behind = new Map<string, PeerId>();
   /** Newcomers this session is admitting (an entry being signed). */
   private readonly admitting = new Set<string>();
   private summary?: string;
@@ -384,6 +393,13 @@ export class CollabSession {
   private signedChanged(): void {
     if (this.status === "left" || this.leaving) return;
     this.authRevision++;
+    // Someone whose sync replies were dropped as not an editor's, who is one now: asked again.
+    const room = this.signed;
+    for (const [sender, peer] of this.behind)
+      if (room?.isEditor(room.keyOf(sender))) {
+        this.behind.delete(sender);
+        this.requestSync(peer);
+      }
     this.inbox = this.inbox.then(() => this.drainAll()).catch(() => this.reject("internal"));
     this.admitNewcomers();
     this.emit();
@@ -429,6 +445,18 @@ export class CollabSession {
     if (peers.length && peers.every((peer) => this.synced.has(peer)) && this.hasDocument) return "synced";
     if (this.recovery?.saved) return "saved-device";
     return this.status === "connected" || !this.hasDocument ? "connecting" : "offline";
+  }
+
+  /**
+   * Why a joiner is still waiting (diagnostics: the wait and the chip say it): "peers" (nobody connected), "verifying"
+   * (connected, but who they are hasn't checked yet, or something of theirs is waiting on it), "document" (connected
+   * and checked, the diagram on its way). Undefined once it has the document.
+   */
+  get waiting(): "peers" | "verifying" | "document" | undefined {
+    if (this.hasDocument) return undefined;
+    if (!this.transport.peers().length) return "peers";
+    if (this.signed && (this.held.size || this.behind.size || !this.presence.list().length)) return "verifying";
+    return "document";
   }
 
   /** Whether this session has a document yet (a joiner has none until a peer answers). */
@@ -612,6 +640,8 @@ export class CollabSession {
     );
     this.stops.push(
       this.clock.every(COLLAB_LIMITS.antiEntropyMs, () => {
+        // Without the document yet: who this is goes with each request (a lost binding never stalls the answer).
+        if (this.signed && !this.hasDocument) this.sendPresence();
         this.requestSync();
         if (this.signed) this.sendDoc(frame(DOC.roster, textToBytes(JSON.stringify({ h: this.rosterSummary() }))));
       }),
@@ -868,6 +898,12 @@ export class CollabSession {
       if (bound === "rebound" || bound === "bad-binding") return this.reject(bound);
       const accepted = this.opener.accept(opened);
       if (accepted !== true) return this.reject(accepted);
+      // A sender bound just now: if anything of theirs was dropped unchecked, or this session still lacks the
+      // document, it asks them for it at once (what's held is applied as the binding drains it).
+      if (bound === "bound" && (this.behind.has(sender) || !this.hasDocument)) {
+        this.behind.delete(sender);
+        this.requestSync(from);
+      }
       if (this.presence.receive(sender, opened.counter, state)) {
         this.emit();
         this.admitNewcomers();
@@ -977,16 +1013,38 @@ export class CollabSession {
       q = { raw: [], blocked: [], bytes: 0, stop: this.clock.after(COLLAB_LIMITS.heldMs, () => this.giveUp(sender)) };
       this.held.set(sender, q);
     }
-    if (q.bytes + item.bytes > COLLAB_LIMITS.maxHeldBytesPerSender) return this.giveUp(sender, 1);
+    if (q.bytes + item.bytes > COLLAB_LIMITS.maxHeldBytesPerSender) {
+      // Past the bound: something this session couldn't check yet (unbound, or a sync reply) is dropped and asked
+      // for again later; an update that doesn't count from a sender it can check gives the sender up.
+      if (where === "raw" || item.msg?.type !== DOC.update) return this.drop(sender, item.from);
+      return this.giveUp(sender, 1);
+    }
     q[where].push(item);
     q.bytes += item.bytes;
   }
 
-  /** What a sender sent that never came to count: dropped, and the sender quarantined. */
+  /** A frame dropped before it could count: never held against its sender; asked for again once it can count. */
+  private drop(sender: string, from: PeerId, count = 1): void {
+    for (let i = 0; i < count; i++) this.reject("held-dropped");
+    this.behind.set(sender, from);
+    if (this.behind.size > COLLAB_LIMITS.maxSenders) this.behind.delete(this.behind.keys().next().value!);
+  }
+
+  /**
+   * Held too long. Updates from a sender this session could check, that never came to count (a viewer's edit, say),
+   * give the sender up: dropped, and the sender quarantined. Anything else (frames held because the sender's binding
+   * hadn't come, sync replies from someone not known as an editor yet) is just dropped, and asked for again.
+   */
   private giveUp(sender: string, extra = 0): void {
     const q = this.held.get(sender);
     q?.stop();
     this.held.delete(sender);
+    const updates = q?.blocked.filter((i) => i.msg?.type === DOC.update).length ?? 0;
+    if (!updates && !extra) {
+      const last = q?.raw.at(-1) ?? q?.blocked.at(-1);
+      if (last) this.drop(sender, last.from, q!.raw.length + q!.blocked.length);
+      return;
+    }
     for (let i = 0; i < (q ? q.raw.length + q.blocked.length : 0) + extra; i++) this.reject("unauthorised");
     this.quarantine(sender);
   }
@@ -1061,6 +1119,8 @@ export class CollabSession {
         if (!this.requests.take(opened.sender, 1)) return this.reject("request-throttled");
         // A signed room's viewers never serve sync (only an editor's reply counts anywhere).
         const serves = !this.signed || this.signed.isEditor(this.signed.key);
+        // Who this is, ahead of the answer on the same ordered channel: the binding the reply is checked against.
+        if (this.signed) this.sendPresence(from);
         let sv: Uint8Array;
         try {
           sv = msg.payload;

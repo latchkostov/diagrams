@@ -91,6 +91,9 @@ export const room = new RoomLifecycle({
   },
 });
 
+// For end-to-end tests and diagnostics: the room's lifecycle (its session's state, what it refused and why it waits).
+if (import.meta.env.VITE_E2E === "1") (window as unknown as { __room?: RoomLifecycle }).__room = room;
+
 // The page's moments, as the canvas's autosave has them: the copy is written before the page can go; a page kept
 // in the back/forward cache leaves the room for the time being and rejoins when it's shown again.
 window.addEventListener("pagehide", (event) => (event.persisted ? room.suspend() : room.pageHidden()));

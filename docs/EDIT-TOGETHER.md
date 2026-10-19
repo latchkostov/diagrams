@@ -161,6 +161,9 @@ anyone. To work together again, start a new room.
 | "No one else is in this room right now…"                          | Everyone else left, or their network blocks it                             | Ask them to rejoin, or start a new room                                     |
 | "Reconnecting…"                                                   | A connection dropped                                                       | Wait; your edits stay on this page                                          |
 | "This room link is damaged or incomplete"                         | The link was cut off (chat apps sometimes do)                              | Ask for the link again                                                      |
+| "Connected. Checking who's here…"                                 | Connected, and checking the others' signatures before using what they send | Wait: it asks again on its own until it can check them                      |
+| "Connected. Waiting for the diagram…"                             | Connected and checked; the diagram is on its way                           | Wait (a large diagram takes a few seconds)                                  |
+| "This browser can't join this room…"                              | The browser can't check the room's signatures (Ed25519)                    | Update the browser, or open the link in another one                         |
 
 Some company networks, VPNs and mobile hotspots block the direct connections rooms use. livediagrams.dev doesn't
 run a relay server for them. A self-hosted copy can configure its own (a TURN server).

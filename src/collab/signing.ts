@@ -30,9 +30,22 @@ const subtle = () => {
   return globalThis.crypto.subtle;
 };
 
+/** This browser can't sign (no Ed25519 in its WebCrypto): it can't join a signed room. */
+export class SigningUnsupportedError extends Error {
+  constructor() {
+    super("This browser can't check signatures (Ed25519), so it can't join this room.");
+    this.name = "SigningUnsupportedError";
+  }
+}
+
 /** A new identity: an Ed25519 key pair, its private half exportable only to be kept in this tab's record. */
 export async function newIdentity(): Promise<Identity> {
-  const pair = (await subtle().generateKey(ALGORITHM, true, ["sign", "verify"])) as CryptoKeyPair;
+  let pair: CryptoKeyPair;
+  try {
+    pair = (await subtle().generateKey(ALGORITHM, true, ["sign", "verify"])) as CryptoKeyPair;
+  } catch {
+    throw new SigningUnsupportedError();
+  }
   const raw = new Uint8Array(await subtle().exportKey("raw", pair.publicKey));
   return { key: bytesToBase64Url(raw), publicKey: pair.publicKey, privateKey: pair.privateKey };
 }
