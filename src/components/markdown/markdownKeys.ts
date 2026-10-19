@@ -181,12 +181,12 @@ export function handleMarkdownListEnter(
  * Returns true if the event was handled.
  */
 export function handleMarkdownKeyDown(
-  e: KeyboardEvent<HTMLTextAreaElement>,
+  e: KeyboardEvent<HTMLTextAreaElement> | globalThis.KeyboardEvent,
   textarea: HTMLTextAreaElement,
   value: string,
   onChange: (val: string) => void,
 ): boolean {
-  if (e.nativeEvent.isComposing) return false;
+  if (("nativeEvent" in e ? e.nativeEvent : e).isComposing) return false;
 
   if ((e.ctrlKey || e.metaKey) && (e.key === "]" || e.key === "[")) {
     e.preventDefault();

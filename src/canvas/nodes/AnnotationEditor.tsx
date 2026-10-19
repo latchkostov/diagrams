@@ -4,8 +4,10 @@ import type { AnnotationKind } from "../../model/types";
 import { kindLabel } from "../annotations";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
-import { handleMarkdownKeyDown } from "../../components/markdown/markdownKeys";
+import { lazyComponent } from "../../lib/lazyLoad";
 import { keepInPane } from "../keepInPane";
+
+const AnnotationFormatting = lazyComponent(() => import("./AnnotationFormatting").then((m) => m.AnnotationFormatting));
 
 /**
  * Multi-line editor in place of the text, with every editor's keys (editKeys.ts): Enter adds a line (a
@@ -37,11 +39,6 @@ export function AnnotationEditor({
   useLayoutEffect(() => keepInPane(kind === "zone" ? (ref.current?.parentElement ?? null) : ref.current), [kind]);
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     e.stopPropagation();
-    if (supportsMarkdown && ref.current) {
-      if (handleMarkdownKeyDown(e, ref.current, v, setV)) {
-        return;
-      }
-    }
     if (editKeyAction(e.nativeEvent, { multiline: kind !== "zone" }) !== "save") return;
     e.preventDefault();
     const wrapper = ref.current?.closest(".react-flow__node");
@@ -50,22 +47,25 @@ export function AnnotationEditor({
     refocusAfterEdit(wrapper);
   };
   return (
-    <textarea
-      ref={ref}
-      className="ann-editor nodrag nopan nowheel"
-      value={v}
-      maxLength={ANNOTATION_LIMITS.maxAnnotationText}
-      rows={kind === "zone" ? 1 : undefined}
-      onChange={(e) => setV(annotationText(e.target.value))}
-      onKeyDown={onKey}
-      onBlur={finish}
-      onDoubleClick={(e) => e.stopPropagation()}
-      placeholder={kind === "zone" ? "Zone name" : "Write something"}
-      aria-label={`${kindLabel[kind]} text`}
-      name="annotation-text"
-      spellCheck
-      data-markdown-input={supportsMarkdown ? "" : undefined}
-      data-testid="annotation-editor"
-    />
+    <>
+      <textarea
+        ref={ref}
+        className="ann-editor nodrag nopan nowheel"
+        value={v}
+        maxLength={ANNOTATION_LIMITS.maxAnnotationText}
+        rows={kind === "zone" ? 1 : undefined}
+        onChange={(e) => setV(annotationText(e.target.value))}
+        onKeyDown={onKey}
+        onBlur={finish}
+        onDoubleClick={(e) => e.stopPropagation()}
+        placeholder={kind === "zone" ? "Zone name" : "Write something"}
+        aria-label={`${kindLabel[kind]} text`}
+        name="annotation-text"
+        spellCheck
+        data-markdown-input={supportsMarkdown ? "" : undefined}
+        data-testid="annotation-editor"
+      />
+      {supportsMarkdown && <AnnotationFormatting textarea={ref} onChange={setV} />}
+    </>
   );
 }

@@ -836,6 +836,58 @@ for (const enter of ["Enter", "Shift+Enter"]) {
   });
 }
 
+test("annotation typing and selection survive a delayed formatting chunk", async ({ page, consoleErrors }) => {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let intercepted = false;
+  await page.route(
+    /\/(?:assets\/AnnotationFormatting-[\w-]+\.js|src\/canvas\/nodes\/AnnotationFormatting\.tsx)(?:\?.*)?$/,
+    async (route) => {
+      intercepted = true;
+      await gate;
+      await route.continue();
+    },
+  );
+  try {
+    await seed(page, annotatedKafka);
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "title").dblclick();
+    const editor = page.getByTestId("annotation-editor");
+    await expect(editor).toBeFocused();
+    await expect.poll(() => intercepted).toBe(true);
+    const original = await editor.elementHandle();
+    await page.keyboard.type("alpha");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("bravo");
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("charlie");
+    for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowLeft");
+    await page.keyboard.type("_");
+    for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowRight");
+    const text = "alpha\nbravo\nchar_lie";
+    await expect(editor).toHaveValue(text);
+    await expect(editor).not.toHaveAttribute("data-markdown-ready");
+    await page.keyboard.press(`${MOD}+b`);
+    await expect(editor).toHaveValue(text);
+    const selection = await editor.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd]);
+    expect(selection).toEqual([text.length - 3, text.length]);
+
+    release();
+    await expect(editor).toHaveAttribute("data-markdown-ready", "");
+    expect(await editor.evaluate((el, before) => el === before, original)).toBe(true);
+    await expect(editor).toBeFocused();
+    await expect(editor).toHaveValue(text);
+    expect(await editor.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd])).toEqual(selection);
+    await page.keyboard.press(`${MOD}+b`);
+    await expect(editor).toHaveValue("alpha\nbravo\nchar_**lie**");
+    await page.keyboard.press("Escape");
+    await expect(editor).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  } finally {
+    release();
+  }
+});
+
 test("cold Markdown keeps annotation geometry and image exports await the rendered text", async ({ page }) => {
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
