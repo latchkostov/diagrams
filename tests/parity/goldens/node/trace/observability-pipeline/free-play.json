@@ -1,5 +1,5 @@
 {
-  "trace": { "rootId": 1, "type": "Request", "origin": "shoppers", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 72, "endedAt": 2260 },
+  "trace": { "rootId": 1, "type": "Request", "origin": "shoppers", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 67, "endedAt": 2260 },
   "steps": [
     { "t": 0, "kind": "emit", "id": 1, "type": "Request", "node": "shoppers" },
     { "t": 0, "kind": "done", "id": 1, "type": "Request", "node": "shoppers" },
@@ -41,17 +41,12 @@
     { "t": 1730, "kind": "done", "id": 2, "type": "LogRecord", "node": "logs" },
     { "t": 1730, "kind": "copy", "id": 3, "type": "LogRecord", "node": "logs", "parent": 2 },
     { "t": 1730, "kind": "copy", "id": 4, "type": "LogRecord", "node": "logs", "parent": 2 },
-    { "t": 1730, "kind": "copy", "id": 5, "type": "LogRecord", "node": "logs", "parent": 2 },
     { "t": 1730, "kind": "send", "id": 2, "type": "LogRecord", "node": "logs", "edge": "logs--ingesters", "via": "message", "until": 2030 },
     { "t": 1730, "kind": "send", "id": 3, "type": "LogRecord", "node": "logs", "edge": "logs--ch-sink", "via": "message", "until": 2030 },
     { "t": 1730, "kind": "send", "id": 4, "type": "LogRecord", "node": "logs", "edge": "logs--s3-sink", "via": "message", "until": 2030 },
-    { "t": 1730, "kind": "send", "id": 5, "type": "LogRecord", "node": "logs", "edge": "logs--siem", "via": "message", "until": 2030 },
     { "t": 2030, "kind": "arrive", "id": 2, "type": "LogRecord", "node": "ingesters", "edge": "logs--ingesters" },
     { "t": 2030, "kind": "arrive", "id": 3, "type": "LogRecord", "node": "ch-sink", "edge": "logs--ch-sink" },
     { "t": 2030, "kind": "arrive", "id": 4, "type": "LogRecord", "node": "s3-sink", "edge": "logs--s3-sink" },
-    { "t": 2030, "kind": "arrive", "id": 5, "type": "LogRecord", "node": "siem", "edge": "logs--siem" },
-    { "t": 2030, "kind": "done", "id": 5, "type": "LogRecord", "node": "siem" },
-    { "t": 2030, "kind": "end", "id": 5, "type": "LogRecord", "node": "siem", "reason": "received" },
     { "t": 2040, "kind": "start", "id": 2, "type": "LogRecord", "node": "ingesters" },
     { "t": 2040, "kind": "start", "id": 3, "type": "LogRecord", "node": "ch-sink" },
     { "t": 2040, "kind": "start", "id": 4, "type": "LogRecord", "node": "s3-sink" },
@@ -93,13 +88,12 @@
       { "key": "26", "kind": "hop", "t": 1190, "id": 2, "type": "Telemetry", "node": "gateways", "from": "otlp-lb", "edge": "otlp-lb--gateways", "sync": true, "latencyMs": 210, "waitMs": 10, "travelMs": 200, "renamed": false, "copy": true },
       { "key": "31", "kind": "hop", "t": 1410, "id": 2, "type": "Telemetry", "node": "tenant-limits", "from": "gateways", "edge": "gateways--tenant-limits", "sync": true, "latencyMs": 220, "waitMs": 0, "processMs": 20, "travelMs": 200, "renamed": false, "copy": true },
       { "key": "36", "kind": "hop", "t": 1730, "id": 2, "type": "LogRecord", "node": "logs", "from": "tenant-limits", "edge": "tenant-limits--logs", "sync": false, "latencyMs": 320, "waitMs": 10, "processMs": 10, "travelMs": 300, "renamed": true, "copy": true },
-      { "key": "45", "kind": "hop", "t": 2030, "id": 2, "type": "LogRecord", "node": "ingesters", "from": "logs", "edge": "logs--ingesters", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
-      { "key": "46", "kind": "hop", "t": 2030, "id": 3, "type": "LogRecord", "node": "ch-sink", "from": "logs", "edge": "logs--ch-sink", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
-      { "key": "47", "kind": "hop", "t": 2030, "id": 4, "type": "LogRecord", "node": "s3-sink", "from": "logs", "edge": "logs--s3-sink", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
-      { "key": "48", "kind": "hop", "t": 2030, "id": 5, "type": "LogRecord", "node": "siem", "from": "logs", "edge": "logs--siem", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
-      { "key": "60", "kind": "hop", "t": 2250, "id": 3, "type": "LogRecord", "node": "clickhouse", "from": "ch-sink", "edge": "ch-sink--clickhouse", "sync": true, "latencyMs": 220, "waitMs": 10, "processMs": 10, "travelMs": 200, "renamed": false, "copy": true },
-      { "key": "61", "kind": "hop", "t": 2250, "id": 4, "type": "LogRecord", "node": "cold", "from": "s3-sink", "edge": "s3-sink--cold", "sync": true, "latencyMs": 220, "waitMs": 10, "processMs": 10, "travelMs": 200, "renamed": false, "copy": true },
-      { "key": "68", "kind": "hop", "t": 2260, "id": 2, "type": "LogRecord", "node": "loki-store", "from": "ingesters", "edge": "ingesters--loki-store", "sync": true, "latencyMs": 230, "waitMs": 10, "processMs": 20, "travelMs": 200, "renamed": false, "copy": true }
+      { "key": "43", "kind": "hop", "t": 2030, "id": 2, "type": "LogRecord", "node": "ingesters", "from": "logs", "edge": "logs--ingesters", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
+      { "key": "44", "kind": "hop", "t": 2030, "id": 3, "type": "LogRecord", "node": "ch-sink", "from": "logs", "edge": "logs--ch-sink", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
+      { "key": "45", "kind": "hop", "t": 2030, "id": 4, "type": "LogRecord", "node": "s3-sink", "from": "logs", "edge": "logs--s3-sink", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
+      { "key": "55", "kind": "hop", "t": 2250, "id": 3, "type": "LogRecord", "node": "clickhouse", "from": "ch-sink", "edge": "ch-sink--clickhouse", "sync": true, "latencyMs": 220, "waitMs": 10, "processMs": 10, "travelMs": 200, "renamed": false, "copy": true },
+      { "key": "56", "kind": "hop", "t": 2250, "id": 4, "type": "LogRecord", "node": "cold", "from": "s3-sink", "edge": "s3-sink--cold", "sync": true, "latencyMs": 220, "waitMs": 10, "processMs": 10, "travelMs": 200, "renamed": false, "copy": true },
+      { "key": "63", "kind": "hop", "t": 2260, "id": 2, "type": "LogRecord", "node": "loki-store", "from": "ingesters", "edge": "ingesters--loki-store", "sync": true, "latencyMs": 230, "waitMs": 10, "processMs": 20, "travelMs": 200, "renamed": false, "copy": true }
     ],
     "visits": [
       { "id": 1, "node": "shoppers", "at": 0, "done": 0, "left": 0 },
@@ -114,17 +108,15 @@
       { "id": 2, "node": "logs", "at": 1730, "done": 1730, "left": 1730 },
       { "id": 3, "node": "logs", "at": 1730, "done": 1730, "left": 1730 },
       { "id": 4, "node": "logs", "at": 1730, "done": 1730, "left": 1730 },
-      { "id": 5, "node": "logs", "at": 1730, "done": 1730, "left": 1730 },
       { "id": 2, "node": "ingesters", "at": 2030, "start": 2040, "done": 2060, "left": 2060 },
       { "id": 3, "node": "ch-sink", "at": 2030, "start": 2040, "done": 2050, "left": 2050 },
       { "id": 4, "node": "s3-sink", "at": 2030, "start": 2040, "done": 2050, "left": 2050 },
-      { "id": 5, "node": "siem", "at": 2030, "done": 2030 },
       { "id": 3, "node": "clickhouse", "at": 2250, "done": 2260 },
       { "id": 4, "node": "cold", "at": 2250, "done": 2260 },
       { "id": 2, "node": "loki-store", "at": 2260, "done": 2260 }
     ],
-    "ids": [1, 2, 3, 4, 5],
-    "copies": 4,
+    "ids": [1, 2, 3, 4],
+    "copies": 3,
     "retries": 0,
     "failures": 0,
     "deadLettered": 0,
@@ -144,7 +136,6 @@
       "ingesters",
       "ch-sink",
       "s3-sink",
-      "siem",
       "clickhouse",
       "cold",
       "loki-store"
@@ -161,16 +152,15 @@
       "logs--ingesters",
       "logs--ch-sink",
       "logs--s3-sink",
-      "logs--siem",
       "ch-sink--clickhouse",
       "s3-sink--cold",
       "ingesters--loki-store"
     ],
-    "rowOf": { "0": "0", "3": "3", "7": "7", "14": "14", "18": "18", "22": "22", "26": "26", "31": "31", "36": "36", "45": "45", "46": "46", "47": "47", "48": "48", "60": "60", "61": "61", "68": "68" }
+    "rowOf": { "0": "0", "3": "3", "7": "7", "14": "14", "18": "18", "22": "22", "26": "26", "31": "31", "36": "36", "43": "43", "44": "44", "45": "45", "55": "55", "56": "56", "63": "63" }
   },
   "sequence": {
     "title": "Request #1",
-    "summary": "2.26 s end to end · 4 copies",
+    "summary": "2.26 s end to end · 3 copies",
     "participants": [
       { "id": "shoppers", "label": "Shoppers" },
       { "id": "ingress", "label": "Ingress" },
@@ -184,7 +174,6 @@
       { "id": "ingesters", "label": "Log ingesters" },
       { "id": "ch-sink", "label": "ClickHouse sink" },
       { "id": "s3-sink", "label": "Archive sink" },
-      { "id": "siem", "label": "Security SIEM" },
       { "id": "clickhouse", "label": "Log analytics" },
       { "id": "cold", "label": "Cold archive" },
       { "id": "loki-store", "label": "Loki" }
@@ -207,7 +196,6 @@
       { "kind": "arrow", "t": 1730, "until": 2030, "from": "logs", "to": "ingesters", "style": "async", "label": "LogRecord", "id": 2, "type": "LogRecord" },
       { "kind": "arrow", "t": 1730, "until": 2030, "from": "logs", "to": "ch-sink", "style": "async", "label": "LogRecord", "id": 3, "type": "LogRecord" },
       { "kind": "arrow", "t": 1730, "until": 2030, "from": "logs", "to": "s3-sink", "style": "async", "label": "LogRecord", "id": 4, "type": "LogRecord" },
-      { "kind": "arrow", "t": 1730, "until": 2030, "from": "logs", "to": "siem", "style": "async", "label": "LogRecord", "id": 5, "type": "LogRecord" },
       { "kind": "arrow", "t": 2050, "until": 2250, "from": "ch-sink", "to": "clickhouse", "style": "sync", "label": "LogRecord", "detail": "Insert", "id": 3, "type": "LogRecord" },
       { "kind": "arrow", "t": 2050, "until": 2250, "from": "s3-sink", "to": "cold", "style": "sync", "label": "LogRecord", "detail": "Parquet", "id": 4, "type": "LogRecord" },
       { "kind": "arrow", "t": 2060, "until": 2260, "from": "ingesters", "to": "loki-store", "style": "sync", "label": "LogRecord", "detail": "Push chunks", "id": 2, "type": "LogRecord" },
@@ -220,10 +208,10 @@
     "partial": false,
     "truncated": false
   },
-  "mermaidPlain": "---\ntitle: \"Request #1 · 2.26 s end to end · 4 copies\"\n---\nsequenceDiagram\n  participant shoppers as Shoppers\n  participant ingress as Ingress\n  participant checkout as Checkout\n  participant checkout_db as Orders\n  participant agent_shop as Node agents\n  participant otlp_lb as OTLP load balancer\n  participant gateways as Gateway collectors\n  participant tenant_limits as Tenant limits\n  participant logs as Logs\n  participant ingesters as Log ingesters\n  participant ch_sink as ClickHouse sink\n  participant s3_sink as Archive sink\n  participant siem as Security SIEM\n  participant clickhouse as Log analytics\n  participant cold as Cold archive\n  participant loki_store as Loki\n  shoppers->>ingress: Request (+0.00 s)<br/>HTTPS\n  ingress-->>shoppers: reply (+0.21 s)\n  ingress->>checkout: Request (+0.21 s)\n  checkout-->>ingress: reply (+0.46 s)\n  checkout->>checkout_db: Request (+0.46 s)\n  checkout-)agent_shop: Telemetry (+0.46 s)<br/>OTLP\n  checkout_db-->>checkout: reply (+0.67 s)\n  agent_shop->>otlp_lb: Telemetry (+0.78 s)<br/>OTLP/gRPC\n  otlp_lb-->>agent_shop: reply (+0.99 s)\n  otlp_lb->>gateways: Telemetry (+0.99 s)\n  gateways-->>otlp_lb: reply (+1.21 s)\n  gateways->>tenant_limits: Telemetry (+1.21 s)<br/>Sampled\n  tenant_limits-->>gateways: reply (+1.43 s)\n  tenant_limits-)logs: LogRecord (+1.43 s)<br/>Logs\n  logs-)ingesters: LogRecord (+1.73 s)\n  logs-)ch_sink: LogRecord (+1.73 s)\n  logs-)s3_sink: LogRecord (+1.73 s)\n  logs-)siem: LogRecord (+1.73 s)\n  ch_sink->>clickhouse: LogRecord (+2.05 s)<br/>Insert\n  s3_sink->>cold: LogRecord (+2.05 s)<br/>Parquet\n  ingesters->>loki_store: LogRecord (+2.06 s)<br/>Push chunks\n  clickhouse-->>ch_sink: reply (+2.26 s)\n  cold-->>s3_sink: reply (+2.26 s)\n  loki_store-->>ingesters: reply (+2.26 s)\n",
+  "mermaidPlain": "---\ntitle: \"Request #1 · 2.26 s end to end · 3 copies\"\n---\nsequenceDiagram\n  participant shoppers as Shoppers\n  participant ingress as Ingress\n  participant checkout as Checkout\n  participant checkout_db as Orders\n  participant agent_shop as Node agents\n  participant otlp_lb as OTLP load balancer\n  participant gateways as Gateway collectors\n  participant tenant_limits as Tenant limits\n  participant logs as Logs\n  participant ingesters as Log ingesters\n  participant ch_sink as ClickHouse sink\n  participant s3_sink as Archive sink\n  participant clickhouse as Log analytics\n  participant cold as Cold archive\n  participant loki_store as Loki\n  shoppers->>ingress: Request (+0.00 s)<br/>HTTPS\n  ingress-->>shoppers: reply (+0.21 s)\n  ingress->>checkout: Request (+0.21 s)\n  checkout-->>ingress: reply (+0.46 s)\n  checkout->>checkout_db: Request (+0.46 s)\n  checkout-)agent_shop: Telemetry (+0.46 s)<br/>OTLP\n  checkout_db-->>checkout: reply (+0.67 s)\n  agent_shop->>otlp_lb: Telemetry (+0.78 s)<br/>OTLP/gRPC\n  otlp_lb-->>agent_shop: reply (+0.99 s)\n  otlp_lb->>gateways: Telemetry (+0.99 s)\n  gateways-->>otlp_lb: reply (+1.21 s)\n  gateways->>tenant_limits: Telemetry (+1.21 s)<br/>Sampled\n  tenant_limits-->>gateways: reply (+1.43 s)\n  tenant_limits-)logs: LogRecord (+1.43 s)<br/>Logs\n  logs-)ingesters: LogRecord (+1.73 s)\n  logs-)ch_sink: LogRecord (+1.73 s)\n  logs-)s3_sink: LogRecord (+1.73 s)\n  ch_sink->>clickhouse: LogRecord (+2.05 s)<br/>Insert\n  s3_sink->>cold: LogRecord (+2.05 s)<br/>Parquet\n  ingesters->>loki_store: LogRecord (+2.06 s)<br/>Push chunks\n  clickhouse-->>ch_sink: reply (+2.26 s)\n  cold-->>s3_sink: reply (+2.26 s)\n  loki_store-->>ingesters: reply (+2.26 s)\n",
   "svg": {
-    "light": { "sha256": "ef838a3671799e7bd5826dc9b1e07509629b9438b0fbf31ef6a9652072d5fb3e", "bytes": 32961, "width": 2274, "height": 1322, "headerHeight": 142 },
-    "dark": { "sha256": "11eec3e190d4753f69beb8069159cea06464d32a6af61af8bd69873df951a0b5", "bytes": 32960, "width": 2274, "height": 1322, "headerHeight": 142 }
+    "light": { "sha256": "87e5e22be1046d196fafcc8fbce273584700461fd5a4963371ad2a9b116b0c98", "bytes": 31489, "width": 2125, "height": 1278, "headerHeight": 142 },
+    "dark": { "sha256": "9c34ca5873d3bcb65c31f2988ae64e64fe57bf3e7203ad4ce08a39dd768f1be5", "bytes": 31488, "width": 2125, "height": 1278, "headerHeight": 142 }
   },
   "slowMotion": {
     "rootId": 1,
@@ -414,32 +402,15 @@
         "duration": 400,
         "realFrom": 1730,
         "realTo": 1730,
-        "lanes": ["logs--ingesters", "logs--ch-sink", "logs--s3-sink", "logs--siem"],
-        "copies": 4,
+        "lanes": ["logs--ingesters", "logs--ch-sink", "logs--s3-sink"],
+        "copies": 3,
         "i": 24,
         "color": "#e97839",
         "tone": "plain"
       },
-      { "kind": "travel", "msg": 2, "type": "LogRecord", "edge": "logs--ingesters", "reverse": false, "start": 13153.419680512816, "duration": 1000, "realFrom": 1730, "realTo": 2030, "caption": "LogRecord", "tone": "plain", "i": 25, "color": "#e97839", "rowKey": "45" },
-      { "kind": "travel", "msg": 3, "type": "LogRecord", "edge": "logs--ch-sink", "reverse": false, "start": 13153.419680512816, "duration": 1000, "realFrom": 1730, "realTo": 2030, "caption": "LogRecord", "tone": "plain", "i": 26, "color": "#e97839", "rowKey": "46" },
-      { "kind": "travel", "msg": 4, "type": "LogRecord", "edge": "logs--s3-sink", "reverse": false, "start": 13153.419680512816, "duration": 1000, "realFrom": 1730, "realTo": 2030, "caption": "LogRecord", "tone": "plain", "i": 27, "color": "#e97839", "rowKey": "47" },
-      { "kind": "travel", "msg": 5, "type": "LogRecord", "edge": "logs--siem", "reverse": false, "start": 13153.419680512816, "duration": 1000, "realFrom": 1730, "realTo": 2030, "caption": "LogRecord", "tone": "plain", "i": 28, "color": "#e97839", "rowKey": "48" },
-      {
-        "kind": "process",
-        "msg": 5,
-        "type": "LogRecord",
-        "node": "siem",
-        "anchor": { "edge": "logs--siem", "end": 1 },
-        "start": 14153.419680512816,
-        "duration": 600,
-        "realFrom": 2030,
-        "realTo": 2030,
-        "caption": "Security SIEM · processing",
-        "i": 29,
-        "color": "#e97839",
-        "tone": "plain",
-        "short": "processing"
-      },
+      { "kind": "travel", "msg": 2, "type": "LogRecord", "edge": "logs--ingesters", "reverse": false, "start": 13153.419680512816, "duration": 1000, "realFrom": 1730, "realTo": 2030, "caption": "LogRecord", "tone": "plain", "i": 25, "color": "#e97839", "rowKey": "43" },
+      { "kind": "travel", "msg": 3, "type": "LogRecord", "edge": "logs--ch-sink", "reverse": false, "start": 13153.419680512816, "duration": 1000, "realFrom": 1730, "realTo": 2030, "caption": "LogRecord", "tone": "plain", "i": 26, "color": "#e97839", "rowKey": "44" },
+      { "kind": "travel", "msg": 4, "type": "LogRecord", "edge": "logs--s3-sink", "reverse": false, "start": 13153.419680512816, "duration": 1000, "realFrom": 1730, "realTo": 2030, "caption": "LogRecord", "tone": "plain", "i": 27, "color": "#e97839", "rowKey": "45" },
       {
         "kind": "process",
         "msg": 3,
@@ -451,12 +422,12 @@
         "realFrom": 2040,
         "realTo": 2050,
         "caption": "ClickHouse sink · Insert · 10 ms",
-        "i": 30,
+        "i": 28,
         "color": "#e97839",
         "tone": "plain",
         "short": "Insert · 10 ms"
       },
-      { "kind": "travel", "msg": 3, "type": "LogRecord", "edge": "ch-sink--clickhouse", "reverse": false, "start": 14810.213582490269, "duration": 1000, "realFrom": 2050, "realTo": 2250, "caption": "LogRecord", "tone": "plain", "i": 31, "color": "#e97839", "rowKey": "60" },
+      { "kind": "travel", "msg": 3, "type": "LogRecord", "edge": "ch-sink--clickhouse", "reverse": false, "start": 14810.213582490269, "duration": 1000, "realFrom": 2050, "realTo": 2250, "caption": "LogRecord", "tone": "plain", "i": 29, "color": "#e97839", "rowKey": "55" },
       {
         "kind": "process",
         "msg": 4,
@@ -468,12 +439,12 @@
         "realFrom": 2040,
         "realTo": 2050,
         "caption": "Archive sink · Parquet · 10 ms",
-        "i": 32,
+        "i": 30,
         "color": "#e97839",
         "tone": "plain",
         "short": "Parquet · 10 ms"
       },
-      { "kind": "travel", "msg": 4, "type": "LogRecord", "edge": "s3-sink--cold", "reverse": false, "start": 14810.213582490269, "duration": 1000, "realFrom": 2050, "realTo": 2250, "caption": "LogRecord", "tone": "plain", "i": 33, "color": "#e97839", "rowKey": "61" },
+      { "kind": "travel", "msg": 4, "type": "LogRecord", "edge": "s3-sink--cold", "reverse": false, "start": 14810.213582490269, "duration": 1000, "realFrom": 2050, "realTo": 2250, "caption": "LogRecord", "tone": "plain", "i": 31, "color": "#e97839", "rowKey": "56" },
       {
         "kind": "process",
         "msg": 2,
@@ -485,12 +456,12 @@
         "realFrom": 2040,
         "realTo": 2060,
         "caption": "Log ingesters · Push chunks · 20 ms",
-        "i": 34,
+        "i": 32,
         "color": "#e97839",
         "tone": "plain",
         "short": "Push chunks · 20 ms"
       },
-      { "kind": "travel", "msg": 2, "type": "LogRecord", "edge": "ingesters--loki-store", "reverse": false, "start": 14889.978999954905, "duration": 1000, "realFrom": 2060, "realTo": 2260, "caption": "LogRecord", "tone": "plain", "i": 35, "color": "#e97839", "rowKey": "68" },
+      { "kind": "travel", "msg": 2, "type": "LogRecord", "edge": "ingesters--loki-store", "reverse": false, "start": 14889.978999954905, "duration": 1000, "realFrom": 2060, "realTo": 2260, "caption": "LogRecord", "tone": "plain", "i": 33, "color": "#e97839", "rowKey": "63" },
       {
         "kind": "write",
         "msg": 3,
@@ -503,12 +474,12 @@
         "realTo": 2260,
         "caption": "Log analytics · write LogRecord",
         "sink": 300,
-        "i": 36,
+        "i": 34,
         "color": "#e97839",
         "tone": "plain",
         "short": "write LogRecord"
       },
-      { "kind": "reply", "msg": 3, "type": "LogRecord", "edge": "ch-sink--clickhouse", "reverse": true, "start": 16710.21358249027, "duration": 600, "realFrom": 2260, "realTo": 2460, "i": 37, "color": "#e97839", "tone": "plain" },
+      { "kind": "reply", "msg": 3, "type": "LogRecord", "edge": "ch-sink--clickhouse", "reverse": true, "start": 16710.21358249027, "duration": 600, "realFrom": 2260, "realTo": 2460, "i": 35, "color": "#e97839", "tone": "plain" },
       {
         "kind": "write",
         "msg": 4,
@@ -521,12 +492,12 @@
         "realTo": 2260,
         "caption": "Cold archive · write LogRecord",
         "sink": 300,
-        "i": 38,
+        "i": 36,
         "color": "#e97839",
         "tone": "plain",
         "short": "write LogRecord"
       },
-      { "kind": "reply", "msg": 4, "type": "LogRecord", "edge": "s3-sink--cold", "reverse": true, "start": 16710.21358249027, "duration": 600, "realFrom": 2260, "realTo": 2460, "i": 39, "color": "#e97839", "tone": "plain" },
+      { "kind": "reply", "msg": 4, "type": "LogRecord", "edge": "s3-sink--cold", "reverse": true, "start": 16710.21358249027, "duration": 600, "realFrom": 2260, "realTo": 2460, "i": 37, "color": "#e97839", "tone": "plain" },
       {
         "kind": "process",
         "msg": 2,
@@ -538,13 +509,13 @@
         "realFrom": 2260,
         "realTo": 2260,
         "caption": "Loki · Push chunks",
-        "i": 40,
+        "i": 38,
         "color": "#e97839",
         "tone": "plain",
         "short": "Push chunks"
       },
-      { "kind": "reply", "msg": 2, "type": "LogRecord", "edge": "ingesters--loki-store", "reverse": true, "start": 16489.978999954903, "duration": 600, "realFrom": 2260, "realTo": 2460, "i": 41, "color": "#e97839", "tone": "plain" },
-      { "kind": "end", "msg": 1, "type": "Request", "node": "cold", "start": 17110.21358249027, "duration": 1200, "realFrom": 2260, "realTo": 2260, "caption": "Done · 2.26 s · 4 copies · 3 writes", "tone": "done", "i": 42, "color": "#18a6b5" }
+      { "kind": "reply", "msg": 2, "type": "LogRecord", "edge": "ingesters--loki-store", "reverse": true, "start": 16489.978999954903, "duration": 600, "realFrom": 2260, "realTo": 2460, "i": 39, "color": "#e97839", "tone": "plain" },
+      { "kind": "end", "msg": 1, "type": "Request", "node": "cold", "start": 17110.21358249027, "duration": 1200, "realFrom": 2260, "realTo": 2260, "caption": "Done · 2.26 s · 3 copies · 3 writes", "tone": "done", "i": 40, "color": "#18a6b5" }
     ],
     "duration": 18310.21358249027,
     "realTotal": 2260,
@@ -562,7 +533,6 @@
       "ingesters",
       "ch-sink",
       "s3-sink",
-      "siem",
       "clickhouse",
       "cold",
       "loki-store"
@@ -579,16 +549,15 @@
       "logs--ingesters",
       "logs--ch-sink",
       "logs--s3-sink",
-      "logs--siem",
       "ch-sink--clickhouse",
       "s3-sink--cold",
       "ingesters--loki-store"
     ],
     "hiddenCopies": 0,
     "unfinished": false,
-    "summary": "Done · 2.26 s · 4 copies · 3 writes",
+    "summary": "Done · 2.26 s · 3 copies · 3 writes",
     "reduced": false,
-    "rowStart": { "0": 0, "3": 800, "7": 2400, "14": 4653.272557115821, "18": 4653.272557115821, "22": 6310.066459093274, "26": 7910.066459093274, "31": 9646.625778535363, "36": 11303.419680512816, "45": 13153.419680512816, "46": 13153.419680512816, "47": 13153.419680512816, "48": 13153.419680512816, "60": 14810.213582490269, "61": 14810.213582490269, "68": 14889.978999954905 }
+    "rowStart": { "0": 0, "3": 800, "7": 2400, "14": 4653.272557115821, "18": 4653.272557115821, "22": 6310.066459093274, "26": 7910.066459093274, "31": 9646.625778535363, "36": 11303.419680512816, "43": 13153.419680512816, "44": 13153.419680512816, "45": 13153.419680512816, "55": 14810.213582490269, "56": 14810.213582490269, "63": 14889.978999954905 }
   },
   "slowMotionReduced": {
     "duration": 30000,
@@ -615,8 +584,6 @@
       ["travel", 22500, 1500],
       ["travel", 22500, 1500],
       ["travel", 22500, 1500],
-      ["travel", 22500, 1500],
-      ["process", 24000, 1500],
       ["process", 24000, 1500],
       ["travel", 25500, 1500],
       ["process", 24000, 1500],

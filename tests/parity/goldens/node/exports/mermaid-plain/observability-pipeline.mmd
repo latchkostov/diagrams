@@ -94,7 +94,7 @@ flowchart LR
   ingesters -->|"Push chunks"| loki_store
   logs -.-> ch_sink
   logs -.-> s3_sink
-  logs -.-> siem
+  ch_sink -.-> siem
   spans -.-> tempo
   spans -.-> s3_sink
   metrics -.-> prom

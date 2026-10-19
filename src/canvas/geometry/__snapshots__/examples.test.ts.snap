@@ -9940,14 +9940,14 @@ exports[`public examples route cleanly (estimated card sizes) > observability-pi
     "points": [
       {
         "x": 3801,
-        "y": 435,
+        "y": 442,
       },
       {
-        "x": 3961.5,
-        "y": 435,
+        "x": 3896.5,
+        "y": 442,
       },
       {
-        "x": 3961.5,
+        "x": 3896.5,
         "y": 96,
       },
       {
@@ -9974,11 +9974,11 @@ exports[`public examples route cleanly (estimated card sizes) > observability-pi
     "points": [
       {
         "x": 3801,
-        "y": 463,
+        "y": 456,
       },
       {
         "x": 3958,
-        "y": 463,
+        "y": 456,
       },
       {
         "x": 3958,
@@ -9995,14 +9995,14 @@ exports[`public examples route cleanly (estimated card sizes) > observability-pi
     "points": [
       {
         "x": 3801,
-        "y": 477,
+        "y": 470,
       },
       {
-        "x": 3972.5,
-        "y": 477,
+        "x": 3967,
+        "y": 470,
       },
       {
-        "x": 3972.5,
+        "x": 3967,
         "y": 809,
       },
       {
@@ -10012,23 +10012,23 @@ exports[`public examples route cleanly (estimated card sizes) > observability-pi
     ],
   },
   {
-    "id": "logs--siem",
+    "id": "ch-sink--siem",
     "points": [
       {
-        "x": 3801,
-        "y": 449,
+        "x": 4260,
+        "y": 683,
       },
       {
-        "x": 3896.5,
-        "y": 449,
+        "x": 4370,
+        "y": 683,
       },
       {
-        "x": 3896.5,
-        "y": 558,
+        "x": 4370,
+        "y": 746,
       },
       {
         "x": 4837,
-        "y": 558,
+        "y": 746,
       },
       {
         "x": 4837,
@@ -10048,11 +10048,11 @@ exports[`public examples route cleanly (estimated card sizes) > observability-pi
         "y": 589,
       },
       {
-        "x": 3983.5,
+        "x": 3978,
         "y": 589,
       },
       {
-        "x": 3983.5,
+        "x": 3978,
         "y": 236,
       },
       {
@@ -10090,11 +10090,11 @@ exports[`public examples route cleanly (estimated card sizes) > observability-pi
         "y": 729,
       },
       {
-        "x": 3994.5,
+        "x": 3989,
         "y": 729,
       },
       {
-        "x": 3994.5,
+        "x": 3989,
         "y": 376,
       },
       {
@@ -10129,6 +10129,14 @@ exports[`public examples route cleanly (estimated card sizes) > observability-pi
     "points": [
       {
         "x": 4260,
+        "y": 669,
+      },
+      {
+        "x": 4370,
+        "y": 669,
+      },
+      {
+        "x": 4370,
         "y": 676,
       },
       {

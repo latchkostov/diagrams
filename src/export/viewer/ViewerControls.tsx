@@ -22,7 +22,11 @@ export function ViewerControls({ hintId }: { hintId?: string }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target;
-      if (isEditableTarget(t) || (t instanceof Element && t.closest("select, [role='dialog'], [role='menu']"))) return;
+      if (
+        isEditableTarget(t) ||
+        (t instanceof Element && t.closest("select, [role='dialog'], [role='menu'], [data-canvas-reading-region]"))
+      )
+        return;
       const step = e.shiftKey ? PAN_STEP * 3 : PAN_STEP;
       const pan = (dx: number, dy: number) => camera?.panByHand(dx, dy, 120);
       const actions: Record<string, () => void> = {

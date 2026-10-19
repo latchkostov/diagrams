@@ -181,7 +181,7 @@ export async function createStaticHandler(directory: string, base: string) {
       /^(text\/|application\/(javascript|json|wasm|xml)|image\/svg)/.test(mime),
     );
     let compressed: Buffer | undefined;
-    if (selected && selected !== "identity" && req.method !== "HEAD") {
+    if (selected && selected !== "identity") {
       const task = compression.get(
         found.file,
         `${found.info.mtimeMs}:${found.info.ctimeMs}:${found.info.size}`,

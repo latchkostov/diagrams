@@ -11,6 +11,8 @@ import { selfHostHeaderManifest } from "../../../scripts/self-host-headers";
 import { nginxServer } from "../../../scripts/self-host-templates";
 import { verifyInstance } from "../../../scripts/self-host-verify";
 import { FakeClock } from "../../../src/collab/clock";
+import { COLLAB_LIMITS } from "../../../src/collab/limits";
+import { CompressionCache } from "../src/compression";
 import {
   RELAY_CLOSE,
   RELAY_LIMITS,
@@ -213,6 +215,30 @@ describe("static UI hosting", () => {
     expect(plain.body.toString()).toBe(expected);
     expect((await get(s.origin, "/", { "Accept-Encoding": "*;q=0" })).status).toBe(406);
     expect((await get(s.origin, "/font.woff2", { "Accept-Encoding": "br, identity;q=0" })).status).toBe(406);
+  });
+
+  it.each([false, true])("HEAD and GET select the same representation (compression busy: %s)", async (busy) => {
+    const f = await fixture();
+    const s = await startServer({ LD_STATIC: "on", LD_STATIC_DIR: f.root });
+    const unavailable = busy ? vi.spyOn(CompressionCache.prototype, "get").mockReturnValue(undefined) : undefined;
+    try {
+      for (const accept of ["br", "gzip", "br, identity;q=0"]) {
+        const headers = { "Accept-Encoding": accept };
+        const head = await get(s.origin, "/", headers, "HEAD");
+        const full = await get(s.origin, "/", headers);
+        expect(head.status).toBe(busy && accept.includes("identity;q=0") ? 406 : 200);
+        expect(head.status).toBe(full.status);
+        expect(head.body.length).toBe(0);
+        for (const key of ["content-encoding", "content-length", "content-type", "vary", "cache-control"])
+          expect(head.headers[key], key).toBe(full.headers[key]);
+        if (head.status === 200) {
+          expect(head.headers["content-encoding"]).toBe(busy ? undefined : accept.split(",")[0]);
+          expect(Number(head.headers["content-length"])).toBe(full.body.length);
+        }
+      }
+    } finally {
+      unavailable?.mockRestore();
+    }
   });
 
   it.each(["/", "/tools/diagrams/"])(
@@ -478,7 +504,7 @@ describe("server operations", () => {
       const welcome = parseControl(Buffer.from(a.messages[0].bytes).toString());
       const recipient = parseControl(Buffer.from(b.messages[0].bytes).toString());
       if (welcome?.t !== "welcome" || recipient?.t !== "welcome") throw new Error("Expected welcome");
-      const frameSize = RELAY_LIMITS.minPayload - 9;
+      const frameSize = COLLAB_LIMITS.maxDocFrameBytes;
       expect(welcome.maxFrame).toBe(frameSize);
       const envelope = new Uint8Array(frameSize).fill(42);
       const delivered = once(b.socket, "message");

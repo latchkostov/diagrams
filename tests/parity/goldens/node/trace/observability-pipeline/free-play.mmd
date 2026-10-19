@@ -1,5 +1,5 @@
 ---
-title: "Request #1 · 2.26 s end to end · 4 copies"
+title: "Request #1 · 2.26 s end to end · 3 copies"
 ---
 sequenceDiagram
   participant shoppers as Shoppers
@@ -14,7 +14,6 @@ sequenceDiagram
   participant ingesters as Log ingesters
   participant ch_sink as ClickHouse sink
   participant s3_sink as Archive sink
-  participant siem as Security SIEM
   participant clickhouse as Log analytics
   participant cold as Cold archive
   participant loki_store as Loki
@@ -35,7 +34,6 @@ sequenceDiagram
   logs-)ingesters: LogRecord (+1.73 s)
   logs-)ch_sink: LogRecord (+1.73 s)
   logs-)s3_sink: LogRecord (+1.73 s)
-  logs-)siem: LogRecord (+1.73 s)
   ch_sink->>clickhouse: LogRecord (+2.05 s)<br/>Insert
   s3_sink->>cold: LogRecord (+2.05 s)<br/>Parquet
   ingesters->>loki_store: LogRecord (+2.06 s)<br/>Push chunks

@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "c1529d1dc29f8930dd033a4d92cf325b5358016f75671d88c23ceba381686150",
-    "bytes": 182981,
+    "sha256": "2a10dfb0288cc4c971635b5518531cca7556cf1687e08dcdf1d2fb843b1fac21",
+    "bytes": 182955,
     "inlined": {
       "aws.aurora": "aws-aurora 99c39529fc98ae62",
       "aws.iam-role": "aws-iam-role bd4cb5cfaa081156",
@@ -534,13 +534,7 @@
             "props": { "group": "clickhouse" }
           },
           { "id": "logs--s3-sink", "from": "logs", "to": "s3-sink", "kind": "async", "props": { "group": "archive" } },
-          {
-            "id": "logs--siem",
-            "from": "logs",
-            "to": "siem",
-            "kind": "async",
-            "props": { "group": "siem", "share": 0.02 }
-          },
+          { "id": "ch-sink--siem", "from": "ch-sink", "to": "siem", "kind": "async", "props": { "share": 0.02 } },
           { "id": "spans--tempo", "from": "spans", "to": "tempo", "kind": "async", "props": { "group": "tempo" } },
           {
             "id": "spans--s3-sink",
