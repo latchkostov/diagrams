@@ -546,17 +546,24 @@ test.describe("Interactive HTML with a password", () => {
       buffer: Buffer.from(
         JSON.stringify({
           format: "diagrams/v1",
-          title: "Ledger flow",
+          title: "Sealed journal canary 7f3c",
           private: true,
           nodes: [
-            { id: "intake", stencil: "generic.service", label: "Intake service", x: 0, y: 0 },
-            { id: "ledger", stencil: "postgres", label: "Ledger", x: 320, y: 0 },
+            { id: "sealed-intake-7f3c", stencil: "generic.service", label: "Cobalt intake canary 7f3c", x: 0, y: 0 },
+            { id: "sealed-journal-7f3c", stencil: "postgres", label: "Cobalt journal canary 7f3c", x: 320, y: 0 },
           ],
-          edges: [{ id: "intake-to-ledger", from: "intake", to: "ledger", label: "Post entries" }],
+          edges: [
+            {
+              id: "sealed-entry-7f3c",
+              from: "sealed-intake-7f3c",
+              to: "sealed-journal-7f3c",
+              label: "Record cobalt entry 7f3c",
+            },
+          ],
         }),
       ),
     });
-    await expect(page.getByTestId("diagram-title")).toHaveText("Ledger flow");
+    await expect(page.getByTestId("diagram-title")).toHaveText("Sealed journal canary 7f3c");
     await expect(page.getByTestId("private-badge")).toBeVisible();
     // Private changes nothing here: the export is on, with or without a password.
     await openHtmlExport(page);
@@ -578,7 +585,18 @@ test.describe("Interactive HTML with a password", () => {
     const path = test.info().outputPath("private-locked.html");
     await file.saveAs(path);
     const html = readFileSync(path, "utf8");
-    for (const text of ["Ledger", "Intake", "intake", "Post entries"]) expect(html.includes(text), text).toBe(false);
+    // Unique canaries distinguish diagram plaintext from the bundled viewer's
+    // public API names (for example verifyLedger).
+    for (const text of [
+      "Sealed journal canary 7f3c",
+      "sealed-intake-7f3c",
+      "Cobalt intake canary 7f3c",
+      "sealed-journal-7f3c",
+      "Cobalt journal canary 7f3c",
+      "sealed-entry-7f3c",
+      "Record cobalt entry 7f3c",
+    ])
+      expect(html.includes(text), text).toBe(false);
     // Not even that it's private (the viewer's own code names the field).
     expect(filePayloadText(html)).not.toContain("private");
 
@@ -589,8 +607,8 @@ test.describe("Interactive HTML with a password", () => {
     const frame = viewer.page.frameLocator('[data-testid="frame"]');
     await frame.getByTestId("viewer-password-input").click();
     await unlock(frame, viewer.page.keyboard);
-    await expect(frame.getByTestId("node-intake")).toBeVisible();
-    await expect(frame.getByTestId("node-ledger")).toBeVisible();
+    await expect(frame.getByTestId("node-sealed-intake-7f3c")).toBeVisible();
+    await expect(frame.getByTestId("node-sealed-journal-7f3c")).toBeVisible();
     const inner = viewer.page.frames().find((f) => f !== viewer.page.mainFrame());
     expect(await inner?.evaluate(() => window.__violations ?? [])).toEqual([]);
     expect(viewer.requests.filter((r) => !r.startsWith("data:"))).toEqual([hostUrl, pathToFileURL(path).href]);
