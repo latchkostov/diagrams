@@ -365,6 +365,24 @@ describe("leaving and reloading", () => {
     expect(resigned.member).toBe(aRoster.get().member);
   });
 
+  it("a duplicated tab (its record copied, member id and all) takes an id of its own, and no claim to host", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 12);
+    await start(a);
+    const original = a.room.getSnapshot().open!.roster.get();
+    // The copy's own lifecycle, its tab store a copy of the original's, and another tab answering for the member.
+    const copy = browser(net, clock, 13, a);
+    (copy.room as unknown as { deps: { memberTaken?: (m: string) => Promise<boolean> } }).deps.memberTaken = async (
+      m,
+    ) => m === original.member;
+    await copy.room.resume();
+    const cloned = copy.room.getSnapshot().open!.roster.get();
+    expect(cloned.member).not.toBe(original.member);
+    expect(cloned.hosting).toBe(false);
+    expect(a.room.getSnapshot().open!.roster.get()).toEqual(original);
+  });
+
   it("an edit the checkpoint hadn't saved before a reload is merged back in", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();

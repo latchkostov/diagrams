@@ -12,7 +12,7 @@ import type { RecoveryStore } from "../recoveryStore";
 import { CollabSession, PrivateDiagramError } from "../session";
 import type { CollabTransport } from "../transport/types";
 import { recordRoom, roomValue, type RoomRole, type TabRoomRecord, type TabRoomStore } from "./tabRoom";
-import { newRoster, RoomRoster, type RosterRecord } from "./roomRoster";
+import { clonedRoster, newRoster, RoomRoster, type RosterRecord } from "./roomRoster";
 
 // A room's life in the app (Edit together; collaboration plan E2). React-free, so the lifecycle is tested on the
 // in-memory network; src/collab/room/index.ts wires it to the page (tracker transport, Your diagrams, the address
@@ -58,6 +58,11 @@ export interface RoomDeps {
   random?: RandomBytes;
   /** How long edits wait before the copy in Your diagrams is written (the canvas's autosave debounce). */
   mirrorMs?: number;
+  /**
+   * Whether another tab open now holds this member id (a duplicated tab copies its record, member id and all): it
+   * then takes an id of its own. Absent, no other tab is asked.
+   */
+  memberTaken?(member: string): Promise<boolean>;
 }
 
 export type RoomNotice = "left" | "private" | "failed" | "storage-full";
@@ -270,7 +275,16 @@ export class RoomLifecycle {
     const link = recordRoom(record);
     if (!link) return this.deps.tab.clear();
     const slug = record.slug && this.deps.library.read(record.slug) ? record.slug : undefined;
-    await this.open({ link, role: record.role, slug, alias: record.alias, record });
+    // A copy of another open tab (duplicated, with its record): an identity of its own, and no claim to host.
+    let roster = record.roster;
+    if (roster && this.deps.memberTaken) {
+      const asked = this.attempt;
+      const taken = await this.deps.memberTaken(roster.member);
+      // Left (or another room opened) while the other tabs were asked: nothing to resume.
+      if (asked !== this.attempt || this.active) return;
+      if (taken) roster = clonedRoster(roster, this.random);
+    }
+    await this.open({ link, role: record.role, slug, alias: record.alias, record, roster });
   }
 
   private async open(o: OpenRequest): Promise<OpenRoom | undefined> {

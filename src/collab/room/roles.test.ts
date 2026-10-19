@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PeerPresence } from "../presence";
-import { driverOf, rolesOf, rosterOf, successor } from "./roles";
+import { driverOf, ownsMember, rolesOf, rosterOf, successor } from "./roles";
 
 const peer = (sender: string, extra: Partial<PeerPresence> = {}): PeerPresence =>
   ({ sender, alias: sender, colour: 0, status: "active", seen: 0, member: `m-${sender}`, ...extra }) as PeerPresence;
@@ -23,6 +23,21 @@ describe("the room's roles (P3, cooperative)", () => {
     // A member's new sender id (they reloaded): the same person.
     const again = rosterOf({ sender: "b2", member: "m-b" }, [], { cohosts: ["m-b"] });
     expect(again.cohosts).toEqual(["b2"]);
+  });
+
+  it("two senders with one member id (a duplicated tab): every client resolves it to the same one, the lowest", () => {
+    const host = peer("h", { host: true, driver: "m-a" });
+    const original = { sender: "a1", member: "m-a" };
+    const copy = { sender: "a9", member: "m-a" };
+    const fromHost = rosterOf({ sender: "h", member: "m-h", host: true, driver: "m-a" }, [
+      peer("a1", { member: "m-a" }),
+      peer("a9", { member: "m-a" }),
+    ]);
+    const fromOriginal = rosterOf(original, [host, peer("a9", { member: "m-a" })]);
+    const fromCopy = rosterOf(copy, [host, peer("a1", { member: "m-a" })]);
+    for (const r of [fromHost, fromOriginal, fromCopy]) expect(r.driver).toBe("a1");
+    expect(ownsMember(original, [peer("a9", { member: "m-a" })])).toBe(true);
+    expect(ownsMember(copy, [peer("a1", { member: "m-a" })])).toBe(false);
   });
 
   it("a leaving host's successor: the earliest co-host here, else whoever has been here longest", () => {

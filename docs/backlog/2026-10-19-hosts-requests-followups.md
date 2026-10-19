@@ -8,6 +8,9 @@ narration camera rule, a host already in Live, and the version wording.
   that needs a roster nobody's presence owns (P4's roster log).
 - **Two rosters after a partition.** A co-host's yes while the host is away changes everyone's last roster; a host
   coming back says its own, which wins. Fine cooperatively; P4's signed roster log orders them.
+- **A typed controller guard.** Following turns this person's own run changes away by wrapping the controller's
+  methods from the room's code (a list of method names). A controller-owned guard, typed by op and origin, would
+  keep the policy in one place; it waits for the Live controller's in-flight work (#195) to land.
 - **A handoff that can't complete.** The next driver starts a run of its own (followers rebuild) when it doesn't hold
   the run whole, leaves Live, or isn't level within 30 s.
 - **"Already in Live" restarts the run.** Starting over at the same moment drops the run's one-off tweaks (an

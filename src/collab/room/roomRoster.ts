@@ -1,3 +1,4 @@
+import { COLLAB_LIMITS } from "../limits";
 import type { RoomRole } from "./tabRoom";
 
 // The room's roles as this tab holds them (P3, cooperative), owned by the room's lifecycle and kept in the tab's
@@ -25,7 +26,8 @@ export function parseRoster(v: unknown): RosterRecord | undefined {
   const r = v as Record<string, unknown>;
   const member = (x: unknown): x is string => typeof x === "string" && MEMBER.test(x);
   if (!member(r.member) || typeof r.hosting !== "boolean") return undefined;
-  if (!Array.isArray(r.cohosts) || r.cohosts.length > 8 || !r.cohosts.every(member)) return undefined;
+  if (!Array.isArray(r.cohosts) || r.cohosts.length > COLLAB_LIMITS.maxCohosts || !r.cohosts.every(member))
+    return undefined;
   if ((r.host !== undefined && !member(r.host)) || (r.driver !== undefined && !member(r.driver))) return undefined;
   return {
     member: r.member,
@@ -36,10 +38,20 @@ export function parseRoster(v: unknown): RosterRecord | undefined {
   };
 }
 
+const newMember = (random: (n: number) => Uint8Array) =>
+  Array.from(random(8), (b) => b.toString(16).padStart(2, "0")).join("");
+
 /** A new room's roster for this tab: the creator hosts it. */
 export function newRoster(role: RoomRole, random: (n: number) => Uint8Array): RosterRecord {
-  const member = Array.from(random(8), (b) => b.toString(16).padStart(2, "0")).join("");
-  return { member, hosting: role === "creator", cohosts: [] };
+  return { member: newMember(random), hosting: role === "creator", cohosts: [] };
+}
+
+/**
+ * A duplicated tab's roster (its record was copied with the tab, member id and all): an identity of its own, and no
+ * claim to host (the tab it was copied from keeps that). The last roster a host said stays.
+ */
+export function clonedRoster(from: RosterRecord, random: (n: number) => Uint8Array): RosterRecord {
+  return { ...from, member: newMember(random), hosting: false };
 }
 
 /** The lifecycle's roster service for the open room: read, changed (and saved with the tab's record), subscribed. */
@@ -55,9 +67,15 @@ export class RoomRoster {
     return this.record;
   }
 
-  update(patch: Partial<Omit<RosterRecord, "member">>): void {
-    const next = { ...this.record, ...patch };
-    if (JSON.stringify(next) === JSON.stringify(this.record)) return;
+  /**
+   * A change, kept only as it can be read back: co-hosts once each and never this tab's own member, at most
+   * COLLAB_LIMITS.maxCohosts (the earliest go first: a full roster drops its earliest), and a driver that's a member id.
+   */
+  update(patch: Partial<RosterRecord>): void {
+    const merged = { ...this.record, ...patch };
+    const cohosts = [...new Set(merged.cohosts)].filter((m) => m !== merged.host);
+    const next = parseRoster({ ...merged, cohosts: cohosts.slice(-COLLAB_LIMITS.maxCohosts) });
+    if (!next || JSON.stringify(next) === JSON.stringify(this.record)) return;
     this.record = next;
     this.save();
     for (const l of this.listeners) l();

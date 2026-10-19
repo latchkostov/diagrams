@@ -3,13 +3,14 @@ import type { DiagramFile, Simulation } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { bytesToText } from "../../interop/codec";
 import { LiveController } from "../../live/controller";
+import { snapshotDigest } from "../../sim/digest";
 import { publishWatched, type WatchedSession } from "../../live/watchBridge";
 import { publish, type CanvasHost } from "../../palette/host";
 import type { EditorApi } from "../../editor/types";
 import type { PeerPresence } from "../presence";
 import type { CollabSession } from "../session";
-import { WatchTogether, type WatchNotices, type WatchRoom } from "./watch";
-import { LiveDriver, type LiveChannel, type LiveMessage } from "./liveShare";
+import { sessionChannel, WatchTogether, type WatchNotices, type WatchRoom } from "./watch";
+import { LiveDriver, LiveFollower, type LiveChannel, type LiveMessage } from "./liveShare";
 import { encodeMessage, LiveDecoder } from "./liveWire";
 import { RoomRoster } from "./roomRoster";
 
@@ -512,6 +513,89 @@ describe("Hosts and requests (P3)", () => {
     expect(host.getState().driving).toBe(false);
   });
 
+  it("a duplicated tab (the same member id, a higher sender): everyone agrees on one driver, the copy takes its own id", () => {
+    const { r, host, a, b, rosters } = people();
+    host.letDrive(A);
+    // The copy of A's tab: its record, member id and all, under a new sender.
+    const copyRoster = new RoomRoster({ ...rosters.a.get() }, () => {});
+    const copy = new WatchTogether(r.join("33dd33dd", "Heron"), copyRoster, room(), notices);
+    stops.push(() => copy.dispose());
+    expect(copyRoster.get().member).not.toBe(rosters.a.get().member);
+    for (const w of [host, a, b, copy]) expect(w.getState().roster.driver).toBe(A);
+  });
+
+  it("handoff after an Inputs replay preserves the shared run: the next driver adopts it, the old host follows", async () => {
+    const r = new FakeRoom();
+    const mine = live("room-a", false, shared);
+    show(mine, false);
+    const host = new WatchTogether(r.join(H, "Sam"), roster("creator", memberOf(H)), room(), notices);
+    const G = "55ff55ff";
+    const guestSession = r.join(G, "Heron");
+    guestSession.setPresence({ member: memberOf(G) });
+    const gc = new LiveController(diagram);
+    const guestWatched = { ...live("room-a", false, shared), controller: gc };
+    const follower = new LiveFollower(
+      sessionChannel(guestSession),
+      guestWatched,
+      H,
+      () => {},
+      () => {},
+    );
+    stops.push(() => {
+      host.dispose();
+      follower.dispose();
+    });
+    await settle();
+    const c = mine.controller;
+    c.setPlaying(true);
+    const bridge = (await import("../../live/watchBridge")).watchBridge;
+    const frame = () => {
+      vi.advanceTimersByTime(16);
+      c.advance(bridge.follower ? bridge.follower.pace(16) : 16);
+      gc.advance(follower.pace(16));
+    };
+    for (let i = 0; i < 2_000 && !(follower.phase === "following" && c.tick >= 300); i++) frame();
+    const run = host.probe()?.run;
+    expect(run).toBeDefined();
+    c.setInputs({ props: {}, rates: { shopper: 450 } });
+    host.letDrive(G);
+    // Mid-replay: nothing handed over yet.
+    expect(host.getState().driving).toBe(true);
+    expect(follower.driver).toBe(H);
+    for (let i = 0; i < 400 && host.getState().driving; i++) {
+      frame();
+      await Promise.resolve();
+    }
+    expect(host.getState().driving).toBe(false);
+    expect(follower.driver).toBe(G);
+    // The guest comes level with the handoff (its tick, every op it holds applied) and drives the same run on.
+    let level: ReturnType<LiveFollower["levelWith"]>;
+    const at = c.tick;
+    for (let i = 0; i < 2_000 && !(level = follower.levelWith(at, 0)); i++) frame();
+    expect(level?.id).toBe(run);
+    if (!level) return;
+    follower.dispose();
+    const driver = new LiveDriver(sessionChannel(guestSession), guestWatched, () => {}, undefined, undefined, level);
+    stops.push(() => driver.dispose());
+    for (let i = 0; i < 300; i++) {
+      vi.advanceTimersByTime(16);
+      gc.advance(16);
+      c.advance(bridge.follower ? bridge.follower.pace(16) : 0);
+    }
+    gc.setPlaying(false);
+    for (let i = 0; i < 2_000 && c.tick !== gc.tick; i++) {
+      vi.advanceTimersByTime(16);
+      c.advance(bridge.follower ? bridge.follower.pace(16) : 0);
+    }
+    expect(host.getState().following?.phase).toBe("following");
+    expect(c.tick).toBe(gc.tick);
+    const digest = (x: LiveController) => {
+      const { snapshot, draws } = x.digestInputs();
+      return snapshotDigest(snapshot, draws);
+    };
+    expect(digest(c)).toBe(digest(gc));
+  });
+
   it("a co-host sees requests too, and the host applies a co-host's yes", () => {
     const { host, a, b } = people();
     host.setCohost(B, true);
@@ -653,6 +737,22 @@ describe("Hosts and requests: the handoff coordinator", () => {
     show(guestLiveSession, false);
     await settle();
     expect(guest.getState().driving).toBe(true);
+  });
+
+  it("slow motion while following pauses and gives playback back without a driving warning", async () => {
+    const { hostC, guest, g, until } = await linked();
+    await until(() => guest.getState().following?.phase === "following" && hostC.tick >= 200);
+    const playing = g.isPlaying;
+    // As SlowMotion does: pause, hold; later release the hold, and play as it was.
+    g.setPlaying(false);
+    g.hold(true);
+    await Promise.resolve();
+    g.hold(false);
+    g.setPlaying(playing);
+    await Promise.resolve();
+    expect(guest.getState().inert).toBeUndefined();
+    expect(g.isPlaying).toBe(playing);
+    expect(guest.getState().following?.phase).toBe("following");
   });
 
   it("a follower's own change (Space) is turned away before it reaches the run: no rebuild, who drives is said", async () => {

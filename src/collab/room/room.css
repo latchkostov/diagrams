@@ -154,8 +154,21 @@ span.room-chip {
   max-inline-size: min(360px, calc(100vw - 16px));
 }
 
-/* Following someone's Live: the live bar's controls are inert (using one says who drives). */
-body[data-watching] [data-testid="live-controls"] :is(button, select) {
+/* Following someone's Live: the live bar's controls that change the shared run are inert (using one says who
+   drives); the rest work as ever, and so does everything while slow motion (this person's own) has the bar. */
+body[data-watching]
+  [data-testid="live-controls"]:not(:has([data-testid="slowmo-chip"]))
+  :is(
+    [data-testid="live-play"],
+    [data-testid="live-restart"],
+    [data-testid="live-speed"],
+    [data-testid="live-sim-picker"],
+    [data-testid="live-step"],
+    [data-testid="live-traffic"],
+    [data-testid="live-timeline"],
+    [data-testid="live-done"],
+    [data-testid="live-edit-sims"]
+  ) {
   opacity: 0.6;
   cursor: default;
 }

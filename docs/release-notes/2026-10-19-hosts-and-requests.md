@@ -16,13 +16,19 @@ together is; signed roles come in P4. The owner's defaults apply (design §7: 3,
 - **Roles are the room's, not the tab's entry.** A lifecycle-owned `RoomRoster` keeps, in the tab's record, whether
   this person hosts now and the last roster a host said: a promoted host who reloads still hosts, a creator who
   handed the room on doesn't reclaim it, co-hosts and the driver stay, and while the host is away the last roster
-  stands (co-hosts keep getting requests and answering them).
+  stands (co-hosts keep getting requests and answering them). The roster is kept only as it reads back (at most
+  seven co-hosts, the earliest dropped first; the limit shared with presence and the wire).
+- **Duplicated tabs.** A tab duplicated with its record asks the browser's other tabs (a `BroadcastChannel`) whether
+  its member id is taken; if so it takes one of its own and no claim to host. Should two senders ever claim one
+  member, every client resolves it to the lowest sender, and the other takes an id of its own.
 - **Leaving on purpose** hands the room to the earliest co-host, else to whoever has been here longest, and the run
   to the next driver. A dropped connection still hands nothing over: followers wait, nobody is promoted.
 - **Following, the run is the driver's.** The live bar's controls that change the run are inert; using one opens
   "Sam is driving" with **Ask to drive** and **Watch on my own** (placed inside the viewport, focus back where it
   was after). A change made another way (Space, a right-click tweak, Inputs) is turned away before it reaches the
-  controller, with the same card; the event log, traces, Record video and slow motion stay this person's.
+  controller, with the same card; the event log, traces, Record video and slow motion stay this person's (slow
+  motion's own pause and play-back pass through, with no card; recording from the start means watching on your own,
+  said so). Only the run-changing controls look inert.
 - **One handoff coordinator.** The next driver drives the handed-over run once it holds that run whole and is level
   with the handoff, within 30 s (a slow page catches up to the handoff at once, and its followers treat the old
   driver's silence meanwhile as expected); otherwise, still joining, out of Live or too slow, it starts a run of its
@@ -56,6 +62,10 @@ page behind inert, focus back), smaller than its own copy was.
     one still joining starts its own; one that leaves Live mid-catch-up drives on its return; Space while following
     is turned away with no rebuild; a handoff asked for mid-replay waits for it; the old driver's silence during a
     handoff isn't a dropped connection.
+  - Two senders with one member id: every client agrees on one driver, and the copy takes an id of its own
+    (`roles.test.ts`, `watch.test.ts`); a duplicated tab resumes with its own id and no host claim
+    (`lifecycle.test.ts`); slow motion while following gives playback back with no card; a handoff asked for
+    mid-replay hands over the same run once it ends, the next driver adopts it and the old host lands on its digest.
   - Each of these fails with its fix taken out.
 - **E2E (`hosts-requests.spec.ts`):** two browsers: the live bar's inert play opens "Sam is driving", Ask to drive,
   Let them; the guest drives the same shared run (its id unchanged), changes the shopper's entry rate, pauses, and the old host is on the same tick with

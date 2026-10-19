@@ -21,7 +21,8 @@ import {
   type SendResult,
 } from "./liveShare";
 import { encodeMessage, LiveDecoder } from "./liveWire";
-import { driverOf, rosterOf, successor, type Roster, type RosterSource } from "./roles";
+import { driverOf, ownsMember, rosterOf, successor, type Roster, type RosterSource } from "./roles";
+import { clonedRoster } from "./roomRoster";
 
 // Watch together in a room, and its hosts and requests (P3): who hosts, who drives Live, what they show, and this
 // person's following. One per open room session, owned by the room (bindWatch, from ./index.ts), so it lasts as long
@@ -873,6 +874,16 @@ export class WatchTogether {
     const types = ["pointerdown", "mousedown", "click", "keydown", "dblclick"] as const;
     const stop = (e: Event) => {
       const target = e.target instanceof Element ? e.target : null;
+      // Record video from the start replays the run from its start: that's this person's own run, so they watch on
+      // their own from here (recording as it goes records the shared run as it plays).
+      if (e.type === "click" && target?.closest(RECORD_START) && this.follower && !this.driver) {
+        const fromStart = document.querySelector<HTMLInputElement>(RECORD_FROM_START);
+        if (fromStart?.checked) {
+          this.notices.told("own", "");
+          this.watchOnMyOwn();
+        }
+        return;
+      }
       const control = target?.closest(SHARED_CONTROLS);
       if (!control || !this.follower || this.driver || document.querySelector(SLOW_MOTION)) return;
       const key = e instanceof KeyboardEvent ? e.key : undefined;
@@ -913,6 +924,14 @@ export class WatchTogether {
     const peers = this.session.peers();
     const now = performance.now();
     for (const p of peers) if (!this.since.has(p.sender)) this.since.set(p.sender, now);
+    // Another sender with this tab's member id, and a lower one: this is a copy (a duplicated tab whose check didn't
+    // catch it). It takes an id of its own, and gives up any claim to host.
+    const mine = this.roster.get();
+    if (!ownsMember({ sender: this.me, member: mine.member }, peers)) {
+      this.roster.update(clonedRoster(mine, (n) => crypto.getRandomValues(new Uint8Array(n))));
+      this.claim();
+      this.set({ hosting: false });
+    }
     const r = this.rosterNow();
     const host = peers.find((p) => p.sender === r.host);
     const followed = this.follower?.driver;
@@ -979,6 +998,8 @@ const SHARED_CONTROLS = [
   .map((id) => `[data-testid="${id}"]`)
   .join(", ");
 const SLOW_MOTION = '[data-testid="slowmo-chip"]';
+const RECORD_START = '[data-testid="record-start"]';
+const RECORD_FROM_START = '[data-testid="record-opt-from-start"]';
 
 /** The controller's methods that change a run, and what each returns when a follower's call is turned away. */
 const RUN_OPS: Record<string, unknown> = {
@@ -1026,10 +1047,21 @@ function guardController(controller: LiveController, refused: () => void): () =>
   };
   through("as");
   through("applyRemote");
+  // Slow motion gives the run back (hold off) and puts its playback as it was, in one go: that's its own too.
+  let releasing = false;
+  const hold = own.hold.bind(controller);
+  own.hold = (on: unknown) => {
+    hold(on);
+    if (on) return;
+    releasing = true;
+    queueMicrotask(() => (releasing = false));
+  };
   for (const [name, refusal] of Object.entries(RUN_OPS)) {
     const method = own[name].bind(controller);
     own[name] = (...args: unknown[]) => {
-      if (inside > 0 || (PLAYBACK.has(name) && controller.isHeld)) return method(...args);
+      if (inside > 0) return method(...args);
+      // Slow motion's own playback: not a change to the shared run (nor this person taking it over).
+      if (PLAYBACK.has(name) && (controller.isHeld || releasing)) return controller.as("sync", () => method(...args));
       // Slow motion pauses just before it holds the run: that's its own, not a change to the shared run.
       if (PLAYBACK.has(name))
         queueMicrotask(() => {
@@ -1040,7 +1072,7 @@ function guardController(controller: LiveController, refused: () => void): () =>
     };
   }
   return () => {
-    for (const name of ["as", "applyRemote", ...Object.keys(RUN_OPS)]) Reflect.deleteProperty(own, name);
+    for (const name of ["as", "applyRemote", "hold", ...Object.keys(RUN_OPS)]) Reflect.deleteProperty(own, name);
   };
 }
 

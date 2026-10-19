@@ -46,7 +46,7 @@ export interface PresenceState {
 }
 
 /** The longest Live run id and title presence carries; the most co-hosts a roster names (a room's size). */
-const MAX_COHOSTS = 8;
+const MAX_COHOSTS = COLLAB_LIMITS.maxCohosts;
 const SENDER = /^[0-9a-f]{8,64}$/;
 const MAX_RUN_CHARS = 64;
 const MAX_TITLE_CHARS = 120;

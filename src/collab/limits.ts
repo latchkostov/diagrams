@@ -74,6 +74,8 @@ export const COLLAB_LIMITS = {
   maxQueuedBytesPerPeer: 24 * 1024 * 1024,
   /** Presence: what a peer's entry may say. */
   maxAliasChars: 40,
+  /** Co-hosts a room's roster names at most (src/collab/room/roomRoster.ts): one fewer than a full room. */
+  maxCohosts: 7,
   /** Presence entries expire when their sender hasn't refreshed them for this long (room clock). */
   presenceTtlMs: 30_000,
   /** How often a session refreshes its own presence. */

@@ -46,7 +46,15 @@ export function rosterOf(me: Claim, peers: readonly Claim[], last: RosterSource 
   const source: RosterSource = claim
     ? { host: claim.member, cohosts: claim.cohosts ?? [], driver: claim.driver }
     : last;
-  const senderOf = (member?: string) => (member ? all.find((p) => p.member === member)?.sender : undefined);
+  // A member claimed by two senders (a duplicated tab, before it takes an id of its own): everyone picks the same one,
+  // the lowest sender id, whoever's asking.
+  const senderOf = (member?: string) =>
+    member
+      ? all
+          .filter((p) => p.member === member)
+          .map((p) => p.sender)
+          .sort()[0]
+      : undefined;
   const host = claim?.sender;
   const cohosts = source.cohosts.map(senderOf).filter((s): s is string => !!s && s !== host);
   return { host, cohosts, driver: senderOf(source.driver) ?? host, source };
@@ -67,6 +75,11 @@ export function successor(
   return [...here]
     .filter((s) => s !== roster.host)
     .sort((a, b) => (since.get(a) ?? Infinity) - (since.get(b) ?? Infinity) || (a < b ? -1 : 1))[0];
+}
+
+/** Whether `me` holds its member id (no lower sender claims the same one: else it's the duplicate). */
+export function ownsMember(me: Claim, peers: readonly Claim[]): boolean {
+  return !peers.some((p) => p.member === me.member && p.sender < me.sender);
 }
 
 /** A person's roles, as the people list says them. */

@@ -62,7 +62,7 @@ reaches the room: not its simulation's name, not its run.
   follow, the live bar's controls that change the run (play, restart, speed, the simulation, the timeline) don't
   act: using one says "Sam is driving", with **Ask to drive** and **Watch on my own**. So does a change made another
   way (Space, a right-click tweak), before it reaches your run. The event log, traces, Record video and slow motion
-  are yours as ever.
+  are yours as ever; recording "from the start" replays the run from its start, so you watch on your own from there.
 - **Notes and your view.** A narration note that focuses part of the diagram moves your view, as it does on your
   own, unless you've moved the view yourself.
 - **If the host's connection drops,** your run waits where it is: "Sam's connection dropped. Waiting…". It goes on
@@ -91,7 +91,8 @@ reaches the room: not its simulation's name, not its run.
 - **Co-hosts** see requests and can answer them too. The host keeps the roster; while the host is away, the last
   roster stands, so co-hosts still get requests and their yes still passes the run on.
 - **A reload keeps the roles.** Who hosts now, the co-hosts and who drives survive anyone's reload: a host who was
-  handed the room still hosts after reloading, and one who handed it on doesn't take it back.
+  handed the room still hosts after reloading, and one who handed it on doesn't take it back. A duplicated tab is a
+  new person in the room, with no role.
 - **When the host leaves.** **Leave room** hands the room to the earliest co-host, or, with none, to whoever has
   been here longest, and the run to whoever drives next. A dropped connection hands nothing over: everyone
   following waits, as above, and nobody is promoted.

@@ -1,5 +1,6 @@
 import { bytesToText, textToBytes } from "../../interop/codec";
 import { simulationProblem } from "../../interop/native";
+import { COLLAB_LIMITS } from "../limits";
 import { faultProblem } from "../../model/faults";
 import type { Simulation } from "../../model/types";
 import type { LiveOp } from "../../live/controlLog";
@@ -271,7 +272,7 @@ export function parseMessage(v: unknown): LiveMessage | undefined {
   if (v.t === "host")
     return sender(v.to) &&
       Array.isArray(v.cohosts) &&
-      v.cohosts.length <= 8 &&
+      v.cohosts.length <= COLLAB_LIMITS.maxCohosts &&
       v.cohosts.every(sender) &&
       (v.driver === undefined || sender(v.driver))
       ? { t: "host", to: v.to, cohosts: v.cohosts as string[], ...(sender(v.driver) ? { driver: v.driver } : {}) }
