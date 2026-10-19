@@ -46,6 +46,8 @@ const SLICE_BYTES = 12 * 1024;
 /** A run whose log has grown past either of these isn't sent any more (the next run is); nor is it kept. */
 export const MAX_RUN_BYTES = 1024 * 1024;
 export const MAX_RUN_ENTRIES = 20_000;
+/** How long a handoff may take, at most: the run held where it was handed over, then caught up to there. */
+export const HANDOFF_MS = 30_000;
 /** Digests a follower keeps waiting for their tick, at most. */
 export const MAX_DIGESTS = 32;
 /** One peer's requests for the whole run: at most one per this long (a follower asks every ASK_MS). */
@@ -311,8 +313,18 @@ export class LiveDriver {
   }
 
   /**
+   * The run can be handed over now: the controller is at its logged ops' state. While it replays an Inputs change
+   * (or waits to), its tick is a replay's, which the next driver couldn't come level with.
+   */
+  get ready(): boolean {
+    const c = this.watched.controller;
+    const last = this.run?.entries.at(-1);
+    return !c.busy && !(last && c.tick < last.tick);
+  }
+
+  /**
    * Hands the run to the next driver (`to`, a sender) at this controller's tick and stops driving (no stop: the run
-   * goes on). Returns the run, for this person to go on following it from here.
+   * goes on). Returns the run, for this person to go on following it from here. Only when `ready`.
    */
   handoff(to: string): RunSnapshot | undefined {
     const run = this.run && !this.run.broken ? this.run : undefined;
@@ -536,6 +548,8 @@ export class LiveFollower {
   private seen = 0;
   private digests: { tick: number; seq: number; hash: number; at: number }[] = [];
   private beacon?: HostClock & { at: number };
+  /** A handoff in progress: the old driver is silent and the next one not yet driving; that's expected until then. */
+  private handoffUntil = -Infinity;
   /** Asked for the run, and not had it whole yet. */
   private asking = false;
   /** An op is missing (the next one received skipped it): holding still, asking for the run. */
@@ -591,6 +605,11 @@ export class LiveFollower {
   /** Who this follows now (a handoff moves it to the next driver). */
   get driver(): string {
     return this.host;
+  }
+
+  /** It has this run whole (what a handoff of it needs to go on from). */
+  holds(run: string): boolean {
+    return !!this.run?.complete && this.run.id === run;
   }
 
   /**
@@ -695,6 +714,7 @@ export class LiveFollower {
       case "beacon":
         if (m.run !== this.run?.id) return this.unfamiliar();
         if (!this.run.complete) return;
+        this.handoffUntil = -Infinity;
         this.beacon = { tick: m.tick, playing: m.playing, speed: m.speed, on: m.on, at: this.timers.now() };
         return;
       case "digest": {
@@ -718,6 +738,11 @@ export class LiveFollower {
         const b = this.beacon;
         this.host = m.to;
         this.beacon = { tick: m.tick, playing: false, speed: b?.speed ?? 1, on: b?.on ?? true, at: this.timers.now() };
+        // The silence until the next driver's first beacon is expected; meanwhile this run comes to the handoff's
+        // tick, at once if it's far behind (a slow page).
+        this.handoffUntil = this.timers.now() + HANDOFF_MS;
+        if (this.status.phase === "host-dropped") this.publish({ phase: "following" });
+        if (this.status.phase === "following" && m.tick - this.c.tick > CATCH_UP_TICKS) this.catchUp();
         return;
       }
       default:
@@ -814,7 +839,8 @@ export class LiveFollower {
   // -------------------------------------------------------------- lockstep
 
   private fresh(): boolean {
-    return !!this.beacon && this.timers.now() - this.beacon.at < HOST_SILENT_MS;
+    const now = this.timers.now();
+    return !!this.beacon && (now - this.beacon.at < HOST_SILENT_MS || now < this.handoffUntil);
   }
 
   /** The host's tick now, extrapolated from its last beacon, less the playout delay (none once it's paused). */

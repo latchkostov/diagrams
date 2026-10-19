@@ -7,7 +7,7 @@ import { emulateTracker } from "./collab-tracker";
 // moving at a tick (the old host then follows the new driver's run, checked by digest), and the host leaving on
 // purpose (the earliest co-host takes the room). Selectors are data-testid only.
 
-type Probe = { tick: number; digest: number; playing: boolean } | undefined;
+type Probe = { tick: number; digest: number; playing: boolean; run?: string } | undefined;
 const probe = (page: Page) =>
   page.evaluate(() => (window as unknown as { __watch?: { probe(): Probe } }).__watch?.probe());
 const chip = (page: Page) => page.getByTestId("room-chip");
@@ -103,14 +103,19 @@ test.describe("Hosts and requests", () => {
       await expect(guest.getByTestId("room-driving")).toBeVisible();
       await expect(chip(guest)).toHaveAttribute("data-watch", "following");
       await guest.getByTestId("room-driving-ask").click();
-      // The host's card: Let them.
+      // The host's card: Let them. The shared run before the handoff.
       await expect(page.getByTestId("room-prompt-drive")).toContainText("Heron");
+      const shared = (await run(page)).run;
+      expect(shared).toBeTruthy();
       await page.getByTestId("room-prompt-accept").click();
       await expect(page.getByTestId("room-prompt-drive")).toHaveCount(0);
       // The run moves to the guest at a tick: the guest drives it on, the host follows it.
       await expect(chip(guest)).toHaveAttribute("data-driving", "true", { timeout: 20_000 });
       await expect(chip(page)).toHaveAttribute("data-watch", "following", { timeout: 20_000 });
       await expect(chip(page)).toHaveAttribute("data-host", "true");
+      // The same run goes on (no fallback to a new one): the guest drives it, the host follows it.
+      expect((await run(guest)).run).toBe(shared);
+      expect((await run(page)).run).toBe(shared);
       // The new driver changes the shopper's entry rate mid-run.
       await guest.getByTestId("live-capacity").click();
       await expect(guest.getByTestId("capacity-panel")).toBeVisible();

@@ -1080,6 +1080,62 @@ describe("Hosts and requests: the driver role moves at a tick", () => {
   });
 });
 
+describe("Hosts and requests: the silence of a handoff", () => {
+  it("until the next driver's first beacon, followers wait as following, not as a dropped connection", () => {
+    const room = new Room();
+    const [H, G, O] = ["00aa00aa", "11bb11bb", "22cc22cc"];
+    const host = new LiveController(diagram);
+    host.selectSimulation(steady);
+    const driver = new LiveDriver(room.channel(H), session(host), () => {}, undefined, timers);
+    host.setPlaying(true);
+    const c = new LiveController(diagram);
+    const status: FollowStatus[] = [];
+    const other = new LiveFollower(
+      room.channel(O),
+      session(c),
+      H,
+      (st) => status.push(st),
+      () => {},
+      timers,
+    );
+    for (let i = 0; i < 2_000 && !(other.phase === "following" && host.tick >= 300); i++) {
+      vi.advanceTimersByTime(16);
+      host.advance(16);
+      c.advance(other.pace(16));
+    }
+    driver.handoff(G);
+    // Five seconds with no driver (the next one still coming level): following, held.
+    for (let i = 0; i < 300; i++) {
+      vi.advanceTimersByTime(16);
+      c.advance(other.pace(16));
+    }
+    expect(other.phase).toBe("following");
+    expect(status.some((st) => st.phase === "host-dropped")).toBe(false);
+    expect(other.driver).toBe(G);
+    other.dispose();
+  });
+});
+
+describe("Hosts and requests: a handoff mid-replay", () => {
+  it("waits for the driver's Inputs replay: its tick is the ops' again before the run is handed over", () => {
+    const room = new Room();
+    const host = new LiveController(diagram);
+    host.selectSimulation(steady);
+    const driver = new LiveDriver(room.channel("00aa00aa"), session(host), () => {}, undefined, timers);
+    host.setPlaying(true);
+    for (let i = 0; i < 300; i++) frame(host, []);
+    expect(driver.ready).toBe(true);
+    // An entry rate: the run is rebuilt and replayed to this moment, in slices.
+    host.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    expect(driver.ready).toBe(false);
+    for (let i = 0; i < 400 && !driver.ready; i++) frame(host, []);
+    expect(driver.ready).toBe(true);
+    const last = host.controlLog().at(-1);
+    expect(host.tick).toBeGreaterThanOrEqual(last?.tick ?? 0);
+    driver.dispose();
+  });
+});
+
 describe("the host's view, for followers who choose to follow it", () => {
   it("is the host's centre and zoom, placed in the follower's own pane", () => {
     const host = viewOf([100, 50, 2], { width: 1000, height: 600 });

@@ -31,11 +31,13 @@ export interface PresenceState {
   selection?: string[];
   /** Where their pointer is over the canvas, in flow coordinates (absent: not over it). */
   cursor?: { x: number; y: number };
+  /** This tab's member id (src/collab/room/roomRoster.ts): the same across its reloads, unlike the sender id. */
+  member?: string;
   /** The room's host (src/collab/room/roles.ts): its creator to begin with, or whom the last host handed it to. */
   host?: true;
-  /** The host's roster, said by the host: its co-hosts (sender ids, the earliest made first). */
+  /** The host's roster, said by the host: its co-hosts (member ids, the earliest made first). */
   cohosts?: string[];
-  /** The host's roster: who drives the room's Live (a sender id); absent, the host does. */
+  /** The host's roster: who drives the room's Live (a member id); absent, the host does. */
   driver?: string;
   /** The host's Live run others can watch: its id, its title, and whether it's playing. */
   live?: { run: string; title: string; playing: boolean };
@@ -106,7 +108,19 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
   if (
     keys.some(
       (k) =>
-        !["alias", "colour", "status", "selection", "cursor", "host", "cohosts", "driver", "live", "view"].includes(k),
+        ![
+          "alias",
+          "colour",
+          "status",
+          "selection",
+          "cursor",
+          "member",
+          "host",
+          "cohosts",
+          "driver",
+          "live",
+          "view",
+        ].includes(k),
     )
   )
     return undefined;
@@ -139,6 +153,10 @@ export function parsePresence(bytes: Uint8Array): PresenceState | undefined {
   if (o.host !== undefined) {
     if (o.host !== true) return undefined;
     state.host = true;
+  }
+  if (o.member !== undefined) {
+    if (typeof o.member !== "string" || !SENDER.test(o.member)) return undefined;
+    state.member = o.member;
   }
   if (o.cohosts !== undefined) {
     const ids = o.cohosts;
@@ -181,6 +199,7 @@ export function encodePresence(s: PresenceState): Uint8Array {
     alias: s.alias,
     colour: s.colour,
     status: s.status,
+    ...(s.member ? { member: s.member } : {}),
     ...(s.host ? { host: true } : {}),
     ...(s.cohosts?.length ? { cohosts: s.cohosts.slice(0, MAX_COHOSTS) } : {}),
     ...(s.driver ? { driver: s.driver } : {}),

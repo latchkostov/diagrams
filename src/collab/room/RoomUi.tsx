@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import type { CanvasHandle } from "../../canvas/CanvasView";
 import { t, useLocale } from "../../i18n";
 import { BRAND_NAME } from "../../lib/deployment";
@@ -700,17 +708,22 @@ function OpenChip({
  * their view; with your own Live, show it to the room.
  */
 function watchEntries(watch: WatchTogether | undefined, w: WatchState | undefined): MenuEntry[] {
-  if (!watch || !w || w.hosting || w.driving) return [];
+  if (!watch || !w || w.driving) return [];
   const alias = w.driver?.alias ?? "";
+  // Following (a host who let someone drive too): stop, and follow their view; others can ask to drive.
   if (w.following)
     return [
-      {
-        type: "item",
-        testId: "room-ask-drive",
-        title: w.asked === "drive" ? t("collab.askedToDrive") : t("collab.askToDrive"),
-        disabled: !!w.asked,
-        onSelect: () => watch.askToDrive(),
-      },
+      ...(w.hosting
+        ? []
+        : [
+            {
+              type: "item" as const,
+              testId: "room-ask-drive",
+              title: w.asked === "drive" ? t("collab.askedToDrive") : t("collab.askToDrive"),
+              disabled: !!w.asked,
+              onSelect: () => watch.askToDrive(),
+            },
+          ]),
       { type: "item", testId: "room-watch-stop", title: t("collab.watchStop"), onSelect: () => watch.watchOnMyOwn() },
       {
         type: "item",
@@ -730,7 +743,7 @@ function watchEntries(watch: WatchTogether | undefined, w: WatchState | undefine
       title: t("collab.watchMenu", { alias }),
       onSelect: () => watch.watch(),
     });
-  if (watch.canShow)
+  if (watch.canShow && !w.hosting)
     entries.push({
       type: "item",
       testId: "room-show-live",
@@ -997,19 +1010,24 @@ function ConnectingFailure({
 function WatchLayer(): ReactNode {
   useLocale();
   const { watch, state } = useWatch();
-  const top = useToolbarBottom();
   if (!watch || !state) return null;
   return (
     <>
-      {state.prompts.length > 0 && (
-        <div className="room-prompts" style={{ insetBlockStart: top + 8 }}>
-          {state.prompts.map((p) => (
-            <RequestCard key={p.from} prompt={p} onAnswer={(yes) => watch.answer(p, yes)} />
-          ))}
-        </div>
-      )}
+      {state.prompts.length > 0 && <RequestCards watch={watch} prompts={state.prompts} />}
       {state.inert && state.following && <DrivingPopover watch={watch} state={state} at={state.inert} />}
     </>
+  );
+}
+
+/** The request cards under the chip (the toolbar measured only while there are some). */
+function RequestCards({ watch, prompts }: { watch: WatchTogether; prompts: Prompt[] }) {
+  const top = useToolbarBottom();
+  return (
+    <div className="room-prompts" style={{ insetBlockStart: top + 8 }}>
+      {prompts.map((p) => (
+        <RequestCard key={p.from} prompt={p} onAnswer={(yes) => watch.answer(p, yes)} />
+      ))}
+    </div>
   );
 }
 
@@ -1045,8 +1063,21 @@ function DrivingPopover({
   at: { x: number; y: number };
 }) {
   const card = useRef<HTMLDivElement>(null);
+  // Where it fits: above what was used, within the viewport (measured once it's drawn).
+  const [place, setPlace] = useState<{ left: number; top: number }>({ left: at.x, top: Math.max(8, at.y - 96) });
+  useLayoutEffect(() => {
+    const el = card.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const left = Math.min(Math.max(8, at.x), window.innerWidth - width - 8);
+    const top = Math.min(Math.max(8, at.y - height - 8), window.innerHeight - height - 8);
+    setPlace({ left: Math.max(8, left), top: Math.max(8, top) });
+  }, [at.x, at.y]);
   useEffect(() => {
-    card.current?.querySelector<HTMLElement>("button")?.focus();
+    // Focus comes in, and goes back to what had it (else the canvas) when it closes with focus still inside.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const el = card.current;
+    el?.querySelector<HTMLElement>("button")?.focus();
     const away = (e: Event) => {
       if (e instanceof KeyboardEvent ? e.key === "Escape" : !card.current?.contains(e.target as Node))
         watch.dismissInert();
@@ -1056,9 +1087,13 @@ function DrivingPopover({
     return () => {
       document.removeEventListener("keydown", away);
       document.removeEventListener("pointerdown", away);
+      const lost =
+        !document.activeElement || document.activeElement === document.body || el?.contains(document.activeElement);
+      if (!lost) return;
+      if (opener && opener !== document.body && opener.isConnected) opener.focus();
+      else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
     };
   }, [watch]);
-  const top = Math.max(8, at.y - 96);
   return (
     <div
       ref={card}
@@ -1066,7 +1101,7 @@ function DrivingPopover({
       role="dialog"
       aria-label={t("collab.isDriving", { alias: state.driver?.alias ?? "" })}
       data-testid="room-driving"
-      style={{ insetBlockStart: top, insetInlineStart: Math.max(8, at.x) }}
+      style={{ top: place.top, left: place.left }}
     >
       <p>{t("collab.isDriving", { alias: state.driver?.alias ?? "" })}</p>
       <div className="room-alert-actions">

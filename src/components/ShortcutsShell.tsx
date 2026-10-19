@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
+import { useDialogInteraction } from "./useDialogInteraction";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { t } from "../i18n";
@@ -11,39 +12,11 @@ import type { LoadStatus } from "../lib/lazyLoad";
  */
 export function ShortcutsShell({ onClose, status }: { onClose: () => void; status: LoadStatus }) {
   const panel = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  useLayoutEffect(() => {
-    close.current = onClose;
-  }, [onClose]);
-  useEffect(() => {
-    const element = panel.current;
-    if (!element) return;
-    // Keys stay in the frame; Tab can't leave it either: everything else on the page is inert while it shows.
-    const onKeyDown = (e: KeyboardEvent) => {
-      e.stopPropagation();
-      if (e.key === "Escape") {
-        e.preventDefault();
-        close.current();
-      }
-    };
-    element.addEventListener("keydown", onKeyDown);
-    const prev = document.activeElement as HTMLElement | null;
-    element.focus();
-    const background = Array.from(document.body.children).filter(
-      (el): el is HTMLElement => el instanceof HTMLElement && !el.contains(element),
-    );
-    const inert = background.map((el) => el.inert);
-    for (const el of background) el.inert = true;
-    return () => {
-      element.removeEventListener("keydown", onKeyDown);
-      background.forEach((el, i) => {
-        el.inert = inert[i];
-      });
-      if (prev?.isConnected) prev.focus();
-    };
-  }, []);
+  const backdrop = useRef<HTMLDivElement>(null);
+  // As every dialog: Esc closes, Tab wraps inside, the page behind is inert, focus goes back to what opened it.
+  useDialogInteraction(panel, backdrop, onClose);
   return createPortal(
-    <div className="dlg-backdrop" data-editor-overlay onContextMenu={(e) => e.preventDefault()}>
+    <div ref={backdrop} className="dlg-backdrop" data-editor-overlay>
       <div
         ref={panel}
         className="dlg"

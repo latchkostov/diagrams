@@ -9,39 +9,52 @@ import type { PeerPresence } from "../presence";
 // - Co-hosts: named by the host, earliest first. They answer requests to drive or show Live too, and the first of
 //   them becomes host when the host leaves on purpose.
 // - The driver: whom the host lets drive Live; the host by default. Exactly one drives at a time.
+//
+// The roster names people by member id (the same across each tab's reloads, ./roomRoster.ts); what's here resolves
+// them to the sender ids of the people present. While no host is here, the last roster a host said stands.
 
-export interface Roster {
-  /** The host's sender id (this person's included), if anyone claims it. */
+/** A roster as a host says it: member ids. */
+export interface RosterSource {
   host?: string;
   cohosts: string[];
-  /** Who drives Live: the roster's driver while they're here, else the host. */
   driver?: string;
+}
+
+export interface Roster {
+  /** The host's sender id (this person's included), if the host is here. */
+  host?: string;
+  /** Co-hosts here (sender ids), earliest first. */
+  cohosts: string[];
+  /** Who drives Live (a sender id): the roster's driver while they're here, else the host. */
+  driver?: string;
+  /** The roster this comes from (members): the present host's, or the last one a host said. */
+  source: RosterSource;
 }
 
 export interface Claim {
   sender: string;
+  member?: string;
   host?: true;
   cohosts?: string[];
   driver?: string;
 }
 
-/** The roster as the room's presence says it: this person's claim with everyone else's. */
-export function rosterOf(me: Claim, peers: readonly Claim[]): Roster {
+/** The roster as the room's presence says it: this person's claim with everyone else's; `last` while no host's here. */
+export function rosterOf(me: Claim, peers: readonly Claim[], last: RosterSource = { cohosts: [] }): Roster {
   const all = [me, ...peers];
-  const host = all
-    .filter((p) => p.host)
-    .map((p) => p.sender)
-    .sort()[0];
-  const claim = all.find((p) => p.sender === host);
-  const here = new Set(all.map((p) => p.sender));
-  const cohosts = (claim?.cohosts ?? []).filter((s) => here.has(s) && s !== host);
-  const driver = claim?.driver && here.has(claim.driver) ? claim.driver : host;
-  return { host, cohosts, driver };
+  const claim = all.filter((p) => p.host).sort((a, b) => (a.sender < b.sender ? -1 : 1))[0];
+  const source: RosterSource = claim
+    ? { host: claim.member, cohosts: claim.cohosts ?? [], driver: claim.driver }
+    : last;
+  const senderOf = (member?: string) => (member ? all.find((p) => p.member === member)?.sender : undefined);
+  const host = claim?.sender;
+  const cohosts = source.cohosts.map(senderOf).filter((s): s is string => !!s && s !== host);
+  return { host, cohosts, driver: senderOf(source.driver) ?? host, source };
 }
 
 /**
  * Who becomes host when the host leaves on purpose: the earliest co-host still here, else whoever has been here
- * longest (`since`: when this host first saw each of them; ties go to the lowest sender id).
+ * longest (`since`, by sender: when this host first saw each of them; ties go to the lowest sender id).
  */
 export function successor(
   roster: Roster,

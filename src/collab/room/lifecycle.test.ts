@@ -329,6 +329,42 @@ describe("leaving and reloading", () => {
     expect(reloaded.library.entries.size).toBe(1);
   });
 
+  it("who hosts now, and the roster, survive a reload (not the role a tab came in with)", async () => {
+    const net = new MemoryNetwork(),
+      clock = new FakeClock();
+    const a = browser(net, clock, 12),
+      b = browser(net, clock, 13);
+    await start(a);
+    await join(b, linkOf(a));
+    await settle(net, a, b);
+    const aRoster = a.room.getSnapshot().open!.roster;
+    const bRoster = b.room.getSnapshot().open!.roster;
+    expect(aRoster.get().hosting).toBe(true);
+    expect(bRoster.get().hosting).toBe(false);
+    // The creator makes the joiner host: the joiner hosts, with the creator as co-host and driving.
+    bRoster.update({
+      hosting: true,
+      host: bRoster.get().member,
+      cohosts: [aRoster.get().member],
+      driver: aRoster.get().member,
+    });
+    aRoster.update({ hosting: false, host: bRoster.get().member, cohosts: [aRoster.get().member] });
+    b.room.pageHidden();
+    a.room.pageHidden();
+    await settle(net);
+    const b2 = browser(net, clock, 14, b);
+    const a2 = browser(net, clock, 15, a);
+    await b2.room.resume();
+    await a2.room.resume();
+    const promoted = b2.room.getSnapshot().open!.roster.get();
+    const resigned = a2.room.getSnapshot().open!.roster.get();
+    // The promoted joiner hosts after its reload; the creator who handed it on doesn't take it back.
+    expect(promoted).toMatchObject({ hosting: true, cohosts: [aRoster.get().member], driver: aRoster.get().member });
+    expect(promoted.member).toBe(bRoster.get().member);
+    expect(resigned).toMatchObject({ hosting: false, host: bRoster.get().member });
+    expect(resigned.member).toBe(aRoster.get().member);
+  });
+
   it("an edit the checkpoint hadn't saved before a reload is merged back in", async () => {
     const net = new MemoryNetwork(),
       clock = new FakeClock();

@@ -12,6 +12,7 @@ import type { RecoveryStore } from "../recoveryStore";
 import { CollabSession, PrivateDiagramError } from "../session";
 import type { CollabTransport } from "../transport/types";
 import { recordRoom, roomValue, type RoomRole, type TabRoomRecord, type TabRoomStore } from "./tabRoom";
+import { newRoster, RoomRoster, type RosterRecord } from "./roomRoster";
 
 // A room's life in the app (Edit together; collaboration plan E2). React-free, so the lifecycle is tested on the
 // in-memory network; src/collab/room/index.ts wires it to the page (tracker transport, Your diagrams, the address
@@ -63,6 +64,8 @@ export type RoomNotice = "left" | "private" | "failed" | "storage-full";
 
 export interface OpenRoom {
   role: RoomRole;
+  /** This tab's roles in the room (who hosts now, the last roster a host said), kept across reloads. */
+  roster: RoomRoster;
   /** Your diagrams' entry for this room; absent while a joiner waits for the room's diagram. */
   slug?: string;
   session: CollabSession;
@@ -95,6 +98,8 @@ export interface RoomSnapshot {
 interface Active {
   link: RoomLink;
   role: RoomRole;
+  /** This tab's roles in the room, kept in its record (a reload keeps who hosts). */
+  roster: RoomRoster;
   session: CollabSession;
   editor: CollaborativeEditorRoom;
   slug?: string;
@@ -124,6 +129,8 @@ interface OpenRequest {
   record?: TabRoomRecord;
   /** Reopening after the page came back from the back/forward cache: the same document. */
   doc?: CollabDoc;
+  /** Reopening: this tab's roles as they were. */
+  roster?: RosterRecord;
 }
 
 const sameRoom = (a: RoomLink, b: RoomLink) =>
@@ -188,6 +195,7 @@ export class RoomLifecycle {
       mount: a.mount,
       link: a.link,
       ready: a.ready,
+      roster: a.roster,
     };
   }
 
@@ -313,6 +321,9 @@ export class RoomLifecycle {
     const a: Active = {
       link: o.link,
       role: o.role,
+      roster: new RoomRoster(o.roster ?? o.record?.roster ?? newRoster(o.role, this.random), () => {
+        if (this.active === a && !a.leaving) this.record(a);
+      }),
       session,
       editor: new CollaborativeEditorRoom(session, () => privacyOf()),
       slug: o.slug,
@@ -381,6 +392,7 @@ export class RoomLifecycle {
       alias: a.alias,
       ...(a.slug ? { slug: a.slug } : {}),
       ...(a.pending ? { pending: a.pending } : {}),
+      roster: a.roster.get(),
     });
   }
 
@@ -610,7 +622,14 @@ export class RoomLifecycle {
     await a.session.leave();
     if (this.active !== a) return;
     this.active = undefined;
-    await this.open({ link: a.link, role: a.role, slug: a.slug, alias: a.alias, doc: a.session.doc });
+    await this.open({
+      link: a.link,
+      role: a.role,
+      slug: a.slug,
+      alias: a.alias,
+      doc: a.session.doc,
+      roster: a.roster.get(),
+    });
   }
 
   /** Clear everything on this device: stop at once, saving nothing more (every store refuses by then anyway). */

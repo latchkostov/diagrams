@@ -1,7 +1,8 @@
 import { paletteHost } from "../../palette/host";
 import type { PeerPresence } from "../presence";
 import type { CollabSession } from "../session";
-import type { RoomRole } from "./tabRoom";
+import type { RoomRoster } from "./roomRoster";
+import type { LiveController } from "../../live/controller";
 import { snapshotDigest } from "../../sim/digest";
 import { TICK_MS } from "../../live/simClock";
 import type { WatchedSession } from "../../live/watchBridge";
@@ -11,6 +12,7 @@ import {
   LiveFollower,
   runOrigin,
   viewOf,
+  HANDOFF_MS,
   type DriverShow,
   type FollowStatus,
   type LiveChannel,
@@ -19,7 +21,7 @@ import {
   type SendResult,
 } from "./liveShare";
 import { encodeMessage, LiveDecoder } from "./liveWire";
-import { driverOf, rosterOf, successor, type Roster } from "./roles";
+import { driverOf, rosterOf, successor, type Roster, type RosterSource } from "./roles";
 
 // Watch together in a room, and its hosts and requests (P3): who hosts, who drives Live, what they show, and this
 // person's following. One per open room session, owned by the room (bindWatch, from ./index.ts), so it lasts as long
@@ -161,45 +163,51 @@ export class WatchTogether {
   private revision = -1;
   private followStop?: () => void;
   private recheck = false;
-  /** The host's roster, while this person is the host: co-hosts (earliest first), and who drives (absent: the host). */
-  private cohosts: string[] = [];
-  private driverWanted?: string;
-  /** The last roster a host said (a co-host's answer counts while the host is away). */
-  private lastRoster: Roster = { cohosts: [] };
-  /** A co-host's yes while no host is here: who drives next. */
-  private override?: string;
-  /** When this person first saw each peer here (who's been here longest). */
+  /** When this person first saw each peer here, by sender (who's been here longest). */
   private readonly since = new Map<string, number>();
   private readonly promptTimers = new Map<string, () => void>();
   private askTimer?: ReturnType<typeof setTimeout>;
-  /** The last driver handed its run to this person: level with it at this tick and seq, then drive it on. */
-  private takeover?: { tick: number; seq: number };
+  /**
+   * The handoff to this person in progress: the run it hands over (held by this follower), the tick and last op to
+   * come level with, and its deadline. Gone once this person drives, or on its deadline, the follower's failure or
+   * its going (then this person starts a run of their own).
+   */
+  private takeover?: {
+    follower: LiveFollower;
+    run: string;
+    tick: number;
+    seq: number;
+    timer: ReturnType<typeof setTimeout>;
+  };
   private handoffWait?: ReturnType<typeof setTimeout>;
   /** A driver handed over not long ago: its show going away isn't the run ending. */
   private handedAt = -Infinity;
+  /** Waiting for this driver's Inputs replay to end before handing the run over. */
+  private handing?: () => void;
   private inertStop?: () => void;
+  private guardStop?: () => void;
+  private snapshotKey = "";
 
   constructor(
     readonly session: CollabSession,
-    role: RoomRole,
+    private readonly roster: RoomRoster,
     private readonly room: WatchRoom,
     private readonly notices: WatchNotices,
   ) {
     this.target = room.read();
     this.channel = sessionChannel(session, () => this.mayShare());
     this.control = sessionChannel(session);
-    const hosting = role === "creator";
-    const me = session.senderId;
+    const mine = roster.get();
     this.state = {
       followView: false,
-      hosting,
+      hosting: mine.hosting,
       cohosting: false,
       driving: false,
-      roster: { cohosts: [] },
-      me,
+      roster: { cohosts: [], source: { cohosts: [] } },
+      me: session.senderId,
       prompts: [],
     };
-    if (hosting) session.setPresence({ host: true });
+    this.claim();
     this.stops.push(
       session.onChange(() => {
         if (session.presenceRevision !== this.revision) this.peersChanged();
@@ -225,6 +233,7 @@ export class WatchTogether {
     this.promptTimers.clear();
     clearTimeout(this.askTimer);
     clearTimeout(this.handoffWait);
+    this.handing?.();
     this.listeners.clear();
   }
 
@@ -234,7 +243,9 @@ export class WatchTogether {
     return () => this.listeners.delete(listener);
   };
 
+  /** A new snapshot only when something in it changed (a cursor moving changes nothing here). */
   private set(patch: Partial<WatchState>): void {
+    if ((Object.keys(patch) as (keyof WatchState)[]).every((k) => this.state[k] === patch[k])) return;
     this.state = { ...this.state, ...patch };
     for (const l of this.listeners) l();
   }
@@ -245,6 +256,11 @@ export class WatchTogether {
 
   private alias(sender: string): string {
     return this.session.peers().find((p) => p.sender === sender)?.alias ?? "";
+  }
+
+  private memberOf(sender: string): string | undefined {
+    if (sender === this.me) return this.roster.get().member;
+    return this.session.peers().find((p) => p.sender === sender)?.member;
   }
 
   /** Follow the driver's run: the room's diagram first, then into Live, if needed. */
@@ -266,11 +282,16 @@ export class WatchTogether {
   }
 
   /** For tests (e2e builds): this person's run, its tick and digest. */
-  probe(): { tick: number; digest: number; playing: boolean } | undefined {
+  probe(): { tick: number; digest: number; playing: boolean; run?: string } | undefined {
     const c = this.bridge?.watchBridge.session()?.controller;
     if (!c) return undefined;
     const { snapshot, draws } = c.digestInputs();
-    return { tick: c.tick, digest: snapshotDigest(snapshot, draws), playing: c.getState().playing };
+    return {
+      tick: c.tick,
+      digest: snapshotDigest(snapshot, draws),
+      playing: c.getState().playing,
+      run: this.driver?.runId ?? this.state.show?.run,
+    };
   }
 
   setFollowView(on: boolean): void {
@@ -281,20 +302,36 @@ export class WatchTogether {
 
   // -------------------------------------------------------------- roles and requests
 
-  /** The roster as presence says it, this person's own claim included. */
-  private roster(): Roster {
-    const mine = this.state.hosting
-      ? { sender: this.me, host: true as const, cohosts: this.cohosts, driver: this.driverWanted }
-      : { sender: this.me };
-    const r = rosterOf(mine, this.session.peers());
-    if (r.host) this.lastRoster = r;
-    return r;
+  /** This person's presence: their member id, and the roster while they host. */
+  private claim(): void {
+    const r = this.roster.get();
+    this.session.setPresence(
+      r.hosting
+        ? {
+            member: r.member,
+            host: true,
+            cohosts: r.cohosts.length ? r.cohosts : undefined,
+            driver: r.driver,
+          }
+        : { member: r.member, host: undefined, cohosts: undefined, driver: undefined },
+    );
   }
 
-  /** Who should drive now: the roster's driver; with no host here, a co-host's yes, else whoever drives already. */
-  private wantDriver(r = this.roster()): string | undefined {
-    if (r.host) return r.driver;
-    return this.override ?? (this.driver ? this.me : undefined);
+  /** The roster as presence says it (this person's claim included), else the last one a host said. */
+  private rosterNow(): Roster {
+    const r = this.roster.get();
+    const mine = r.hosting
+      ? { sender: this.me, member: r.member, host: true as const, cohosts: r.cohosts, driver: r.driver }
+      : { sender: this.me, member: r.member };
+    const now = rosterOf(mine, this.session.peers(), r);
+    // A host's roster, here and said: the one that stands while no host is here.
+    if (now.host && !r.hosting) this.roster.update({ ...now.source });
+    return now;
+  }
+
+  /** Who should drive now: the roster's driver; with no host and no driver here, whoever drives already. */
+  private wantDriver(r = this.rosterNow()): string | undefined {
+    return r.driver ?? (this.driver ? this.me : undefined);
   }
 
   /** Ask the host (and co-hosts) to drive the run this person follows. */
@@ -325,26 +362,30 @@ export class WatchTogether {
   answer(prompt: Prompt, yes: boolean): void {
     this.dropPrompt(prompt.from);
     this.control.send({ t: "answer", to: prompt.from, what: prompt.what, yes });
-    if (yes) this.granted(prompt.from, this.me);
+    if (yes) this.granted(prompt.from);
   }
 
-  /** A request was granted (by this person, or a co-host): the host's roster says so; with no host, the driver acts. */
-  private granted(to: string, by: string): void {
-    const r = this.roster();
-    if (this.state.hosting) {
-      this.driverWanted = to === this.me ? undefined : to;
-      this.publishRoster();
-    } else if (!r.host && this.driver && (by === this.me || this.lastRoster.cohosts.includes(by))) {
-      this.override = to;
+  /**
+   * A request was granted (by this person, or by a host or co-host): `to` drives next. The host's roster says so;
+   * with no host here, everyone's last roster does (a co-host's yes counts then).
+   */
+  private granted(to: string): void {
+    const member = this.memberOf(to);
+    const r = this.roster.get();
+    if (!member) return;
+    if (r.hosting) this.setRoster({ driver: member === r.member ? undefined : member });
+    else {
+      this.roster.update({ driver: member });
+      this.peersChanged();
     }
-    this.attach();
   }
 
   /** The host's people menu: who drives, co-hosts, who hosts. */
   letDrive(sender: string): void {
-    if (!this.state.hosting) return;
-    this.driverWanted = sender === this.me ? undefined : sender;
-    this.publishRoster();
+    const r = this.roster.get();
+    const member = this.memberOf(sender);
+    if (!r.hosting || !member) return;
+    this.setRoster({ driver: member === r.member ? undefined : member });
     this.attach();
   }
 
@@ -353,44 +394,44 @@ export class WatchTogether {
   }
 
   setCohost(sender: string, on: boolean): void {
-    if (!this.state.hosting || sender === this.me) return;
-    this.cohosts = on
-      ? [...this.cohosts.filter((s) => s !== sender), sender]
-      : this.cohosts.filter((s) => s !== sender);
-    this.publishRoster();
-    this.peersChanged();
+    const r = this.roster.get();
+    const member = this.memberOf(sender);
+    if (!r.hosting || !member || sender === this.me) return;
+    const cohosts = r.cohosts.filter((m) => m !== member);
+    this.setRoster({ cohosts: on ? [...cohosts, member] : cohosts });
   }
 
   /** Make someone the host: they get the roster, this person becomes their first co-host. Live stays as it is. */
   makeHost(sender: string): void {
-    if (!this.state.hosting || sender === this.me) return;
-    const driver = this.driverWanted ?? this.me;
+    const r = this.roster.get();
+    const member = this.memberOf(sender);
+    if (!r.hosting || !member || sender === this.me) return;
+    const driver = r.driver ?? r.member;
     this.control.send({
       t: "host",
       to: sender,
-      cohosts: [this.me, ...this.cohosts.filter((s) => s !== sender)],
-      ...(driver !== sender ? { driver } : {}),
+      cohosts: [r.member, ...r.cohosts.filter((m) => m !== member)],
+      ...(driver !== member ? { driver } : {}),
     });
-    this.resign();
+    this.resign({ host: member, cohosts: [r.member, ...r.cohosts.filter((m) => m !== member)], driver });
   }
 
-  private resign(): void {
-    this.cohosts = [];
-    this.driverWanted = undefined;
+  /** No longer the host (kept across reloads): the roster stands as handed over. */
+  private resign(roster: RosterSource): void {
     for (const stop of this.promptTimers.values()) stop();
     this.promptTimers.clear();
-    this.session.setPresence({ host: undefined, cohosts: undefined, driver: undefined });
+    this.roster.update({ hosting: false, host: roster.host, cohosts: roster.cohosts, driver: roster.driver });
+    this.claim();
     this.set({ hosting: false, prompts: [] });
     this.peersChanged();
   }
 
-  private publishRoster(): void {
-    this.session.setPresence({
-      host: true,
-      cohosts: this.cohosts.length ? this.cohosts : undefined,
-      driver: this.driverWanted,
-    });
-    this.set({ roster: this.roster() });
+  /** The host's roster changed: kept (across reloads) and said in presence. */
+  private setRoster(patch: Partial<RosterSource>): void {
+    const r = this.roster.get();
+    this.roster.update({ host: r.member, ...patch });
+    this.claim();
+    this.peersChanged();
   }
 
   /**
@@ -399,26 +440,29 @@ export class WatchTogether {
    */
   leaving(): void {
     if (this.disposed) return;
-    const r = this.roster();
+    const r = this.rosterNow();
+    const mine = this.roster.get();
     let next = r.driver === this.me ? undefined : r.driver;
-    if (this.state.hosting) {
+    if (mine.hosting) {
       const host = successor(
         { ...r, host: this.me },
         this.session.peers().map((p) => p.sender),
         this.since,
       );
-      if (host) {
-        const driver = this.driverWanted && this.driverWanted !== host ? this.driverWanted : undefined;
+      const hostMember = host && this.memberOf(host);
+      if (host && hostMember) {
+        const driver = mine.driver && mine.driver !== hostMember ? mine.driver : undefined;
         this.control.send({
           t: "host",
           to: host,
-          cohosts: this.cohosts.filter((s) => s !== host),
+          cohosts: mine.cohosts.filter((m) => m !== hostMember),
           ...(driver ? { driver } : {}),
         });
-        next = driver ?? host;
+        next = (driver && this.session.peers().find((p) => p.member === driver)?.sender) || host;
       }
     } else if (this.driver) next = r.host;
-    if (this.driver && next && next !== this.me) {
+    // Mid-replay the run can't be handed over (its tick isn't the ops'): the next driver starts one of its own.
+    if (this.driver?.ready && next && next !== this.me) {
       this.driver.handoff(next);
       this.driver = undefined;
     }
@@ -427,7 +471,7 @@ export class WatchTogether {
   /** The room's control messages: requests, answers, a handover, a handoff to this person. */
   private received(sender: string, m: LiveMessage): void {
     if (this.disposed) return;
-    const r = this.roster();
+    const r = this.rosterNow();
     switch (m.t) {
       case "ask":
         if (r.host === this.me || r.cohosts.includes(this.me))
@@ -440,34 +484,62 @@ export class WatchTogether {
           this.set({ asked: undefined });
           if (!m.yes) this.notices.told("declined", this.alias(sender));
         }
-        if (m.yes && (sender === r.host || r.cohosts.includes(sender) || this.lastRoster.cohosts.includes(sender)))
-          this.granted(m.to, sender);
+        // A yes counts from the host, or a co-host (the last roster's, while no host is here).
+        if (m.yes && (sender === r.host || r.cohosts.includes(sender))) this.granted(m.to);
         return;
-      case "host":
-        // The host hands the room over (Make host, or leaving): this person is the host now. (The old host's presence
-        // may already say otherwise: the last roster's host counts.)
-        if (m.to !== this.me || (sender !== r.host && !(r.host === undefined && sender === this.lastRoster.host)))
-          return;
-        this.cohosts = m.cohosts.filter((s) => s !== this.me);
-        this.driverWanted = m.driver === this.me ? undefined : m.driver;
+      case "host": {
+        // The host hands the room over (Make host, or leaving): this person hosts now. (The old host's presence may
+        // already say otherwise: the last roster's host counts.)
+        const from = this.memberOf(sender);
+        const host = r.host ?? undefined;
+        if (m.to !== this.me || (sender !== host && !(host === undefined && from === r.source.host))) return;
+        const me = this.roster.get().member;
+        this.roster.update({
+          hosting: true,
+          host: me,
+          cohosts: m.cohosts.filter((c) => c !== me),
+          driver: m.driver === me ? undefined : m.driver,
+        });
+        this.claim();
         this.set({ hosting: true });
-        this.publishRoster();
         this.notices.told("host", "");
         this.peersChanged();
         return;
+      }
       case "handoff":
         this.handedAt = performance.now();
-        if (m.to !== this.me) return;
-        // The last driver handed its run to this person: drive it on once level with it (its follower holds there).
-        if (this.follower) {
-          clearTimeout(this.handoffWait);
-          this.takeover = { tick: m.tick, seq: m.seq };
-        }
-        this.attach();
+        if (m.to === this.me) this.handedTo(m);
         return;
       default:
         return;
     }
+  }
+
+  /**
+   * The last driver handed its run to this person. Holding that run whole, it comes level with the handoff and drives
+   * it on, within HANDOFF_MS; otherwise (still joining, another run, too slow) it starts a run of its own.
+   */
+  private handedTo(m: Extract<LiveMessage, { t: "handoff" }>): void {
+    clearTimeout(this.handoffWait);
+    this.handoffWait = undefined;
+    const follower = this.follower;
+    this.clearTakeover();
+    if (!follower || !follower.holds(m.run)) return this.fallback();
+    const timer = setTimeout(() => this.fallback(), HANDOFF_MS);
+    this.takeover = { follower, run: m.run, tick: m.tick, seq: m.seq, timer };
+  }
+
+  private clearTakeover(): void {
+    if (this.takeover) clearTimeout(this.takeover.timer);
+    this.takeover = undefined;
+  }
+
+  /** The handoff can't complete: this person, who's to drive, starts a run of their own (followers rebuild). */
+  private fallback(): void {
+    this.clearTakeover();
+    if (this.wantDriver() !== this.me || this.driver) return;
+    if (this.follower) this.stopFollowing(true);
+    this.attach();
   }
 
   private addPrompt(prompt: Prompt): void {
@@ -476,7 +548,7 @@ export class WatchTogether {
     // A minute without an answer: declined (the host says so; a co-host's card just goes).
     const timer = setTimeout(() => {
       if (!this.state.prompts.some((p) => p.from === prompt.from)) return;
-      if (this.state.hosting) this.answer(prompt, false);
+      if (this.roster.get().hosting) this.answer(prompt, false);
       else this.dropPrompt(prompt.from);
     }, ASK_TIMEOUT_MS);
     this.promptTimers.set(prompt.from, () => clearTimeout(timer));
@@ -489,7 +561,7 @@ export class WatchTogether {
       this.set({ prompts: this.state.prompts.filter((p) => p.from !== from) });
   }
 
-  /** "Sam is driving" put away (Esc, a click elsewhere). */
+  /** "Sam is driving" put away (Esc, a click elsewhere, an action). */
   dismissInert(): void {
     this.set({ inert: undefined });
   }
@@ -574,7 +646,7 @@ export class WatchTogether {
       this.stopFollowing();
       this.detachDriver();
     }
-    const r = this.roster();
+    const r = this.rosterNow();
     const want = this.wantDriver(r);
     if (this.driver && want && want !== this.me) return this.handOff(want, watched);
     if (!watched) return this.set({ driving: !!this.driver });
@@ -584,13 +656,13 @@ export class WatchTogether {
       if (this.follower && this.follower.driver !== this.me && this.follower.phase !== "cant-follow") {
         this.handoffWait ??= setTimeout(() => {
           this.handoffWait = undefined;
-          if (this.wantDriver() !== this.me || this.driver || this.takeover) return;
-          this.stopFollowing();
-          this.attach();
+          this.fallback();
         }, HANDOFF_WAIT_MS);
         return;
       }
-      if (!this.follower) return this.startDriving(watched);
+      // Not following anyone else (following no one, or itself after a handoff that didn't complete): its own run.
+      if (this.follower) this.stopFollowing(true);
+      return this.startDriving(watched);
     }
     if (want !== this.me && this.wanted && !this.follower) {
       const d = driverOf(r, this.session.peers());
@@ -622,9 +694,27 @@ export class WatchTogether {
     this.set({ driving: true });
   }
 
-  /** Someone else drives from now: the run is handed over at this tick, and this person goes on following it. */
+  /**
+   * Someone else drives from now: the run is handed over at this tick, and this person goes on following it. While
+   * this run replays an Inputs change, the handoff waits for the replay to end (its tick isn't the ops' till then).
+   */
   private handOff(to: string, watched: WatchedSession | null): void {
-    const snapshot = this.driver?.handoff(to);
+    const driver = this.driver;
+    if (!driver) return;
+    if (!driver.ready && watched) {
+      if (this.handing) return;
+      const off = watched.controller.subscribe(() => {
+        if (!driver.ready) return;
+        this.handing?.();
+        this.handing = undefined;
+        this.attach();
+      });
+      this.handing = off;
+      return;
+    }
+    this.handing?.();
+    this.handing = undefined;
+    const snapshot = driver.handoff(to);
     this.driver = undefined;
     this.watchView(null);
     this.set({ driving: false });
@@ -640,22 +730,23 @@ export class WatchTogether {
   /** Level with the handoff: this person drives the run on from here. */
   private drive(snapshot: RunSnapshot): void {
     const watched = this.attached;
-    this.takeover = undefined;
+    this.clearTakeover();
     if (!watched) return;
     this.stopFollowing(true);
-    this.override = undefined;
     this.startDriving(watched, snapshot);
     this.notices.told("driving", "");
   }
 
   private detachDriver(): void {
+    this.handing?.();
+    this.handing = undefined;
     if (this.driver) {
       this.driver.dispose();
       this.driver = undefined;
     }
     if (this.attached) this.watchView(null);
     if (!this.follower) this.attached = undefined;
-    if (this.state.driving) this.set({ driving: false });
+    this.set({ driving: false });
   }
 
   private shown(show: DriverShow | null): void {
@@ -712,10 +803,10 @@ export class WatchTogether {
           this.watchOnMyOwn();
         }
       },
-      // This person changed the run themselves (a key, a menu): it's put back, and they're told who drives.
+      // A change of this person's own that got past the guard: put back, and they're told who drives.
       () => {
         follower.restore();
-        this.showInert(typeof document === "undefined" ? null : document.querySelector(LIVE_BAR));
+        this.showInert(null);
       },
       undefined,
       adopt,
@@ -727,8 +818,11 @@ export class WatchTogether {
         const paced = follower.pace(ms);
         // Handed the run: level with the handoff, this person drives it on.
         const t = this.takeover;
-        const level = t && this.follower === follower ? follower.levelWith(t.tick, t.seq) : undefined;
-        if (level) queueMicrotask(() => this.drive(level));
+        const level = t && t.follower === follower ? follower.levelWith(t.tick, t.seq) : undefined;
+        if (level)
+          queueMicrotask(() => {
+            if (this.takeover === t && this.follower === follower) this.drive(level);
+          });
         return paced;
       },
     });
@@ -739,6 +833,7 @@ export class WatchTogether {
     });
     // A note's focus doesn't move a view this person moved themselves (camera row L10).
     watched.camera.dispatch({ type: "watching", on: true });
+    this.guardStop = guardController(watched.controller, () => this.showInert(null));
     this.inertBar();
     this.set({ following: { phase: follower.phase } });
     this.applyView();
@@ -747,12 +842,15 @@ export class WatchTogether {
   private stopFollowing(quiet = false): void {
     if (!this.follower) return;
     const watched = this.attached;
+    this.clearTakeover();
     this.follower.dispose();
     this.follower = undefined;
     this.followStop?.();
     this.followStop = undefined;
     this.inertStop?.();
     this.inertStop = undefined;
+    this.guardStop?.();
+    this.guardStop = undefined;
     clearTimeout(this.handoffWait);
     this.handoffWait = undefined;
     this.bridge?.watchBridge.setFollower(null);
@@ -764,8 +862,10 @@ export class WatchTogether {
   }
 
   /**
-   * While following, the live bar is inert: its buttons don't act, and using one says who drives ("Sam is driving",
-   * with Ask to drive and Watch on my own) instead of taking the run away.
+   * While following, the live bar's controls that change the shared run (play, restart, speed, the simulation, the
+   * timeline, traffic) are inert: using one says who drives ("Sam is driving", with Ask to drive and Watch on my
+   * own). Its other controls (the event log, traces, Record video, Inputs to look at) work as ever, and so does
+   * everything while slow motion (this person's own replay) has the bar.
    */
   private inertBar(): void {
     this.inertStop?.();
@@ -773,13 +873,13 @@ export class WatchTogether {
     const types = ["pointerdown", "mousedown", "click", "keydown", "dblclick"] as const;
     const stop = (e: Event) => {
       const target = e.target instanceof Element ? e.target : null;
-      const bar = target?.closest(LIVE_BAR);
-      if (!bar || !this.follower || this.driver) return;
+      const control = target?.closest(SHARED_CONTROLS);
+      if (!control || !this.follower || this.driver || document.querySelector(SLOW_MOTION)) return;
       const key = e instanceof KeyboardEvent ? e.key : undefined;
       if (key === "Tab" || key === "Escape" || key === "Shift") return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      if (e.type === "click" || key === "Enter" || key === " ") this.showInert(target);
+      if (e.type === "click" || key === "Enter" || key === " ") this.showInert(control);
     };
     for (const type of types) document.addEventListener(type, stop, true);
     document.body.dataset.watching = "";
@@ -789,8 +889,10 @@ export class WatchTogether {
     };
   }
 
+  /** "Sam is driving", by what was used (the live bar when it was a key or a menu). */
   private showInert(anchor: Element | null): void {
-    const rect = anchor?.getBoundingClientRect();
+    const at = anchor ?? (typeof document === "undefined" ? null : document.querySelector(LIVE_BAR));
+    const rect = at?.getBoundingClientRect();
     this.set({ inert: { x: rect?.left ?? 16, y: rect?.top ?? 64 } });
   }
 
@@ -811,21 +913,35 @@ export class WatchTogether {
     const peers = this.session.peers();
     const now = performance.now();
     for (const p of peers) if (!this.since.has(p.sender)) this.since.set(p.sender, now);
-    const r = this.roster();
+    const r = this.rosterNow();
     const host = peers.find((p) => p.sender === r.host);
     const followed = this.follower?.driver;
     const driver = (followed && peers.find((p) => p.sender === followed && p.live)) || driverOf(r, peers);
     const show = this.driver ? this.state.show : driver?.live;
     const previous = this.state.driver;
     const wasShowing = !!this.state.show && !this.driver;
-    this.set({
-      host,
-      driver,
+    // Only what the room's controls use: a cursor moving changes none of it.
+    const key = JSON.stringify([
+      host?.sender,
+      host?.alias,
+      driver?.sender,
+      driver?.alias,
+      driver?.view,
       show,
-      roster: r,
-      hosting: this.state.hosting,
-      cohosting: r.cohosts.includes(this.me),
-    });
+      r,
+      peers.map((p) => [p.sender, p.alias]),
+    ]);
+    if (key !== this.snapshotKey) {
+      this.snapshotKey = key;
+      this.set({
+        host,
+        driver,
+        show,
+        roster: r,
+        hosting: this.roster.get().hosting,
+        cohosting: r.cohosts.includes(this.me),
+      });
+    }
     const handing = now - this.handedAt < HANDOFF_WAIT_MS;
     if (this.follower && followed && followed !== this.me && !peers.some((p) => p.sender === followed) && !handing) {
       // The driver left (not a dropped connection: their presence is gone), handing nothing over. Their run stays.
@@ -846,6 +962,86 @@ export class WatchTogether {
     }
     this.attach();
   }
+}
+
+/** The live bar's controls that change the shared run (a follower's are inert), and slow motion's bar. */
+const SHARED_CONTROLS = [
+  "live-play",
+  "live-restart",
+  "live-speed",
+  "live-sim-picker",
+  "live-step",
+  "live-traffic",
+  "live-timeline",
+  "live-done",
+  "live-edit-sims",
+]
+  .map((id) => `[data-testid="${id}"]`)
+  .join(", ");
+const SLOW_MOTION = '[data-testid="slowmo-chip"]';
+
+/** The controller's methods that change a run, and what each returns when a follower's call is turned away. */
+const RUN_OPS: Record<string, unknown> = {
+  setPlaying: undefined,
+  togglePlaying: undefined,
+  setSpeed: undefined,
+  step: undefined,
+  seek: undefined,
+  resume: undefined,
+  restart: false,
+  selectSimulation: "rejected",
+  setTraffic: undefined,
+  setInputs: undefined,
+  setBase: undefined,
+  commitInputs: undefined,
+  updateDiagram: "none",
+  inject: undefined,
+  injectAtSources: [],
+  sendOne: undefined,
+  setFault: undefined,
+  setNodeStatus: undefined,
+  setNodeProps: undefined,
+};
+/** Playback a follower's own slow motion uses while it holds the run (its own replay, put back exactly after). */
+const PLAYBACK = new Set(["setPlaying", "togglePlaying", "setSpeed"]);
+
+/**
+ * While following, this person's own changes to the run are turned away before they reach it (a key, a menu, the
+ * Inputs panel): `refused` says who drives instead. The host's ops (`applyRemote`) and the document's sync (`as`) go
+ * through, and so does the playback slow motion uses while it holds the run. Returns the guard's removal.
+ */
+function guardController(controller: LiveController, refused: () => void): () => void {
+  const own = controller as unknown as Record<string, (...args: unknown[]) => unknown>;
+  let inside = 0;
+  const through = (name: string) => {
+    const method = own[name].bind(controller);
+    own[name] = (...args: unknown[]) => {
+      inside++;
+      try {
+        return method(...args);
+      } finally {
+        inside--;
+      }
+    };
+  };
+  through("as");
+  through("applyRemote");
+  for (const [name, refusal] of Object.entries(RUN_OPS)) {
+    const method = own[name].bind(controller);
+    own[name] = (...args: unknown[]) => {
+      if (inside > 0 || (PLAYBACK.has(name) && controller.isHeld)) return method(...args);
+      // Slow motion pauses just before it holds the run: that's its own, not a change to the shared run.
+      if (PLAYBACK.has(name))
+        queueMicrotask(() => {
+          if (!controller.isHeld) refused();
+        });
+      else refused();
+      return refusal;
+    };
+  }
+  return () => {
+    for (const name of ["as", "applyRemote", ...Object.keys(RUN_OPS)]) Reflect.deleteProperty(own, name);
+  };
 }
 
 // ---------------------------------------------------------------- one per open room
@@ -869,7 +1065,7 @@ export const roomWatch = {
 export function bindWatch(
   room: {
     subscribe(fn: () => void): () => void;
-    getSnapshot(): { open?: { session: CollabSession; role: RoomRole } };
+    getSnapshot(): { open?: { session: CollabSession; roster: RoomRoster } };
     /** Called as this person leaves the room on purpose (before the room lets go of the session). */
     onLeaving?(fn: () => void): () => void;
   },
@@ -880,7 +1076,7 @@ export function bindWatch(
     const open = room.getSnapshot().open;
     if (current?.session === open?.session) return;
     current?.dispose();
-    current = open ? new WatchTogether(open.session, open.role, target, notices) : undefined;
+    current = open ? new WatchTogether(open.session, open.roster, target, notices) : undefined;
     if (import.meta.env.VITE_E2E === "1") (window as unknown as { __watch?: WatchTogether }).__watch = current;
     for (const l of currentListeners) l();
   };

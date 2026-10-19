@@ -59,8 +59,10 @@ reaches the room: not its simulation's name, not its run.
   to catch up ("Catching up… 0:42 of 3:10"). The same happens when the host restarts, picks another simulation or
   plays a finished run again. A long run catches up a few moments at a time, so the page stays responsive.
 - **Watch on my own.** This, in the chip's menu, keeps your run where it is and makes it yours to change. While you
-  follow, the live bar's buttons don't act: using one says "Sam is driving", with **Ask to drive** and **Watch on my
-  own**. A change you make another way (a key, a right-click tweak) is put back the same way.
+  follow, the live bar's controls that change the run (play, restart, speed, the simulation, the timeline) don't
+  act: using one says "Sam is driving", with **Ask to drive** and **Watch on my own**. So does a change made another
+  way (Space, a right-click tweak), before it reaches your run. The event log, traces, Record video and slow motion
+  are yours as ever.
 - **Notes and your view.** A narration note that focuses part of the diagram moves your view, as it does on your
   own, unless you've moved the view yourself.
 - **If the host's connection drops,** your run waits where it is: "Sam's connection dropped. Waiting…". It goes on
@@ -86,8 +88,10 @@ reaches the room: not its simulation's name, not its run.
 - **The host's menu.** In the chip's menu the host sees each person with a menu: **Make co-host** (or **Not a
   co-host**), **Let them drive** (or **Take back Live**) and **Make host**. Making someone host makes you their
   first co-host; who drives stays as it was. The people list says who's the host, a co-host and driving.
-- **Co-hosts** see requests and can answer them too. The host keeps the roster; with no host here, a co-host's yes
-  still passes the run on.
+- **Co-hosts** see requests and can answer them too. The host keeps the roster; while the host is away, the last
+  roster stands, so co-hosts still get requests and their yes still passes the run on.
+- **A reload keeps the roles.** Who hosts now, the co-hosts and who drives survive anyone's reload: a host who was
+  handed the room still hosts after reloading, and one who handed it on doesn't take it back.
 - **When the host leaves.** **Leave room** hands the room to the earliest co-host, or, with none, to whoever has
   been here longest, and the run to whoever drives next. A dropped connection hands nothing over: everyone
   following waits, as above, and nobody is promoted.
