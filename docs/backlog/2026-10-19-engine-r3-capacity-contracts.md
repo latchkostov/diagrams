@@ -14,7 +14,7 @@ hold's admission lag. Named minimal regressions catch both; removing each fix re
 Moving releases before work additionally required keeping retained pool dispatch after logical
 replies, covered by a named regression and the unchanged frozen differential traces.
 
-The owner decided the shrink contract on 2026-10-19: scale one retains four waiting requests against
+The shrink contract was decided during the R3 review on 2026-10-19: scale one retains four waiting requests against
 one slot for about 60 ms. `expectShrinkMatchesScaleOne` replaces the contradictory pool-bound
 assertion in timeline and live-edit shrink tests with per-tick scale-one equivalence, no admissions
 above capacity, queue/completion accounting and monotone drain. Final counts, emptiness and
