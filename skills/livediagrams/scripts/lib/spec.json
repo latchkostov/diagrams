@@ -3007,6 +3007,17 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "wait": {
+          "enum": [
+            "blocking",
+            "non-blocking"
+          ]
+        },
+        "replyMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600000
+        },
         "deadlineMs": {
           "type": "number",
           "minimum": 0,

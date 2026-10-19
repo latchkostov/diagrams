@@ -30,6 +30,7 @@ export function ThreadMeter({
       data-testid={`thread-meter-${id}`}
       data-working={threads.working}
       data-waiting={threads.waiting}
+      aria-valuetext={threads.inFlight ? t("threads.inFlight", { count: threads.inFlight }) : undefined}
     >
       <span className="lv-threads-work" style={{ width: fraction(threads.working) }} />
       <span className="lv-threads-wait" style={{ width: fraction(threads.waiting) }}>

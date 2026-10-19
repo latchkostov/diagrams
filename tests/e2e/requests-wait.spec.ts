@@ -62,10 +62,11 @@ test("raising Traffic mid-run pauses at the work budget with an accessible recov
   expectNoErrors(consoleErrors);
 });
 
-async function seed(page: import("@playwright/test").Page, older = false, empty = false) {
+async function seed(page: import("@playwright/test").Page, older = false, empty = false, freed = false) {
   const d = waitingFixture();
   d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
   if (older) d.planning = { revision: "p3-a1" };
+  if (freed) d.edges[1].props = { ...d.edges[1].props, caller: { wait: "non-blocking" } };
   if (empty) {
     d.nodes[0].props = { ratePerSec: 0 };
     d.nodes[1].props = { ...d.nodes[1].props, resources: resourceLesson(), autoscaling: cloudLesson("cloud-run") };
@@ -88,6 +89,7 @@ test("the caller meter and hover explain held threads and their throughput ceili
   await expect(meter).toBeVisible();
   await expect(meter).toHaveAttribute("data-waiting", "4");
   await expect(meter).toHaveAttribute("aria-valuenow", "4");
+  await expect(page.getByTestId("call-pill-call")).toContainText("held");
   await page.getByTestId("node-caller").hover();
   await expect(page.getByTestId("thread-detail-caller")).toContainText("4 waiting on Partner scoring API");
   await expect(page.getByTestId("thread-ceiling")).toBeVisible();
@@ -118,6 +120,72 @@ test("historical models have no thread meter", async ({ page }) => {
   await seed(page, true);
   await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
   await expect(page.getByTestId("thread-meter-caller")).toHaveCount(0);
+});
+
+test("connection Simulation offers the same undoable wait toggle as its inspector", async ({ page }) => {
+  await seed(page);
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").click({ button: "right" });
+  await page.getByTestId("context-menu-item-edge.simulation").hover();
+  await page.getByTestId("context-menu-item-edge.wait").click();
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
+    .toMatchObject({ wait: "non-blocking" });
+  await page.getByTestId("undo-button").click();
+  await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.caller).toBeUndefined();
+  await page.getByTestId("edge-call").dblclick();
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await expect(page.getByTestId("inspector-field-wait")).toContainText("Holds a thread");
+  await page.getByTestId("inspector-field-wait").click();
+  await page.getByTestId("context-menu-item-non-blocking").click();
+  await expect(page.getByTestId("inspector-field-wait")).toContainText("Frees the thread");
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
+    .toMatchObject({ wait: "non-blocking" });
+});
+
+test("a freed call shows its in-flight meter, pill and continuation ceiling", async ({ page }) => {
+  await seed(page, false, false, true);
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(1000);
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("thread-meter-caller")).toHaveAttribute("data-waiting", "0");
+  await expect(page.getByTestId("thread-meter-caller")).toHaveAttribute(
+    "aria-valuetext",
+    /calls in flight, no thread held/,
+  );
+  await expect(page.getByTestId("thread-flight-caller")).toContainText("calls in flight, no thread held");
+  await expect(page.getByTestId("call-pill-call")).toContainText("↗");
+  await expect(page.getByTestId("call-pill-call")).toContainText("in flight");
+  await page.getByTestId("node-caller").hover();
+  await expect(page.getByTestId("thread-ceiling")).toContainText("200 req/s");
+  await expect(page.getByTestId("thread-ceiling")).toContainText("10 ms work + 10 ms reply handling");
+  await page.clock.runFor(200);
+  await test.info().attach("freed threads", { body: await page.screenshot(), contentType: "image/png" });
+});
+
+test("the exhausted-thread callout frees its call in one undo step", async ({ page }) => {
+  await seed(page);
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(11000);
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("trouble-headline")).toContainText("Decision service runs out of threads");
+  await expect(page.getByTestId("trouble-action")).toHaveText("Free the thread while waiting");
+  await page.getByTestId("trouble-action").click();
+  await page.clock.runFor(400);
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
+    .toMatchObject({ wait: "non-blocking" });
+  await page.getByTestId("undo-button").click();
+  await page.clock.runFor(400);
+  await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.caller).toBeUndefined();
 });
 
 test("an empty caller pool keeps the busy chip quiet", async ({ page }) => {

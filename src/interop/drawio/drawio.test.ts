@@ -22,6 +22,30 @@ async function importFirst(xml: string) {
   return drawioPageToDiagram(doc.pages[0]);
 }
 
+it("round-trips non-blocking calls, reply handling, caps and saved simulation overrides", async () => {
+  const d = waitingFixture();
+  d.edges[1].props = { caller: { wait: "non-blocking", replyMs: 30, poolConnections: 2 } };
+  d.simulations = [
+    {
+      id: "freed",
+      title: "Free the thread",
+      traffic: [],
+      setup: { edges: { call: { caller: { wait: "blocking" } } } },
+    },
+  ];
+  const imported = await importFirst(diagramToDrawio(d));
+  const result = validateDiagram(imported.diagram);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.diagram.edges[1].props?.caller).toEqual(d.edges[1].props.caller);
+  expect(result.diagram.simulations).toEqual(d.simulations);
+  const e = createEngine();
+  e.load(result.diagram);
+  e.inject("source", 8);
+  e.step(50);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ inFlight: 2, held: 0 });
+});
+
 it("repairs cyclic draw.io boundary metadata through native validation", async () => {
   const input: DiagramFile = {
     format: "diagrams/v1",

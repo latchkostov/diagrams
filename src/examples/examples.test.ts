@@ -81,6 +81,23 @@ const freePlay = (slug: string) => {
 };
 
 describe("recent-feature showcases", () => {
+  it("frees threads within ten seconds and lets CPU scaling answer the spike", () => {
+    const d = diagram("blocking-call");
+    const run = createSimulationRun(
+      d,
+      d.simulations!.find((s) => s.id === "free-thread")!,
+    );
+    run.step(9000);
+    const early = run.engine.snapshot();
+    expect(early.nodes.caller.threads!.waiting).toBe(0);
+    expect(early.edges.call.calls!.inFlight).toBeGreaterThan(80);
+    expect(early.nodes.applications.backlog).toBeLessThan(100);
+    expect(early.nodes.caller.resources!.cpuRequestPct!).toBeGreaterThan(50);
+    run.step(31000);
+    const spike = run.engine.snapshot();
+    expect(spike.nodes.caller.fleet!.desired).toBeGreaterThan(4);
+    expect(spike.nodes.caller.fleet!.ready).toBeGreaterThan(4);
+  });
   it("fills caller threads within ten seconds while CPU scaling stays quiet", () => {
     const d = diagram("blocking-call");
     const run = createSimulationRun(d, d.simulations![0]);

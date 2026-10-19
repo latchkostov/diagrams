@@ -47,6 +47,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["collaboration", /[/\\]src[/\\]collab[/\\]/],
   ["Yjs", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?(yjs|lib0)[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
+  ["custom property editing", /[/\\]src[/\\]canvas[/\\]inspector[/\\]PropsEditor\.tsx$/],
   ["fault execution and outage indexes", /[/\\]src[/\\]model[/\\]faultRuntime\.ts$/],
   ["fault display messages", /[/\\]src[/\\]model[/\\]faultWords\.ts$/],
   ["run-end result messages", /[/\\]src[/\\]live[/\\]runEndResult\.ts$/],
@@ -285,6 +286,8 @@ describe("production bundle split", () => {
     const live = chunks.find((c) => c.name === "LiveSession");
     expect(live).toBeDefined();
     const editor: [string, RegExp][] = [
+      ["event log", /[/\\]src[/\\]live[/\\]EventLog\.tsx$/],
+      ["custom injection", /[/\\]src[/\\]live[/\\]InjectDialog\.tsx$/],
       ["simulation editor", /[/\\]src[/\\]live[/\\]SimPanel\.tsx$/],
       ["fault step editor", /[/\\]src[/\\]live[/\\]FaultStep\.tsx$/],
       ["drill presets", /[/\\]src[/\\]live[/\\]faults\.ts$/],

@@ -1,5 +1,7 @@
 import { revisionAtLeast } from "../model/revisions";
 import { waitingPlan, type WaitCapacity } from "./waitingPlan";
+import { simulationEdges } from "./simulationEdges";
+import { replyCpuMs } from "./callPolicy";
 import { resolvedTiming } from "./timing";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
 import { replicaRange, resourceCapacity } from "../model/autoscaling";
@@ -223,6 +225,7 @@ export function analyzeCapacity(
   simulation?: Simulation,
   options: CapacityOptions = {},
 ): CapacityAnalysis {
+  diagram = simulationEdges(diagram, simulation);
   const trafficMultiplier = resolveMultiplier(simulation?.multipliers?.traffic);
   const capacityMultiplier = resolveMultiplier(simulation?.multipliers?.capacity);
   const entries = new Map<string, Entry>();
@@ -253,7 +256,20 @@ export function analyzeCapacity(
     });
   }
   const waiting = waitingPlan(diagram, Object.fromEntries([...entries].map(([id, e]) => [id, e.props])));
-  for (const [id, wait] of waiting.nodes) if (entries.get(id)?.role === "processor") entries.get(id)!.wait = wait;
+  for (const [id, wait] of waiting.nodes)
+    if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
+  for (const entry of entries.values()) {
+    if (entry.wait?.replies && entry.props.resources)
+      entry.props = {
+        ...entry.props,
+        resources: {
+          ...entry.props.resources,
+          cpuMsPerMessage:
+            entry.props.resources.cpuMsPerMessage +
+            replyCpuMs(entry.props.resources.cpuMsPerMessage, entry.wait.replies),
+        },
+      };
+  }
   const compiled = compileTopology(diagram);
   const iterationCap = iterationBound(
     entries.keys(),
@@ -637,7 +653,10 @@ export function analyzeCapacity(
       }
       if (weight > 0) timing = { workMs: work / weight, holdMs: work / weight + entry.wait.callMs };
     }
-    let capacity = entry.props.admission ? (entry.up ? Infinity : 0) : serviceRate(entry);
+    let capacity = Math.min(
+      entry.wait?.poolCeiling ?? Infinity,
+      entry.props.admission ? (entry.up ? Infinity : 0) : serviceRate(entry),
+    );
     if (brokerRole(entry.role)) {
       const limits = (groups.get(id) ?? []).map((group) => {
         const capacities = new Map(

@@ -2657,6 +2657,31 @@ const en = {
   "threads.upgradeHint":
     "Requests will wait for every reply before sending Messages or replying upstream. Callers hold their threads; failures return to callers. Capacity includes the call time, excluding animation travel. Saved simulations use the same model.",
   "threads.heading": "Threads",
+  "threads.whileWaiting": "While waiting",
+  "threads.latency": "Latency",
+  "threads.latencyBreakdown":
+    "Time goes to: queued {queued} · waiting on calls {calls} · work {work} · travel {travel}",
+  "threads.holds": "Holds a thread",
+  "threads.frees": "Frees the thread",
+  "threads.freeAction": "Free the thread while waiting",
+  "threads.holdAction": "Hold a thread while waiting",
+  "threads.simulation": "Simulation",
+  "threads.callAdvanced": "Call settings · Advanced",
+  "threads.pool": "Connection pool",
+  "threads.uncapped": "No cap",
+  "threads.poolHint":
+    "Maximum calls in flight. Extra calls queue without holding a thread. Waiting calls still use memory.",
+  "threads.replyHandling": "Reply handling time",
+  "threads.replyHint": "A reply takes a thread again, ahead of new work, and uses 10% of the work's CPU cost.",
+  "threads.inFlight":
+    "{count, plural, one {# call in flight, no thread held} other {# calls in flight, no thread held}}",
+  "threads.pillHeld": "⌛ {count, number} held",
+  "threads.pillFlight": "↗ {count, number} in flight",
+  "threads.freeCeiling":
+    "{rate} req/s = {slots, number} {noun} ÷ {seconds} s per request ({work, number} ms work + {reply, number} ms reply handling)",
+  "threads.exhausted": "{name} runs out of threads",
+  "threads.exhaustedDetail": "{count, number} threads wait on {name}, while the queue grows.",
+  "threads.memoryHint": "Calls in flight still use memory while their threads are free.",
   "threads.executions": "Executions",
   "threads.noun": "{kind, select, execution {executions} other {threads}}",
   "threads.busy": "{busy, number} of {slots, number} {noun} busy",

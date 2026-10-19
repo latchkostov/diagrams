@@ -1,6 +1,6 @@
 import { revisionAtLeast } from "../model/revisions";
 import { profileOf } from "../stencils/profiles";
-import { ThreadMeter } from "./ThreadMeter";
+import { ThreadMeter, CallPill } from "./lazyWaitingVisuals";
 import { nodeFaultLabels } from "../model/faultWords";
 import { useInteraction } from "../canvas/interaction";
 import { compileTopology } from "../sim/topology";
@@ -87,6 +87,9 @@ export function NodeBadges({
       className={`lv-badges${presenting ? " is-presenting" : ""}`}
       style={{ "--inv": inv.toFixed(3) } as CSSProperties}
     >
+      {Object.entries(state.snapshot.edges).map(
+        ([id, edge]) => edge.calls && <CallPill key={id} id={id} calls={edge.calls} />,
+      )}
       {nodes.map((n) => {
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];
@@ -323,6 +326,11 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
 
       {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
         <div className="lv-strip">
+          {!!s.threads?.inFlight && (
+            <span className="lv-metric" data-testid={`thread-flight-${node.id}`}>
+              ↗ {t("threads.inFlight", { count: s.threads.inFlight })}
+            </span>
+          )}
           {s.threads && threadBusy > 0 && threadBusy >= 0.8 * s.threads.slots && (
             <span className="lv-metric" data-testid={`thread-chip-${node.id}`}>
               ⌛ {t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })}

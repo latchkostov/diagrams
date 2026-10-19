@@ -1,3 +1,4 @@
+import { lazyComponent } from "../../lib/lazyLoad";
 import { isFanOut, relationDropdownItems } from "./edgeChoices";
 import { Dropdown } from "../../components/Dropdown";
 import { Icon } from "../../components/Icon";
@@ -5,26 +6,25 @@ import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../../edi
 import { t } from "../../i18n";
 import { brokerSpec } from "../../model/brokers";
 import { relationNote, relationOf, isDependency } from "../../model/relations";
-import { EdgeRouteFields } from "../../planning/lazy";
+import { CallWaitFields, EdgeRouteFields } from "../../planning/lazy";
 import { groupLabel } from "../../stencils/brokerVocabulary";
 import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
 import { edgeSimFields } from "../simFieldRules";
 import { type DiagramFlowEdge } from "../types";
-import { Field, InertNote, Section, Segmented, SideSelect } from "./fields";
+import { Field, InertNote, Section, Segmented } from "./fields";
 import { Disclosure } from "./Disclosure";
 import { SettingsEditor } from "./SettingsEditor";
 import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
-import { SIM_LIMITS } from "../../interop/native";
-import { DEFAULT_TRAVEL_MS } from "../../sim/topology";
-import { PropsEditor } from "./PropsEditor";
-import { EDGE_KEYS, RULE_KEYS } from "./simFields";
 import { useState } from "react";
 import { type EditorApi } from "../../editor/types";
 import { relationLabel } from "../../i18n/chrome";
 import { inferRelation } from "../../stencils/relations";
+import { revisionAtLeast } from "../../model/revisions";
+
+const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
 
 export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
@@ -43,6 +43,7 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
   const fields = edgeSimFields(sourceRole);
   const grouped = flow && fields.group && props.dlq !== true;
   const deadLetters = flow && fields.dlq;
+  const requestWait = flow && data.kind === "sync" && revisionAtLeast(meta.planning?.revision, "p3-w1");
   return (
     <>
       <Section>
@@ -171,109 +172,34 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
         )}
       </Section>
       {relation === "config" && <SettingsEditor key={edge.id} edge={edge} editor={editor} />}
-      {fanOut && (
+      {(fanOut || requestWait) && (
         <Disclosure id="edge-simulation" title={t("inspector.simulation")}>
-          <SimInput
-            name="share"
-            field={{
-              label: t("inspector.shareOfMessages"),
-              unit: "%",
-              kind: "number",
-              min: 0,
-              max: 100,
-              step: 5,
-              placeholder: "100",
-              hint: t("inspector.howManyOfTheMessagesLeavingThisNodeAlso"),
-            }}
-            value={typeof props.share === "number" ? Math.round(props.share * 1000) / 10 : undefined}
-            onChange={(v) =>
-              editor.setEdgeProps(edge.id, { share: typeof v === "number" ? v / 100 : undefined }, merge("share"))
-            }
-          />
+          {requestWait && (
+            <CallWaitFields editor={editor} edgeId={edge.id} caller={props.caller} stencil={sourceStencil ?? ""} />
+          )}
+          {fanOut && (
+            <SimInput
+              name="share"
+              field={{
+                label: t("inspector.shareOfMessages"),
+                unit: "%",
+                kind: "number",
+                min: 0,
+                max: 100,
+                step: 5,
+                placeholder: "100",
+                hint: t("inspector.howManyOfTheMessagesLeavingThisNodeAlso"),
+              }}
+              value={typeof props.share === "number" ? Math.round(props.share * 1000) / 10 : undefined}
+              onChange={(v) =>
+                editor.setEdgeProps(edge.id, { share: typeof v === "number" ? v / 100 : undefined }, merge("share"))
+              }
+            />
+          )}
         </Disclosure>
       )}
       <EdgeAdvanced edge={edge} editor={editor} data={data} props={props} flow={flow} rule={rule} merge={merge} />
     </>
-  );
-}
-
-type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {
-  edge: DiagramFlowEdge;
-  data: NonNullable<DiagramFlowEdge["data"]>;
-  props: Record<string, unknown>;
-  flow: boolean;
-  rule: boolean;
-  merge: (field: string) => { merge: string };
-};
-
-export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: EdgeAdvancedProps) {
-  return (
-    <Disclosure id="edge-advanced" title={t("inspector.advanced")}>
-      <div className="insp-row2">
-        <Field label={t("inspector.fromSide")}>
-          <SideSelect
-            testId="inspector-field-sourceSide"
-            value={data.sourceSide}
-            onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })}
-          />
-        </Field>
-        <Field label={t("inspector.toSide")}>
-          <SideSelect
-            testId="inspector-field-targetSide"
-            value={data.targetSide}
-            onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })}
-          />
-        </Field>
-      </div>
-      {flow && (
-        <>
-          <SimInput
-            name="travelMs"
-            field={{
-              label: t("inspector.travelTime"),
-              unit: "ms",
-              kind: "number",
-              min: 0,
-              max: SIM_LIMITS.timeMs,
-              step: 50,
-              placeholder: String(DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"]),
-              hint: t("inspector.timeAMessageSpendsOnThisEdgeAt1x"),
-            }}
-            value={props.travelMs}
-            onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
-          />
-          <SimInput
-            name="filter"
-            field={{
-              label: t("inspector.filter"),
-              kind: "list",
-              placeholder: t("inspector.allMessageTypes"),
-              hint: t("inspector.onlyTheseMessageTypesTravelThisEdgeTrailingWildcard"),
-            }}
-            value={props.filter}
-            onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
-          />
-          <SimInput
-            name="emits"
-            field={{
-              label: t("inspector.renameTo"),
-              kind: "text",
-              placeholder: t("inspector.unchanged"),
-              hint: t("inspector.renameMessagesAsTheyLeaveAlongThisEdge"),
-            }}
-            value={props.emits}
-            onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
-          />
-        </>
-      )}
-      <span className="insp-label">{t("inspector.customProperties")}</span>
-      <PropsEditor
-        props={props}
-        hidden={rule ? RULE_KEYS : EDGE_KEYS}
-        onSet={(patch) => editor.setEdgeProps(edge.id, patch)}
-        onSetMerged={(patch, key) => editor.setEdgeProps(edge.id, patch, merge(`prop:${key}`))}
-      />
-    </Disclosure>
   );
 }
 

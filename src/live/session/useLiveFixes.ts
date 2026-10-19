@@ -141,6 +141,12 @@ export function useLiveFixes({
           flash(t("liveSession.addedDeadLetter"));
           revealAdded();
         }
+      } else if (action.kind === "free-thread") {
+        const edge = editor?.getEdge(action.edge);
+        if (edge)
+          editor?.setEdgeProps(edge.id, {
+            caller: { ...(edge.props?.caller as object | undefined), wait: "non-blocking" },
+          });
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },
@@ -169,7 +175,8 @@ export function useLiveFixes({
   }, [announcement]);
   // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
   const troubleActionHere = (t: Trouble) =>
-    !presenting && (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq"));
+    !presenting &&
+    (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq" && t.action.kind !== "free-thread"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {

@@ -88,7 +88,8 @@ import {
 import { routeTableCapable } from "../model/requestRouting";
 import { quotaRequirements, attemptQuotas, reconfigureQuotas, type QuotaRequirement } from "./admission";
 import { QUOTA_UNITS } from "../model/admission";
-import { occupancyFraction, type CallerOccupancy } from "./callerOccupancy";
+import { occupancyFraction, reserveCallerOccupancy, type CallerOccupancy } from "./callerOccupancy";
+import { callPolicy, replyCpuMs, type CallPolicy } from "./callPolicy";
 
 import type {
   RouteCounts,
@@ -124,6 +125,7 @@ export const SOURCE_RATE_CAP = 10_000;
 export const SOURCE_VOLUME_CAP = 200_000;
 
 interface Message {
+  callMs?: number;
   returnCall?: number;
   callDepth?: number;
   visualAt?: number;
@@ -141,6 +143,8 @@ interface Message {
   request?: CompiledRoute;
 }
 interface Group {
+  offThread: number;
+  offByNode: Map<string, number>;
   name: string;
   edges: Edge[];
   pending: Deque<Message>;
@@ -159,12 +163,14 @@ interface Group {
   limit: number;
 }
 interface Delivery {
+  offThread?: boolean;
   broker: Node;
   group: Group;
   edge: Edge;
   original: Message;
 }
 interface Work {
+  continuation?: { ok: boolean; cpuMs: number };
   slotStart?: { elapsed: number; clock: number; workClock: number; workMs: number; reservation?: CallerOccupancy };
   replyDelayMs?: number;
   waitingCall?: number;
@@ -230,11 +236,14 @@ interface Node {
   dlq?: Edge;
   groups: Group[];
   pending: Deque<Work>;
+  resume: Deque<Work>;
+  frees: boolean;
   /** How many deliveries are staged here (in their groups' `staged` queues), for the backlog. */
   staged: number;
   working: Work[];
   calls: Map<number, Call>;
   heldCalls: number;
+  freeFlight: number;
   localCalls: number;
   heldBrokerCalls: number;
   waitingOn: Map<string, number>;
@@ -273,6 +282,10 @@ interface Node {
   targets: Map<string, Edge>;
 }
 interface Call {
+  blockingRemaining: number;
+  startedAt: number;
+  replyMs?: number;
+  replies?: number;
   local?: true;
   slotEnd?: number;
   durationMs?: number;
@@ -285,6 +298,7 @@ interface Call {
   ready?: boolean;
 }
 interface Logical {
+  poolReply?: boolean;
   sampledDelayMs?: number;
   id: number;
   end: number;
@@ -296,6 +310,10 @@ interface Logical {
   visualAt?: number;
 }
 interface Edge {
+  policy?: CallPolicy;
+  poolUsed: number;
+  poolPending: Deque<{ call: Call; message: Message }>;
+  poolLeases: Map<number, { reservation: CallerOccupancy; start: number }>;
   networkDelayMs: number;
   calls: { inFlight: number; held: number; timedOut: number; failed: number; late: number };
   cut?: boolean;
@@ -512,6 +530,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         work,
         message.travelMs,
         latencyBudget,
+        message.callMs,
       );
     }
   }
@@ -776,7 +795,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function slotFraction(node: Node): number {
     return node.waits && node.role === "processor" && scale > 1 && busy(node)
-      ? Math.min(1, slots(node) / (scale * busy(node)))
+      ? occupancyFraction(reserveCallerOccupancy(scale, slots(node) / busy(node)))
       : 1;
   }
 
@@ -1353,6 +1372,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.outputs = outgoing.filter((edge) => !edge.sync);
     const requests = outgoing.filter((edge) => edge.sync);
     if (!requests.length && !work.slotStart) return false;
+    const nonblocking = requests.length > 0 && requests.every((e) => !e.policy?.blocking);
+    if (nonblocking) work.slotStart = undefined;
     let durationMs: number | undefined;
     if (work.slotStart) {
       const elapsed = node.slotElapsed - work.slotStart.elapsed;
@@ -1379,10 +1400,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     const call: Call = {
       id: nextCall++,
+      startedAt: time,
       node,
       work,
       outstanding: new Set(requests.map((e) => e.id)),
-      held: node.role === "processor",
+      blockingRemaining: requests.filter((e) => e.policy?.blocking).length,
+      held: node.role === "processor" && !nonblocking,
+      replyMs: requests.reduce((sum, e) => sum + (e.policy?.replyMs ?? 0), 0),
+      replies: requests.filter((e) => !e.policy?.blocking).length,
       depth,
       durationMs,
     };
@@ -1396,6 +1421,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     } else {
       work.slotted = false;
       endResources(node, work);
+      releaseAdmission(admission, work.lease);
+      work.lease = undefined;
+      release(work);
+      suspendDelivery(work);
     }
     if (!requests.length) {
       // Type filters can leave only local work. Its fractional residence is work,
@@ -1407,8 +1436,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       scheduleCallerRelease(call, call.slotEnd);
     }
     for (const edge of requests) {
-      edge.calls.inFlight++;
-      if (call.held) {
+      if (call.held && edge.policy?.blocking) {
         edge.calls.held++;
         node.waitingOn.set(edge.id, (node.waitingOn.get(edge.id) ?? 0) + 1);
       }
@@ -1417,19 +1445,54 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         returnCall: call.id,
         callDepth: depth,
       };
+      edge.poolPending.push({ call, message: branch });
+      dispatchCalls(edge);
+    }
+    return true;
+  }
+
+  function dispatchCalls(edge: Edge): void {
+    while (edge.poolPending.length && edge.poolUsed < (edge.policy?.pool ?? Infinity)) {
+      const { call, message } = edge.poolPending.shift()!;
+      if (!calls.has(call.id)) {
+        gone(edge.from, message, "end", "call already failed");
+        continue;
+      }
+      const reservation = reserveCallerOccupancy(scale, (edge.policy?.pool ?? Infinity) - edge.poolUsed);
+      edge.poolUsed += reservation.weight;
+      edge.poolLeases.set(call.id, { reservation, start: time });
+      edge.calls.inFlight += occupancyFraction(reservation);
+      if (!edge.policy?.blocking) edge.from.freeFlight += occupancyFraction(reservation);
+      const work = call.work;
       deliver(
         edge,
-        branch,
+        message,
         "message",
         undefined,
         work.route ? { rule: work.route.rule, weight: work.route.weight } : undefined,
       );
     }
-    return true;
+  }
+
+  /** A broker keeps ownership until acknowledgement; its prefetch budget follows occupied threads. */
+  function suspendDelivery(work: Work): void {
+    const d = work.delivery;
+    if (!d || d.offThread) return;
+    d.offThread = true;
+    d.group.offThread++;
+    d.group.offByNode.set(d.edge.to.id, (d.group.offByNode.get(d.edge.to.id) ?? 0) + 1);
+  }
+
+  function wakeDelivery(work: Work): void {
+    const d = work.delivery;
+    if (!d?.offThread) return;
+    d.offThread = false;
+    d.group.offThread--;
+    d.group.offByNode.set(d.edge.to.id, (d.group.offByNode.get(d.edge.to.id) ?? 1) - 1);
   }
 
   function releaseCallEdge(call: Call, edge: Edge): void {
-    if (!call.held) return;
+    if (!call.held || !edge.policy?.blocking) return;
     edge.calls.held--;
     const count = (call.node.waitingOn.get(edge.id) ?? 1) - 1;
     if (count) call.node.waitingOn.set(edge.id, count);
@@ -1486,6 +1549,31 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (work.slotStart)
       work.replyDelayMs = Math.max(0, node.slotElapsed - work.slotStart.elapsed - (call.durationMs ?? 0));
     work.slotStart = undefined;
+    if (!call.local) work.message.callMs = (work.message.callMs ?? 0) + time - call.startedAt;
+    if (node.role === "source") {
+      recordLatency(
+        (node.latency ??= createLatencyRecorder()),
+        work.message.type,
+        time - call.startedAt,
+        0,
+        0,
+        latencyBudget,
+        time - call.startedAt,
+      );
+    }
+    if (node.role === "processor" && (call.replies ?? 0) > 0 && node.status !== "down" && !work.terminating) {
+      work.slotted = false;
+      endResources(node, work);
+      releaseAdmission(admission, work.lease);
+      work.lease = undefined;
+      release(work);
+      work.remaining = call.replyMs ?? 0;
+      work.cpuRemaining = undefined;
+      work.continuation = { ok, cpuMs: replyCpuMs(node.props.resources?.cpuMsPerMessage ?? 0, call.replies!) };
+      node.resume.push(work);
+      return;
+    }
+    wakeDelivery(work);
     if (ok) complete(node, work);
     else fail(node, work);
     if (work.retained) {
@@ -1518,13 +1606,44 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
           continue;
         }
-        edge!.calls.inFlight--;
+        if (edge) {
+          const lease = edge.poolLeases.get(event.call);
+          if (lease && !event.poolReply) {
+            const extra =
+              (time - lease.start - (event.sampledDelayMs ?? 0)) * (1 / occupancyFraction(lease.reservation) - 1);
+            if (extra > 1e-9) {
+              pushDue(logical, { ...event, id: nextLogical++, end: time + extra, poolReply: true });
+              continue;
+            }
+          }
+          if (lease) {
+            edge.calls.inFlight = Math.max(0, edge.calls.inFlight - occupancyFraction(lease.reservation));
+            edge.poolUsed = Math.max(0, edge.poolUsed - lease.reservation.weight);
+            edge.poolLeases.delete(event.call);
+            if (!edge.policy?.blocking)
+              edge.from.freeFlight = Math.max(0, edge.from.freeFlight - occupancyFraction(lease.reservation));
+            dispatchCalls(edge);
+          }
+        }
         if (!event.ok) edge!.calls.failed++;
         if (!call || !call.outstanding.delete(edge!.id)) {
           edge!.calls.late++;
           continue;
         }
         releaseCallEdge(call, edge!);
+        if (edge!.policy?.blocking) call.blockingRemaining--;
+        if (call.held && call.outstanding.size && call.blockingRemaining === 0) {
+          call.held = false;
+          call.node.heldCalls--;
+          if (call.work.delivery) call.node.heldBrokerCalls--;
+          call.work.slotted = false;
+          call.work.slotStart = undefined;
+          endResources(call.node, call.work);
+          releaseAdmission(admission, call.work.lease);
+          call.work.lease = undefined;
+          release(call.work);
+          suspendDelivery(call.work);
+        }
         if (call.work.slotStart)
           // Propagate only logical wait: nested callers must not charge a child's
           // extra sampled residence a second time at the parent.
@@ -1686,6 +1805,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function finish(node: Node, work: Work): void {
+    if ((node.frees || work.continuation) && work.slotStart) {
+      const end = work.slotStart.clock + Math.ceil(work.slotStart.workMs / STEP) * STEP;
+      if (!work.slotStart.reservation) node.slotCredit += Math.max(0, node.slotClock - end);
+      work.slotStart = undefined;
+    }
+    if (work.continuation) {
+      wakeDelivery(work);
+      const ok = work.continuation.ok && node.status !== "down";
+      work.continuation = undefined;
+      work.slotStart = undefined;
+      if (ok) complete(node, work);
+      else fail(node, work);
+      return;
+    }
     if (node.status === "down") {
       if (work.delivery || node.role === "processor") fail(node, work);
       else {
@@ -1975,7 +2108,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!group.pending.length) continue;
       // A deny rule delivers nothing and reserves no slot: it's ready even when the group's consumers are full.
       while (group.pending.length) {
-        const free = group.active < group.limit;
+        const free = group.active - group.offThread < group.limit;
         const message = group.pending.peek()!;
         let ready: Edge | undefined;
         for (let offset = 0; offset < group.edges.length; offset++) {
@@ -1991,7 +2124,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                 busy(target) + target.incoming + target.pending.length + target.staged <
                   outstanding(slots(target), target, edge.travelMs) &&
                 (!node.props.broker?.partitioned ||
-                  (group.activeByNode[target.id] ?? 0) <
+                  (group.activeByNode[target.id] ?? 0) - (group.offByNode.get(target.id) ?? 0) <
                     outstanding(
                       (group.allocations.get(target.id) ?? 0) *
                         (target.role === "processor" ? target.props.concurrency : 1),
@@ -2024,6 +2157,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     yield* queuedWork(node);
   }
   function* queuedWork(node: Node): IterableIterator<Work> {
+    yield* node.resume;
     yield* node.pending;
     for (const group of groupsByConsumer.get(node.id) ?? []) yield* group.staged.get(node.id) ?? [];
   }
@@ -2103,7 +2237,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
   function startResources(node: Node, work: Work): boolean {
     if (!node.fleet || !node.props.resources) return true;
-    work.cpuRemaining ??= node.props.resources.cpuMsPerMessage * scale;
+    work.cpuRemaining ??= (work.continuation?.cpuMs ?? node.props.resources.cpuMsPerMessage) * scale;
     if (scale === 1 && work.replica === undefined) {
       work.replica = acquireReplica(node.fleet, node.props.concurrency);
       if (work.replica === undefined) return false;
@@ -2143,7 +2277,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const limit = node.role === "gateway" ? ceiling(node) : Infinity;
     if (node.status !== "paused" && !held(node)) {
       while (
-        node.pending.length &&
+        (node.resume.length || node.pending.length) &&
         (node.status === "down" ||
           (node.waits
             ? busy(node) < slots(node) / scale
@@ -2163,10 +2297,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (node.serviceCredit < 1 - 1e-9) break;
           node.serviceCredit -= 1;
         }
-        const next = node.pending.peek()!;
+        const queue = node.resume.length ? node.resume : node.pending;
+        const next = queue.peek()!;
         if (node.status === "up" && !startResources(node, next)) break;
-        const work = node.pending.shift()!;
-        if (node.props.admission && !work.lease && node.status === "up" && !reserveAdmission(node, work)) {
+        const work = queue.shift()!;
+        if (work.continuation) wakeDelivery(work);
+        if (
+          !work.continuation &&
+          node.props.admission &&
+          !work.lease &&
+          node.status === "up" &&
+          !reserveAdmission(node, work)
+        ) {
           endResources(node, work);
           continue;
         }
@@ -2357,7 +2499,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const occupancy =
           f && r
             ? waits() && node.waits
-              ? busy(node) * scale * slotFraction(node)
+              ? busy(node) * scale * slotFraction(node) +
+                (node.calls.size - node.heldCalls + node.resume.length) * scale
               : scale === 1
                 ? busy(node)
                 : node.heldCalls * scale +
@@ -2427,7 +2570,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             endResources(node, work);
             fail(node, work);
           } else if (
-            (work.remaining <= 0 && (node.status === "down" || (work.cpuRemaining ?? 0) <= 1e-8)) ||
+            (work.remaining <= 0 &&
+              (node.status === "down" ||
+                ((work.cpuRemaining ?? 0) <= 1e-8 &&
+                  (!(node.frees || work.continuation) ||
+                    !work.slotStart ||
+                    callerClock(node, work) + 1e-9 >=
+                      work.slotStart.clock + Math.ceil(work.slotStart.workMs / STEP) * STEP)))) ||
             (node.status === "down" && !work.retained)
           ) {
             work.retained = false;
@@ -2610,6 +2759,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.routeRejections = Object.create(null);
       initializeFleet(node);
       node.pending.clear();
+      node.resume.clear();
       node.staged = 0;
       node.working.length = 0;
       node.calls.clear();
@@ -2617,6 +2767,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.slotReleases = [];
       node.reservationReleases = [];
       node.heldCalls = 0;
+      node.freeFlight = 0;
       node.localCalls = 0;
       node.heldBrokerCalls = 0;
       node.waitingOn.clear();
@@ -2638,6 +2789,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       for (const group of node.groups) {
         group.pending.clear();
         group.active = 0;
+        group.offThread = 0;
+        group.offByNode.clear();
         group.cursor = 0;
         group.activeByNode = Object.create(null);
         group.heldByNode = new Map();
@@ -2647,6 +2800,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     assignReplicas(new Set(nodes.keys()));
     for (const edge of edges) {
       edge.calls = { inFlight: 0, held: 0, timedOut: 0, failed: 0, late: 0 };
+      edge.poolUsed = 0;
+      edge.poolPending.clear();
+      edge.poolLeases.clear();
       edge.delivered = 0;
       edge.active = 0;
     }
@@ -2734,6 +2890,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         nodes.clear();
         for (const [id, node] of copy.nodes) {
           Object.setPrototypeOf(node.pending, Deque.prototype);
+          Object.setPrototypeOf(node.resume, Deque.prototype);
           for (const group of node.groups) {
             Object.setPrototypeOf(group.pending, Deque.prototype);
             for (const queue of group.staged.values()) Object.setPrototypeOf(queue, Deque.prototype);
@@ -2747,7 +2904,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         indexGroups();
         edges.splice(0, edges.length, ...copy.edges);
         faultEdges.clear();
-        for (const edge of edges) faultEdges.set(edge.id, edge);
+        for (const edge of edges) {
+          Object.setPrototypeOf(edge.poolPending, Deque.prototype);
+          faultEdges.set(edge.id, edge);
+        }
         trips = copy.trips;
         echoExpiries = copy.echoExpiries;
         echoByTime = copy.echoByTime;
@@ -2817,7 +2977,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node) return undefined;
       if (metric.field === "inFlight") return busy(node);
       if (metric.field === "backlog") {
-        let backlog = node.pending.length + node.staged;
+        let backlog = node.pending.length + node.resume.length + node.staged;
         for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);
         return backlog;
       }
@@ -2872,9 +3032,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           slotReleases: [],
           reservationReleases: [],
           heldCalls: 0,
+          freeFlight: 0,
           localCalls: 0,
           heldBrokerCalls: 0,
           waitingOn: new Map(),
+          resume: new Deque(),
+          frees: false,
           waits: false,
           incoming: 0,
           cursor: 0,
@@ -2913,10 +3076,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           delivered: 0,
           active: 0,
           networkDelayMs: 0,
+          poolUsed: 0,
+          poolPending: new Deque(),
+          poolLeases: new Map(),
           calls: { inFlight: 0, held: 0, timedOut: 0, failed: 0, late: 0 },
         };
         const props = edgeProps?.get(edge.id);
         if (waits()) {
+          edge.policy = callPolicy(from.stencil, props?.caller as import("./types").EdgeSimProps["caller"]);
           const delay = props?.networkDelayMs;
           edge.networkDelayMs = typeof delay === "number" && Number.isFinite(delay) ? Math.max(0, delay) : 0;
           if (callEligible(from.role, edge)) from.waits = true;
@@ -2942,7 +3109,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           from.targets.set(edge.id, edge);
         }
       }
-      for (const node of nodes.values()) compileNodeRouting(node);
+      for (const node of nodes.values()) {
+        node.frees =
+          node.waits && node.outgoing.filter((e) => callEligible(node.role, e)).every((e) => !e.policy?.blocking);
+        compileNodeRouting(node);
+      }
       for (const [id, groups] of compiled.groups) {
         const node = nodes.get(id)!;
         node.groups = groups.map((group) => ({
@@ -2956,6 +3127,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           allocations: new Map(),
           drainOwners: new Map(),
           activeByNode: Object.create(null),
+          offThread: 0,
+          offByNode: new Map(),
           heldByNode: new Map(),
           staged: new Map(),
           travelTo: travelByConsumer(group.edges),
@@ -2992,7 +3165,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);
-        let backlog = node.pending.length + node.staged;
+        let backlog = node.pending.length + node.resume.length + node.staged;
         for (const group of node.groups) {
           lag[group.name] = group.pending.length;
           backlog = Math.max(backlog, group.pending.length);
@@ -3016,6 +3189,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                   waiting: (node.heldCalls - node.localCalls) * slotFraction(node),
                   waitingOn: topWaiting(node).map(([id, count]) => [id, count * slotFraction(node)]),
                   queued: backlog,
+                  ...(node.freeFlight > 0 ? { inFlight: node.freeFlight } : {}),
                 },
               }
             : {}),
@@ -3037,7 +3211,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                 resources: resourceReadout(
                   node.fleet,
                   node.props.resources,
-                  busy(node) * scale * slotFraction(node),
+                  busy(node) * scale * slotFraction(node) +
+                    (node.calls.size - node.heldCalls + node.resume.length) * scale,
                   time,
                   scale,
                 ),

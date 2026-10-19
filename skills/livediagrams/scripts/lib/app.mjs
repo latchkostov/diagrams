@@ -3641,6 +3641,8 @@ var callerSchema = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
+		wait: { enum: ["blocking", "non-blocking"] },
+		replyMs: time$2,
 		deadlineMs: time$2,
 		retry: {
 			type: "object",
@@ -4830,6 +4832,17 @@ function simulationProblem(sim) {
 	}
 	if (sim.setup !== void 0) {
 		if (!isObj$1(sim.setup)) return "setup must be an object";
+		if (sim.setup.edges !== void 0) {
+			if (!isObj$1(sim.setup.edges)) return "setup edges must map connection ids to caller policies";
+			for (const patch of Object.values(sim.setup.edges)) {
+				if (!isObj$1(patch) || Object.keys(patch).some((key) => key !== "caller") || patch.caller === void 0) return "setup edges must contain caller policies";
+				try {
+					checkJsonSchema(patch.caller, callerSchema);
+				} catch {
+					return "setup edges must contain valid bounded caller policies";
+				}
+			}
+		}
 		if (sim.setup.status !== void 0 && (!isObj$1(sim.setup.status) || !Object.values(sim.setup.status).every((v) => STATUS.has(v)))) return "setup status must map node ids to up, paused or down";
 		if (sim.setup.props !== void 0) {
 			if (!isObj$1(sim.setup.props)) return "setup props must map node ids to valid engine properties";

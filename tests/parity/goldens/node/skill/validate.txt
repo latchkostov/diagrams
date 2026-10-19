@@ -129,7 +129,9 @@ VALID <repo>/tests/parity/corpus/text-fields.diagram.json: 3 nodes, 1 edge, 1 bo
 VALID <repo>/tests/parity/corpus/w1-blocking.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-gateway.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-held-drain.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w1-inflight-cap.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-join-failure.diagram.json: 5 nodes, 4 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-loop.diagram.json: 4 nodes, 3 edges, 1 simulation
   warning: edges[1] "call": it connects "caller" to itself.
+VALID <repo>/tests/parity/corpus/w1-nonblocking.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-sampling.diagram.json: 4 nodes, 3 edges, 2 simulations

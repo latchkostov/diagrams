@@ -1,4 +1,6 @@
 import { revisionAtLeast } from "../model/revisions";
+import { holdsCallerThread } from "../stencils/freeCallerProfiles";
+import type { EdgeSimProps } from "../sim/types";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
 import { withRouteTable } from "../model/routingEdits";
 import { routingIntent } from "./routingIntent";
@@ -846,6 +848,31 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }),
     },
     relationshipAction,
+    {
+      id: "edge.simulation",
+      section: "edge",
+      targets: ["edge"],
+      modes: ["edit", "live"],
+      label: () => t("threads.simulation"),
+      when: (ctx) =>
+        isFlowEdgeTarget(ctx) &&
+        ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" &&
+        revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w1"),
+      children: (ctx) => {
+        const edge = ctx.editor.getEdge(ctx.edgeId!)!;
+        const caller = edge.props?.caller as EdgeSimProps["caller"];
+        const blocking = holdsCallerThread(ctx.editor.getNode(edge.from)?.stencil ?? "", caller?.wait);
+        return [
+          {
+            type: "item",
+            id: "edge.wait",
+            label: blocking ? t("threads.freeAction") : t("threads.holdAction"),
+            run: () =>
+              ctx.editor.setEdgeProps(edge.id, { caller: { ...caller, wait: blocking ? "non-blocking" : "blocking" } }),
+          },
+        ];
+      },
+    },
     {
       // Rewire one end from the keyboard (dragging a selected edge's end is the pointer's way): From ▸ and To ▸,
       // each a searchable list of the nodes that end could move to. Keeps the label, relationship and settings.

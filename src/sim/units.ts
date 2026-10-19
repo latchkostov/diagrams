@@ -25,6 +25,7 @@ export function realNodeMetrics(node: NodeSimState, scale = 1): RealNodeMetrics 
             working: real(node.threads.working),
             waiting: real(node.threads.waiting),
             queued: real(node.threads.queued),
+            ...(node.threads.inFlight === undefined ? {} : { inFlight: real(node.threads.inFlight) }),
             waitingOn: node.threads.waitingOn.map(([id, count]): [string, number] => [id, real(count)]),
           },
         }

@@ -68,7 +68,13 @@ const retry: JsonSchema = {
 export const callerSchema: JsonSchema = {
   type: "object",
   additionalProperties: false,
-  properties: { deadlineMs: time, retry, poolConnections: { type: "integer", minimum: 1, maximum: 10000 } },
+  properties: {
+    wait: { enum: ["blocking", "non-blocking"] },
+    replyMs: time,
+    deadlineMs: time,
+    retry,
+    poolConnections: { type: "integer", minimum: 1, maximum: 10000 },
+  },
 };
 export const planningSchema: JsonSchema = {
   type: "object",

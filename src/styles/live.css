@@ -2652,3 +2652,15 @@ details[open] > summary .lv-disclosure-chevron {
   width: 1px;
   background: var(--surface);
 }
+.lv-call-pill {
+  position: absolute;
+  transform: translate(-50%, 6px);
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
