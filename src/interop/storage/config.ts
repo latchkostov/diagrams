@@ -23,14 +23,24 @@ export interface DropboxConfig {
 /** Entra client ids are GUIDs; anything else is a typo we'd rather hide than fail on at sign-in. */
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function readOneDriveConfig(env: Env = import.meta.env): OneDriveConfig | undefined {
+/**
+ * The build's values, each named: never import.meta.env whole, which would carry every VITE_* variable this module
+ * doesn't need into the startup code.
+ */
+const BUILD_ENV: Env = {
+  VITE_ONEDRIVE_CLIENT_ID: import.meta.env.VITE_ONEDRIVE_CLIENT_ID,
+  VITE_ONEDRIVE_TENANT: import.meta.env.VITE_ONEDRIVE_TENANT,
+  VITE_DROPBOX_APP_KEY: import.meta.env.VITE_DROPBOX_APP_KEY,
+};
+
+export function readOneDriveConfig(env: Env = BUILD_ENV): OneDriveConfig | undefined {
   const clientId = value(env, "VITE_ONEDRIVE_CLIENT_ID");
   if (!GUID.test(clientId)) return undefined;
   const tenant = value(env, "VITE_ONEDRIVE_TENANT") || "common";
   return { clientId, tenant: /^[a-z0-9.-]+$/i.test(tenant) ? tenant : "common" };
 }
 
-export function readDropboxConfig(env: Env = import.meta.env): DropboxConfig | undefined {
+export function readDropboxConfig(env: Env = BUILD_ENV): DropboxConfig | undefined {
   const appKey = value(env, "VITE_DROPBOX_APP_KEY");
   return /^[a-z0-9]{5,40}$/i.test(appKey) ? { appKey } : undefined;
 }

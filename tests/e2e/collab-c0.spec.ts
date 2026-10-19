@@ -1,5 +1,14 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoCanvas, gotoLab, waitForStableViewport, pauseClock } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  gotoCanvas,
+  gotoLab,
+  pageLoadTimeout,
+  waitForStableViewport,
+  pauseClock,
+} from "./fixtures";
 import { COLLAB_LIMITS } from "../../src/collab/limits";
 
 // Collaboration C0 (docs/research/collaboration.md; src/collab). Two promises, in the browser:
@@ -25,7 +34,14 @@ async function watchNetwork(page: Page) {
   });
   const requests: { method: string; url: string }[] = [];
   const sockets: string[] = [];
+  /** Scripts whose code holds the room key schedule's salt: collaboration code, whatever its chunk is called. */
+  const collabScripts: string[] = [];
   page.on("request", (r) => requests.push({ method: r.method(), url: r.url() }));
+  page.on("response", async (r) => {
+    if (r.request().resourceType() !== "script") return;
+    const body = await r.text().catch(() => "");
+    if (body.includes(COLLAB_SALT)) collabScripts.push(r.url());
+  });
   page.on("websocket", (ws) => sockets.push(ws.url()));
   /** The Vite dev server's own hot-reload socket (`ws://<app host>/?token=…`): the one socket allowed, in dev only. */
   const hmr = (u: string, host: string) => {
@@ -51,11 +67,24 @@ async function watchNetwork(page: Page) {
     async expectNothingLeft() {
       expect(await violations()).toEqual([]);
     },
-    loadedCollab: () => requests.some(({ url: u }) => /[/\\]collab[/\\]|CollabDemo|yjs/i.test(u)),
+    /**
+     * Whether any collaboration code arrived: a script holding the key schedule's salt (src/collab/keys.ts), a dev
+     * server path under src/collab/, or a chunk named for it. A chunk's name is read without its content hash, which
+     * can spell anything ("ui-ClYjsHrZ.js" is the UI chunk, not Yjs).
+     */
+    loadedCollab: () =>
+      collabScripts.length > 0 ||
+      requests.some(({ url: u }) => {
+        const path = new URL(u).pathname;
+        const name = path.slice(path.lastIndexOf("/") + 1).replace(/-[\w-]{8}(\.[a-z]+)$/, "$1");
+        return /\/collab\//.test(path) || /CollabDemo|yjs/i.test(name);
+      }),
   };
 }
 
 const yjsLoaded = (page: Page) => page.evaluate(() => "__ $YJS$ __" in window);
+/** The room key schedule's HKDF salt (src/collab/keys.ts): in every script that can open a room. */
+const COLLAB_SALT = "livediagrams/collab/v1";
 
 type SpikeSocket = { readyState: number; onopen: (() => void) | null };
 type SpikeWindow = { __spikeSocketAttempts: number; __spikeSockets: SpikeSocket[] };
@@ -211,6 +240,17 @@ test("the network watcher itself catches a same-origin upload, a room socket and
   expect(found).toContain("upload: POST");
   expect(found).toContain("socket: ");
   expect(found).toContain("a peer connection");
+});
+
+test("the network watcher sees collaboration code arrive, whatever its chunk is called", async ({ page }) => {
+  const net = await watchNetwork(page);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  expect(net.loadedCollab()).toBe(false);
+  // Asking for a room loads the room's code (its consent dialog comes first: nothing connects).
+  await page.evaluate(() => window.dispatchEvent(new Event("diagrams:edit-together")));
+  await expect(page.getByTestId("room-start-dialog")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect.poll(() => net.loadedCollab()).toBe(true);
+  await net.expectNothingLeft();
 });
 
 test.describe("collaboration Lab (in-memory network)", () => {

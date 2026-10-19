@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readDriveConfig } from "../gdrive/config";
 import { readDropboxConfig, readOneDriveConfig } from "./config";
 import { CLOUD_PROVIDERS, cloudProviders, DEVICE, PROVIDERS, providerInfo } from "./registry";
@@ -65,5 +65,38 @@ describe("the registry", () => {
     // This build has no VITE_ONEDRIVE_CLIENT_ID, so even the loaded provider says it isn't configured.
     expect(provider.isConfigured()).toBe(false);
     expect(await onedrive.load()).toBe(provider);
+  });
+});
+
+describe("the build's own values (each config reads its keys by name, not import.meta.env whole)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("configured build env enables all cloud providers", async () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "123456789012-abc.apps.googleusercontent.com");
+    vi.stubEnv("VITE_GOOGLE_API_KEY", "AIza-test-key");
+    vi.stubEnv("VITE_GOOGLE_APP_ID", "987654321");
+    vi.stubEnv("VITE_ONEDRIVE_CLIENT_ID", "11111111-2222-3333-4444-555555555555");
+    vi.stubEnv("VITE_ONEDRIVE_TENANT", "organizations");
+    vi.stubEnv("VITE_DROPBOX_APP_KEY", "abc123xyz");
+    vi.resetModules();
+    const drive = await import("../gdrive/config");
+    const storage = await import("./config");
+    const registry = await import("./registry");
+    // No arguments: the default is the build's values, as the app reads them at startup.
+    expect(drive.readDriveConfig()).toEqual({
+      clientId: "123456789012-abc.apps.googleusercontent.com",
+      apiKey: "AIza-test-key",
+      appId: "987654321",
+    });
+    expect(storage.readOneDriveConfig()).toEqual({
+      clientId: "11111111-2222-3333-4444-555555555555",
+      tenant: "organizations",
+    });
+    expect(storage.readDropboxConfig()).toEqual({ appKey: "abc123xyz" });
+    expect(drive.driveEnabled).toBe(true);
+    expect(registry.CLOUD_PROVIDERS.map((p) => p.id)).toEqual(["gdrive", "onedrive", "dropbox"]);
   });
 });

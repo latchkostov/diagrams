@@ -1,8 +1,8 @@
-import { resolve } from "node:path";
-import { build, type Rollup } from "vite";
+import type { Rollup } from "vite";
 import { beforeAll, describe, expect, it } from "vitest";
 import { APPROVED_STUN, APPROVED_TRACKERS } from "../../scripts/deployment-env";
 import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
+import { productionBuild } from "../test/productionBuild";
 
 // What the production build loads up front, checked on the real build: the code that only some sessions
 // use stays out of the startup JavaScript (the entry and the chunks it preloads), and out of the canvas's
@@ -129,32 +129,26 @@ let html: string;
 /** The build with Edit together on (VITE_ENABLE_COLLAB=1), as livediagrams.dev builds. */
 let rooms: Build;
 
-/** A production build, as `pnpm build` makes it, with Edit together on or off whatever the shell or .env says. */
-async function buildApp(collab: boolean): Promise<Build> {
-  // Vitest runs with NODE_ENV=test, which Vite reads as development. A VITE_* variable already in the environment
-  // wins over the .env files.
-  const saved = { NODE_ENV: process.env.NODE_ENV, VITE_ENABLE_COLLAB: process.env.VITE_ENABLE_COLLAB };
-  Object.assign(process.env, { NODE_ENV: "production", VITE_ENABLE_COLLAB: collab ? "1" : "0" });
-  let result: Awaited<ReturnType<typeof build>>;
-  try {
-    result = await build({ configFile: resolve("vite.config.ts"), logLevel: "silent", build: { write: false } });
-  } finally {
-    for (const [key, value] of Object.entries(saved))
-      if (value === undefined) Reflect.deleteProperty(process.env, key);
-      else process.env[key] = value;
-  }
-  const output = (Array.isArray(result) ? result : [result]).flatMap((r) => (r as Rollup.RolldownOutput).output);
-  const page = output.find((out): out is Rollup.OutputAsset => out.type === "asset" && out.fileName === "index.html");
-  return {
-    chunks: output.filter((out): out is Rollup.OutputChunk => out.type === "chunk"),
-    assets: output.filter((out): out is Rollup.OutputAsset => out.type === "asset"),
-    html: String(page?.source ?? ""),
-  };
-}
+/**
+ * What a self-hoster's shell or .env might set: the fixtures must not see it (productionBuild clears every
+ * deployment variable and reads no .env file), so both still build the defaults, the approved endpoints included.
+ */
+const AMBIENT = {
+  VITE_ENABLE_COLLAB: "1",
+  VITE_COLLAB_TRACKERS: "wss://tracker.intranet.example",
+  VITE_COLLAB_STUN: "none",
+};
 
 beforeAll(async () => {
-  ({ chunks, assets, html } = await buildApp(false));
-  rooms = await buildApp(true);
+  const saved = { ...process.env };
+  Object.assign(process.env, AMBIENT);
+  try {
+    ({ chunks, assets, html } = await productionBuild({}));
+    rooms = await productionBuild({ VITE_ENABLE_COLLAB: "1" });
+  } finally {
+    for (const key of Object.keys(AMBIENT)) if (!(key in saved)) Reflect.deleteProperty(process.env, key);
+    Object.assign(process.env, saved);
+  }
 }, 240_000);
 
 /** The build without Edit together: every copy's default. */
@@ -335,6 +329,13 @@ describe("production bundle split", () => {
 describe("production bundle split with Edit together on (VITE_ENABLE_COLLAB=1)", () => {
   const collab = NOT_AT_STARTUP.filter(([what]) => ["collaboration", "Yjs"].includes(what));
   const TRACKER_HOSTS = /\btracker\.(?:webtorrent\.dev|openwebtorrent\.com|btorrent\.xyz)\b/;
+
+  it("bundle fixtures ignore ambient collaboration settings", () => {
+    // Built while AMBIENT asked for rooms and named other endpoints: the default build has none, the rooms build
+    // the approved ones (the endpoint test below).
+    expect(found(bundled(chunks), collab)).toEqual([]);
+    for (const c of [...chunks, ...rooms.chunks]) expect(c.code).not.toContain("tracker.intranet.example");
+  });
 
   it("carries rooms and Yjs (so the checks below can fail)", () => {
     expect(found(bundled(rooms.chunks), collab)).toEqual(["collaboration", "Yjs"]);

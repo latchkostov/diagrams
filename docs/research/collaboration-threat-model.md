@@ -2,10 +2,11 @@
 
 Written **16 October 2026** for collaboration phase C0, the browser proof that
 [collaboration.md](collaboration.md) proposes. It describes what the code in `src/collab/` does and what it does not
-do. C0 is **Lab-only**: the dev server and the e2e build have it behind the Lab's `collab-c0` preset, and a
-production build contains none of it (`canCollaborate()` in `src/lib/localOnly.ts` is false there, and
-`src/lib/bundleSplit.build.test.ts` keeps `src/collab/`, Yjs and tracker endpoints out of every app chunk). Nothing here is a
-user-facing promise yet. An independent cryptographic review is still needed before any Private-diagram guarantee.
+do. C0 was **Lab-only**. Since the production slices (E1–E8, October 2026), rooms are a production feature behind the
+build switch `VITE_ENABLE_COLLAB` (off unless set). A build without it contains none of the code
+(`src/lib/bundleSplit.build.test.ts`, `src/lib/deployment.build.test.ts`). See
+[Production rooms](#production-rooms-e1e8-2026-10-18) for what changed. An independent cryptographic review is still
+needed before any Private-diagram guarantee, and Private diagrams stay out of rooms until then.
 
 ## Scope and trust boundary
 
@@ -242,6 +243,56 @@ closes and by Clear everything; it is never written to localStorage, IndexedDB o
 Evidence: `editorRoom.test.ts`, `recovery.test.ts`, `lab/bridge.test.ts`, `collab-c1a.spec.ts`; existing
 production bundle/CSP guards remain required. This slice remains Lab-only and adds no Private-diagram permission.
 
+## Production rooms (E1–E8, 2026-10-18)
+
+What the production feature adds to the model above.
+
+- **Switch.** `VITE_ENABLE_COLLAB=1` builds rooms in (`COLLAB`, `src/lib/deployment.ts`), and never without share
+  links. `canCollaborate = (COLLABORATION_LAB || COLLAB) && SHARE_LINKS && !isLocalOnly`. Off for self-hosted copies
+  unless set. livediagrams.dev turns it on with a Vercel build variable
+  ([runbook](../COLLABORATION-RUNBOOK.md)).
+- **Endpoints, fixed at build time.**
+  - **Defaults.** Unset, a room uses the two approved public trackers (`wss://tracker.openwebtorrent.com`,
+    `wss://tracker.webtorrent.dev`) and Cloudflare STUN, with no TURN. Changing that set needs the owner's approval.
+  - **Self-hosted copies** may name their own trackers, STUN and TURN (`VITE_COLLAB_*`, Q9). The values are
+    validated and normalised.
+  - **Where they ship.** They are defined only in the room's own lazy chunk, and kept out of `import.meta.env`, so
+    they never ship at startup or in a build without rooms.
+  - **Nothing in the app edits them.** That matters because CSP can't govern STUN or TURN.
+  - **They don't confine peer traffic.** The transport sets only `iceServers`. A browser still runs connectivity
+    checks to every candidate a peer advertises, and may connect to it directly. So a member with an outside
+    address, or one who advertises one deliberately, can draw traffic out of a network. Naming TURN adds a relay but
+    doesn't force relay-only (`iceTransportPolicy` stays `all`). Confining peers needs network egress controls; the
+    self-hosting guide says so.
+- **CSP.** In a rooms build, `connect-src` adds exactly the trackers' origins for the app, never for embeds
+  (`scripts/security-headers.ts`, `src/collab/policy.test.ts`). `tests/e2e/csp.spec.ts` checks three things:
+  - two browsers meet under the real headers;
+  - native sockets obey that source;
+  - any other tracker is refused.
+- **IP disclosure.** Peers see each other's IP addresses on direct paths, and the trackers and STUN see everyone's.
+  The start and join dialogs say so before anything connects, and list the hosts this build contacts. No peer
+  connection exists before consent (`collab-room.spec.ts` counts them).
+- **TURN credentials.** A self-hosted copy's `VITE_COLLAB_TURN_CREDENTIAL` is in the page for anyone who can open
+  it, like every build value. It should be a relay-only account, and rotated by rebuilding. The Helm chart keeps it
+  out of its pod annotation. A TURN server sees both endpoints' addresses, timing and byte counts, never content
+  (DTLS plus our envelopes).
+- **Private diagrams stay blocked.**
+  - `canCollaborate` refuses a Private or local-only diagram.
+  - The session refuses one too, and so does the binding for every edit.
+  - A diagram that turns private leaves the room, and its draft stays on the device.
+  - Share's row and Ctrl+K explain why.
+- **Presence** (E5) carries selections (at most 32 ids) and a cursor in flow coordinates, sealed like document
+  frames. Presence has its own rate bound, and its goodbye is sealed ahead of time. Presence never moves the view or
+  the keyboard, and never appears in recordings, presentations, prints or image exports.
+- **Storage.**
+  - The encrypted recovery copy (IndexedDB, above) holds checkpoints only, never a key or a link.
+  - The link value sits in this tab's `sessionStorage` (Q4).
+  - Clear everything on this device stops an open room, then empties both.
+- **No crypto review yet.** The key schedule, envelope and link format have had internal tests and reviews only. That
+  is disclosed in the user docs ([EDIT-TOGETHER.md](../EDIT-TOGETHER.md)), and is one reason Private stays blocked.
+- **Monitoring.** A report-only Nightly smoke runs over the real network. It classifies failures as trackers
+  unreachable, ICE/NAT or app error, and alerts after three failed nights. It never runs in PR CI.
+
 ## Residual risks and open items for C1
 
 1. **Independent review** of the key schedule, envelope and link format before any Private-diagram promise.
@@ -249,10 +300,12 @@ production bundle/CSP guards remain required. This slice remains Lab-only and ad
    signed grants and per-session signing keys address it.
 3. **Removal and rotation:** the epoch field and per-epoch keys are in place; the transition (new generation from
    the visible state, fresh links, refusing old-epoch writes) is not built. End session is not built.
-4. **IP exposure:** peers see each other's IPs on direct paths, trackers see everyone's. C1 must disclose it before
-   joining; a TURN-only mode needs a TURN service with safe credentials (an owner decision).
+4. **IP exposure:** peers see each other's IPs on direct paths, trackers see everyone's. Disclosed before joining
+   and starting (E4). A TURN-only mode needs a TURN service with safe credentials (an owner decision). Self-hosted
+   copies can configure TURN at build time (E7), and its credential is public to their users.
 5. **Public infrastructure terms and availability:** check each tracker's terms, contact operators, credit them,
-   respect announce intervals, and add their hosts to `connect-src` only for builds that enable collaboration.
+   and respect announce intervals. Their hosts are in `connect-src` only for builds with rooms (E7), and the Nightly
+   smoke watches their availability (E6).
 6. **Local recovery:** C1a implements encrypted per-generation IndexedDB and distinct local-save/sync states
    as described above. Production share/join recovery and consent remain C1b; no remote durable storage exists.
 7. **Editor binding:** C1a wires the real history commit, scoped Undo and session-unique create/paste ids.

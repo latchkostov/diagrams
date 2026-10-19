@@ -43,15 +43,16 @@ resolve to your directory. It does not edit application source; Docker and offli
 These switches retain their existing behaviour. They are compiled into JavaScript; changing a container's
 runtime environment or a Helm value cannot change them. Rebuild the site/image after changing a switch.
 
-| Build variable             | Normal build  | Internal build | Effect when set to `1`                                                                                            |
-| -------------------------- | ------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `VITE_DISABLE_SHARE_LINKS` | off           | **1**          | Removes share links, password links and URL embeds. File exports and host-supplied private embeds stay available. |
-| `VITE_DISABLE_LINK_OPEN`   | off           | off            | Stops opening `#d=` / `#e=` links, including in embeds. Host-supplied embeds still work.                          |
-| `VITE_DISABLE_AI_TOOLS`    | off           | **1**          | Removes browser-agent tools, Copy for AI, copied prompts and Build with AI.                                       |
-| `VITE_DISABLE_ONDEVICE`    | off           | off            | Removes Chrome's on-device model and its microphone; with AI tools off, removes the AI panel.                     |
-| `VITE_PRIVATE_BY_DEFAULT`  | off           | **1**          | Starts new diagrams Private; people can still change that setting.                                                |
-| `VITE_BRAND_NAME`          | Live Diagrams | Live Diagrams  | Your name in the top bar and page title (up to 60 characters).                                                    |
-| `VITE_LOCALES`             | all           | all            | Comma-separated languages, default first, e.g. `de,en`. One language removes the language choice.                 |
+| Build variable             | Normal build  | Internal build | Effect when set to `1`                                                                                                                           |
+| -------------------------- | ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `VITE_DISABLE_SHARE_LINKS` | off           | **1**          | Removes share links, password links and URL embeds. File exports and host-supplied private embeds stay available.                                |
+| `VITE_DISABLE_LINK_OPEN`   | off           | off            | Stops opening `#d=` / `#e=` links, including in embeds. Host-supplied embeds still work.                                                         |
+| `VITE_DISABLE_AI_TOOLS`    | off           | **1**          | Removes browser-agent tools, Copy for AI, copied prompts and Build with AI.                                                                      |
+| `VITE_DISABLE_ONDEVICE`    | off           | off            | Removes Chrome's on-device model and its microphone; with AI tools off, removes the AI panel.                                                    |
+| `VITE_PRIVATE_BY_DEFAULT`  | off           | **1**          | Starts new diagrams Private; people can still change that setting.                                                                               |
+| `VITE_BRAND_NAME`          | Live Diagrams | Live Diagrams  | Your name in the top bar and page title (up to 60 characters).                                                                                   |
+| `VITE_LOCALES`             | all           | all            | Comma-separated languages, default first, e.g. `de,en`. One language removes the language choice.                                                |
+| `VITE_ENABLE_COLLAB`       | off           | off            | Adds Edit together (rooms). Needs share links, so an internal build needs `VITE_DISABLE_SHARE_LINKS=0` too. See [Edit together](#edit-together). |
 
 A boolean is on with `1`, `true`, `yes` or `on`. Shell variables override Vite's `.env` files; internal defaults
 apply only to unset variables. Set `0` explicitly to override an internal default. The container treats empty
@@ -73,6 +74,72 @@ The default internal build still offers Chrome's on-device model. Chrome downloa
 may use its online speech service. CSP limits page requests, not browser services or extensions. Disable
 on-device features and manage browser policy where zero external traffic is required.
 
+## Edit together
+
+Edit together lets people edit one diagram at the same time, each in their own browser
+([EDIT-TOGETHER.md](EDIT-TOGETHER.md)). It is **off** in every self-hosted build unless you set
+`VITE_ENABLE_COLLAB=1`. It needs share links: a room is a kind of link, so `VITE_DISABLE_SHARE_LINKS=1` (the internal
+default) keeps rooms out even with the switch on. Without the switch, the build carries no room code at all.
+
+```sh
+VITE_ENABLE_COLLAB=1 VITE_DISABLE_SHARE_LINKS=0 pnpm build:internal
+```
+
+**What a room contacts.** Browsers in a room connect to each other directly (WebRTC), with the diagram end-to-end
+encrypted. To find each other they use matchmaking trackers and a STUN server. Unless you name your own, those are:
+
+- the public WebTorrent trackers `wss://tracker.openwebtorrent.com` and `wss://tracker.webtorrent.dev`, run by
+  volunteers;
+- Cloudflare's STUN server `stun:stun.cloudflare.com:3478`.
+
+There is no TURN server by default. Each of these services sees the IP addresses of the people in a room, and the
+people in a room see each other's. The join and start dialogs say so, and name the services this build uses. Nothing
+is sent to livediagrams.dev. Private diagrams can't be in a room.
+
+**Your own endpoints**, set at build time. They are compiled into the site, like every switch:
+
+| Build variable                | Default                         | Value                                                                                   |
+| ----------------------------- | ------------------------------- | --------------------------------------------------------------------------------------- |
+| `VITE_COLLAB_TRACKERS`        | the two public trackers         | WebTorrent tracker URLs: `wss://` (plain `ws://` only for `localhost`), comma-separated |
+| `VITE_COLLAB_STUN`            | `stun:stun.cloudflare.com:3478` | `stun:` or `stuns:` URLs, comma-separated, or `none` for no STUN server                 |
+| `VITE_COLLAB_TURN`            | none                            | `turn:` or `turns:` URLs (`?transport=udp` or `tcp` allowed), comma-separated           |
+| `VITE_COLLAB_TURN_USERNAME`   | none                            | The TURN username. Required with `VITE_COLLAB_TURN`                                     |
+| `VITE_COLLAB_TURN_CREDENTIAL` | none                            | The TURN credential. Required with `VITE_COLLAB_TURN`                                   |
+
+A malformed value stops the build rather than shipping a copy that can't connect. Tracker URLs are normalised
+(`WSS://T.example.com` becomes `wss://t.example.com/`).
+
+> **TURN credentials are visible to anyone who can open the page.** Like every `VITE_*` value, they are compiled
+> into the JavaScript the browser downloads. Use a TURN account that can only relay (no admin rights), limit it to
+> your users' networks if your TURN server allows, rotate it by rebuilding, and keep the site behind your sign-in.
+> The values are compiled into the room's own code only, which the app loads when someone starts or joins a room.
+
+**On locked-down or corporate networks** (full-tunnel VPNs, strict firewalls, some mobile hotspots), browsers may
+not be able to connect directly. Peers then need a TURN server to relay their encrypted traffic. You can run your own,
+coturn for example, and name it with `VITE_COLLAB_TURN`. Set `VITE_COLLAB_STUN=none` (or name your own STUN server)
+so the browser doesn't ask a public one for its address.
+
+**Your own tracker.** Any WebTorrent-compatible WebSocket tracker works, for example
+[bittorrent-tracker](https://github.com/webtorrent/bittorrent-tracker) with WebSocket support. Serve it over `wss://`
+on a host your users' browsers can reach, and set `VITE_COLLAB_TRACKERS=wss://tracker.example.com`. With your own
+trackers, STUN set to `none` (or your own) and your own TURN server if needed, rooms no longer depend on public
+matchmaking or public ICE services.
+
+> **These settings don't confine where peers connect.** The browsers in a room still try every address the others
+> advertise. A member whose browser advertises an outside address (at home, on a VPN, or on purpose) can make the
+> others run connectivity checks to it, and possibly connect directly, outside your network. Setting TURN doesn't
+> force relay-only connections either: it adds a relay, and direct paths are still tried. To keep peer traffic
+> inside your network, use network egress controls (firewall rules for the browsers' UDP and TCP traffic), and keep
+> the site behind your sign-in so only your people can open a room link.
+
+**Headers.** `pnpm headers:self-host`, the build's `headers.json` and the Docker image follow the same variables. With
+the switch on, the app's `connect-src` allows the trackers' origins (never an embed's, on hosts that can tell them
+apart). STUN and TURN aren't page requests, so CSP can't govern them. The compiled list names the only STUN and TURN
+servers the app uses, but it doesn't limit which peer addresses a browser tries (see above).
+
+**Coming:** a relay server you host (`services/server`) will be able to carry rooms without public trackers. Its
+setup will be documented here when it ships.
+
 ## Generate your headers
 
 Without cloud storage, generated policies permit no external script, frame or connection origins. The editor
@@ -83,6 +150,9 @@ pnpm headers:self-host --frame-ancestors "https://wiki.example.com https://*.exa
 pnpm headers:self-host --base /tools/diagrams/ --frame-ancestors "https://wiki.example.com"
 pnpm headers:self-host --providers   # only for intentionally configured cloud storage
 ```
+
+With `VITE_ENABLE_COLLAB=1` in the shell or `.env`, the same command adds the build's trackers to `connect-src`
+([Edit together](#edit-together)). Run it with the variables you build with.
 
 Output goes to ignored `self-host-headers/`; `--out <directory>` changes it. It includes nginx, Caddy, Netlify,
 Vercel, Pages, Azure, AWS and GitHub Pages policies. HTTPS origins only (localhost HTTP is allowed for testing).
@@ -149,7 +219,8 @@ Open `http://localhost:8080/`. The multi-stage image builds with pnpm and serves
 gzip, immutable hashed assets, revalidated HTML and an SPA fallback; missing assets/modules return 404.
 Terminate HTTPS at your reverse proxy. gzip works without installing an optional Brotli nginx module.
 
-All switches, brand and locales above are Docker build arguments. `BUILD_PROFILE=internal` is the default;
+All switches, brand and locales above are Docker build arguments, and so are Edit together's
+(`VITE_ENABLE_COLLAB`, `VITE_COLLAB_*`). `BUILD_PROFILE=internal` is the default;
 `BUILD_PROFILE=public` uses `pnpm build` defaults, while retaining the self-host policy. Build with
 `BASE_PATH=/tools/diagrams/` to serve only that directory (and `/healthz`). The image redirects the slashless
 directory URL. Keep the ingress/proxy path intact; do not strip it for a sub-path image.
@@ -191,7 +262,8 @@ helm upgrade --install diagrams deploy/self-host/helm \
 
 Use a values file for replicas, resources, ingress annotations and build metadata. `build.switches`,
 `build.profile`, `build.basePath` and `build.frameAncestors` describe the image you built; they are recorded as a
-pod annotation, **not** injected as ineffective runtime `VITE_*` variables. Build a matching image first.
+pod annotation, **not** injected as ineffective runtime `VITE_*` variables (the annotation leaves out
+`VITE_COLLAB_TURN_CREDENTIAL`). Build a matching image first.
 The ingress path follows `build.basePath`; set it to the image's `BASE_PATH`. Do not enable path rewriting.
 
 To build directly from that values file, set its image repository/tag and run:
@@ -429,6 +501,8 @@ not move with the site. A directory prefix does not isolate localStorage: copies
 | Empty Your diagrams after moving         | Export from the old origin, then import at the new one.                                           |
 | Docker fails to start                    | Check Linux daemon, port conflicts, logs, `nginx -t` and writable `/tmp` in read-only mode.       |
 | Encrypted export / recording unavailable | Use HTTPS; WebCrypto and capture APIs are restricted on plain HTTP intranets.                     |
+| No Edit together in Share…               | Build with `VITE_ENABLE_COLLAB=1` and share links on; the diagram must not be Private.            |
+| Room says it can't connect               | Check the trackers are reachable over `wss://` and allowed in `connect-src`; consider TURN.       |
 
 ## Data and privacy
 
@@ -438,6 +512,9 @@ are generated in the browser and downloaded. Interactive HTML is self-contained 
 private embeds keep diagrams in memory only.
 
 There are no requests to livediagrams.dev, analytics or CDN fonts/icons in a self-hosted, provider-free build.
+With Edit together on, a room contacts its trackers and STUN/TURN servers (the public ones unless you name your
+own), and the people in it connect to each other directly. While someone is in a room, an encrypted copy of it is
+kept in that browser's IndexedDB so a reload loses nothing. **Clear everything on this device** removes it.
 Configured cloud storage sends data to a provider only when used. AI/clipboard exports and browser services
 remain subject to enabled features and organisational policies. Static hosts and SSO proxies may log web
 requests but receive no diagram content from browser-local editing. Review browser extensions separately.

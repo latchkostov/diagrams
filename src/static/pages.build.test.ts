@@ -57,7 +57,7 @@ describe("standalone page builds", () => {
   it.each([
     ["auth.html", "4c02b08ab1b0d5fdcdb969224f486b2a00b04c73059c217cd2c25f637bc35df7"],
     ["skill/index.html", "59bcb008ec6ff8f0b5db9acc7cacdc37c9f19ddeee3bf9e30552a04a5ddec13b"],
-    ["privacy.html", "ecdea3a51ce02a2a00599088e5ce255899bfa88bf12b33c145a1f6bbc54317eb"],
+    ["privacy.html", "f4ea5ed15fc3f7dd9a22b4deadd12c8468ea8e6cbe6a4b976586ecf171a74d12"],
     ["terms.html", "cb89aa1a41a51dff21c05569e5304008c00178b285d956c16e699a3c37842a3b"],
   ])("preserves baseline markup apart from stable binding attributes: %s", (file, hash) => {
     const html = readFileSync(resolve("public", file), "utf8")

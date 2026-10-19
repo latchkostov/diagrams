@@ -32,6 +32,9 @@ in the browser. There is no account and no server.
   supplies, a link with a password, and, one deliberate step further, a public share link or embed. Export to PNG,
   SVG, draw.io and Mermaid, import draw.io and Mermaid, and Record saves a simulation as a video. Google Drive works
   once it's configured (see `docs/INTEROP.md`).
+- **Edit together.** Where a copy turns it on, **File ▸ Share… ▸ Edit together…** opens a room: everyone with its
+  link edits the diagram at the same time, browser to browser, end-to-end encrypted, with no account and no server
+  of ours. You see the others' selections and pointers. Private diagrams stay out (see `docs/EDIT-TOGETHER.md`).
 
 ## Use with your AI agent
 
@@ -91,18 +94,20 @@ audits, simulation scenarios and capacity states. Use it to preview changes quic
 
 ## Docs
 
-| Doc                     | What's in it                                                                     |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `docs/PLAN.md`          | Goals, phases, and layout conventions                                            |
-| `docs/UX-PRINCIPLES.md` | The design bar and vocabulary; every feature batch passes a UX review against it |
-| `docs/SIMULATION.md`    | Engine semantics: roles, consumer groups, retries, DLQ, capacity, units          |
-| `docs/SIMULATIONS.md`   | The saved-simulation format: traffic, timeline, expectations                     |
-| `docs/INTEROP.md`       | Formats, share links, embed, and Google Drive setup                              |
-| `docs/SELF-HOSTING.md`  | Running your own copy: the switches, hosting behind SSO, headers and updates     |
-| `docs/ICONS.md`         | Icon sources and licences                                                        |
-| `docs/QUALITY.md`       | The quality loop: checks, Codex reviews, and UX gates                            |
-| `docs/design-review/`   | UX review fragments (history linked from `docs/DESIGN-REVIEW.md`)                |
-| `docs/BACKLOG.md`       | Known follow-ups                                                                 |
+| Doc                             | What's in it                                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| `docs/PLAN.md`                  | Goals, phases, and layout conventions                                            |
+| `docs/UX-PRINCIPLES.md`         | The design bar and vocabulary; every feature batch passes a UX review against it |
+| `docs/SIMULATION.md`            | Engine semantics: roles, consumer groups, retries, DLQ, capacity, units          |
+| `docs/SIMULATIONS.md`           | The saved-simulation format: traffic, timeline, expectations                     |
+| `docs/INTEROP.md`               | Formats, share links, embed, and Google Drive setup                              |
+| `docs/SELF-HOSTING.md`          | Running your own copy: the switches, hosting behind SSO, headers and updates     |
+| `docs/EDIT-TOGETHER.md`         | Editing together in a room: starting, joining, leaving, privacy                  |
+| `docs/COLLABORATION-RUNBOOK.md` | Switching Edit together on for livediagrams.dev, and watching it                 |
+| `docs/ICONS.md`                 | Icon sources and licences                                                        |
+| `docs/QUALITY.md`               | The quality loop: checks, Codex reviews, and UX gates                            |
+| `docs/design-review/`           | UX review fragments (history linked from `docs/DESIGN-REVIEW.md`)                |
+| `docs/BACKLOG.md`               | Known follow-ups                                                                 |
 
 ## License
 

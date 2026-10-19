@@ -1,5 +1,6 @@
 // The services a room contacts: the matchmaking trackers and the ICE servers. Fixed at build time and never editable
-// in the app (CSP can't govern STUN or TURN, so this list is their allowlist). livediagrams.dev builds with none of
+// in the app (CSP can't govern STUN or TURN, so this list is the only place that names them). It doesn't limit which
+// peer addresses the browser tries: candidates come from the peers, and only network egress rules confine those. livediagrams.dev builds with none of
 // the variables set: the two approved trackers and Cloudflare's STUN server, no TURN (scripts/deployment-env.ts,
 // APPROVED_TRACKERS and APPROVED_STUN). A self-hosted copy may name its own (VITE_COLLAB_TRACKERS, VITE_COLLAB_STUN,
 // VITE_COLLAB_TURN).

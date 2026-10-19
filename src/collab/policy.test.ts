@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { APPROVED_STUN, APPROVED_TRACKERS, readDeployment } from "../../scripts/deployment-env";
+import { APPROVED_STUN, APPROVED_TRACKERS, readDeployment, trackerList } from "../../scripts/deployment-env";
 import { COMMON_HEADERS, cspDirectives, securityHeadersFor, type CspOptions } from "../../scripts/security-headers";
 import { formatRoomLink } from "./link";
 import { seededBytes } from "./random";
-import { COLLAB_STUN, COLLAB_TRACKERS } from "./transport/tracker";
+import { deriveRoomKeys } from "./keys";
+import { roomFor } from "./transport/conformance";
+import { fakeEnvironment } from "./transport/fakeWebrtc";
+import { COLLAB_STUN, COLLAB_TRACKERS, createTrackerTransport } from "./transport/tracker";
 
 // What keeps a room's key out of other people's logs, and a room's public services to exactly the approved set.
 
@@ -42,6 +45,39 @@ describe("a build with rooms reaches exactly the approved trackers; one without,
     expect(readDeployment({}).collabTrackers).toEqual(COLLAB_TRACKERS);
     expect(readDeployment({}).collabIceServers).toEqual(COLLAB_STUN);
     expect(readDeployment({ VITE_ENABLE_COLLAB: "1" }).collabIceServers).toEqual(COLLAB_STUN);
+  });
+
+  it("every tracker URL the build accepts, in any spelling, is one the transport opens", async () => {
+    const accepted = trackerList(
+      "WSS://Tracker.Example.com, wss://t.example.com:8443/announce ws://localhost ws://127.0.0.1:8000 wss://t.example.com:8443/announce",
+    );
+    expect(accepted).toEqual([
+      "wss://tracker.example.com/",
+      "wss://t.example.com:8443/announce",
+      "ws://localhost/",
+      "ws://127.0.0.1:8000/",
+    ]);
+    const env = fakeEnvironment();
+    const opened: string[] = [];
+    const WS = class extends (env.WebSocket as unknown as new (url: string) => WebSocket) {
+      constructor(url: string) {
+        super(url);
+        opened.push(url);
+      }
+    };
+    const keys = await deriveRoomKeys(roomFor(7));
+    env.wire.track(
+      createTrackerTransport({
+        trackers: accepted,
+        discovery: keys.discovery,
+        signal: keys.signal,
+        WebSocket: WS,
+        RTCPeerConnection: env.RTCPeerConnection,
+        clock: env.wire.clock,
+      }),
+    );
+    await env.wire.pump();
+    expect(opened).toEqual(accepted);
   });
 
   it("with rooms, connect-src adds exactly the approved trackers, and never in an embed", () => {

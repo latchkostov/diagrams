@@ -20,8 +20,15 @@ export const PICKER_MIME_TYPES = [
   "image/svg+xml",
 ].join(",");
 
+/** The build's values, each named: never import.meta.env whole (it would carry every VITE_* variable to startup). */
+const BUILD_ENV: Record<string, string | boolean | undefined> = {
+  VITE_GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+  VITE_GOOGLE_API_KEY: import.meta.env.VITE_GOOGLE_API_KEY,
+  VITE_GOOGLE_APP_ID: import.meta.env.VITE_GOOGLE_APP_ID,
+};
+
 export function readDriveConfig(
-  env: Record<string, string | boolean | undefined> = import.meta.env,
+  env: Record<string, string | boolean | undefined> = BUILD_ENV,
 ): DriveConfig | undefined {
   const clientId = typeof env.VITE_GOOGLE_CLIENT_ID === "string" ? env.VITE_GOOGLE_CLIENT_ID.trim() : "";
   const apiKey = typeof env.VITE_GOOGLE_API_KEY === "string" ? env.VITE_GOOGLE_API_KEY.trim() : "";

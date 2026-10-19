@@ -101,7 +101,7 @@
     <main>
       <h1 data-testid="privacy-title">Privacy policy</h1>
       <p class="updated" data-testid="privacy-effective">
-        Live Diagrams at livediagrams.dev · effective 12 October 2026
+        Live Diagrams at livediagrams.dev · effective 18 October 2026
       </p>
 
       <p>
@@ -169,6 +169,18 @@
           history sync) may still list the link as it was first visited.
         </li>
         <li>
+          <strong>Edit together</strong> (File → Share… → <em>Edit together…</em>, where this copy offers it) lets people
+          edit a diagram at the same time. The browsers in a room connect directly to each other, and the diagram
+          travels between them end-to-end encrypted, under a key that's only in the room's link (after the
+          <code>#</code>, so never sent to a server). Everyone in the room can see your IP address. So can the services
+          that introduce the browsers to each other: on livediagrams.dev, two public matchmaking services
+          (tracker.openwebtorrent.com and tracker.webtorrent.dev) and Cloudflare's STUN server, run by other people.
+          They never see the diagram, the link or any key. The dialog that starts or joins a room says so first. Nothing
+          of a room is sent to us. While you're in a room, an encrypted copy is kept in your browser so a reload loses
+          nothing; Clear everything on this device removes it. Anyone with a room's link can edit, so send it like a
+          password.
+        </li>
+        <li>
           <strong>AI features</strong> act only when you use them. Chrome's built-in model runs on your device. An AI
           agent in your browser, or a chatbot you paste a prompt into, sees a diagram only when you ask it to; that's
           your own tool, under its own terms. Live Diagrams never sends your diagrams to an AI service itself, and never
@@ -194,6 +206,9 @@
         <li>
           isn't saved to Google Drive, OneDrive or Dropbox, and Google's scripts aren't loaded for it: opening the File
           menu while it's open loads nothing from Google;
+        </li>
+        <li>
+          can't be edited together: it has no room, and a diagram that turns private while it's in one leaves the room;
         </li>
         <li>
           is off-limits to AI: the page offers no tools to AI agents while it's open, and Copy for AI and copied
