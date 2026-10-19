@@ -56,6 +56,8 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   - Answering the last card from the keyboard puts focus on the room chip; Admit and Deny name whom they're for.
   - A healthy join sends one sync request: none again on joining for a peer already asked, nor while a request to
     that peer is still to be answered.
+  - After a re-key the chip counts the others as soon as they've proved they're in (it waited for something else to
+    change, so it could read "waiting" with someone there).
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.

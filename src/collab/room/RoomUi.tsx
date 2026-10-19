@@ -72,8 +72,9 @@ function useRoom(room: RoomLifecycle) {
 function useSessionState(session: CollabSession) {
   return useSyncExternalStore(
     (fn) => session.onChange(fn),
+    // With knock-to-join, who's in the room (proved members) changes on its own (a re-key, a hello): counted too.
     () =>
-      `${session.transport.peers().length}:${session.peers().length}:${session.connectivity}:${session.connectionFailed}:${session.hasDocument}:${session.noAnswer}`,
+      `${session.transport.peers().length}:${session.peerCount}:${session.peers().length}:${session.connectivity}:${session.connectionFailed}:${session.hasDocument}:${session.noAnswer}`,
   );
 }
 
