@@ -314,7 +314,7 @@ for (const wait of ["blocking", "non-blocking"] as const) {
     d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 100 };
     d.nodes[1].x = d.nodes[2].x = 330;
     d.nodes[1].y = 0;
-    d.nodes[2].y = 200;
+    d.nodes[2].y = 400;
     d.edges[1].label = "Score application";
     d.edges[1].props = { ...d.edges[1].props, caller: { wait } };
     d.edges.push({ ...d.edges[1], id: "second-call" });
