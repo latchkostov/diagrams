@@ -1,6 +1,6 @@
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
-import { Suspense, lazy, useEffect, useMemo } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useCameraController } from "../canvas/camera";
 import { InteractionContext, useInteractionOrLocal } from "../canvas/interaction";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
@@ -21,7 +21,6 @@ import { TraceCard } from "./TraceCard";
 import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";
 import { liveMutationGuard } from "./liveActions";
-import { Recorder } from "./record/Recorder";
 import { useCapacityEntry, useCapacityError, useCapacityInputs } from "./session/useCapacityInputs";
 import { useFrameLoop } from "./session/useFrameLoop";
 import { useLiveCommands, useLiveRecording, useLiveRecordingState } from "./session/useLiveCommands";
@@ -33,6 +32,8 @@ import { useSlowTraceCard, useTraceActions, useTraceSlowMotion, useTraceSpotligh
 import { SlowCaption } from "./slowmo/SlowBar";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
+// Record video's code (its dialogs, capture and WebM fix-up) loads just after the session is up, not with it.
+type RecorderView = typeof import("./record/Recorder").Recorder;
 
 import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 
@@ -117,6 +118,14 @@ export function LiveSession({
   const { selectSimulation, showSimulation, runDraft, saveSimulation, deleteSimulation, showEvents } = commands;
 
   const { rec, dispatchRec, capturing } = useLiveRecordingState();
+  const [Recorder, setRecorder] = useState<RecorderView | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    void import("./record/Recorder").then((m) => mounted && setRecorder(() => m.Recorder));
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const motion = useTraceSlowMotion({ session, spotlight, store, camera, presenting, capturing });
   const { slow, slowMotionTrace } = motion;
@@ -392,17 +401,19 @@ export function LiveSession({
           />
         </Suspense>
       )}
-      <Recorder
-        rec={rec}
-        dispatch={dispatchRec}
-        controller={controller}
-        state={state}
-        target={recordTarget}
-        title={recordTitle}
-        presenting={presenting}
-        canPresent={!!editor && !alwaysOn}
-        slowmo={slow.session}
-      />
+      {Recorder && (
+        <Recorder
+          rec={rec}
+          dispatch={dispatchRec}
+          controller={controller}
+          state={state}
+          target={recordTarget}
+          title={recordTitle}
+          presenting={presenting}
+          canPresent={!!editor && !alwaysOn}
+          slowmo={slow.session}
+        />
+      )}
     </LiveContext.Provider>
   );
   return local ? <InteractionContext.Provider value={interaction}>{view}</InteractionContext.Provider> : view;
