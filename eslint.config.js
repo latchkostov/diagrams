@@ -159,6 +159,7 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
+      "dist-viewer",
       "services/*/dist/**",
       "tests/.output",
       "src/examples/private/**",

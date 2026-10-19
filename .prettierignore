@@ -23,3 +23,5 @@ deploy/self-host/helm/templates
 tests/parity/goldens
 # Written by `pnpm bench` (docs/BENCHMARKS.md § Baseline)
 tests/bench/baseline
+
+dist-viewer/
