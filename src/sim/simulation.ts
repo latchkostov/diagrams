@@ -1,5 +1,5 @@
 import { faultLabel } from "../model/faultWords";
-import { faultTimelineProblem, FaultTimelineError } from "../model/faults";
+import { faultTimelineProblem, FaultTimelineError } from "../model/faultRuntime";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { createRealCountInjector } from "./injection";

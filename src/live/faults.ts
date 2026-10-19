@@ -1,5 +1,6 @@
 import type { DiagramFile } from "../model/types";
-import { faultTopology, type DrillPreset, type Fault } from "../model/faults";
+import { type DrillPreset, type Fault } from "../model/faults";
+import { faultTopology } from "../model/faultRuntime";
 import { stencilRole } from "../stencils/roles";
 
 export { drillName } from "../model/faultWords";

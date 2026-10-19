@@ -1,4 +1,4 @@
-import { canCutLink } from "../model/faults";
+import { canCutLink } from "../model/faultRuntime";
 import type { DiagramFile, Simulation, TrafficShape, TimelineStep } from "../model/types";
 import { simulationProblem, simulationReferenceWarnings } from "../interop/native";
 import { autoScale } from "../sim/scale";

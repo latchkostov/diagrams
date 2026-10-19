@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { boundaryOutage, faultProblem, faultSchema, type Fault } from "./faults";
+import { faultProblem, faultSchema, type Fault } from "./faults";
+import { boundaryOutage } from "./faultRuntime";
 import { simulationProblem } from "../interop/native";
 import { checkJsonSchema } from "./jsonSchema";
 import { diagramV1Schema } from "./diagramSchema";

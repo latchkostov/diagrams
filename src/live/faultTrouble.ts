@@ -1,5 +1,6 @@
 import type { DiagramFile } from "../model/types";
-import { outageMembership, type Fault } from "../model/faults";
+import { type Fault } from "../model/faults";
+import { outageMembership } from "../model/faultRuntime";
 import { nodeFaultLabel } from "../model/faultWords";
 import { t } from "../i18n";
 import type { Trouble } from "./observedTrouble";

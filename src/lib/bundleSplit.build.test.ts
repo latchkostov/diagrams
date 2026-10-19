@@ -36,6 +36,9 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["collaboration", /[/\\]src[/\\]collab[/\\]/],
   ["Yjs", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?(yjs|lib0)[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
+  ["fault execution and outage indexes", /[/\\]src[/\\]model[/\\]faultRuntime\.ts$/],
+  ["fault display messages", /[/\\]src[/\\]model[/\\]faultWords\.ts$/],
+  ["run-end result messages", /[/\\]src[/\\]live[/\\]runEndResult\.ts$/],
   ["recording", /[/\\]src[/\\]live[/\\]record[/\\]Recorder\.tsx$/],
   ["slow motion", /[/\\]src[/\\]live[/\\]slowmo[/\\]/],
   ["autoscaling execution", /[/\\]src[/\\]sim[/\\]autoscaling\.ts$/],
@@ -235,6 +238,15 @@ describe("production bundle split", () => {
     expect(found(bundled(closure([live!])), editor)).toEqual([]);
     // Keep the editor available on demand, rather than deleting it to satisfy the split.
     expect(found(bundled(chunks), editor)).toEqual(editor.map(([what]) => what));
+  });
+
+  it("loads fault playback, outage lookup and run results with the Live session", () => {
+    const live = chunks.find((c) => c.name === "LiveSession");
+    expect(live).toBeDefined();
+    const playback = NOT_AT_STARTUP.filter(([what]) =>
+      ["fault execution and outage indexes", "fault display messages", "run-end result messages"].includes(what),
+    );
+    expect(found(bundled(closure([live!])), playback)).toEqual(playback.map(([what]) => what));
   });
 
   it("builds the Interactive HTML viewer apart: a file of its own, fetched only by the export", () => {

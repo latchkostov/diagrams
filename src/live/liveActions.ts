@@ -1,6 +1,7 @@
 import { boundaryRestoreHint } from "../model/faultWords";
 import { t } from "../i18n";
-import { canCutLink, type Fault } from "../model/faults";
+import { type Fault } from "../model/faults";
+import { canCutLink } from "../model/faultRuntime";
 // Context-menu entries for the live view, registered in the "simulation" section of the action
 // registry while live mode is on (and offered only in the "live" mode). They change the running engine only; "Save to diagram" is the
 // explicit way to keep a tweak.

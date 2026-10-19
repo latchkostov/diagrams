@@ -1,4 +1,4 @@
-import { faultTimelineProblem } from "../model/faults";
+import { faultTimelineProblem } from "../model/faultRuntime";
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { createSimulationRun } from "../sim/simulation";
 import { SIM_TICK_MS } from "../sim/scheduler";

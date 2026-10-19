@@ -1,6 +1,6 @@
 import { nodeFaultLabel } from "../../model/faultWords";
 import { faultTrouble } from "../faultTrouble";
-import { boundaryOutage } from "../../model/faults";
+import { boundaryOutage } from "../../model/faultRuntime";
 import { t } from "../../i18n";
 import { useStore } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";

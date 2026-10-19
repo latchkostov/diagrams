@@ -1,4 +1,5 @@
-import { canCutLink, faultTarget } from "../model/faults";
+import { faultTarget } from "../model/faults";
+import { canCutLink } from "../model/faultRuntime";
 import { t } from "../i18n";
 // Warnings for a simulation against the diagram it runs on. The runner ignores unknown node ids,
 // so a renamed node silently breaks a simulation; the authoring panel surfaces it instead.

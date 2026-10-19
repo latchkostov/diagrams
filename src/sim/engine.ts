@@ -1,4 +1,5 @@
-import { faultTopology, faultActive, faultKey, faultProblem, type Fault } from "../model/faults";
+import { faultProblem, type Fault } from "../model/faults";
+import { faultTopology, faultActive, faultKey } from "../model/faultRuntime";
 import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget } from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";

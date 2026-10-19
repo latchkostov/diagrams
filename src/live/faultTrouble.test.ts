@@ -3,7 +3,8 @@ import { faultDrillFixture } from "../lab/faultDrillFixture";
 import { faultLabel, nodeFaultLabel } from "../model/faultWords";
 import { faultTrouble } from "./faultTrouble";
 import type { Trouble } from "./observedTrouble";
-import { boundaryOutage, outageMembership, type Fault } from "../model/faults";
+import { type Fault } from "../model/faults";
+import { boundaryOutage, outageMembership } from "../model/faultRuntime";
 
 const down: Trouble = {
   key: "down:worker",

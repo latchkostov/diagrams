@@ -1,5 +1,6 @@
 import { useInteraction } from "../canvas/interaction";
-import { DRILL_PRESETS, faultTimelineProblem, type DrillPreset } from "../model/faults";
+import { DRILL_PRESETS, type DrillPreset } from "../model/faults";
+import { faultTimelineProblem } from "../model/faultRuntime";
 import { simulationProblem } from "../interop/native";
 import { FaultStep } from "./FaultStep";
 import { defaultFault, drillFault, drillKind, drillName, faultTargets } from "./faults";

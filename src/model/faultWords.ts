@@ -1,6 +1,7 @@
 import { getLocale, t } from "../i18n/core";
 import type { DiagramFile } from "./types";
-import { boundaryOutage, faultTarget, type DrillPreset, type Fault } from "./faults";
+import { faultTarget, type DrillPreset, type Fault } from "./faults";
+import { boundaryOutage } from "./faultRuntime";
 
 export function drillName(preset: DrillPreset): string {
   switch (preset) {
