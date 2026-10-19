@@ -14,6 +14,7 @@ import {
   savedDiagram,
   emptyCanvasPoint,
   waitForCameraIdle,
+  waitForStableViewport,
 } from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
@@ -979,7 +980,7 @@ test("documentation tooltips fit the viewport using their rendered height", asyn
     const before = await box(node);
     await page.getByTestId("canvas-wrap").hover();
     await page.mouse.wheel(0, before.y - 150);
-    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
     await expect.poll(async () => (await box(node)).y).toBeLessThan(200);
     await node.hover();
     const tip = page.getByTestId("node-tooltip");
