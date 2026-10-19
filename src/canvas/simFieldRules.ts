@@ -54,7 +54,10 @@ export function nodeSimFields(
   planning?: PlanningModel,
   props: Record<string, unknown> = {},
 ): SimKey[] {
-  if ((planning?.revision === "p3" || planning?.revision === "p3-a1") && managedKind(stencil))
+  if (
+    (planning?.revision === "p3" || planning?.revision === "p3-a1" || planning?.revision === "p3-w1") &&
+    managedKind(stencil)
+  )
     return role === "processor" ? ["emits"] : [];
   return SIM_FIELDS_BY_ROLE[role].filter(
     (key) =>

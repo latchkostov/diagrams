@@ -1,0 +1,18 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "capacity:caller": { "title": "Decision service can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers." }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:caller", "rule": "capacity", "severity": "warning", "title": "Decision service can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["caller"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:caller", "rule": "capacity", "severity": "warning", "title": "Decision service can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["caller"] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

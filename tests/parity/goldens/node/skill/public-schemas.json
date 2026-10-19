@@ -1,8 +1,8 @@
 {
   "diagram.v1.json": { "sha256": "426e48d9cac36b4c7d1729a9d70fc33082367e278a3188229c4a48b98288b403", "bytes": 44347, "properties": ["format", "title", "description", "color", "direction", "nodes", "edges", "groups", "annotations", "simulations", "layerOrder", "private", "checks"], "defs": ["Checks", "Node", "NodeProps", "Edge", "EdgeProps", "Boundary", "Annotation", "Simulation"] },
   "diagram.v2.json": {
-    "sha256": "93f0a4ad6186bcad271c11eda38529942e772d14094aac33822ea599e15a7eb8",
-    "bytes": 182739,
+    "sha256": "51f96d1e9e98f2d5edf1063df1312c94a001b6f99ef97fd6312e223f87ca51d4",
+    "bytes": 182830,
     "properties": [
       "format",
       "planning",

@@ -12,6 +12,7 @@ export const explanationSimulation = (d: DiagramFile): Simulation => ({
   traffic: sourceTraffic(d),
 });
 export interface Explanation {
+  waits?: import("../sim/capacity").NodeCapacity["waits"];
   resources?: import("../sim/resourcePlanning").ResourcePlan;
   managed?: "serverless" | "api";
   status: NodeStatus;
@@ -129,6 +130,7 @@ export function explainNode(
       ? { managed: props.profile.family === "serverless" ? ("serverless" as const) : ("api" as const) }
       : {}),
     resources: n.resourcePlan,
+    ...(n.waits ? { waits: n.waits } : {}),
     id,
     role: n.role,
     status: n.status ?? "up",
@@ -146,7 +148,7 @@ export function explainNode(
       return spec?.partitioned ? [{ broker, spec, count: analysis.resolved[broker].partitions }] : [];
     }),
     slots: props.concurrency,
-    seconds: props.latencyMs / 1000,
+    seconds: (n.waits?.holdMs ?? props.latencyMs) / 1000,
     utilization: n.utilization,
     growth: Math.max(0, n.offered - n.capacity),
     contributors,

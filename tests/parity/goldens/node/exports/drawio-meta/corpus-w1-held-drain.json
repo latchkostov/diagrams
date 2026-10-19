@@ -1,0 +1,92 @@
+{
+  "withIcons": {
+    "sha256": "0204c46d7c68b83f7c133fcc2a97ede5dae539274d839d8d1f68e9d0fa45f7f9",
+    "bytes": 6436,
+    "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.database": "generic-database e85b3d97d2e8de44", "generic.external-api": "generic-external-api 8115696d1b46c6c6", "generic.service": "generic-service 6ec0da29f56c9e80" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Blocking request join",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.user",
+            "label": "Applications",
+            "x": 0,
+            "y": 0,
+            "props": { "ratePerSec": 0 }
+          },
+          {
+            "id": "caller",
+            "stencil": "generic.service",
+            "label": "Decision service",
+            "x": 330,
+            "y": 0,
+            "props": {
+              "replicas": 2,
+              "concurrency": 2,
+              "latencyMs": 10,
+              "jitter": 0,
+              "resources": {
+                "cpuMsPerMessage": 1,
+                "baselineMemoryMiB": 128,
+                "memoryMiBPerMessage": 2,
+                "cpuRequestMilli": 1000,
+                "cpuLimitMilli": 1000,
+                "memoryRequestMiB": 256,
+                "memoryLimitMiB": 512,
+                "startup": { "delayMs": 10, "jitterFraction": 0 },
+                "terminationGraceMs": 50,
+                "preset": "io-service",
+                "presetRevision": "1"
+              }
+            }
+          },
+          {
+            "id": "partner",
+            "stencil": "generic.external-api",
+            "label": "Partner scoring API",
+            "x": 660,
+            "y": 0,
+            "props": { "api": { "latencyMs": 250 }, "latencyMs": 250, "jitter": 0 }
+          },
+          {
+            "id": "result",
+            "stencil": "generic.database",
+            "label": "Case store",
+            "x": 660,
+            "y": 220,
+            "props": { "latencyMs": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "input", "from": "source", "to": "caller", "kind": "async", "props": { "travelMs": 10 } },
+          { "id": "call", "from": "caller", "to": "partner", "kind": "sync", "props": { "travelMs": 200 } },
+          { "id": "output", "from": "caller", "to": "result", "kind": "async", "props": { "travelMs": 10 } }
+        ],
+        "simulations": [
+          {
+            "id": "blocking",
+            "title": "Blocking",
+            "durationMs": 2000,
+            "scale": 1,
+            "seed": 17,
+            "traffic": [
+              {
+                "node": "source",
+                "shape": { "kind": "burst", "count": 12, "spreadMs": 100 },
+                "id": "applications-0",
+                "label": "Applications",
+                "messageType": "ApplicationSubmitted"
+              }
+            ],
+            "timeline": [{ "atMs": 100, "action": { "do": "props", "node": "caller", "props": { "replicas": 1 } } }]
+          }
+        ]
+      }
+    }
+  ]
+}

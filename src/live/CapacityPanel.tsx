@@ -249,7 +249,8 @@ export const CapacityPanel = memo(function CapacityPanel({
                       title={
                         diagram.planning?.revision === "p2" ||
                         diagram.planning?.revision === "p3" ||
-                        diagram.planning?.revision === "p3-a1"
+                        diagram.planning?.revision === "p3-a1" ||
+                        diagram.planning?.revision === "p3-w1"
                           ? p.id === "double-partitions"
                             ? `2 × ${assignmentLabels}`
                             : p.id === "normal"
@@ -263,7 +264,8 @@ export const CapacityPanel = memo(function CapacityPanel({
                       {p.id === "double-partitions" &&
                       (diagram.planning?.revision === "p2" ||
                         diagram.planning?.revision === "p3" ||
-                        diagram.planning?.revision === "p3-a1")
+                        diagram.planning?.revision === "p3-a1" ||
+                        diagram.planning?.revision === "p3-w1")
                         ? `2 × ${assignmentLabels}`
                         : p.label}
                       {p.id === "black-friday" && <small>5×</small>}
@@ -992,7 +994,11 @@ function ScaleIndicator({
       <span className="cap-scale-dot" aria-hidden />
       <span>
         1 dot ≈ <b className="mono">{formatCount(scale)}</b> {scale === 1 ? "message" : "messages"}
-        <small>Dots are sampled; counters count every message.</small>
+        <small>
+          {diagram.planning?.revision === "p3-w1"
+            ? t("threads.sampling")
+            : "Dots are sampled; counters count every message."}
+        </small>
       </span>
       <label className="lv-select cap-scale-select" title="How many real messages each dot stands for">
         <span className="sr-only">Messages per dot</span>

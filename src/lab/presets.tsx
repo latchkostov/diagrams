@@ -1,3 +1,4 @@
+import { waitingFixture } from "./waitingFixture";
 import { faultDrillFixture } from "./faultDrillFixture";
 import { kedaFixture } from "./kedaFixture";
 import { ImportRetryLab } from "./ImportRetryLab";
@@ -280,6 +281,14 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "requests-wait",
+    title: "Requests that wait",
+    group: "Diagrams",
+    description: "Blocking caller slots and logical reply timing.",
+    diagram: () => waitingFixture(),
+  },
   ...examples
     .filter((e) => !localOnly.has(e.slug))
     .map((e): Preset => ({

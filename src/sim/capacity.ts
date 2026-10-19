@@ -1,3 +1,4 @@
+import { waitingPlan, type WaitCapacity } from "./waitingPlan";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
 import { replicaRange, resourceCapacity } from "../model/autoscaling";
 import { englishAssignmentLabel, recordAssignment, type ConsumerAssignment, type BrokerSpec } from "../model/brokers";
@@ -45,6 +46,7 @@ export interface RouteDemand {
 }
 
 export interface NodeCapacity {
+  waits?: WaitCapacity & { slots: number; ceiling: number };
   resourcePlan?: ResourcePlan;
   managed?: boolean;
   status?: Exclude<NodeStatus, "up">;
@@ -79,6 +81,7 @@ export interface CapacityAnalysis {
   routeDemand?: Record<string, Record<string, RouteDemand>>;
 }
 interface Entry {
+  wait?: WaitCapacity;
   input: DiagramNode;
   role: SimRole;
   props: ResolvedProps;
@@ -109,6 +112,7 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
         : replicas * entry.props.admission.fixedSlotsPerReplica,
     );
     const time =
+      entry.wait?.holdMs ??
       entry.props.admission.endpoints.find((e) => e.id === endpointId)?.behaviour?.latencyMs ??
       entry.props.admission.api.latencyMs ??
       entry.props.latencyMs;
@@ -119,9 +123,13 @@ const serviceRate = (entry: Entry, replicas = entry.active, endpointId?: string)
   }
   if (entry.role === "processor") {
     if (entry.props.resources)
-      return replicas * resourceCapacity(entry.props.resources, entry.props.concurrency, entry.props.latencyMs);
+      return (
+        replicas *
+        resourceCapacity(entry.props.resources, entry.props.concurrency, entry.wait?.holdMs ?? entry.props.latencyMs)
+      );
     const slots = replicas * entry.props.concurrency;
-    return !slots ? 0 : entry.props.latencyMs ? (slots * 1000) / entry.props.latencyMs : Infinity;
+    const holdMs = entry.wait?.holdMs ?? entry.props.latencyMs;
+    return !slots ? 0 : holdMs ? (slots * 1000) / holdMs : Infinity;
   }
   // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
   const device = entry.role === "gateway" ? entry.props.device : undefined;
@@ -248,6 +256,8 @@ export function analyzeCapacity(
       ...(routes && role === "source" ? { mix: compileMix(raw.trafficMix, routes) } : {}),
     });
   }
+  const waiting = waitingPlan(diagram, Object.fromEntries([...entries].map(([id, e]) => [id, e.props])));
+  for (const [id, wait] of waiting.nodes) if (entries.get(id)?.role === "processor") entries.get(id)!.wait = wait;
   const compiled = compileTopology(diagram);
   const iterationCap = iterationBound(
     entries.keys(),
@@ -412,7 +422,8 @@ export function analyzeCapacity(
             broker.props.broker?.partitioned &&
               (diagram.planning?.revision === "p2" ||
                 diagram.planning?.revision === "p3" ||
-                diagram.planning?.revision === "p3-a1")
+                diagram.planning?.revision === "p3-a1" ||
+                diagram.planning?.revision === "p3-w1")
               ? broker.props.broker
               : undefined,
           );
@@ -639,6 +650,15 @@ export function analyzeCapacity(
     }
     nodes[id] = {
       id,
+      ...(entry.wait
+        ? {
+            waits: {
+              ...entry.wait,
+              slots: entry.active * entry.props.concurrency,
+              ceiling: (entry.active * entry.props.concurrency * 1000) / entry.wait.holdMs,
+            },
+          }
+        : {}),
       label: entry.input.label,
       role: entry.role,
       ...(!entry.up ? { status: entry.down ? ("down" as const) : ("paused" as const) } : {}),
@@ -772,7 +792,8 @@ export function analyzeCapacity(
       suggestion =
         diagram.planning?.revision === "p2" ||
         diagram.planning?.revision === "p3" ||
-        diagram.planning?.revision === "p3-a1"
+        diagram.planning?.revision === "p3-a1" ||
+        diagram.planning?.revision === "p3-w1"
           ? `${broker.input.sublabel ?? broker.input.label}: ${englishAssignmentLabel(broker.props.broker)} → ${desired}`
           : `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
     }
@@ -803,7 +824,7 @@ export function analyzeCapacity(
     bottleneck,
     offeredTypes,
     suggestion,
-    converged,
+    converged: converged && waiting.converged,
     iterations,
     connections,
     resolved: Object.fromEntries([...entries].map(([id, entry]) => [id, entry.props])),

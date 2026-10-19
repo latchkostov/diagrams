@@ -371,7 +371,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           if (op.description !== undefined) next.description = op.description;
           if (op.direction !== undefined) next.direction = op.direction;
           if (op.requestRoutes !== undefined) {
-            if (next.planning?.revision !== "p3-a1")
+            if (next.planning?.revision !== "p3-a1" && next.planning?.revision !== "p3-w1")
               throw new Error("requestRoutes needs the current planning model (p3-a1): upgrade the diagram first.");
             // A route keeps its colour and marker by id; a new one gets the next free pair.
             const before = new Map((next.planning.requestRoutes ?? []).map((r) => [r.id, r]));
@@ -419,7 +419,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
     }
     // Routing settings opt the document into request routing (on the current planning model).
     if (
-      next.planning?.revision === "p3-a1" &&
+      (next.planning?.revision === "p3-a1" || next.planning?.revision === "p3-w1") &&
       !next.planning.requestRoutes &&
       (next.nodes.some((n) => hasNodeRouting(n.props)) || next.edges.some((e) => hasEdgeRouting(e.props)))
     )

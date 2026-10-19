@@ -1,0 +1,40 @@
+{
+  "evidence": {
+    "played": [{ "id": "blocking", "title": "Blocking", "playedMs": 2000, "capped": false }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    {
+      "id": "sync-cycle:caller",
+      "rule": "sync-cycle",
+      "severity": "warning",
+      "target": "caller",
+      "elements": ["caller", "call"],
+      "fix": { "ops": [{ "op": "update", "target": "call", "kind": "async" }], "needsChoice": false }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "sync-cycle:caller",
+        "rule": "sync-cycle",
+        "severity": "warning",
+        "title": "Requests go round in a circle",
+        "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop.",
+        "targets": ["caller", "call"],
+        "fix": {
+          "label": "Make Decision service → Decision service a message",
+          "ops": [{ "op": "update", "target": "call", "kind": "async" }]
+        }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions.",
+    "simulations": "Played 1 saved simulation (at most 60 s each).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

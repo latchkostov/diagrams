@@ -1,3 +1,7 @@
+import { waitingPlan, type WaitCapacity } from "../sim/waitingPlan";
+import { stencilRole } from "../stencils/roles";
+import { profileOf } from "../stencils/profiles";
+import { ThreadMeter, ThreadCeiling } from "./ThreadMeter";
 import { nodeFaultLabels } from "../model/faultWords";
 import { useInteraction } from "../canvas/interaction";
 import { compileTopology } from "../sim/topology";
@@ -61,7 +65,27 @@ export function NodeBadges({
   const labels = nodeFaultLabels(faults);
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
+  const holds = useMemo(() => {
+    if (diagram.planning?.revision !== "p3-w1") return new Map<string, WaitCapacity>();
+    const resolved = Object.fromEntries(
+      diagram.nodes.map((n) => [
+        n.id,
+        resolveProps(
+          stencilRole(n.stencil),
+          n.label,
+          state.configuration[n.id] ?? n.props ?? {},
+          n.stencil,
+          diagram.planning,
+        ),
+      ]),
+    );
+    return waitingPlan(diagram, resolved).nodes;
+  }, [diagram, state.configuration]);
   const topology = useMemo(() => compileTopology(diagram), [diagram]);
+  const calleeLabels = useMemo(() => {
+    const labels = new Map(diagram.nodes.map((n) => [n.id, n.label]));
+    return new Map(diagram.edges.map((e) => [e.id, labels.get(e.to) ?? e.to]));
+  }, [diagram]);
   const assignmentMultiplier = resolveMultiplier(state.inputs.capacity ?? state.running?.multipliers?.capacity);
   const assignments = useMemo(
     () => brokerAssignments(diagram, state.configuration, assignmentMultiplier),
@@ -110,6 +134,8 @@ export function NodeBadges({
           <NodeBadge
             key={n.id}
             node={n}
+            wait={holds.get(n.id)}
+            waitingLabel={calleeLabels.get(s.threads?.waitingOn[0]?.[0] ?? "") ?? ""}
             diagram={diagram}
             s={s}
             showOutageLoss={boundaryFault}
@@ -123,7 +149,8 @@ export function NodeBadges({
             currentModel={
               diagram.planning?.revision === "p2" ||
               diagram.planning?.revision === "p3" ||
-              diagram.planning?.revision === "p3-a1"
+              diagram.planning?.revision === "p3-a1" ||
+              diagram.planning?.revision === "p3-w1"
             }
             concurrency={props?.concurrency ?? 0}
             units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
@@ -225,6 +252,8 @@ function groupNames(d: DiagramFile, nodeId: string, topology: ReturnType<typeof 
 }
 
 interface BadgeProps {
+  wait?: WaitCapacity;
+  waitingLabel: string;
   diagram: DiagramFile;
   fault: string;
   properties: boolean;
@@ -249,6 +278,8 @@ const NodeBadge = memo(function NodeBadge({
   s,
   peak,
   hovered,
+  waitingLabel,
+  wait,
   concurrency,
   units,
   groups,
@@ -334,6 +365,11 @@ const NodeBadge = memo(function NodeBadge({
       else el.setAttribute("aria-describedby", previous);
     };
   }, [hovered, domNode, node.id, tooltipId]);
+  const threadNoun = t("threads.noun", {
+    kind: profileOf(node.data.stencil)?.family === "serverless" ? "execution" : "thread",
+  });
+
+  const threadBusy = s.threads ? s.threads.working + s.threads.waiting : 0;
   const w = node.measured?.width ?? node.width ?? 220;
   const h = node.measured?.height ?? node.height ?? 72;
   const broker = BROKERS.has(s.role);
@@ -414,8 +450,15 @@ const NodeBadge = memo(function NodeBadge({
         </div>
       )}
 
+      {s.threads && <ThreadMeter id={node.id} threads={s.threads} noun={threadNoun} />}
+
       {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
         <div className="lv-strip">
+          {s.threads && threadBusy >= 0.8 * s.threads.slots && (
+            <span className="lv-metric" data-testid={`thread-chip-${node.id}`}>
+              ⌛ {t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })}
+            </span>
+          )}
           {fault && (
             <span className="lv-metric is-failover" data-testid={`node-fault-${node.id}`}>
               {fault}
@@ -516,6 +559,29 @@ const NodeBadge = memo(function NodeBadge({
               : undefined
           }
         >
+          {s.threads && (
+            <div className="lv-thread-detail" data-testid={`thread-detail-${node.id}`}>
+              <b>
+                {profileOf(node.data.stencil)?.family === "serverless" ? t("threads.executions") : t("threads.heading")}
+              </b>
+              <p>{t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })}</p>
+              <p>
+                {s.threads.waiting
+                  ? t("threads.waiting", {
+                      working: s.threads.working,
+                      count: s.threads.waitingOn[0]?.[1] ?? s.threads.waiting,
+                      name: waitingLabel,
+                    })
+                  : t("threads.noneWaiting", { count: s.threads.working })}
+              </p>
+            </div>
+          )}
+          {s.threads && wait && (
+            <ThreadCeiling
+              wait={{ ...wait, slots: s.threads.slots, ceiling: (s.threads.slots * 1000) / wait.holdMs }}
+              noun={threadNoun}
+            />
+          )}
           {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
           {fault && <p data-testid={`node-fault-detail-${node.id}`}>{t("fault.hover", { fault })}</p>}
           <HoverExplanation id={node.id} />

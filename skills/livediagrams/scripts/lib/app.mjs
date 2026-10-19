@@ -660,7 +660,7 @@ function resourceAllocationCount(enabled, count, capacityMultiplier) {
 	return enabled ? Math.max(1, Math.min(1e4, Math.round(count * Math.max(4, capacityMultiplier)))) : 0;
 }
 function resourceBudgetExceeded(d, capacityMultiplier = 4) {
-	if (d.planning?.revision !== "p3-a1") return false;
+	if (d.planning?.revision !== "p3-a1" && d.planning?.revision !== "p3-w1") return false;
 	const known = new Set(d.nodes.map((n) => n.id));
 	const nodes = /* @__PURE__ */ new Map();
 	let multiplier = Math.max(4, capacityMultiplier);
@@ -2945,7 +2945,7 @@ function createResourceValidator({ fragment = false } = {}) {
 		const next = /* @__PURE__ */ new Map();
 		let budgetChanged = !initialized || simulations !== candidate.simulations || revision !== candidate.planning?.revision;
 		const check = (props, node) => {
-			if (candidate.planning?.revision !== "p3-a1" && (props?.resources !== void 0 || props?.autoscaling !== void 0)) return t`Resources and HPA require the p3-a1 model. Preview the model upgrade first.`;
+			if (candidate.planning?.revision !== "p3-a1" && candidate.planning?.revision !== "p3-w1" && (props?.resources !== void 0 || props?.autoscaling !== void 0)) return t`Resources and HPA require the p3-a1 model. Preview the model upgrade first.`;
 			try {
 				checkAutoscaling(props?.resources, props?.autoscaling);
 				if (!checkBindings(props?.autoscaling, node)) return t`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
@@ -3151,7 +3151,7 @@ var ROUTING_LIMITS = {
 };
 /** Routing is on for a p3-a1 document that declares its request routes (an empty list counts). */
 function routingEnabled(planning) {
-	return planning?.revision === "p3-a1" && Array.isArray(planning.requestRoutes);
+	return (planning?.revision === "p3-a1" || planning?.revision === "p3-w1") && Array.isArray(planning.requestRoutes);
 }
 var CONTROL = /[\u0000-\u001f\u007f]/u;
 var TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
@@ -3461,7 +3461,7 @@ function checkRouting(diagram, context) {
 	const planning = diagram.planning;
 	const enabled = routingEnabled(planning);
 	const declared = planning?.requestRoutes;
-	if (declared !== void 0 && planning?.revision !== "p3-a1") throw new Error("planning.requestRoutes: request routing needs the current planning model (p3-a1)");
+	if (declared !== void 0 && planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1") throw new Error("planning.requestRoutes: request routing needs the current planning model (p3-a1)");
 	const anyPatch = (diagram.simulations ?? []).some((sim) => Object.values(sim.setup?.props ?? {}).some((p) => hasNodeRouting(p)) || (sim.timeline ?? []).some((step) => step.action.do === "props" && hasNodeRouting(step.action.props)));
 	const nodesRouted = diagram.nodes.some((n) => hasNodeRouting(n.props));
 	const edgesRouted = diagram.edges.some((e) => hasEdgeRouting(e.props));
@@ -3680,7 +3680,8 @@ var planningSchema = {
 			"p1",
 			"p2",
 			"p3",
-			"p3-a1"
+			"p3-a1",
+			"p3-w1"
 		] },
 		requestRoutes: requestRoutesSchema,
 		sharedQuotas: {
@@ -4313,7 +4314,7 @@ function validateDiagram(data) {
 			error: err instanceof Error ? err.message : String(err)
 		};
 	}
-	if (raw.format === "diagrams/v2" && (!isObj$1(raw.planning) || raw.planning.revision !== "p1" && raw.planning.revision !== "p2" && raw.planning.revision !== "p3" && raw.planning.revision !== "p3-a1")) return {
+	if (raw.format === "diagrams/v2" && (!isObj$1(raw.planning) || raw.planning.revision !== "p1" && raw.planning.revision !== "p2" && raw.planning.revision !== "p3" && raw.planning.revision !== "p3-a1" && raw.planning.revision !== "p3-w1")) return {
 		ok: false,
 		error: t`Unsupported planning revision. Reload Live Diagrams to open this file; its playback has not been changed.`
 	};
@@ -4382,13 +4383,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(1610, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(1612, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(1610, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(1612, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -4492,7 +4493,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(1610, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(1612, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -4592,7 +4593,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (invalidPlanningDelay(out.props)) return {
 			ok: false,
-			error: t(1555, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+			error: t(1557, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
 				id: e.id,
 				limit: SIM_LIMITS.timeMs
 			})

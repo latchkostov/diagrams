@@ -58,7 +58,7 @@ export function addRoute(
 
 /** Routing turned on for a document: its planning with request routes (an empty list counts). */
 export function withRouting(planning: PlanningModel | undefined): PlanningModel | undefined {
-  if (planning?.revision !== "p3-a1") return planning;
+  if (planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1") return planning;
   return planning.requestRoutes ? planning : { ...planning, requestRoutes: [] };
 }
 

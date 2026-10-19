@@ -117,7 +117,7 @@ export const trafficMixCapable = (role: SimRole): boolean => role === "source";
 
 /** Routing is on for a p3-a1 document that declares its request routes (an empty list counts). */
 export function routingEnabled(planning: PlanningModel | undefined): boolean {
-  return planning?.revision === "p3-a1" && Array.isArray(planning.requestRoutes);
+  return (planning?.revision === "p3-a1" || planning?.revision === "p3-w1") && Array.isArray(planning.requestRoutes);
 }
 
 // ---------------------------------------------------------------- grammar
@@ -424,7 +424,7 @@ function checkRouting(diagram: RoutingDocument, context: RoutingContext): void {
   const planning = diagram.planning;
   const enabled = routingEnabled(planning);
   const declared = planning?.requestRoutes;
-  if (declared !== undefined && planning?.revision !== "p3-a1")
+  if (declared !== undefined && planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1")
     throw new Error("planning.requestRoutes: request routing needs the current planning model (p3-a1)");
   const anyPatch = (diagram.simulations ?? []).some(
     (sim) =>

@@ -1,0 +1,17 @@
+---
+title: A blocking call caps throughput
+---
+flowchart LR
+  source(["Applications submitted"])
+  applications["Applications"]
+  caller["Decision service<br/>4 replicas · 16 threads each"]
+  partner(["Partner scoring API"])
+  decisions["Decisions"]
+  store[("Case store")]
+  source -.-> applications
+  applications -.-> caller
+  caller --> partner
+  caller -.-> decisions
+  decisions -.-> store
+  linkStyle 0,1,3,4 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Decision service holds 64 threads while Partner scoring API replies. The queue grows while CPU stays below its scaling target. More CPU is not what this service needs.","nodes":{"source":["source","client.user"],"applications":["applications","generic.topic"],"caller":["caller","generic.service"],"partner":["partner","generic.external-api"],"decisions":["decisions","generic.topic"],"store":["store","generic.database"]},"edges":["submit","consume","call","publish","save"],"relations":{}}

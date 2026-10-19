@@ -767,7 +767,7 @@ export function RouteTableFields({
   const labelOf = (id: string) => edges.find((e) => e.id === id)?.label ?? id;
   const merge = (field: string) => ({ merge: `routing:table:${nodeId}:${field}` });
   const save = (next: RouteTable, field: string) => editor.setNodeProps(nodeId, { routeTable: next }, merge(field));
-  if (planning?.revision !== "p3-a1") return null;
+  if (planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1") return null;
   if (!table)
     return (
       <div className="route-empty" data-testid="routes-empty">
@@ -1114,7 +1114,7 @@ export function TrafficMixFields({
   const merge = (field: string) => ({ merge: `routing:mix:${nodeId}:${field}` });
   const save = (next: TrafficMix | undefined, field: string) =>
     editor.setNodeProps(nodeId, { trafficMix: next }, merge(field));
-  if (planning?.revision !== "p3-a1") return null;
+  if (planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1") return null;
   const rate = typeof props.ratePerSec === "number" ? props.ratePerSec : 2;
   const addNew = (address: RequestAddress, label?: string) => {
     applyRouted(editor, (d) => {

@@ -1,0 +1,23 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "A blocking call caps throughput",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Applications submitted", "x": 40, "y": 100 },
+      { "id": "applications", "stencil": "generic.service", "label": "Applications", "x": 428, "y": 100 },
+      { "id": "caller", "stencil": "generic.service", "label": "Decision service", "sublabel": "4 replicas · 16 threads each", "x": 788, "y": 100 },
+      { "id": "partner", "stencil": "client.partner", "label": "Partner scoring API", "x": 1187, "y": 40 },
+      { "id": "decisions", "stencil": "generic.service", "label": "Decisions", "x": 1187, "y": 160 },
+      { "id": "store", "stencil": "generic.database", "label": "Case store", "x": 1553, "y": 100 }
+    ],
+    "edges": [
+      { "id": "e1-source-applications", "from": "source", "to": "applications", "kind": "async" },
+      { "id": "e2-applications-caller", "from": "applications", "to": "caller", "kind": "async" },
+      { "id": "e3-caller-partner", "from": "caller", "to": "partner", "kind": "sync" },
+      { "id": "e4-caller-decisions", "from": "caller", "to": "decisions", "kind": "async" },
+      { "id": "e5-decisions-store", "from": "decisions", "to": "store", "kind": "async" }
+    ]
+  }
+}

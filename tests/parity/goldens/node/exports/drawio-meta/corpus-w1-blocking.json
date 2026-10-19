@@ -1,0 +1,73 @@
+{
+  "withIcons": {
+    "sha256": "d731f28cca17b5c41ddb6e5fb2ffdc71599f31b98b5601d456ab2abc68192247",
+    "bytes": 5816,
+    "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.database": "generic-database e85b3d97d2e8de44", "generic.external-api": "generic-external-api 8115696d1b46c6c6", "generic.service": "generic-service 6ec0da29f56c9e80" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Blocking request join",
+        "nodes": [
+          {
+            "id": "source",
+            "stencil": "client.user",
+            "label": "Applications",
+            "x": 0,
+            "y": 0,
+            "props": { "ratePerSec": 0 }
+          },
+          {
+            "id": "caller",
+            "stencil": "generic.service",
+            "label": "Decision service",
+            "x": 330,
+            "y": 0,
+            "props": { "replicas": 1, "concurrency": 4, "latencyMs": 10, "jitter": 0 }
+          },
+          {
+            "id": "partner",
+            "stencil": "generic.external-api",
+            "label": "Partner scoring API",
+            "x": 660,
+            "y": 0,
+            "props": { "api": { "latencyMs": 250 }, "latencyMs": 250, "jitter": 0 }
+          },
+          {
+            "id": "result",
+            "stencil": "generic.database",
+            "label": "Case store",
+            "x": 660,
+            "y": 220,
+            "props": { "latencyMs": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "input", "from": "source", "to": "caller", "kind": "async", "props": { "travelMs": 10 } },
+          { "id": "call", "from": "caller", "to": "partner", "kind": "sync", "props": { "travelMs": 200 } },
+          { "id": "output", "from": "caller", "to": "result", "kind": "async", "props": { "travelMs": 10 } }
+        ],
+        "simulations": [
+          {
+            "id": "blocking",
+            "title": "Blocking",
+            "durationMs": 2000,
+            "scale": 1,
+            "seed": 17,
+            "traffic": [
+              {
+                "node": "source",
+                "shape": { "kind": "burst", "count": 12, "spreadMs": 100 },
+                "id": "applications-0",
+                "label": "Applications",
+                "messageType": "ApplicationSubmitted"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

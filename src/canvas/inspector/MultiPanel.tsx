@@ -205,7 +205,7 @@ export function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProp
   ].join(" / ");
   const mergeKey = ids.join(",");
   const managed =
-    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") &&
+    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1" || meta.planning?.revision === "p3-w1") &&
     selectedNodes.every((node) => !!managedKind(node.data.stencil));
   return (
     <>

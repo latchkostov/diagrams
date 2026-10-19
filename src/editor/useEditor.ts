@@ -484,7 +484,11 @@ export function createEditor(
 
   /** Inserts a payload moved by `offset`, selected. Returns old flow id → new flow id (null: refused). */
   const insert = (p: ClipboardPayload, offset: XY): Map<string, string> | null => {
-    if (p.planning?.revision === "p3-a1" && deps().meta.planning?.revision !== "p3-a1") {
+    if (
+      p.planning?.revision === "p3-a1" &&
+      deps().meta.planning?.revision !== "p3-a1" &&
+      deps().meta.planning?.revision !== "p3-w1"
+    ) {
       explainModelRequired();
       return null;
     }
@@ -505,7 +509,7 @@ export function createEditor(
       remapped.edges.some((e) => hasEdgeRouting(e.props));
     if (routed) {
       const planning = deps().meta.planning;
-      if (planning?.revision !== "p3-a1") {
+      if (planning?.revision !== "p3-a1" && planning?.revision !== "p3-w1") {
         explainModelRequired();
         return null;
       }

@@ -92,8 +92,10 @@ export function makePayload(
   }
   const requestRoutes = (d.planning?.requestRoutes ?? []).filter((r) => routeIds.has(r.id));
   return structuredClone({
-    format: d.planning?.revision === "p3-a1" ? CLIP_FORMAT_A1 : CLIP_FORMAT,
-    ...(d.planning?.revision === "p3-a1" ? { planning: { revision: "p3-a1" as const } } : {}),
+    format: d.planning?.revision === "p3-a1" || d.planning?.revision === "p3-w1" ? CLIP_FORMAT_A1 : CLIP_FORMAT,
+    ...(d.planning?.revision === "p3-a1" || d.planning?.revision === "p3-w1"
+      ? { planning: { revision: "p3-a1" as const } }
+      : {}),
     groups,
     nodes,
     edges,
@@ -126,7 +128,11 @@ export function parsePayload(text: string): ClipboardPayload | null {
       data.format !== "diagrams/v2")
   )
     return null;
-  if (data.format === CLIP_FORMAT_A1 && (!isObj(data.planning) || data.planning.revision !== "p3-a1")) return null;
+  if (
+    data.format === CLIP_FORMAT_A1 &&
+    (!isObj(data.planning) || (data.planning.revision !== "p3-a1" && data.planning.revision !== "p3-w1"))
+  )
+    return null;
   if (data.format !== CLIP_FORMAT && data.format !== CLIP_FORMAT_A1) {
     const result = validateDiagram(data);
     if (!result.ok) return null;
@@ -151,7 +157,10 @@ export function parsePayload(text: string): ClipboardPayload | null {
   if (
     createResourceValidator({ fragment: true })({
       nodes,
-      planning: isObj(data.planning) && data.planning.revision === "p3-a1" ? { revision: "p3-a1" } : undefined,
+      planning:
+        isObj(data.planning) && (data.planning.revision === "p3-a1" || data.planning.revision === "p3-w1")
+          ? { revision: "p3-a1" }
+          : undefined,
     })
   )
     return null;
@@ -183,7 +192,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
   );
   if (!nodes.length && !groups.length && !annotations.length) return null;
   // Routing travels only with the current planning model, and only with valid route definitions.
-  const a1 = isObj(data.planning) && data.planning.revision === "p3-a1";
+  const a1 = isObj(data.planning) && (data.planning.revision === "p3-a1" || data.planning.revision === "p3-w1");
   const routes =
     isObj(data.planning) && Array.isArray(data.planning.requestRoutes)
       ? data.planning.requestRoutes
@@ -201,8 +210,13 @@ export function parsePayload(text: string): ClipboardPayload | null {
   if (!a1 && (nodes.some((n) => hasNodeRouting(n.props)) || edges.some((e) => hasEdgeRouting(e.props)))) return null;
   return {
     ...(requestRoutes?.length ? { requestRoutes } : {}),
-    format: isObj(data.planning) && data.planning.revision === "p3-a1" ? CLIP_FORMAT_A1 : CLIP_FORMAT,
-    ...(isObj(data.planning) && data.planning.revision === "p3-a1" ? { planning: { revision: "p3-a1" as const } } : {}),
+    format:
+      isObj(data.planning) && (data.planning.revision === "p3-a1" || data.planning.revision === "p3-w1")
+        ? CLIP_FORMAT_A1
+        : CLIP_FORMAT,
+    ...(isObj(data.planning) && (data.planning.revision === "p3-a1" || data.planning.revision === "p3-w1")
+      ? { planning: { revision: "p3-a1" as const } }
+      : {}),
     groups: groups.map((g) => ({ ...g, tone: isPresetGroupTone(g.tone) || isHexColor(g.tone) ? g.tone : "neutral" })),
     nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
     edges,

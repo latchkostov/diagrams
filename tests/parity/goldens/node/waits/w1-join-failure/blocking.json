@@ -1,0 +1,428 @@
+[
+  {
+    "time": 100,
+    "inSystem": 20,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": {
+          "slots": 4,
+          "working": 0,
+          "waiting": 4,
+          "waitingOn": [["call", 4], ["sibling-call", 4]],
+          "queued": 6
+        },
+        "processed": 0,
+        "failed": 0,
+        "backlog": 6,
+        "inFlight": 4
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 4 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 4 }
+    },
+    "calls": {
+      "call": { "inFlight": 4, "held": 4, "timedOut": 0, "failed": 0, "late": 0 },
+      "sibling-call": { "inFlight": 4, "held": 4, "timedOut": 0, "failed": 0, "late": 0 }
+    }
+  },
+  {
+    "time": 200,
+    "inSystem": 12,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 12 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 12, "held": 0, "timedOut": 0, "failed": 0, "late": 0 }
+    }
+  },
+  {
+    "time": 300,
+    "inSystem": 12,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 12 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 12, "held": 0, "timedOut": 0, "failed": 0, "late": 0 }
+    }
+  },
+  {
+    "time": 400,
+    "inSystem": 12,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 12 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 12, "held": 0, "timedOut": 0, "failed": 0, "late": 0 }
+    }
+  },
+  {
+    "time": 500,
+    "inSystem": 12,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 12 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 12, "held": 0, "timedOut": 0, "failed": 0, "late": 0 }
+    }
+  },
+  {
+    "time": 600,
+    "inSystem": 8,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 4, "failed": 0, "backlog": 0, "inFlight": 8 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 8, "held": 0, "timedOut": 0, "failed": 0, "late": 4 }
+    }
+  },
+  {
+    "time": 700,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 800,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 900,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1000,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1100,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1200,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1300,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1400,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1500,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1600,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1700,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1800,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 1900,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  },
+  {
+    "time": 2000,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 4, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "sibling": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 12, "late": 0 },
+      "sibling-call": { "inFlight": 0, "held": 0, "timedOut": 0, "failed": 0, "late": 12 }
+    }
+  }
+]

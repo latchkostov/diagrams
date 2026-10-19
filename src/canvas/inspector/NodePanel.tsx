@@ -59,7 +59,8 @@ export function NodePanel({
   const broker = brokerSpec(node.data.stencil, role, meta.planning);
   const simFields = nodeSimFields(role, node.data.stencil, meta.planning, props);
   const managed =
-    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1") && !!managedKind(node.data.stencil);
+    (meta.planning?.revision === "p3" || meta.planning?.revision === "p3-a1" || meta.planning?.revision === "p3-w1") &&
+    !!managedKind(node.data.stencil);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;

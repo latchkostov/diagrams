@@ -128,7 +128,8 @@ export function validateDiagram(data: unknown): NativeResult {
       (raw.planning.revision !== "p1" &&
         raw.planning.revision !== "p2" &&
         raw.planning.revision !== "p3" &&
-        raw.planning.revision !== "p3-a1"))
+        raw.planning.revision !== "p3-a1" &&
+        raw.planning.revision !== "p3-w1"))
   )
     return {
       ok: false,

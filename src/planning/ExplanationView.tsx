@@ -1,3 +1,4 @@
+import { ThreadCeiling } from "../live/ThreadMeter";
 import { ResourceEstimate } from "./ResourceDetails";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import { useLayoutEffect, useRef } from "react";
@@ -89,6 +90,12 @@ export function ExplanationView({
                       })
                     : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
       </p>
+      {!hover && x.waits && (
+        <ThreadCeiling
+          wait={x.waits}
+          noun={t("threads.noun", { kind: x.managed === "serverless" ? "execution" : "thread" })}
+        />
+      )}
       {x.resources && <ResourceEstimate plan={x.resources} />}
       {x.assignments.length > 0 && (
         <p data-testid="broker-assignment">

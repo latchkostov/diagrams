@@ -33,6 +33,7 @@ export function createResourceValidator({ fragment = false } = {}) {
     const check = (props: Record<string, unknown> | undefined, node: string) => {
       if (
         candidate.planning?.revision !== "p3-a1" &&
+        candidate.planning?.revision !== "p3-w1" &&
         (props?.resources !== undefined || props?.autoscaling !== undefined)
       )
         return t("autoscaling.modelRequired");

@@ -73,7 +73,10 @@ export function brokerSpec(
   planning?: PlanningModel,
 ): BrokerSpec | undefined {
   if (role !== "topic" && role !== "stream") return undefined;
-  return (planning?.revision === "p2" || planning?.revision === "p3" || planning?.revision === "p3-a1") &&
+  return (planning?.revision === "p2" ||
+    planning?.revision === "p3" ||
+    planning?.revision === "p3-a1" ||
+    planning?.revision === "p3-w1") &&
     stencil &&
     Object.hasOwn(BROKERS, stencil)
     ? BROKERS[stencil]
