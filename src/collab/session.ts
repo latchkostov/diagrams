@@ -319,6 +319,8 @@ export class CollabSession {
   private readonly queuedFrom = new Map<PeerId, number>();
   /** Set as leave() starts: nothing more is taken in. */
   private leaving = false;
+  /** Leaving, with roster writes already asked for still to finish: nothing new comes in or is asked for. */
+  private closing = false;
   private leaveJob?: Promise<void>;
   /** Large document messages arriving in fragments, and the ids of those this session sends. */
   private readonly reassembler: Reassembler;
@@ -336,6 +338,8 @@ export class CollabSession {
   private readonly behind = new Map<string, PeerId>();
   /** Newcomers this session is admitting (an entry being signed). */
   private readonly admitting = new Set<string>();
+  /** Knock-to-join: newcomers an Admit is under way for (their card gone; a Deny can't overtake it). */
+  private readonly lettingIn = new Set<string>();
   private summary?: string;
   /** Knock-to-join: the lobby, its keys, the recovery store (a new epoch writes under its own key). */
   private lobby?: Lobby;
@@ -365,7 +369,9 @@ export class CollabSession {
   private pendingWraps: Wrap[] = [];
   /** Keys this host or co-host said no to, and when (oldest first, a few). */
   private readonly denials = new Map<string, number>();
-  private pendingDeny?: { m: LobbyMessage; deny: Extract<LobbyBody, { t: "deny" }> };
+  private pendingDeny?: { by: string; tip?: string };
+  /** The epoch the chain a peer is sending reaches: nothing irreversible (leaving) is decided before it's here. */
+  private chainTip?: string;
   /** At the door, a member here answered (someone's here and has been asked): until they've all gone. */
   get lobbyAnswered(): boolean {
     return this.answeredBy.size > 0;
@@ -492,7 +498,7 @@ export class CollabSession {
     fields: { who?: string; viewOnly?: boolean; x?: string; ask?: boolean } = {},
   ): Promise<boolean> {
     const room = this.signed;
-    if (!room || this.status === "left") return Promise.resolve(false);
+    if (!room || this.status === "left" || this.closing) return Promise.resolve(false);
     return room.transact(() => this.commitEntry(op, fields)).catch(() => false);
   }
 
@@ -769,12 +775,19 @@ export class CollabSession {
   }
 
   private async finishLeaving(): Promise<void> {
-    if (this.status === "left" || this.leaving) return;
+    if (this.status === "left" || this.leaving || this.closing) return;
+    // Closing: nothing new is taken (frames in, new roster writes); roster writes already asked for (a removal and its
+    // re-key, then the handover as the host leaves, in the epoch that left it in) finish first. Then the goodbye.
+    this.closing = true;
+    const room = this.signed;
+    const before = room && `${room.scope}:${room.roster.log().length}`;
+    await room?.settled;
+    // Something landed meanwhile (a removal's new epoch, whose members haven't proved themselves to this page yet, and
+    // a handover in it): the chain to everyone in the lobby, so it reaches them before this page goes.
+    if (room?.knock && room.current && before !== `${room.scope}:${room.roster.log().length}`)
+      await this.sendLobby(chainMessages(room.knock.chain.data(room.current), []));
     this.leaving = true;
     try {
-      // Roster writes already asked for (a handover as the host leaves) go first; then only the goodbye is waited
-      // for; frames still queued inbound are dropped (receive checks `leaving`).
-      await this.signed?.settled;
       this.sendDoc(frame(DOC.bye));
       await this.outbox.catch(() => {});
     } finally {
@@ -1115,18 +1128,27 @@ export class CollabSession {
   private async lobbyDeny(m: LobbyMessage, deny: Extract<LobbyBody, { t: "deny" }>): Promise<void> {
     const room = this.signed;
     if (!this.knocking || !room?.knock || deny.to !== room.key) return;
-    // Its chain, with it or in pieces (around it, in any order): the no counts only from a host or co-host of the
-    // epoch it names. Until that epoch's here, it waits (the latest one only), and is looked at again with each piece.
-    const chain = room.knock.chain;
-    await chain.add(deny.chain, () => this.verifies.take(m.sender, 1));
-    if (deny.tip && !chain.byScope(deny.tip)) {
-      this.pendingDeny = { m, deny };
-      return;
-    }
+    // Its chain is taken once, as any is. The epoch it names only says when to look: until that's here (in pieces, in
+    // any order) it waits (who said it and which epoch, nothing more: the latest one only).
+    await room.knock.chain.add(deny.chain, () => this.verifies.take(m.sender, 1));
+    this.pendingDeny = { by: m.key, tip: deny.tip };
+    this.checkDeny();
+  }
+
+  /**
+   * A no waiting at the door, looked at once its epoch's here: it counts only from someone who hosts or co-hosts now
+   * (the newest epoch this page knows, never the one the no names: someone removed keeps no authority from an epoch
+   * they once led), and only while this person isn't a member.
+   */
+  private checkDeny(): void {
+    const room = this.signed;
+    const chain = room?.knock?.chain;
+    const pending = this.pendingDeny;
+    if (!room || !chain || !pending || !this.knocking) return;
+    if (pending.tip && !chain.byScope(pending.tip)) return;
     this.pendingDeny = undefined;
-    const deepest = (deny.tip && chain.byScope(deny.tip)) || chain.deepest();
-    const s = deepest && chain.rosterOf(deepest)?.state();
-    if (!s || !(s.host === m.key || s.cohosts.includes(m.key)) || s.members.has(room.key)) return;
+    const deepest = chain.deepest();
+    if (!chain.leadsNow(pending.by) || !deepest || chain.rosterOf(deepest)!.state().members.has(room.key)) return;
     this.denied = true;
     this.emit();
     void this.leave();
@@ -1196,6 +1218,8 @@ export class CollabSession {
     const room = this.signed!;
     const s = room.state();
     if (!(s.host === room.key || s.cohosts.includes(room.key))) return;
+    // Being let in already (an Admit waiting its turn): nothing more to ask.
+    if (this.lettingIn.has(k.key)) return;
     // Told no, and still knocking (checking the chain, or trying again): told again (rate-limited), no card. Their
     // knocking keeps it remembered; a minute without it, and they're asked about again.
     const denied = this.denials.get(k.key);
@@ -1317,20 +1341,26 @@ export class CollabSession {
    */
   async admit(key: string, knock = this.knocks.get(key)): Promise<boolean> {
     const room = this.signed;
-    if (!room?.knock || !knock) return false;
-    // One roster transaction: the wrap is for the epoch the join lands in (a removal queued before it moves both).
-    return room.transact(() => this.admitNow(key, knock)).catch(() => false);
+    if (!room?.knock || !knock || this.closing || this.lettingIn.has(key)) return false;
+    // Answered now: the card goes at once (no Deny after it), and the knock isn't taken again while this waits its
+    // turn. One roster transaction: the wrap is for the epoch the join lands in (a removal queued before it moves both).
+    if (this.knocks.delete(key)) this.emit();
+    this.denials.delete(key);
+    this.lettingIn.add(key);
+    return room
+      .transact(() => this.admitNow(key, knock))
+      .catch(() => false)
+      .finally(() => this.lettingIn.delete(key));
   }
 
   private async admitNow(key: string, knock: Knock): Promise<boolean> {
     const room = this.signed!;
     const current = room.current;
     const secret = current && room.knock!.chain.secretOf(current);
-    if (!current || !secret || this.leaving) return false;
+    // Its turn: the decision still stands (nothing took it back), and this person may still let people in.
+    if (!current || !secret || this.leaving || !this.lettingIn.has(key) || this.denials.has(key)) return false;
     const s = room.state();
     if (!(s.host === room.key || s.cohosts.includes(room.key))) return false;
-    this.knocks.delete(key);
-    this.emit();
     let wrap: Wrap;
     try {
       wrap = await wrapFor(
@@ -1354,7 +1384,7 @@ export class CollabSession {
   /** Deny: someone at the door is told no (with the chain, so they can check who said it). */
   deny(key: string): void {
     const knock = this.knocks.get(key);
-    if (!this.signed?.knock || !knock) return;
+    if (!this.signed?.knock || !knock || this.lettingIn.has(key)) return;
     this.knocks.delete(key);
     // Remembered a while: knocking again (still checking the chain, or trying again) is told no again, not asked.
     this.denials.delete(key);
@@ -1449,8 +1479,9 @@ export class CollabSession {
         if (secret) await chain.learn(start, secret);
       } else this.keepWrap(w);
     }
-    const denied = this.pendingDeny;
-    if (denied) await this.lobbyDeny(denied.m, denied.deny);
+    // The chain this one is part of: whole once its tip's here (the last piece to arrive, whichever it is, says so).
+    this.chainTip = bundle.tip && !chain.byScope(bundle.tip) ? bundle.tip : undefined;
+    this.checkDeny();
     await this.follow();
   }
 
@@ -1475,6 +1506,11 @@ export class CollabSession {
       if (secret) return this.rekey(st, secret);
     }
     if (this.knocking || !current || !ahead.length) return;
+    // Nothing irreversible on part of a chain: once the epoch a peer's chain reaches is here, and only if this person
+    // isn't a member at the end of the line (a member there whose secret is on its way waits for it).
+    if (this.chainTip && !chain.byScope(this.chainTip)) return;
+    this.chainTip = undefined;
+    if (chain.rosterOf(ahead[0])!.state().members.has(room.key)) return;
     const line = chain.path(ahead[0]);
     const removed = line.some((p, i) => {
       const next = line[i + 1];
@@ -1510,7 +1546,7 @@ export class CollabSession {
 
   remove(key: string): Promise<boolean> {
     const room = this.signed;
-    if (!room?.knock) return Promise.resolve(false);
+    if (!room?.knock || this.closing) return Promise.resolve(false);
     // One roster transaction, from the draft to the re-key: nothing else this member signs lands in between.
     return room.transact(() => this.removeNow(key)).catch(() => false);
   }
@@ -1692,7 +1728,7 @@ export class CollabSession {
   }
 
   private async receive(from: PeerId, bytes: Uint8Array): Promise<void> {
-    if (this.status === "left" || this.leaving) return;
+    if (this.status === "left" || this.leaving || this.closing) return;
     this.stats.framesReceived++;
     // The lobby is opened apart (its own key); a room without knock-to-join has none.
     if (frameChannel(bytes) === "lobby")

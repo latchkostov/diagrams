@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { base64UrlToBytes, bytesToBase64Url } from "../interop/codec";
 import { FakeClock } from "./clock";
 import { Sealer } from "./envelope";
@@ -102,7 +102,7 @@ async function knockRoom(seed: number) {
       },
     };
   };
-  return { net, clock, link, lobbyKeys, host, people, settle, knock, join, open, rogue, start };
+  return { net, clock, link, lobbyKeys, host, people, settle, knock, join, open, rogue, start, secret };
 }
 
 const contentFramesTo = (net: MemoryNetwork, peer: string) => {
@@ -1267,9 +1267,13 @@ describe("Remove overlapping the host's other roster changes: one outcome everyw
         await r.settle();
       }
     };
-    /** Every page still in: one epoch (the same start), and the same roles. */
-    const agreed = () => {
-      const pages = [host, co, m, x].filter((c) => c.session.status !== "left" && !c.session.removed);
+    /** The pages expected to stay: each still in (not left, not removed), all in one epoch with the same roles. */
+    const agreed = (pages: TestClient[]) => {
+      for (const c of pages) {
+        expect(c.session.status).not.toBe("left");
+        expect(c.session.removed).toBe(false);
+        expect(c.session.knocking).toBe(false);
+      }
       const starts = new Set(pages.map((c) => c.session.signed!.current!.sig));
       expect(starts.size).toBe(1);
       const s = pages.map((c) => c.session.signed!.state());
@@ -1284,27 +1288,27 @@ describe("Remove overlapping the host's other roster changes: one outcome everyw
   }
 
   it("Make host, then Remove: the handover holds, and the old host can no longer remove", async () => {
-    const { host, co, x, settle, agreed } = await room(101);
+    const { host, co, m, x, settle, agreed } = await room(101);
     const handed = host.session.appendRoster("host", { who: co.session.signed!.key });
     const removed = host.session.remove(x.session.signed!.key);
     expect(await handed).toBe(true);
     expect(await removed).toBe(false);
     await settle();
-    const { epoch, state } = agreed();
+    const { epoch, state } = agreed([host, co, m, x]);
     expect(epoch).toBe(0);
     expect(state.host).toBe(co.session.signed!.key);
     expect(state.members.has(x.session.signed!.key)).toBe(true);
   });
 
   it("Remove, then Make host: both hold, the handover in the next epoch", async () => {
-    const { host, co, x, settle, agreed } = await room(102);
+    const { host, co, m, x, settle, agreed } = await room(102);
     const removed = host.session.remove(x.session.signed!.key);
     const handed = host.session.appendRoster("host", { who: co.session.signed!.key });
     expect(await removed).toBe(true);
     expect(await handed).toBe(true);
     await settle();
     expect(x.session.removed).toBe(true);
-    const { epoch, state } = agreed();
+    const { epoch, state } = agreed([host, co, m]);
     expect(epoch).toBe(1);
     expect(state.host).toBe(co.session.signed!.key);
     expect(state.members.has(x.session.signed!.key)).toBe(false);
@@ -1315,7 +1319,7 @@ describe("Remove overlapping the host's other roster changes: one outcome everyw
       [103, "policy"],
       [104, "remove"],
     ] as const) {
-      const { host, x, settle, agreed } = await room(seed);
+      const { host, co, m, x, settle, agreed } = await room(seed);
       const jobs =
         first === "policy"
           ? [
@@ -1331,7 +1335,7 @@ describe("Remove overlapping the host's other roster changes: one outcome everyw
       expect(await Promise.all(jobs)).toEqual([true, true, true]);
       await settle();
       expect(x.session.removed).toBe(true);
-      const { epoch, state } = agreed();
+      const { epoch, state } = agreed([host, co, m]);
       expect(epoch).toBe(1);
       expect(state.viewOnly).toBe(true);
       expect(state.ask).toBe(false);
@@ -1344,7 +1348,7 @@ describe("Remove overlapping the host's other roster changes: one outcome everyw
       [106, "remove first"],
       [107, "ask off"],
     ] as const) {
-      const { r, host, x, settle, agreed } = await room(seed);
+      const { r, host, co, m, x, settle, agreed } = await room(seed);
       if (how === "ask off") expect(await host.session.appendRoster("ask", { ask: false })).toBe(true);
       const k = how === "ask off" ? undefined : await r.knock(`new${seed}`);
       const jobs =
@@ -1358,7 +1362,7 @@ describe("Remove overlapping the host's other roster changes: one outcome everyw
       const newcomer = (k ?? late)!;
       expect(newcomer.outcome()).toBe("admitted");
       expect(x.session.removed).toBe(true);
-      const { epoch, state } = agreed();
+      const { epoch, state } = agreed([host, co, m, newcomer.client]);
       expect(epoch).toBe(1);
       expect(state.members.has(newcomer.p.identity.key)).toBe(true);
       expect(newcomer.client.session.signed!.current!.sig).toBe(host.session.signed!.current!.sig);
@@ -1367,6 +1371,228 @@ describe("Remove overlapping the host's other roster changes: one outcome everyw
       expect(title(newcomer.client)).toBe(`After ${how}`);
     }
   }, 20_000);
+});
+
+describe("knock-to-join: chains, denials and leaving, message by message", () => {
+  /** Lobby messages as the host's identity, from a transport of their own, one at a time, in order. */
+  async function asHost(r: Awaited<ReturnType<typeof knockRoom>>) {
+    const host = r.host.client!;
+    const evil = await r.rogue(host.session.signed!.identity);
+    return async (body: LobbyBody, to: TestClient) => {
+      await evil.send(body, to.session.transport.self);
+      await r.settle();
+    };
+  }
+
+  it("retains a wrap delivered before its chain", async () => {
+    const r = await knockRoom(111);
+    const host = r.host.client!;
+    const k = await r.knock("wren");
+    // Let in by the host's roster, but nothing sent: the wrap and the chain come by hand, the wrap first.
+    host.session.knocks.delete(k.p.identity.key);
+    expect(await host.session.signed!.append("join", { who: k.p.identity.key, x: k.p.agreement.x })).toBeDefined();
+    const current = host.session.signed!.current!;
+    const wrap = await wrapFor(
+      r.lobbyKeys.roomId,
+      scopeOf(current),
+      { identity: r.host.identity, agreement: r.host.agreement },
+      { key: k.p.identity.key, x: k.p.agreement.x },
+      r.secret,
+    );
+    const send = await asHost(r);
+    await send({ t: "bundle", chain: { starts: [], logs: [] }, wraps: [wrap] }, k.client);
+    expect(k.outcome()).toBeUndefined();
+    await send({ t: "bundle", chain: chainOf(host), wraps: [] }, k.client);
+    expect(k.outcome()).toBe("admitted");
+    expect(k.client.session.signed!.current!.sig).toBe(current.sig);
+  });
+
+  it("buffers a denial until its named epoch arrives", async () => {
+    const r = await knockRoom(112);
+    const host = r.host.client!;
+    const x = await r.join("x");
+    expect(await host.session.remove(x.session.signed!.key)).toBe(true);
+    await r.settle();
+    const k = await r.knock("wren");
+    const send = await asHost(r);
+    // The no first, naming epoch 1 (which this page doesn't have yet), then the chain: once, in that order.
+    await send(
+      { t: "deny", to: k.p.identity.key, chain: { starts: [], logs: [] }, tip: host.session.signed!.scope },
+      k.client,
+    );
+    expect(k.outcome()).toBeUndefined();
+    await send({ t: "bundle", chain: chainOf(host), wraps: [], more: true }, k.client);
+    expect(k.outcome()).toBe("denied");
+  });
+
+  it("a no counts only from who hosts or co-hosts now: a removed co-host naming the epoch it led changes nothing", async () => {
+    const r = await knockRoom(113);
+    const host = r.host.client!;
+    const co = await r.join("co");
+    const y = await r.join("y");
+    expect(await host.session.appendRoster("cohost", { who: co.session.signed!.key })).toBe(true);
+    await r.settle();
+    const epoch0 = chainOf(co);
+    expect(await host.session.remove(co.session.signed!.key)).toBe(true);
+    await r.settle();
+    expect(await host.session.remove(y.session.signed!.key)).toBe(true);
+    await r.settle();
+    const k = await r.knock("wren");
+    // This page has the room's chain through epoch 2.
+    await (
+      await asHost(r)
+    )({ t: "bundle", chain: chainOf(host), wraps: [], more: true }, k.client);
+    expect(k.client.session.signed!.knock!.chain.deepest()!.epoch).toBe(2);
+    const evil = await r.rogue(co.session.signed!.identity);
+    // Naming epoch 0, where it co-hosted; with epoch 0's chain; with nothing: none of them counts.
+    for (const deny of [
+      { t: "deny" as const, to: k.p.identity.key, chain: { starts: [], logs: [] }, tip: scopeOf(r.start) },
+      { t: "deny" as const, to: k.p.identity.key, chain: epoch0 },
+      { t: "deny" as const, to: k.p.identity.key, chain: epoch0, tip: scopeOf(r.start) },
+    ]) {
+      await evil.send(deny, k.client.session.transport.self);
+      await r.settle();
+      expect(k.outcome()).toBeUndefined();
+      expect(k.client.session.status).not.toBe("left");
+    }
+  });
+
+  it("a no waiting for its epoch keeps nothing of its chain: each later bundle is taken once, the no's chain never again", async () => {
+    const r = await knockRoom(114);
+    const host = r.host.client!;
+    await r.join("y");
+    const k = await r.knock("wren");
+    const chain = k.client.session.signed!.knock!.chain;
+    const add = vi.spyOn(chain, "add");
+    onTestFinished(() => add.mockRestore());
+    const send = await asHost(r);
+    await send(
+      { t: "deny", to: k.p.identity.key, chain: chainOf(host), tip: `5:${bytesToBase64Url(seededBytes(1140)(64))}` },
+      k.client,
+    );
+    for (let i = 0; i < 5; i++) await send({ t: "bundle", chain: { starts: [], logs: [] }, wraps: [] }, k.client);
+    expect(add).toHaveBeenCalledTimes(6);
+    expect(add.mock.calls.filter(([data]) => data.logs.length > 0)).toHaveLength(1);
+    expect(k.outcome()).toBeUndefined();
+  });
+
+  it("a page catching up isn't ejected by part of a chain: removed in epoch 1, let back in by epoch 2, it follows to 2", async () => {
+    const r = await knockRoom(115);
+    const host = r.host.client!;
+    const a = await r.join("a");
+    const b = await r.join("b");
+    const aKey = a.session.signed!.key;
+    const record = a.session.memberRecord()!;
+    await a.session.leave();
+    expect(await host.session.remove(aKey)).toBe(true);
+    await r.settle();
+    // a comes back (another tab, the same person) and is let in again; then b is removed: a is in epoch 2.
+    const aP = r.people[1];
+    const again = await r.open(aP, { agreement: aP.agreement, chain: { starts: [], logs: [] } }, r.net.connect());
+    await r.settle();
+    expect(await host.session.admit(aKey)).toBe(true);
+    await r.settle();
+    expect(await host.session.remove(b.session.signed!.key)).toBe(true);
+    await r.settle();
+    const data = chainOf(host);
+    expect(data.starts).toHaveLength(3);
+    const current = host.session.signed!.current!;
+    const secret2 = host.session.signed!.knock!.chain.secretOf(current)!;
+    const wrap = await wrapFor(
+      r.lobbyKeys.roomId,
+      scopeOf(current),
+      { identity: r.host.identity, agreement: r.host.agreement },
+      { key: aKey, x: aP.agreement.x },
+      secret2,
+    );
+    // The old tab reopens on its old record (epoch 0), reachable only by pieces sent by hand.
+    const transport = r.net.connect();
+    const send = await (async () => {
+      const evil = await r.rogue(host.session.signed!.identity, transport);
+      return evil;
+    })();
+    const old = await r.open(
+      aP,
+      { agreement: aP.agreement, chain: record.chain, secret: secretOf(record), wraps: record.wraps },
+      r.net.connect(),
+    );
+    r.net.partition([[old.session.transport.self, transport.self], [host, again].map((c) => c.session.transport.self)]);
+    await r.settle();
+    const tip = scopeOf(current);
+    // Epochs 0 and 1 (its removal in 1) first: nothing irreversible yet.
+    await send.send(
+      {
+        t: "bundle",
+        chain: { starts: data.starts.slice(0, 2), logs: data.logs.slice(0, 2) },
+        wraps: [],
+        more: true,
+        tip,
+      },
+      old.session.transport.self,
+    );
+    await r.settle();
+    expect(old.session.removed).toBe(false);
+    expect(old.session.status).not.toBe("left");
+    // Then epoch 2, with its wrap: it's there.
+    await send.send(
+      { t: "bundle", chain: { starts: data.starts.slice(2), logs: data.logs.slice(2) }, wraps: [wrap], tip },
+      old.session.transport.self,
+    );
+    await r.settle();
+    expect(old.session.removed).toBe(false);
+    expect(old.session.signed!.current!.sig).toBe(current.sig);
+  });
+
+  it("Remove then Leave at once: the removal re-keys, the handover lands in the new epoch, and the new host can remove", async () => {
+    const r = await knockRoom(116);
+    const host = r.host.client!;
+    const co = await r.join("co");
+    const m = await r.join("m");
+    const x = await r.join("x");
+    expect(await host.session.appendRoster("cohost", { who: co.session.signed!.key })).toBe(true);
+    await r.settle();
+    const removed = host.session.remove(x.session.signed!.key);
+    // Leaving as the host leaves: the handover asked for, then the goodbye.
+    const handed = host.session.appendRoster("host", { who: co.session.signed!.key });
+    const left = host.session.leave();
+    expect(await removed).toBe(true);
+    expect(await handed).toBe(true);
+    await left;
+    for (let i = 0; i < 3; i++) {
+      r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+      await r.settle();
+    }
+    expect(x.session.removed).toBe(true);
+    for (const c of [co, m]) {
+      expect(c.session.keys.epoch).toBe(1);
+      expect(c.session.signed!.state().host).toBe(co.session.signed!.key);
+    }
+    expect(await co.session.remove(m.session.signed!.key)).toBe(true);
+    await r.settle();
+    expect(m.session.removed).toBe(true);
+    expect(co.session.keys.epoch).toBe(2);
+  });
+
+  it("Admit waiting its turn takes the card at once: a Deny after it changes nothing, and they're let in", async () => {
+    const r = await knockRoom(117);
+    const host = r.host.client!;
+    const x = await r.join("x");
+    const k = await r.knock("wren");
+    // A removal under way: the Admit waits its turn.
+    const removed = host.session.remove(x.session.signed!.key);
+    const admitted = host.session.admit(k.p.identity.key);
+    expect(host.session.knocks.has(k.p.identity.key)).toBe(false);
+    host.session.deny(k.p.identity.key);
+    expect(await removed).toBe(true);
+    expect(await admitted).toBe(true);
+    for (let i = 0; i < 2; i++) {
+      r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
+      await r.settle();
+    }
+    expect(k.outcome()).toBe("admitted");
+    expect(k.client.session.denied).toBe(false);
+    expect(host.session.knocks.size).toBe(0);
+  });
 });
 
 describe("knock-to-join: the review's smaller cases", () => {

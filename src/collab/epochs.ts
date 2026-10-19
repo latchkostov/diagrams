@@ -162,6 +162,17 @@ export class EpochChain {
     return [...this.starts.values()].sort((a, b) => b.epoch - a.epoch || (a.sig < b.sig ? -1 : 1))[0];
   }
 
+  /**
+   * Whether `key` hosts or co-hosts now, as far as this chain knows: in the newest epoch it holds, never an earlier one
+   * (someone removed, or no longer a co-host, keeps no authority from an epoch they once led). Every check of who may
+   * act for the room (a no at the door) reads this.
+   */
+  leadsNow(key: string): boolean {
+    const deepest = this.deepest();
+    const s = deepest && this.rosterOf(deepest)?.state();
+    return !!s && (s.host === key || s.cohosts.includes(key));
+  }
+
   /** A start's roster (once it counts). */
   rosterOf(start: EpochStart): SignedRoster | undefined {
     return this.rosters.get(start.sig);

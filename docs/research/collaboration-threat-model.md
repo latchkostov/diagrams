@@ -536,13 +536,24 @@ host removes), which makes the epochs a single line.
   arrived yet (a few) and looks at them again with every piece, so a chain of every supported epoch with full
   rosters (over 4 MiB) reaches a member, a member catching up and a newcomer whatever the order (fifth review P1: it
   was one message over the lobby's limit, refused silently, and the room moved on without them; sixth review P2: a
-  no arriving before its chain was dropped). A no names the epoch it's checked against; someone told no who knocks
-  again (still checking the chain, or trying again) is told again, not asked about. **Roster writes are one queue**
+  no arriving before its chain was dropped). Every piece names the epoch the whole chain reaches, and nothing
+  irreversible (leaving as removed) is decided before that's here, nor while this person is a member at the end of
+  the line (seventh review P1: a page catching up was ejected by a piece showing its removal, before the piece that
+  let it back in). A no names the epoch it waits for, but that only says when to look: its chain is taken once, as
+  any is, and what waits is who said it and that epoch; it counts only from someone who hosts or co-hosts in the
+  newest epoch the page knows (`EpochChain.leadsNow`, the one place current authority is read), so a removed
+  co-host naming an epoch it once led denies nobody (seventh review P1s, the no's chain re-read with every later
+  bundle among them). Someone told no who knocks again (still checking the chain, or trying again) is told again,
+  not asked about; an Admit takes the card at once, so a Deny can't overtake one waiting its turn, and the admission
+  checks, at its turn, that the decision still stands. **Roster writes are one queue**
   (sixth review P1s): this member's entries, an admission (its wrap and its entries) and a whole removal (draft,
   successor, wraps, sealed messages, commit, re-key) run one at a time, each drafting against everything the last
   committed, so two of them never sign into one slot (the tie-break dropped one: a handover, a policy, a removal
   that silently didn't happen) and an action after a removal lands in its successor epoch; a removal that can't be
-  made (the room changed meanwhile) is said plainly to the host. The re-key itself: the same document, sender id and Live run; a new sealer and opener (frames from any other epoch are
+  made (the room changed meanwhile) is said plainly to the host. Leaving closes first (nothing new in or out), lets
+  the roster writes already asked for finish (a removal with its re-key, then the handover in the epoch that left
+  it in, sent to everyone in the lobby when it landed after the re-key), then says goodbye (seventh review P1: a
+  Remove and Leave together left the room's new epoch with the departed host still hosting). The re-key itself: the same document, sender id and Live run; a new sealer and opener (frames from any other epoch are
   refused before decryption), bindings reset (they're signed per epoch), presence ordering restarted for the members
   left (their counters restart under the new keys) and dropped for the one removed (review P1), and the local copy
   re-written under the new epoch's storage key. Members follow on the bundle; a removed member's page sees the

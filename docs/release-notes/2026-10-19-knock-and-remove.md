@@ -85,6 +85,10 @@ before the independent crypto review, disclosed as not yet reviewed; Private dia
   removal that can't be made says so ("{alias} wasn't removed: the room changed meanwhile."). A long chain's pieces
   each fit one frame and are taken in any order; a no waits for its chain, and someone told no who knocks again is
   told again.
+- **A seventh review** (five issues): a no counts only from who hosts or co-hosts now (never from an epoch the
+  denier once led), and its chain is taken once; nothing irreversible is decided on part of a chain; leaving lets a
+  Remove under way re-key, and the handover land in the new epoch, before the goodbye; an Admit waiting its turn
+  takes the card at once, so a Deny can't overtake it.
 - **The join hotfix (#201), on the knock path too.**
   - Frames that can't be checked yet are never held against their sender, and they're asked for again once they can
     count.

@@ -100,8 +100,11 @@ export async function wrapSigned(roomId: string, wrap: Wrap): Promise<boolean> {
 
 export type LobbyBody =
   | { t: "hello"; x: string; alias: string; scope?: string; proof?: string }
-  /** `more`: one piece of a chain too long for one message; the rest follows (the last carries the wraps). */
-  | { t: "bundle"; chain: ChainData; wraps: Wrap[]; more?: true }
+  /**
+   * `more`: one piece of a chain too long for one message; the rest follows (the last carries the wraps). `tip`: the
+   * epoch the whole chain reaches (a receiver decides nothing irreversible before it has it).
+   */
+  | { t: "bundle"; chain: ChainData; wraps: Wrap[]; more?: true; tip?: string }
   /** `tip`: the epoch whose roster says who may deny (its chain sent before, in pieces, when it's long). */
   | { t: "deny"; to: string; chain: ChainData; tip?: string };
 
@@ -168,7 +171,16 @@ export function parseBody(v: unknown): LobbyBody | undefined {
       const chain = parseChainData(v.chain);
       const wraps = parseWraps(v.wraps, MAX_WRAPS);
       if (v.more !== undefined && v.more !== true) return undefined;
-      return chain && wraps ? { t: "bundle", chain, wraps, ...(v.more ? { more: true as const } : {}) } : undefined;
+      if (v.tip !== undefined && (typeof v.tip !== "string" || v.tip.length >= 120)) return undefined;
+      return chain && wraps
+        ? {
+            t: "bundle",
+            chain,
+            wraps,
+            ...(v.more ? { more: true as const } : {}),
+            ...(typeof v.tip === "string" ? { tip: v.tip } : {}),
+          }
+        : undefined;
     }
     case "deny": {
       const chain = parseChainData(v.chain);
@@ -210,8 +222,12 @@ export function chainMessages(data: ChainData, wraps: Wrap[]): Extract<LobbyBody
     size += n;
   });
   pieces.push(piece);
+  const last = data.starts.at(-1) as { epoch?: unknown; sig?: unknown } | undefined;
+  const tip = last && typeof last.sig === "string" ? { tip: `${last.epoch}:${last.sig}` } : {};
   return pieces.map((chain, i) =>
-    i < pieces.length - 1 ? { t: "bundle", chain, wraps: [], more: true } : { t: "bundle", chain, wraps },
+    i < pieces.length - 1
+      ? { t: "bundle", chain, wraps: [], more: true, ...tip }
+      : { t: "bundle", chain, wraps, ...tip },
   );
 }
 
