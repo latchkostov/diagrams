@@ -14,3 +14,5 @@ offline-output/
 
 # Static schemas are served/emitted by Vite in dev/build.
 /public/schema/
+
+dist-viewer/

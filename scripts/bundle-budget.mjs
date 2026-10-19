@@ -32,3 +32,17 @@ if (gz > BUDGET) {
   process.exit(1);
 }
 console.log(`bundle-budget: ok. ${line}`);
+
+// The platform viewer is deliberately independent of the app entry. Count every JS/CSS/font asset once.
+// 698.1 kB measured with the full stencil icon catalog and both fonts, plus about 15%.
+const VIEWER_BUDGET = 805_000;
+const viewerDir = "dist-viewer";
+const manifest = JSON.parse(fs.readFileSync(path.join(viewerDir, "manifest.json"), "utf8"));
+const viewerGzip = manifest.files
+  .filter((name) => /\.(js|css|woff2)$/.test(name))
+  .reduce((total, name) => total + zlib.gzipSync(fs.readFileSync(path.join(viewerDir, name)), { level: 9 }).length, 0);
+if (viewerGzip > VIEWER_BUDGET) {
+  console.error(`bundle-budget: viewer over budget: ${kB(viewerGzip)} gzip; budget ${kB(VIEWER_BUDGET)}.`);
+  process.exit(1);
+}
+console.log(`bundle-budget: viewer ok. ${kB(viewerGzip)} gzip; budget ${kB(VIEWER_BUDGET)}.`);

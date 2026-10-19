@@ -11,6 +11,7 @@ import { deploymentSwitches } from "./scripts/deployment-env";
 import { selfHostBuildHeaders, selfHostPreviewHeaders } from "./scripts/self-host-headers";
 import { i18n } from "./scripts/i18n-plugin";
 import { schemaAssets } from "./scripts/schema-assets";
+import { viewerBundleFixture } from "./scripts/viewer-bundle";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -159,6 +160,7 @@ export default defineConfig({
     securityHeaders(),
     canvas.plugin,
     viewer,
+    ...(E2E_BUILD ? [viewerBundleFixture()] : []),
     // Self-hosting switches (src/lib/deployment.ts, docs/SELF-HOSTING.md), folded to constants; the brand name.
     deploymentSwitches(),
     // `vite preview` with a self-hosted copy's headers, for PREVIEW_HEADERS=self-host (the e2e suite).
