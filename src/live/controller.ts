@@ -309,15 +309,21 @@ export class LiveController {
 
   /**
    * Shared Live's catch-up: the run forward to `tick` (never back), neither logged nor published (the caller
-   * publishes once per slice). It stops at a pausing note, as the host's run did: the host's resume op passes it.
+   * publishes once per slice). Playing on, it stops at a pausing note, as the host's run did (the host's resume op
+   * passes it); on the way to a seek's target (`seeking`) it passes them, as the host's seek did.
    */
-  advanceTo(tick: number): void {
+  advanceTo(tick: number, seeking = false): void {
     if (this.needsRestart || this.held || this.replayTarget !== null) return;
     const target = tickTime(tick);
     if (this.runner) {
       for (let guard = 0; guard < 10_000; guard++) {
         const s = this.runner.state();
-        if (s.done || s.waiting || s.time >= target - 5) break;
+        if (s.done || s.time >= target - 5) break;
+        if (s.waiting) {
+          if (!seeking) break;
+          if (!this.updateRunner(() => this.runner?.resume())) return;
+          continue;
+        }
         const before = s.time;
         if (!this.updateRunner(() => this.runner?.step(Math.min(1000, target - s.time) / this.speed))) return;
         this.captureCheckpoint();
@@ -1082,6 +1088,11 @@ export class LiveController {
       );
       this.engine.setNodePropsBatch(patches, 1);
     }
+    // What a follower needs to do the same: the saved simulation, and the props of the nodes the save changed
+    // (each node's whole props, so a removed key goes too). Nothing when it changed none.
+    const changed = diagram
+      ? diagram.nodes.filter((n) => this.nodeProps.get(n.id) !== propsKey(n.props)).map((n) => [n.id, n.props ?? {}])
+      : [];
     if (diagram) {
       this.diagram = diagram;
       this.rememberProps(diagram);
@@ -1089,11 +1100,10 @@ export class LiveController {
     this.inputs = emptyInputs();
     if (saved) this.base = saved;
     if (!saved && diagram) this.freeApplied = {};
-    // What a follower needs to do the same: the saved simulation, and the node props the save wrote.
     this.record({
       kind: "commit",
       simulation: saved,
-      ...(diagram ? { props: Object.fromEntries(diagram.nodes.map((n) => [n.id, n.props ?? {}])) } : {}),
+      ...(changed.length ? { props: Object.fromEntries(changed) } : {}),
     });
     this.applyInputs();
   }
@@ -1352,30 +1362,47 @@ export class LiveController {
       if (after.status !== before.status) {
         const s = after.status;
         statuses[node.id] = s === "paused" || s === "down" ? s : "up";
-        this.engine.setNodeStatus(node.id, statuses[node.id]);
       }
-      this.nodeProps.set(node.id, k);
       patched = true;
     }
-    this.engine.setNodePropsBatch(patches);
-    this.diagram = next;
-    if (patched) {
-      const changed = new Map<string, Set<string>>();
-      for (const [id, delta] of Object.entries(patches))
-        if (Object.keys(delta).length) changed.set(id, new Set(Object.keys(delta)));
-      for (const id of Object.keys(statuses)) changed.set(id, (changed.get(id) ?? new Set()).add("status"));
-      this.supersede(changed);
-      const nodes = Object.fromEntries(
-        next.nodes.filter((n) => n.id in patches || n.id in statuses).map((n) => [n.id, n.props ?? {}]),
-      );
-      this.record({ kind: "patch", patches, statuses, nodes });
-      if (!this.sim) this.applyInputs();
-      this.checkpoints = [];
-      this.captureCheckpoint(true);
-      this.dirty = true;
-      this.publish();
+    if (!patched) {
+      this.engine.setNodePropsBatch(patches);
+      this.diagram = next;
+      return "none";
     }
-    return patched ? "patched" : "none";
+    const nodes = Object.fromEntries(
+      next.nodes.filter((n) => n.id in patches || n.id in statuses).map((n) => [n.id, n.props ?? {}]),
+    );
+    this.applyDiagramPatch(patches, statuses, nodes, next);
+    return "patched";
+  }
+
+  /**
+   * A diagram edit the run takes, this editor's (updateDiagram derives it) or the room's host's (patchRemote, as
+   * sent): statuses and props into the engine, the diagram and its remembered props, the tweaks it supersedes, the
+   * log, free play's inputs and the checkpoints. One transition for both, so host and follower can't drift apart.
+   */
+  private applyDiagramPatch(
+    patches: Record<string, NodeSimProps>,
+    statuses: Record<string, NodeStatus>,
+    nodes: Record<string, Record<string, unknown>>,
+    next: DiagramFile,
+  ): void {
+    for (const [id, status] of Object.entries(statuses)) this.engine.setNodeStatus(id, status);
+    this.engine.setNodePropsBatch(patches);
+    for (const [id, props] of Object.entries(nodes)) this.nodeProps.set(id, propsKey(props));
+    this.diagram = next;
+    const changed = new Map<string, Set<string>>();
+    for (const [id, delta] of Object.entries(patches))
+      if (Object.keys(delta).length) changed.set(id, new Set(Object.keys(delta)));
+    for (const id of Object.keys(statuses)) changed.set(id, (changed.get(id) ?? new Set()).add("status"));
+    this.supersede(changed);
+    this.record({ kind: "patch", patches, statuses, nodes });
+    if (!this.sim) this.applyInputs();
+    this.checkpoints = [];
+    this.captureCheckpoint(true);
+    this.dirty = true;
+    this.publish();
   }
 
   /**
@@ -1388,29 +1415,9 @@ export class LiveController {
     nodes: Record<string, Record<string, unknown>>,
   ): void {
     if (this.needsRestart) return;
-    for (const [id, status] of Object.entries(statuses)) this.engine.setNodeStatus(id, status);
-    this.engine.setNodePropsBatch(patches);
     // The diagram as the host's run had it after the edit: free play's inputs and the next edit read it.
-    this.diagram = {
-      ...this.diagram,
-      nodes: this.diagram.nodes.map((n) => {
-        const props = nodes[n.id];
-        if (!props) return n;
-        this.nodeProps.set(n.id, propsKey(props));
-        return { ...n, props };
-      }),
-    };
-    const changed = new Map<string, Set<string>>();
-    for (const [id, delta] of Object.entries(patches))
-      if (Object.keys(delta).length) changed.set(id, new Set(Object.keys(delta)));
-    for (const id of Object.keys(statuses)) changed.set(id, (changed.get(id) ?? new Set()).add("status"));
-    this.supersede(changed);
-    this.record({ kind: "patch", patches, statuses, nodes });
-    if (!this.sim) this.applyInputs();
-    this.checkpoints = [];
-    this.captureCheckpoint(true);
-    this.dirty = true;
-    this.publish();
+    const known = Object.fromEntries(Object.entries(nodes).filter(([id]) => this.nodeProps.has(id)));
+    this.applyDiagramPatch(patches, statuses, known, this.withProps(known));
   }
 
   // ---------------------------------------------------------------- internals

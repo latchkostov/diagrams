@@ -174,6 +174,26 @@ test("the shortcuts sheet's failed download stays in its dialog: Retry, Close, E
   await expect(page.getByTestId("lazy-dialog")).toHaveCount(0);
 });
 
+test("the shortcuts sheet's Retry keeps focus in its frame: Escape closes it while the download is pending", async ({
+  page,
+}) => {
+  const sheet = await gate(page, SHORTCUTS);
+  sheet.fail = true;
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("shortcuts-button").click();
+  await expect(page.getByTestId("lazy-dialog-error")).toBeVisible();
+  // Online again, but the download is held: Retry by keyboard, and it's loading.
+  sheet.fail = false;
+  await page.getByTestId("lazy-dialog-retry").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("lazy-dialog-loading")).toBeVisible();
+  await expect(page.getByTestId("lazy-dialog")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("lazy-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("shortcuts-button")).toBeFocused();
+  sheet.release();
+});
+
 test.describe("a dialog whose download fails", () => {
   test("says so in its frame, and Retry opens it without reloading", async ({ page }) => {
     const library = await gate(page, LIBRARY);

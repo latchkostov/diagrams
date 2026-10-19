@@ -4,7 +4,7 @@ import { faultProblem } from "../../model/faults";
 import type { Simulation } from "../../model/types";
 import type { LiveOp } from "../../live/controlLog";
 import type { LiveInputs } from "../../live/capacityModel";
-import type { HostClock, LiveMessage, RunStart, WireEntry } from "./liveShare";
+import { LIVE_PROTOCOL, type HostClock, type LiveMessage, type RunStart, type WireEntry } from "./liveShare";
 
 // Watch together's wire format (shared Live P2): JSON, checked in full before anything uses it, and split into
 // parts when it's larger than one frame. Every message is the host's (or a follower's request): untrusted, since
@@ -260,8 +260,10 @@ export function parseMessage(v: unknown): LiveMessage | undefined {
   const run = v.run;
   switch (v.t) {
     case "start": {
+      // Another protocol version is told apart before its fields are read (they may differ).
+      if (v.v !== LIVE_PROTOCOL) return { t: "incompatible", run };
       const s = start(v.start);
-      return s ? { t: "start", run, start: s } : undefined;
+      return s ? { t: "start", v: LIVE_PROTOCOL, run, start: s } : undefined;
     }
     case "log": {
       if (!Array.isArray(v.entries) || v.entries.length > LIMITS.entriesPerMessage || typeof v.done !== "boolean")

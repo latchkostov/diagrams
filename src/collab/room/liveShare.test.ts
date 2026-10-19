@@ -15,6 +15,7 @@ import {
   ASK_MS,
   CATCH_UP_SLICE_MS,
   HOST_SILENT_MS,
+  LIVE_PROTOCOL,
   MAX_DIGESTS,
   LiveDriver,
   LiveFollower,
@@ -505,7 +506,7 @@ describe("Watch together", () => {
       { t: "beacon", run, tick: 10, playing: true, speed: Infinity },
       { t: "log", run, entries: "all of them", done: true },
       { t: "log", run, entries: [], done: true },
-      { t: "start", run, start: null },
+      { t: "start", v: LIVE_PROTOCOL, run, start: null },
       { t: "digest", run, tick: 1, seq: 1, hash: -1 },
       { t: "op", run: "../../x", entry: { seq: seq + 1, tick: 0, op: { kind: "play", on: true } } },
       { t: "op", run, entry: { seq: seq + 1, tick: host.tick, op: { kind: "props", node: "x", patch: deep(40) } } },
@@ -559,6 +560,7 @@ describe("Watch together", () => {
     const w = watcher(room, "guest");
     room.channel("host").send({
       t: "start",
+      v: LIVE_PROTOCOL,
       run: "x.1",
       start: {
         engine: "other",
@@ -885,6 +887,113 @@ describe("Watch together: what a follower takes, and what it keeps", () => {
     expect(w.status.some((s) => s.phase === "cant-follow")).toBe(false);
     sameAfterPause(host, w);
     driver.dispose();
+  });
+});
+
+describe("Watch together: the final round", () => {
+  /** Steady checkouts, with a pausing note at one second. */
+  const noted: Simulation = {
+    ...steady,
+    id: "noted",
+    timeline: [{ atMs: 1_000, action: { do: "note", text: "Watch the order service.", pause: true } }],
+  };
+
+  it("a commit logs only the nodes the save changed, each whole; none when it changed none", () => {
+    const many: DiagramFile = {
+      ...diagram,
+      nodes: [
+        ...diagram.nodes,
+        ...Array.from({ length: 2_000 }, (_, i) => ({
+          ...diagram.nodes[1],
+          id: `extra-${i}`,
+          props: { messageType: `OrderRequest${"x".repeat(200)}` },
+        })),
+      ],
+    };
+    const c = new LiveController(many);
+    c.setInputs({ ...emptyInputs(), props: { inventory: { replicas: 3 } } });
+    const candidate = capacitySaveCandidate(many, null, c.getState().inputs);
+    c.commitInputs(null, candidate.diagram);
+    const commit = c.controlLog().at(-1);
+    expect(commit?.op.kind).toBe("commit");
+    if (commit?.op.kind !== "commit") return;
+    expect(Object.keys(commit.op.props ?? {})).toEqual(["inventory"]);
+    expect(commit.op.props?.inventory).toEqual(candidate.diagram.nodes.find((n) => n.id === "inventory")?.props);
+    expect(JSON.stringify(commit).length).toBeLessThan(2_000);
+    // A saved simulation's commit changes no node: no props at all.
+    c.selectSimulation(steady);
+    c.setInputs({ ...emptyInputs(), traffic: 2 });
+    const saved = capacitySaveCandidate(candidate.diagram, steady, c.getState().inputs);
+    c.commitInputs(saved.saved, saved.diagram);
+    const second = c.controlLog().at(-1);
+    expect(second?.op.kind === "commit" && second.op.props).toBeUndefined();
+  });
+
+  it("a host's seek past a pausing note: the follower passes it too, live and as a late joiner", () => {
+    const { room, host, driver, w } = hostAndGuest(noted, 0);
+    framesUntil(host, [w], () => !!host.runNow?.waiting && !!w.controller.runNow?.waiting);
+    host.seek(25_000);
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(w.controller) >= 2_500);
+    sameAfterPause(host, w);
+    const late = watcher(room, "late");
+    framesUntil(host, [late], () => late.follower.phase === "following" && tickOf(late.controller) >= 2_500);
+    sameAfterPause(host, late);
+    driver.dispose();
+  });
+
+  it("a seek back past a diagram edit: shared afresh, so a late joiner lands on the host's state", () => {
+    const { room, host, driver, w } = hostAndGuest(steady, 1_000);
+    room.doc = withNodeProps(room.doc, "inventory", { replicas: 5 });
+    host.updateDiagram(room.doc);
+    framesUntil(host, [w], () => tickOf(host) >= 1_200);
+    const before = driver.runId;
+    host.seek(5_000);
+    expect(driver.runId).not.toBe(before);
+    framesUntil(host, [w], () => w.follower.phase === "following" && tickOf(host) >= 700);
+    sameAfterPause(host, w);
+    const late = watcher(room, "late");
+    framesUntil(host, [late], () => late.follower.phase === "following" && tickOf(host) >= 900);
+    sameAfterPause(host, late);
+    expect(late.controller.effectiveProps("inventory").replicas).toBe(5);
+    expect(late.status.some((s) => s.phase === "cant-follow")).toBe(false);
+    driver.dispose();
+  });
+
+  it("catch-up yields while applying same-tick operations, and disposal cancels the rest", () => {
+    const room = new Room();
+    const host = new LiveController(diagram);
+    host.selectSimulation(steady);
+    for (let i = 0; i < 60; i++) host.setNodeStatus("payments", i % 2 ? "up" : "down");
+    const driver = new LiveDriver(room.channel("host"), session(host), () => {}, undefined, timers);
+    let now = 0;
+    const clock: LiveTimers = { ...timers, now: () => now };
+    const late = watcher(room, "late", clock);
+    const apply = late.controller.applyRemote.bind(late.controller);
+    let calls = 0;
+    late.controller.applyRemote = (entry) => {
+      calls++;
+      now += 3;
+      apply(entry);
+    };
+    vi.advanceTimersToNextTimer();
+    expect(calls).toBeGreaterThan(0);
+    expect(calls).toBeLessThanOrEqual(Math.ceil(CATCH_UP_SLICE_MS / 3));
+    expect(late.status.at(-1)?.phase).toBe("catching-up");
+    const at = calls;
+    late.follower.dispose();
+    vi.advanceTimersByTime(1_000);
+    expect(calls).toBe(at);
+    driver.dispose();
+  });
+
+  it("a host on another protocol version is told apart before its start is read: reload, not ask again", () => {
+    const room = new Room();
+    const w = watcher(room, "guest");
+    // An older page's start: no protocol version, no start props.
+    const old = { t: "start", run: "old.1", start: { engine: "x", simulation: null, traffic: false, speed: 1 } };
+    expect(parseMessage(old)).toEqual({ t: "incompatible", run: "old.1" });
+    rawFromHost(room, old);
+    expect(w.status.at(-1)).toMatchObject({ phase: "cant-follow", reason: "version" });
   });
 });
 

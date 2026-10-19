@@ -24,10 +24,11 @@ second slice, built on P1's control log. The owner's defaults apply.
   controller's run id.
 - **The host's ops, through the controller.** A follower applies each op through its controller's own remote-op
   API (`LiveController.applyRemote`, exhaustive over every op kind), as the host's controller applied it:
-  - a saved Inputs (`commit`) carries the saved simulation and the node props the save wrote, and clears the
-    what-ifs;
+  - a saved Inputs (`commit`) carries the saved simulation and the props of the nodes the save changed (each
+    node's whole props; none when it changed none), and clears the what-ifs;
   - a diagram edit (`patch`) carries its props and statuses and the edited nodes' props, applied as sent on their
-    tick (two edits within the half-second delay both happen; a removed key travels as null);
+    tick (two edits within the half-second delay both happen; a removed key travels as null). A local edit and the
+    host's go through one transition in the controller;
   - a seek goes to the tick the host's seek reached.
 - **Who changed the run.** Every op is logged with its origin: this person, the room's host, or the document. Only
   this person's own change ends following. The live view's sync with the document (diagram edits, saved
@@ -37,8 +38,10 @@ second slice, built on P1's control log. The owner's defaults apply.
   run's edits on their ticks from the props the run started with, not the latest.
 - **Joining late.** Whoever starts watching mid-run gets the run from the host this way, and catches up from the
   start ten ticks at a time through an internal advance (`advanceTo`) that logs nothing and publishes nothing,
-  checking its deadline between stretches, yielding to the page and publishing once a slice ("Catching up…"). It
-  ends playing or paused as the host is.
+  checking its deadline between stretches and after the ops it applies, yielding to the page and publishing once a
+  slice ("Catching up…"). On the way to a seek's target it passes pausing notes, as the host's seek did; playing on,
+  it stops at them. While its own replay runs it waits for it without publishing. It ends playing or paused as the
+  host is.
 - **Any size.** Messages larger than a frame (an 80-note simulation's start, a long log) go in parts and are
   reassembled, bounded in bytes and time. Logs are sliced by size, not count. A run too large to send stops being
   shown, and the host is told why.
@@ -48,12 +51,16 @@ second slice, built on P1's control log. The owner's defaults apply.
   the host's run replays after an Inputs change, it sends no beacon or digest from behind the ops it has logged
   (one could hold a follower at a digest whose op lay ahead of it).
 - **Seeks as they arrive.** A seek back drops the branch it abandoned (ops and digests a follower hadn't reached).
-  It's applied at once only when the controller's own measure of the work (`seekCost`, to the tick the host
+  A seek back that cut a change that stays (a diagram edit, a saved or what-if Inputs, a saved definition) shares
+  the run afresh, started as the host is now, so a late joiner lands on the host's state. It's applied at once only
+  when the controller's own measure of the work (`seekCost`, to the tick the host
   reached) is small; further ahead it goes in slices, further back the run is replayed from its start. A seek whose
   tick is past its target isn't taken.
 - **What a follower keeps is bounded.** A run's log, bootstrap and ops together, past 1 MiB or 20,000 entries ends
   following with a message; waiting digests are at most 32, each kept once. A beacon or digest naming a run the
   follower doesn't know (the host restarted while the connection was down) asks for it.
+- **Protocol version.** Every run's start carries the Live protocol's version, read before anything else in it: a
+  follower on another version is told to reload instead of asking for the run again and again.
 - **Ending Live isn't a dropped connection.** A host who stops showing Live (back to editing, another diagram) ends
   following with "Sam stopped showing Live", not a wait for a connection that's fine.
 - **Checked in full.** Every message and every nested op is checked before use (`src/collab/room/liveWire.ts`):
@@ -73,7 +80,8 @@ second slice, built on P1's control log. The owner's defaults apply.
   - Record video's code (about 4.8 KB gzip) loads just after the live session starts;
   - the keyboard shortcuts sheet (about 2.3 KB) loads when it's first opened, through the app's recoverable
     `lazyComponent`. Its frame shows at once: loading, or a failed download with Retry and Close; Escape closes
-    it and focus goes back to what opened it. A failed download never blanks the canvas.
+    it and focus goes back to what opened it; Retry keeps focus in it; it has no browser context menu. A failed
+    download never blanks the canvas.
 
   Everything Watch together needs lives in the room's chunk. The live view reaches it through a small bridge
   (`src/live/watchBridge.ts`).
@@ -108,8 +116,12 @@ second slice, built on P1's control log. The owner's defaults apply.
     its deadline with a clock that moves with the work, and a follower disposed between slices replays no more.
   - A seek whose target says more than its tick; a run past the receive bounds; waiting digests bounded and kept
     once; one digest mismatch rebuilds, a second gives up, and a new run starts the count over.
+  - A commit on a 2,000-node diagram logs only the changed node; a seek past a pausing note, followed live and by
+    a late joiner; a seek back past a diagram edit, then a late joiner; catch-up yields while applying same-tick
+    ops; a start from another protocol version (`liveSync.test.ts`: ending following reconciles the latest waiting
+    changes, once each, as sync).
   - Each of these fails with its fix taken out (checked one by one).
-  - 11,927 unit tests pass after rebasing on #189.
+  - 11,948 unit tests pass after rebasing on #194.
 - **Unit (`watch.test.ts`):** the room on A and a Private B in Live: nothing about B is published or sent, then A is
   shared, and back on B only a stop goes out. An ordinary diagram that isn't the room's isn't shared; the room's
   diagram made Private stops sharing before anything else is sent; a follower asked to watch goes to the room's
@@ -133,7 +145,8 @@ second slice, built on P1's control log. The owner's defaults apply.
   presenting and accessibility specs, 179 of 179; the capacity, planning, simulation and slow-motion specs 111 of 111.
 
 - **E2E (`lazy-loading.spec.ts`):** the shortcuts sheet's download fails: its frame says so with the canvas intact;
-  Escape closes it with focus back on the button; Close does too; Retry opens the sheet.
+  Escape closes it with focus back on the button; Close does too; Retry opens the sheet. Retry by keyboard keeps
+  focus in the frame while the download is held, and Escape still closes it.
 
 - **Parity:** `node/i18n/catalogs.json` is re-recorded for the 16 new English messages. Every locale gains them as
   English fallbacks; nothing else changed.
@@ -141,9 +154,9 @@ second slice, built on P1's control log. The owner's defaults apply.
 
   |                   | master    | now       | change   |
   | ----------------- | --------- | --------- | -------- |
-  | live session      | 133,323 B | 129,626 B | −3,697 B |
-  | canvas first view | 382,752 B | 380,981 B | −1,771 B |
-  | startup           | 176,323 B | 176,317 B | −6 B     |
+  | live session      | 133,323 B | 129,633 B | −3,690 B |
+  | canvas first view | 382,752 B | 381,008 B | −1,744 B |
+  | startup           | 176,323 B | 176,323 B | 0 B      |
 
   Every budget is as it was. Since the first round, the live session gained about 1.1 KB (the remote-op API,
   origins, the sync boundary) and the canvas about 0.6 KB (the shortcuts sheet's frame), both inside what the lazy

@@ -79,8 +79,16 @@ export interface HostClock {
   on: boolean;
 }
 
+/**
+ * The Live protocol's version, sent with every run's start: a follower on another one (an older or newer page) can't
+ * read the run, and says so (reload) rather than asking for it again and again.
+ */
+export const LIVE_PROTOCOL = 2;
+
 export type LiveMessage =
-  | { t: "start"; run: string; start: RunStart }
+  | { t: "start"; v: number; run: string; start: RunStart }
+  /** A start on another protocol version (./liveWire.ts says so before reading the rest). */
+  | { t: "incompatible"; run: string }
   | { t: "log"; run: string; entries: WireEntry[]; done: boolean; clock?: HostClock }
   | { t: "op"; run: string; entry: WireEntry }
   | ({ t: "beacon"; run: string } & HostClock)
@@ -123,6 +131,8 @@ const digestOf = (c: LiveController) => {
 
 const titleOf = (sim: Simulation | null) => sim?.title ?? "Free play";
 const sizeOf = (e: WireEntry) => JSON.stringify(e).length;
+/** Changes a seek back doesn't undo: the host's run is rebuilt with them in place. */
+const PERSISTENT = new Set<LiveOp["kind"]>(["patch", "commit", "inputs", "base"]);
 /** Entries in one slice of a run's log, at most (./liveWire.ts takes up to 500). */
 const ENTRIES_PER_SLICE = 400;
 
@@ -217,6 +227,8 @@ export class LiveDriver {
   private number: number;
   private nextDigest = DIGEST_EVERY_TICKS;
   private readonly nonce = Math.random().toString(36).slice(2, 10);
+  /** Runs shared so far: a run shared afresh (a seek back that rewrote it) gets an id of its own. */
+  private shared = 0;
   private readonly stops: (() => void)[] = [];
   private readonly requests = new Map<string, number>();
   private readonly asking = new Set<string>();
@@ -261,7 +273,7 @@ export class LiveDriver {
     const copies = entries.map(wire);
     this.number = number;
     this.run = {
-      id: `${this.nonce}.${number}`,
+      id: `${this.nonce}.${number}.${++this.shared}`,
       number,
       start,
       entries: copies,
@@ -301,7 +313,17 @@ export class LiveDriver {
     const run = this.run;
     if (!run || run.broken) return;
     // A seek back cut the controller's log there: so does this copy.
-    if (entry.op.kind === "seek") run.entries = run.entries.filter((e) => e.tick <= entry.tick);
+    if (entry.op.kind === "seek") {
+      const cut = run.entries.filter((e) => e.tick > entry.tick);
+      run.entries = run.entries.filter((e) => e.tick <= entry.tick);
+      // It cut a change that stays (a diagram edit, saved or what-if Inputs, a saved definition): the host's run
+      // went back with it in place, from the start, which this run's start no longer describes. It's shared
+      // afresh: started as the host is now, with the log since (its edits already in that start).
+      if (cut.some((e) => PERSISTENT.has(e.op.kind))) {
+        const log = this.watched.controller.controlLog().filter((e) => e.op.kind !== "patch" && e.op.kind !== "commit");
+        return this.begin(this.number, this.startNow(), log);
+      }
+    }
     const copy = wire(entry);
     run.entries.push(copy);
     run.bytes += sizeOf(copy);
@@ -338,7 +360,7 @@ export class LiveDriver {
       if (result === "too-large") this.broke();
       return result === "sent";
     };
-    if (!send({ t: "start", run: run.id, start: run.start })) return;
+    if (!send({ t: "start", v: LIVE_PROTOCOL, run: run.id, start: run.start })) return;
     let slice: WireEntry[] = [];
     let bytes = 0;
     for (const e of run.entries) {
@@ -540,6 +562,8 @@ export class LiveFollower {
   private receive(m: LiveMessage): void {
     if (this.status.phase === "cant-follow") return;
     switch (m.t) {
+      case "incompatible":
+        return this.fail("version");
       case "start":
         if (m.start.engine !== ENGINE_VERSION) return this.fail("version");
         // This run again, not asked for: someone else's answer.
@@ -827,31 +851,48 @@ export class LiveFollower {
       this.progress();
       this.cancelCatchUp = this.timers.soon(() => this.catchUp());
     };
+    // Its own replay (an Inputs change on the way) runs first: catch-up goes on when the controller next publishes
+    // (the replay's slices do), and nothing is published meanwhile.
+    const afterReplay = () => {
+      let cancel: (() => void) | undefined;
+      const off = c.subscribe(() => {
+        off();
+        cancel = this.timers.soon(() => this.catchUp());
+      });
+      this.cancelCatchUp = () => {
+        off();
+        cancel?.();
+      };
+    };
+    const due = () => this.timers.now() - started >= CATCH_UP_SLICE_MS;
     for (;;) {
-      // Its own replay (an Inputs change on the way) first.
-      if (c.busy) return later();
+      if (c.busy) return afterReplay();
       if (!this.checkDigest()) return;
       const e = run.entries[this.next];
       if (e?.op.kind === "seek") {
         if (this.near(e)) {
           this.applyEntry(e);
+          if (due()) return later();
           continue;
         }
         if (e.tick < c.tick) return this.rebuild();
       } else if (e && e.tick <= c.tick) {
         if (e.tick < c.tick) return this.rebuild();
         this.applyEntry(e);
+        if (due()) return later();
         continue;
       }
       // To the host's tick, or (a seek far ahead next) to the seek's own, never past an op or a digest.
-      const host = e?.op.kind === "seek" ? e.tick : this.hostTick();
+      const seeking = e?.op.kind === "seek";
+      const host = seeking ? e.tick : this.hostTick();
       const goal = Math.min(host, e ? e.tick : Infinity, this.digests[0]?.tick ?? Infinity);
       if (c.tick >= goal) break;
       const before = c.tick;
-      c.advanceTo(Math.min(goal, c.tick + CATCH_UP_TICKS));
+      // On the way to a seek's target, pausing notes pass (as the host's seek passed them); playing on, they hold.
+      c.advanceTo(Math.min(goal, c.tick + CATCH_UP_TICKS), seeking);
       // Held still (a pausing note the host's resume op passes, the run's end): it follows from here.
       if (c.tick <= before) break;
-      if (this.timers.now() - started >= CATCH_UP_SLICE_MS) return later();
+      if (due()) return later();
     }
     c.publish();
     this.resyncs = 0;

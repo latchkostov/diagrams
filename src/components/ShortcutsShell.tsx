@@ -49,7 +49,7 @@ export function ShortcutsShell({ onClose, status }: { onClose: () => void; statu
     };
   }, []);
   return createPortal(
-    <div className="dlg-backdrop" data-editor-overlay>
+    <div className="dlg-backdrop" data-editor-overlay onContextMenu={(e) => e.preventDefault()}>
       <div
         ref={panel}
         className="dlg"
@@ -82,7 +82,15 @@ export function ShortcutsShell({ onClose, status }: { onClose: () => void; statu
             <button className="btn" onClick={onClose} data-testid="lazy-dialog-cancel">
               {t("common.close")}
             </button>
-            <button className="btn btn-primary" onClick={status.retry} data-testid="lazy-dialog-retry">
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                // Retry goes away as the download starts again: focus stays in the dialog (Esc still closes it).
+                panel.current?.focus();
+                status.retry();
+              }}
+              data-testid="lazy-dialog-retry"
+            >
               {t("common.retry")}
             </button>
           </footer>

@@ -21,5 +21,7 @@
 - **A rebuild uses the room's structure now.** The run's start carries the node props it started with, but not the
   diagram's structure: a structural edit that races a rebuild shows up as a digest mismatch (and the host's reload
   starts a new run anyway). The pinned input above would close this too.
+- **"A newer Live Diagrams" can be the follower's.** A follower on another Live protocol (or engine) is told the host
+  has a newer release; it may be the follower's page that's newer. Say "a different version" or tell the two apart.
 - **A large run is re-sent whole.** A follower that missed an op asks for the whole run (up to 1 MiB of log, about
   seventy frames). Asking for the log after a sequence number would make that a few frames.
