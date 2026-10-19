@@ -1,4 +1,6 @@
 import { popDue, pushDue, removeDue, type Due } from "./dueHeap";
+import type { AdmissionLease } from "./admission";
+import type { ResourceWork } from "./resourceWork";
 import type { CpuPart } from "./sampledResources";
 
 export type ReservationScope = "thread" | "request" | "pool";
@@ -17,6 +19,14 @@ export interface Reservation {
   heldMs: number;
   releaseAt?: number;
   cpuTail?: CpuPart[];
+}
+/** Capacity-only ownership after a non-blocking dispatch. Never a second resident request. */
+export interface ThreadTail<Group> extends ResourceWork {
+  reservation: Reservation;
+  group?: Group;
+  threadLease?: AdmissionLease;
+  /** Managed admission has its own fractional clock and cannot earn shared slot credit. */
+  admissionClock: boolean;
 }
 export interface LedgerOwner {
   reservations: Set<number>;

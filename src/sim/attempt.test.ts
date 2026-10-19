@@ -96,16 +96,12 @@ it.each(["pause", "down", "drain", "scale", "checkpoint"])(
       replicas: 2,
       latencyMs: 100,
       jitter: 0,
-      ...(action === "scale"
-        ? {}
-        : {
-            resources: {
-              ...resourceLesson(),
-              cpuMsPerMessage: 0,
-              terminationGraceMs: 10,
-              startup: { delayMs: 0, jitterFraction: 0 },
-            },
-          }),
+      resources: {
+        ...resourceLesson(),
+        cpuMsPerMessage: 0,
+        terminationGraceMs: 10,
+        startup: { delayMs: 0, jitterFraction: 0 },
+      },
     };
     d.nodes[2].props = { api: { latencyMs: 2000 }, jitter: 0 };
     d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking" } };

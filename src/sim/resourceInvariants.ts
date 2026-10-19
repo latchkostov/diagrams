@@ -3,7 +3,7 @@ import type { AutoscalingConfig, ComputeResources } from "../model/autoscaling";
 import { MAX_CPU_PARTS, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";
 import type { ResourceWork } from "./resourceWork";
-import type { LedgerState } from "./ledger";
+import type { LedgerState, ThreadTail } from "./ledger";
 
 export interface LedgerInvariantState {
   time: number;
@@ -100,6 +100,7 @@ interface Work extends ResourceWork {
   slotted?: boolean;
   delivery?: unknown;
   held?: boolean;
+  reservation?: ThreadTail<unknown>["reservation"];
 }
 export interface ResourceState {
   time: number;
@@ -286,7 +287,10 @@ export function assertResourceInvariants(state: ResourceState) {
     const previousAttempts = reservationAttempts.get(f);
     const acquired = new Set<number>();
     for (const work of node.working) {
-      if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
+      if (work.reservation) {
+        fail(work.reservation.scope === "thread" && work.reservation.releaseAt !== undefined, "invalid thread tail");
+        fail(!!work.cpuParts?.length, "resource-backed thread tail has no CPU ownership");
+      } else if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
       if (work.replica !== undefined) {
         reservations.set(work.replica, (reservations.get(work.replica) ?? 0) + 1);
         if (previousAttempts && previousAttempts.get(work) !== work.replica) acquired.add(work.replica);
@@ -357,7 +361,9 @@ export function assertResourceInvariants(state: ResourceState) {
       memory += (f.ready + f.draining - f.busy.size) * r.baselineMemoryMiB;
       fail(
         Math.abs(
-          memory - ((f.ready + f.draining) * r.baselineMemoryMiB + node.working.length * r.memoryMiBPerMessage),
+          memory -
+            ((f.ready + f.draining) * r.baselineMemoryMiB +
+              node.working.filter((w) => !w.reservation).length * r.memoryMiBPerMessage),
         ) < 1e-6,
         "memory differs from baseline + in-flight work",
       );
