@@ -73,6 +73,9 @@ const maxFrame = (channel: Channel) =>
       : COLLAB_LIMITS.maxPresenceFrameBytes;
 
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+/** A frame's sender id (hex), read from its header before anything is decrypted; undefined for a frame too short. */
+export const frameSender = (frame: Uint8Array): string | undefined =>
+  frame.length >= 24 ? hex(frame.subarray(8, 24)) : undefined;
 
 function header(channel: Channel, epoch: number, sender: Uint8Array, counter: number): Uint8Array {
   const h = new Uint8Array(HEADER_BYTES);
@@ -112,6 +115,9 @@ class KeyCache {
   }
   keep(channel: Channel, id: string, key: Promise<CryptoKey>): void {
     this.keys.set(`${channel}:${id}`, key);
+  }
+  forget(id: string): void {
+    for (const channel of Object.values(CODE_CHANNEL)) this.keys.delete(`${channel}:${id}`);
   }
 }
 
@@ -184,6 +190,8 @@ export class Opener {
     private readonly room: RoomKeys,
     /** Our own sender id: a frame claiming it is a reflection (or a forgery) and is refused. */
     private readonly self: Uint8Array,
+    /** Senders it keeps windows for at most (the lobby keeps its own pools under a larger one). */
+    private readonly maxSenders: number = COLLAB_LIMITS.maxSenders,
   ) {
     this.keys = new KeyCache(room);
   }
@@ -211,7 +219,7 @@ export class Opener {
     const big = view.getBigUint64(24);
     if (big < 1n || big >= BigInt(COLLAB_LIMITS.maxCounter)) return { ok: false, reason: "bad-counter" };
     const counter = Number(big);
-    if (!this.senders.has(sender) && this.senders.size >= COLLAB_LIMITS.maxSenders)
+    if (!this.senders.has(sender) && this.senders.size >= this.maxSenders)
       return { ok: false, reason: "too-many-senders" };
     const windowKey = `${channel}:${sender}`;
     const window = this.windows.get(windowKey);
@@ -257,7 +265,7 @@ export class Opener {
     key: Promise<CryptoKey> | undefined = this.deferredKeys.get(opened),
   ): true | Rejection {
     const { channel, sender, counter } = opened;
-    if (!this.senders.has(sender) && this.senders.size >= COLLAB_LIMITS.maxSenders) return "too-many-senders";
+    if (!this.senders.has(sender) && this.senders.size >= this.maxSenders) return "too-many-senders";
     const windowKey = `${channel}:${sender}`;
     let w = this.windows.get(windowKey);
     if (!w) {
@@ -275,5 +283,15 @@ export class Opener {
   /** Senders whose frames have authenticated (bounded by COLLAB_LIMITS.maxSenders). */
   get senderCount(): number {
     return this.senders.size;
+  }
+
+  /**
+   * A sender gone (the lobby frees a transport peer's senders this way): its place and its keys. Its replay windows
+   * stay unless `windows` (the same session back counts on from where it was; its old frames stay refused).
+   */
+  forget(sender: string, windows = false): void {
+    this.senders.delete(sender);
+    this.keys.forget(sender);
+    if (windows) for (const channel of Object.values(CODE_CHANNEL)) this.windows.delete(`${channel}:${sender}`);
   }
 }

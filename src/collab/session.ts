@@ -24,7 +24,7 @@ import {
   type RoomKeys,
 } from "./keys";
 import { commitEpoch, EpochChain, scopeOf, signStart, type ChainData, type EpochStart } from "./epochs";
-import { Lobby, unwrap, wrapFor, wrapSigned, type LobbyBody, type LobbyMessage, type Wrap } from "./lobby";
+import { Buckets, Lobby, unwrap, wrapFor, wrapSigned, type LobbyBody, type LobbyMessage, type Wrap } from "./lobby";
 import { COLLAB_LIMITS } from "./limits";
 import type { RoomLink } from "./link";
 import {
@@ -191,27 +191,15 @@ export interface Knock {
 
 /** Knocks shown at most (one per transport peer), and how long one lasts without being said again. */
 const MAX_KNOCKS = 8;
-const KNOCK_TTL_MS = 60_000;
+export const KNOCK_TTL_MS = 60_000;
 /** Wrapped secrets a member keeps for others. */
 const MAX_KEPT_WRAPS = 64;
 
 /** A token bucket per sender on the room clock: `cap` bytes per window. */
-class RateLimit {
-  private buckets = new Map<string, { tokens: number; at: number }>();
-  constructor(
-    private readonly clock: Clock,
-    private readonly cap: number,
-  ) {}
-  take(sender: string, bytes: number): boolean {
-    const now = this.clock.now();
-    const cap = this.cap;
-    const b = this.buckets.get(sender) ?? { tokens: cap, at: now };
-    b.tokens = Math.min(cap, b.tokens + ((now - b.at) / COLLAB_LIMITS.senderWindowMs) * cap);
-    b.at = now;
-    this.buckets.set(sender, b);
-    if (b.tokens < bytes) return false;
-    b.tokens -= bytes;
-    return true;
+/** Token buckets per sender (or peer) on the room clock: bounded, idle ones going first (./lobby.ts). */
+class RateLimit extends Buckets {
+  constructor(clock: Clock, cap: number) {
+    super(clock, cap, 1024);
   }
 }
 
@@ -513,6 +501,8 @@ export class CollabSession {
     if (knock && s.knock) {
       this.lobbyKeys = knock.lobbyKeys;
       this.lobby = new Lobby(knock.lobbyKeys, s.identity, this.sealer.sender, this.clock);
+      // Members' senders (and the host's) take members' places in the lobby; everyone else a guest's.
+      this.lobby.isMember = (key) => key === hostKey || room.state().members.has(key);
       this.wraps = s.knock.wraps ?? [];
       this.knocking = !s.knock.secret;
       if (knock.current) {
@@ -815,6 +805,7 @@ export class CollabSession {
         },
         leave: (peer) => {
           this.memberPeers.delete(peer);
+          this.lobby?.forget(peer);
           for (const [key, k] of this.knocks) if (k.peer === peer) this.knocks.delete(key);
           this.synced.delete(peer);
           this.updateStatus();

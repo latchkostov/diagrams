@@ -1,6 +1,6 @@
 import { base64UrlToBytes, bytesToBase64Url, bytesToText, textToBytes } from "../interop/codec";
 import type { Clock } from "./clock";
-import { frameChannel, Opener, Sealer } from "./envelope";
+import { frameChannel, frameSender, Opener, Sealer } from "./envelope";
 import type { ChainData } from "./epochs";
 import type { RoomKeys } from "./keys";
 import { COLLAB_LIMITS } from "./limits";
@@ -33,13 +33,32 @@ import type { PeerId } from "./transport/types";
 //   deny     the host or a co-host says no to a knock (with the chain, so the newcomer can check who said it).
 //
 // Messages are JSON, bounded, checked in full; a message larger than a frame travels in fragments, as document
-// messages do. Lobby frames are rate-limited per sender, and each signature check is counted against its budget.
+// messages do.
+//
+// Anyone with the link reaches the lobby, so what it keeps is bounded before anything is decrypted or verified:
+// - a budget per transport peer, taken before a frame is decrypted or its signature checked (a peer sending frames
+//   under endless invented sender ids, or with bad signatures, costs at most its budget, and leaves nothing behind);
+// - a few sender ids per transport peer (a session has one), each bound to the one key that signs its frames;
+// - two pools of senders: members' (the room's members and its host, as many as any room keeps), and everyone else's
+//   (people at the door: a smaller pool, its least recently heard going first), so people knocking, or someone
+//   pretending to, can never take the places members need;
+// - a transport peer gone frees its senders' places (their replay windows stay a while: the same session back counts
+//   on from where it was, and its old frames stay refused);
+// - a budget per sender once its frame verifies (buckets for verified senders only, and bounded: idle ones go).
 
 export const LOBBY = { message: 1, fragment: 5 } as const;
 /** A lobby message's JSON at most (a bundle carries the rosters of a room's epochs). */
 export const MAX_LOBBY_MESSAGE_BYTES = 4 * 1024 * 1024;
 /** Lobby frames a sender may deliver per window, and messages it may have verified. */
 const LOBBY_FRAMES_PER_WINDOW = 256;
+/** Sender ids one transport peer may speak under (one session's; a second for slack). */
+export const MAX_LOBBY_SENDERS_PER_PEER = 2;
+/** Lobby frames one transport peer may have decrypted and checked per window: its senders' worth. */
+const LOBBY_FRAMES_PER_PEER = LOBBY_FRAMES_PER_WINDOW * MAX_LOBBY_SENDERS_PER_PEER;
+/** Senders who aren't members (people at the door) kept at once: the least recently heard goes first. */
+export const MAX_LOBBY_GUESTS = 32;
+/** Senders gone (their peer gone, or a guest's place taken) whose replay windows are kept: the most recent. */
+const MAX_RETIRED = 1024;
 const B64_43 = /^[A-Za-z0-9_-]{43}$/;
 const MAX_ALIAS = 60;
 const MAX_WRAPS = 64;
@@ -180,23 +199,50 @@ const frameBytes = (roomId: string, head: Uint8Array, message: Uint8Array) =>
 const KEY_BYTES = 32;
 const SIG_BYTES = 64;
 
-/** A token bucket per sender on the room clock. */
-class Bucket {
+/**
+ * Token buckets on the room clock, one per key, bounded: a bucket idle a whole window is full again (the same as none),
+ * so idle ones go once there are too many, then the least recently used.
+ */
+export class Buckets {
   private buckets = new Map<string, { tokens: number; at: number }>();
   constructor(
     private readonly clock: Clock,
     private readonly cap: number,
+    private readonly max = 256,
   ) {}
-  take(sender: string): boolean {
+  take(key: string, n = 1): boolean {
     const now = this.clock.now();
-    const b = this.buckets.get(sender) ?? { tokens: this.cap, at: now };
+    const b = this.buckets.get(key) ?? { tokens: this.cap, at: now };
     b.tokens = Math.min(this.cap, b.tokens + ((now - b.at) / COLLAB_LIMITS.senderWindowMs) * this.cap);
     b.at = now;
-    this.buckets.set(sender, b);
-    if (b.tokens < 1) return false;
-    b.tokens -= 1;
+    this.buckets.delete(key);
+    this.buckets.set(key, b);
+    if (this.buckets.size > this.max) this.sweep(now);
+    if (b.tokens < n) return false;
+    b.tokens -= n;
     return true;
   }
+  forget(key: string): void {
+    this.buckets.delete(key);
+  }
+  get size(): number {
+    return this.buckets.size;
+  }
+  private sweep(now: number): void {
+    for (const [k, b] of this.buckets) if (now - b.at >= COLLAB_LIMITS.senderWindowMs) this.buckets.delete(k);
+    for (const k of this.buckets.keys()) {
+      if (this.buckets.size <= this.max) break;
+      this.buckets.delete(k);
+    }
+  }
+}
+
+interface Slot {
+  peer: PeerId;
+  /** The key its frames are signed by. */
+  key: string;
+  member: boolean;
+  at: number;
 }
 
 /** One end of a room's lobby: seals and signs this session's messages, opens and checks others'. */
@@ -204,25 +250,101 @@ export class Lobby {
   private readonly sealer: Sealer;
   private readonly opener: Opener;
   private readonly reassembler: Reassembler;
-  private readonly rate: Bucket;
+  private readonly rate: Buckets;
+  private readonly peerRate: Buckets;
+  /** Senders whose frames have verified: their transport peer, key and pool. */
+  private readonly slots = new Map<string, Slot>();
+  /** Senders gone whose replay windows are still kept, oldest first. */
+  private readonly retired = new Set<string>();
   private nextMessage = 0;
   /** The key a sender's half-received message is signed by (all its fragments must be). */
   private readonly partKeys = new Map<string, string>();
   /** Why the last frame was refused (for counting). */
   refused?: string;
+  /** Whether a key is the room's (a member, or its host): its sender takes a member's place, not a guest's. */
+  isMember: (key: string) => boolean = () => false;
 
   constructor(
     readonly keys: RoomKeys,
     readonly identity: Identity,
     readonly sender: Uint8Array,
-    clock: Clock,
+    private readonly clock: Clock,
   ) {
     if (keys.epoch !== 0) throw new Error("The lobby's keys are epoch 0's.");
     this.sealer = new Sealer(keys, sender);
     this.sealer.sign = (head, message) => sign(identity.privateKey, frameBytes(keys.roomId, head, message));
-    this.opener = new Opener(keys, sender);
+    this.opener = new Opener(keys, sender, COLLAB_LIMITS.maxSenders + MAX_LOBBY_GUESTS);
     this.reassembler = new Reassembler(clock);
-    this.rate = new Bucket(clock, LOBBY_FRAMES_PER_WINDOW);
+    this.rate = new Buckets(clock, LOBBY_FRAMES_PER_WINDOW, COLLAB_LIMITS.maxSenders + MAX_LOBBY_GUESTS);
+    this.peerRate = new Buckets(clock, LOBBY_FRAMES_PER_PEER);
+  }
+
+  /** What the lobby keeps now: senders by pool, sender buckets, transport peers' buckets (diagnostics, tests). */
+  load(): { members: number; guests: number; buckets: number; peers: number; retired: number } {
+    let members = 0;
+    for (const slot of this.slots.values()) if (slot.member) members++;
+    return {
+      members,
+      guests: this.slots.size - members,
+      buckets: this.rate.size,
+      peers: this.peerRate.size,
+      retired: this.retired.size,
+    };
+  }
+
+  /** A transport peer gone: its senders' places are freed. */
+  forget(peer: PeerId): void {
+    for (const [sender, slot] of this.slots) if (slot.peer === peer) this.release(sender);
+    this.peerRate.forget(peer);
+  }
+
+  /** A sender's place freed; its replay windows kept, for the most recent MAX_RETIRED senders gone. */
+  private release(sender: string): void {
+    this.slots.delete(sender);
+    this.opener.forget(sender);
+    this.rate.forget(sender);
+    this.partKeys.delete(sender);
+    this.retired.delete(sender);
+    this.retired.add(sender);
+    for (const old of this.retired) {
+      if (this.retired.size <= MAX_RETIRED) break;
+      this.retired.delete(old);
+      if (!this.slots.has(old)) this.opener.forget(old, true);
+    }
+  }
+
+  private sendersOf(peer: PeerId): number {
+    let n = 0;
+    for (const slot of this.slots.values()) if (slot.peer === peer) n++;
+    return n;
+  }
+
+  /**
+   * A verified sender's place: kept (its peer and key the same as before), or a new one in its pool. A guest's pool
+   * full: its least recently heard goes. False: no place (the members' pool full, its peer at its senders, or a key
+   * that isn't the one its frames have been signed by).
+   */
+  private place(sender: string, peer: PeerId, key: string): boolean {
+    const now = this.clock.now();
+    const slot = this.slots.get(sender);
+    if (slot) {
+      if (slot.peer !== peer || slot.key !== key) return false;
+      slot.at = now;
+      if (!slot.member && this.isMember(key) && this.load().members < COLLAB_LIMITS.maxSenders) slot.member = true;
+      return true;
+    }
+    if (this.sendersOf(peer) >= MAX_LOBBY_SENDERS_PER_PEER) return false;
+    const member = this.isMember(key);
+    const { members, guests } = this.load();
+    if (member && members >= COLLAB_LIMITS.maxSenders) return false;
+    if (!member && guests >= MAX_LOBBY_GUESTS) {
+      let oldest: [string, Slot] | undefined;
+      for (const entry of this.slots) if (!entry[1].member && (!oldest || entry[1].at < oldest[1].at)) oldest = entry;
+      if (oldest) this.release(oldest[0]);
+    }
+    this.retired.delete(sender);
+    this.slots.set(sender, { peer, key, member, at: now });
+    return true;
   }
 
   /** A body, signed and sealed: one frame, or fragments. */
@@ -250,9 +372,16 @@ export class Lobby {
   async open(from: PeerId, bytes: Uint8Array): Promise<LobbyMessage | undefined> {
     this.refused = undefined;
     if (frameChannel(bytes) !== "lobby") return this.refuse("bad-channel");
+    // Before anything is decrypted or verified: the peer's budget, and its sender ids.
+    if (!this.peerRate.take(from)) return this.refuse("lobby-throttled");
+    const id = frameSender(bytes);
+    if (id !== undefined) {
+      const slot = this.slots.get(id);
+      if (slot ? slot.peer !== from : this.sendersOf(from) >= MAX_LOBBY_SENDERS_PER_PEER)
+        return this.refuse("too-many-senders");
+    }
     const opened = await this.opener.open(bytes, true);
     if (!opened.ok) return this.refuse(opened.reason);
-    if (!this.rate.take(opened.sender)) return this.refuse("lobby-throttled");
     const plain = opened.plaintext;
     if (plain.length < 1 + KEY_BYTES + SIG_BYTES) return this.refuse("malformed");
     const signed = plain.subarray(0, plain.length - SIG_BYTES);
@@ -261,6 +390,9 @@ export class Lobby {
     if (!publicKeyBytes(key)) return this.refuse("malformed");
     if (!(await verify(key, signature, frameBytes(this.keys.roomId, opened.header, signed))))
       return this.refuse("bad-signature");
+    // Verified: only now does its sender keep anything here (a place, a bucket, a replay window).
+    if (!this.place(opened.sender, from, key)) return this.refuse("too-many-senders");
+    if (!this.rate.take(opened.sender)) return this.refuse("lobby-throttled");
     const accepted = this.opener.accept(opened);
     if (accepted !== true) return this.refuse(accepted);
     let msg = unframe(signed.subarray(0, signed.length - KEY_BYTES));

@@ -12,7 +12,7 @@ import { Lobby, wrapFor, type LobbyBody } from "./lobby";
 import { DOC, frame } from "./protocol";
 import { textToBytes } from "../interop/codec";
 import { seededBytes } from "./random";
-import type { KnockMember } from "./session";
+import { KNOCK_TTL_MS, type KnockMember } from "./session";
 import { newAgreement, newIdentity, type Agreement, type Identity } from "./signing";
 import { canaryDiagram, openClient, roomFor, type TestClient } from "./transport/conformance";
 import { MemoryNetwork } from "./transport/memory";
@@ -758,15 +758,21 @@ describe("knock-to-join and re-key, against someone who doesn't follow the rules
     const sender = captured!.slice(8, 24);
     const attacker = r.net.connect();
     onTestFinished(() => attacker.close());
-    // The same message (its signature with it) under a far higher counter.
+    // The same message (its signature with it) under a far higher counter, from another transport peer: its sender id
+    // is the knocker's peer's, so it's refused before anything is decrypted.
     const replayer = new Sealer(r.lobbyKeys, sender);
     (replayer as unknown as { counters: { lobby: number } }).counters.lobby = 1_000_000;
-    attacker.send(await replayer.seal("lobby", plain.plaintext));
+    attacker.send(await replayer.seal("lobby", plain.plaintext), host.session.transport.self);
+    await r.settle();
+    expect(rejected(host, "too-many-senders")).toBe(1);
+    // From the knocker's own transport peer (someone relaying it, say), it reaches the signature check.
+    (replayer as unknown as { counters: { lobby: number } }).counters.lobby = 1_500_000;
+    k.transport.send(await replayer.seal("lobby", plain.plaintext), host.session.transport.self);
     // Its message changed by a byte (re-sealed properly, so it reaches the signature check).
     const tampered = plain.plaintext.slice();
     tampered[5] ^= 1;
     (replayer as unknown as { counters: { lobby: number } }).counters.lobby = 2_000_000;
-    attacker.send(await replayer.seal("lobby", tampered));
+    k.transport.send(await replayer.seal("lobby", tampered), host.session.transport.self);
     await r.settle();
     expect(rejected(host, "bad-signature")).toBe(2);
     // The knocker's own next knocks still count (nothing moved its window).
@@ -795,6 +801,88 @@ describe("knock-to-join and re-key, against someone who doesn't follow the rules
     for (let i = 0; i < 14; i++) r.clock.advance(COLLAB_LIMITS.antiEntropyMs);
     await r.settle();
     expect(host.session.knocks.size).toBe(0);
+  });
+
+  it("lobby frames under endless sender ids with bad signatures cost their peer's budget and leave nothing behind", async () => {
+    const r = await knockRoom(88);
+    const host = r.host.client!;
+    const lobbyOf = (c: TestClient) => (c.session as unknown as { lobby: Lobby }).lobby;
+    const transport = r.net.connect();
+    onTestFinished(() => transport.close());
+    const [mine, other] = [await newIdentity(), await newIdentity()];
+    // Signed by one key, claiming another: every frame's signature fails.
+    const liar = { ...mine, key: other.key };
+    const frames: Uint8Array[] = [];
+    for (let i = 0; i < 1_000; i++) {
+      const lobby = new Lobby(r.lobbyKeys, liar, seededBytes(88_000 + i)(16), r.clock);
+      frames.push(...(await lobby.seal({ t: "hello", x: (await newAgreement()).x, alias: `Liar ${i}` })));
+    }
+    await r.settle();
+    for (const f of frames) transport.send(f, host.session.transport.self);
+    await r.settle();
+    // At most the peer's budget was decrypted and checked; the rest was refused before anything was.
+    expect(rejected(host, "bad-signature")).toBeLessThanOrEqual(512);
+    expect(rejected(host, "lobby-throttled")).toBeGreaterThanOrEqual(1_000 - 512);
+    expect(lobbyOf(host).load()).toMatchObject({ members: 0, guests: 0, buckets: 0 });
+    // Someone real still knocks, and is let in.
+    r.clock.advance(COLLAB_LIMITS.senderWindowMs);
+    const k = await r.knock("wren");
+    expect(host.session.knocks.has(k.p.identity.key)).toBe(true);
+    expect(await host.session.admit(k.p.identity.key)).toBe(true);
+    await r.settle();
+    expect(k.outcome()).toBe("admitted");
+  });
+
+  it("someone with the link can't take members' places: a few sender ids per peer, a pool for the door, freed when they go", async () => {
+    const r = await knockRoom(89);
+    const host = r.host.client!;
+    const lobbyOf = (c: TestClient) => (c.session as unknown as { lobby: Lobby }).lobby;
+    const wren = await r.join("wren");
+    const record = wren.session.memberRecord()!;
+    // One key, one transport peer, 64 sender ids: two get places.
+    const shared = r.net.connect();
+    const id = await newIdentity();
+    for (let i = 0; i < 64; i++) {
+      const evil = await r.rogue(id, shared);
+      await evil.send({ t: "hello", x: (await newAgreement()).x, alias: `Same ${i}` }, host.session.transport.self);
+    }
+    expect(lobbyOf(host).load().guests).toBeLessThanOrEqual(2);
+    expect(rejected(host, "too-many-senders")).toBeGreaterThanOrEqual(62);
+    // Many peers at the door: their pool is bounded, and never takes members' places.
+    const many: CollabTransport[] = [];
+    for (let i = 0; i < 40; i++) {
+      const t = r.net.connect();
+      many.push(t);
+      const evil = await r.rogue(undefined, t);
+      await evil.send({ t: "hello", x: (await newAgreement()).x, alias: `Many ${i}` }, host.session.transport.self);
+    }
+    expect(lobbyOf(host).load().guests).toBeLessThanOrEqual(32);
+    r.clock.advance(KNOCK_TTL_MS + 1_000);
+    await r.settle();
+    // A member reloads (a new sender id): back in at once.
+    await wren.session.leave();
+    await r.settle();
+    const wrenP = r.people[1];
+    const back = await r.open(
+      wrenP,
+      { agreement: wrenP.agreement, chain: record.chain, secret: secretOf(record), wraps: record.wraps },
+      r.net.connect(),
+    );
+    await r.settle();
+    host.edit((d) => ({ ...d, title: "Still reachable" }));
+    await r.settle();
+    expect(title(back)).toBe("Still reachable");
+    // Someone new still knocks and is let in.
+    const k = await r.knock("otter");
+    expect(host.session.knocks.has(k.p.identity.key)).toBe(true);
+    expect(await host.session.admit(k.p.identity.key)).toBe(true);
+    await r.settle();
+    expect(k.outcome()).toBe("admitted");
+    // The door's peers go: their places with them.
+    shared.close();
+    for (const t of many) t.close();
+    await r.settle();
+    expect(lobbyOf(host).load().guests).toBe(0);
   });
 
   it("a key-agreement key that can't be used isn't let in, and a later removal still moves the room on", async () => {
