@@ -128,6 +128,40 @@ test.describe("polish", () => {
     expect(await transformsAfter(page, "fit-view-button")).toBe(2);
   });
 
+  test("canvas controls toolbar collapses, expands, and opens the Fit view zoom submenu", async ({ page }) => {
+    await gotoCanvas(page, KAFKA);
+    await expect(page.getByTestId("zoom-in-button")).toBeVisible();
+    await expect(page.getByTestId("zoom-out-button")).toBeVisible();
+    await expect(page.getByTestId("fit-view-button")).toBeVisible();
+    await expect(page.getByTestId("toolbar-divider-history")).toBeVisible();
+    await expect(page.getByTestId("toolbar-divider-shortcuts")).toBeVisible();
+    await expect(page.getByTestId("toolbar-divider-collapse")).toBeVisible();
+
+    // Open the Fit view flyout menu via its corner button.
+    await page.getByTestId("view-tools-menu-button").click();
+    const menu = page.getByTestId("view-tools-menu");
+    await expect(menu).toBeVisible();
+    const zoom100 = page.getByTestId("context-menu-item-toolbar-view:zoom-100");
+    const zoomSel = page.getByTestId("context-menu-item-toolbar-view:zoom-selection");
+    await expect(zoom100).toBeVisible();
+    await expect(zoomSel).toBeVisible();
+    await expect(zoomSel).toHaveAttribute("aria-disabled", "true");
+    await expect(zoomSel).toHaveAttribute("title", "Select something first");
+
+    // Collapsing the toolbar closes the menu and hides the upper tools.
+    const collapseBtn = page.getByTestId("collapse-toolbar-button");
+    await expect(collapseBtn).toHaveAttribute("aria-expanded", "true");
+    await collapseBtn.click();
+    await expect(menu).toBeHidden();
+    await expect(collapseBtn).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByTestId("canvas-controls")).toHaveClass(/is-collapsed/);
+
+    // Expanding restores the toolbar.
+    await collapseBtn.click();
+    await expect(collapseBtn).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByTestId("canvas-controls")).not.toHaveClass(/is-collapsed/);
+  });
+
   test("React Flow's credit stays visible, clear of the live bar and the first-run hint", async ({ page }) => {
     test.slow(); // Two cold canvas and live-session loads.
     for (const width of [1440, 1024]) {

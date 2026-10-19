@@ -71,6 +71,8 @@ export interface MenuItem {
   shortcut?: string;
   /** Muted right-aligned text (e.g. vendor). */
   hint?: string;
+  /** Optional native tooltip shown on hover. */
+  title?: string;
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
