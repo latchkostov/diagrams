@@ -53,6 +53,16 @@ fixes. There's no collaboration UI yet; that comes in P2, Watch together.
 - **`ENGINE_VERSION` and the determinism guard** now cover `src/stencils` too: roles, device throughput and family
   defaults decide what a tick does.
 
+### Review round 3
+
+- **Edits supersede queued tweaks too.** A newer Inputs, saved-definition or diagram edit now also supersedes tweaks
+  still waiting on a rebuild, by property and status. It removes only the replaced keys and keeps the others and
+  their order.
+- **A queued Continue keeps its guard.** Continue is guarded the same way whether it runs at once or from the
+  queue. If the resource budget refuses it, the recoverable error shows, and it and the ops after it keep waiting.
+  Continue again retries them in order; a restart, another simulation or a seek drops them.
+- **A queued traffic change shows as chosen,** and a second press reverses it.
+
 ## Verification
 
 - **New unit tests in `src/live/controlLog.test.ts`:**
@@ -93,6 +103,13 @@ fixes. There's no collaboration UI yet; that comes in P2, Watch together.
     afterwards everything is logged on 40 s and the digest equals the uninterrupted run's;
   - a restart cancels the waiting tweaks;
   - a fault-only difference changes the digest, and lifting it restores the digest.
+- **Review round 3 tests:**
+  - "newer Inputs edits supersede queued tweaks during rebuild": latency keeps the Inputs value and replicas stays
+    at 2, after another rebuild too;
+  - a queued Continue the budget refuses, then its retry;
+  - a queued traffic change shown and reversed.
+
+  The first two fail with their fix reverted.
 
 - **Bundle:** the live session is under its 135,000 B gzip budget (master: 133,112 B; review round 1
-  added 174 B, round 2 another 77 B: 134,813 B). The startup and the canvas's first view are unchanged.
+  added 174 B, round 2 another 77 B, round 3 another 176 B: 134,989 B). The startup and the canvas's first view are unchanged.

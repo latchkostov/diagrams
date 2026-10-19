@@ -232,7 +232,8 @@ export class LiveController {
    * tick the replay is heading for (the replay keeps its slices: nothing runs it to the end at once).
    */
   private apply(op: LiveOp): void {
-    if (this.replayTarget !== null) {
+    // Behind a replay, or behind earlier ops still waiting (a refused Continue): in order, after them.
+    if (this.replayTarget !== null || this.queued.length) {
       this.queued.push(own(op));
       this.publish();
       return;
@@ -243,15 +244,24 @@ export class LiveController {
     this.publish();
   }
 
-  /** The replay reached its tick: the tweaks that waited for it apply and are logged there, in order. */
+  /**
+   * The replay reached its tick: the tweaks that waited for it apply and are logged there, in order. A Continue the
+   * resource budget refuses stops here: it and the rest keep waiting for a retry (Continue again) or a cancel.
+   */
   private applyQueued(): void {
-    const queued = this.queued;
-    this.queued = [];
-    for (const op of queued) {
-      const copy = structuredClone(op) as LiveOp;
-      this.execute(copy);
-      this.record(copy);
+    while (this.queued.length) {
+      const op = structuredClone(this.queued[0]) as LiveOp;
+      if (op.kind === "resume") {
+        if (!this.continueRun()) return;
+      } else this.execute(op);
+      this.queued.shift();
+      this.record(op);
     }
+  }
+
+  /** Continue after a pausing note, guarded: a lifecycle budget refusal becomes the recoverable error state. */
+  private continueRun(): boolean {
+    return this.updateRunner(() => this.runner?.resume());
   }
 
   /** Logs an op on this tick. The log keeps its own frozen copy, and only the latest Inputs snapshot. */
@@ -282,6 +292,15 @@ export class LiveController {
    */
   private supersede(changed: ReadonlyMap<string, ReadonlySet<string>>): void {
     if (!changed.size) return;
+    // Tweaks still waiting on a replay: the same keys go, the rest (and the order) stay.
+    this.queued = this.queued.flatMap((op): LiveOp[] => {
+      const keys = (op.kind === "props" || op.kind === "status") && changed.get(op.node);
+      if (!keys) return [op];
+      if (op.kind === "status") return keys.has("status") ? [] : [op];
+      if (op.kind !== "props") return [op];
+      const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => !keys.has(k)));
+      return Object.keys(patch).length ? [{ ...op, patch: patch as NodeSimProps }] : [];
+    });
     for (const e of this.log) {
       if (e.op.kind !== "props" && e.op.kind !== "status") continue;
       const keys = changed.get(e.op.node);
@@ -441,7 +460,8 @@ export class LiveController {
       scale: resolveScale(snapshot.scale),
       playing: this.playing,
       speed: this.speed,
-      traffic: this.traffic && !this.engine.trafficLimit(),
+      // A traffic change waiting on a replay shows as chosen (a second press reverses it).
+      traffic: (this.queuedTraffic() ?? this.traffic) && !this.engine.trafficLimit(),
       simulation: this.base,
       running: this.sim,
       inputs: this.inputs,
@@ -453,6 +473,14 @@ export class LiveController {
       trace: this.readTrace(),
     };
     for (const l of this.listeners) l();
+  }
+
+  private queuedTraffic(): boolean | undefined {
+    for (let i = this.queued.length - 1; i >= 0; i--) {
+      const op = this.queued[i];
+      if (op.kind === "traffic") return op.on;
+    }
+    return undefined;
   }
 
   get isPlaying(): boolean {
@@ -698,7 +726,13 @@ export class LiveController {
   resume(): void {
     if (this.held) return;
     if (this.replayTarget !== null) return this.apply({ kind: "resume" });
-    if (!this.updateRunner(() => this.runner?.resume())) return;
+    // A refused Continue left ops waiting: this is its retry, then theirs, in order.
+    if (this.queued.length) {
+      this.applyQueued();
+      this.dirty = true;
+      return this.publish();
+    }
+    if (!this.continueRun()) return;
     this.record({ kind: "resume" });
     this.dirty = true;
     this.publish();

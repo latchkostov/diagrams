@@ -3,6 +3,7 @@ import type { DiagramFile, Simulation } from "../model/types";
 import kafka from "../examples/kafka-order-pipeline.json";
 import { snapshotDigest } from "../sim/digest";
 import { LiveController } from "./controller";
+import { LifecycleBudgetError } from "../model/resourceBudget";
 import { emptyInputs } from "./capacityModel";
 import { tickTime } from "./controlLog";
 
@@ -301,6 +302,68 @@ describe("the control log", () => {
       expect([...c.controlLog()].reverse().find((e) => e.op.kind === kind)?.tick).toBe(4000);
     expect(digestOf(c)).toBe(expected);
     expect(c.effectiveProps(TWEAK.node)).toMatchObject(TWEAK.patch);
+  });
+
+  it("newer Inputs edits supersede queued tweaks during rebuild", () => {
+    vi.useFakeTimers();
+    const rates = { ...emptyInputs(), rates: { shopper: 450 } };
+    const props = { inventory: { latencyMs: 200 } };
+    const c = controller();
+    playTo(c, 30_000);
+    c.setInputs(rates);
+    // Waiting on the rebuild: a tweak of two properties, then an Inputs edit of one of them.
+    c.setNodeProps("inventory", { latencyMs: 400, replicas: 2 });
+    c.setInputs({ ...rates, props });
+    vi.runAllTimers();
+    expect(c.effectiveProps("inventory")).toMatchObject({ latencyMs: 200, replicas: 2 });
+    const logged = c.controlLog().filter((e) => e.op.kind === "props");
+    expect(logged.map((e) => (e.op.kind === "props" ? e.op.patch : undefined))).toEqual([{ replicas: 2 }]);
+    // And after another rebuild.
+    c.setInputs({ ...rates, props, rates: { shopper: 500 } });
+    vi.runAllTimers();
+    expect(c.effectiveProps("inventory")).toMatchObject({ latencyMs: 200, replicas: 2 });
+  });
+
+  it("a queued Continue the resource budget refuses keeps its place: the error shows, the rest waits for a retry", () => {
+    vi.useFakeTimers();
+    const c = controller();
+    playTo(c, 30_000);
+    c.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    const runner = (c as unknown as { runner: { resume(): void } }).runner;
+    const refuse = vi.spyOn(runner, "resume").mockImplementation(() => {
+      throw new LifecycleBudgetError("Resource lifecycle budget exceeded: 100000");
+    });
+    c.resume();
+    c.setNodeProps(TWEAK.node, TWEAK.patch);
+    vi.runAllTimers();
+    expect(c.getState().resourceError).toContain("100");
+    expect(c.getState().playing).toBe(false);
+    expect(c.effectiveProps(TWEAK.node).latencyMs).not.toBe(TWEAK.patch.latencyMs);
+    expect(c.controlLog().some((e) => e.op.kind === "props")).toBe(false);
+    // Continue again: this time it goes through, and the tweak after it.
+    refuse.mockRestore();
+    c.resume();
+    expect(c.effectiveProps(TWEAK.node)).toMatchObject(TWEAK.patch);
+    expect(
+      c
+        .controlLog()
+        .slice(-2)
+        .map((e) => e.op.kind),
+    ).toEqual(["resume", "props"]);
+  });
+
+  it("a traffic change waiting on a rebuild shows as chosen, and a second press reverses it", () => {
+    vi.useFakeTimers();
+    const c = controller();
+    playTo(c, 30_000);
+    const before = c.getState().traffic;
+    c.setInputs({ ...emptyInputs(), rates: { shopper: 450 } });
+    c.setTraffic(!before);
+    expect(c.getState().traffic).toBe(!before && !c.trafficHint());
+    c.setTraffic(before);
+    expect(c.getState().traffic).toBe(before);
+    vi.runAllTimers();
+    expect(c.getState().traffic).toBe(before);
   });
 
   it("a restart cancels the tweaks waiting on a rebuild", () => {
