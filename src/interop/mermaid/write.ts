@@ -76,13 +76,24 @@ const STENCIL_BRACKETS: Record<ExportShape, [string, string]> = {
   rect: ["[", "]"],
 };
 
-/** Mermaid brackets per shape: rect, rounded, circle, rhombus, cylinder. */
-const SHAPE_BRACKETS: Record<AnnotationShape, [string, string]> = {
+import { shapeMap } from "../../canvas/shapes/catalog";
+
+/** Mermaid brackets per shape for shapes that support classic bracket syntax. */
+const SHAPE_BRACKETS: Partial<Record<AnnotationShape, [string, string]>> = {
   rect: ["[", "]"],
   rounded: ["(", ")"],
   ellipse: ["((", "))"],
   diamond: ["{", "}"],
   cylinder: ["[(", ")]"],
+  stadium: ["([", "])"],
+  subroutine: ["[[", "]]"],
+  "dbl-circ": ["(((", ")))"],
+  hexagon: ["{{", "}}"],
+  "lean-r": ["[/", "/]"],
+  "lean-l": ["[\\", "\\]"],
+  "trap-b": ["[/", "\\]"],
+  "trap-t": ["[\\", "/]"],
+  asym: [">", "]"],
 };
 
 /** The toast after Copy Mermaid (here, not in the app's startup code). A private diagram's names no public site. */
@@ -118,8 +129,17 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
   const grouped = new Set((d.groups ?? []).map((g) => g.id));
   for (const n of d.nodes) if (!n.group || !grouped.has(n.group)) lines.push(nodeLine(n, "  "));
   for (const a of shapes) {
-    const [open, close] = SHAPE_BRACKETS[a.shape ?? "rect"];
-    lines.push(`  ${nodeIds.get(a.id)}${open}"${mermaidText(a.text.trim() || " ")}"${close}`);
+    const sh = a.shape ?? "rect";
+    const brackets = SHAPE_BRACKETS[sh];
+    const text = mermaidText(a.text.trim() || " ");
+    const id = nodeIds.get(a.id)!;
+    if (brackets) {
+      lines.push(`  ${id}${brackets[0]}"${text}"${brackets[1]}`);
+    } else {
+      const def = shapeMap.get(sh);
+      const mShape = def?.mermaidShape ?? sh;
+      lines.push(`  ${id}@{ shape: ${mShape}, label: "${text}" }`);
+    }
   }
 
   const relations: Record<string, DependencyRelation> = {};

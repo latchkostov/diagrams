@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { catalogs } from "virtual:i18n/catalogs";
 import { state, t, type Catalog } from "./index";
 import { categoryLabel, shapeLabel } from "./chrome";
+import { DEFAULT_ANNOTATION_SHAPES } from "../model/annotations";
 import { FirstRunHint } from "../canvas/FirstRunHint";
 import { Palette } from "../canvas/Palette";
 import { GalleryView } from "../gallery/GalleryView";
@@ -81,7 +82,13 @@ describe("original English canvas chrome", () => {
       "Clients & external",
       "Generic",
     ]);
-    expect(Object.values(shapeLabel)).toEqual(["Rectangle", "Rounded rectangle", "Ellipse", "Diamond", "Cylinder"]);
+    expect(DEFAULT_ANNOTATION_SHAPES.map((s) => shapeLabel[s])).toEqual([
+      "Rectangle",
+      "Rounded rectangle",
+      "Ellipse",
+      "Diamond",
+      "Cylinder",
+    ]);
     const item: MenuItem = { type: "item", id: "item.delete", label: "Delete" };
     expect(paletteLabel(item)).toBe("Delete");
     expect(paletteLabel({ ...item, id: "sim.kill", label: "Kill", paletteLabel: "Kill node" })).toBe("Kill node");

@@ -91,6 +91,123 @@ export const shapeLabel: Record<AnnotationShape, string> = {
   get cylinder() {
     return t("chrome.cylinder");
   },
+  get stadium() {
+    return t("shape.stadium");
+  },
+  get subroutine() {
+    return t("shape.subroutine");
+  },
+  get "dbl-circ"() {
+    return t("shape.dblCirc");
+  },
+  get hexagon() {
+    return t("shape.hexagon");
+  },
+  get "lean-r"() {
+    return t("shape.leanR");
+  },
+  get "lean-l"() {
+    return t("shape.leanL");
+  },
+  get "trap-b"() {
+    return t("shape.trapB");
+  },
+  get "trap-t"() {
+    return t("shape.trapT");
+  },
+  get "sl-rect"() {
+    return t("shape.slRect");
+  },
+  get "notch-rect"() {
+    return t("shape.notchRect");
+  },
+  get "lin-rect"() {
+    return t("shape.linRect");
+  },
+  get "div-rect"() {
+    return t("shape.divRect");
+  },
+  get "tag-rect"() {
+    return t("shape.tagRect");
+  },
+  get processes() {
+    return t("shape.processes");
+  },
+  get delay() {
+    return t("shape.delay");
+  },
+  get "notch-pent"() {
+    return t("shape.notchPent");
+  },
+  get hourglass() {
+    return t("shape.hourglass");
+  },
+  get fork() {
+    return t("shape.fork");
+  },
+  get datastore() {
+    return t("shape.datastore");
+  },
+  get das() {
+    return t("shape.das");
+  },
+  get "lin-cyl"() {
+    return t("shape.linCyl");
+  },
+  get "bow-rect"() {
+    return t("shape.bowRect");
+  },
+  get flag() {
+    return t("shape.flag");
+  },
+  get "win-pane"() {
+    return t("shape.winPane");
+  },
+  get doc() {
+    return t("shape.doc");
+  },
+  get docs() {
+    return t("shape.docs");
+  },
+  get "lin-doc"() {
+    return t("shape.linDoc");
+  },
+  get "tag-doc"() {
+    return t("shape.tagDoc");
+  },
+  get bolt() {
+    return t("shape.bolt");
+  },
+  get comment() {
+    return t("shape.comment");
+  },
+  get "brace-r"() {
+    return t("shape.braceR");
+  },
+  get braces() {
+    return t("shape.braces");
+  },
+  get "curv-trap"() {
+    return t("shape.curvTrap");
+  },
+  get asym() {
+    return t("shape.asym");
+  },
+  get "f-circ"() {
+    return t("shape.fCirc");
+  },
+  get "framed-circle"() {
+    return t("shape.framedCircle");
+  },
+  get "cross-circ"() {
+    return t("shape.crossCirc");
+  },
+  get tri() {
+    return t("shape.tri");
+  },
+  get "flip-tri"() {
+    return t("shape.flipTri");
+  },
 };
 export const toneLabel: Record<GroupTone, string> = {
   get azure() {

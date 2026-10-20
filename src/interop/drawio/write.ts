@@ -8,6 +8,7 @@ import { escapeXml } from "../xml";
 import { boxShape, groupStyle, imageShape, nativeShape, type DrawioShape } from "./mapping";
 import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { isColorValue } from "../../model/annotations";
+import { shapeMap } from "../../canvas/shapes/catalog";
 
 /**
  * Dependency tints for draw.io (its canvas is light): the light-theme --rel-* tokens. With the dotted
@@ -57,14 +58,9 @@ export function annotationStyle(a: DiagramAnnotation): string {
     case "zone":
       return `rounded=1;arcSize=6;absoluteArcSize=1;html=1;whiteSpace=wrap;dashed=1;dashPattern=8 6;align=left;verticalAlign=top;spacingLeft=14;spacingTop=6;fontStyle=1;${font}fillColor=${c.fill};fillOpacity=55;strokeColor=${c.hex};fontColor=${c.hex};`;
     default: {
-      const base: Record<NonNullable<DiagramAnnotation["shape"]>, string> = {
-        rect: "rounded=0;",
-        rounded: "rounded=1;",
-        ellipse: "ellipse;",
-        diamond: "rhombus;",
-        cylinder: "shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=12;",
-      };
-      return `${base[a.shape ?? "rect"]}html=1;whiteSpace=wrap;${font}fillColor=${c.fill};strokeColor=${c.hex};fontColor=#1F2937;`;
+      const sh = a.shape ?? "rect";
+      const base = shapeMap.get(sh)?.drawioStyle ?? "";
+      return `${base}html=1;whiteSpace=wrap;${font}fillColor=${c.fill};strokeColor=${c.hex};fontColor=#1F2937;`;
     }
   }
 }

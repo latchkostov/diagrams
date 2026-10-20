@@ -111,7 +111,51 @@ export interface CheckIgnore {
  * - shape: a plain outline (see AnnotationShape) for when no stencil fits. The only connectable kind.
  */
 export type AnnotationKind = "text" | "note" | "zone" | "shape";
-export type AnnotationShape = "rect" | "rounded" | "ellipse" | "diamond" | "cylinder";
+export type AnnotationShape =
+  | "rect"
+  | "rounded"
+  | "ellipse"
+  | "diamond"
+  | "cylinder"
+  | "stadium"
+  | "subroutine"
+  | "dbl-circ"
+  | "hexagon"
+  | "lean-r"
+  | "lean-l"
+  | "trap-b"
+  | "trap-t"
+  | "sl-rect"
+  | "notch-rect"
+  | "lin-rect"
+  | "div-rect"
+  | "tag-rect"
+  | "processes"
+  | "delay"
+  | "notch-pent"
+  | "hourglass"
+  | "fork"
+  | "datastore"
+  | "das"
+  | "lin-cyl"
+  | "bow-rect"
+  | "flag"
+  | "win-pane"
+  | "doc"
+  | "docs"
+  | "lin-doc"
+  | "tag-doc"
+  | "bolt"
+  | "comment"
+  | "brace-r"
+  | "braces"
+  | "curv-trap"
+  | "asym"
+  | "f-circ"
+  | "framed-circle"
+  | "cross-circ"
+  | "tri"
+  | "flip-tri";
 /** A small curated palette that reads well in both themes. */
 export type AnnotationColor = "white" | "neutral" | "yellow" | "green" | "blue" | "purple" | "red";
 export type AnnotationTextSize = "s" | "m" | "l" | "xl";

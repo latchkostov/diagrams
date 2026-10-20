@@ -1163,13 +1163,92 @@ export function createEditor(
       const n = rf.getNode(fromId);
       if (!n || !takesEdges(n)) return null;
       const from = box(n);
-      return spotBeside(from, toward, clone ? { width: from.width, height: from.height } : deps().nodeSize);
+      return spotBeside(
+        from,
+        toward,
+        clone || (isAnnotation(n) && n.data.kind === "shape")
+          ? { width: from.width, height: from.height }
+          : deps().nodeSize,
+      );
     },
     createConnected: (req) => {
       const ns = rf.getNodes();
       const src = ns.find((n) => n.id === req.from);
       if (!src || !takesEdges(src)) return null;
       const srcStencil = isDiagram(src) ? src.data.stencil : undefined;
+      const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+
+      if (req.shape) {
+        const size = defaultSize.shape;
+        const spot = req.at
+          ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
+          : spotBeside(box(src), toward, size);
+        const position = { x: snap10(spot.x), y: snap10(spot.y) };
+        const id = allocateId(annotationIdBase("shape"), takenIds());
+        const node: AnnotationFlowNode = {
+          ...annotationToFlow({
+            id,
+            kind: "shape",
+            text: defaultText.shape,
+            x: position.x,
+            y: position.y,
+            width: size.width,
+            height: size.height,
+            shape: req.shape,
+          }),
+          selected: true,
+        };
+        const ends = [
+          { id: src.id, stencil: srcStencil },
+          { id, stencil: undefined },
+        ];
+        const [fromEnd, toEnd] = req.at || isDownstream(toward) ? ends : [ends[1], ends[0]];
+        const edge = newEdge(fromEnd, toEnd, rf.getEdges());
+        const merge = `new:${id}`;
+        beginCreation(merge);
+        if (!addSettled(node, (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]))
+          return null;
+        explainEdge(edge);
+        return { id, edge: edge.id, merge };
+      }
+
+      if (req.clone && isAnnotation(src)) {
+        if (src.data.kind !== "shape") return null;
+        const srcBox = box(src);
+        const size = { width: srcBox.width, height: srcBox.height };
+        const spot = req.at
+          ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
+          : spotBeside(srcBox, toward, size);
+        const position = { x: snap10(spot.x), y: snap10(spot.y) };
+        const id = allocateId(annotationIdBase("shape"), takenIds());
+        const node: AnnotationFlowNode = {
+          ...annotationToFlow({
+            id,
+            kind: "shape",
+            text: src.data.text ?? defaultText.shape,
+            x: position.x,
+            y: position.y,
+            width: size.width,
+            height: size.height,
+            shape: src.data.shape ?? "rect",
+            color: src.data.color,
+          }),
+          selected: true,
+        };
+        const ends = [
+          { id: src.id, stencil: undefined },
+          { id, stencil: undefined },
+        ];
+        const [fromEnd, toEnd] = req.at || isDownstream(toward) ? ends : [ends[1], ends[0]];
+        const edge = newEdge(fromEnd, toEnd, rf.getEdges());
+        const merge = `new:${id}`;
+        beginCreation(merge);
+        if (!addSettled(node, (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]))
+          return null;
+        explainEdge(edge);
+        return { id, edge: edge.id, merge };
+      }
+
       let data: DiagramFlowNode["data"];
       let size = deps().nodeSize;
       if (req.clone) {
@@ -1193,7 +1272,6 @@ export function createEditor(
         };
       }
       // Where: the drop point (a dropped connection, centred on it), else one gap beside the node that way.
-      const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
       const spot = req.at
         ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
         : spotBeside(box(src), toward, size);

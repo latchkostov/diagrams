@@ -3702,13 +3702,7 @@ var tn = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, nn = (e) => ty
 	"note",
 	"zone",
 	"shape"
-], an = [
-	"rect",
-	"rounded",
-	"ellipse",
-	"diamond",
-	"cylinder"
-], on = [
+], an = /* @__PURE__ */ "rect.rounded.ellipse.diamond.cylinder.stadium.subroutine.dbl-circ.hexagon.lean-r.lean-l.trap-b.trap-t.sl-rect.notch-rect.lin-rect.div-rect.tag-rect.processes.delay.notch-pent.hourglass.fork.datastore.das.lin-cyl.bow-rect.flag.win-pane.doc.docs.lin-doc.tag-doc.bolt.comment.brace-r.braces.curv-trap.asym.f-circ.framed-circle.cross-circ.tri.flip-tri".split("."), on = [
 	"s",
 	"m",
 	"l",

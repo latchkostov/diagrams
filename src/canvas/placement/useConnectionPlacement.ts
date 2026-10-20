@@ -102,10 +102,16 @@ export function useConnectionPlacement(
             return tr("canvas.addANode");
           },
           items: () =>
-            quickAddMenu((s) => {
-              pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
-              pushRecentStencil(s.id);
-            }, getRecentStencils()),
+            quickAddMenu(
+              (s) => {
+                pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
+                pushRecentStencil(s.id);
+              },
+              getRecentStencils(),
+              (sh) => {
+                pickNamed(() => editor.createConnected({ from, shape: sh.id, at: point }), sh.label);
+              },
+            ),
         },
         { via: "pointer", platform: platform() },
       );

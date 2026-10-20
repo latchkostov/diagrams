@@ -67,19 +67,26 @@ export function useCanvasNaming(
         () => {
           const typed = typing.stop();
           if (typed.done === "escape") return endCreation(made.merge);
+          const isAnn = !!editor.getAnnotation(made.id);
           if (typed.done === "enter") {
-            if (typed.text !== null)
-              editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
+            if (typed.text !== null) {
+              if (isAnn) editor.updateAnnotation(made.id, { text: typed.text.trim() || fallback });
+              else editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
+            }
             return endCreation(made.merge);
           }
           // In this same task: a key arriving before the field has focus would reach the canvas instead.
           flushSync(() =>
-            editor.startEditing({
-              kind: "node",
-              id: made.id,
-              text: typed.text ?? undefined,
-              edge: made.edge ?? undefined,
-            }),
+            editor.startEditing(
+              isAnn
+                ? { kind: "annotation", id: made.id }
+                : {
+                    kind: "node",
+                    id: made.id,
+                    text: typed.text ?? undefined,
+                    edge: made.edge ?? undefined,
+                  },
+            ),
           );
         },
         90,

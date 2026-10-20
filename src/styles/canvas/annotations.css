@@ -251,6 +251,15 @@
   stroke-linejoin: round;
 }
 
+.ann-shape-open .ann-shape-svg > *,
+.ann-shape-svg > .ann-shape-stroke-only {
+  fill: none;
+}
+
+.ann-shape-svg > .ann-shape-fill-only {
+  stroke: none;
+}
+
 .ann-shape-svg > .ann-shape-top {
   fill: color-mix(in oklab, var(--ann) 15%, var(--node-bg));
 }
@@ -275,6 +284,50 @@
 
 .ann-shape .ann-body-cylinder {
   padding-top: 30px;
+}
+
+.ann-body-hexagon,
+.ann-body-lean-r,
+.ann-body-lean-l,
+.ann-body-trap-b,
+.ann-body-trap-t,
+.ann-body-braces {
+  padding: 8px 16%;
+}
+
+.ann-body-tri {
+  padding: 25% 15% 10% 15%;
+}
+
+.ann-body-flip-tri {
+  padding: 10% 15% 25% 15%;
+}
+
+.ann-body-hourglass {
+  padding: 8px 22%;
+}
+
+.ann-shape .ann-body-doc,
+.ann-shape .ann-body-docs,
+.ann-shape .ann-body-lin-doc,
+.ann-shape .ann-body-tag-doc {
+  padding-bottom: 16px;
+}
+
+.ann-body-asym {
+  padding-right: 18%;
+}
+
+.ann-body-curv-trap {
+  padding-left: 18%;
+}
+
+.ann-body-comment {
+  padding-left: 18%;
+}
+
+.ann-body-brace-r {
+  padding-right: 18%;
 }
 
 .ann-shape .ann-content {

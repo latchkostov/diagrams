@@ -20,7 +20,14 @@ import { CATEGORY_ORDER } from "../lib/categories";
 import { toneColor, isPresetGroupTone } from "../canvas/groupTones";
 import type { GroupTone } from "../canvas/types";
 import type { AnnotationKind, AnnotationShape, Side, Stencil } from "../model/types";
-import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, ANNOTATION_SHAPES, annotationColor } from "../canvas/annotations";
+import {
+  ANNOTATION_COLORS,
+  ANNOTATION_COLOR_IDS,
+  DEFAULT_ANNOTATION_SHAPES,
+  annotationColor,
+} from "../canvas/annotations";
+import { shapeMenu } from "../canvas/shapes/menu";
+import type { ShapeDefinition } from "../canvas/shapes/catalog";
 import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
@@ -94,12 +101,30 @@ const QUICK_ADD_RECENT = 3;
  * Quick-add (double-click the canvas, or drop a connection on it): the recently used stencils first,
  * then Category ▸ stencil. Search covers everything, each stencil once.
  */
-export function quickAddMenu(pick: (s: Stencil) => void, recent: readonly string[] = []): MenuNode[] {
+export function quickAddMenu(
+  pick: (s: Stencil) => void,
+  recent: readonly string[] = [],
+  pickShape?: (s: ShapeDefinition) => void,
+): MenuNode[] {
   const recents = recent
     .map((id) => stencils.find((s) => s.id === id))
     .filter((s): s is Stencil => !!s)
     .slice(0, QUICK_ADD_RECENT);
-  const all = stencilMenu("quick-add", (s) => ({ run: () => pick(s) }));
+  const stencilsList = stencilMenu("quick-add", (s) => ({ run: () => pick(s) }));
+  const shapesItem: MenuNode | null = pickShape
+    ? {
+        type: "item",
+        id: "quick-add:shapes",
+        get label() {
+          return t("menu.shape");
+        },
+        icon: "shapes",
+        children: shapeMenu("quick-add-shape", (s) => ({
+          run: () => pickShape(s),
+        })),
+      }
+    : null;
+  const all = shapesItem ? [...stencilsList, shapesItem] : stencilsList;
   if (!recents.length) return all;
   return [
     {
@@ -264,13 +289,6 @@ function toneMenu(prefix: string, current: GroupTone | undefined, pick: (t: Grou
   }));
 }
 
-const SHAPE_ICON: Record<AnnotationShape, MenuItem["icon"]> = {
-  rect: "shape-rect",
-  rounded: "shape-rounded",
-  ellipse: "shape-ellipse",
-  diamond: "shape-diamond",
-  cylinder: "shape-cylinder",
-};
 const KIND_ICON: Record<AnnotationKind, MenuItem["icon"]> = {
   // eslint-disable-next-line local/no-literal-ui-text -- icon identifier
   text: "type",
@@ -305,14 +323,21 @@ export function annotateMenu(add: (kind: AnnotationKind, shape?: AnnotationShape
         return t("menu.shape");
       },
       icon: "shape-rect",
-      children: ANNOTATION_SHAPES.map((sh): MenuItem => ({
-        type: "item",
-        id: `annotate:shape:${sh}`,
-        label: shapeLabel[sh],
-        icon: SHAPE_ICON[sh],
-        keywords: `${KIND_KEYWORDS.shape} ${sh}`,
-        run: () => add("shape", sh),
-      })),
+      get searchable() {
+        return t("shape.searchShapes");
+      },
+      children: [
+        ...DEFAULT_ANNOTATION_SHAPES.map((sh): MenuItem => ({
+          type: "item",
+          id: `annotate:shape:${sh}`,
+          label: shapeLabel[sh],
+          icon: `shape-${sh}` as MenuItem["icon"],
+          keywords: `${KIND_KEYWORDS.shape} ${sh}`,
+          run: () => add("shape", sh),
+        })),
+        { type: "separator" },
+        ...shapeMenu("annotate-shape", (s) => ({ run: () => add("shape", s.id) })),
+      ],
     },
   ];
 }
@@ -1141,17 +1166,27 @@ export function builtinActions(): Action[] {
         return t("menu.shape");
       },
       icon: "shapes",
+      get searchable() {
+        return t("shape.searchShapes");
+      },
       when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "shape",
       children: (ctx) => {
         const current = ctx.editor.getAnnotation(ctx.nodeId!)?.shape ?? "rect";
-        return ANNOTATION_SHAPES.map((sh) => ({
-          type: "item" as const,
-          id: `annotation-shape:${sh}`,
-          label: shapeLabel[sh],
-          icon: SHAPE_ICON[sh],
-          checked: current === sh,
-          run: () => ctx.editor.updateAnnotation(ctx.nodeId!, { shape: sh }),
-        }));
+        return [
+          ...DEFAULT_ANNOTATION_SHAPES.map((sh) => ({
+            type: "item" as const,
+            id: `annotation-shape:quick:${sh}`,
+            label: shapeLabel[sh],
+            icon: `shape-${sh}` as MenuItem["icon"],
+            checked: current === sh,
+            run: () => ctx.editor.updateAnnotation(ctx.nodeId!, { shape: sh }),
+          })),
+          { type: "separator" as const },
+          ...shapeMenu("annotation-shape", (s) => ({
+            checked: current === s.id,
+            run: () => ctx.editor.updateAnnotation(ctx.nodeId!, { shape: s.id }),
+          })),
+        ];
       },
     },
     {
