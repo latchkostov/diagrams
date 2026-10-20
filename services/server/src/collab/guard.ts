@@ -80,6 +80,7 @@ export class RoomGuard {
   private readonly seats = new Map<string, Seat>();
   private readonly budget: TokenBucket;
   private readonly queue: Job[] = [];
+  private readonly idleWaiters = new Set<() => void>();
   private running = false;
   private jobs = 0;
   private bytes = 0;
@@ -142,6 +143,12 @@ export class RoomGuard {
     if (peer === undefined) return { jobs: this.jobs, bytes: this.bytes };
     const seat = this.seats.get(peer);
     return { jobs: seat?.jobs ?? 0, bytes: seat?.bytes ?? 0 };
+  }
+
+  /** Resolves once no queued or in-flight work remains (diagnostics, tests). */
+  idle(): Promise<void> {
+    if (this.jobs === 0) return Promise.resolve();
+    return new Promise((resolve) => this.idleWaiters.add(resolve));
   }
 
   /** A socket says which member it is (until it's been looked at: answered `ok`, or `retry`). */
@@ -249,6 +256,10 @@ export class RoomGuard {
     if (seat) {
       seat.jobs--;
       seat.bytes -= job.bytes;
+    }
+    if (this.jobs === 0) {
+      for (const resolve of this.idleWaiters) resolve();
+      this.idleWaiters.clear();
     }
   }
 

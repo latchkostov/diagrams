@@ -517,7 +517,9 @@ describe("admission recovers from the relay's budgets and queue, through the rea
     // moves a second at a time, once the relay's checks have caught up.
     const caughtUp = async () => {
       await Promise.all(sockets.map(barrier));
-      await vi.waitFor(() => expect(s.rooms.get(r.room)?.guard?.load().jobs ?? 0).toBe(0));
+      const guard = s.rooms.get(r.room)?.guard;
+      await guard?.idle();
+      expect(guard?.load().jobs ?? 0).toBe(0);
       await Promise.all(sockets.map(barrier));
     };
     for (let i = 0; i < 120 && s.rooms.get(r.room)?.guard?.members !== 2; i++) {
@@ -622,7 +624,8 @@ describe("admission recovers from the relay's budgets and queue, through the rea
     } finally {
       release();
     }
-    await vi.waitFor(() => expect(guard().load()).toEqual({ jobs: 0, bytes: 0 }));
+    await guard().idle();
+    expect(guard().load()).toEqual({ jobs: 0, bytes: 0 });
   });
 
   it("the queue is bounded: blocked work and many large pushes stay within it, and leaving cancels what's queued", async () => {
@@ -675,6 +678,7 @@ describe("admission recovers from the relay's budgets and queue, through the rea
     } finally {
       release();
     }
-    await vi.waitFor(() => expect(guard().load()).toEqual({ jobs: 0, bytes: 0 }));
+    await guard().idle();
+    expect(guard().load()).toEqual({ jobs: 0, bytes: 0 });
   });
 });
