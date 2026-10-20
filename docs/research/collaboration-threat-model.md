@@ -682,9 +682,11 @@ knock-to-join rooms only. **Not yet independently reviewed**, like P4 and P5; Pr
   socket closed with 4010. The page reconnects at the door, where the lobby tells it it was removed.
 - **Every proof and push is answered.** A proof gets `proofAck` (`ok`, or `retry`: its check didn't fit the budget
   or the queue now); a push gets `chainAck` (how far the chain the relay holds goes, and whether everything that push
-  carried is held). A page proves until the relay says ok, and pushes (what changed since its last fully held push,
-  in pieces of 512 KiB at most) until a push is held in full, whether or not it's admitted, with backoff and when no
-  answer comes at all (`src/collab/transport/relayAdmission.ts`). So a proof or a removal throttled by a budget is
+  carried is held). A page proves until the relay says ok, and pushes what the relay hasn't been shown to hold, in
+  pieces of 512 KiB at most sent one at a time (the next once the last is held; only a piece not taken, or not
+  answered, is sent again, with backoff), whether or not it's admitted; a change to the chain replaces what's still to
+  send at once. Whatever became of the socket that pushed it, every chain update is followed by a look at everyone
+  in the room, so a removal checked after its sender left still closes the removed socket (`src/collab/transport/relayAdmission.ts`). So a proof or a removal throttled by a budget is
   sent again, and a removal reaches the relay however the budgets went (review P1s: a throttled proof was silently
   dropped; an admitted host stopped pushing, so a removal the budget dropped never closed anyone).
 - **Budgets and a bounded queue.** Checking signatures costs the relay: each socket has 2,048 checks per 10 s, and

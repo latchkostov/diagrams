@@ -5,14 +5,20 @@ import { RELAY_ANSWER_MS, RELAY_PIECE_BYTES, RelayAdmissionController, relayPiec
 import type { RelayAdmission } from "./types";
 
 /** A page's chain as a list of epochs (`entries` per epoch), and what the controller sends. */
-function setUp(epochs: number[] = [2]) {
+function setUp(epochs: number[] = [2], pad = 0) {
   const clock = new FakeClock();
   const sent: { t: string; id?: number; chain?: ChainData }[] = [];
   let shape = [...epochs];
   const data = (from?: number): ChainData => {
     const all = shape.map((n, epoch) => ({
       start: { epoch, sig: `s${epoch}` },
-      log: { scope: `${epoch}:s${epoch}`, entries: Array.from({ length: n }, (_, i) => ({ sig: `e${epoch}.${i}` })) },
+      log: {
+        scope: `${epoch}:s${epoch}`,
+        entries: Array.from({ length: n }, (_, i) => ({
+          sig: `e${epoch}.${i}`,
+          ...(pad ? { pad: "x".repeat(pad) } : {}),
+        })),
+      },
     }));
     const keep = all.filter((x) => from === undefined || x.start.epoch >= from);
     return { starts: keep.map((x) => x.start), logs: keep.map((x) => x.log) } as unknown as ChainData;
@@ -112,6 +118,44 @@ describe("a page's admission on a relay that enforces knock-to-join", () => {
     t.c.onChainAck({ id: t.of("chain")[2].id!, complete: true });
     t.c.changed();
     expect(t.of("chain")).toHaveLength(3);
+  });
+
+  it("sends pieces one at a time, and sends again only a piece the relay didn't take", async () => {
+    // Three epochs, each a piece of its own (300 KB rosters).
+    const t = setUp([1, 1, 1], 300_000);
+    t.c.start("challenge", "0000000000000001");
+    await t.flush();
+    const chains = () => t.of("chain");
+    const epochsOf = (m: { chain?: ChainData }) => m.chain?.starts.map((s) => (s as { epoch: number }).epoch);
+    expect(chains()).toHaveLength(1);
+    expect(epochsOf(chains()[0])).toEqual([0]);
+    t.c.onChainAck({ id: chains()[0].id!, complete: true });
+    expect(chains()).toHaveLength(2);
+    expect(epochsOf(chains()[1])).toEqual([1]);
+    // Not taken (the relay's queue): that piece again, after a wait, and only it.
+    t.c.onChainAck({ id: chains()[1].id!, complete: false });
+    t.clock.advance(999);
+    expect(chains()).toHaveLength(2);
+    t.clock.advance(1);
+    expect(chains()).toHaveLength(3);
+    expect(epochsOf(chains()[2])).toEqual([1]);
+    t.c.onChainAck({ id: chains()[2].id!, complete: true });
+    expect(epochsOf(chains()[3])).toEqual([2]);
+    // A change meanwhile (a new epoch): what's still to send is replaced at once, from the first epoch not shown held;
+    // the earlier piece's answer no longer counts.
+    t.set([1, 1, 1, 1]);
+    t.c.changed();
+    expect(chains()).toHaveLength(5);
+    expect(epochsOf(chains()[4])).toEqual([2]);
+    t.c.onChainAck({ id: chains()[3].id!, complete: true });
+    expect(chains()).toHaveLength(5);
+    t.c.onChainAck({ id: chains()[4].id!, complete: true });
+    expect(epochsOf(chains()[5])).toEqual([3]);
+    t.c.onChainAck({ id: chains()[5].id!, complete: true });
+    // Held in full: nothing more.
+    t.clock.advance(120_000);
+    t.c.changed();
+    expect(chains()).toHaveLength(6);
   });
 
   it("a new socket starts over: the relay holds nothing of this page's", async () => {

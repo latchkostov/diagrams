@@ -266,6 +266,17 @@ test("relay: knock-to-join enforced by the relay; Remove closes the removed memb
     const stays = await knock(a, link, "Ada");
     await card("Ada").getByTestId("room-knock-admit").click({ timeout: pageLoadTimeout() });
     await expect(stays.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    // Bea's page hears the lobby only while it's let through: held back around the removal, her page can't learn of
+    // it and leave on its own first (the relay closing her connection is what's being shown), then let through again.
+    let lobbyHeld = false;
+    await b.routeWebSocket(/collab\/v1$/, (ws) => {
+      const server = ws.connectToServer();
+      ws.onMessage((message) => server.send(message));
+      server.onMessage((message) => {
+        const lobby = typeof message !== "string" && message.length > 12 && message[12] === 4;
+        if (!(lobbyHeld && lobby)) ws.send(message);
+      });
+    });
     const goes = await knock(b, link, "Bea");
     await card("Bea").getByTestId("room-knock-admit").click({ timeout: pageLoadTimeout() });
     await expect(goes.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -279,8 +290,11 @@ test("relay: knock-to-join enforced by the relay; Remove closes the removed memb
     });
     await page.getByTestId("room-chip").click();
     await page.getByTestId("room-person-row").filter({ hasText: "Bea" }).click();
+    lobbyHeld = true;
     await page.getByTestId("room-remove").click();
     expect(await closed).toBe(4010);
+    // Back at the door (her page reconnects), the lobby tells her.
+    lobbyHeld = false;
     await expect(goes.getByTestId("toast").filter({ hasText: "removed from the room" })).toBeVisible({
       timeout: pageLoadTimeout(),
     });

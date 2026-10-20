@@ -172,8 +172,8 @@ export class RoomGuard {
       const data = parseChainData(raw);
       if (!data) return seat.close(RELAY_CLOSE.badFrame);
       await this.chain.add(data, () => this.charge(seat));
-      if (this.seats.get(peer) !== seat) return;
-      seat.reply({ t: "chainAck", id, ...this.tip(), complete: this.holds(data) });
+      // Whoever's in is looked at again whatever became of the sender (a removal it pushed counts if it's gone).
+      if (this.seats.get(peer) === seat) seat.reply({ t: "chainAck", id, ...this.tip(), complete: this.holds(data) });
       this.review();
     });
   }

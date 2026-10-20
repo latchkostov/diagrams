@@ -4,9 +4,13 @@ import type { RelayAdmission } from "./types";
 
 // A knock-to-join room's admission on a relay that enforces it (shared Live P6), from the page's side: it says which
 // member it is until the relay acknowledges the proof, and keeps the relay's copy of the room's chain up to its own,
-// pushing until a push is acknowledged as held in full, whether or not this socket is admitted (a removal must reach
-// the relay however its budgets went). Every change to the chain (a removal included) sets a new target; what's
-// pushed is what changed since the last acknowledged one, in pieces a relay message holds.
+// whether or not this socket is admitted (a removal must reach the relay however its budgets went).
+//
+// The chain goes in pieces a relay message holds, one at a time: the next only once the relay has answered that it
+// holds the last in full; a piece it didn't take (its budget, its queue) or never answered is sent again, after a
+// wait, and only that piece. Every change to the chain (a removal included) replaces what's still to send at once,
+// from the first epoch the relay hasn't been shown to hold (the newest is always sent again: it's the one that
+// changes), so pieces already held aren't sent twice.
 
 /** A chain control's JSON at most: well inside the relay's smallest payload limit. */
 export const RELAY_PIECE_BYTES = 512 * 1024;
@@ -67,6 +71,23 @@ export function relayPieces(data: ChainData, maxBytes = RELAY_PIECE_BYTES): Chai
 type Tip = { epoch: number; entries: number };
 const same = (a: Tip | undefined, b: Tip | undefined) => !!a && !!b && a.epoch === b.epoch && a.entries === b.entries;
 
+/** A piece, and the epoch before which the chain is held once it and every piece before it are. */
+interface Piece {
+  chain: ChainData;
+  through: number;
+}
+
+/** Pieces in order, each with how far it completes the chain (an epoch split across pieces completes with its last). */
+function ordered(pieces: ChainData[]): Piece[] {
+  return pieces.map((chain, i) => {
+    const epochs = chain.starts.map((s) => (s as { epoch: number }).epoch);
+    const last = Math.max(...epochs);
+    const next = pieces[i + 1]?.starts.map((s) => (s as { epoch: number }).epoch) ?? [];
+    // The next piece carrying the same epoch (its roster continued): this one doesn't complete it.
+    return { chain, through: next.includes(last) ? last : last + 1 };
+  });
+}
+
 export class RelayAdmissionController {
   private live = false;
   private challenge = "";
@@ -76,8 +97,10 @@ export class RelayAdmissionController {
   private cancelProof?: () => void;
   /** The last target the relay acknowledged holding in full (none: it holds nothing of this page's yet). */
   private acked?: Tip;
-  /** A round of pushes in flight: their ids, whether any wasn't held in full, and the target they carry. */
-  private round?: { ids: Set<number>; failed: boolean; target: Tip };
+  /** Every epoch before this is held by the relay (pieces it answered in full); the newest is never counted. */
+  private held = 0;
+  /** What's being sent: the target, its pieces, the one in flight (its id), and how often it's been tried. */
+  private round?: { target: Tip; pieces: Piece[]; index: number; id: number };
   private pushTries = 0;
   private cancelPush?: () => void;
   private nextId = 0;
@@ -97,6 +120,7 @@ export class RelayAdmissionController {
     this.proved = false;
     this.proofTries = 0;
     this.acked = undefined;
+    this.held = 0;
     this.pushTries = 0;
     // The proof first (its check is the socket's first), then the chain.
     void this.prove().finally(() => this.sync());
@@ -130,15 +154,19 @@ export class RelayAdmissionController {
 
   onChainAck(ack: { id: number; complete: boolean }): void {
     const round = this.round;
-    if (!this.live || !round || !round.ids.delete(ack.id)) return;
-    if (!ack.complete) round.failed = true;
-    if (round.ids.size) return;
+    if (!this.live || !round || ack.id !== round.id) return;
     this.cancelPush?.();
     this.cancelPush = undefined;
-    this.round = undefined;
-    if (round.failed) return this.retryPush();
-    this.acked = round.target;
+    // Not taken in full (the relay's budget or queue): this piece again, after a wait.
+    if (!ack.complete) return this.retryPiece();
     this.pushTries = 0;
+    const piece = round.pieces[round.index];
+    // Held through this piece: the epochs it completes, never the newest (it may change again).
+    this.held = Math.max(this.held, Math.min(piece.through, round.target.epoch));
+    round.index++;
+    if (round.index < round.pieces.length) return this.sendPiece();
+    this.round = undefined;
+    this.acked = round.target;
     this.sync();
   }
 
@@ -170,39 +198,42 @@ export class RelayAdmissionController {
   }
 
   /**
-   * Pushes what the relay lacks, up to the page's newest, at once (a removal mustn't wait behind an earlier push): a
-   * round in flight is superseded, its answers no longer counted.
+   * What the relay lacks, up to the page's newest, from the first epoch it hasn't been shown to hold: replacing at
+   * once whatever was still to send (a removal mustn't wait behind an earlier push).
    */
   private sync(): void {
     if (!this.live) return;
     const target = this.admission.tip();
     if (!target || same(this.acked, target)) return;
-    const data = this.admission.chain(this.acked?.epoch);
-    const pieces = data ? relayPieces(data) : [];
+    const data = this.admission.chain(this.acked ? Math.min(this.held, this.acked.epoch) : this.held || undefined);
+    const pieces = data ? ordered(relayPieces(data)) : [];
     if (!pieces.length) return;
-    const round = { ids: new Set<number>(), failed: false, target };
-    this.round = round;
-    for (const chain of pieces) {
-      const id = this.nextId++;
-      round.ids.add(id);
-      this.send(JSON.stringify({ t: "chain", id, chain }));
-    }
-    // Answers that never come (lost, or a socket that went quiet): the round is pushed again.
+    this.cancelPush?.();
+    this.cancelPush = undefined;
+    this.round = { target, pieces, index: 0, id: -1 };
+    this.pushTries = 0;
+    this.sendPiece();
+  }
+
+  /** The round's next piece, alone in flight; no answer in time: sent again. */
+  private sendPiece(): void {
+    const round = this.round;
+    if (!this.live || !round) return;
+    round.id = this.nextId++;
+    this.send(JSON.stringify({ t: "chain", id: round.id, chain: round.pieces[round.index].chain }));
     this.cancelPush?.();
     this.cancelPush = this.clock.after(RELAY_ANSWER_MS * 2, () => {
       this.cancelPush = undefined;
-      if (this.round !== round) return;
-      this.round = undefined;
-      this.retryPush();
+      if (this.round === round) this.retryPiece();
     });
   }
 
-  private retryPush(): void {
-    if (!this.live) return;
+  private retryPiece(): void {
+    if (!this.live || !this.round) return;
     this.cancelPush?.();
     this.cancelPush = this.clock.after(backoff(this.pushTries++), () => {
       this.cancelPush = undefined;
-      this.sync();
+      this.sendPiece();
     });
   }
 }

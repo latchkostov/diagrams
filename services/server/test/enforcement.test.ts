@@ -11,11 +11,13 @@ import {
 } from "../../../src/collab/epochs";
 import { signEntry } from "../../../src/collab/roster";
 import { createRelayTransport } from "../../../src/collab/transport/relay";
+import { relayPieces } from "../../../src/collab/transport/relayAdmission";
 import { newAgreement, newIdentity, sign, type Identity } from "../../../src/collab/signing";
 import {
   clientFrame,
   parseControl,
   RELAY_CLOSE,
+  type RelayControl,
   relayProofBytes,
   readServerFrame,
 } from "../../../src/collab/transport/relayProtocol";
@@ -45,6 +47,11 @@ async function knockRoom() {
     host,
     chain,
     data: (): ChainData => chain.data(current),
+    /** The host's roster grows by `n` entries (the switch toggled). */
+    async fill(n: number) {
+      for (let i = 0; i < n; i++)
+        expect(await roster().append(host, "ask", { ask: !roster().state().ask })).toBeDefined();
+    },
     async join(id: Identity) {
       expect(await roster().append(host, "join", { who: id.key, x: (await newAgreement()).x })).toBeDefined();
     },
@@ -324,11 +331,25 @@ describe("a self-hosted relay admits only a knock-to-join room's members (shared
 
 /** A page on the relay through the real transport: its admission as a session gives it, from the room `r` it holds. */
 function page(s: TestServer, r: Room, id: Identity, clock: FakeClock, sockets: WebSocket[]) {
+  const acks: RelayControl[] = [];
+  const sent: string[] = [];
+  const mine = {
+    push(ws: WebSocket) {
+      sockets.push(ws);
+      ws.on("message", (raw: Buffer, binary: boolean) => {
+        const m = binary ? undefined : parseControl(raw.toString());
+        if (m?.t === "chainAck" || m?.t === "proofAck") acks.push(m);
+      });
+      return sockets.length;
+    },
+  } as unknown as WebSocket[];
   const transport = createRelayTransport({
     url: s.url,
     roomId: r.room,
     root: r.host.key,
-    WebSocket: browserSockets(s.origin, sockets),
+    WebSocket: browserSockets(s.origin, mine, (data) => {
+      if (typeof data === "string") sent.push(data);
+    }),
     clock,
     random: () => new Uint8Array([0, 0, 0, 0]),
   });
@@ -357,7 +378,7 @@ function page(s: TestServer, r: Room, id: Identity, clock: FakeClock, sockets: W
       return () => listeners.delete(fn);
     },
   });
-  return { transport, frames, changed: () => listeners.forEach((fn) => fn()) };
+  return { transport, frames, acks, sent, changed: () => listeners.forEach((fn) => fn()) };
 }
 const marker = (bytes: Uint8Array) => Buffer.from(bytes.subarray(32)).toString();
 /** Advances the relay's and the pages' clock a second at a time, letting sockets and checks catch up. */
@@ -442,16 +463,166 @@ describe("admission recovers from the relay's budgets and queue, through the rea
     );
     stranger.push({ starts: [], logs: [{ scope: scopeOf(r.data().starts[0]), entries: junk }] });
     await settle(stranger);
-    // The host removes the member: its push can't be checked now; the member's still in.
+    // The host removes the member, the clock standing still: its push can't be checked now (the relay says so), and
+    // the member's still in.
+    const before = host.acks.length;
     await r.remove(member);
     host.changed();
-    await run(clock, 3_000, sockets);
+    await vi.waitFor(() => expect(host.acks.slice(before).some((a) => a.t === "chainAck" && !a.complete)).toBe(true));
+    await Promise.all(sockets.map(barrier));
     expect(codes).not.toContain(RELAY_CLOSE.removed);
     expect(s.rooms.get(r.room)?.guard?.members).toBe(2);
     // The budget refills: the removal's pushed again, and the member's socket is closed at once.
     await run(clock, 20_000, sockets);
     await vi.waitFor(() => expect(codes).toContain(RELAY_CLOSE.removed));
     expect(s.rooms.get(r.room)?.guard?.members).toBe(1);
+  });
+
+  it("restores a multi-piece chain through a one-job admission queue", async () => {
+    const clock = new FakeClock();
+    const s = await startServer(
+      { LD_ADMISSION_JOBS: "1", LD_VERIFY_PER_SOCKET: "100000", LD_VERIFY_PER_ROOM: "100000" },
+      clock,
+    );
+    const r = await knockRoom();
+    // Ten epochs with full rosters: more than one piece.
+    for (let i = 0; i < 9; i++) {
+      await r.fill(240);
+      await r.remove(
+        await (async () => {
+          const goes = await newIdentity();
+          await r.join(goes);
+          return goes;
+        })(),
+      );
+    }
+    const member = await newIdentity();
+    await r.join(member);
+    expect(relayPieces(r.data()).length).toBeGreaterThan(1);
+    // Each check of a push takes a while (as a large one does): a piece sent behind another finds the one-job queue
+    // full.
+    const add = EpochChain.prototype.add;
+    const spy = vi.spyOn(EpochChain.prototype, "add").mockImplementation(async function (
+      this: EpochChain,
+      ...args: Parameters<EpochChain["add"]>
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return add.apply(this, args);
+    });
+    onTestFinished(() => spy.mockRestore());
+    const sockets: WebSocket[] = [];
+    const host = page(s, r, r.host, clock, sockets);
+    const m = page(s, r, member, clock, sockets);
+    // The member is let in only once the relay holds the newest epoch's roster: the whole chain, piece by piece. Time
+    // moves a second at a time, once the relay's checks have caught up.
+    const caughtUp = async () => {
+      await Promise.all(sockets.map(barrier));
+      await vi.waitFor(() => expect(s.rooms.get(r.room)?.guard?.load().jobs ?? 0).toBe(0));
+      await Promise.all(sockets.map(barrier));
+    };
+    for (let i = 0; i < 120 && s.rooms.get(r.room)?.guard?.members !== 2; i++) {
+      await caughtUp();
+      clock.advance(1_000);
+    }
+    expect(s.rooms.get(r.room)?.guard?.members).toBe(2);
+    host.transport.send(envelope(1, "whole"));
+    await vi.waitFor(() => expect(m.frames).toContain("whole"));
+    // Held: nothing more is pushed, however long.
+    const pushed = host.sent.filter((t) => t.includes('"t":"chain"')).length;
+    await run(clock, 120_000, sockets);
+    expect(host.sent.filter((t) => t.includes('"t":"chain"')).length).toBe(pushed);
+  }, 60_000);
+
+  it("the push's sender gone mid-check: the removal it pushed still closes the removed socket (4010)", async () => {
+    const s = await startServer();
+    const codes = closes(s);
+    const r = await knockRoom();
+    const member = await newIdentity();
+    await r.join(member);
+    const a = await seat(s, r);
+    await a.prove(r.host);
+    a.push();
+    await admitted(a);
+    const b = await seat(s, r);
+    await b.prove(member);
+    await admitted(b);
+    // The removal's check is held; meanwhile, the host's socket goes.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let entered!: () => void;
+    const blocked = new Promise<void>((resolve) => (entered = resolve));
+    const add = EpochChain.prototype.add;
+    const spy = vi.spyOn(EpochChain.prototype, "add").mockImplementation(async function (
+      this: EpochChain,
+      ...args: Parameters<EpochChain["add"]>
+    ) {
+      entered();
+      await gate;
+      return add.apply(this, args);
+    });
+    onTestFinished(() => spy.mockRestore());
+    try {
+      await r.remove(member);
+      a.push();
+      await blocked;
+      a.socket.close();
+      await a.closed;
+    } finally {
+      release();
+    }
+    expect(await b.closed).toBe(RELAY_CLOSE.removed);
+    expect(codes).toContain(RELAY_CLOSE.removed);
+  });
+
+  it("the queue's bytes are bounded on their own, and the room's queue across sockets", async () => {
+    const s = await startServer({ LD_ADMISSION_JOBS: "2", LD_ADMISSION_BYTES: "250000" });
+    const r = await knockRoom();
+    const guard = () => {
+      const g = s.rooms.get(r.room)?.guard;
+      if (!g) throw new Error("no guard");
+      return g;
+    };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const add = EpochChain.prototype.add;
+    const spy = vi.spyOn(EpochChain.prototype, "add").mockImplementation(async function (
+      this: EpochChain,
+      ...args: Parameters<EpochChain["add"]>
+    ) {
+      await gate;
+      return add.apply(this, args);
+    });
+    onTestFinished(() => spy.mockRestore());
+    const big = { starts: [], logs: [{ scope: "0:x", entries: ["y".repeat(150_000)] }] };
+    try {
+      // Bytes alone: two jobs are allowed, but not two of these.
+      const a = await seat(s, r);
+      a.push(big);
+      a.push(big);
+      await settle(a);
+      expect(guard().load(a.self).jobs).toBe(1);
+      expect(guard().load(a.self).bytes).toBeLessThanOrEqual(250_000);
+      // The room's queue: eight jobs across sockets, each within its own two.
+      const others = await Promise.all(Array.from({ length: 5 }, () => seat(s, r)));
+      for (const o of others) {
+        o.push();
+        o.push();
+      }
+      await settle(...others);
+      const load = guard().load();
+      expect(load.jobs).toBeLessThanOrEqual(8);
+      for (const o of others) expect(guard().load(o.self).jobs).toBeLessThanOrEqual(2);
+      const refused = others.flatMap((o) =>
+        o.messages
+          .filter((m) => !m.binary)
+          .map((m) => parseControl(Buffer.from(m.bytes).toString()))
+          .filter((m) => m?.t === "chainAck" && !m.complete),
+      );
+      expect(refused.length).toBeGreaterThanOrEqual(10 + 1 - 8);
+    } finally {
+      release();
+    }
+    await vi.waitFor(() => expect(guard().load()).toEqual({ jobs: 0, bytes: 0 }));
   });
 
   it("the queue is bounded: blocked work and many large pushes stay within it, and leaving cancels what's queued", async () => {
