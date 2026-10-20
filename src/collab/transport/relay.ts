@@ -2,7 +2,13 @@ import { realClock, type Clock } from "../clock";
 import { secureRandom, type RandomBytes } from "../random";
 import { COLLAB_LIMITS } from "../limits";
 import { reconnectDelay } from "./backoff";
-import { FrameTooLargeError, type CollabTransport, type TransportHandlers, type Connectivity } from "./types";
+import {
+  FrameTooLargeError,
+  type CollabTransport,
+  type TransportHandlers,
+  type Connectivity,
+  type RelayAdmission,
+} from "./types";
 import {
   clientFrame,
   isRoomId,
@@ -16,6 +22,8 @@ import {
 export interface RelayOptions {
   url: string;
   roomId: string;
+  /** A knock-to-join room's root (its host key): the relay admits only its members (shared Live P6). */
+  root?: string;
   WebSocket?: new (url: string, protocols: string | string[]) => WebSocket;
   clock?: Clock;
   random?: RandomBytes;
@@ -43,6 +51,41 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   let handlers: TransportHandlers | undefined;
   const peers = new Set<string>();
   const queues = new Map<string, Promise<void>>();
+  // A knock-to-join room: the relay's challenge to this socket, how this page is admitted, and whether it is.
+  let challenge: string | undefined;
+  let admission: RelayAdmission | undefined;
+  let admitted = false;
+  let pushQueued = false;
+  let cancelRepush: (() => void) | undefined;
+  const pushChain = (pieces: readonly { starts: unknown[]; logs: unknown[] }[]) => {
+    for (const chain of pieces)
+      if (chain.starts.length || chain.logs.length) socket?.send(JSON.stringify({ t: "chain", chain }));
+  };
+  /** Says which member this page is, then hands the relay the room's chain. */
+  async function admit(ws: WebSocket) {
+    const a = admission;
+    const asked = challenge;
+    if (!a || !asked || socket !== ws || !ready) return;
+    let proof: { key: string; sig: string };
+    try {
+      proof = await a.prove(asked, self);
+    } catch {
+      return;
+    }
+    if (socket !== ws || challenge !== asked) return;
+    ws.send(JSON.stringify({ t: "prove", ...proof }));
+    pushChain(a.chain());
+  }
+  /** Not admitted while this page is in the room: the relay lacks some of the chain (a budget, a restart): again. */
+  function repush(ws: WebSocket) {
+    cancelRepush?.();
+    cancelRepush = clock.after(COLLAB_LIMITS.antiEntropyMs, () => {
+      cancelRepush = undefined;
+      if (socket !== ws || admitted || !admission?.member()) return;
+      pushChain(admission.chain());
+      repush(ws);
+    });
+  }
   let queuedBytes = 0;
   const peerBytes = new Map<string, number>();
   const changed = (next: Connectivity) => {
@@ -61,6 +104,10 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   function retire() {
     cancelStable?.();
     cancelStable = undefined;
+    cancelRepush?.();
+    cancelRepush = undefined;
+    challenge = undefined;
+    admitted = false;
     cancelHello?.();
     cancelHello = undefined;
     const old = socket;
@@ -107,7 +154,8 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
       };
       cancelHello = clock.after(RELAY_LIMITS.helloTimeoutMs, () => disconnect());
       ws.onopen = () => {
-        if (socket === ws) ws.send(JSON.stringify({ t: "hello", v: 1, room: opts.roomId }));
+        if (socket === ws)
+          ws.send(JSON.stringify({ t: "hello", v: 1, room: opts.roomId, ...(opts.root ? { root: opts.root } : {}) }));
       };
       ws.onclose = (e) => disconnect(e.code);
       ws.onerror = () => {}; // The close event schedules a single retry.
@@ -131,6 +179,14 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
             for (const peer of message.peers) peers.add(peer);
             changed("connected");
             for (const peer of peers) handlers?.join(peer);
+            challenge = message.challenge;
+            void admit(ws);
+          } else if (message.t === "status") {
+            admitted = message.member;
+            if (admitted) {
+              cancelRepush?.();
+              cancelRepush = undefined;
+            } else if (admission?.member()) repush(ws);
           } else if (message.t === "join") {
             if (message.peer !== self && !peers.has(message.peer) && peers.size < cap - 1) {
               peers.add(message.peer);
@@ -209,6 +265,20 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
         return;
       }
       socket.send(frame);
+    },
+    authorize(next) {
+      admission = next;
+      next.subscribe(() => {
+        // Coalesced: a chain taking many entries at once is pushed once, its newest epochs.
+        if (pushQueued || admission !== next) return;
+        pushQueued = true;
+        queueMicrotask(() => {
+          pushQueued = false;
+          const recent = next.recent();
+          if (socket && ready && challenge && recent) pushChain([recent]);
+        });
+      });
+      if (socket && ready && challenge) void admit(socket);
     },
     subscribe(next) {
       handlers = next;

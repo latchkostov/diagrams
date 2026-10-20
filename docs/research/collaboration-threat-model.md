@@ -58,16 +58,16 @@ Measured for the spike with `scripts/collab-spike-capture.mjs` (16 October 2026:
 the dev server, public trackers and Cloudflare STUN; see [Spike results](#public-matchmaking-spike-results)) and in
 CI with the offline capture in `src/collab/transport/tracker.test.ts`.
 
-| Observer                              | Sees                                                                                                                                                                                         | Never sees                                                                                 |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Static host (our site or a self-host) | Page and chunk requests, IP, user agent. Not the fragment (browsers don't send it).                                                                                                          | The room secret, the diagram.                                                              |
-| Self-hosted relay                     | Client IP addresses, user agent, timing, opaque room IDs, membership counts, frame sizes/counts; clear envelope channel, random sender ID and counter.                                       | Diagram or presence content, room links, secrets or keys.                                  |
-| BitTorrent tracker (spike)            | IP and timing; `info_hash` (the room's discovery hash); random `peer_id` and `offer_id`; offers/answers as `ld1.<ciphertext>`; message counts and sizes; which peers announce the same hash. | The secret, any key, SDP, ICE candidates (and the IPs inside them), the diagram, presence. |
-| STUN                                  | The caller's address.                                                                                                                                                                        | Anything else.                                                                             |
-| TURN (not in C0)                      | Both endpoints' addresses, timing, byte counts.                                                                                                                                              | Content (DTLS plus our envelopes).                                                         |
-| A peer over WebRTC                    | Everything a member sees, plus the other peer's IP on a direct path.                                                                                                                         | Nothing is hidden from a member except other rooms.                                        |
-| A network observer                    | Encrypted WebRTC/WSS traffic, endpoints, timing, sizes.                                                                                                                                      | Content.                                                                                   |
-| A member                              | The diagram, presence, every session id in the room.                                                                                                                                         | The local `private` flag, other people's views, selections and inspectors.                 |
+| Observer                              | Sees                                                                                                                                                                                                                                                                                                                         | Never sees                                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Static host (our site or a self-host) | Page and chunk requests, IP, user agent. Not the fragment (browsers don't send it).                                                                                                                                                                                                                                          | The room secret, the diagram.                                                              |
+| Self-hosted relay                     | Client IP addresses, user agent, timing, opaque room IDs, membership counts, frame sizes/counts; clear envelope channel, random sender ID and counter. Knock-to-join rooms (P6): each session's public key, the room's signed roster (members, host, co-hosts, driver, editors: as keys) and its size, and when they change. | Diagram or presence content, room links, secrets or keys.                                  |
+| BitTorrent tracker (spike)            | IP and timing; `info_hash` (the room's discovery hash); random `peer_id` and `offer_id`; offers/answers as `ld1.<ciphertext>`; message counts and sizes; which peers announce the same hash.                                                                                                                                 | The secret, any key, SDP, ICE candidates (and the IPs inside them), the diagram, presence. |
+| STUN                                  | The caller's address.                                                                                                                                                                                                                                                                                                        | Anything else.                                                                             |
+| TURN (not in C0)                      | Both endpoints' addresses, timing, byte counts.                                                                                                                                                                                                                                                                              | Content (DTLS plus our envelopes).                                                         |
+| A peer over WebRTC                    | Everything a member sees, plus the other peer's IP on a direct path.                                                                                                                                                                                                                                                         | Nothing is hidden from a member except other rooms.                                        |
+| A network observer                    | Encrypted WebRTC/WSS traffic, endpoints, timing, sizes.                                                                                                                                                                                                                                                                      | Content.                                                                                   |
+| A member                              | The diagram, presence, every session id in the room.                                                                                                                                                                                                                                                                         | The local `private` flag, other people's views, selections and inspectors.                 |
 
 The relay row is covered by the real-server transport capture and `pnpm self-host:smoke --server-only`.
 Rooms travel in the first WebSocket frame, never the URL. Server stdout uses a whitelist of event/code fields;
@@ -660,6 +660,48 @@ epochs with one number keep their own copies; a knock-to-join session's copy key
 re-key, a duplicated member's tab at the door, starting without X25519 or Ed25519 refused), and
 `tests/e2e/knock-remove.spec.ts` (two browsers: knock and admit, knock and deny, from the keyboard with focus kept,
 remove and re-key with the remaining member unaffected).
+
+## Relay enforcement for self-hosted rooms (P6, 2026-10-20)
+
+Meeting hosts design §4, owner decision 15, and the owner's P6 decisions (2026-10-20): admission and Remove only,
+knock-to-join rooms only. **Not yet independently reviewed**, like P4 and P5; Private diagrams stay blocked.
+
+- **Admission.** A knock-to-join room's `hello` names its root (the host key in its link); every later hello in the
+  room must name the same one, and a room without knock-to-join can't be given one. The welcome carries a challenge
+  per socket; the socket signs it (with the room id and its relay peer id) by the member key it speaks for, and pushes
+  the room's chain in plaintext (starts and roster entries: public keys and signatures only). The relay keeps an
+  `EpochChain` per room (`src/collab/epochs.ts`, the code every page uses: signatures, the host-only single line) and
+  admits a socket once its proved key is a member of the newest epoch it holds (`EpochChain.memberNow`). It never has
+  an epoch secret or any key that opens content.
+- **Nothing for anyone not admitted.** A socket that hasn't proved a key, or whose key isn't a member, sends and gets
+  only the lobby (envelope channel 4, read from the clear header): someone at the door can knock and be answered,
+  and nothing of the room's content reaches them, even from a modified client. A not-admitted socket's other frames
+  are dropped and counted (`frames_dropped_total`).
+- **Remove closes the socket at once.** Whenever the chain changes, every socket is looked at again: a key no longer a
+  member of the newest epoch (removed, in any epoch since: the relay follows the line through every re-key) has its
+  socket closed with 4010. The page reconnects at the door, where the lobby tells it it was removed.
+- **Budgets.** Checking signatures costs the relay: each socket has 2,048 checks per 10 s, and each room 8,192,
+  charged to the socket that sent what's checked; what a budget refuses isn't taken (a page not yet admitted pushes
+  the chain again every few seconds). Pushes are bounded as any frame is (size, rate).
+- **Stateless.** All of it lives with the room's sockets; a restart loses nothing, since pages say who they are and
+  push the chain again on reconnecting.
+- **Not on the relay (owner decision):** roles. Viewers' edits and non-drivers' Live are still refused by every page
+  (P4), not dropped by the relay: the relay can't tell an update from a sync request, or a run from a request to
+  drive, without seeing inside the envelope. Splitting each channel by class in the clear header (option A in the
+  P6 discussion) would let it, and may come later if a self-hoster needs it. Rooms without knock-to-join (v1, v2) are
+  forwarded as before until v2 links are retired.
+
+What the relay learns, beyond what it learned before: each session's public key (random per session), the room's
+roster as keys (who's a member, hosts, co-hosts, drives, can edit: role counts) and its size, and when they change.
+What a modified client can still do on such a relay: anything a member can, if it's one; someone at the door can send
+lobby frames (bounded as any), and keep a place in the room's eight while knocking.
+
+Tests: `services/server/test/enforcement.test.ts` (challenge and lobby-only for non-members; no or bad proof; admitted
+as the chain arrives; removed closed at once, after a re-key too, and back at the door; root mismatches; a restart;
+logs; budgets per socket and per room, charged to the sender), `src/collab/relayKnock.test.ts` (honest pages and a
+modified client on the real relay: a non-member gets nothing; a removed member cut off at once, after a re-key too),
+and `tests/e2e/collab-room-relay.spec.ts` (knock, admit and Remove through the relay, the removed member's socket
+closed at once, a stranger's socket getting the lobby only).
 
 ## Residual risks and open items for C1
 

@@ -12,10 +12,13 @@ export type RefusalReason =
   | "room-cap"
   | "server-cap"
   | "rate"
-  | "size";
+  | "size"
+  | "removed";
 export class Metrics {
   bytesIn = 0;
   bytesOut = 0;
+  /** Frames from sockets that aren't members of their knock-to-join room, not forwarded. */
+  framesDropped = 0;
   private refusals = new Map<RefusalReason, number>();
   refuse(reason: RefusalReason) {
     this.refusals.set(reason, (this.refusals.get(reason) ?? 0) + 1);
@@ -27,6 +30,7 @@ export class Metrics {
       ["sockets_active", "gauge", sockets],
       ["bytes_in_total", "counter", this.bytesIn],
       ["bytes_out_total", "counter", this.bytesOut],
+      ["frames_dropped_total", "counter", this.framesDropped],
       ["buffer_bytes", "gauge", buffered],
       ["buffer_budget_bytes", "gauge", config.totalBufferBytes],
       ["socket_buffer_budget_bytes", "gauge", config.socketBufferBytes],

@@ -1,3 +1,4 @@
+import type { ChainData } from "../epochs";
 // The transport interface (docs/research/collaboration.md, "Do we need a backend? Hybrid transport plan"): how a
 // room's ciphertext frames move between browsers, and nothing else. A transport never sees a key that opens the
 // diagram or presence, nor plaintext: it carries the opaque envelopes of ../envelope.ts. Its peer ids are its own
@@ -44,6 +45,22 @@ export interface TransportHandlers {
   connectivity?(): void;
 }
 
+/**
+ * A knock-to-join room's admission, for a relay that enforces it (shared Live P6): the session says which member this
+ * page is (a signature over the relay's challenge) and hands the room's chain on (public keys and signatures only).
+ */
+export interface RelayAdmission {
+  /** The member key this page speaks for, and its signature over the relay's challenge to this socket. */
+  prove(challenge: string, peer: PeerId): Promise<{ key: string; sig: string }>;
+  /** The room's chain as this page holds it, in pieces a relay message holds (none at the door). */
+  chain(): ChainData[];
+  /** What changed last: the newest epochs (a removal, its new epoch, a roster entry). */
+  recent(): ChainData | undefined;
+  /** Whether this page is in the room (so a relay that hasn't admitted it is missing some of the chain). */
+  member(): boolean;
+  subscribe(fn: () => void): () => void;
+}
+
 export interface CollabTransport {
   readonly capabilities: TransportCapabilities;
   /** This end's transport id. */
@@ -60,6 +77,8 @@ export interface CollabTransport {
   send(bytes: Uint8Array, to?: PeerId): void;
   /** One set of handlers at a time; returns an unsubscribe. */
   subscribe(handlers: TransportHandlers): () => void;
+  /** A relay that enforces knock-to-join rooms: how this page is admitted (other transports have none). */
+  authorize?(admission: RelayAdmission): void;
   /** Explicit retry of discovery, preserving the session and its document. */
   retry?(): void;
   /** Leaves: nothing more is sent or delivered, and peers see `leave`. Idempotent. */

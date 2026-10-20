@@ -154,6 +154,17 @@ Envelope headers expose channel, random sender ID and counter. Encryption protec
 logs and memory dumps; it cannot protect against a malicious operator who also serves modified JavaScript
 that steals keys. See the [threat model](research/collaboration-threat-model.md#what-each-party-sees).
 
+**Knock-to-join rooms are enforced by the relay.** Every room started now is a knock-to-join room, and the relay
+forwards its content only between its members: someone with just the link reaches the room's lobby (where they knock)
+and nothing else, even with a modified browser, and a member the host removes has their connection closed at once
+(after the room moves to a new key, too). To do that, each browser tells the relay which member it is (a signature
+by its key for this session) and passes on the room's signed list of members (keys and signatures, nothing that
+opens content). So the relay also learns **each session's public key** (random per session, not an account), **the
+room's roster**: who is a member, who hosts, co-hosts, drives and can edit (as keys, so role counts), **its size**,
+and when they change. It still never sees diagram content, presence or Live, or any key that opens them. Who can
+edit and who drives is still enforced by every browser, not the relay. A restart loses nothing: browsers reconnect
+and say who they are again. Older rooms without knock-to-join links are forwarded as before.
+
 ### Build modes
 
 These are build-time settings, never runtime configuration. Set them in your build environment or a local

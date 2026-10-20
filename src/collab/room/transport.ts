@@ -35,12 +35,17 @@ export function roomRelayUrl(base = document.baseURI): string {
   return url.href;
 }
 
-export async function roomTransport(keys: RoomKeys, allowed: () => boolean = () => true) {
+export async function roomTransport(
+  keys: RoomKeys,
+  allowed: () => boolean = () => true,
+  /** A knock-to-join room's root (its host key): a self-hosted relay admits only its members (shared Live P6). */
+  room: { root?: string } = {},
+) {
   // Keep this literal branch at the import site: the other transport must never enter the module graph.
   if (__DEPLOYMENT_COLLAB_MODE__ === "server") {
     const { createRelayTransport } = await import("../transport/relay");
     if (!allowed()) throw new PrivateDiagramError();
-    return createRelayTransport({ url: roomRelayUrl(), roomId: keys.roomId });
+    return createRelayTransport({ url: roomRelayUrl(), roomId: keys.roomId, root: room.root });
   }
   const { createTrackerTransport } = await import("../transport/tracker");
   if (!allowed()) throw new PrivateDiagramError();

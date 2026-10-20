@@ -2,6 +2,8 @@
 export type LogEvent =
   | "listening"
   | "joined"
+  | "admitted"
+  | "removed"
   | "closed"
   | "refused"
   | "socket-error"

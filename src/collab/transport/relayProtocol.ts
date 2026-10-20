@@ -1,4 +1,5 @@
 import { COLLAB_LIMITS } from "../limits";
+import { signedBytes } from "../signing";
 
 // DOM-free wire contract, shared with the relay. Content is always an opaque encrypted envelope.
 export const RELAY_SUBPROTOCOL = "livediagrams.relay.v1";
@@ -31,12 +32,55 @@ export const RELAY_CLOSE = {
   rate: 4029,
   restart: 1012,
   tooBig: 1009,
+  /** A knock-to-join room's member removed (the chain the relay holds says so): closed at once (shared Live P6). */
+  removed: 4010,
 } as const;
 
-export type RelayHello = { t: "hello"; v: 1; room: string };
+/**
+ * `root`: a knock-to-join room's root (its host key, from the link). The relay then admits only members: a socket
+ * proves the member key it speaks for (a signature over the relay's challenge), the room's signed chain is pushed to
+ * it in plaintext (it checks signatures, never content), and it forwards to and from a socket that isn't a member only
+ * the lobby (channel 4); a member removed is closed at once (shared Live P6).
+ */
+export type RelayHello = { t: "hello"; v: 1; room: string; root?: string };
 export type RelayControl =
-  | { t: "welcome"; self: string; peers: string[]; cap: number; maxFrame: number; durable: false }
-  | { t: "join" | "leave"; peer: string };
+  | {
+      t: "welcome";
+      self: string;
+      peers: string[];
+      cap: number;
+      maxFrame: number;
+      durable: false;
+      /** A knock-to-join room's: what this socket signs to say which member it is. */
+      challenge?: string;
+    }
+  | { t: "join" | "leave"; peer: string }
+  /** Whether this socket is admitted (a member of the newest epoch the relay holds). */
+  | { t: "status"; member: boolean };
+/** What a knock-to-join room's socket says to the relay: the member key it speaks for, and the room's chain. */
+export type RelayClientControl =
+  | { t: "prove"; key: string; sig: string }
+  | { t: "chain"; chain: { starts: unknown[]; logs: { scope: string; entries: unknown[] }[] } };
+
+const KEY = /^[A-Za-z0-9_-]{43}$/;
+const SIG = /^[A-Za-z0-9_-]{86}$/;
+/** The lobby's channel code in an envelope's header (byte 3): all a socket that isn't a member sends or gets. */
+export const LOBBY_CHANNEL = 4;
+
+/** What a socket's proof signs: the room, the relay's challenge to it, its relay peer id, and the key. */
+export const relayProofBytes = (room: string, challenge: string, peer: string, key: string) =>
+  signedBytes("livediagrams/relay-admit/v1", room, challenge, peer, key);
+
+export function parseClientControl(text: string): RelayClientControl | undefined {
+  try {
+    const m = JSON.parse(text);
+    if (m?.t === "prove" && KEY.test(m.key) && SIG.test(m.sig) && Object.keys(m).length === 3)
+      return { t: "prove", key: m.key, sig: m.sig };
+    if (m?.t === "chain" && Object.keys(m).length === 2 && m.chain && typeof m.chain === "object") return m;
+  } catch {
+    /* Invalid control message. */
+  }
+}
 
 export const isRoomId = (s: unknown): s is string => typeof s === "string" && /^[A-Za-z0-9_-]{43}$/.test(s);
 export const isPeerId = (s: unknown): s is string => typeof s === "string" && /^[a-f0-9]{16}$/.test(s);
@@ -44,7 +88,9 @@ export const isPeerId = (s: unknown): s is string => typeof s === "string" && /^
 export function parseHello(text: string): RelayHello | undefined {
   try {
     const h = JSON.parse(text);
-    if (h?.t === "hello" && h.v === 1 && isRoomId(h.room) && Object.keys(h).length === 3) return h;
+    if (h?.t !== "hello" || h.v !== 1 || !isRoomId(h.room)) return;
+    if (Object.keys(h).length === 3) return h;
+    if (Object.keys(h).length === 4 && typeof h.root === "string" && KEY.test(h.root)) return h;
   } catch {
     /* Invalid control message. */
   }
@@ -54,6 +100,7 @@ export function parseControl(text: string): RelayControl | undefined {
   try {
     const m = JSON.parse(text);
     if ((m?.t === "join" || m?.t === "leave") && isPeerId(m.peer)) return m;
+    if (m?.t === "status" && typeof m.member === "boolean" && Object.keys(m).length === 2) return m;
     if (
       m?.t === "welcome" &&
       isPeerId(m.self) &&
@@ -68,7 +115,8 @@ export function parseControl(text: string): RelayControl | undefined {
       Number.isInteger(m.maxFrame) &&
       m.maxFrame > 0 &&
       m.maxFrame <= RELAY_LIMITS.maxFrameBytes &&
-      m.durable === false
+      m.durable === false &&
+      (m.challenge === undefined || (typeof m.challenge === "string" && KEY.test(m.challenge)))
     )
       return m;
   } catch {

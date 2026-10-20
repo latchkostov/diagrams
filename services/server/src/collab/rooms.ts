@@ -1,7 +1,10 @@
 import type { WebSocket } from "ws";
+import type { RoomGuard } from "./guard";
 
 export interface Room {
   readonly peers: Map<string, WebSocket>;
+  /** A knock-to-join room's admission (shared Live P6): set by its first hello, gone with the room. */
+  guard?: RoomGuard;
 }
 export interface RoomRegistry {
   readonly size: number;

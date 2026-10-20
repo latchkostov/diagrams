@@ -55,7 +55,8 @@ import type { RecoveryStore } from "./recoveryStore";
 import { base64UrlToBytes, bytesToBase64Url, bytesToText, textToBytes } from "../interop/codec";
 import type { RosterEntry, RosterOp } from "./roster";
 import { SignedRoom } from "./signedRoom";
-import type { Agreement, Identity } from "./signing";
+import { sign, type Agreement, type Identity } from "./signing";
+import { relayProofBytes } from "./transport/relayProtocol";
 
 // A room session: one person's CollabDoc joined to a room over a transport, with the room's E2E envelopes on every
 // frame. Transport-neutral: it needs only the CollabTransport interface. All timing reads the room clock.
@@ -552,6 +553,30 @@ export class CollabSession {
       this.lobby = new Lobby(knock.lobbyKeys, s.identity, this.sealer.sender, this.clock);
       // Members' senders (and the host's) take members' places in the lobby; everyone else a guest's.
       this.lobby.isMember = (key) => key === hostKey || room.state().members.has(key);
+      // A self-hosted relay that enforces knock-to-join (shared Live P6): which member this page is, and the room's
+      // chain (public keys and signatures, nothing that opens content), so it forwards the room only between members.
+      const chain = knock.chain;
+      const roomId = knock.lobbyKeys.roomId;
+      this.transport.authorize?.({
+        prove: async (challenge, peer) => ({
+          key: room.key,
+          sig: bytesToBase64Url(
+            await sign(room.identity.privateKey, relayProofBytes(roomId, challenge, peer, room.key)),
+          ),
+        }),
+        // The newest the chain holds (a removal's new epoch as soon as it's placed, before this page moves to it).
+        chain: () => {
+          const tip = chain.deepest();
+          return tip ? chainMessages(chain.data(tip), []).map((m) => m.chain) : [];
+        },
+        recent: () => {
+          const tip = chain.deepest();
+          const data = tip && chain.data(tip);
+          return data && { starts: data.starts.slice(-2), logs: data.logs.slice(-2) };
+        },
+        member: () => !this.knocking && !!room.current && chain.memberNow(room.key),
+        subscribe: (fn) => chain.subscribe(fn),
+      });
       this.wraps = s.knock.wraps ?? [];
       this.knocking = !s.knock.secret;
       if (knock.current) {

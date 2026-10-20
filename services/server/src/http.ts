@@ -167,17 +167,22 @@ export function createRelayServer(
         onBytes: (n) => {
           metrics.bytesIn += n;
         },
+        onDropped: () => {
+          metrics.framesDropped++;
+        },
         onRefusal: (code) =>
           refuse(
-            code === RELAY_CLOSE.badFrame
-              ? "protocol"
-              : code === RELAY_CLOSE.full
-                ? "room-cap"
-                : code === RELAY_CLOSE.serverFull
-                  ? "server-cap"
-                  : code === RELAY_CLOSE.tooBig
-                    ? "size"
-                    : "rate",
+            code === RELAY_CLOSE.removed
+              ? "removed"
+              : code === RELAY_CLOSE.badFrame
+                ? "protocol"
+                : code === RELAY_CLOSE.full
+                  ? "room-cap"
+                  : code === RELAY_CLOSE.serverFull
+                    ? "server-cap"
+                    : code === RELAY_CLOSE.tooBig
+                      ? "size"
+                      : "rate",
             code,
           ),
       });
