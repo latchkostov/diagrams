@@ -191,7 +191,9 @@ docker build -f services/server/Dockerfile -t live-diagrams-server:local .
 
 Set deployment runtime variables in a local Compose `.env` file or your orchestrator, for example
 `LD_ORIGIN=https://diagrams.example.com`. Compose forwards `LD_BASE`, `LD_STATIC`, `LD_ORIGIN`,
-`LD_TRUST_PROXY` and `LD_TRUST_PROXY_HOPS`; add other settings to its `environment` mapping as needed.
+`LD_TRUST_PROXY`, `LD_TRUST_PROXY_HOPS`, `LD_SOCKET_BUFFER_BYTES`, `LD_TOTAL_BUFFER_BYTES` and
+`LD_MAX_SOCKETS`; add other settings to its `environment` mapping as needed. `LD_MEMORY_LIMIT` sets
+Compose's container limit (default `512m`).
 The Compose build accepts brand, locales, on-device and framing build arguments as shown in its file.
 
 Use the [Caddy and nginx server variants](#collaboration-proxy-layouts) to proxy the full site and WebSockets,
@@ -199,6 +201,24 @@ preserving the directory prefix. For a separate static host, compile that UI wit
 `LD_STATIC=off` on the relay, and proxy `<base>collab/` with the relay-only templates. Static routes then
 return 404 on the relay; health endpoints remain available. [Helm server mode](../deploy/self-host/helm/README.md#collaboration-server)
 uses the same image, pins one replica and uses `Recreate`, because rooms live in one process.
+
+Helm server mode uses `server.resources` (256 MiB requested, 512 MiB limit), independently of static
+mode's unchanged `resources`. Both Helm server mode and Compose default to 16 MiB per socket,
+128 MiB total outbound buffers and 32 sockets. Their memory plan is:
+**512 MiB = 128 outbound + 128 Node baseline + 65 inbound + 32 compression cache + 64 compression
+work + 95 spare**. Inbound reserves two maximum frames per socket:
+`ceil(2 * LD_MAX_SOCKETS * LD_MAX_PAYLOAD / 1048576)` MiB. Compression work reserves four 8 MiB
+buffers for each of two concurrent compression jobs. The baseline and spare cover runtime objects,
+socket/kernel bookkeeping and allocator/GC overhead; this is a sizing plan, not a hard RSS guarantee.
+Recalculate headroom when increasing socket counts or other limits, and monitor container memory.
+
+At startup the server uses Node's OS constraint detection (including Linux cgroups v1/v2) and refuses
+`LD_TOTAL_BUFFER_BYTES > floor(memoryLimit / 4)` with an actionable `startup-error-buffer-budget`
+log message. This applies to Compose, Helm and direct starts. Detection returning zero means no known
+constraint, so the check is skipped. Raw runtime defaults in the table below remain unchanged;
+small containers must use the deployment defaults above or equivalent lower budgets. Raising only
+the outbound budget without raising the container limit fails startup; the 25% rule reserves the
+remaining 75% for other memory and does not replace the headroom calculation.
 
 **There is no built-in access control beyond the Origin check and limits.** Origin is not authentication:
 non-browser clients can supply it. Put both the UI and WebSocket upgrade behind your SSO proxy or VPN.

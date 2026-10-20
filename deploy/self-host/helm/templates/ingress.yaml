@@ -5,8 +5,7 @@ metadata:
   name: {{ .Release.Name }}
   {{- $annotations := deepCopy .Values.ingress.annotations }}
   {{- if eq .Values.mode "server" }}
-  {{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-read-timeout" "3600" }}
-  {{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-send-timeout" "3600" }}
+  {{- $annotations = merge $annotations (dict "nginx.ingress.kubernetes.io/proxy-read-timeout" "3600" "nginx.ingress.kubernetes.io/proxy-send-timeout" "3600") }}
   {{- end }}
   {{- with $annotations }}
   annotations:

@@ -6,6 +6,16 @@ image:
   pullPolicy: IfNotPresent
 replicas: 2
 server:
+  # 512 MiB = 128 outbound + 128 Node baseline + 65 inbound
+  # (2 * 32 sockets * 1050624 bytes, rounded up) + 32 compression cache
+  # + 64 compression work + 95 spare. Keep total buffers <= 25% of the limit.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
   image:
     repository: live-diagrams-server
     tag: local
@@ -16,6 +26,9 @@ server:
     LD_TRUST_PROXY: "0"
     LD_TRUST_PROXY_HOPS: "1"
     LD_ROOM_CAP: "8"
+    LD_SOCKET_BUFFER_BYTES: "16777216"
+    LD_TOTAL_BUFFER_BYTES: "134217728"
+    LD_MAX_SOCKETS: "32"
 # Build metadata only: changing these values does NOT rebuild the image or change the app.
 # Build a matching image with Docker --build-arg and set image.tag to that version.
 build:

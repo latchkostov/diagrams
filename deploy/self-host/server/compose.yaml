@@ -17,6 +17,11 @@ services:
       # Enable only when this listener is reachable exclusively through trusted proxies.
       LD_TRUST_PROXY: ${LD_TRUST_PROXY:-0}
       LD_TRUST_PROXY_HOPS: ${LD_TRUST_PROXY_HOPS:-1}
+      # Same 512 MiB memory formula as Helm server.resources; see SELF-HOSTING.md.
+      LD_SOCKET_BUFFER_BYTES: ${LD_SOCKET_BUFFER_BYTES:-16777216}
+      LD_TOTAL_BUFFER_BYTES: ${LD_TOTAL_BUFFER_BYTES:-134217728}
+      LD_MAX_SOCKETS: ${LD_MAX_SOCKETS:-32}
+    mem_limit: ${LD_MEMORY_LIMIT:-512m}
     ports:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped

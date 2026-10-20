@@ -2,6 +2,7 @@ import { createRelayServer } from "./http";
 import { createLog } from "./log";
 import { readConfig } from "./config";
 import { healthcheck } from "./healthcheck";
+import { MemoryBudgetError } from "./memory";
 
 const log = createLog();
 try {
@@ -18,7 +19,7 @@ try {
         void relay.shutdown().then(() => process.exit(0));
       });
   }
-} catch {
-  log("startup-error");
+} catch (error) {
+  log(error instanceof MemoryBudgetError ? "startup-error-buffer-budget" : "startup-error");
   process.exitCode = 1;
 }

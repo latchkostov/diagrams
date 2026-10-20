@@ -11,6 +11,7 @@ spec:
   {{- if $server }}
   strategy:
     type: Recreate
+    rollingUpdate: null
   {{- end }}
   selector:
     matchLabels:
@@ -67,7 +68,7 @@ spec:
               path: /healthz
               port: http
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml (ternary .Values.server.resources .Values.resources $server) | nindent 12 }}
           {{- if not $server }}
           volumeMounts:
             - name: tmp

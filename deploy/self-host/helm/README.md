@@ -54,7 +54,13 @@ Helm merges these with the defaults. All [documented runtime settings](../../../
 are accepted. Only enable proxy trust when a NetworkPolicy/firewall prevents direct client access to the pod
 and every path has the same trusted forwarding chain. The chart installs no NetworkPolicy, SSO or VPN.
 
-The ingress gets nginx-ingress `proxy-read-timeout` and `proxy-send-timeout` annotations of `3600` seconds.
+Server resources use `server.resources`, independently of static `resources`: 256 MiB requested and
+512 MiB limit by default, with 128 MiB total outbound buffers, 16 MiB per socket and 32 sockets.
+See the [memory formula](../../../docs/SELF-HOSTING.md#deployment-and-access) before raising these settings.
+The server rejects outbound budgets above 25% of a detected container limit before listening.
+
+The ingress defaults nginx-ingress `proxy-read-timeout` and `proxy-send-timeout` annotations to `3600`
+seconds; explicit values in `ingress.annotations` take precedence.
 Other controllers may ignore them: configure their equivalent WebSocket idle/read/send timeouts and upgrade
 support in `ingress.annotations` or controller settings. Terminate TLS at the ingress and set `LD_ORIGIN`
 to its public HTTPS origin. Authenticate the site and WebSocket path at your SSO proxy, or restrict access

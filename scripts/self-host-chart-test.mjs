@@ -35,6 +35,18 @@ const staticDeployment = resources(template("replicas=4", "image.tag=custom")).D
 assert.equal(staticDeployment.spec.replicas, 4);
 assert.equal(staticDeployment.spec.template.spec.containers[0].image, "live-diagrams:custom");
 
+// The strategy object has no strategic-merge list keys: null deletes an existing field,
+// while omission retains the API server's defaulted rollingUpdate on a Helm upgrade.
+const mergeStrategy = (live, patch) =>
+  Object.fromEntries(Object.entries({ ...live, ...patch }).filter(([, value]) => value !== null));
+const liveStrategy = { type: "RollingUpdate", rollingUpdate: { maxSurge: "25%", maxUnavailable: "25%" } };
+assert.equal(staticDeployment.spec.strategy, undefined);
+assert.deepEqual(mergeStrategy(liveStrategy, resources(template("mode=server")).Deployment.spec.strategy), {
+  type: "Recreate",
+});
+
+// Server runtime settings remain pinned despite env overrides, at root and subpaths.
+
 for (const base of ["/", "/tools/diagrams/"]) {
   const { Deployment: deployment, Ingress: ingress } = resources(
     template(
@@ -49,10 +61,14 @@ for (const base of ["/", "/tools/diagrams/"]) {
       "server.env.LD_ROOM_CAP=12",
       "server.env.LD_SOCKETS_PER_IP=16",
       "server.env.LD_METRICS=1",
+      "server.env.LD_BASE=/wrong/",
+      "server.env.LD_HOST=127.0.0.1",
+      "server.env.LD_PORT=9090",
+      "server.env.LD_STATIC_DIR=/wrong",
     ),
   );
   assert.equal(deployment.spec.replicas, 1);
-  assert.deepEqual(deployment.spec.strategy, { type: "Recreate" });
+  assert.deepEqual(deployment.spec.strategy, { type: "Recreate", rollingUpdate: null });
   const metadata = JSON.parse(deployment.spec.template.metadata.annotations["livediagrams.dev/build"]);
   assert.equal(metadata.switches.VITE_COLLAB, "server");
   assert.equal(metadata.switches.VITE_COLLAB_SERVER, "");
@@ -78,7 +94,12 @@ for (const base of ["/", "/tools/diagrams/"]) {
     LD_ROOM_CAP: "12",
     LD_SOCKETS_PER_IP: "16",
     LD_METRICS: "1",
+    LD_SOCKET_BUFFER_BYTES: "16777216",
+    LD_TOTAL_BUFFER_BYTES: "134217728",
+    LD_MAX_SOCKETS: "32",
   });
+  assert.equal(container.resources.limits.memory, "512Mi");
+  assert.equal(container.resources.requests.memory, "256Mi");
   assert.deepEqual(container.readinessProbe.httpGet, { path: "/readyz", port: "http" });
   assert.deepEqual(container.livenessProbe.httpGet, { path: "/healthz", port: "http" });
   assert.equal(pod.volumes, undefined);
@@ -88,4 +109,20 @@ for (const base of ["/", "/tools/diagrams/"]) {
   assert.equal(ingress.spec.rules[0].http.paths[0].path, base);
   assert.equal(ingress.spec.tls[0].secretName, "live-diagrams-tls");
 }
+const overridden = resources(
+  template(
+    "mode=server",
+    "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/proxy-read-timeout=120",
+    "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/proxy-send-timeout=240",
+    "server.resources.limits.memory=1Gi",
+    "server.env.LD_TOTAL_BUFFER_BYTES=268435456",
+  ),
+);
+assert.equal(overridden.Ingress.metadata.annotations["nginx.ingress.kubernetes.io/proxy-read-timeout"], "120");
+assert.equal(overridden.Ingress.metadata.annotations["nginx.ingress.kubernetes.io/proxy-send-timeout"], "240");
+assert.equal(overridden.Deployment.spec.template.spec.containers[0].resources.limits.memory, "1Gi");
+assert.equal(
+  overridden.Deployment.spec.template.spec.containers[0].env.find(({ name }) => name === "LD_TOTAL_BUFFER_BYTES").value,
+  "268435456",
+);
 console.log("PASS Helm static byte parity and server image, singleton, Recreate, env, probes, hardening and ingress");
