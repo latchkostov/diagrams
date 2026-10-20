@@ -1,5 +1,7 @@
 import type { ResolvedProps } from "./defaults";
 
+export const STEP = 10;
+
 /** Thread occupancy and retained request memory have independent lifetimes. */
 export interface ResolvedTiming {
   workMs: number;

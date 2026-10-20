@@ -3,12 +3,12 @@ import type { AutoscalingConfig, ComputeResources } from "../model/autoscaling";
 import { MAX_CPU_PARTS, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";
 import type { ResourceWork } from "./resourceWork";
-import type { LedgerState, ThreadTail } from "./ledger";
+import type { LedgerState, Reservation } from "./ledger";
 
 export interface LedgerInvariantState {
   time: number;
   ledger: LedgerState;
-  nodes: Iterable<{ id: string; activeMs: number }>;
+  nodes: Iterable<{ id: string; activeMs: number; threadWeight?: Record<"work" | "wait", number> }>;
   edges: Iterable<{
     id: string;
     poolUsed: number;
@@ -35,7 +35,9 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
   const check = (ok: boolean, message: string) => {
     if (!ok) throw new Error(`Ledger @${time}: ${message}`);
   };
-  const clocks = new Map([...nodes].map((node) => [node.id, node.activeMs]));
+  const nodeList = [...nodes];
+  const clocks = new Map(nodeList.map((node) => [node.id, node.activeMs]));
+  const threads = new Map<string, Record<"work" | "wait", number>>();
   const pools = new Map<string, number>();
   for (const [id, reservation] of ledger.reservations) {
     const owner = ledger.owners.get(reservation.owner);
@@ -45,8 +47,17 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
       "invalid weight",
     );
     check(clocks.has(reservation.owner), "unknown owner");
+    check(reservation.room >= Math.min(1, reservation.represented), "reserved without room");
+    check(reservation.weight <= reservation.room && reservation.weight <= reservation.cap, "reservation exceeds gate");
+    if (reservation.scope === "thread") {
+      check(reservation.weight <= reservation.requestWeight!, "thread exceeds request lease");
+      const sums = threads.get(reservation.owner) ?? { work: 0, wait: 0 };
+      sums[reservation.phase] += reservation.weight;
+      threads.set(reservation.owner, sums);
+    }
     if (reservation.releaseAt !== undefined) {
       check(Number.isFinite(reservation.releaseAt), "invalid release time");
+      check(reservation.releaseAt >= reservation.retiredActive!, "release precedes retirement");
       check(reservation.weight < reservation.represented, "full-weight reservation retained a release");
       check(owner!.indices.has(id), "retired reservation has no release");
     } else check(!owner!.indices.has(id), "live reservation has a release");
@@ -55,14 +66,30 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
       pools.set(reservation.edge!, (pools.get(reservation.edge!) ?? 0) + reservation.weight);
     }
   }
+  for (const node of nodeList)
+    if (node.threadWeight) {
+      const sums = threads.get(node.id) ?? { work: 0, wait: 0 };
+      for (const phase of ["work", "wait"] as const)
+        check(Math.abs(sums[phase] - node.threadWeight[phase]) < 1e-8, "thread aggregate disagrees");
+    }
   for (const [ownerId, owner] of ledger.owners) {
-    check(owner.reservations.size > 0, "empty owner retained");
+    check(owner.reservations.size > 0 || owner.credits.size > 0, "empty owner retained");
+    for (const credits of owner.credits.values()) {
+      check(credits.length > 0, "empty credits retained");
+      for (const credit of credits) {
+        check(Number.isFinite(credit.weight) && credit.weight > 0, "invalid credit weight");
+        check(Number.isFinite(credit.freeAt) && credit.freeAt > clocks.get(ownerId)!, "expired credit retained");
+      }
+    }
     for (const id of owner.reservations)
       check(ledger.reservations.get(id)?.owner === ownerId, "owner points to missing reservation");
     check(owner.heap.length === owner.indices.size, "heap index size disagrees");
     owner.heap.forEach((due, index) => {
       const reservation = ledger.reservations.get(due.id);
-      check(reservation?.owner === ownerId && reservation.releaseAt === due.end, "orphan release");
+      check(
+        reservation?.owner === ownerId && reservation.releaseAt! + (reservation.admissionLagMs ?? 0) === due.end,
+        "orphan release",
+      );
       check(owner.indices.get(due.id) === index, "heap index disagrees");
       check(due.end > clocks.get(ownerId)! + 1e-9, "due release retained");
       if (index) {
@@ -97,16 +124,24 @@ export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
 }
 
 interface Work extends ResourceWork {
+  resumeAtAdmission?: boolean;
   slotted?: boolean;
   delivery?: unknown;
   held?: boolean;
-  reservation?: ThreadTail<unknown>["reservation"];
+  scope?: Reservation["scope"];
+  releaseAt?: number;
 }
 export interface ResourceState {
   time: number;
   scale: number;
   capacityMultiplier: number;
   partBudget: CpuPartBudget;
+  admission?: {
+    inFlight: ReadonlyMap<string, number>;
+    limits: ReadonlyMap<string, number>;
+    retainedExcess?: ReadonlyMap<string, number>;
+    leases: Iterable<{ keys?: string[]; weight: number }>;
+  };
   nodes: Iterable<{
     id: string;
     status: string;
@@ -119,8 +154,9 @@ export interface ResourceState {
       admission?: { slots?: number; api: { maxInFlight?: number } };
     };
     working: readonly Work[];
-    threadTails?: ReadonlyMap<number, ThreadTail<unknown>>;
-    tailWeightTotal?: number;
+    workQueues?: { working: Iterable<Work>; pending: Iterable<Work>; takeovers: Iterable<Work> };
+    threadTails?: ReadonlyMap<number, Reservation<unknown>>;
+    threadWeight?: Record<"work" | "wait", number>;
     pending: Iterable<Work>;
     /** The node's own queue, without staged deliveries. */
     queue?: Iterable<Work>;
@@ -139,20 +175,59 @@ const previousDesired = new WeakMap<Fleet, number>();
 /** A3: cooldown clocks as they stood before this step, to judge the step's own decision. */
 const previousCloud = new WeakMap<Fleet, { inCooldownUntil?: number[]; lastScaleAt?: number }>();
 const reservationAttempts = new WeakMap<Fleet, Map<Work, number>>();
+/** Admission ownership oracle shared by the resource and command-model checks. */
+export function assertAdmissionInvariants(state: Pick<ResourceState, "time" | "admission">): void {
+  const check = (ok: boolean, message: string) => {
+    if (!ok) throw new Error(message);
+  };
+  if (state.admission) {
+    const { inFlight, limits, leases, retainedExcess } = state.admission;
+    const held = new Map<string, number>();
+    for (const lease of leases) for (const key of lease.keys ?? []) held.set(key, (held.get(key) ?? 0) + lease.weight);
+    for (const key of new Set([...held.keys(), ...inFlight.keys()])) {
+      const occupancy = inFlight.get(key) ?? 0;
+      check(
+        Math.abs(occupancy - (held.get(key) ?? 0)) < 1e-8,
+        `Admission @${state.time}: lease occupancy disagrees for ${key}`,
+      );
+      check(
+        occupancy <= (limits.get(key) ?? Infinity) + (retainedExcess?.get(key) ?? 0) + 1e-8,
+        `Admission @${state.time}: capacity exceeded for ${key}`,
+      );
+    }
+  }
+}
+
 /** Opt-in diagnostic: independent ownership/counting oracle, never run in ordinary playback. */
 export function assertResourceInvariants(state: ResourceState) {
   const check = (ok: boolean, message: string) => {
     if (!ok) throw new Error(message);
   };
+  assertAdmissionInvariants(state);
   let parts = 0;
   for (const node of state.nodes) {
     const f = node.fleet;
     const queued = [...node.pending];
     const all = [...node.working, ...queued];
     const fail = (ok: boolean, message: string) => check(ok, `${node.id} @${state.time}: ${message}`);
+    if (node.workQueues) {
+      const seen = new Set<Work>();
+      const takeovers = new Set(node.workQueues.takeovers);
+      for (const [path, entries] of Object.entries(node.workQueues))
+        for (const work of entries) {
+          fail(!seen.has(work), "work has multiple admission paths");
+          seen.add(work);
+          fail(!!work.resumeAtAdmission === (path === "takeovers"), "takeover scheduling disagrees");
+        }
+      for (const work of all)
+        fail(!work.resumeAtAdmission || takeovers.has(work), "takeover flag has no admission path");
+    }
     let tails = 0;
-    for (const tail of node.threadTails?.values() ?? []) tails += tail.reservation.weight;
-    fail(Math.abs((node.tailWeightTotal ?? 0) - tails) < 1e-8, "thread tail aggregate disagrees");
+    for (const tail of node.threadTails?.values() ?? []) tails += tail.weight;
+    fail(
+      tails <= (node.threadWeight?.work ?? 0) + (node.threadWeight?.wait ?? 0) + 1e-8,
+      "thread tail aggregate disagrees",
+    );
     for (const g of node.groups ?? []) fail(g.pending.length >= 0 && g.active >= 0, "negative broker lag");
     if (!node.props.resources) {
       fail(
@@ -292,9 +367,9 @@ export function assertResourceInvariants(state: ResourceState) {
     const previousAttempts = reservationAttempts.get(f);
     const acquired = new Set<number>();
     for (const work of node.working) {
-      if (work.reservation) {
-        fail(work.reservation.scope === "thread" && work.reservation.releaseAt !== undefined, "invalid thread tail");
-        fail(!!work.cpuParts?.length, "resource-backed thread tail has no CPU ownership");
+      if (work.scope) {
+        fail(work.scope === "thread" && work.releaseAt !== undefined, "invalid thread tail");
+        fail(!!work.cpuParts?.length || work.replica !== undefined, "resource-backed thread tail has no CPU ownership");
       } else if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
       if (work.replica !== undefined) {
         reservations.set(work.replica, (reservations.get(work.replica) ?? 0) + 1);
@@ -368,7 +443,7 @@ export function assertResourceInvariants(state: ResourceState) {
         Math.abs(
           memory -
             ((f.ready + f.draining) * r.baselineMemoryMiB +
-              node.working.filter((w) => !w.reservation).length * r.memoryMiBPerMessage),
+              node.working.filter((w) => w.replica !== undefined).length * r.memoryMiBPerMessage),
         ) < 1e-6,
         "memory differs from baseline + in-flight work",
       );

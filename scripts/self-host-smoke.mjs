@@ -7,6 +7,9 @@ import path from "node:path";
 import { URL } from "node:url";
 import { chromium, expect } from "@playwright/test";
 
+if (!process.argv.includes("--static-only")) await import("./server-smoke.mjs");
+if (process.argv.includes("--server-only")) process.exit(0);
+
 const fetch = globalThis.fetch;
 const { withSmokeContainer, waitForStableEndpoint } = (
   await runnerImport(path.resolve("scripts/self-host-container.ts"), { configFile: false, logLevel: "error" })

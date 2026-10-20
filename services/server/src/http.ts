@@ -171,9 +171,11 @@ export function createRelayServer(
               ? "protocol"
               : code === RELAY_CLOSE.full
                 ? "room-cap"
-                : code === RELAY_CLOSE.tooBig
-                  ? "size"
-                  : "rate",
+                : code === RELAY_CLOSE.serverFull
+                  ? "server-cap"
+                  : code === RELAY_CLOSE.tooBig
+                    ? "size"
+                    : "rate",
             code,
           ),
       });

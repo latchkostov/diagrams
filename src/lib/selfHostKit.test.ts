@@ -29,6 +29,73 @@ describe("self-host kit", () => {
       expect(read(`deploy/self-host/${file}`), file).toBe(contents);
   });
 
+  it("preserves WebSocket paths and upgrades in server and relay-only proxy variants", () => {
+    const templates = hostingTemplates(options);
+    for (const target of ["nginx/nginx.server.conf", "server/relay-only.nginx.conf"]) {
+      const conf = templates[target];
+      expect(conf).toContain("proxy_pass http://diagrams:8080;");
+      expect(conf).toContain("proxy_http_version 1.1;");
+      expect(conf).toContain("proxy_set_header Upgrade $http_upgrade;");
+      expect(conf).toContain("proxy_set_header Connection $live_diagrams_connection;");
+      expect(conf).toContain("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;");
+      expect(conf).toContain("proxy_read_timeout 1h;");
+      expect(conf).not.toContain("try_files");
+    }
+    expect(templates["nginx/nginx.server.conf"]).toContain("location / {");
+    expect(templates["server/relay-only.nginx.conf"]).toContain("location /tools/diagrams/collab/ {");
+    expect(templates["caddy/Caddyfile.server"]).toContain("reverse_proxy diagrams:8080");
+    expect(templates["server/relay-only.Caddyfile"]).toContain("reverse_proxy /tools/diagrams/collab/* diagrams:8080");
+    expect(templates["server/relay-only.Caddyfile"]).not.toContain("handle_path");
+    for (const target of ["caddy/Caddyfile.server", "server/relay-only.Caddyfile"]) {
+      // Caddy supplies the observed address by default and discards untrusted incoming XFF.
+      // Keep that behavior: overriding header_up or trusting arbitrary peers permits spoofing.
+      const directives = templates[target].replace(/^#.*$/gm, "");
+      expect(directives).not.toMatch(/header_up|trusted_proxies/);
+    }
+    for (const target of [
+      "caddy/Caddyfile.server",
+      "server/relay-only.Caddyfile",
+      "nginx/nginx.server.conf",
+      "server/relay-only.nginx.conf",
+    ]) {
+      expect(templates[target]).toContain("LD_TRUST_PROXY=1");
+      expect(templates[target]).toContain("LD_TRUST_PROXY_HOPS=1");
+    }
+    for (const conf of [templates["caddy/Caddyfile.server"], templates["nginx/nginx.server.conf"]])
+      expect(conf).toContain("LD_ORIGIN");
+  });
+
+  it("ships a hardened server compose service with no writable mounts or database", () => {
+    const compose = parseAllDocuments(read("deploy/self-host/server/compose.yaml"))[0].toJS() as {
+      services: Record<
+        string,
+        {
+          read_only: boolean;
+          cap_drop: string[];
+          security_opt: string[];
+          environment: Record<string, string>;
+          volumes?: unknown;
+          tmpfs?: unknown;
+          healthcheck: { test: string[] };
+          build: { context: string; dockerfile: string };
+        }
+      >;
+    };
+    expect(Object.keys(compose.services)).toEqual(["diagrams"]);
+    const server = compose.services.diagrams;
+    expect(server.read_only).toBe(true);
+    expect(server.cap_drop).toEqual(["ALL"]);
+    expect(server.security_opt).toEqual(["no-new-privileges:true"]);
+    expect(server.environment).toMatchObject({
+      LD_TRUST_PROXY: "${LD_TRUST_PROXY:-0}",
+      LD_TRUST_PROXY_HOPS: "${LD_TRUST_PROXY_HOPS:-1}",
+    });
+    expect(server.volumes).toBeUndefined();
+    expect(server.tmpfs).toBeUndefined();
+    expect(server.healthcheck.test).toEqual(["CMD", "/nodejs/bin/node", "main.js", "--healthcheck"]);
+    expect(server.build).toMatchObject({ context: "../../..", dockerfile: "services/server/Dockerfile" });
+  });
+
   it("generates each host's CSP, common and module-script headers from the source", () => {
     const templates = hostingTemplates(options);
     for (const target of [

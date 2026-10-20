@@ -467,6 +467,7 @@ it("plans all CI builds together without shards or retries", () => {
     "build",
     "size",
     "parity",
+    "docker",
     "e2e-build",
     "preview-build",
     "internal-build",
@@ -478,6 +479,62 @@ it("plans all CI builds together without shards or retries", () => {
   const e2e = groups.flat().filter((s: { name: string }) => /^e2e-\d$/.test(s.name));
   expect(e2e).toHaveLength(3);
   expect(e2e[0].args).toEqual(["exec", "playwright", "test", "--retries=0", "--forbid-only"]);
+});
+
+it("includes Docker image smoke in full gates and skips it for --no-docker and quick gates", () => {
+  expect(
+    plan(options(["full"]))
+      .flat()
+      .find((step) => step.name === "docker")?.args,
+  ).toEqual(["self-host:smoke"]);
+  for (const args of [["full", "--no-docker"], ["quick"]])
+    expect(
+      plan(options(args))
+        .flat()
+        .some((step) => step.name === "docker"),
+    ).toBe(false);
+});
+
+it.each([false, true])("Linux gates run Docker smoke once on the host and preserve failures (%s)", async (failed) => {
+  const root = mkdtempSync(resolve("tests/.output/gate-docker-"));
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    for (const dockerOnly of [false, true]) {
+      const host = vi.fn(async (_cwd: string, cfg: ReturnType<typeof options>) => {
+        expect(cfg.only).toEqual(["docker"]);
+        return {
+          rows: [{ name: "docker", ok: !failed, seconds: 0 }],
+          reports: [],
+          failures: Number(failed),
+          workers: 1,
+          seconds: 0,
+        };
+      });
+      const linux = vi.fn(async (_cwd: string, cfg: ReturnType<typeof options>) => {
+        expect(
+          plan(cfg)
+            .flat()
+            .some((step) => step.name === "docker"),
+        ).toBe(false);
+        return { rows: [], reports: [], failures: 0, workers: 1, seconds: 0 };
+      });
+      expect(
+        await runGate(options(["full", "--linux", ...(dockerOnly ? ["--only", "docker"] : [])]), {
+          root,
+          git: async (args) => (args.includes("--git-common-dir") ? root : args[0] === "status" ? "" : "test-head"),
+          acquireBudget: async () => Object.assign(async () => {}, { ports: 6480 }),
+          doctor: async () => true,
+          runSteps: host,
+          linuxRun: linux,
+        }),
+      ).toBe(Number(failed));
+      expect(host).toHaveBeenCalledTimes(1);
+      expect(linux).toHaveBeenCalledTimes(dockerOnly ? 0 : 1);
+    }
+  } finally {
+    log.mockRestore();
+    rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
 });
 
 it("quick selects only changed or explicit specs", () => {

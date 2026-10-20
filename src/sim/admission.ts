@@ -1,11 +1,12 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
-import { reserveCallerOccupancy, type CallerOccupancy } from "./callerOccupancy";
+import { reserveCallerOccupancy, type CallerOccupancy } from "./ledger";
 import {
   normalizeCall,
   quotaKey,
   quotaSignature,
   slotsKey,
+  sharedConcurrencyKey,
   transactionRequirements,
   uniqueRequirements,
   type CompiledCall,
@@ -95,6 +96,15 @@ export interface AdmissionPolicy {
   accountConcurrency?: number;
   fixedSlotsPerReplica?: number;
 }
+
+/** The execution ceiling also bounds callers whose older request leases predate a live cap. */
+export function admissionSlots(policy: AdmissionPolicy, activeReplicas = Infinity): number {
+  return Math.min(
+    policy.slots ?? Infinity,
+    policy.api.maxInFlight ?? Infinity,
+    policy.fixedSlotsPerReplica === undefined ? Infinity : activeReplicas * policy.fixedSlotsPerReplica,
+  );
+}
 interface Bucket {
   tokens: number;
   time: number;
@@ -108,6 +118,8 @@ interface CompiledNode {
 export interface AdmissionState {
   buckets: Map<string, Bucket>;
   inFlight: Map<string, number>;
+  /** Occupancy retained across a live cap reduction; releases consume this allowance. */
+  retainedExcess: Map<string, number>;
   conflicts: Set<string>;
   allocations: Map<string, number>;
   sharedQuotas: Map<string, Quota>;
@@ -120,6 +132,7 @@ export interface AdmissionState {
 export const emptyAdmission = (): AdmissionState => ({
   buckets: new Map(),
   inFlight: new Map(),
+  retainedExcess: new Map(),
   conflicts: new Set(),
   allocations: new Map(),
   sharedQuotas: new Map(),
@@ -129,18 +142,107 @@ export const emptyAdmission = (): AdmissionState => ({
   compiled: new Map(),
   owners: new Map(),
 });
+/** Checkpoint replacement keeps admission state mutations within its owner. */
+export function restoreAdmission(
+  state: AdmissionState,
+  saved: Pick<AdmissionState, "buckets" | "inFlight" | "retainedExcess">,
+): void {
+  state.buckets = saved.buckets;
+  state.inFlight = saved.inFlight;
+  state.retainedExcess = saved.retainedExcess;
+}
 export interface AdmissionLease extends CallerOccupancy {
   keys: string[];
-  threadKey?: string;
+}
+export interface AdmissionLeases {
+  request: AdmissionLease;
+  thread?: AdmissionLease;
 }
 
 /** Execution slots can be returned while the admitted request still owns its concurrency limits. */
-export function separateAdmission(lease: AdmissionLease) {
-  const slot = lease.threadKey;
+function separateAdmission(lease: AdmissionLease, slot?: string): AdmissionLeases & { thread: AdmissionLease } {
   return {
     request: { ...lease, keys: lease.keys.filter((key) => key !== slot) },
     thread: { ...lease, keys: lease.keys.filter((key) => key === slot) },
   };
+}
+
+/** One capacity decision for fresh attempts, continuations and outage recovery. No side effects. */
+function allocate(
+  state: AdmissionState,
+  limits: ReadonlyMap<string, number>,
+  {
+    represented,
+    maxWeight = represented,
+    partial = true,
+  }: { represented: number; maxWeight?: number; partial?: boolean },
+): number | null {
+  let weight = Math.min(represented, maxWeight);
+  for (const [key, cap] of limits) weight = Math.min(weight, cap - (state.inFlight.get(key) ?? 0));
+  if (weight < Math.min(1, represented)) return null;
+  if (!partial) return weight + 1e-9 < maxWeight ? null : maxWeight;
+  return weight;
+}
+
+/** Capacity-only transaction: no buckets, clocks, or attempt timing are touched. */
+export function reacquire(
+  state: AdmissionState,
+  capacity: {
+    node: string;
+    policy?: AdmissionPolicy;
+    endpointId?: string;
+    slots: number;
+    room: number;
+    request?: AdmissionLease;
+    thread: AdmissionLease;
+  },
+): { request?: AdmissionLease; thread: AdmissionLease } | null {
+  const { node, policy, room, slots } = capacity;
+  const compiled = policy
+    ? (state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy))
+    : undefined;
+  const call = compiled?.calls.get(capacity.endpointId);
+  if (policy && (!call || call.rejected)) return null;
+  const request = capacity.request
+    ? { ...capacity.request, keys: [...new Set([...capacity.request.keys, ...(call?.limits.keys() ?? [])])] }
+    : undefined;
+  const thread = {
+    ...capacity.thread,
+    keys: [...new Set([...capacity.thread.keys, ...(policy ? [slotsKey(node)] : [])])],
+  };
+  const limits = new Map(call?.limits);
+  limits.set(slotsKey(node), slots);
+  // Decide both parts before charging either. Request residence and execution
+  // can have different weights, but a thread never exceeds its request.
+  const requestWeight =
+    request &&
+    allocate(state, new Map(request.keys.map((key) => [key, limits.get(key) ?? Infinity])), {
+      represented: request.represented,
+      maxWeight: request.weight,
+    });
+  if (requestWeight === null) return null;
+  const threadWeight = allocate(state, new Map(thread.keys.map((key) => [key, limits.get(key) ?? Infinity])), {
+    represented: thread.represented,
+    maxWeight: Math.min(thread.weight, room, requestWeight ?? Infinity),
+  });
+  if (threadWeight === null) return null;
+  if (request) request.weight = requestWeight!;
+  thread.weight = threadWeight;
+  const additions = new Map<string, number>();
+  for (const lease of [request, thread])
+    for (const key of lease?.keys ?? []) additions.set(key, (additions.get(key) ?? 0) + lease!.weight);
+  for (const [key, weight] of additions) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + weight);
+  return { request, thread };
+}
+
+/** Limits used by the diagnostic oracle, including endpoints not yet called. */
+export function admissionLimits(state: AdmissionState): Map<string, number> {
+  const limits = new Map([...state.allocations].map(([id, cap]) => [sharedConcurrencyKey(id), cap]));
+  for (const nodes of state.compiled.values())
+    for (const node of nodes.values())
+      for (const call of node.calls.values())
+        for (const [key, cap] of call.limits) limits.set(key, Math.min(limits.get(key) ?? Infinity, cap));
+  return limits;
 }
 
 /** Resume an already admitted request: reserve execution capacity without another quota transaction. */
@@ -155,9 +257,13 @@ export function reserveContinuation(
 ): AdmissionLease | undefined {
   const key = (state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy))
     .slots;
-  const available = slots - (state.inFlight.get(key) ?? 0);
-  if (available <= 0 || (!partial && available + 1e-9 < weight)) return undefined;
-  const reservation = reserveCallerOccupancy(weight, available, retained);
+  const granted = allocate(state, new Map([[key, slots]]), {
+    represented: weight,
+    maxWeight: Math.min(weight, retained?.weight ?? Infinity),
+    partial,
+  });
+  if (granted === null) return undefined;
+  const reservation = reserveCallerOccupancy(weight, granted);
   state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
   return { ...reservation, keys: [key] };
 }
@@ -311,6 +417,11 @@ export function reconfigureAdmission(
         }
       }
   }
+  state.retainedExcess.clear();
+  for (const [key, cap] of admissionLimits(state)) {
+    const excess = (state.inFlight.get(key) ?? 0) - cap;
+    if (excess > 0) state.retainedExcess.set(key, excess);
+  }
 }
 /** Only refill, check, charge and lease accounting remain in the per-attempt path. */
 export function attemptAdmission(
@@ -324,7 +435,10 @@ export function attemptAdmission(
   slots = policy.slots,
   extra: readonly Requirement[] = [],
   partialOccupancy = false,
-): { lease: AdmissionLease; latencyMs?: number; errorRate?: number } | { rejected: string } {
+  retained?: AdmissionLeases,
+):
+  | { leases: AdmissionLeases & { thread: AdmissionLease }; latencyMs?: number; errorRate?: number }
+  | { rejected: string } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
   const call = compiled.calls.get(endpointId);
@@ -336,27 +450,55 @@ export function attemptAdmission(
     const bucket = bucketAt(state, key, quota, now);
     if (bucket.tokens + 1e-9 < weight * cost) return { rejected: `${quota.id}: ${quota.unit}` };
   }
-  let occupancy = weight;
-  if (partialOccupancy) {
-    if (slots !== undefined) occupancy = Math.min(occupancy, slots - (state.inFlight.get(compiled.slots) ?? 0));
-    for (const [key, limit] of call.limits) occupancy = Math.min(occupancy, limit - (state.inFlight.get(key) ?? 0));
-    if (occupancy <= 0) return { rejected: "concurrency" };
-  }
-  if (slots !== undefined && (state.inFlight.get(compiled.slots) ?? 0) + occupancy > slots + 1e-9)
-    return { rejected: "concurrency" };
-  for (const [key, limit] of call.limits)
-    if ((state.inFlight.get(key) ?? 0) + occupancy > limit + 1e-9) return { rejected: "concurrency" };
+  const limits = new Map(call.limits);
+  if (slots !== undefined) limits.set(compiled.slots, slots);
+  // A retry keeps existing occupancy even after a shrink. Newly added keys
+  // still need capacity; keeping an old lease is not a new allocation.
+  const held = new Set([...(retained?.request.keys ?? []), ...(retained?.thread?.keys ?? [])]);
+  const occupancy = allocate(state, new Map([...limits].filter(([key]) => !held.has(key))), {
+    represented: weight,
+    maxWeight: retained?.request.weight ?? weight,
+    partial: partialOccupancy && !retained,
+  });
+  if (occupancy === null) return { rejected: "concurrency" };
   for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
   const reservation = reserveCallerOccupancy(weight, occupancy);
-  for (const key of keys) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + reservation.weight);
+  const leases = separateAdmission({ keys, ...reservation }, slots === undefined ? undefined : compiled.slots);
+  if (retained) {
+    // Quotas and policy validation succeeded before any existing occupancy changes.
+    // Request residence and execution can have different retained weights after a shrink.
+    leases.request.weight = retained.request.weight;
+    if (retained.thread) leases.thread.weight = retained.thread.weight;
+    const currentKeys = new Set(keys);
+    for (const part of [retained.request, retained.thread])
+      if (part) releaseAdmission(state, { ...part, keys: part.keys.filter((key) => !currentKeys.has(key)) });
+  }
+  for (const part of [leases.request, leases.thread])
+    for (const key of part.keys)
+      if (!held.has(key)) state.inFlight.set(key, (state.inFlight.get(key) ?? 0) + part.weight);
   return {
-    lease: { keys, threadKey: slots === undefined ? undefined : compiled.slots, ...reservation },
+    leases,
     latencyMs: call.latencyMs,
     errorRate: call.errorRate,
   };
 }
+/** Release exactly the request and execution occupancy charged by the transaction. */
+export function releaseAdmissions(state: AdmissionState, leases: AdmissionLeases) {
+  releaseAdmission(state, leases.request);
+  releaseAdmission(state, leases.thread);
+}
 export function releaseAdmission(state: AdmissionState, lease?: AdmissionLease) {
   if (lease)
-    for (const key of lease.keys) state.inFlight.set(key, Math.max(0, (state.inFlight.get(key) ?? 0) - lease.weight));
+    for (const key of lease.keys) {
+      // Fractional leases can leave round-off after their last owner releases.
+      // A sub-request residue must not make an empty one-slot pool unusable.
+      const remaining = (state.inFlight.get(key) ?? 0) - lease.weight;
+      state.inFlight.set(key, remaining > 1e-9 ? remaining : 0);
+      const excess = state.retainedExcess.get(key);
+      if (excess !== undefined) {
+        if (excess > lease.weight) state.retainedExcess.set(key, excess - lease.weight);
+        else state.retainedExcess.delete(key);
+      }
+    }
 }

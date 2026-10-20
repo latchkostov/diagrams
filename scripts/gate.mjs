@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSy
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
-import { options, canStamp, checkTree, gitFiles, workerCount, resourceRequest } from "./gate/logic.mjs";
+import { CATEGORIES, options, canStamp, checkTree, gitFiles, workerCount, resourceRequest } from "./gate/logic.mjs";
 import { acquireBudget } from "./gate/budget.mjs";
 import { git, cancelCommands } from "./gate/commands.mjs";
 import { doctor, setup } from "./gate/doctor.mjs";
@@ -54,7 +54,9 @@ export async function runGate(config, dependencies = {}, signal) {
       checkTree(await readGit(["status", "--porcelain", "--untracked-files=normal"], root), sha);
     }
     if (!config.docker)
-      console.warn("WARNING: --no-docker skips Docker checks and browser parity. NO VERIFIED STAMP will be written.");
+      console.warn(
+        "WARNING: --no-docker skips self-host image smoke and browser parity. NO VERIFIED STAMP will be written.",
+      );
     if (!(await diagnose(root, config)))
       throw new Error("Doctor failed. Run pnpm gate setup or follow the fixes above.");
     console.log(`Ports: ${config.ports}–${config.ports + 4}`);
@@ -72,9 +74,32 @@ export async function runGate(config, dependencies = {}, signal) {
     mkdirSync(out, { recursive: true });
     const directory = mkdtempSync(join(out, "r"));
     console.log(`HEAD: ${sha}\nReports: ${directory}`);
-    const summary = config.linux
-      ? await linux(root, config, changed, directory, sha)
-      : await run(root, config, changed, directory);
+    // Docker smoke runs on the host, including for Linux gates: no daemon socket or nested Docker in CI's browser image.
+    const hostDocker =
+      config.linux &&
+      config.docker &&
+      (config.only.includes("docker") || (!config.only.length && config.command === "full"));
+    const dockerSummary = hostDocker
+      ? await run(root, { ...config, only: ["docker"] }, changed, join(directory, "host-docker"))
+      : undefined;
+    const dockerOnly = hostDocker && config.only.length === 1;
+    const summary = dockerOnly
+      ? { rows: [], reports: [], failures: 0, seconds: 0 }
+      : config.linux
+        ? await linux(
+            root,
+            hostDocker
+              ? { ...config, only: (config.only.length ? config.only : CATEGORIES).filter((name) => name !== "docker") }
+              : config,
+            changed,
+            directory,
+            sha,
+          )
+        : await run(root, config, changed, directory);
+    if (dockerSummary) {
+      summary.rows.unshift(...dockerSummary.rows);
+      summary.failures += dockerSummary.failures;
+    }
     try {
       if (config.command === "full")
         checkTree(

@@ -89,13 +89,36 @@ async function guestWatches(guest: Page, via: "toast" | "menu") {
 }
 
 /** The host pauses; the guest comes to the same tick; their runs are in the same state there. */
-async function sameStateAfterPause(host: Page, guest: Page) {
+async function sameStateAfterPause(host: Page, guest: Page, holdFollower = false) {
   await host.getByTestId("live-play").click();
   await expect(host.getByTestId("live-play")).not.toHaveAttribute("data-state", "playing");
   // A rate change can pause between replay slices: wait for the replay itself before sampling its tick.
   await expect.poll(async () => (await run(host)).busy, { timeout: 20_000 }).toBe(false);
   const at = await run(host);
-  await expect.poll(async () => (await probe(guest))?.tick, { timeout: 20_000 }).toBe(at.tick);
+  if (holdFollower) {
+    // A matching tick alone must not sample a busy replay's transient digest. Hold readiness
+    // across three probes of that exact tick so this regression is independent of machine speed.
+    await guest.evaluate((tick) => {
+      const watch = (window as unknown as { __watch: { probe(): Probe } }).__watch;
+      const original = watch.probe.bind(watch);
+      let held = 0;
+      watch.probe = () => {
+        const state = original();
+        return state && state.tick === tick && !state.playing && held++ < 3
+          ? { ...state, busy: true, digest: state.digest ^ 1 }
+          : state;
+      };
+    }, at.tick);
+  }
+  await expect
+    .poll(
+      async () => {
+        const state = await probe(guest);
+        return state && !state.busy && !state.playing ? state.tick : undefined;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(at.tick);
   expect((await probe(guest))?.digest).toBe((await probe(host))?.digest);
   return at;
 }
@@ -124,7 +147,7 @@ test.describe("Watch together", () => {
       await rate.fill("3k");
       await rate.press("Enter");
       await expect.poll(async () => (await run(page)).tick, { timeout: 10_000 }).toBeGreaterThan(400);
-      await sameStateAfterPause(page, guest);
+      await sameStateAfterPause(page, guest, true);
       expectNoErrors(consoleErrors);
     } finally {
       await other.close();

@@ -9,6 +9,8 @@ const tier = fc.record({
   cpuMs: fc.option(fc.integer({ min: 0, max: 100 }), { nil: undefined }),
   mode: fc.constantFrom("blocking", "nonblocking", "mixed"),
   replyMs: fc.integer({ min: 0, max: 100 }),
+  managed: fc.boolean(),
+  retryBackoffMs: fc.integer({ min: 100, max: 1000 }),
   pool: fc.integer({ min: 1, max: 8 }),
 });
 
@@ -17,23 +19,42 @@ const tier = fc.record({
 export const arbWaitDiagram = fc
   .record({
     tiers: fc.array(tier, { minLength: 2, maxLength: 4 }),
-    scale: fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 10),
+    sharedAllocation: fc.boolean(),
+    scale: fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 4, 10),
     deadlineMs: fc.option(fc.integer({ min: 100, max: 2000 }), { nil: undefined }),
   })
-  .map(({ tiers, scale, deadlineMs }) => {
+  .map(({ tiers, sharedAllocation, scale, deadlineMs }) => {
     const diagram = waitingFixture();
     const prototype = diagram.nodes[1];
+    if (tiers.some((t) => t.managed) || sharedAllocation) {
+      diagram.nodes[0].stencil = "generic.queue";
+      diagram.nodes[0].props = { maxDeliveryCount: 3 };
+    }
+    if (sharedAllocation) diagram.planning!.sharedAllocations = [{ id: "callers", maxInFlight: 1 }];
     diagram.nodes = [
       diagram.nodes[0],
       ...tiers.map((props, i) => ({
         ...prototype,
         id: `tier${i}`,
+        stencil: props.managed || (sharedAllocation && i === 0) ? "aws.lambda" : prototype.stencil,
         x: 330 * (i + 1),
         props: {
           concurrency: props.concurrency,
           replicas: props.replicas,
           latencyMs: props.latencyMs,
           jitter: 0,
+          ...(props.managed || (sharedAllocation && i === 0)
+            ? {
+                scaling: "fixed",
+                maxConcurrency: props.concurrency,
+                retry: "inplace",
+                retryBackoffMs: props.retryBackoffMs,
+                api: {
+                  latencyMs: Math.max(10, props.latencyMs),
+                  ...(sharedAllocation && i === 0 ? { sharedConcurrency: "callers" } : {}),
+                },
+              }
+            : {}),
           ...(props.cpuMs === undefined
             ? {}
             : {
@@ -77,6 +98,25 @@ export const arbWaitDiagram = fc
           },
         });
     });
+    if (sharedAllocation) {
+      diagram.nodes.push({
+        ...prototype,
+        id: "sibling",
+        stencil: "aws.lambda",
+        props: {
+          scaling: "fixed",
+          maxConcurrency: 1,
+          retry: "inplace",
+          retryBackoffMs: tiers[0].retryBackoffMs,
+          jitter: 0,
+          api: { latencyMs: tiers[0].latencyMs, sharedConcurrency: "callers" },
+        },
+      });
+      diagram.edges.push(
+        { id: "sibling-input", from: "source", to: "sibling", props: { travelMs: 10 } },
+        { id: "sibling-call", from: "sibling", to: "side", kind: "sync", props: { travelMs: 10, networkDelayMs: 10 } },
+      );
+    }
     diagram.edges.push({ id: "output", from: "tier0", to: "result", props: { travelMs: 10 } });
     return { diagram, scale, deadlineMs };
   });

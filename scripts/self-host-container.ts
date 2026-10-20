@@ -31,6 +31,7 @@ export async function withSmokeContainer(
   run: Run,
   image: string,
   check: (container: { id: string; origin: string }) => Promise<void>,
+  options: { server?: boolean; env?: Record<string, string> } = {},
 ): Promise<void> {
   const id = run(
     "docker",
@@ -39,13 +40,13 @@ export async function withSmokeContainer(
       "--name",
       `live-diagrams-smoke-${randomUUID()}`,
       "--read-only",
-      "--tmpfs",
-      "/tmp:uid=101,gid=101",
+      ...(!options.server ? ["--tmpfs", "/tmp:uid=101,gid=101"] : []),
       "--cap-drop=ALL",
       "--security-opt",
       "no-new-privileges:true",
       "-p",
       "127.0.0.1::8080",
+      ...Object.entries(options.env ?? {}).flatMap(([key, value]) => ["--env", `${key}=${value}`]),
       image,
     ],
     true,
