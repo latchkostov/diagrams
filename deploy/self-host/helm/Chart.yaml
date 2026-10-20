@@ -1,6 +1,6 @@
 apiVersion: v2
 name: live-diagrams
-description: Static Live Diagrams site; all application switches are baked into the image.
+description: Live Diagrams static site or single-instance encrypted collaboration server.
 type: application
 version: 0.1.0
 appVersion: "0.0.1"

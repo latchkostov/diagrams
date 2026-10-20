@@ -10,6 +10,7 @@ import { OutboundBudget } from "./collab/outbound";
 import { MemoryRoomRegistry, type RoomRegistry } from "./collab/rooms";
 import { readConfig, type ServerConfig } from "./config";
 import { createLog, type Logger } from "./log";
+import { validateMemoryBudget } from "./memory";
 import { Metrics, type RefusalReason } from "./metrics";
 import { createStaticHandler, requestPath } from "./static";
 
@@ -24,6 +25,7 @@ export function createRelayServer(
   } = {},
 ) {
   const config = opts.config ?? readConfig();
+  validateMemoryBudget(config);
   const admission = opts.admission ?? createAdmission(config);
   const rooms = opts.rooms ?? new MemoryRoomRegistry(config.roomCap, config.maxRooms);
   const log = opts.log ?? createLog();

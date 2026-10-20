@@ -229,6 +229,10 @@ jobs:
       - uses: azure/setup-helm@v5.0.1
       - run: helm lint deploy/self-host/helm
       - run: helm template diagrams deploy/self-host/helm --set ingress.enabled=true --set ingress.tls.enabled=true
+      - run: helm lint deploy/self-host/helm --set mode=server
+      - run: helm template diagrams deploy/self-host/helm --set mode=server --set replicas=3 --set ingress.enabled=true --set ingress.tls.enabled=true
+      - name: Assert both chart modes
+        run: node scripts/self-host-chart-test.mjs
 
   ci:
     name: CI
