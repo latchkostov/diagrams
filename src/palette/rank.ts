@@ -42,6 +42,8 @@ export interface Command {
   danger?: boolean;
   /** `false`: hidden until the user types (submenu leaves, the long stencil list). */
   idle?: boolean;
+  /** Available only with a nonempty search, including when browsing a prefixed group. */
+  searchOnly?: boolean;
   /** Custom score for a query (stencils use the catalogue's alias-aware search). 0 = no match. */
   score?: (query: string) => number;
   /** Submenu parent: Enter narrows the query to its entries instead of running. */
@@ -99,7 +101,7 @@ export function scoreCommand(c: Command, query: string): number {
  */
 export function rank(commands: readonly Command[], raw: string, recent: readonly string[] = []): Ranked[] {
   const { query, only } = parseQuery(raw);
-  const pool = only ? commands.filter((c) => c.group === only) : commands;
+  const pool = commands.filter((c) => (!only || c.group === only) && (query || !c.searchOnly));
   const recentIndex = new Map(recent.map((id, i) => [id, i]));
 
   if (!query) {

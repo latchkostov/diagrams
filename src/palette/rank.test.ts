@@ -3,6 +3,10 @@ import { catalog } from "../stencils/catalog";
 import { flatten, MAX_RESULTS, parseQuery, rank, recencyBoost, type Command } from "./rank";
 import { stencilScore } from "./sources";
 import { rememberable, withRecentCommand } from "./recent";
+import { ActionRegistry } from "../editor/actions";
+import { annotateMenu } from "../editor/builtinActions";
+import type { EditorApi } from "../editor/types";
+import { collectCommands } from "./sources";
 
 const action = (id: string, label: string, extra: Partial<Command> = {}): Command => ({
   id: `action:${id}`,
@@ -22,6 +26,51 @@ const stencilCommands: Command[] = catalog.map((s) => ({
 const ids = (cs: Command[], q: string, recent: string[] = []) => flatten(rank(cs, q, recent)).map((c) => c.id);
 
 describe("palette ranking", () => {
+  it("browses one shape entry without crowding out core actions, and searches individual shapes", () => {
+    const registry = new ActionRegistry();
+    registry.register([
+      {
+        id: "canvas.annotate",
+        section: "insert",
+        targets: ["canvas"],
+        label: "Annotate",
+        children: () => annotateMenu(() => {}),
+      },
+      ...Array.from({ length: 20 }, (_, i) => ({
+        id: `core-${i}`,
+        section: "insert",
+        targets: ["canvas"] as const,
+        label: `Core ${i}`,
+      })),
+      { id: "canvas.fit", section: "insert", targets: ["canvas"], label: "Fit view" },
+    ]);
+    const editor = {
+      getSelection: () => ({ nodeIds: [], edgeIds: [], groupIds: [] }),
+      getDiagram: () => ({ nodes: [] }),
+    } as unknown as EditorApi;
+    const commands = collectCommands({
+      registry,
+      canvas: { editor, live: false, addStencil: () => "", focusNode: () => {}, openPicker: () => {} },
+      live: null,
+      view: "canvas",
+      stencils: [],
+      recentStencils: [],
+      diagrams: [],
+      openDiagram: () => {},
+      sendStencilToCanvas: () => {},
+      runSimulation: () => {},
+    });
+    const shapeIds = commands.filter((c) => c.id.includes("shape")).map((c) => c.id);
+    for (const query of ["", ">", " >   "]) {
+      const browsed = ids(commands, query, ["action:annotate-shape:hexagon"]);
+      expect(browsed).toContain("action:canvas.fit");
+      expect(browsed.filter((id) => shapeIds.includes(id))).toEqual(["action:canvas.add-shape"]);
+    }
+    for (const query of ["hexagon", "> hexagon", "prepare"]) {
+      expect(ids(commands, query)[0]).toBe("action:annotate-shape:hexagon");
+    }
+  });
+
   it("caps empty queries across diagrams, simulations and recents", () => {
     for (const group of ["diagrams", "simulations"] as const) {
       const commands = Array.from({ length: 1000 }, (_, i): Command => ({

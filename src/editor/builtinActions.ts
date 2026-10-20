@@ -319,6 +319,7 @@ export function annotateMenu(add: (kind: AnnotationKind, shape?: AnnotationShape
     {
       type: "item",
       id: "annotate:shape",
+      paletteSearchOnly: true,
       get label() {
         return t("menu.shape");
       },

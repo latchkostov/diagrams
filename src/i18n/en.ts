@@ -1457,6 +1457,7 @@ const en = {
   "shape.tri": "Extract / Triangle",
   "shape.flipTri": "Manual file / Inverted",
   "shape.moreShapes": "More shapes",
+  "shape.addShape": "Add shape…",
   "shape.searchShapes": "Search shapes",
   "shape.selectShape": "Select shape",
   "shape.categoryBasic": "Basic Shapes",

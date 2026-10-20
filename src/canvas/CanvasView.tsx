@@ -1,5 +1,5 @@
 import { preloadMarkdown } from "../components/markdown/lazy";
-import { useCanvasMenuItems, useCanvasContextMenus, type CanvasSurface } from "./menus/useCanvasMenus";
+import { useCanvasMenuItems, useCanvasContextMenus, platform, type CanvasSurface } from "./menus/useCanvasMenus";
 import {
   InteractionContext,
   useInteractionCamera,
@@ -605,6 +605,22 @@ function CanvasInner({
       interaction.dispatch({ type: "selection.changed", cause: "palette", target: { kind: "node", id }, placed }),
     [interaction],
   );
+  const openPicker = useCallback<NonNullable<import("../palette/host").CanvasHost["openPicker"]>>(
+    (menu) => {
+      const rect = wrapper.current?.getBoundingClientRect();
+      if (!rect) return;
+      interaction.openMenu(
+        "context",
+        {
+          ...menu,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        },
+        { via: "keyboard", platform: platform() },
+      );
+    },
+    [interaction],
+  );
   useCanvasHost(editor, {
     live,
     enabled: !readOnly,
@@ -616,6 +632,7 @@ function CanvasInner({
     revision: hostRevision,
     goTo: controller.goTo,
     focus: focusFromPalette,
+    openPicker,
   });
 
   useAutosave({
