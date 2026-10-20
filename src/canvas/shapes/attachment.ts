@@ -157,3 +157,13 @@ export function shapeAttachment(shape: AnnotationShape, w: number, h: number, si
     candidates[0] ?? target,
   );
 }
+
+/** Keep opposite handles distinct on pinched or open outlines, while staying on their stroke. */
+export function shapeHandle(shape: AnnotationShape, w: number, h: number, side: Side): Point {
+  const opposite = { left: "right", right: "left", top: "bottom", bottom: "top" } as const;
+  const point = shapeAttachment(shape, w, h, side);
+  const other = shapeAttachment(shape, w, h, opposite[side]);
+  if (Math.hypot(point.x - other.x, point.y - other.y) >= 14) return point;
+  const offset = side === "left" ? -h / 4 : side === "right" ? h / 4 : side === "top" ? -w / 4 : w / 4;
+  return shapeAttachment(shape, w, h, side, offset);
+}

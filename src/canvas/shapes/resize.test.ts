@@ -11,9 +11,29 @@ describe("active corner resize", () => {
       { id: "a", type: "position", position: { x: 60, y: 90 } },
     ]);
     shapeResizeModifier(store, false);
-    expect(constrainShapeResize(store, changes, 40)).toBe(changes);
+    expect(constrainShapeResize(store, changes, 40)).toEqual([
+      ...changes,
+      { id: "a", type: "position", position: { x: 60, y: 190 } },
+    ]);
     constrainShapeResize(store, [{ ...changes[0], resizing: false }], 40);
     shapeResizeModifier(store, true);
     expect(constrainShapeResize(store, changes, 40)).toBe(changes);
   });
 });
+
+it.each([
+  ["top-right", { width: 220, height: 90 }, { x: 100, y: 200 }],
+  ["bottom-left", { width: 160, height: 220 }, { x: 100, y: 200 }],
+] as const)(
+  "restores the opposite corner on Shift release during %s single-axis movement",
+  (corner, dimensions, position) => {
+    const store = {};
+    beginShapeResize(store, "a", corner, { x: 100, y: 200, width: 160, height: 90 });
+    shapeResizeModifier(store, true);
+    constrainShapeResize(store, [{ id: "a", type: "dimensions", resizing: true, dimensions }], 40);
+    shapeResizeModifier(store, false);
+    const result = constrainShapeResize(store, [{ id: "a", type: "dimensions", resizing: true, dimensions }], 40);
+    expect(result).toContainEqual({ id: "a", type: "position", position });
+    expect(result[0]).toMatchObject({ dimensions });
+  },
+);

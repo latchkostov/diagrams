@@ -867,6 +867,17 @@ const auditDefault = examples.some((e) => e.slug === "kafka-order-pipeline")
 const layoutPresets: Preset[] = [
   {
     kind: "diagram",
+    id: "annotation-resize",
+    title: "Annotation resizing",
+    group: "Diagrams",
+    description: "A rectangular shape using the editor's handles and resize gestures. Hold Shift for a square.",
+    diagram: () => ({
+      ...annotationShapesFixture(),
+      annotations: annotationShapesFixture().annotations?.filter((a) => a.id === "outline-rect"),
+    }),
+  },
+  {
+    kind: "diagram",
     id: "imported-compose",
     title: "Imported: compose",
     group: "Diagrams",

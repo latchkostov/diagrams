@@ -1,3 +1,4 @@
+import { queueShapeMeasurement } from "../shapes/measurementQueue";
 import {
   memo,
   useEffect,
@@ -21,7 +22,7 @@ import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLab
 import { MarkdownView } from "../../components/markdown/lazy";
 import { AnnotationEditor } from "./AnnotationEditor";
 import { ShapeOutline } from "./ShapeOutline";
-import { shapeAttachment } from "../shapes/attachment";
+import { shapeHandle } from "../shapes/attachment";
 import { beginShapeResize, endShapeResize, shapeResizeModifier } from "../shapes/resize";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
@@ -52,9 +53,15 @@ function AnnotationNodeImpl({
   const w = width ?? 0;
   const h = height ?? 0;
   const updateInternals = useUpdateNodeInternals();
+  const store = useStoreApi<FlowNode>();
+  const outline = useRef({ kind, shape: data.shape });
   useLayoutEffect(() => {
-    if (kind === "shape") updateInternals(id);
-  }, [kind, data.shape, w, h, id, updateInternals]);
+    const previous = outline.current;
+    outline.current = { kind, shape: data.shape };
+    // ResizeObserver owns initial and dimension measurements. Only outline changes need forcing.
+    if (kind === "shape" && (previous.kind !== kind || previous.shape !== data.shape))
+      queueShapeMeasurement(store.getState, updateInternals, id);
+  }, [kind, data.shape, id, store, updateInternals]);
   const startEdit = (e: ReactMouseEvent) => {
     e.stopPropagation();
     setEditing({ kind: "annotation", id });
@@ -159,7 +166,7 @@ function AnnotationNodeImpl({
       )}
       {isConnectable(kind) &&
         SIDES.map((side) => {
-          const p = shapeAttachment(data.shape ?? "rect", w, h, side);
+          const p = shapeHandle(data.shape ?? "rect", w, h, side);
           return (
             <Handle
               key={side}

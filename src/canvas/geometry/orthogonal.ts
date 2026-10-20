@@ -22,6 +22,9 @@ export interface OrthoRequest {
   /** Port on the source node's border, and the unit normal pointing out of that side. */
   source: Point;
   sourceDir: Point;
+  /** Explicit escape points for ports inset within their bounding obstacle. */
+  sourceEscape?: Point;
+  targetEscape?: Point;
   target: Point;
   targetDir: Point;
   /** Raw obstacle boxes (nodes, group headers); padding is applied here. Include the endpoints' own nodes. */
@@ -410,8 +413,8 @@ export function routeOrthogonal(
   const o: Required<OrthoOptions> = { bend: 40, hug: 0.6, softPenalty: 3, ...opts };
   const pad = req.pad ?? 16;
   const stub = req.stub ?? pad;
-  const s1 = { x: req.source.x + req.sourceDir.x * stub, y: req.source.y + req.sourceDir.y * stub };
-  const t1 = { x: req.target.x + req.targetDir.x * stub, y: req.target.y + req.targetDir.y * stub };
+  const s1 = req.sourceEscape ?? { x: req.source.x + req.sourceDir.x * stub, y: req.source.y + req.sourceDir.y * stub };
+  const t1 = req.targetEscape ?? { x: req.target.x + req.targetDir.x * stub, y: req.target.y + req.targetDir.y * stub };
 
   // Pad obstacles, but never so much that a stub point ends up inside one (nodes placed very close).
   const padOf = (r: Rect) => {

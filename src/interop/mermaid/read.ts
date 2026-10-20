@@ -1,3 +1,4 @@
+import { parse as parseYaml } from "yaml";
 import { MERMAID_BRACKETS, MERMAID_ALIASES, type MermaidShape } from "./shapes";
 import {
   DIAGRAM_FORMAT,
@@ -156,15 +157,22 @@ class Scanner {
   /** The closing brace belongs to the attributes, never to a quoted label inside them. */
   attributes(): string {
     const start = this.i;
-    let quoted = false;
+    let quote: string | undefined;
     for (; this.i < this.s.length; this.i++) {
       const c = this.s[this.i];
-      if (quoted && c === "\\") {
+      if (quote === '"' && c === "\\") {
         this.i++;
         continue;
       }
-      if (c === '"') quoted = !quoted;
-      if (c === "}" && !quoted) return this.s.slice(start, this.i++);
+      if (c === quote) {
+        if (quote === "'" && this.s[this.i + 1] === "'") this.i++;
+        else quote = undefined;
+      } else if (!quote && (c === '"' || c === "'")) {
+        let previous = this.i - 1;
+        while (previous >= start && /\s/.test(this.s[previous])) previous--;
+        if (this.s[previous] === ":") quote = c;
+      }
+      if (c === "}" && !quote) return this.s.slice(start, this.i++);
     }
     return this.fail("Unclosed shape attributes");
   }
@@ -263,12 +271,15 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       sc.i += 2;
       const body = sc.attributes();
       const shape = /shape\s*:\s*([\w-]+)/.exec(body)?.[1];
-      const label = /label\s*:\s*("(?:\\.|[^"\\])*"|[^,}]+)/.exec(body);
+      const label = /label\s*:\s*("(?:\\.|[^"\\])*"|'(?:''|[^'])*'|[^,}]+)/.exec(body);
       if (shape) n.shape = MERMAID_ALIASES.get(shape);
       if (label) {
         n.yamlLabel = true;
         try {
-          n.label = cleanLabel(label[1].startsWith('"') ? (JSON.parse(label[1]) as string) : label[1]);
+          const decoded: unknown =
+            label[1].startsWith('"') || label[1].startsWith("'") ? parseYaml(label[1]) : label[1];
+          if (typeof decoded !== "string") throw new MermaidError("Invalid quoted shape label");
+          n.label = cleanLabel(decoded);
         } catch {
           sc.fail("Invalid quoted shape label");
         }

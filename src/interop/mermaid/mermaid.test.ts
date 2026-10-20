@@ -25,6 +25,17 @@ describe("annotation shape syntax", () => {
       expect(parseMermaid(exported).diagram.nodes[0].label).toBe(label);
     },
   );
+  it.each([
+    [String.raw`"\x41"`, "A"],
+    [String.raw`"a\_b"`, "a\u00a0b"],
+    ['"literal\ttab"', "literal\ttab"],
+    ["'Ada''s, {invoice}'", "Ada's, {invoice}"],
+    ["Ada's invoice", "Ada's invoice"],
+  ])("imports external YAML scalar %s and preserves its following connection", (scalar, decoded) => {
+    const result = parseMermaid(`flowchart LR\na@{ shape: doc, label: ${scalar} } --> b[Next]`);
+    expect(result.diagram.nodes.map((n) => n.label)).toEqual([decoded, "Next"]);
+    expect(result.diagram.edges).toMatchObject([{ from: "a", to: "b" }]);
+  });
   for (const [shape, syntax] of Object.entries(MERMAID_SHAPES)) {
     it(`${shape} preserves labels through writer and reader`, () => {
       const label = 'Payload {id}, "invoice"';

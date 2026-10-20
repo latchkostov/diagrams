@@ -4,7 +4,7 @@ import { fitAvoiding } from "./fit";
 import { LABEL, pillWidth, placeLabels, wrapLines } from "./labels";
 import { nudgeRoutes } from "./nudge";
 import { pointAlong, roundedPath } from "./path";
-import { slotOffset, spreadPorts } from "./ports";
+import { sidePoint, slotOffset, spreadPorts } from "./ports";
 import { intersects, segmentHitsRect, simplify, type Point, type Rect } from "./rect";
 import { Router, groupHeaderRect, routeDiagram, type RouteInput } from "./router";
 import { overlapsSpan, routeOrthogonal, spansOf, type SoftLine } from "./orthogonal";
@@ -67,10 +67,10 @@ describe("ports", () => {
       rects,
       14,
     );
-    expect(p.get("up")!.y).toBeLessThan(p.get("mid")!.y);
-    expect(p.get("mid")!.y).toBeLessThan(p.get("down")!.y);
-    expect(p.get("mid")).toEqual({ x: 220, y: 136 });
-    expect(p.get("down")!.y - p.get("mid")!.y).toBe(14);
+    expect(p.get("up")!.attachment.y).toBeLessThan(p.get("mid")!.attachment.y);
+    expect(p.get("mid")!.attachment.y).toBeLessThan(p.get("down")!.attachment.y);
+    expect(p.get("mid")?.attachment).toEqual({ x: 220, y: 136 });
+    expect(p.get("down")!.attachment.y - p.get("mid")!.attachment.y).toBe(14);
   });
   it("compresses spacing to fit the side, clear of the corners", () => {
     expect(slotOffset(0, 1, 72, 14)).toBe(0);
@@ -644,4 +644,53 @@ describe("group borders", () => {
       for (const p of along) expect(Math.abs(p.y)).toBeGreaterThanOrEqual(12);
     });
   }
+});
+
+describe("inset outline routing", () => {
+  it.each([undefined, "rect"] as const)("preserves rectangular %s routes and their original stubs", (shape) => {
+    const source = { ...card(0, 0, 160, 90), shape };
+    const target = card(500, 0, 160, 90);
+    const obstacle = card(260, 0, 80, 90);
+    const expected = routeOrthogonal({
+      source: sidePoint(source, "right"),
+      sourceDir: { x: 1, y: 0 },
+      target: sidePoint(target, "left"),
+      targetDir: { x: -1, y: 0 },
+      obstacles: [source, target, obstacle],
+    });
+    const actual = routeDiagram({
+      nodes: [
+        { id: "s", rect: source },
+        { id: "t", rect: target },
+        { id: "o", rect: obstacle },
+      ],
+      edges: [{ id: "e", source: "s", target: "t", sourceSide: "right", targetSide: "left" }],
+    }).get("e")!;
+    expect(actual.ok).toBe(true);
+    expect(actual.points).toEqual(expected.points);
+  });
+  it.each(["tri", "brace-r"] as const)("escapes %s at either end and avoids the intervening obstacle", (shape) => {
+    for (const reverse of [false, true]) {
+      const obstacle = card(260, 0, 80, 90);
+      const route = routeDiagram({
+        nodes: [
+          { id: "s", rect: { ...card(0, 0, 160, 90), shape } },
+          { id: "obstacle", rect: obstacle },
+          { id: "t", rect: card(500, 0, 160, 90) },
+        ],
+        edges: [
+          {
+            id: "e",
+            source: reverse ? "t" : "s",
+            target: reverse ? "s" : "t",
+            sourceSide: reverse ? "left" : "right",
+            targetSide: reverse ? "right" : "left",
+          },
+        ],
+      }).get("e")!;
+      expect(route.ok).toBe(true);
+      for (let i = 1; i < route.points.length; i++)
+        expect(segmentHitsRect(route.points[i - 1], route.points[i], obstacle)).toBe(false);
+    }
+  });
 });

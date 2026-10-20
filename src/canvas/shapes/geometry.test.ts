@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { shapeGeometry } from "./geometry";
-import { shapeAttachment } from "./attachment";
+import { shapeAttachment, shapeHandle } from "./attachment";
 import { SHAPES_CATALOG } from "./catalog";
 import { sidePoint } from "../geometry/ports";
 import { Router } from "../geometry/router";
@@ -56,4 +56,10 @@ describe("shared shape attachment geometry", () => {
     expect(after.points[0].x).toBe(119.625);
     expect(after.path).not.toBe(before.path);
   });
+});
+
+it.each(["hourglass", "comment", "brace-r"] as const)("keeps opposite %s handles independently hittable", (shape) => {
+  const left = shapeHandle(shape, 160, 90, "left"),
+    right = shapeHandle(shape, 160, 90, "right");
+  expect(Math.hypot(left.x - right.x, left.y - right.y)).toBeGreaterThan(14);
 });

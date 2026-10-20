@@ -1,3 +1,4 @@
+import { useShapeResize } from "./shapes/useShapeResize";
 import { preloadMarkdown } from "../components/markdown/lazy";
 import { useCanvasMenuItems, useCanvasContextMenus, platform, type CanvasSurface } from "./menus/useCanvasMenus";
 import {
@@ -237,7 +238,8 @@ function CanvasInner({
 
   const { original, flow, originalJson, loadedJson, identity } = useDocumentLoad(initial, slug);
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
-  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const [nodes, setNodes, applyNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const onNodesChange = useShapeResize(applyNodesChange);
   useEffect(() => {
     if (
       flow.nodes.some(

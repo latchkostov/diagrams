@@ -148,6 +148,64 @@ test.describe("annotations", () => {
     for (const { id, distance } of distances) expect(distance, id ?? "handle").toBeLessThan(0.5);
   });
 
+  test("mounting and pasting shapes rely on batched observer measurements", async ({ page }) => {
+    await page.addInitScript(() => {
+      const state = { forcedQueries: 0 };
+      Object.assign(window, { __shapeMeasurements: state });
+      const original = Element.prototype.querySelector;
+      Element.prototype.querySelector = function (selector: string) {
+        // React Flow's explicit updateInternals queries a node by data-id; ResizeObserver does not.
+        if (selector.includes("data-id=")) state.forcedQueries++;
+        return original.call(this, selector);
+      };
+    });
+    await seed(page, annotationShapesFixture());
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "outline-rect").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+c");
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(page.getByTestId(/^annotation-/).filter({ has: page.getByTestId("shape-outline") })).toHaveCount(116);
+    await waitForSelectionSettled(page);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as Window & { __shapeMeasurements?: { forcedQueries: number } }).__shapeMeasurements?.forcedQueries,
+      ),
+    ).toBe(0);
+  });
+
+  for (const shape of ["hourglass", "comment", "brace-r"] as const)
+    test(`${shape} opposite handles independently start connections`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Distinct ports",
+        nodes: [],
+        edges: [],
+        annotations: [{ id: "shape", kind: "shape", shape, text: "", x: 0, y: 0, width: 160, height: 90 }],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "shape").click();
+      await waitForSelectionSettled(page);
+      for (const side of ["left", "right"] as const) {
+        const handle = page.getByTestId(`handle-shape-${side}`);
+        await expect(handle).toBeVisible();
+        const hit = await handle.evaluate((element) => {
+          const r = element.getBoundingClientRect();
+          return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.getAttribute("data-testid");
+        });
+        expect(hit).toBe(`handle-shape-${side}`);
+        const r = await box(handle);
+        await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(r.x + (side === "right" ? 70 : -70), r.y, { steps: 4 });
+        await expect(page.getByTestId("connection-line")).toBeVisible();
+        await page.mouse.up();
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("context-menu")).toHaveCount(0);
+      }
+    });
+
   test("bulk selection adds no per-annotation Shift listeners", async ({ page }) => {
     await seed(page, annotationShapesFixture());
     await gotoCanvas(page, SLUG);
@@ -317,6 +375,41 @@ test.describe("annotations", () => {
         return a.width > a.height;
       })
       .toBe(true);
+  });
+
+  test("releasing Shift during a top-right resize restores the opposite corner", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Anchored resize",
+      nodes: [],
+      edges: [],
+      annotations: [{ id: "shape", kind: "shape", text: "", x: 100, y: 200, width: 160, height: 90 }],
+    });
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "shape").click();
+    await waitForSelectionSettled(page);
+    const handle = page.getByTestId("annotation-resize-shape-top-right");
+    await waitForStableBox(handle);
+    const r = await box(handle);
+    const x = r.x + r.width / 2,
+      y = r.y + r.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.keyboard.down("Shift");
+    await page.mouse.move(x + 60, y, { steps: 8 });
+    await expect
+      .poll(async () => {
+        const b = await box(annotation(page, "shape"));
+        return Math.abs(b.width - b.height);
+      })
+      .toBeLessThan(1);
+    await page.keyboard.up("Shift");
+    await page.mouse.move(x + 100, y, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await savedDiagram(page)).annotations?.[0])
+      .toMatchObject({ x: 100, y: 200, height: 90 });
+    expect((await savedDiagram(page)).annotations?.[0].width).toBeGreaterThan(160);
   });
 
   for (const finish of ["Escape", "ControlOrMeta+Enter"])

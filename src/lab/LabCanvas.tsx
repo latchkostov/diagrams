@@ -1,3 +1,4 @@
+import { useShapeResize } from "../canvas/shapes/useShapeResize";
 import { labNodesReady } from "./readiness";
 import { projectDependencies, useShowDependencies } from "../canvas/dependencyVisibility";
 import { useCaptionContrast } from "../canvas/useCaptionContrast";
@@ -60,7 +61,8 @@ function Stage({ diagram, minimap = true, onRendered, onMove }: Props) {
   const { theme } = useSettings();
   const [start] = useState(() => performance.now());
   const flow = useMemo(() => toFlow(diagram), [diagram]);
-  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const [nodes, setNodes, applyNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const onNodesChange = useShapeResize(applyNodesChange);
   const wrapper = useRef<HTMLDivElement>(null);
   useCaptionContrast(wrapper, nodes, theme, flow.meta.color);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);

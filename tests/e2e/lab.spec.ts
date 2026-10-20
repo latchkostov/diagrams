@@ -1,4 +1,4 @@
-import { test, expect, gotoLab, labPresetIds, expectNoErrors, publicExamples } from "./fixtures";
+import { test, expect, gotoLab, labPresetIds, expectNoErrors, publicExamples, waitForStableBox } from "./fixtures";
 import { holdResizeObservers } from "../parity/browser/holdReadiness";
 import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
 
@@ -23,6 +23,30 @@ test.describe("lab", () => {
     await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
     await waitForPreset(page);
     for (const node of measuredHierarchyFixture.nodes) await expect(page.getByTestId(`node-${node.id}`)).toBeVisible();
+  });
+
+  test("rectangular shapes Shift-resize to a square in the Lab", async ({ page }) => {
+    await gotoLab(page, "annotation-resize");
+    await waitForPreset(page);
+    const shape = page.getByTestId("annotation-outline-rect");
+    await shape.click();
+    const handle = page.getByTestId("annotation-resize-outline-rect-bottom-right");
+    await expect(handle).toBeVisible();
+    await waitForStableBox(handle);
+    const bounds = await handle.boundingBox();
+    if (!bounds) throw new Error("Missing resize handle");
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await page.mouse.down();
+    await page.keyboard.down("Shift");
+    await page.mouse.move(bounds.x + 25, bounds.y + 10, { steps: 8 });
+    await page.mouse.up();
+    await page.keyboard.up("Shift");
+    await expect
+      .poll(async () => {
+        const r = await shape.boundingBox();
+        return r ? Math.abs(r.width - r.height) : Infinity;
+      })
+      .toBeLessThan(1);
   });
 
   for (let part = 0; part < PRESET_PARTS; part++)
