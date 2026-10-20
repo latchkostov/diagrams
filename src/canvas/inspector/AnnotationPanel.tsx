@@ -121,11 +121,7 @@ export function AnnotationPanel({
             <button
               type="button"
               className={`icon-btn insp-more-shapes-btn${!isDefaultShape ? " is-on" : ""}`}
-              title={
-                !isDefaultShape
-                  ? `${shapeLabel[currentShape]} (${t("shape.moreShapes")})`
-                  : t("shape.moreShapes")
-              }
+              title={!isDefaultShape ? `${shapeLabel[currentShape]} (${t("shape.moreShapes")})` : t("shape.moreShapes")}
               aria-label={t("shape.moreShapes")}
               aria-haspopup="menu"
               aria-expanded={!!shapePicker}
@@ -146,13 +142,10 @@ export function AnnotationPanel({
               label={t("shape.selectShape")}
               testId="shape-picker"
               searchable={t("shape.searchShapes")}
-              items={shapeMenu(
-                "pick-shape",
-                (s) => ({
-                  checked: currentShape === s.id,
-                  run: () => editor.updateAnnotation(id, { shape: s.id }),
-                }),
-              )}
+              items={shapeMenu("pick-shape", (s) => ({
+                checked: currentShape === s.id,
+                run: () => editor.updateAnnotation(id, { shape: s.id }),
+              }))}
               onClose={() => setShapePicker(null)}
             />
           )}

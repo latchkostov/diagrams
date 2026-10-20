@@ -515,6 +515,4 @@ export const SHAPES_CATALOG: readonly ShapeDefinition[] = [
   },
 ];
 
-export const shapeMap: ReadonlyMap<AnnotationShape, ShapeDefinition> = new Map(
-  SHAPES_CATALOG.map((s) => [s.id, s]),
-);
+export const shapeMap: ReadonlyMap<AnnotationShape, ShapeDefinition> = new Map(SHAPES_CATALOG.map((s) => [s.id, s]));

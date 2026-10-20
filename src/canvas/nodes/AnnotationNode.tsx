@@ -1,5 +1,12 @@
 import { memo, useLayoutEffect, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
-import { Handle, NodeResizeControl, ResizeControlVariant, useKeyPress, useReactFlow, type NodeProps } from "@xyflow/react";
+import {
+  Handle,
+  NodeResizeControl,
+  ResizeControlVariant,
+  useKeyPress,
+  useReactFlow,
+  type NodeProps,
+} from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLabel, minSize } from "../annotations";
@@ -251,7 +258,9 @@ export function ShapeOutline({ shape, w, h }: { shape: AnnotationShape; w: numbe
     case "hexagon": {
       const hx = Math.min(w * 0.18, 28);
       body = (
-        <polygon points={`${hx},${i} ${w - hx},${i} ${w - i},${h / 2} ${w - hx},${h - i} ${hx},${h - i} ${i},${h / 2}`} />
+        <polygon
+          points={`${hx},${i} ${w - hx},${i} ${w - i},${h / 2} ${w - hx},${h - i} ${hx},${h - i} ${i},${h / 2}`}
+        />
       );
       break;
     }
@@ -396,9 +405,7 @@ export function ShapeOutline({ shape, w, h }: { shape: AnnotationShape; w: numbe
     }
     case "flag": {
       const fw = Math.min(16, w * 0.15);
-      body = (
-        <polygon points={`${i},${i} ${w - i},${i} ${w - fw},${h / 2} ${w - i},${h - i} ${i},${h - i}`} />
-      );
+      body = <polygon points={`${i},${i} ${w - i},${i} ${w - fw},${h / 2} ${w - i},${h - i} ${i},${h - i}`} />;
       break;
     }
     case "win-pane":
@@ -492,9 +499,7 @@ export function ShapeOutline({ shape, w, h }: { shape: AnnotationShape; w: numbe
     case "curv-trap": {
       const crx = Math.min(20, w * 0.18);
       body = (
-        <path
-          d={`M${crx + i},${i} H${w - crx - i} L${w - i},${h - i} H${crx + i} Q${i},${h / 2} ${crx + i},${i} Z`}
-        />
+        <path d={`M${crx + i},${i} H${w - crx - i} L${w - i},${h - i} H${crx + i} Q${i},${h / 2} ${crx + i},${i} Z`} />
       );
       break;
     }

@@ -1,11 +1,6 @@
 import type { MenuItem, MenuNode } from "../../editor/actions";
 import type { IconName } from "../../components/Icon";
-import {
-  SHAPE_CATEGORY_ORDER,
-  SHAPES_CATALOG,
-  shapeCategoryLabel,
-  type ShapeDefinition,
-} from "./catalog";
+import { SHAPE_CATEGORY_ORDER, SHAPES_CATALOG, shapeCategoryLabel, type ShapeDefinition } from "./catalog";
 
 export function shapeMenu(
   idPrefix: string,

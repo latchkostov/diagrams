@@ -107,10 +107,7 @@ export function useQuickAddPlacement(
       menus.closeMenu("command");
       hideTip();
       const fallback = editor.getNode(fromId)?.label ?? editor.getAnnotation(fromId)?.text ?? "";
-      pickNamed(
-        () => editor.createConnected({ from: fromId, clone: true, toward }),
-        fallback,
-      );
+      pickNamed(() => editor.createConnected({ from: fromId, clone: true, toward }), fallback);
     },
     [readOnly, live, presenting, editor, hideTip, pickNamed, menus],
   );
@@ -158,13 +155,10 @@ export function paneQuickAdd(
             },
             getRecentStencils(),
             (sh) => {
-              pickNamed(
-                () => {
-                  const id = editor.addAnnotation("shape", { at: point, shape: sh.id });
-                  return id ? { id, edge: null, merge: `new:${id}` } : null;
-                },
-                sh.label,
-              );
+              pickNamed(() => {
+                const id = editor.addAnnotation("shape", { at: point, shape: sh.id });
+                return id ? { id, edge: null, merge: `new:${id}` } : null;
+              }, sh.label);
             },
           ),
       },

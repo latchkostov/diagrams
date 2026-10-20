@@ -144,4 +144,3 @@ export function parseAnnotationDrag(v: string): { kind: AnnotationKind; shape?: 
 /** Open shapes (brackets, braces) only have stroke, no fill. */
 export const isOpenShape = (shape: AnnotationShape | undefined): boolean =>
   shape === "comment" || shape === "brace-r" || shape === "braces";
-
