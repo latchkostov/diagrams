@@ -17,10 +17,12 @@ const AnnotationFormatting = lazyComponent(() => import("./AnnotationFormatting"
 export function AnnotationEditor({
   value,
   kind,
+  caret,
   onDone,
 }: {
   value: string;
   kind: AnnotationKind;
+  caret?: "end";
   /** The text, and how many pixels it overflows the box by (0 when it fits). */
   onDone: (text: string | null, overflow: number) => void;
 }) {
@@ -34,7 +36,7 @@ export function AnnotationEditor({
     const el = ref.current;
     onDone(v, el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0);
   };
-  useSelectOnMount(ref);
+  useSelectOnMount(ref, caret ?? "all");
   // Magnified when zoomed out (a zone: its name chip), it stays inside the canvas.
   useLayoutEffect(() => keepInPane(kind === "zone" ? (ref.current?.parentElement ?? null) : ref.current), [kind]);
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {

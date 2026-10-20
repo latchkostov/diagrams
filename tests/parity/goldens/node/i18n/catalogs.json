@@ -1,6 +1,6 @@
 {
   "ar": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 483,
     "areas": {
       "admission": "1585747777b2",
@@ -14,7 +14,7 @@
       "collab": "a01f1883da5c",
       "command": "d9e70c4a50a6",
       "common": "a8b324af96d5",
-      "edit": "eee884842e49",
+      "edit": "f681cc78394c",
       "embedDialog": "4384beb68482",
       "examples": "ed757866fe54",
       "export": "7917e81172b2",
@@ -67,7 +67,7 @@
     }
   },
   "bg": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "339cd5287f25",
@@ -81,7 +81,7 @@
       "collab": "d6bcff783ebb",
       "command": "95f61b1c0646",
       "common": "4696fc5758aa",
-      "edit": "22a10d944881",
+      "edit": "fde0d71be29b",
       "embedDialog": "1d9c7c8ba4fb",
       "examples": "f7eedb6bb4cf",
       "export": "6cb45e4c5b88",
@@ -134,7 +134,7 @@
     }
   },
   "cs": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "c8683cb1d947",
@@ -148,7 +148,7 @@
       "collab": "0b10c57ecb45",
       "command": "4a0221d5103c",
       "common": "c306d6683eac",
-      "edit": "fca5fe9c8601",
+      "edit": "5330ad5c7863",
       "embedDialog": "0c1dd51162d4",
       "examples": "0bf771d2b849",
       "export": "19e72fe693cc",
@@ -201,7 +201,7 @@
     }
   },
   "da": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "2309322c7e25",
@@ -215,7 +215,7 @@
       "collab": "5369ef281e7c",
       "command": "e997c2ce1052",
       "common": "8d5a570947eb",
-      "edit": "b4947e0f8b64",
+      "edit": "245cabb68615",
       "embedDialog": "aab29b2fe4cf",
       "examples": "8e8eaedf35c8",
       "export": "1d0ac2b62f3d",
@@ -268,7 +268,7 @@
     }
   },
   "de": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "866ad98895eb",
@@ -282,7 +282,7 @@
       "collab": "6c35b899ddef",
       "command": "19f789d85fcf",
       "common": "5a10542e7a33",
-      "edit": "602ab66ca82b",
+      "edit": "c25012a502f4",
       "embedDialog": "eeb48e4916a5",
       "examples": "88c5856b79bb",
       "export": "a3ef60a1d7ab",
@@ -335,7 +335,7 @@
     }
   },
   "el": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "c85e9b1328ba",
@@ -349,7 +349,7 @@
       "collab": "71b3bfb72c8a",
       "command": "fefd72c418f5",
       "common": "8c84d1c52584",
-      "edit": "7eb69b10a118",
+      "edit": "07eb7161f160",
       "embedDialog": "88c9511918a6",
       "examples": "b4f36627015d",
       "export": "b286ecb30512",
@@ -402,7 +402,7 @@
     }
   },
   "en-XA": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
@@ -416,7 +416,7 @@
       "collab": "75a43013078e",
       "command": "bd91d128902d",
       "common": "2db005be6c5e",
-      "edit": "07ba8504292b",
+      "edit": "de323261d54a",
       "embedDialog": "bbb623ced8f1",
       "examples": "84611a3f0277",
       "export": "5663242ca903",
@@ -469,7 +469,7 @@
     }
   },
   "es": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "8275061ad675",
@@ -483,7 +483,7 @@
       "collab": "bad8e8fae618",
       "command": "ce81625ed334",
       "common": "3ed7a4b82ee0",
-      "edit": "be0d6fff5d05",
+      "edit": "14b41279b08a",
       "embedDialog": "36383fde44d7",
       "examples": "737fd01f35b7",
       "export": "d4365bedcc7c",
@@ -536,7 +536,7 @@
     }
   },
   "et": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "bcda9d352f6d",
@@ -550,7 +550,7 @@
       "collab": "0a7429c0b5f2",
       "command": "81a336c9a92c",
       "common": "497e9c12db62",
-      "edit": "f8923a3e37cf",
+      "edit": "fc6ff281562b",
       "embedDialog": "c74080a9c2ee",
       "examples": "44b504f3c2fb",
       "export": "042ca1f18d29",
@@ -603,7 +603,7 @@
     }
   },
   "fi": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "639abadda530",
@@ -617,7 +617,7 @@
       "collab": "9e2a7b01ae58",
       "command": "e891d045ddcd",
       "common": "7ccd4afe74af",
-      "edit": "ef7b39e38ebb",
+      "edit": "3cc21fb9ff6e",
       "embedDialog": "55e9df3ce8ed",
       "examples": "cbe0bf9ab696",
       "export": "59d643b261d6",
@@ -670,7 +670,7 @@
     }
   },
   "fr": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "c0da5634d917",
@@ -684,7 +684,7 @@
       "collab": "7a311b472380",
       "command": "aab509812f5e",
       "common": "c5512be0aff4",
-      "edit": "898dc2b36709",
+      "edit": "71be460674b7",
       "embedDialog": "5e2f859f7c84",
       "examples": "0cb1e6506231",
       "export": "0bd1c1adc999",
@@ -737,7 +737,7 @@
     }
   },
   "he": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "60a5b99830c3",
@@ -751,7 +751,7 @@
       "collab": "b320ab2028d0",
       "command": "484e53b86629",
       "common": "de9a37028a53",
-      "edit": "4da5a7cb68fb",
+      "edit": "2e2e7e91536e",
       "embedDialog": "ce94debc53f6",
       "examples": "a31066f45c21",
       "export": "941a7647f095",
@@ -804,7 +804,7 @@
     }
   },
   "hi": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "81b5998e2d74",
@@ -818,7 +818,7 @@
       "collab": "4e404a233bec",
       "command": "577de78c824c",
       "common": "162b95253170",
-      "edit": "4101ad8a5193",
+      "edit": "dda2ec1d5b4c",
       "embedDialog": "d870a16d3bda",
       "examples": "c5026682523e",
       "export": "ba6affc274ef",
@@ -871,7 +871,7 @@
     }
   },
   "hr": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "250278672ecf",
@@ -885,7 +885,7 @@
       "collab": "2bea449adf3f",
       "command": "f9e44e430822",
       "common": "a939122ae984",
-      "edit": "d0b475451abc",
+      "edit": "4aff23d0361a",
       "embedDialog": "e0a82a006253",
       "examples": "4528eb7a63e3",
       "export": "88b38e562484",
@@ -938,7 +938,7 @@
     }
   },
   "hu": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "a173caaa787a",
@@ -952,7 +952,7 @@
       "collab": "8059c85287a0",
       "command": "c3aaee02ca33",
       "common": "e2394342bdb6",
-      "edit": "2a3ea807594c",
+      "edit": "faa8b7835340",
       "embedDialog": "acfcad7fc598",
       "examples": "fddd792a9537",
       "export": "f1da3cfe9ee5",
@@ -1005,7 +1005,7 @@
     }
   },
   "id": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "93080e86188c",
@@ -1019,7 +1019,7 @@
       "collab": "7f07bec4e082",
       "command": "a702a3ee9161",
       "common": "ff2fa6084d51",
-      "edit": "8b71e01f7520",
+      "edit": "831fc4e6f1c2",
       "embedDialog": "4614060f063e",
       "examples": "a560c42c4360",
       "export": "337391d9e8dc",
@@ -1072,7 +1072,7 @@
     }
   },
   "it": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "9016b7c98d05",
@@ -1086,7 +1086,7 @@
       "collab": "0ba69a0d7916",
       "command": "c66bce68f758",
       "common": "47a559d011ac",
-      "edit": "5d648413b124",
+      "edit": "285eb148f36c",
       "embedDialog": "435685a0793b",
       "examples": "dbb63094e920",
       "export": "2c728e8507e3",
@@ -1139,7 +1139,7 @@
     }
   },
   "ja": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "03ac6ff46fda",
@@ -1153,7 +1153,7 @@
       "collab": "8dc870b16969",
       "command": "89bd6767d2c7",
       "common": "7e5176112087",
-      "edit": "503243c9da97",
+      "edit": "3a5927984c94",
       "embedDialog": "8e231b9d4529",
       "examples": "21be4a6d9e1e",
       "export": "743b9b4e0269",
@@ -1206,7 +1206,7 @@
     }
   },
   "ko": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "9668a36595b4",
@@ -1220,7 +1220,7 @@
       "collab": "60d788ada7fe",
       "command": "b885494e8428",
       "common": "0a38dc66e6b9",
-      "edit": "d527609872b1",
+      "edit": "d012d28fdbcc",
       "embedDialog": "a091ea2e940e",
       "examples": "efc3d36b3447",
       "export": "9096a821b9b6",
@@ -1273,7 +1273,7 @@
     }
   },
   "lt": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "d340551a2a22",
@@ -1287,7 +1287,7 @@
       "collab": "96bd47c06ef3",
       "command": "ec865440485d",
       "common": "35250f8f8248",
-      "edit": "2ae6e8598c7e",
+      "edit": "3606128b7852",
       "embedDialog": "24b85395cffe",
       "examples": "3cbf4d937cc5",
       "export": "66557eac8e1c",
@@ -1340,7 +1340,7 @@
     }
   },
   "lv": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "78e387261dc3",
@@ -1354,7 +1354,7 @@
       "collab": "f414d374c718",
       "command": "96172b6ab7a0",
       "common": "758fb7647e78",
-      "edit": "e088d77027bc",
+      "edit": "bb1021e821d0",
       "embedDialog": "1cceae028b9d",
       "examples": "48b59089ae64",
       "export": "1eb5dc5d3b3b",
@@ -1407,7 +1407,7 @@
     }
   },
   "nb": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "4c2373a03104",
@@ -1421,7 +1421,7 @@
       "collab": "a56ebfbd1639",
       "command": "838de747dc57",
       "common": "64ada6e3677b",
-      "edit": "8436ca0363e5",
+      "edit": "6470a94f0a8d",
       "embedDialog": "424f69803839",
       "examples": "e935f18c48a4",
       "export": "d3b024a15ae9",
@@ -1474,7 +1474,7 @@
     }
   },
   "nl": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "9dca014cc22e",
@@ -1488,7 +1488,7 @@
       "collab": "62d13e93ca9b",
       "command": "bb702d1d104b",
       "common": "e5d6c6576b9b",
-      "edit": "291eca8ab366",
+      "edit": "42e3885bfa48",
       "embedDialog": "932e22b826fc",
       "examples": "d92e28d2f412",
       "export": "432ac7f968de",
@@ -1541,7 +1541,7 @@
     }
   },
   "pl": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "570713cc3f9c",
@@ -1555,7 +1555,7 @@
       "collab": "8d4062d924ea",
       "command": "ac343e886da6",
       "common": "94dc62551dbb",
-      "edit": "e3974c8235ac",
+      "edit": "6659fe176ee3",
       "embedDialog": "4a1af508acf5",
       "examples": "d16d114c256b",
       "export": "c20fd137e455",
@@ -1608,7 +1608,7 @@
     }
   },
   "pt-BR": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "b1b3aa0fdcce",
@@ -1622,7 +1622,7 @@
       "collab": "29fc6c60e24a",
       "command": "f7ff5ed827a4",
       "common": "72425e8f67cc",
-      "edit": "3b01d00007ad",
+      "edit": "4d488e5396d5",
       "embedDialog": "e31ee86eab31",
       "examples": "e429327c89a7",
       "export": "841bde998fab",
@@ -1675,7 +1675,7 @@
     }
   },
   "pt-PT": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "269f381da119",
@@ -1689,7 +1689,7 @@
       "collab": "9de105fb63a5",
       "command": "57b0cb1db168",
       "common": "fe229ad69364",
-      "edit": "47ab29c95aee",
+      "edit": "5a9a47c0bf5e",
       "embedDialog": "06c9b820ad58",
       "examples": "6e2777e5d991",
       "export": "e8990a4faf3e",
@@ -1742,7 +1742,7 @@
     }
   },
   "ro": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "2fc367bfb234",
@@ -1756,7 +1756,7 @@
       "collab": "53499d3918e8",
       "command": "c9bb88c90eec",
       "common": "2585bc40713b",
-      "edit": "18e81df6e1d6",
+      "edit": "055e9d71388a",
       "embedDialog": "652be94a0d62",
       "examples": "8df78af22f28",
       "export": "0b60c861925a",
@@ -1809,7 +1809,7 @@
     }
   },
   "ru": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "dd2155d35792",
@@ -1823,7 +1823,7 @@
       "collab": "162294b25c3d",
       "command": "f2580a7b95d0",
       "common": "8c0c75d63e3e",
-      "edit": "dcd29c6926d9",
+      "edit": "ba362293cb25",
       "embedDialog": "2f49a32d2600",
       "examples": "9020049c5e5a",
       "export": "04d4f07c91cd",
@@ -1876,7 +1876,7 @@
     }
   },
   "sk": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "de282cafe657",
@@ -1890,7 +1890,7 @@
       "collab": "059ac3626cef",
       "command": "26984a4d038a",
       "common": "5c3ee70b58da",
-      "edit": "90694d2b190f",
+      "edit": "9b0726d17eaf",
       "embedDialog": "f92ec5b73599",
       "examples": "aa8a0827ef76",
       "export": "56378cbb30b4",
@@ -1943,7 +1943,7 @@
     }
   },
   "sl": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "46736cefd0aa",
@@ -1957,7 +1957,7 @@
       "collab": "b4746c9a3b2f",
       "command": "73fdfa8dfa09",
       "common": "6d718aa4d204",
-      "edit": "7ab6be0f631f",
+      "edit": "25f33c183676",
       "embedDialog": "b07a8b6feaa4",
       "examples": "d9614e79cd0a",
       "export": "a4d96e263397",
@@ -2010,7 +2010,7 @@
     }
   },
   "sr-Latn": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "b1f254245925",
@@ -2024,7 +2024,7 @@
       "collab": "b9df7f4daf14",
       "command": "848fece13eb8",
       "common": "bb7debb269a7",
-      "edit": "d9d071553a23",
+      "edit": "93bd1042e13e",
       "embedDialog": "34d2d1f5841b",
       "examples": "9528cb740a19",
       "export": "ee626f29d7cc",
@@ -2077,7 +2077,7 @@
     }
   },
   "sv": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "a1faad44500b",
@@ -2091,7 +2091,7 @@
       "collab": "c5da6b7ccb1e",
       "command": "c52fbace6954",
       "common": "a9982697b406",
-      "edit": "fcccb954757c",
+      "edit": "d7b6befcaa29",
       "embedDialog": "e774e5ed626f",
       "examples": "e576147e60da",
       "export": "5d3a1c70b3ee",
@@ -2144,7 +2144,7 @@
     }
   },
   "th": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "4c7152546e6f",
@@ -2158,7 +2158,7 @@
       "collab": "37df3b43a559",
       "command": "46d7b85301b8",
       "common": "0d49a4dd12dd",
-      "edit": "74b53d762bda",
+      "edit": "e8604ccbd230",
       "embedDialog": "bdf473b52c73",
       "examples": "5525e4a26e89",
       "export": "f1597b39d87c",
@@ -2211,7 +2211,7 @@
     }
   },
   "tr": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "c9ba84e9fc81",
@@ -2225,7 +2225,7 @@
       "collab": "8e1ae4990ba6",
       "command": "94593399657a",
       "common": "9ea30617a151",
-      "edit": "160da402b6f7",
+      "edit": "5e68ad2521d5",
       "embedDialog": "86ba237fdee0",
       "examples": "73f87f4a559f",
       "export": "97ffe1981924",
@@ -2278,7 +2278,7 @@
     }
   },
   "uk": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "01c3b2a9ea61",
@@ -2292,7 +2292,7 @@
       "collab": "167243aa40b2",
       "command": "44a85e8429df",
       "common": "0192aaa888b5",
-      "edit": "5591705787b7",
+      "edit": "2f2b4e7b7246",
       "embedDialog": "8aeac94e1d35",
       "examples": "b5876bb766ef",
       "export": "bdcda1ec496a",
@@ -2345,7 +2345,7 @@
     }
   },
   "vi": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "e4040b83feb7",
@@ -2359,7 +2359,7 @@
       "collab": "7aae528a8a89",
       "command": "cf28afb4529b",
       "common": "0702cf38f108",
-      "edit": "30fa0e95de83",
+      "edit": "589201c2323f",
       "embedDialog": "0a7125ac0f11",
       "examples": "dfa63776e9c6",
       "export": "edee9bcaee50",
@@ -2412,7 +2412,7 @@
     }
   },
   "zh-CN": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "320934d4f256",
@@ -2426,7 +2426,7 @@
       "collab": "011cb3d46e86",
       "command": "339b00c3b683",
       "common": "ecf0aff0cf9e",
-      "edit": "e9c60d8883ea",
+      "edit": "a1c87345cb7a",
       "embedDialog": "bb444c51bddb",
       "examples": "8cc5a786830b",
       "export": "0e69e18770f5",
@@ -2479,7 +2479,7 @@
     }
   },
   "zh-TW": {
-    "messages": 2506,
+    "messages": 2507,
     "fallback": 556,
     "areas": {
       "admission": "b8f5dc48650d",
@@ -2493,7 +2493,7 @@
       "collab": "470e5f391bda",
       "command": "6f70f747dcc9",
       "common": "98853983ef15",
-      "edit": "f1c885f6397c",
+      "edit": "529da2bbae83",
       "embedDialog": "45081bcb1772",
       "examples": "e6f4cab6558a",
       "export": "953cd7647042",

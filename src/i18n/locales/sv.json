@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "geometrin måste vara ändlig.",
   "edit.coordinateBudget": "det ligger utanför koordinatgränsen. Flytta markeringen närmare origo.",
   "edit.annotationLimit": "Det går inte att konvertera denna avgränsning: diagrammet har redan {limit} anteckningar. Ta bort en anteckning och försök igen.",
+  "edit.annotationInsertLimit": "Det här diagrammet har nått gränsen på {limit, number} anteckningar. Ta bort en anteckning och försök igen.",
   "edit.annotationTextLimit": "Den här avgränsningen kunde inte konverteras: etiketten överstiger {limit} tecken. Korta ned etiketten och försök igen.",
   "edit.annotationSize": "storleken måste vara mellan 1 och {limit} pixlar. Välj en mindre markering.",
   "broker.partitions": "Partitioner",

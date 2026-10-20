@@ -1,3 +1,4 @@
+import { MERMAID_BRACKETS, MERMAID_ALIASES, type MermaidShape } from "./shapes";
 import {
   DIAGRAM_FORMAT,
   type DiagramEdge,
@@ -43,23 +44,10 @@ export interface MermaidImportResult {
   warnings: string[];
 }
 
-type Shape =
-  | "rect"
-  | "round"
-  | "stadium"
-  | "subroutine"
-  | "cylinder"
-  | "circle"
-  | "asym"
-  | "rhombus"
-  | "hexagon"
-  | "parallelogram"
-  | "trapezoid";
-
 interface PNode {
   id: string;
   label?: string;
-  shape?: Shape;
+  shape?: MermaidShape;
   group?: string;
   order: number;
 }
@@ -78,83 +66,6 @@ interface PGroup {
 }
 
 const stencilIds = new Set(catalog.map((s) => s.id));
-
-// Openers, longest first, with their closers.
-const SHAPES: [string, string, Shape][] = [
-  ["(((", ")))", "circle"],
-  ["((", "))", "circle"],
-  ["([", "])", "stadium"],
-  ["[[", "]]", "subroutine"],
-  ["[(", ")]", "cylinder"],
-  ["{{", "}}", "hexagon"],
-  ["[/", "/]", "parallelogram"],
-  ["[\\", "\\]", "parallelogram"],
-  ["[/", "\\]", "trapezoid"],
-  ["(", ")", "round"],
-  ["[", "]", "rect"],
-  ["{", "}", "rhombus"],
-  [">", "]", "asym"],
-];
-
-const NEW_SHAPES: Record<string, Shape> = {
-  cyl: "cylinder",
-  cylinder: "cylinder",
-  db: "cylinder",
-  database: "cylinder",
-  das: "cylinder",
-  "lin-cyl": "cylinder",
-  datastore: "cylinder",
-  rounded: "round",
-  stadium: "stadium",
-  pill: "stadium",
-  circle: "circle",
-  circ: "circle",
-  "sm-circ": "circle",
-  "small-circle": "circle",
-  start: "circle",
-  "dbl-circ": "circle",
-  "f-circ": "circle",
-  "framed-circle": "circle",
-  "cross-circ": "circle",
-  diamond: "rhombus",
-  decision: "rhombus",
-  hex: "hexagon",
-  hexagon: "hexagon",
-  subproc: "subroutine",
-  subroutine: "subroutine",
-  "lean-r": "parallelogram",
-  "lean-l": "parallelogram",
-  parallelogram: "parallelogram",
-  "trap-b": "trapezoid",
-  "trap-t": "trapezoid",
-  trapezoid: "trapezoid",
-  asym: "asym",
-  odd: "asym",
-  doc: "rect",
-  docs: "rect",
-  "lin-doc": "rect",
-  "tag-doc": "rect",
-  card: "rect",
-  "notch-rect": "rect",
-  "sl-rect": "rect",
-  "lin-rect": "rect",
-  "div-rect": "rect",
-  "tag-rect": "rect",
-  processes: "rect",
-  procs: "rect",
-  delay: "round",
-  "notch-pent": "rect",
-  hourglass: "rhombus",
-  fork: "rect",
-  "bow-rect": "rect",
-  flag: "asym",
-  "win-pane": "rect",
-  bolt: "asym",
-  comment: "rect",
-  "brace-r": "rect",
-  braces: "rect",
-  "curv-trap": "trapezoid",
-};
 
 const ID = /[\p{L}\p{N}_$]+(?:[-.][\p{L}\p{N}_$]+)*/uy;
 
@@ -241,6 +152,17 @@ class Scanner {
     const m = re.exec(this.s);
     if (m) this.i = re.lastIndex;
     return m;
+  }
+  /** The closing brace belongs to the attributes, never to a quoted label inside them. */
+  attributes(): string {
+    const start = this.i;
+    let quoted = false;
+    for (; this.i < this.s.length; this.i++) {
+      const c = this.s[this.i];
+      if (c === '"') quoted = !quoted;
+      if (c === "}" && !quoted) return this.s.slice(start, this.i++);
+    }
+    return this.fail("Unclosed shape attributes");
   }
   /** Reads up to (not including) `close`, honouring a leading quoted string. */
   until(close: string): string {
@@ -335,13 +257,16 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
     // New-style shape data: A@{ shape: cyl, label: "Orders" }
     if (sc.s.startsWith("@{", sc.i)) {
       sc.i += 2;
-      const body = sc.until("}");
+      const body = sc.attributes();
       const shape = /shape\s*:\s*([\w-]+)/.exec(body)?.[1];
       const label = /label\s*:\s*("([^"]*)"|[^,}]+)/.exec(body);
-      if (shape && NEW_SHAPES[shape]) n.shape = NEW_SHAPES[shape];
+      if (shape) n.shape = MERMAID_ALIASES.get(shape);
       if (label) n.label = cleanLabel(label[2] ?? label[1]);
     } else {
-      for (const [open, close, shape] of SHAPES) {
+      for (const {
+        brackets: [open, close],
+        importAs: shape,
+      } of MERMAID_BRACKETS) {
         if (!sc.s.startsWith(open, sc.i)) continue;
         const save = sc.i;
         sc.i += open.length;

@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "su geometría debe ser finita.",
   "edit.coordinateBudget": "está fuera del límite de coordenadas. Acerca la selección al origen.",
   "edit.annotationLimit": "No se puede convertir este límite: el diagrama ya tiene {limit} anotaciones. Elimina una anotación e inténtalo de nuevo.",
+  "edit.annotationInsertLimit": "Este diagrama ha alcanzado el límite de {limit, number} anotaciones. Elimina una anotación e inténtalo de nuevo.",
   "edit.annotationTextLimit": "No se pudo convertir este límite: su etiqueta supera los {limit} caracteres. Acorta la etiqueta e inténtalo de nuevo.",
   "edit.annotationSize": "su tamaño debe estar entre 1 y {limit} píxeles. Elige una selección más pequeña.",
   "broker.partitions": "Particiones",

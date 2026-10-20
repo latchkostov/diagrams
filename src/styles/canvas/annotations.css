@@ -274,11 +274,11 @@
   text-align: center;
 }
 
-.ann-body-ellipse {
+.ann-shape .ann-body-ellipse {
   padding: 12% 16%;
 }
 
-.ann-body-diamond {
+.ann-shape .ann-body-diamond {
   padding: 20% 24%;
 }
 
@@ -286,24 +286,24 @@
   padding-top: 30px;
 }
 
-.ann-body-hexagon,
-.ann-body-lean-r,
-.ann-body-lean-l,
-.ann-body-trap-b,
-.ann-body-trap-t,
-.ann-body-braces {
+.ann-shape .ann-body-hexagon,
+.ann-shape .ann-body-lean-r,
+.ann-shape .ann-body-lean-l,
+.ann-shape .ann-body-trap-b,
+.ann-shape .ann-body-trap-t,
+.ann-shape .ann-body-braces {
   padding: 8px 16%;
 }
 
-.ann-body-tri {
+.ann-shape .ann-body-tri {
   padding: 25% 15% 10% 15%;
 }
 
-.ann-body-flip-tri {
+.ann-shape .ann-body-flip-tri {
   padding: 10% 15% 25% 15%;
 }
 
-.ann-body-hourglass {
+.ann-shape .ann-body-hourglass {
   padding: 8px 22%;
 }
 
@@ -314,19 +314,19 @@
   padding-bottom: 16px;
 }
 
-.ann-body-asym {
+.ann-shape .ann-body-asym {
   padding-right: 18%;
 }
 
-.ann-body-curv-trap {
+.ann-shape .ann-body-curv-trap {
   padding-left: 18%;
 }
 
-.ann-body-comment {
+.ann-shape .ann-body-comment {
   padding-left: 18%;
 }
 
-.ann-body-brace-r {
+.ann-shape .ann-body-brace-r {
   padding-right: 18%;
 }
 

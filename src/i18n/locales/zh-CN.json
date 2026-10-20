@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "其几何数据必须为有限值。",
   "edit.coordinateBudget": "已超出坐标范围。请将所选对象移近原点。",
   "edit.annotationLimit": "无法转换此边界：图表中已有 {limit} 条注释。请删除一条注释后重试。",
+  "edit.annotationInsertLimit": "此图表已达到 {limit, number} 条注释的上限。请删除一条注释后重试。",
   "edit.annotationTextLimit": "无法转换此边界：其标签超过 {limit} 个字符。请缩短标签后重试。",
   "edit.annotationSize": "尺寸必须在 1 到 {limit} 像素之间。请选择更小的范围。",
   "broker.partitions": "分区",

@@ -12,6 +12,9 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["bulk inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]MultiPanel\.tsx$/],
+  ["diagram inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]DiagramPanel\.tsx$/],
+  ["extended shape glyphs", /[/\\]src[/\\]components[/\\](?:ShapeIcon\.tsx|shapeIconPaths\.ts)$/],
   [
     "Markdown rendering and parsing",
     /[/\\]src[/\\]components[/\\]markdown[/\\](MarkdownView\.tsx|markdownParser\.ts)$/,
@@ -99,6 +102,8 @@ const STARTUP_CHUNKS = [
   // Request routing R1's file grammar and bounds (src/model/requestRouting.ts): native validation refuses a bad
   // route table or mix on open. Matching, the engine and the routing inspector stay lazy.
   "requestRouting",
+  // Expanded annotation modules share Rolldown's live-binding export helper with the loader.
+  "rolldown-runtime",
   "size",
   "storage",
   "toast",
@@ -277,6 +282,7 @@ describe("production bundle split", () => {
     for (const build of [plain(), rooms]) {
       const ids = bundled(closure([canvasChunk(build)], build));
       expect(ids.some((id) => /[/\\]nodes[/\\]AnnotationEditor\.tsx$/.test(id))).toBe(true);
+      expect(ids.some((id) => /[/\\]nodes[/\\]ShapeOutline\.tsx$/.test(id))).toBe(true);
       expect(ids.some((id) => /[/\\](AnnotationFormatting\.tsx|markdownKeys\.ts)$/.test(id))).toBe(false);
       expect(bundled(build.chunks).some((id) => /[/\\]nodes[/\\]AnnotationFormatting\.tsx$/.test(id))).toBe(true);
     }

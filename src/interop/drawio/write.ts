@@ -8,7 +8,7 @@ import { escapeXml } from "../xml";
 import { boxShape, groupStyle, imageShape, nativeShape, type DrawioShape } from "./mapping";
 import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { isColorValue } from "../../model/annotations";
-import { shapeMap } from "../../canvas/shapes/catalog";
+import { DRAWIO_SHAPES } from "./shapes";
 
 /**
  * Dependency tints for draw.io (its canvas is light): the light-theme --rel-* tokens. With the dotted
@@ -59,7 +59,7 @@ export function annotationStyle(a: DiagramAnnotation): string {
       return `rounded=1;arcSize=6;absoluteArcSize=1;html=1;whiteSpace=wrap;dashed=1;dashPattern=8 6;align=left;verticalAlign=top;spacingLeft=14;spacingTop=6;fontStyle=1;${font}fillColor=${c.fill};fillOpacity=55;strokeColor=${c.hex};fontColor=${c.hex};`;
     default: {
       const sh = a.shape ?? "rect";
-      const base = shapeMap.get(sh)?.drawioStyle ?? "";
+      const base = DRAWIO_SHAPES[sh];
       return `${base}html=1;whiteSpace=wrap;${font}fillColor=${c.fill};strokeColor=${c.hex};fontColor=#1F2937;`;
     }
   }

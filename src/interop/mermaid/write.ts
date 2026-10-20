@@ -1,5 +1,6 @@
+import { MERMAID_SHAPES } from "./shapes";
 import { t } from "../../i18n";
-import type { AnnotationShape, DiagramChecks, DiagramFile, DiagramGroup } from "../../model/types";
+import type { DiagramChecks, DiagramFile, DiagramGroup } from "../../model/types";
 import { stencilExportShape, type ExportShape } from "../../stencils/exportShape";
 import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { RELATION_STROKE } from "../drawio/write";
@@ -69,31 +70,11 @@ function idMaker() {
   };
 }
 
-/** Mermaid brackets per stencil export shape. */
-const STENCIL_BRACKETS: Record<ExportShape, [string, string]> = {
-  cylinder: ["[(", ")]"],
-  stadium: ["([", "])"],
-  rect: ["[", "]"],
-};
-
-import { shapeMap } from "../../canvas/shapes/catalog";
-
-/** Mermaid brackets per shape for shapes that support classic bracket syntax. */
-const SHAPE_BRACKETS: Partial<Record<AnnotationShape, [string, string]>> = {
-  rect: ["[", "]"],
-  rounded: ["(", ")"],
-  ellipse: ["((", "))"],
-  diamond: ["{", "}"],
-  cylinder: ["[(", ")]"],
-  stadium: ["([", "])"],
-  subroutine: ["[[", "]]"],
-  "dbl-circ": ["(((", ")))"],
-  hexagon: ["{{", "}}"],
-  "lean-r": ["[/", "/]"],
-  "lean-l": ["[\\", "\\]"],
-  "trap-b": ["[/", "\\]"],
-  "trap-t": ["[\\", "/]"],
-  asym: [">", "]"],
+/** Stencils use the same syntax descriptors as annotations and the reader. */
+const STENCIL_SHAPES: Record<ExportShape, keyof typeof MERMAID_SHAPES> = {
+  cylinder: "cylinder",
+  stadium: "stadium",
+  rect: "rect",
 };
 
 /** The toast after Copy Mermaid (here, not in the app's startup code). A private diagram's names no public site. */
@@ -116,7 +97,7 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
 
   const nodeLine = (n: DiagramFile["nodes"][number], indent: string) => {
     const text = mermaidText(n.sublabel ? `${n.label}\n${n.sublabel}` : n.label || n.id);
-    const [open, close] = STENCIL_BRACKETS[stencilExportShape(n.stencil)];
+    const [open, close] = MERMAID_SHAPES[STENCIL_SHAPES[stencilExportShape(n.stencil)]].brackets!;
     return `${indent}${nodeIds.get(n.id)}${open}"${text}"${close}`;
   };
 
@@ -130,15 +111,15 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
   for (const n of d.nodes) if (!n.group || !grouped.has(n.group)) lines.push(nodeLine(n, "  "));
   for (const a of shapes) {
     const sh = a.shape ?? "rect";
-    const brackets = SHAPE_BRACKETS[sh];
+    const syntax = MERMAID_SHAPES[sh];
+    const brackets = syntax.brackets;
     const text = mermaidText(a.text.trim() || " ");
     const id = nodeIds.get(a.id)!;
     if (brackets) {
       lines.push(`  ${id}${brackets[0]}"${text}"${brackets[1]}`);
     } else {
-      const def = shapeMap.get(sh);
-      const mShape = def?.mermaidShape ?? sh;
-      lines.push(`  ${id}@{ shape: ${mShape}, label: "${text}" }`);
+      const label = text.replace(/\{/g, "#123;").replace(/\}/g, "#125;");
+      lines.push(`  ${id}@{ shape: ${syntax.shape}, label: "${label}" }`);
     }
   }
 

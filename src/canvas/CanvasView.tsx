@@ -827,6 +827,7 @@ function CanvasInner({
       presenting,
       editing,
       setEditing: editGestures ? setEditing : () => {},
+      annotationCommands: editGestures ? editor : undefined,
       rename: canOpenInspector ? renameIn : undefined,
       openDoc: canOpenInspector
         ? (nodeId: string) => {

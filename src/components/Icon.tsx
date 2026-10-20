@@ -1,3 +1,4 @@
+import { lazyComponent } from "../lib/lazyLoad";
 import { TRAFFIC_PATH } from "./glyphPaths";
 import { RELATION_GLYPHS } from "./relationGlyphs";
 
@@ -65,7 +66,6 @@ const paths = {
   tone: "M8 2.5a5.5 5.5 0 1 0 0 11c.8 0 1.2-.5 1.2-1.1 0-.9-.7-1-.7-1.9 0-.6.5-1 1.1-1h1.4a2.5 2.5 0 0 0 2.5-2.5C13.5 4.7 11 2.5 8 2.5Z",
   "select-all": "M2.5 5V2.5H5M7 2.5h2M11 2.5h2.5V5M13.5 7v2M13.5 11v2.5H11M9 13.5H7M5 13.5H2.5V11M2.5 9V7",
   layout: "M2.5 3h4v3h-4zM9.5 10h4v3h-4zM9.5 3h4v3h-4zM6.5 4.5h3M11.5 6v4",
-  shapes: "M2.5 2.5h5v5h-5zM11 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM5 9.5l2.5 4h-5zM9 9.5h4.5v4H9z",
   sparkle: "M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M12 4l-2 2M6 10l-2 2",
   // AI: a four-point spark and a small one.
   ai: "M6.5 2.5c.45 2.6 1.4 3.55 4 4-2.6.45-3.55 1.4-4 4-.45-2.6-1.4-3.55-4-4 2.6-.45 3.55-1.4 4-4ZM12 9.5c.2 1.15.6 1.55 1.75 1.75-1.15.2-1.55.6-1.75 1.75-.2-1.15-.6-1.55-1.75-1.75 1.15-.2 1.55-.6 1.75-1.75Z",
@@ -80,60 +80,21 @@ const paths = {
   note: "M2.75 2.75h10.5v6.5l-4 4h-6.5zM13.25 9.25h-4v4M5 5.5h6M5 8h3.5",
   zone: "M2.5 5V4a1.5 1.5 0 0 1 1.5-1.5h1M7 2.5h2M11 2.5h1a1.5 1.5 0 0 1 1.5 1.5v1M13.5 7v2M13.5 11v1a1.5 1.5 0 0 1-1.5 1.5h-1M9 13.5H7M5 13.5H4A1.5 1.5 0 0 1 2.5 12v-1M2.5 9V7M5 5.5h3.5",
   "shape-rect": "M2.5 4h11v8h-11z",
-  "shape-rounded": "M5 4h6a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 11 12H5a2.5 2.5 0 0 1-2.5-2.5v-3A2.5 2.5 0 0 1 5 4Z",
   "shape-ellipse": "M8 12.5c3 0 5.5-2 5.5-4.5S11 3.5 8 3.5 2.5 5.5 2.5 8s2.5 4.5 5.5 4.5Z",
   "shape-diamond": "M8 2 14 8 8 14 2 8z",
-  "shape-cylinder": "M3 4.5c0-1.1 2.24-2 5-2s5 .9 5 2-2.24 2-5 2-5-.9-5-2ZM3 4.5v7c0 1.1 2.24 2 5 2s5-.9 5-2v-7",
-  "shape-stadium": "M5 4h6a4 4 0 0 1 0 8H5a4 4 0 0 1 0-8Z",
-  "shape-subroutine": "M2 3.5h12v9H2zM4.5 3.5v9M11.5 3.5v9",
-  "shape-dbl-circ": "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM8 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
-  "shape-hexagon": "M4.5 3.5h7L14 8l-2.5 4.5h-7L2 8z",
-  "shape-lean-r": "M5 3.5h8.5l-2.5 9H2.5z",
-  "shape-lean-l": "M2.5 3.5H11l2.5 9H5z",
-  "shape-trap-b": "M4.5 3.5h7l2.5 9H2z",
-  "shape-trap-t": "M2 3.5h12l-2.5 9h-7z",
-  "shape-sl-rect": "M2 6.5 14 3.5v9H2z",
-  "shape-notch-rect": "M2 3.5h9.5L14 6v6.5H2z",
-  "shape-lin-rect": "M2 3.5h12v9H2zM2 6.5h12",
-  "shape-div-rect": "M2 3.5h12v9H2zM2 7h12",
-  "shape-tag-rect": "M2 5h4.5l1.5-1.5h6v9H2z",
-  "shape-processes": "M4 4h9v7H4zM2 6.5h2M2 13.5h9v-2",
-  "shape-delay": "M2.5 3.5h6a4.5 4.5 0 0 1 0 9h-6z",
-  "shape-notch-pent": "M4.5 3.5h7L14 6.5v6H2v-6z",
-  "shape-hourglass": "M2.5 3.5h11L8 8l5.5 4.5h-11L8 8z",
-  "shape-fork": "M1.5 6.5h13v3h-13z",
-  "shape-datastore": "M2 3.5h12M2 12.5h12M2 3.5v9M14 3.5v9",
-  "shape-das": "M4 3.5h8a4.5 4.5 0 0 1 0 9H4a4.5 4.5 0 0 1 0-9Z",
-  "shape-lin-cyl":
-    "M3 4.5c0-1.1 2.2-2 5-2s5 .9 5 2-2.2 2-5 2-5-.9-5-2ZM3 4.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7M3 8c0 1.1 2.2 2 5 2s5-.9 5-2",
-  "shape-bow-rect": "M2 3.5h12v9H2zM2 3.5l12 9M14 3.5l-12 9",
-  "shape-flag": "M3 3.5h10v6l-5 2.5-5-2.5z",
-  "shape-win-pane": "M2 3.5h12v9H2zM8 3.5v9M2 8h12",
-  "shape-doc": "M2.5 3h11v7.5c-2.5-1.5-5.5 1.5-8 0-1.5-.9-3 0-3 0z",
-  "shape-docs": "M4.5 2h9v7.5M2.5 4.5h9v7.5c-2-1.5-4.5 1.5-7 0-1-.7-2 0-2 0z",
-  "shape-lin-doc": "M2.5 3h11v7.5c-2.5-1.5-5.5 1.5-8 0-1.5-.9-3 0-3 0zM5 5.5h6M5 7.5h4",
-  "shape-tag-doc": "M2.5 3h11v7.5c-2.5-1.5-5.5 1.5-8 0-1.5-.9-3 0-3 0zM10.5 3v3h3",
-  "shape-bolt": "M9 2 4.5 8.5H8L7 14l5.5-6.5H9z",
-  "shape-comment": "M10 2.5c-2.5 0-3.5 1-3.5 2.5v1.5c0 1-2 1.5-3 1.5 1 0 3 .5 3 1.5v1.5c0 1.5 1 2.5 3.5 2.5",
-  "shape-brace-r": "M6 2.5c2.5 0 3.5 1 3.5 2.5v1.5c0 1 2 1.5 3 1.5-1 0-3 .5-3 1.5v1.5c0 1.5-1 2.5-3.5 2.5",
-  "shape-braces":
-    "M6 2.5c-1.5 0-2 .8-2 2v2c0 .8-1.5 1.5-2 1.5.5 0 2 .7 2 1.5v2c0 1.2.5 2 2 2M10 2.5c1.5 0 2 .8 2 2v2c0 .8 1.5 1.5 2 1.5-.5 0-2 .7-2 1.5v2c0 1.2-.5 2-2 2",
-  "shape-curv-trap": "M2 4a3 3 0 0 1 3-1h6a3 3 0 0 1 3 1v8a3 3 0 0 1-3 1H5a3 3 0 0 1-3-1z",
-  "shape-asym": "M2 3.5h8.5L14 8l-3.5 4.5H2z",
-  "shape-f-circ": "M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
-  "shape-framed-circle": "M2 2h12v12H2zM8 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
-  "shape-cross-circ": "M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11ZM4.5 4.5l7 7M11.5 4.5l-7 7",
-  "shape-tri": "M8 2.5 14 13.5H2z",
-  "shape-flip-tri": "M2 2.5h12L8 13.5z",
 } as const;
 
 /** 16 px glyphs, plus the relationship glyphs drawn on Lucide's 24 px grid. */
-export type IconName = keyof typeof paths | keyof typeof RELATION_GLYPHS;
+export type IconName =
+  keyof typeof paths | keyof typeof RELATION_GLYPHS | keyof typeof import("./shapeIconPaths").SHAPE_ICON_PATHS;
+
+const ExtendedShapeIcon = lazyComponent(() => import("./ShapeIcon").then((m) => m.ShapeIcon));
 
 const glyph24: Readonly<Record<string, string>> = RELATION_GLYPHS;
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   const big = glyph24[name];
+  const path = big ?? (paths as Readonly<Record<string, string>>)[name];
   return (
     <svg
       width={size}
@@ -146,7 +107,7 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d={big ?? (paths as Readonly<Record<string, string>>)[name] ?? ""} />
+      {path ? <path d={path} /> : <ExtendedShapeIcon name={name} />}
     </svg>
   );
 }

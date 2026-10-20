@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "geometrija turi būti baigtinė.",
   "edit.coordinateBudget": "už koordinačių ribos. Perkelkite pasirinkimą arčiau pradžios.",
   "edit.annotationLimit": "Šios ribos nepavyko konvertuoti: diagramoje jau yra {limit} anotacijų. Pašalinkite anotaciją ir bandykite dar kartą.",
+  "edit.annotationInsertLimit": "Ši diagrama pasiekė {limit, number} anotacijų ribą. Pašalinkite anotaciją ir bandykite dar kartą.",
   "edit.annotationTextLimit": "Šios ribos nepavyko konvertuoti: jos etiketė viršija {limit} simbolių. Sutrumpinkite etiketę ir bandykite dar kartą.",
   "edit.annotationSize": "dydis turi būti nuo 1 iki {limit} pikselių. Pasirinkite mažesnę sritį.",
   "broker.partitions": "Skaidiniai",

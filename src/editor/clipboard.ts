@@ -15,6 +15,7 @@ import { isPresetGroupTone } from "../canvas/groupTones";
 import { isHexColor } from "../model/colors";
 import { uniqueId } from "./ids";
 import { normalizeAnnotation, annotationCoordinate } from "../model/annotations";
+import { cloneAnnotation } from "./cloneAnnotation";
 import { LIMITS, exceedsDepth, validateDiagram } from "../interop/native";
 
 import { propsProblem, unsupportedPreset, invalidPlanningDelay } from "../model/simProps";
@@ -309,13 +310,12 @@ export function remapPayload(
     used.add(id);
     nmap.set(a.id, id);
     const group = a.group ? (gmap.get(a.group) ?? a.group) : undefined;
-    return {
-      ...structuredClone(a),
+    return cloneAnnotation(a, {
       id,
       group,
       x: annotationCoordinate(a.x + offset.x),
       y: annotationCoordinate(a.y + offset.y),
-    };
+    });
   });
   const edges = p.edges.map((e) => {
     const id = allocateId(e.id, used);

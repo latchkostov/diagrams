@@ -4,6 +4,57 @@ import { LIMITS } from "../native";
 import { parseMermaid, looksLikeMermaid } from "./read";
 import { diagramToMermaid } from "./write";
 import { getStencil } from "../../stencils/registry";
+import { MERMAID_SHAPES } from "./shapes";
+
+describe("annotation shape syntax", () => {
+  for (const [shape, syntax] of Object.entries(MERMAID_SHAPES)) {
+    it(`${shape} preserves labels through writer and reader`, () => {
+      const label = 'Payload {id}, "invoice"';
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Shapes",
+        nodes: [],
+        edges: [],
+        annotations: [
+          {
+            id: "a",
+            kind: "shape",
+            shape: shape as keyof typeof MERMAID_SHAPES,
+            text: label,
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 100,
+          },
+        ],
+      };
+      const exported = diagramToMermaid(d, { metadata: false });
+      const back = parseMermaid(exported);
+      expect(back.warnings).toEqual([]);
+      expect(back.diagram.nodes).toHaveLength(1);
+      expect(back.diagram.nodes[0].label).toBe(label);
+      for (const alias of [syntax.shape, ...(syntax.aliases ?? [])]) {
+        expect(
+          parseMermaid(`flowchart LR\na@{ shape: ${alias}, label: "Payload {id}, #quot;invoice#quot;" }`).diagram
+            .nodes[0].label,
+        ).toBe(label);
+      }
+    });
+  }
+  it("escapes braces in extended labels and parses quoted braces before following connections", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Shapes",
+      nodes: [],
+      edges: [],
+      annotations: [{ id: "a", kind: "shape", shape: "doc", text: "JSON {id}", x: 0, y: 0, width: 180, height: 100 }],
+    };
+    expect(diagramToMermaid(d)).toContain('label: "JSON #123;id#125;"');
+    const back = parseMermaid('flowchart LR\na@{ shape: doc, label: "JSON {id}" } --> b[Next]');
+    expect(back.diagram.nodes.map((n) => n.label)).toEqual(["JSON {id}", "Next"]);
+    expect(back.diagram.edges).toHaveLength(1);
+  });
+});
 
 const examples = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });
 

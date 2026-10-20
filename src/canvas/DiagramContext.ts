@@ -1,5 +1,6 @@
 import { createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import type { EdgeEnd } from "../editor/edgeEdits";
+import type { EditorApi } from "../editor/types";
 
 /**
  * What F2, Enter, a double-click, "Rename" or "Edit label" edits. A node, a connection and a boundary are named in
@@ -12,7 +13,7 @@ export type EditTarget =
   | { kind: "node"; id: string; field?: "label" | "sublabel"; text?: string; edge?: string }
   | { kind: "edge"; id: string }
   | { kind: "group"; id: string }
-  | { kind: "annotation"; id: string };
+  | { kind: "annotation"; id: string; text?: string; merge?: string };
 
 /** The one thing edited in place on the canvas: an annotation's text. */
 export type InlineEdit = Extract<EditTarget, { kind: "annotation" }>;
@@ -30,6 +31,7 @@ export interface DiagramUi {
   presenting?: boolean;
   editing: InlineEdit | null;
   setEditing: (target: InlineEdit | null) => void;
+  annotationCommands?: Pick<EditorApi, "updateAnnotation" | "creating" | "doneNaming">;
   /** Edit or live (not presenting or read-only): a double-click names a node, connection or boundary in the inspector. */
   rename?: (target: RenameTarget) => void;
   /** Opens the inspector for a node's documentation when its corner badge is clicked. */

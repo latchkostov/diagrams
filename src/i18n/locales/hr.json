@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "geometrija mora biti konačna.",
   "edit.coordinateBudget": "izvan raspona koordinata. Pomaknite odabir bliže ishodištu.",
   "edit.annotationLimit": "Ova granica ne može se pretvoriti: dijagram već ima {limit} anotacija. Uklonite anotaciju i pokušajte ponovno.",
+  "edit.annotationInsertLimit": "Ovaj dijagram dosegnuo je ograničenje od {limit, number} anotacija. Uklonite anotaciju i pokušajte ponovno.",
   "edit.annotationTextLimit": "Ovu granicu nije moguće pretvoriti: njezina oznaka premašuje {limit} znakova. Skratite oznaku i pokušajte ponovno.",
   "edit.annotationSize": "veličina mora biti između 1 i {limit} piksela. Odaberite manji odabir.",
   "broker.partitions": "Particije",
