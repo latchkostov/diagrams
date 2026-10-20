@@ -491,7 +491,10 @@ export function releaseAdmissions(state: AdmissionState, leases: AdmissionLeases
 export function releaseAdmission(state: AdmissionState, lease?: AdmissionLease) {
   if (lease)
     for (const key of lease.keys) {
-      state.inFlight.set(key, Math.max(0, (state.inFlight.get(key) ?? 0) - lease.weight));
+      // Fractional leases can leave round-off after their last owner releases.
+      // A sub-request residue must not make an empty one-slot pool unusable.
+      const remaining = (state.inFlight.get(key) ?? 0) - lease.weight;
+      state.inFlight.set(key, remaining > 1e-9 ? remaining : 0);
       const excess = state.retainedExcess.get(key);
       if (excess !== undefined) {
         if (excess > lease.weight) state.retainedExcess.set(key, excess - lease.weight);

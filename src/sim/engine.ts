@@ -839,6 +839,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (work.attempt) work.attempt.res = {};
     }
     ledger.releaseOwner(node.id);
+    // A continuation that lost request admission must rejoin the admission
+    // queue. It cannot block resumed work that still owns request capacity and
+    // needs to finish before that capacity can be reacquired.
+    const resume = node.resume;
+    node.resume = new Deque();
+    for (const work of resume) (work.recoveryCapacity ? node.pending : node.resume).push(work);
     for (const edge of node.outgoing) edge.poolLeases.clear();
   }
 
@@ -961,6 +967,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.admissibleActive ?? node.activeMs,
     );
     if (!thread) return false;
+    // A paused arrival may have charged more execution capacity before a live
+    // shrink. Transfer only the granted weight into the ledger and return the
+    // unused part of that slot lease; request residence keeps its own weight.
+    if (threadCapacity && threadCapacity.weight > thread.weight)
+      releaseAdmission(admission, { ...threadCapacity, weight: threadCapacity.weight - thread.weight });
     work.thread = thread.id;
     node.threadWeight.work += thread.weight;
     node.threadCount.work++;

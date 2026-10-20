@@ -16,6 +16,146 @@ import {
 
 const pool = (owner = "caller", startActive = 0) => ({ owner, scope: "pool" as const, edge: "call", startActive });
 
+it("unadmitted recovered continuations yield to continuations holding request capacity", () => {
+  // Seed 1475036957: send two off-thread calls, take their CPU-backed callee
+  // down, add a one-request cap, then take the graph down/up. A recovered
+  // continuation must not block the admitted continuation that can free its cap.
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    concurrency: 2,
+    maxConcurrency: 2,
+    scaling: "fixed",
+    retry: "inplace",
+    retryBackoffMs: 100,
+    jitter: 0,
+    api: { latencyMs: 10 },
+  };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = {
+    concurrency: 1,
+    latencyMs: 0,
+    jitter: 0,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 0, startup: { delayMs: 0, jitterFraction: 0 } },
+  };
+  d.edges = [
+    d.edges[0],
+    {
+      ...d.edges[1],
+      props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 2, wait: "non-blocking", replyMs: 1 } },
+    },
+    { id: "next", from: "partner", to: "result", kind: "sync", props: { travelMs: 10, networkDelayMs: 10 } },
+  ];
+  let state!: LedgerInvariantState;
+  const engine = createEngine({
+    scale: 1,
+    seed: 0,
+    maxParticles: 0,
+    verifyResources: assertAdmissionInvariants,
+    verifyLedger(s) {
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
+    },
+  });
+  engine.load(d);
+  engine.step(10);
+  engine.inject("source", 2);
+  engine.step(30);
+  engine.setNodeStatus("partner", "down");
+  engine.step(10);
+  engine.setNodeProps("caller", { concurrency: 1, api: { latencyMs: 10, maxInFlight: 1 } });
+  engine.step(10);
+  for (const node of d.nodes) engine.setNodeStatus(node.id, "down");
+  for (const node of d.nodes) engine.setNodeStatus(node.id, "up");
+  engine.step(1000);
+  expect(engine.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect(state.partBudget.used).toBe(0);
+  expect([...state.admissionInFlight.values()].every((weight) => weight === 0)).toBe(true);
+});
+
+it("fractional caller releases keep a one-slot caller usable", () => {
+  // Seed 1475036957, reduced: complete three 1.01-weight calls, lower capacity
+  // to one, then admit another. Floating-point release residue must not block it.
+  const d = waitingFixture();
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    concurrency: 4,
+    replicas: 1,
+    maxConcurrency: 4,
+    scaling: "fixed",
+    jitter: 0,
+    api: { latencyMs: 10 },
+  };
+  d.nodes = d.nodes.slice(1, 3);
+  d.edges = [d.edges[1]];
+  let state!: LedgerInvariantState;
+  const engine = createEngine({
+    scale: 1.01,
+    maxParticles: 0,
+    verifyResources: assertAdmissionInvariants,
+    verifyLedger(s) {
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
+    },
+  });
+  engine.load(d);
+  engine.inject("caller", 3);
+  engine.step(1000);
+  expect(engine.snapshot().nodes.caller.processed).toBe(3);
+  engine.setNodeProps("caller", { concurrency: 1, api: { latencyMs: 10 } });
+  engine.inject("caller", 1);
+  expect(engine.snapshot().nodes.caller.rejected).toBe(0);
+  engine.step(1000);
+  expect(engine.snapshot().nodes.caller.processed).toBe(4);
+  expect(engine.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect([...state.admissionInFlight.values()].every((weight) => weight === 0)).toBe(true);
+});
+
+it.each([1.5, 1])("a paused caller returns unused admitted slots after a shrink (resume scale %s)", (scale) => {
+  // Seed 607376523, reduced: admit 1.5 requests while paused, lower capacity
+  // to one, optionally lower scale, then resume. Only one thread can start;
+  // its request retains 1.5 residence, and the unused half-slot must be returned.
+  const d = waitingFixture();
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    concurrency: 2,
+    maxConcurrency: 2,
+    scaling: "fixed",
+    jitter: 0,
+    api: { latencyMs: 10 },
+  };
+  d.nodes = d.nodes.slice(1, 3);
+  d.edges = [d.edges[1]];
+  let state!: LedgerInvariantState;
+  const engine = createEngine({
+    scale: 1.5,
+    maxParticles: 0,
+    verifyResources: assertAdmissionInvariants,
+    verifyLedger(s) {
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
+    },
+  });
+  engine.load(d);
+  engine.setNodeStatus("caller", "paused");
+  engine.inject("caller", 1);
+  engine.setNodeProps("caller", { concurrency: 1, api: { latencyMs: 10, maxInFlight: 1 } });
+  engine.setScale(scale);
+  engine.setNodeStatus("caller", "up");
+  engine.step(10);
+  const reservations = [...state.ledger.reservations.values()].filter((r) => r.owner === "caller");
+  expect(reservations.find((r) => r.scope === "thread")?.weight).toBe(1);
+  expect(reservations.find((r) => r.scope === "request")?.weight).toBe(1.5);
+  engine.step(1000);
+  expect(engine.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect([...state.admissionInFlight.values()].every((weight) => weight === 0)).toBe(true);
+});
+
 it("adding a request cap while a caller waits refuses a second arrival before thread admission", () => {
   // Seed -2104931721: start one call, lower maxInFlight, then deliver another call.
   const d = waitingFixture();
