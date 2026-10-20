@@ -12,6 +12,10 @@ unchanged. Not yet independently reviewed, like P4 and P5; Private diagrams stay
   challenge) and passes on the room's signed list of members, which the relay checks as every browser does (signatures
   only: it never has a key that opens content). Signature checks are budgeted per connection and per room. A restart
   loses nothing: browsers reconnect and say who they are again.
+- **Nothing is dropped silently.** The relay answers every proof and push (`ok` or `retry`, and how much of a push it
+  holds); browsers send again until they're answered in full, so a removal reaches the relay however busy it is. The
+  relay's waiting work is bounded per connection and per room, and goes with its connection. Four settings tune the
+  checks and the queue (`LD_VERIFY_PER_SOCKET`, `LD_VERIFY_PER_ROOM`, `LD_ADMISSION_JOBS`, `LD_ADMISSION_BYTES`).
 - **What the relay learns.** Each session's public key, the room's roster (who's a member and their roles, as keys)
   and its size, and when they change. Documented in [SELF-HOSTING.md](../SELF-HOSTING.md) and the
   [threat model](../research/collaboration-threat-model.md).

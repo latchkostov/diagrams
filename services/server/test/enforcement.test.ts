@@ -1,7 +1,16 @@
 import { randomBytes } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { FakeClock } from "../../../src/collab/clock";
-import { commitEpoch, EpochChain, signStart, type ChainData, type EpochStart } from "../../../src/collab/epochs";
+import {
+  commitEpoch,
+  EpochChain,
+  scopeOf,
+  signStart,
+  type ChainData,
+  type EpochStart,
+} from "../../../src/collab/epochs";
+import { signEntry } from "../../../src/collab/roster";
+import { createRelayTransport } from "../../../src/collab/transport/relay";
 import { newAgreement, newIdentity, sign, type Identity } from "../../../src/collab/signing";
 import {
   clientFrame,
@@ -11,8 +20,7 @@ import {
   readServerFrame,
 } from "../../../src/collab/transport/relayProtocol";
 import { bytesToBase64Url } from "../../../src/interop/codec";
-import { RoomGuard } from "../src/collab/guard";
-import { barrier, connect, startServer, type TestServer } from "./harness";
+import { barrier, browserSockets, connect, startServer, type TestServer, type WebSocket } from "./harness";
 
 // Shared Live P6: a self-hosted relay admits only a knock-to-join room's members, from the room's own signed chain,
 // gives anyone else the lobby only, and closes a member removed at once (in any epoch since). Signatures only: the
@@ -67,6 +75,8 @@ const envelope = (channel: number, marker: string) => {
   return out;
 };
 
+let pushes = 0;
+
 /** A socket in the room: its welcome, what it's told, and what reaches it. */
 async function seat(s: TestServer, r: Room, root = r.host.key) {
   const c = await connect(s, s.origin);
@@ -95,7 +105,7 @@ async function seat(s: TestServer, r: Room, root = r.host.key) {
       c.socket.send(JSON.stringify({ t: "prove", key: id.key, sig: bytesToBase64Url(sig) }));
     },
     push(chain: ChainData = r.data()) {
-      c.socket.send(JSON.stringify({ t: "chain", chain }));
+      c.socket.send(JSON.stringify({ t: "chain", id: pushes++, chain }));
     },
     send(channel: number, marker: string) {
       c.socket.send(clientFrame(envelope(channel, marker)));
@@ -312,75 +322,188 @@ describe("a self-hosted relay admits only a knock-to-join room's members (shared
   });
 });
 
-describe("the relay's signature checks are budgeted, charged to whoever sent what's checked", () => {
-  /** The guard alone, with small budgets: who's told what. */
-  async function guarded(limits: { perSocket: number; perRoom: number; windowMs: number }) {
-    const r = await knockRoom();
-    const clock = new FakeClock();
-    const guard = new RoomGuard(r.host.key, r.room, clock, limits);
-    const told = new Map<string, boolean[]>();
-    const closed = new Map<string, number>();
-    const add = (peer: string) => {
-      told.set(peer, []);
-      return guard.seat(
-        peer,
-        (code) => closed.set(peer, code),
-        (member) => must(told.get(peer)).push(member),
-      );
-    };
-    const prove = async (peer: string, challenge: string, id: Identity) =>
-      guard.prove(
-        peer,
-        id.key,
-        bytesToBase64Url(await sign(id.privateKey, relayProofBytes(r.room, challenge, peer, id.key))),
-      );
-    return { r, clock, guard, told, closed, add, prove };
+/** A page on the relay through the real transport: its admission as a session gives it, from the room `r` it holds. */
+function page(s: TestServer, r: Room, id: Identity, clock: FakeClock, sockets: WebSocket[]) {
+  const transport = createRelayTransport({
+    url: s.url,
+    roomId: r.room,
+    root: r.host.key,
+    WebSocket: browserSockets(s.origin, sockets),
+    clock,
+    random: () => new Uint8Array([0, 0, 0, 0]),
+  });
+  onTestFinished(() => transport.close());
+  const listeners = new Set<() => void>();
+  const frames: string[] = [];
+  transport.subscribe({ join: () => {}, leave: () => {}, frame: (_from, bytes) => void frames.push(marker(bytes)) });
+  transport.authorize?.({
+    prove: async (challenge, peer) => ({
+      key: id.key,
+      sig: bytesToBase64Url(await sign(id.privateKey, relayProofBytes(r.room, challenge, peer, id.key))),
+    }),
+    chain: (from) => {
+      const data = r.data();
+      const keep = data.starts
+        .map((st, i) => [st, data.logs[i]] as const)
+        .filter(([st]) => from === undefined || st.epoch >= from);
+      return { starts: keep.map(([st]) => st), logs: keep.map(([, log]) => log) };
+    },
+    tip: () => {
+      const data = r.data();
+      return { epoch: data.starts.length - 1, entries: data.logs.at(-1)?.entries.length ?? 0 };
+    },
+    subscribe: (fn) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  });
+  return { transport, frames, changed: () => listeners.forEach((fn) => fn()) };
+}
+const marker = (bytes: Uint8Array) => Buffer.from(bytes.subarray(32)).toString();
+/** Advances the relay's and the pages' clock a second at a time, letting sockets and checks catch up. */
+async function run(clock: FakeClock, ms: number, sockets: WebSocket[]) {
+  for (let t = 0; t < ms; t += 1_000) {
+    clock.advance(1_000);
+    await Promise.all(sockets.map(barrier));
   }
+}
+/** Each server socket's close code, as it closes. */
+function closes(s: TestServer) {
+  const codes: number[] = [];
+  s.wss.on("connection", (ws: WebSocket) => ws.on("close", (code: number) => codes.push(code)));
+  return codes;
+}
 
-  it("a socket's push beyond its budget is checked only in part; pushed again in the next window, it completes", async () => {
-    const g = await guarded({ perSocket: 4, perRoom: 1000, windowMs: 10_000 });
+describe("admission recovers from the relay's budgets and queue, through the real transport", () => {
+  it("retries a throttled admission proof after budget refill", async () => {
+    const clock = new FakeClock();
+    // The room's checks: the host's proof, its start and the member's join. The member's proof doesn't fit.
+    const s = await startServer({ LD_VERIFY_PER_ROOM: "3" }, clock);
+    const r = await knockRoom();
     const member = await newIdentity();
-    for (let i = 0; i < 3; i++) await g.r.join(await newIdentity());
-    await g.r.join(member);
-    const host = "0000000000000001";
-    const m = "0000000000000002";
-    await g.prove(host, g.add(host), g.r.host);
-    await g.prove(m, g.add(m), member);
-    // The host's proof took one check; its push of a start and four entries can't all be checked now.
-    await g.guard.push(host, g.r.data());
-    expect(g.guard.isMember(m)).toBe(false);
-    g.clock.advance(10_000);
-    await g.guard.push(host, g.r.data());
-    expect(g.guard.isMember(m)).toBe(true);
-    expect(g.told.get(m)).toEqual([false, true]);
+    await r.join(member);
+    const sockets: WebSocket[] = [];
+    const host = page(s, r, r.host, clock, sockets);
+    await vi.waitFor(() => expect(s.rooms.get(r.room)?.guard?.members).toBe(1));
+    const m = page(s, r, member, clock, sockets);
+    await vi.waitFor(() => expect(sockets).toHaveLength(2));
+    await run(clock, 2_000, sockets);
+    expect(s.rooms.get(r.room)?.guard?.members).toBe(1);
+    // The budget refills; the same socket's proof is sent again, and counts.
+    await run(clock, 12_000, sockets);
+    await vi.waitFor(() => expect(s.rooms.get(r.room)?.guard?.members).toBe(2));
+    expect(sockets).toHaveLength(2);
+    host.transport.send(envelope(1, "for the member"));
+    await vi.waitFor(() => expect(m.frames).toContain("for the member"));
   });
 
-  it("a socket's pushes are charged to it, not to the others", async () => {
-    const g = await guarded({ perSocket: 3, perRoom: 1000, windowMs: 10_000 });
-    for (let i = 0; i < 4; i++) await g.r.join(await newIdentity());
-    const [pusher, host] = ["00000000000000a1", "00000000000000a2"];
-    g.add(pusher);
-    const challenge = g.add(host);
-    // Someone pushes the chain until its own budget is gone: the host's proof still has all of the host's.
-    await g.guard.push(pusher, g.r.data());
-    await g.guard.push(pusher, g.r.data());
-    await g.prove(host, challenge, g.r.host);
-    expect(g.told.get(host)).toEqual([true]);
+  it("finishes restoring the chain after its sender is admitted", async () => {
+    const clock = new FakeClock();
+    // A socket's checks: the host's proof, the start and one entry; the chain has three.
+    const s = await startServer({ LD_VERIFY_PER_SOCKET: "3" }, clock);
+    const r = await knockRoom();
+    const members = [await newIdentity(), await newIdentity(), await newIdentity()];
+    for (const m of members) await r.join(m);
+    const sockets: WebSocket[] = [];
+    page(s, r, r.host, clock, sockets);
+    // The host is admitted (it's the room's host from the start), its chain only partly checked.
+    await vi.waitFor(() => expect(s.rooms.get(r.room)?.guard?.members).toBe(1));
+    const last = page(s, r, members[2], clock, sockets);
+    await run(clock, 2_000, sockets);
+    expect(s.rooms.get(r.room)?.guard?.members).toBe(1);
+    // Nobody pushes by hand: the host's page finishes on its own as its budget refills.
+    await run(clock, 25_000, sockets);
+    await vi.waitFor(() => expect(s.rooms.get(r.room)?.guard?.members).toBe(2));
+    expect(last.frames).toEqual([]);
   });
 
-  it("the room's budget bounds every socket's checks together", async () => {
-    const g = await guarded({ perSocket: 1000, perRoom: 3, windowMs: 10_000 });
-    for (let i = 0; i < 4; i++) await g.r.join(await newIdentity());
-    const [pusher, host] = ["00000000000000b1", "00000000000000b2"];
-    g.add(pusher);
-    const challenge = g.add(host);
-    await g.guard.push(pusher, g.r.data());
-    // The room's checks for this window are spent: the proof isn't looked at.
-    await g.prove(host, challenge, g.r.host);
-    expect(g.told.get(host)).toEqual([]);
-    g.clock.advance(10_000);
-    const again = "00000000000000b3";
-    await g.prove(again, g.add(again), g.r.host);
-    expect(g.told.get(again)).toEqual([true]);
+  it("a removal dropped by an exhausted verification budget is retried and closes the removed socket (4010)", async () => {
+    const clock = new FakeClock();
+    const s = await startServer({ LD_VERIFY_PER_ROOM: "40" }, clock);
+    const codes = closes(s);
+    const r = await knockRoom();
+    const member = await newIdentity();
+    await r.join(member);
+    const sockets: WebSocket[] = [];
+    const host = page(s, r, r.host, clock, sockets);
+    page(s, r, member, clock, sockets);
+    await vi.waitFor(() => expect(s.rooms.get(r.room)?.guard?.members).toBe(2));
+    // Someone at the door spends the room's checks on entries that never count.
+    const stranger = await seat(s, r);
+    const junk = await Promise.all(
+      Array.from({ length: 60 }, async () =>
+        signEntry(await newIdentity(), r.room, scopeOf(r.data().starts[0]), {
+          n: 1,
+          op: "admit",
+          who: member.key,
+          deps: [],
+        }),
+      ),
+    );
+    stranger.push({ starts: [], logs: [{ scope: scopeOf(r.data().starts[0]), entries: junk }] });
+    await settle(stranger);
+    // The host removes the member: its push can't be checked now; the member's still in.
+    await r.remove(member);
+    host.changed();
+    await run(clock, 3_000, sockets);
+    expect(codes).not.toContain(RELAY_CLOSE.removed);
+    expect(s.rooms.get(r.room)?.guard?.members).toBe(2);
+    // The budget refills: the removal's pushed again, and the member's socket is closed at once.
+    await run(clock, 20_000, sockets);
+    await vi.waitFor(() => expect(codes).toContain(RELAY_CLOSE.removed));
+    expect(s.rooms.get(r.room)?.guard?.members).toBe(1);
+  });
+
+  it("the queue is bounded: blocked work and many large pushes stay within it, and leaving cancels what's queued", async () => {
+    const s = await startServer({ LD_ADMISSION_JOBS: "2", LD_ADMISSION_BYTES: "300000" });
+    const r = await knockRoom();
+    const a = await seat(s, r);
+    const guard = () => {
+      const g = s.rooms.get(r.room)?.guard;
+      if (!g) throw new Error("no guard");
+      return g;
+    };
+    // The first job blocks (its chain's being checked).
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const add = EpochChain.prototype.add;
+    const spy = vi.spyOn(EpochChain.prototype, "add").mockImplementation(async function (
+      this: EpochChain,
+      ...args: Parameters<EpochChain["add"]>
+    ) {
+      await gate;
+      return add.apply(this, args);
+    });
+    onTestFinished(() => spy.mockRestore());
+    try {
+      a.push();
+      // Large pushes (100 KB each), far more than the queue holds.
+      const big = { starts: [], logs: [{ scope: "0:x", entries: ["y".repeat(100_000)] }] };
+      for (let i = 0; i < 20; i++) a.push(big);
+      await settle(a);
+      const load = guard().load();
+      expect(load.jobs).toBeLessThanOrEqual(2);
+      expect(load.bytes).toBeLessThanOrEqual(300_000);
+      // The excess was answered: send it again.
+      const acks = a.messages
+        .filter((m) => !m.binary)
+        .map((m) => parseControl(Buffer.from(m.bytes).toString()))
+        .filter((m) => m?.t === "chainAck");
+      expect(acks.length).toBeGreaterThanOrEqual(18);
+      expect(acks.every((m) => m?.t === "chainAck" && !m.complete)).toBe(true);
+      // A second socket in the room keeps its own share of the room's queue.
+      const b = await seat(s, r);
+      b.push(big);
+      await settle(b);
+      expect(guard().load(b.self).jobs).toBe(1);
+      // The first socket goes: its queued work goes with it.
+      a.socket.close();
+      await a.closed;
+      expect(guard().load(a.self)).toEqual({ jobs: 0, bytes: 0 });
+      expect(guard().load().jobs).toBeLessThanOrEqual(2);
+    } finally {
+      release();
+    }
+    await vi.waitFor(() => expect(guard().load()).toEqual({ jobs: 0, bytes: 0 }));
   });
 });

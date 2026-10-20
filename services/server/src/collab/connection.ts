@@ -113,7 +113,13 @@ export function attachConnection(opts: {
       }
       // A knock-to-join room (its root named) admits only its members; every hello names the same root, or none.
       if (hello.root !== undefined && !room.guard && room.peers.size === 1)
-        room.guard = new RoomGuard(hello.root, hello.room, clock);
+        room.guard = new RoomGuard(hello.root, hello.room, clock, {
+          verifiesPerSocket: config.verifiesPerSocket,
+          verifiesPerRoom: config.verifiesPerRoom,
+          windowMs: config.windowMs,
+          queuedJobs: config.admissionJobs,
+          queuedBytes: config.admissionBytes,
+        });
       if (hello.root !== room.guard?.root) {
         rooms.leave(hello.room, peer);
         refuse(RELAY_CLOSE.badFrame);
@@ -131,6 +137,7 @@ export function attachConnection(opts: {
           if (member) log("admitted");
           send(socket, JSON.stringify({ t: "status", member }));
         },
+        (reply) => send(socket, JSON.stringify(reply)),
       );
       const peers = [...room.peers.keys()].filter((id) => id !== peer);
       send(
@@ -157,8 +164,8 @@ export function attachConnection(opts: {
         refuse(RELAY_CLOSE.badFrame);
         return;
       }
-      if (control.t === "prove") void guard.prove(peer, control.key, control.sig);
-      else void guard.push(peer, control.chain);
+      if (control.t === "prove") guard.prove(peer, control.key, control.sig, data.length);
+      else guard.push(peer, control.id, control.chain, data.length);
       return;
     }
     const frame = binary ? readClientFrame(data) : undefined;

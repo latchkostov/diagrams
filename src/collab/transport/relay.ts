@@ -2,13 +2,8 @@ import { realClock, type Clock } from "../clock";
 import { secureRandom, type RandomBytes } from "../random";
 import { COLLAB_LIMITS } from "../limits";
 import { reconnectDelay } from "./backoff";
-import {
-  FrameTooLargeError,
-  type CollabTransport,
-  type TransportHandlers,
-  type Connectivity,
-  type RelayAdmission,
-} from "./types";
+import { RelayAdmissionController } from "./relayAdmission";
+import { FrameTooLargeError, type CollabTransport, type TransportHandlers, type Connectivity } from "./types";
 import {
   clientFrame,
   isRoomId,
@@ -51,41 +46,9 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   let handlers: TransportHandlers | undefined;
   const peers = new Set<string>();
   const queues = new Map<string, Promise<void>>();
-  // A knock-to-join room: the relay's challenge to this socket, how this page is admitted, and whether it is.
+  // A knock-to-join room: the relay's challenge to this socket, and how this page is admitted (./relayAdmission.ts).
   let challenge: string | undefined;
-  let admission: RelayAdmission | undefined;
-  let admitted = false;
-  let pushQueued = false;
-  let cancelRepush: (() => void) | undefined;
-  const pushChain = (pieces: readonly { starts: unknown[]; logs: unknown[] }[]) => {
-    for (const chain of pieces)
-      if (chain.starts.length || chain.logs.length) socket?.send(JSON.stringify({ t: "chain", chain }));
-  };
-  /** Says which member this page is, then hands the relay the room's chain. */
-  async function admit(ws: WebSocket) {
-    const a = admission;
-    const asked = challenge;
-    if (!a || !asked || socket !== ws || !ready) return;
-    let proof: { key: string; sig: string };
-    try {
-      proof = await a.prove(asked, self);
-    } catch {
-      return;
-    }
-    if (socket !== ws || challenge !== asked) return;
-    ws.send(JSON.stringify({ t: "prove", ...proof }));
-    pushChain(a.chain());
-  }
-  /** Not admitted while this page is in the room: the relay lacks some of the chain (a budget, a restart): again. */
-  function repush(ws: WebSocket) {
-    cancelRepush?.();
-    cancelRepush = clock.after(COLLAB_LIMITS.antiEntropyMs, () => {
-      cancelRepush = undefined;
-      if (socket !== ws || admitted || !admission?.member()) return;
-      pushChain(admission.chain());
-      repush(ws);
-    });
-  }
+  let admission: RelayAdmissionController | undefined;
   let queuedBytes = 0;
   const peerBytes = new Map<string, number>();
   const changed = (next: Connectivity) => {
@@ -104,10 +67,8 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   function retire() {
     cancelStable?.();
     cancelStable = undefined;
-    cancelRepush?.();
-    cancelRepush = undefined;
+    admission?.stop();
     challenge = undefined;
-    admitted = false;
     cancelHello?.();
     cancelHello = undefined;
     const old = socket;
@@ -180,13 +141,13 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
             changed("connected");
             for (const peer of peers) handlers?.join(peer);
             challenge = message.challenge;
-            void admit(ws);
+            if (challenge) admission?.start(challenge, self);
           } else if (message.t === "status") {
-            admitted = message.member;
-            if (admitted) {
-              cancelRepush?.();
-              cancelRepush = undefined;
-            } else if (admission?.member()) repush(ws);
+            // Admitted or not: what's forwarded says so; admission itself goes on until the chain's acknowledged.
+          } else if (message.t === "proofAck") {
+            admission?.onProofAck(message.ok);
+          } else if (message.t === "chainAck") {
+            admission?.onChainAck(message);
           } else if (message.t === "join") {
             if (message.peer !== self && !peers.has(message.peer) && peers.size < cap - 1) {
               peers.add(message.peer);
@@ -267,18 +228,26 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
       socket.send(frame);
     },
     authorize(next) {
-      admission = next;
+      admission?.stop();
+      const controller = new RelayAdmissionController(
+        next,
+        (text) => {
+          if (socket && ready && admission === controller) socket.send(text);
+        },
+        clock,
+      );
+      admission = controller;
+      // Coalesced: a chain taking many entries at once is one new target.
+      let queued = false;
       next.subscribe(() => {
-        // Coalesced: a chain taking many entries at once is pushed once, its newest epochs.
-        if (pushQueued || admission !== next) return;
-        pushQueued = true;
+        if (queued || admission !== controller) return;
+        queued = true;
         queueMicrotask(() => {
-          pushQueued = false;
-          const recent = next.recent();
-          if (socket && ready && challenge && recent) pushChain([recent]);
+          queued = false;
+          controller.changed();
         });
       });
-      if (socket && ready && challenge) void admit(socket);
+      if (socket && ready && challenge) controller.start(challenge, self);
     },
     subscribe(next) {
       handlers = next;

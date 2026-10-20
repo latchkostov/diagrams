@@ -52,12 +52,10 @@ export interface TransportHandlers {
 export interface RelayAdmission {
   /** The member key this page speaks for, and its signature over the relay's challenge to this socket. */
   prove(challenge: string, peer: PeerId): Promise<{ key: string; sig: string }>;
-  /** The room's chain as this page holds it, in pieces a relay message holds (none at the door). */
-  chain(): ChainData[];
-  /** What changed last: the newest epochs (a removal, its new epoch, a roster entry). */
-  recent(): ChainData | undefined;
-  /** Whether this page is in the room (so a relay that hasn't admitted it is missing some of the chain). */
-  member(): boolean;
+  /** The room's chain as this page holds it, from epoch `from` on (all of it without one; none at the door). */
+  chain(from?: number): ChainData | undefined;
+  /** How far this page's chain goes: its newest epoch, and how many entries that epoch's roster holds. */
+  tip(): { epoch: number; entries: number } | undefined;
   subscribe(fn: () => void): () => void;
 }
 

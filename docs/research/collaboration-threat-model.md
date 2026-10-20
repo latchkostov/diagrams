@@ -680,9 +680,19 @@ knock-to-join rooms only. **Not yet independently reviewed**, like P4 and P5; Pr
 - **Remove closes the socket at once.** Whenever the chain changes, every socket is looked at again: a key no longer a
   member of the newest epoch (removed, in any epoch since: the relay follows the line through every re-key) has its
   socket closed with 4010. The page reconnects at the door, where the lobby tells it it was removed.
-- **Budgets.** Checking signatures costs the relay: each socket has 2,048 checks per 10 s, and each room 8,192,
-  charged to the socket that sent what's checked; what a budget refuses isn't taken (a page not yet admitted pushes
-  the chain again every few seconds). Pushes are bounded as any frame is (size, rate).
+- **Every proof and push is answered.** A proof gets `proofAck` (`ok`, or `retry`: its check didn't fit the budget
+  or the queue now); a push gets `chainAck` (how far the chain the relay holds goes, and whether everything that push
+  carried is held). A page proves until the relay says ok, and pushes (what changed since its last fully held push,
+  in pieces of 512 KiB at most) until a push is held in full, whether or not it's admitted, with backoff and when no
+  answer comes at all (`src/collab/transport/relayAdmission.ts`). So a proof or a removal throttled by a budget is
+  sent again, and a removal reaches the relay however the budgets went (review P1s: a throttled proof was silently
+  dropped; an admitted host stopped pushing, so a removal the budget dropped never closed anyone).
+- **Budgets and a bounded queue.** Checking signatures costs the relay: each socket has 2,048 checks per 10 s, and
+  each room 8,192 (`LD_VERIFY_PER_SOCKET`, `LD_VERIFY_PER_ROOM`), charged to the socket that sent what's checked.
+  Proofs and pushes wait in a queue whose jobs and bytes are reserved before a payload is kept: 8 jobs and 4 MiB per
+  socket, four times that per room (`LD_ADMISSION_JOBS`, `LD_ADMISSION_BYTES`); the excess is answered `retry`, a
+  reservation is released when its job is done, and a socket's queued work goes when it does (review P1: the queue was
+  an unbounded promise chain holding every payload).
 - **Stateless.** All of it lives with the room's sockets; a restart loses nothing, since pages say who they are and
   push the chain again on reconnecting.
 - **Not on the relay (owner decision):** roles. Viewers' edits and non-drivers' Live are still refused by every page

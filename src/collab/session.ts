@@ -564,17 +564,21 @@ export class CollabSession {
             await sign(room.identity.privateKey, relayProofBytes(roomId, challenge, peer, room.key)),
           ),
         }),
-        // The newest the chain holds (a removal's new epoch as soon as it's placed, before this page moves to it).
-        chain: () => {
+        // The newest the chain holds (a removal's new epoch as soon as it's placed, before this page moves to it), from
+        // an epoch on: only the epochs asked for are read.
+        chain: (from) => {
           const tip = chain.deepest();
-          return tip ? chainMessages(chain.data(tip), []).map((m) => m.chain) : [];
+          if (!tip) return undefined;
+          const path = chain.path(tip).filter((s) => from === undefined || s.epoch >= from);
+          return {
+            starts: path,
+            logs: path.map((s) => ({ scope: scopeOf(s), entries: chain.rosterOf(s)?.log() ?? [] })),
+          };
         },
-        recent: () => {
+        tip: () => {
           const tip = chain.deepest();
-          const data = tip && chain.data(tip);
-          return data && { starts: data.starts.slice(-2), logs: data.logs.slice(-2) };
+          return tip && { epoch: tip.epoch, entries: chain.rosterOf(tip)?.log().length ?? 0 };
         },
-        member: () => !this.knocking && !!room.current && chain.memberNow(room.key),
         subscribe: (fn) => chain.subscribe(fn),
       });
       this.wraps = s.knock.wraps ?? [];

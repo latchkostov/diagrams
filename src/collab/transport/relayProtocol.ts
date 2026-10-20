@@ -56,11 +56,18 @@ export type RelayControl =
     }
   | { t: "join" | "leave"; peer: string }
   /** Whether this socket is admitted (a member of the newest epoch the relay holds). */
-  | { t: "status"; member: boolean };
+  | { t: "status"; member: boolean }
+  /** A proof looked at (`ok`), or not now (the relay's budget or queue: send it again). */
+  | { t: "proofAck"; ok: boolean }
+  /**
+   * A push looked at: how far the chain the relay holds goes (its newest epoch, and the entries that epoch's roster
+   * holds), and whether everything that push carried is held (else: send it again).
+   */
+  | { t: "chainAck"; id: number; epoch: number; entries: number; complete: boolean };
 /** What a knock-to-join room's socket says to the relay: the member key it speaks for, and the room's chain. */
 export type RelayClientControl =
   | { t: "prove"; key: string; sig: string }
-  | { t: "chain"; chain: { starts: unknown[]; logs: { scope: string; entries: unknown[] }[] } };
+  | { t: "chain"; id: number; chain: { starts: unknown[]; logs: { scope: string; entries: unknown[] }[] } };
 
 const KEY = /^[A-Za-z0-9_-]{43}$/;
 const SIG = /^[A-Za-z0-9_-]{86}$/;
@@ -76,7 +83,15 @@ export function parseClientControl(text: string): RelayClientControl | undefined
     const m = JSON.parse(text);
     if (m?.t === "prove" && KEY.test(m.key) && SIG.test(m.sig) && Object.keys(m).length === 3)
       return { t: "prove", key: m.key, sig: m.sig };
-    if (m?.t === "chain" && Object.keys(m).length === 2 && m.chain && typeof m.chain === "object") return m;
+    if (
+      m?.t === "chain" &&
+      Object.keys(m).length === 3 &&
+      Number.isSafeInteger(m.id) &&
+      m.id >= 0 &&
+      m.chain &&
+      typeof m.chain === "object"
+    )
+      return m;
   } catch {
     /* Invalid control message. */
   }
@@ -101,6 +116,18 @@ export function parseControl(text: string): RelayControl | undefined {
     const m = JSON.parse(text);
     if ((m?.t === "join" || m?.t === "leave") && isPeerId(m.peer)) return m;
     if (m?.t === "status" && typeof m.member === "boolean" && Object.keys(m).length === 2) return m;
+    if (m?.t === "proofAck" && typeof m.ok === "boolean" && Object.keys(m).length === 2) return m;
+    if (
+      m?.t === "chainAck" &&
+      Object.keys(m).length === 5 &&
+      Number.isSafeInteger(m.id) &&
+      Number.isInteger(m.epoch) &&
+      m.epoch >= -1 &&
+      Number.isInteger(m.entries) &&
+      m.entries >= 0 &&
+      typeof m.complete === "boolean"
+    )
+      return m;
     if (
       m?.t === "welcome" &&
       isPeerId(m.self) &&

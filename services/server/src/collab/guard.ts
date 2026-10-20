@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Clock } from "../../../../src/collab/clock";
 import { parseChainData } from "../../../../src/collab/chainShape";
-import { EpochChain } from "../../../../src/collab/epochs";
+import { EpochChain, parseStart, type ChainData } from "../../../../src/collab/epochs";
 import { verify } from "../../../../src/collab/signing";
 import { RELAY_CLOSE, relayProofBytes } from "../../../../src/collab/transport/relayProtocol";
 import { base64UrlToBytes, bytesToBase64Url } from "../../../../src/interop/codec";
@@ -18,8 +18,13 @@ import { TokenBucket } from "./bucket";
 //   no content, no keys that open any). It's checked as every page checks it (../../../../src/collab/epochs.ts:
 //   signatures, the host-only single line), and every socket is looked at again whenever it changes: a key no longer
 //   a member (removed, in any epoch since) has its socket closed at once.
+// - Every proof and push is answered: a proof `ok` or `retry` (its checks didn't fit the budget now, or the queue was
+//   full), a push with how far the chain it holds goes and whether all of that push is held, so a page keeps pushing
+//   until it is (whether or not it's admitted: a removal must reach the relay however the budgets went).
 // - Checking signatures costs the relay: each socket, and the room in all, has a budget per window, and a check is
-//   charged to the socket that sent what's checked. What a budget refuses is simply not taken (a page pushes again).
+//   charged to the socket that sent what's checked. Work waits in a bounded queue: jobs and bytes per socket and per
+//   room are reserved before a payload is kept (the excess is answered `retry`), released when done, and a socket's
+//   queued work goes when it does.
 // - Nothing is kept past the room: when its last socket goes, so does all of this. After a restart, sockets say who
 //   they are and push the chain again.
 //
@@ -27,56 +32,97 @@ import { TokenBucket } from "./bucket";
 // who hosts, co-hosts, drives, can edit) and its size, and when it changes. Never content: the epochs' secrets, the
 // document, presence and Live stay encrypted under keys it never has.
 
-export const RELAY_VERIFY = {
-  /** Signature checks one socket may cause per window, and a whole room (eight sockets' worth, shared). */
-  perSocket: 2048,
-  perRoom: 8192,
+export interface GuardLimits {
+  /** Signature checks one socket may cause per window, and a whole room. */
+  verifiesPerSocket: number;
+  verifiesPerRoom: number;
+  windowMs: number;
+  /** Proofs and pushes waiting to be checked: per socket, and per room (four sockets' worth). */
+  queuedJobs: number;
+  queuedBytes: number;
+}
+
+export const GUARD_LIMITS: GuardLimits = {
+  verifiesPerSocket: 2048,
+  verifiesPerRoom: 8192,
   windowMs: 10_000,
-} as const;
+  queuedJobs: 8,
+  queuedBytes: 4 * 1024 * 1024,
+};
+
+/** What a socket is told about its proof and its pushes. */
+export type GuardReply =
+  { t: "proofAck"; ok: boolean } | { t: "chainAck"; id: number; epoch: number; entries: number; complete: boolean };
 
 interface Seat {
   readonly challenge: string;
   readonly budget: TokenBucket;
   key?: string;
   member: boolean;
-  /** Closes this socket (removed). */
+  jobs: number;
+  bytes: number;
+  /** Closes this socket (removed, or a proof that isn't one). */
   close(code: number): void;
   /** Tells this socket whether it's admitted. */
   tell(member: boolean): void;
+  /** Answers a proof or a push. */
+  reply(message: GuardReply): void;
+}
+
+interface Job {
+  peer: string;
+  bytes: number;
+  run(seat: Seat): Promise<void>;
 }
 
 export class RoomGuard {
   private readonly chain: EpochChain;
   private readonly seats = new Map<string, Seat>();
   private readonly budget: TokenBucket;
-  /** Proofs and chain pushes, one at a time (each may change who's in). */
-  private work: Promise<void> = Promise.resolve();
+  private readonly queue: Job[] = [];
+  private running = false;
+  private jobs = 0;
+  private bytes = 0;
 
   constructor(
     readonly root: string,
     readonly room: string,
     private readonly clock: Clock,
-    private readonly limits: { perSocket: number; perRoom: number; windowMs: number } = RELAY_VERIFY,
+    private readonly limits: GuardLimits = GUARD_LIMITS,
   ) {
     this.chain = new EpochChain(root, room);
-    this.budget = new TokenBucket(limits.perRoom, limits.perRoom / limits.windowMs, clock);
+    this.budget = new TokenBucket(limits.verifiesPerRoom, limits.verifiesPerRoom / limits.windowMs, clock);
   }
 
   /** A socket in the room: its challenge (what it signs to say which member it is). */
-  seat(peer: string, close: (code: number) => void, tell: (member: boolean) => void): string {
+  seat(
+    peer: string,
+    close: (code: number) => void,
+    tell: (member: boolean) => void,
+    reply: (message: GuardReply) => void,
+  ): string {
     const challenge = bytesToBase64Url(randomBytes(32));
+    const perSocket = this.limits.verifiesPerSocket;
     this.seats.set(peer, {
       challenge,
-      budget: new TokenBucket(this.limits.perSocket, this.limits.perSocket / this.limits.windowMs, this.clock),
+      budget: new TokenBucket(perSocket, perSocket / this.limits.windowMs, this.clock),
       member: false,
+      jobs: 0,
+      bytes: 0,
       close,
       tell,
+      reply,
     });
     return challenge;
   }
 
+  /** A socket gone: its seat, and its queued work with it. */
   leave(peer: string): void {
+    const seat = this.seats.get(peer);
+    if (!seat) return;
     this.seats.delete(peer);
+    for (let i = this.queue.length - 1; i >= 0; i--)
+      if (this.queue[i].peer === peer) this.release(this.queue.splice(i, 1)[0], seat);
   }
 
   /** Whether a socket is admitted: it proved a key that's a member of the newest epoch held. */
@@ -91,34 +137,69 @@ export class RoomGuard {
     return n;
   }
 
-  /** A socket says which member it is (once). Resolves once looked at. */
-  prove(peer: string, key: string, sig: string): Promise<void> {
-    return this.serially(async () => {
-      const seat = this.seats.get(peer);
-      if (!seat || seat.key !== undefined || !this.charge(seat)) return;
+  /** Work waiting (diagnostics, tests): jobs and bytes, in the room and per socket. */
+  load(peer?: string): { jobs: number; bytes: number } {
+    if (peer === undefined) return { jobs: this.jobs, bytes: this.bytes };
+    const seat = this.seats.get(peer);
+    return { jobs: seat?.jobs ?? 0, bytes: seat?.bytes ?? 0 };
+  }
+
+  /** A socket says which member it is (until it's been looked at: answered `ok`, or `retry`). */
+  prove(peer: string, key: string, sig: string, bytes: number): void {
+    this.enqueue(peer, bytes, { t: "proofAck", ok: false }, async (seat) => {
+      if (seat.key !== undefined) return seat.reply({ t: "proofAck", ok: seat.key === key });
+      if (!this.charge(seat)) return seat.reply({ t: "proofAck", ok: false });
       let signature: Uint8Array;
       try {
         signature = base64UrlToBytes(sig);
       } catch {
-        return;
+        return seat.close(RELAY_CLOSE.badFrame);
       }
-      if (!(await verify(key, signature, relayProofBytes(this.room, seat.challenge, peer, key)))) return;
+      if (!(await verify(key, signature, relayProofBytes(this.room, seat.challenge, peer, key))))
+        return seat.close(RELAY_CLOSE.badFrame);
       if (this.seats.get(peer) !== seat) return;
       seat.key = key;
+      seat.reply({ t: "proofAck", ok: true });
       seat.member = this.chain.memberNow(key);
       seat.tell(seat.member);
     });
   }
 
-  /** The room's chain, or part of it, from a socket: checked at its expense, then everyone looked at again. */
-  push(peer: string, raw: unknown): Promise<void> {
-    return this.serially(async () => {
-      const seat = this.seats.get(peer);
+  /** The room's chain, or part of it, from a socket: checked at its expense, answered, then everyone looked at again. */
+  push(peer: string, id: number, raw: unknown, bytes: number): void {
+    const refused: GuardReply = { t: "chainAck", id, ...this.tip(), complete: false };
+    this.enqueue(peer, bytes, refused, async (seat) => {
       const data = parseChainData(raw);
-      if (!seat || !data) return;
+      if (!data) return seat.close(RELAY_CLOSE.badFrame);
       await this.chain.add(data, () => this.charge(seat));
+      if (this.seats.get(peer) !== seat) return;
+      seat.reply({ t: "chainAck", id, ...this.tip(), complete: this.holds(data) });
       this.review();
     });
+  }
+
+  /** How far the chain held goes: its newest epoch, and how many entries that epoch's roster holds. */
+  private tip(): { epoch: number; entries: number } {
+    const deepest = this.chain.deepest();
+    return { epoch: deepest?.epoch ?? -1, entries: deepest ? (this.chain.rosterOf(deepest)?.size ?? 0) : 0 };
+  }
+
+  /** Whether everything a push carried is held now: each start placed, each entry in its epoch's roster. */
+  private holds(data: ChainData): boolean {
+    for (const raw of data.starts) {
+      const start = parseStart(raw);
+      if (!start || !this.chain.validated().some((s) => s.sig === start.sig)) return false;
+    }
+    for (const log of data.logs) {
+      const start = this.chain.byScope(log.scope);
+      const roster = start && this.chain.rosterOf(start);
+      if (!roster) return false;
+      for (const e of log.entries) {
+        const sig = e && typeof e === "object" ? (e as { sig?: unknown }).sig : undefined;
+        if (typeof sig !== "string" || !roster.named(sig)) return false;
+      }
+    }
+    return true;
   }
 
   private charge(seat: Seat): boolean {
@@ -137,9 +218,56 @@ export class RoomGuard {
     }
   }
 
-  private serially(job: () => Promise<void>): Promise<void> {
-    const run = this.work.then(job);
-    this.work = run.catch(() => {});
-    return this.work;
+  /**
+   * Work for later, reserved before its payload is kept: past this socket's or the room's queue (jobs, bytes), it's
+   * answered with `refused` (the page tries again) and nothing is kept.
+   */
+  private enqueue(peer: string, bytes: number, refused: GuardReply, run: (seat: Seat) => Promise<void>): void {
+    const seat = this.seats.get(peer);
+    if (!seat) return;
+    const room = this.limits;
+    if (
+      seat.jobs + 1 > room.queuedJobs ||
+      seat.bytes + bytes > room.queuedBytes ||
+      this.jobs + 1 > room.queuedJobs * 4 ||
+      this.bytes + bytes > room.queuedBytes * 4
+    ) {
+      seat.reply(refused);
+      return;
+    }
+    seat.jobs++;
+    seat.bytes += bytes;
+    this.jobs++;
+    this.bytes += bytes;
+    this.queue.push({ peer, bytes, run });
+    void this.drain();
+  }
+
+  private release(job: Job, seat: Seat | undefined): void {
+    this.jobs--;
+    this.bytes -= job.bytes;
+    if (seat) {
+      seat.jobs--;
+      seat.bytes -= job.bytes;
+    }
+  }
+
+  private async drain(): Promise<void> {
+    if (this.running) return;
+    this.running = true;
+    try {
+      for (let job = this.queue.shift(); job; job = this.queue.shift()) {
+        const seat = this.seats.get(job.peer);
+        try {
+          if (seat) await job.run(seat);
+        } catch {
+          // A job that fails changes nothing; the next one runs.
+        } finally {
+          this.release(job, this.seats.get(job.peer) === seat ? seat : undefined);
+        }
+      }
+    } finally {
+      this.running = false;
+    }
   }
 }
