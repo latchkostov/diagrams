@@ -1,7 +1,8 @@
 # Self-hosting Live Diagrams
 
-Live Diagrams is a static site: HTML, JavaScript, CSS, bundled fonts and icons. There is no application backend,
-database, account service or telemetry. You provide HTTPS, file serving and, if needed, your own sign-in gate.
+Live Diagrams runs in the browser: HTML, JavaScript, CSS, bundled fonts and icons. The default deployment is a
+static site. An optional [collaboration server](#collaboration-server) adds an encrypted WebSocket relay, with
+no database, account service or telemetry. You provide HTTPS and, if needed, your own sign-in gate.
 
 ## Choose a target
 
@@ -21,7 +22,7 @@ All policies derive from `scripts/security-headers.ts`; regenerate them instead 
 
 ## Build and lock it down
 
-Use Node.js 22 and pnpm 10 (the repository pins pnpm via `packageManager`). Pin a release commit or tag:
+Use the Node.js version in `.nvmrc` and pnpm version in `packageManager`. Pin a release commit or tag:
 
 ```sh
 git clone https://github.com/latchkostov/diagrams.git live-diagrams
@@ -43,16 +44,16 @@ resolve to your directory. It does not edit application source; Docker and offli
 These switches retain their existing behaviour. They are compiled into JavaScript; changing a container's
 runtime environment or a Helm value cannot change them. Rebuild the site/image after changing a switch.
 
-| Build variable             | Normal build  | Internal build | Effect when set to `1`                                                                                                                           |
-| -------------------------- | ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `VITE_DISABLE_SHARE_LINKS` | off           | **1**          | Removes share links, password links and URL embeds. File exports and host-supplied private embeds stay available.                                |
-| `VITE_DISABLE_LINK_OPEN`   | off           | off            | Stops opening `#d=` / `#e=` links, including in embeds. Host-supplied embeds still work.                                                         |
-| `VITE_DISABLE_AI_TOOLS`    | off           | **1**          | Removes browser-agent tools, Copy for AI, copied prompts and Build with AI.                                                                      |
-| `VITE_DISABLE_ONDEVICE`    | off           | off            | Removes Chrome's on-device model and its microphone; with AI tools off, removes the AI panel.                                                    |
-| `VITE_PRIVATE_BY_DEFAULT`  | off           | **1**          | Starts new diagrams Private; people can still change that setting.                                                                               |
-| `VITE_BRAND_NAME`          | Live Diagrams | Live Diagrams  | Your name in the top bar and page title (up to 60 characters).                                                                                   |
-| `VITE_LOCALES`             | all           | all            | Comma-separated languages, default first, e.g. `de,en`. One language removes the language choice.                                                |
-| `VITE_ENABLE_COLLAB`       | off           | off            | Adds Edit together (rooms). Needs share links, so an internal build needs `VITE_DISABLE_SHARE_LINKS=0` too. See [Edit together](#edit-together). |
+| Build variable             | Normal build  | Internal build | Effect when set to `1`                                                                                                                 |
+| -------------------------- | ------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_DISABLE_SHARE_LINKS` | off           | **1**          | Removes share links, password links and URL embeds. File exports and host-supplied private embeds stay available.                      |
+| `VITE_DISABLE_LINK_OPEN`   | off           | off            | Stops opening `#d=` / `#e=` links, including in embeds. Host-supplied embeds still work.                                               |
+| `VITE_DISABLE_AI_TOOLS`    | off           | **1**          | Removes browser-agent tools, Copy for AI, copied prompts and Build with AI.                                                            |
+| `VITE_DISABLE_ONDEVICE`    | off           | off            | Removes Chrome's on-device model and its microphone; with AI tools off, removes the AI panel.                                          |
+| `VITE_PRIVATE_BY_DEFAULT`  | off           | **1**          | Starts new diagrams Private; people can still change that setting.                                                                     |
+| `VITE_BRAND_NAME`          | Live Diagrams | Live Diagrams  | Your name in the top bar and page title (up to 60 characters).                                                                         |
+| `VITE_LOCALES`             | all           | all            | Comma-separated languages, default first, e.g. `de,en`. One language removes the language choice.                                      |
+| `VITE_ENABLE_COLLAB`       | off           | off            | Alias for `VITE_COLLAB=public` when `VITE_COLLAB` is unset. Rooms are independent of share links. See [Edit together](#edit-together). |
 
 A boolean is on with `1`, `true`, `yes` or `on`. Shell variables override Vite's `.env` files; internal defaults
 apply only to unset variables. Set `0` explicitly to override an internal default. The container treats empty
@@ -78,11 +79,13 @@ on-device features and manage browser policy where zero external traffic is requ
 
 Edit together lets people edit one diagram at the same time, each in their own browser
 ([EDIT-TOGETHER.md](EDIT-TOGETHER.md)). It is **off** in every self-hosted build unless you set
-`VITE_ENABLE_COLLAB=1`. It needs share links: a room is a kind of link, so `VITE_DISABLE_SHARE_LINKS=1` (the internal
-default) keeps rooms out even with the switch on. Without the switch, the build carries no room code at all.
+`VITE_COLLAB=public` or `VITE_COLLAB=server`. `VITE_ENABLE_COLLAB=1` is the legacy alias for `public`.
+Rooms are independent of `VITE_DISABLE_SHARE_LINKS`; Private diagrams remain blocked in every mode.
+Without collaboration enabled, the build carries no room code at all. For a static build using public discovery,
+set `VITE_COLLAB=public` in your build environment (or in a local `.env.local` file), then run:
 
 ```sh
-VITE_ENABLE_COLLAB=1 VITE_DISABLE_SHARE_LINKS=0 pnpm build:internal
+pnpm build:internal
 ```
 
 **What a room contacts.** Browsers in a room connect to each other directly (WebRTC), with the diagram end-to-end
@@ -137,8 +140,157 @@ the switch on, the app's `connect-src` allows the trackers' origins (never an em
 apart). STUN and TURN aren't page requests, so CSP can't govern them. The compiled list names the only STUN and TURN
 servers the app uses, but it doesn't limit which peer addresses a browser tries (see above).
 
-**Coming:** a relay server you host (`services/server`) will be able to carry rooms without public trackers. Its
-setup will be documented here when it ships.
+For private networks without public discovery, use the [collaboration server](#collaboration-server).
+
+## Collaboration server
+
+One image serves the UI and a thin encrypted WebSocket relay. Browsers encrypt diagrams and presence before
+sending them; the relay never sees diagram content, room secrets, links or room keys. Use it for private
+networks where rooms must stay on your infrastructure: server mode contacts no third-party trackers, STUN or
+TURN services, and uses no WebRTC. There is no fallback to public infrastructure.
+
+The operator can see client IP addresses, timing, opaque room IDs, membership counts and frame sizes/counts.
+Envelope headers expose channel, random sender ID and counter. Encryption protects against relay inspection,
+logs and memory dumps; it cannot protect against a malicious operator who also serves modified JavaScript
+that steals keys. See the [threat model](research/collaboration-threat-model.md#what-each-party-sees).
+
+### Build modes
+
+These are build-time settings, never runtime configuration. Set them in your build environment or a local
+`.env.local` file before `pnpm build:internal`; the command is the same on every OS. Rebuild after changes.
+
+| Variable             | Default | Meaning                                                                                                                                                                                                                           |
+| -------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_COLLAB`        | `off`   | `off`: no rooms; `public`: WebRTC with configured/public discovery; `server`: encrypted WebSocket relay only.                                                                                                                     |
+| `VITE_COLLAB_SERVER` | unset   | In server mode, defaults to `collab/v1` relative to `document.baseURI`, including the site's directory prefix. For another origin, set an absolute `wss://` URL including the relay path, without credentials, query or fragment. |
+| `VITE_ENABLE_COLLAB` | off     | `1` aliases `public` if `VITE_COLLAB` is unset. An explicit `VITE_COLLAB` takes precedence.                                                                                                                                       |
+
+The static image stays collaboration-off by default. The server image compiles `VITE_COLLAB=server` with a
+same-origin relay. Rooms work even with share links disabled. **Private diagrams cannot start or join rooms
+in any mode, including on your own server. There is no escape hatch.** This remains blocked pending an
+independent crypto review. The internal profile still starts new diagrams Private.
+
+### Deployment and access
+
+From a pinned checkout with Docker available:
+
+```sh
+docker compose -f deploy/self-host/server/compose.yaml up --build -d
+docker compose -f deploy/self-host/server/compose.yaml logs
+docker compose -f deploy/self-host/server/compose.yaml down
+```
+
+Open `http://localhost:8080/` for a local check. For deployment, use HTTPS: the server speaks HTTP on 8080
+and TLS terminates at Caddy, nginx or your ingress. The distroless image runs as a non-root user with a
+read-only root, all capabilities dropped and no writable paths. CI builds and smoke-tests the image; no
+project image is published to GHCR. Build your own:
+
+```sh
+docker build -f services/server/Dockerfile -t live-diagrams-server:local .
+```
+
+Set deployment runtime variables in a local Compose `.env` file or your orchestrator, for example
+`LD_ORIGIN=https://diagrams.example.com`. Compose forwards `LD_BASE`, `LD_STATIC`, `LD_ORIGIN`,
+`LD_TRUST_PROXY`, `LD_TRUST_PROXY_HOPS`, `LD_SOCKET_BUFFER_BYTES`, `LD_TOTAL_BUFFER_BYTES` and
+`LD_MAX_SOCKETS`; add other settings to its `environment` mapping as needed. `LD_MEMORY_LIMIT` sets
+Compose's container limit (default `512m`).
+The Compose build accepts brand, locales, on-device and framing build arguments as shown in its file.
+
+Use the [Caddy and nginx server variants](#collaboration-proxy-layouts) to proxy the full site and WebSockets,
+preserving the directory prefix. For a separate static host, compile that UI with `VITE_COLLAB=server`, set
+`LD_STATIC=off` on the relay, and proxy `<base>collab/` with the relay-only templates. Static routes then
+return 404 on the relay; health endpoints remain available. [Helm server mode](../deploy/self-host/helm/README.md#collaboration-server)
+uses the same image, pins one replica and uses `Recreate`, because rooms live in one process.
+
+Helm server mode uses `server.resources` (256 MiB requested, 512 MiB limit), independently of static
+mode's unchanged `resources`. Both Helm server mode and Compose default to 16 MiB per socket,
+128 MiB total outbound buffers and 32 sockets. Their memory plan is:
+**512 MiB = 128 outbound + 128 Node baseline + 65 inbound + 32 compression cache + 64 compression
+work + 95 spare**. Inbound reserves two maximum frames per socket:
+`ceil(2 * LD_MAX_SOCKETS * LD_MAX_PAYLOAD / 1048576)` MiB. Compression work reserves four 8 MiB
+buffers for each of two concurrent compression jobs. The baseline and spare cover runtime objects,
+socket/kernel bookkeeping and allocator/GC overhead; this is a sizing plan, not a hard RSS guarantee.
+Recalculate headroom when increasing socket counts or other limits, and monitor container memory.
+
+At startup the server uses Node's OS constraint detection (including Linux cgroups v1/v2) and refuses
+`LD_TOTAL_BUFFER_BYTES > floor(memoryLimit / 4)` with an actionable `startup-error-buffer-budget`
+log message. This applies to Compose, Helm and direct starts. Detection returning zero means no known
+constraint, so the check is skipped. Raw runtime defaults in the table below remain unchanged;
+small containers must use the deployment defaults above or equivalent lower budgets. Raising only
+the outbound budget without raising the container limit fails startup; the 25% rule reserves the
+remaining 75% for other memory and does not replace the headroom calculation.
+
+**There is no built-in access control beyond the Origin check and limits.** Origin is not authentication:
+non-browser clients can supply it. Put both the UI and WebSocket upgrade behind your SSO proxy or VPN.
+Same-origin WebSocket upgrades carry the proxy's session cookie. Protect the relay listener from direct
+client access if you trust forwarding headers. The chart installs no sign-in service or network policy.
+
+### Server settings
+
+All runtime settings read by the server are below. Flags accept only `0` or `1`; numeric settings are integer
+bytes, counts or milliseconds as named. Invalid values stop startup. Origins include scheme and optional
+port, without a path or trailing slash; `LD_ALLOWED_ORIGINS` is a comma-separated list of exact origins.
+
+| Variable                 | Default                                              | Purpose                                                                                       |
+| ------------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `LD_HOST`                | `0.0.0.0`                                            | HTTP bind address.                                                                            |
+| `LD_PORT`                | `8080`                                               | HTTP port (0–65535; 0 chooses an ephemeral port).                                             |
+| `LD_BASE`                | `/`                                                  | Site/relay directory prefix, with leading and trailing slashes, e.g. `/tools/diagrams/`.      |
+| `LD_ORIGIN`              | unset: `http://<Host>`                               | Expected browser Origin. Set the public HTTPS origin behind a TLS proxy.                      |
+| `LD_ALLOWED_ORIGINS`     | empty                                                | Additional allowed browser origins, for a separately hosted UI. No wildcard.                  |
+| `LD_TRUST_PROXY`         | `0`                                                  | Use the trusted forwarding chain for per-IP quotas; otherwise use the socket address.         |
+| `LD_TRUST_PROXY_HOPS`    | `1`                                                  | Select the Nth address from the right of `X-Forwarded-For` when proxy trust is enabled.       |
+| `LD_LOG_IPS`             | `0`                                                  | Opt in to client IPs in JSON logs.                                                            |
+| `LD_METRICS`             | `0`                                                  | Enable Prometheus `/metrics`; restrict it at the proxy. No per-room labels.                   |
+| `LD_STATIC`              | `on`                                                 | `off` serves only the relay and operational endpoints.                                        |
+| `LD_STATIC_DIR`          | source-relative `../../../dist/`; image: `/app/site` | Static files and generated `headers.json`.                                                    |
+| `LD_DRAIN_TIMEOUT_MS`    | `10000`                                              | Maximum graceful shutdown drain before sockets are terminated.                                |
+| `LD_ROOM_CAP`            | `8`                                                  | Sockets per room, configurable from 1 to 64.                                                  |
+| `LD_MAX_PAYLOAD`         | `1050624` (1 MiB + 2 KiB)                            | WebSocket payload ceiling; allowed range 1049609–1050624 preserves the client frame contract. |
+| `LD_BYTES_PER_WINDOW`    | `67108864` (64 MiB)                                  | Inbound bytes per socket per window.                                                          |
+| `LD_WINDOW_MS`           | `10000`                                              | Inbound byte-budget window.                                                                   |
+| `LD_FRAMES_PER_SECOND`   | `200`                                                | Per-socket inbound frame refill rate.                                                         |
+| `LD_FRAME_BURST`         | `1000`                                               | Per-socket inbound frame burst capacity.                                                      |
+| `LD_SOCKET_BUFFER_BYTES` | `134217728` (128 MiB)                                | Close a socket exceeding its outbound buffer limit (minimum 127).                             |
+| `LD_TOTAL_BUFFER_BYTES`  | `536870912` (512 MiB)                                | Server-wide outbound buffer budget; refuse new joins when exhausted (minimum 127).            |
+| `LD_MAX_ROOMS`           | `1000`                                               | Maximum active rooms. Empty rooms are deleted immediately.                                    |
+| `LD_MAX_SOCKETS`         | `4000`                                               | Maximum total sockets.                                                                        |
+| `LD_SOCKETS_PER_IP`      | `64`                                                 | Maximum sockets per observed client IP; shared NAT addresses share a quota.                   |
+| `LD_HELLO_TIMEOUT_MS`    | `10000`                                              | Deadline for the initial room hello.                                                          |
+| `LD_PING_INTERVAL_MS`    | `25000`                                              | WebSocket ping interval.                                                                      |
+| `LD_MISSED_PONGS`        | `2`                                                  | Missed pong threshold before disconnection.                                                   |
+| `LD_IDLE_TIMEOUT_MS`     | `300000`                                             | Close after five minutes without data; normal presence prevents idle expiry.                  |
+
+Trust proxies only with an isolated listener and a fixed trusted chain. nginx appends its observed client IP;
+counting from the right prevents a spoofed caller prefix from bypassing quotas. Caddy discards untrusted
+incoming forwarding values by default. See [proxy layouts](#collaboration-proxy-layouts) before setting hops.
+Logs contain whitelisted event/code fields, plus IPs only when opted in: no payloads, room IDs or keys. The
+container smoke test asserts neither a synthetic diagram canary nor actual room IDs appear in `docker logs`.
+
+### Upgrades, health and limits
+
+There is no server persistence or server backup. Keep one instance: replicas would split rooms. On shutdown,
+sockets receive restart code 1012; browsers reconnect with jitter and resync from each other. A restart cannot
+restore a room when no browser or local recovery copy retains it. Keep browser-saved/exported copies.
+
+`/healthz` checks liveness and `/readyz` returns 503 while draining. Both paths stay at the origin root even
+with `LD_BASE` set. The image's `node main.js --healthcheck` checks readiness without curl or wget. Keep probes
+reachable without an SSO redirect. Rebuild at the next pinned commit with the same build inputs, deploy the
+image and matching headers together, and verify readiness and reconnection. Helm uses `helm upgrade` or
+`helm rollback` with the previous image tag; `Recreate` entails a brief interruption.
+
+| Symptom                           | Check                                                                                                                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server unreachable                | Check `/readyz`, public `LD_ORIGIN`, the exact prefix and `collab/v1` route, TLS, WebSocket upgrade headers, proxy timeouts and SSO session. There is no public fallback. |
+| Room full                         | `LD_ROOM_CAP` counts sockets in each room, including extra tabs; close unused tabs or raise the cap within 1–64. Lobby sockets also count toward IP/global quotas.        |
+| Cross-origin relay blocked by CSP | Set `VITE_COLLAB_SERVER` when building the UI; regenerate and install its headers with the command below. Add the UI origin to the relay's `LD_ALLOWED_ORIGINS`.          |
+
+```sh
+pnpm headers:self-host --collab-server wss://relay.example.com/collab/v1
+```
+
+This permits exactly that relay origin in `connect-src`. Keep generated headers consistent with the UI's
+build mode; same-origin relays need no outside connection origin.
 
 ## Generate your headers
 
@@ -237,7 +389,7 @@ Compose binds loopback and uses a read-only filesystem, writable `/tmp` and no L
 your HTTPS/SSO proxy. `pnpm self-host:smoke` builds root and sub-path images, starts them on assigned loopback ports,
 checks headers, caching, gzip and routing, then removes both containers. CI runs it without publishing images.
 
-## Server behind nginx or Caddy
+## Collaboration proxy layouts
 
 The in-memory collaboration server is built with `services/server/Dockerfile`; its Compose service is
 `deploy/self-host/server/compose.yaml`. Use generated `nginx/nginx.server.conf` or `caddy/Caddyfile.server`
@@ -307,6 +459,11 @@ helm upgrade --install diagrams deploy/self-host/helm -f my-values.yaml
 
 This passes the chart's switches, profile, path and framing origins to Docker as build arguments. It builds
 locally and does not push to a registry. Use a complete values file based on the chart's `values.yaml`.
+
+For the UI plus relay, select `mode: server`, build `services/server/Dockerfile` and set `server.image`.
+`pnpm self-host:image` remains the static-image builder. See [Helm server mode](../deploy/self-host/helm/README.md#collaboration-server)
+for runtime `server.env`, TLS/proxy trust and timeout settings. Server mode forces one replica and `Recreate`;
+its readiness check is `/readyz` and its liveness check is `/healthz`. Static mode is unchanged.
 
 ## nginx and Caddy
 
@@ -519,21 +676,21 @@ not move with the site. A directory prefix does not isolate localStorage: copies
 
 ## Troubleshooting
 
-| Symptom                                  | Check                                                                                             |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Blank page / module served as HTML       | Preserve trailing slash and prefix; missing modules must be 404, not SPA/login HTML.              |
-| CSP violation / missing headers          | Regenerate; remove duplicate proxy policies and run the verifier.                                 |
-| Embed refuses framing                    | Use the exact host-origin allowlist; remove conflicting X-Frame-Options or a stricter second CSP. |
-| Embed fails CORS                         | Keep `/embed/*.js` reachable with ACAO/CORP; do not redirect modules to SSO.                      |
-| Iframe repeatedly asks for login         | Check schemeful site, third-party-cookie policy and session cookies.                              |
-| OAuth popup loses opener                 | Omit COOP on auth.html; register the correct host/path redirect URI.                              |
-| Switch / language did not change         | Rebuild; runtime env and Helm metadata cannot change compiled settings.                           |
-| Old app after upgrading                  | Revalidate HTML; check CDN minimum TTL and retain old assets during rollout.                      |
-| Empty Your diagrams after moving         | Export from the old origin, then import at the new one.                                           |
-| Docker fails to start                    | Check Linux daemon, port conflicts, logs, `nginx -t` and writable `/tmp` in read-only mode.       |
-| Encrypted export / recording unavailable | Use HTTPS; WebCrypto and capture APIs are restricted on plain HTTP intranets.                     |
-| No Edit together in Share…               | Build with `VITE_ENABLE_COLLAB=1` and share links on; the diagram must not be Private.            |
-| Room says it can't connect               | Check the trackers are reachable over `wss://` and allowed in `connect-src`; consider TURN.       |
+| Symptom                                  | Check                                                                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Blank page / module served as HTML       | Preserve trailing slash and prefix; missing modules must be 404, not SPA/login HTML.                                  |
+| CSP violation / missing headers          | Regenerate; remove duplicate proxy policies and run the verifier.                                                     |
+| Embed refuses framing                    | Use the exact host-origin allowlist; remove conflicting X-Frame-Options or a stricter second CSP.                     |
+| Embed fails CORS                         | Keep `/embed/*.js` reachable with ACAO/CORP; do not redirect modules to SSO.                                          |
+| Iframe repeatedly asks for login         | Check schemeful site, third-party-cookie policy and session cookies.                                                  |
+| OAuth popup loses opener                 | Omit COOP on auth.html; register the correct host/path redirect URI.                                                  |
+| Switch / language did not change         | Rebuild; runtime env and Helm metadata cannot change compiled settings.                                               |
+| Old app after upgrading                  | Revalidate HTML; check CDN minimum TTL and retain old assets during rollout.                                          |
+| Empty Your diagrams after moving         | Export from the old origin, then import at the new one.                                                               |
+| Docker fails to start                    | Check Linux daemon, port conflicts, logs, `nginx -t` and writable `/tmp` in read-only mode.                           |
+| Encrypted export / recording unavailable | Use HTTPS; WebCrypto and capture APIs are restricted on plain HTTP intranets.                                         |
+| No Edit together in Share…               | Build with `VITE_COLLAB=public` or `server`; the diagram must not be Private.                                         |
+| Room says it can't connect               | Public mode: check tracker reachability/CSP and TURN. Server mode: see [Collaboration server](#collaboration-server). |
 
 ## Data and privacy
 
@@ -543,8 +700,9 @@ are generated in the browser and downloaded. Interactive HTML is self-contained 
 private embeds keep diagrams in memory only.
 
 There are no requests to livediagrams.dev, analytics or CDN fonts/icons in a self-hosted, provider-free build.
-With Edit together on, a room contacts its trackers and STUN/TURN servers (the public ones unless you name your
-own), and the people in it connect to each other directly. While someone is in a room, an encrypted copy of it is
+In public collaboration mode, a room contacts its trackers and STUN/TURN servers (the public ones unless you name
+your own), and the people in it connect to each other directly. Server mode contacts only your relay. While
+someone is in a room, an encrypted copy of it is
 kept in that browser's IndexedDB so a reload loses nothing. **Clear everything on this device** removes it.
 Configured cloud storage sends data to a provider only when used. AI/clipboard exports and browser services
 remain subject to enabled features and organisational policies. Static hosts and SSO proxies may log web

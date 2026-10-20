@@ -8,10 +8,23 @@ export type LogEvent =
   | "draining"
   | "stopped"
   | "startup-error"
+  | "startup-error-buffer-budget"
   | "http-error";
 export function createLog(write: (line: string) => void = (line) => process.stdout.write(`${line}\n`)) {
   return (event: LogEvent, code?: number, ip?: string): void => {
-    write(JSON.stringify({ event, ...(code === undefined ? {} : { code }), ...(ip === undefined ? {} : { ip }) }));
+    write(
+      JSON.stringify({
+        event,
+        ...(event === "startup-error-buffer-budget"
+          ? {
+              message:
+                "LD_TOTAL_BUFFER_BYTES exceeds 25% of detected memory limit; lower the budget or raise the container limit",
+            }
+          : {}),
+        ...(code === undefined ? {} : { code }),
+        ...(ip === undefined ? {} : { ip }),
+      }),
+    );
   };
 }
 export type Logger = ReturnType<typeof createLog>;
