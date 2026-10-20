@@ -1,14 +1,128 @@
 import { expect, it, vi } from "vitest";
 import { ADMISSION_LAG_MS, SampledLedger } from "./ledger";
 import { countingReads, GROWTH_FACTOR } from "../test/complexity";
+import { drainRetiredLedger } from "../test/ledgerDrain";
 import { waitingFixture } from "../lab/waitingFixture";
 import { ledgerFixture } from "../lab/ledgerFixture";
 import { createEngine, randomDraws } from "./engine";
 import { resourceLesson } from "../model/autoscaling";
 import { realSnapshot } from "./units";
-import { assertLedgerInvariants, assertOutcomeInvariants, type LedgerInvariantState } from "./resourceInvariants";
+import {
+  assertAdmissionInvariants,
+  assertLedgerInvariants,
+  assertOutcomeInvariants,
+  type LedgerInvariantState,
+} from "./resourceInvariants";
 
 const pool = (owner = "caller", startActive = 0) => ({ owner, scope: "pool" as const, edge: "call", startActive });
+
+it("adding a request cap while a caller waits refuses a second arrival before thread admission", () => {
+  // Seed -2104931721: start one call, lower maxInFlight, then deliver another call.
+  const d = waitingFixture();
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    concurrency: 2,
+    maxConcurrency: 2,
+    scaling: "fixed",
+    jitter: 0,
+    api: { latencyMs: 10 },
+  };
+  d.nodes = d.nodes.slice(1, 3);
+  d.edges = [d.edges[1]];
+  const engine = createEngine({ scale: 1, maxParticles: 0, verifyResources: assertAdmissionInvariants });
+  engine.load(d);
+  engine.inject("caller", 1);
+  engine.step(10);
+  engine.setNodeProps("caller", { api: { latencyMs: 10, maxInFlight: 1 } });
+  engine.inject("caller", 1);
+  engine.step(10);
+  expect(engine.snapshot().nodes.caller.rejected).toBe(1);
+  engine.step(1000);
+  expect(engine.metrics().inSystem).toBe(0);
+});
+
+it("a paused sampled caller keeps its admitted weight when scale changes before it starts", () => {
+  // Seed 1839831286: deliver while paused at scale two, switch to scale one, then resume.
+  const d = waitingFixture();
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    concurrency: 2,
+    maxConcurrency: 2,
+    scaling: "fixed",
+    jitter: 0,
+    api: { latencyMs: 10 },
+  };
+  d.nodes = d.nodes.slice(1, 3);
+  d.edges = [d.edges[1]];
+  const engine = createEngine({ scale: 2, maxParticles: 0, verifyResources: assertAdmissionInvariants });
+  engine.load(d);
+  engine.setNodeStatus("caller", "paused");
+  engine.inject("caller", 1);
+  engine.setScale(1);
+  engine.setNodeStatus("caller", "up");
+  engine.step(3000);
+  expect(engine.metrics().inSystem).toBe(0);
+});
+
+it("nested non-blocking replies drain retired request residence on its exact release clock", () => {
+  // Seed 1007768314: four queue deliveries traverse an off-thread caller,
+  // a CPU-backed blocking caller, then an off-thread reply continuation.
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  const prototype = d.nodes[1];
+  d.nodes = [
+    d.nodes[0],
+    ...[
+      { concurrency: 1, latencyMs: 0 },
+      {
+        concurrency: 1,
+        latencyMs: 0,
+        resources: { ...resourceLesson(), cpuMsPerMessage: 20, startup: { delayMs: 0, jitterFraction: 0 } },
+      },
+      { concurrency: 1, latencyMs: 81 },
+      { concurrency: 1, maxConcurrency: 1, scaling: "fixed" as const, api: { latencyMs: 10 } },
+    ].map((props, i) => ({
+      ...prototype,
+      id: `tier${i}`,
+      stencil: i === 3 ? "aws.lambda" : "generic.service",
+      props: { replicas: 1, jitter: 0, ...props },
+    })),
+  ];
+  d.edges = [
+    { id: "input", from: "source", to: "tier0", props: { travelMs: 10 } },
+    ...["non-blocking", "blocking", "non-blocking"].map((wait, i) => ({
+      id: `call${i}`,
+      from: `tier${i}`,
+      to: `tier${i + 1}`,
+      kind: "sync" as const,
+      props: {
+        travelMs: 10,
+        networkDelayMs: 10,
+        caller: { poolConnections: 1, wait: wait as "blocking" | "non-blocking", replyMs: i === 2 ? 51 : 0 },
+      },
+    })),
+  ];
+  let state!: LedgerInvariantState;
+  const engine = createEngine({
+    scale: 10,
+    seed: 19,
+    maxParticles: 0,
+    verifyLedger(s) {
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
+    },
+    verifyResources: assertAdmissionInvariants,
+  });
+  engine.load(d);
+  engine.step(10);
+  engine.inject("source", 4);
+  engine.step(200_000);
+  expect(engine.metrics().inSystem).toBe(0);
+  expect([...state.ledger.reservations.values()].map((r) => r.releaseAt)).toEqual([202310]);
+  drainRetiredLedger(engine, state);
+  expect(state.ledger.reservations.size).toBe(0);
+});
 
 it.each([
   [4, 7],

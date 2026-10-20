@@ -65,6 +65,7 @@ import {
 import { resolveScale, resolveMultiplier } from "./units";
 import {
   attemptAdmission,
+  admissionSlots,
   type AdmissionPolicy,
   reconfigureAdmission,
   emptyAdmission,
@@ -884,12 +885,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function slots(node: Node): number {
     if (node.waits && node.props.admission) {
-      const p = node.props.admission;
-      return Math.min(
-        p.slots ?? Infinity,
-        p.api.maxInFlight ?? Infinity,
-        p.fixedSlotsPerReplica === undefined ? Infinity : node.activeReplicas * p.fixedSlotsPerReplica,
-      );
+      return admissionSlots(node.props.admission, node.activeReplicas);
     }
     if (node.props.admission) return node.props.admission.slots ?? node.props.admission.api.maxInFlight ?? Infinity;
     return node.role === "processor" ? node.activeReplicas * node.props.concurrency : node.props.concurrency;
@@ -930,7 +926,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const recovery = work.recoveryCapacity;
     const lease = recovery?.thread ?? work.threadLease ?? work.lease;
     let request = ledger.get(work.requestLease);
-    const represented = request?.represented ?? recovery?.request.represented ?? scale;
+    // Admission can precede execution while paused. A live scale edit must not
+    // resize that already-charged transaction when it enters the ledger.
+    const represented = request?.represented ?? recovery?.request.represented ?? lease?.represented ?? scale;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
     let cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
     let requestCapacity = recovery?.request ?? work.lease;
@@ -2238,9 +2236,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       planning,
       time,
       retainedRequest?.represented ?? scale,
-      policy.fixedSlotsPerReplica === undefined
-        ? policy.slots
-        : Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica),
+      admissionSlots(policy, node.activeReplicas),
       work.route?.quotas,
       node.waits && node.role === "processor" && scale > 1,
       retainedRequest
@@ -2759,16 +2755,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const recovering = !!next.recoveryCapacity;
         if (next.continuation && !recovering && node.props.admission && !next.threadLease && node.status === "up") {
           const policy = node.props.admission;
-          const ceiling =
-            policy.fixedSlotsPerReplica === undefined
-              ? policy.slots
-              : Math.min(policy.slots ?? Infinity, node.activeReplicas * policy.fixedSlotsPerReplica);
           next.threadLease = reserveContinuation(
             admission,
             node.id,
             policy,
             scale,
-            ceiling ?? Infinity,
+            slots(node),
             scale > 1,
             ledger.get<Group>(next.requestLease) ?? next.lease,
           );

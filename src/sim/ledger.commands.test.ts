@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { expect, it } from "vitest";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
+import { drainRetiredLedger } from "../test/ledgerDrain";
 import { createEngine, randomDraws } from "./engine";
 import {
   assertLedgerInvariants,
@@ -206,6 +207,7 @@ function drain(p: Probe): void {
     )
       break;
   }
+  drainRetiredLedger(p.engine, p.state());
   idle(p);
 }
 
@@ -274,7 +276,9 @@ class BackoffOutage implements fc.Command<Model, Real> {
       e.setNodeStatus("tier0", "down");
       // Both zero-tick outages and outages spanning ticks must preserve the deadline.
       e.step(this.ticksDown * 10);
-      e.setNodeProps("sibling", { api: { latencyMs: 2000, sharedConcurrency: "callers" } });
+      // Keep the allocation occupied across the next recovery tick. A two-second
+      // service stretched by sampling only adds unrelated idle/hold ticks here.
+      e.setNodeProps("sibling", { api: { latencyMs: 20, sharedConcurrency: "callers" } });
       e.setNodeStatus("sibling", "up");
       e.inject("sibling", 1);
       expect(e.snapshot().nodes.sibling.rejected).toBe(0);
@@ -283,6 +287,7 @@ class BackoffOutage implements fc.Command<Model, Real> {
       e.setNodeStatus("tier0", "up");
       e.step(10);
       expect(e.snapshot().nodes.tier0.processed).toBe(0);
+      expect(e.snapshot().nodes.sibling.threads!.working).toBeGreaterThan(0);
     }
     compare(real, model);
   }

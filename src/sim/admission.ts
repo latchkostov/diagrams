@@ -96,6 +96,15 @@ export interface AdmissionPolicy {
   accountConcurrency?: number;
   fixedSlotsPerReplica?: number;
 }
+
+/** The execution ceiling also bounds callers whose older request leases predate a live cap. */
+export function admissionSlots(policy: AdmissionPolicy, activeReplicas = Infinity): number {
+  return Math.min(
+    policy.slots ?? Infinity,
+    policy.api.maxInFlight ?? Infinity,
+    policy.fixedSlotsPerReplica === undefined ? Infinity : activeReplicas * policy.fixedSlotsPerReplica,
+  );
+}
 interface Bucket {
   tokens: number;
   time: number;
