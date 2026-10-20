@@ -22,10 +22,11 @@ export function createRelayServer(
     rooms?: RoomRegistry;
     clock?: Clock;
     log?: Logger;
+    memoryLimit?: number;
   } = {},
 ) {
   const config = opts.config ?? readConfig();
-  validateMemoryBudget(config);
+  validateMemoryBudget(config, opts.memoryLimit);
   const admission = opts.admission ?? createAdmission(config);
   const rooms = opts.rooms ?? new MemoryRoomRegistry(config.roomCap, config.maxRooms);
   const log = opts.log ?? createLog();

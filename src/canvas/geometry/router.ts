@@ -3,7 +3,7 @@
 // The Router instance caches per-edge routes and only re-runs A* for edges whose ends changed or
 // whose search area changed node or boundary geometry touched; the global passes (ports, nudging, labels) are cheap.
 
-import type { Side } from "../../model/types";
+import type { AnnotationShape, Side } from "../../model/types";
 import { pickSides } from "../edges/routing";
 import { placeLabels, type LabelPlacement } from "./labels";
 import { nudgeRoutes } from "./nudge";
@@ -17,7 +17,7 @@ export type RouteStyle = "smoothstep" | "bezier" | "straight";
 
 export interface RouteNode {
   id: string;
-  rect: Rect;
+  rect: Rect & { shape?: AnnotationShape };
   /** Extra box that belongs to the node but sits outside it (icon captions). Avoided, not attached to. */
   extra?: Rect;
 }
@@ -109,7 +109,8 @@ interface RawEntry {
   region: Rect;
 }
 
-const sameRect = (a: Rect, b: Rect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+const sameRect = (a: Rect & { shape?: AnnotationShape }, b: Rect & { shape?: AnnotationShape }) =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height && a.shape === b.shape;
 
 export class Router {
   private raw = new Map<string, RawEntry>();

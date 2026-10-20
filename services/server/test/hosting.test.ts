@@ -299,6 +299,7 @@ describe("static UI hosting", () => {
         );
       else await rm(join(f.root, kind === "index" ? "index.html" : "headers.json"));
       const relay = createRelayServer({
+        memoryLimit: 4 * 1024 ** 3,
         config: readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC_DIR: f.root }),
       });
       onTestFinished(() => relay.close());

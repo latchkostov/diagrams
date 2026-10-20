@@ -75,6 +75,8 @@ function rectOf(n: InternalNode<FlowNode>): Rect {
 function sameRoutingNode(a: InternalNode<FlowNode>, b: InternalNode<FlowNode>): boolean {
   if (a === b) return true;
   if (a.id !== b.id || a.type !== b.type) return false;
+  if (a.type === "annotation" && (a.data as AnnotationNodeData).shape !== (b.data as AnnotationNodeData).shape)
+    return false;
   if (a.type === "boundary") {
     const x = a.data as GroupNodeData;
     const y = b.data as GroupNodeData;
@@ -123,7 +125,10 @@ export function routeInputFromStore(
     } else
       routeNodes.push({
         id: n.id,
-        rect,
+        rect:
+          n.type === "annotation" && (n.data as AnnotationNodeData).kind === "shape"
+            ? { ...rect, shape: (n.data as AnnotationNodeData).shape ?? "rect" }
+            : rect,
         extra:
           opts.captions && n.type === "diagram"
             ? { x: rect.x + rect.width / 2 - 90, y: rect.y + rect.height + 6, width: 180, height: 34 }

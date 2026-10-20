@@ -16,6 +16,7 @@ import type { InlineEdit } from "../DiagramContext";
 import type { DiagramMeta } from "../convert";
 import { platform, type CanvasMenus, type MenuState } from "../menus/useCanvasMenus";
 import { connectedMenuPlacement } from "../geometry/connectedMenuPlacement";
+import { union } from "../geometry/rect";
 import { towardOf, type Toward } from "../placement";
 import { landing } from "../landing";
 import { panForConnectedMenu, type CameraController } from "../camera";
@@ -65,7 +66,9 @@ export function useQuickAddPlacement(
         width: from.measured?.width ?? spot.width,
         height: from.measured?.height ?? spot.height,
       };
-      const connected = { spot, card, left: menuLeft, width: QUICK_ADD_W };
+      // Reserve both destinations once, so choosing an outline never moves a submenu under the pointer.
+      const menuSpot = union([spot, editor.nextSpot(fromId, dir, "shape") ?? spot]) ?? spot;
+      const connected = { spot: menuSpot, card, left: menuLeft, width: QUICK_ADD_W };
       const view = { x: tx, y: ty, zoom: k };
       const next = panForConnectedMenu(controller, connected, view, r);
       const { position } = connectedMenuPlacement(connected, next ?? view, r);
@@ -93,6 +96,7 @@ export function useQuickAddPlacement(
               (sh) => {
                 pickNamed(() => editor.createConnected({ from: fromId, shape: sh.id, toward: dir }), sh.label);
               },
+              (destination) => landing.set(editor.nextSpot(fromId, dir, destination)),
             ),
         },
         { platform: platform() },
@@ -157,7 +161,7 @@ export function paneQuickAdd(
             (sh) => {
               pickNamed(() => {
                 const id = editor.addAnnotation("shape", { at: point, shape: sh.id });
-                return id ? { id, edge: null, merge: `new:${id}` } : null;
+                return id ? { id, edge: null, merge: `new:${id}`, annotation: true } : null;
               }, sh.label);
             },
           ),

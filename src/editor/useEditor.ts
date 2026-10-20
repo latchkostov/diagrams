@@ -745,6 +745,23 @@ export function createEditor(
     const d = snappedClear(at, clearOffset(at, others), others);
     return { ...at, x: at.x + d.x, y: at.y + d.y };
   };
+  const connectedPlan = (
+    src: FlowNode,
+    toward: Toward | undefined,
+    destination: boolean | "shape" | "stencil",
+    at?: XY,
+  ) => {
+    const from = box(src);
+    const size =
+      destination === true
+        ? { width: from.width, height: from.height }
+        : destination === "shape"
+          ? defaultSize.shape
+          : deps().nodeSize;
+    return at
+      ? { x: snap10(at.x - size.width / 2), y: snap10(at.y - size.height / 2), ...size }
+      : spotBeside(from, toward, size);
+  };
   /**
    * A new edge from `a` to `b`, its relationship inferred from their stencils (an edge into Key Vault is a
    * secret dependency, one from a deploy pipeline a deploy), and a flow's kind too (a Request into a database, a
@@ -1161,17 +1178,10 @@ export function createEditor(
         ),
       );
     },
-    nextSpot: (fromId, toward, clone = false) => {
+    nextSpot: (fromId, toward, destination = "stencil") => {
       const n = rf.getNode(fromId);
       if (!n || !takesEdges(n)) return null;
-      const from = box(n);
-      return spotBeside(
-        from,
-        toward,
-        clone || (isAnnotation(n) && n.data.kind === "shape")
-          ? { width: from.width, height: from.height }
-          : deps().nodeSize,
-      );
+      return connectedPlan(n, toward, destination);
     },
     createConnected: (req) => {
       const ns = currentNodes();
@@ -1179,14 +1189,12 @@ export function createEditor(
       if (!src || !takesEdges(src)) return null;
       const srcStencil = isDiagram(src) ? src.data.stencil : undefined;
       const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+      const plan = connectedPlan(src, toward, req.clone ? true : req.shape ? "shape" : "stencil", req.at);
 
       if (req.shape || (req.clone && isAnnotation(src))) {
         if (!req.shape && (!isAnnotation(src) || src.data.kind !== "shape")) return null;
-        const size = req.shape ? defaultSize.shape : box(src);
-        const spot = req.at
-          ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
-          : spotBeside(box(src), toward, size);
-        const position = { x: snap10(spot.x), y: snap10(spot.y) };
+        const size = plan;
+        const position = { x: plan.x, y: plan.y };
         const id = allocateId(annotationIdBase("shape"), takenIds());
         const annotation =
           !req.shape && isAnnotation(src)
@@ -1210,7 +1218,7 @@ export function createEditor(
         if (!insertAnnotation(node, (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]))
           return null;
         explainEdge(edge);
-        return { id, edge: edge.id, merge: `new:${id}` };
+        return { id, edge: edge.id, merge: `new:${id}`, annotation: true };
       }
 
       let data: DiagramFlowNode["data"];
@@ -1236,10 +1244,7 @@ export function createEditor(
         };
       }
       // Where: the drop point (a dropped connection, centred on it), else one gap beside the node that way.
-      const spot = req.at
-        ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
-        : spotBeside(box(src), toward, size);
-      const position = { x: snap10(spot.x), y: snap10(spot.y) };
+      const position = { x: plan.x, y: plan.y };
       const id = allocateId(stencilIdBase(data.stencil), takenIds());
       const node: DiagramFlowNode = {
         id,

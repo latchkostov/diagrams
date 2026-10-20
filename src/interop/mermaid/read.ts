@@ -47,6 +47,7 @@ export interface MermaidImportResult {
 interface PNode {
   id: string;
   label?: string;
+  yamlLabel?: boolean;
   shape?: MermaidShape;
   group?: string;
   order: number;
@@ -86,10 +87,9 @@ function cleanLabel(raw: string): string {
     .replace(/&gt;/g, ">");
 }
 
-const labelLines = (label: string) =>
-  label
+const labelLines = (label: string, yamlLabel = false) =>
+  (yamlLabel ? label : label.replace(/\\n/g, "\n"))
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/\\n/g, "\n")
     .replace(/<[^>]+>/g, "")
     .split("\n")
     .map((l) => l.trim())
@@ -159,6 +159,10 @@ class Scanner {
     let quoted = false;
     for (; this.i < this.s.length; this.i++) {
       const c = this.s[this.i];
+      if (quoted && c === "\\") {
+        this.i++;
+        continue;
+      }
       if (c === '"') quoted = !quoted;
       if (c === "}" && !quoted) return this.s.slice(start, this.i++);
     }
@@ -259,9 +263,16 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       sc.i += 2;
       const body = sc.attributes();
       const shape = /shape\s*:\s*([\w-]+)/.exec(body)?.[1];
-      const label = /label\s*:\s*("([^"]*)"|[^,}]+)/.exec(body);
+      const label = /label\s*:\s*("(?:\\.|[^"\\])*"|[^,}]+)/.exec(body);
       if (shape) n.shape = MERMAID_ALIASES.get(shape);
-      if (label) n.label = cleanLabel(label[2] ?? label[1]);
+      if (label) {
+        n.yamlLabel = true;
+        try {
+          n.label = cleanLabel(label[1].startsWith('"') ? (JSON.parse(label[1]) as string) : label[1]);
+        } catch {
+          sc.fail("Invalid quoted shape label");
+        }
+      }
     } else {
       for (const {
         brackets: [open, close],
@@ -398,7 +409,7 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
   const outNodes: DiagramNode[] = [...nodes.values()]
     .sort((a, b) => a.order - b.order)
     .map((n) => {
-      const lines = labelLines(n.label ?? n.id);
+      const lines = labelLines(n.label ?? n.id, n.yamlLabel);
       const m = metaNodes[n.id];
       const id = claim(m?.[0] ?? n.id);
       idMap.set(n.id, id);

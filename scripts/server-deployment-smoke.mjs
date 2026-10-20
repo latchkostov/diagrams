@@ -84,6 +84,55 @@ async function exerciseRelay(origin, base, protocol) {
   }
 }
 
+async function exerciseBrowserRooms(origin, base) {
+  const browser = await chromium.launch();
+  try {
+    const errors = [];
+    const hostContext = await browser.newContext();
+    const guestContext = await browser.newContext();
+    for (const context of [hostContext, guestContext]) {
+      await context.addInitScript(() => {
+        globalThis.document.addEventListener("securitypolicyviolation", (event) => {
+          throw new Error(`CSP: ${event.violatedDirective}`);
+        });
+        globalThis.RTCPeerConnection = function () {
+          throw new Error("Unexpected WebRTC");
+        };
+      });
+      context.on("page", (page) => page.on("pageerror", (error) => errors.push(error.message)));
+    }
+    const host = await hostContext.newPage();
+    await host.goto(`${origin}${base}a/deep/route?view=canvas&example=kafka-order-pipeline`);
+    await expect(host.getByTestId("node-gateway")).toBeVisible();
+    await host.getByTestId("file-button").click();
+    await host.getByTestId("file-share").click();
+    await host.getByTestId("share-option-edit-together").click();
+    await host.getByTestId("room-start-confirm").click();
+    const link = await host.getByTestId("room-link").inputValue();
+    expect(new URL(link).pathname.startsWith(base)).toBe(true);
+    await host.getByTestId("room-started-done").click();
+    const guest = await guestContext.newPage();
+    await guest.goto(link);
+    await guest.getByTestId("room-join-accept").click();
+    await host.getByTestId("room-knock-admit").first().click();
+    await expect(guest.getByTestId("node-gateway")).toBeVisible();
+    for (const [editor, receiver, label] of [
+      [host, guest, "Proxy outward"],
+      [guest, host, "Proxy return"],
+    ]) {
+      await editor.getByTestId("node-gateway").dblclick();
+      const field = editor.getByTestId("inspector-field-label");
+      await expect(field).toBeFocused();
+      await field.fill(label);
+      await field.press("Enter");
+      await expect(receiver.getByTestId("node-gateway")).toContainText(label);
+    }
+    expect(errors).toEqual([]);
+  } finally {
+    await browser.close();
+  }
+}
+
 /** Deployment variants forward collaboration at root and subpaths. */
 export async function deploymentVariants({ run, image, scratch, hostingTemplates, waitForStableEndpoint, protocol }) {
   const clientFile = path.join(scratch, "proxy-client.mjs");
@@ -101,7 +150,9 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
   });
   for (const base of ["/", "/tools/diagrams/"]) {
     for (const proxy of ["nginx", "caddy"]) {
-      for (const relayOnly of [false, true]) {
+      for (const scenario of ["quota-app", "quota-relay", "browser"]) {
+        const relayOnly = scenario === "quota-relay";
+        const browserRooms = scenario === "browser";
         const suffix = randomUUID();
         const network = `ld-proxy-smoke-${suffix}`;
         const proxyName = `ld-proxy-${suffix}`;
@@ -198,7 +249,7 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
                 "-e",
                 "LD_TRUST_PROXY_HOPS=1",
                 "-e",
-                "LD_SOCKETS_PER_IP=2",
+                `LD_SOCKETS_PER_IP=${browserRooms ? 8 : 2}`,
                 image,
               ],
               true,
@@ -224,6 +275,13 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
             return response.status === 501;
           });
           expect((await fetch(`${origin}${base}`)).status).toBe(relayOnly ? 404 : 200);
+          if (browserRooms) {
+            await exerciseBrowserRooms(origin, base);
+            console.log(
+              `PASS browser rooms synchronize through nginx and Caddy at root and subpaths: ${proxy} ${base}; two-way edits, CSP and page errors`,
+            );
+            continue;
+          }
           if (!relayOnly) {
             const browser = await chromium.launch();
             try {

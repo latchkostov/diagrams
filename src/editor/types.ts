@@ -18,7 +18,7 @@ export type { DiagramDiff, ChangeSet } from "./diagramDiff";
 
 export type XY = { x: number; y: number };
 /** A node just made with its edge (null when it has none of its own) and the undo tag naming it joins. */
-export type NewNode = { id: string; edge: string | null; merge: string };
+export type NewNode = { id: string; edge: string | null; merge: string; annotation?: boolean };
 /** A box in flow coordinates. */
 export type XYBox = XY & { width: number; height: number };
 
@@ -135,7 +135,7 @@ export interface EditorApi {
    * across past what's there, and always clear of nodes and edges. Default side: downstream. `clone`: the
    * size of a copy of `fromId` rather than a new node. Null when `fromId` takes no edges.
    */
-  nextSpot(fromId: string, toward?: Toward, clone?: boolean): XYBox | null;
+  nextSpot(fromId: string, toward?: Toward, destination?: boolean | "shape" | "stencil"): XYBox | null;
   /**
    * The one way a connected node is made: a dropped connection (`at`, the drop point), the "+" and Alt+arrow
    * (`toward`, default downstream), Alt+Shift+arrow (`clone`), the rail and Ctrl+K after a selected node, and a

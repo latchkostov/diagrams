@@ -52,6 +52,8 @@ export interface ActionContext {
   mode?: EditorMode;
   /** Who's asking: a context menu (default) or the command palette. */
   surface?: "menu" | "palette";
+  /** Palette insertion hands focus to a new shape once React Flow has measured it. */
+  focusPlaced?: (id: string) => void;
 }
 
 /** A rendered menu row. Submenu children are plain data so they can be built per open. */
@@ -79,6 +81,8 @@ export interface MenuItem {
   /** Extra words matched by submenu search. */
   keywords?: string;
   run?: () => void;
+  /** Preview the destination when this row is reached by pointer or keyboard. */
+  onPreview?: () => void;
   children?: MenuNode[];
   /** Show a search box (with this placeholder) at the top of the submenu; filters all leaf items. */
   searchable?: string;
@@ -116,6 +120,8 @@ export interface Action {
    * always-visible control and a shortcut (e.g. Fit view), so menus stay within budget.
    */
   paletteOnly?: boolean;
+  /** Catalog leaves appear through search; their parent remains browseable. */
+  paletteSearchOnly?: boolean;
   /** Hide the action when false. */
   when?: (ctx: ActionContext) => boolean;
   /** Show the action disabled when false. */
@@ -245,6 +251,7 @@ function toItem(a: Action, ctx: ActionContext): MenuItem | null {
     checked: a.checked ? safe(() => a.checked!(ctx), false) : undefined,
     children,
     searchable: a.searchable,
+    paletteSearchOnly: a.paletteSearchOnly,
     run: children ? undefined : () => a.run?.(ctx),
   };
 }

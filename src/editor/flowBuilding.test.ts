@@ -22,6 +22,35 @@ import { validateDiagram } from "../interop/native";
 import { ANNOTATION_LIMITS } from "../model/annotations";
 
 describe("connected annotation persistence", () => {
+  it.each(["shape", "stencil", true] as const)(
+    "previews the actual destination size and position: %s",
+    (destination) => {
+      const t = setup([], {
+        format: "diagrams/v1",
+        title: "Planner",
+        nodes: [],
+        edges: [],
+        annotations: [
+          { id: "source", kind: "shape", shape: "tri", text: "Source", x: 0, y: 0, width: 400, height: 240 },
+        ],
+      });
+      const preview = t.api.nextSpot("source", "right", destination)!;
+      const made = t.api.createConnected({
+        from: "source",
+        toward: "right",
+        ...(destination === true
+          ? { clone: true }
+          : destination === "shape"
+            ? { shape: "tri" }
+            : { stencil: "service.go" }),
+      })!;
+      t.commit();
+      expect(t.boxOf(made.id)).toEqual(preview);
+      expect([preview.width, preview.height]).toEqual(
+        destination === true ? [400, 240] : destination === "shape" ? [160, 90] : [220, 72],
+      );
+    },
+  );
   it("reuses a deleted annotation id while reserving queued insertion ids", () => {
     const t = setup();
     const first = t.api.addAnnotation("shape")!;

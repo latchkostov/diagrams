@@ -16,6 +16,7 @@ import {
   emptyCanvasPoint,
   waitForCameraIdle,
   waitForStableViewport,
+  pauseClock,
 } from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
@@ -102,25 +103,255 @@ async function seed(page: Page, diagram: unknown) {
 }
 
 test.describe("annotations", () => {
-  test("shape labels reserve their outline-specific padding", async ({ page }) => {
+  test("every shape handle meets its visible stroke", async ({ page }) => {
+    const fixture = annotationShapesFixture();
+    fixture.annotations = fixture.annotations
+      ?.filter((a) => a.id.startsWith("outline-"))
+      .map((a) => ({ ...a, width: a.shape === "delay" ? 40 : 160, height: a.shape === "delay" ? 100 : 90 }));
+    await seed(page, fixture);
+    await gotoCanvas(page, SLUG);
+    const distances = await page.getByTestId(/^annotation-outline-/).evaluateAll((roots) =>
+      roots.flatMap((root) => {
+        const svg = root.querySelector('[data-testid="shape-outline"]');
+        if (!(svg instanceof SVGSVGElement)) throw new Error("Missing outline");
+        const bounds = svg.getBBox();
+        if (
+          bounds.x < 0 ||
+          bounds.y < 0 ||
+          bounds.x + bounds.width > svg.width.baseVal.value ||
+          bounds.y + bounds.height > svg.height.baseVal.value
+        )
+          throw new Error("Outline exceeds its shape bounds");
+        const strokes = Array.from(svg.children).filter(
+          (el): el is SVGGeometryElement => el instanceof SVGGeometryElement && getComputedStyle(el).stroke !== "none",
+        );
+        return Array.from(root.querySelectorAll('[data-testid^="handle-"]')).map((handle) => {
+          if (!(handle instanceof HTMLElement)) throw new Error("Missing handle");
+          const x = parseFloat(handle.style.left),
+            y = parseFloat(handle.style.top);
+          const distance = Math.min(
+            ...strokes.map((stroke) => {
+              const length = stroke.getTotalLength();
+              let nearest = Infinity;
+              for (let i = 0; i <= 2048; i++) {
+                const p = stroke.getPointAtLength((length * i) / 2048);
+                nearest = Math.min(nearest, Math.hypot(x - p.x, y - p.y));
+              }
+              return nearest;
+            }),
+          );
+          return { id: handle.getAttribute("data-testid"), distance };
+        });
+      }),
+    );
+    expect(distances).toHaveLength(44 * 4);
+    for (const { id, distance } of distances) expect(distance, id ?? "handle").toBeLessThan(0.5);
+  });
+
+  test("bulk selection adds no per-annotation Shift listeners", async ({ page }) => {
     await seed(page, annotationShapesFixture());
     await gotoCanvas(page, SLUG);
-    for (const [shape, expected] of [
-      ["tri", [60, 36, 24, 36]],
-      ["flip-tri", [24, 36, 60, 36]],
-      ["trap-t", [8, 38.4, 8, 38.4]],
-      ["braces", [8, 38.4, 8, 38.4]],
-      ["comment", [8, 12, 8, 43.2]],
-      ["brace-r", [8, 43.2, 8, 12]],
-    ] as const) {
-      const padding = await page.getByTestId(`annotation-text-outline-${shape}`).evaluate((el) => {
-        if (!el.parentElement) throw new Error("Missing annotation body");
-        const style = getComputedStyle(el.parentElement);
-        return [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].map(parseFloat);
-      });
-      expected.forEach((value, i) => expect(padding[i], `${shape}, side ${i}`).toBeCloseTo(value, 1));
-    }
+    await annotation(page, "outline-rect").click();
+    await waitForSelectionSettled(page);
+    await page.evaluate(() => {
+      const w = window as Window & { __modifierListeners?: number };
+      w.__modifierListeners = 0;
+      const original = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (type, listener, options) {
+        if ((this === window || this === document) && (type === "keydown" || type === "keyup"))
+          w.__modifierListeners = (w.__modifierListeners ?? 0) + 1;
+        return original.call(this, type, listener, options);
+      };
+    });
+    await page.keyboard.press("ControlOrMeta+a");
+    await expect(page.getByTestId(/^annotation-resize-.*-bottom-right$/)).toHaveCount(58);
+    expect(
+      await page.evaluate(() => (window as Window & { __modifierListeners?: number }).__modifierListeners),
+    ).toBeLessThanOrEqual(4);
   });
+
+  test("connected preview follows the destination and matches shape creation", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Destination",
+      nodes: [],
+      edges: [],
+      annotations: [{ id: "source", kind: "shape", shape: "tri", text: "Source", x: 0, y: 0, width: 400, height: 240 }],
+    });
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "source").click();
+    await waitForSelectionSettled(page);
+    await page.keyboard.press("Alt+ArrowRight");
+    const outline = page.getByTestId("landing-outline");
+    await expect(outline).toHaveCSS("width", "220px");
+    const menu = page.getByTestId("quick-add");
+    await waitForStableViewport(page);
+    await waitForStableBox(menu);
+    const menuBefore = await box(menu);
+    await page.getByTestId("context-menu-item-quick-add:shapes").hover();
+    await page.getByTestId("context-menu-item-quick-add-shape:cat:basic").hover();
+    await expect(page.getByTestId("context-menu-item-quick-add-shape:hexagon")).toBeVisible();
+    await expect(outline).toHaveCSS("width", "160px");
+    expect((await box(menu)).x).toBeCloseTo(menuBefore.x, 1);
+    const search = page.getByTestId("quick-add-search");
+    await search.focus();
+    await page.keyboard.type("hexagon");
+    await expect(outline).toHaveCSS("width", "160px");
+    const preview = await outline.evaluate((el) => ({
+      transform: el.style.transform,
+      width: parseFloat(el.style.width),
+      height: parseFloat(el.style.height),
+    }));
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect
+      .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id !== "source"))
+      .toMatchObject({ width: preview.width, height: preview.height });
+    const added = (await savedDiagram(page)).annotations?.find((a) => a.id !== "source");
+    if (!added) throw new Error("Missing new shape");
+    expect(preview.transform).toBe(`translate(${added.x}px, ${added.y}px)`);
+  });
+  for (const shape of ["tri", "flip-tri"] as const)
+    test(`${shape} labels remain visible after wide, short resizing`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Visible labels",
+        nodes: [],
+        edges: [],
+        annotations: [{ id: "shape", kind: "shape", shape, text: "Invoice", x: 0, y: 0, width: 160, height: 90 }],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "shape").click();
+      await waitForSelectionSettled(page);
+      await page.getByTestId("inspector-field-width").fill("400");
+      await page.getByTestId("inspector-field-width").press("Enter");
+      await waitForStableBox(annotation(page, "shape"));
+      const bounds = await page.getByTestId("annotation-text-shape").evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const text = range.getBoundingClientRect();
+        const shape = el.parentElement?.parentElement;
+        if (!shape) throw new Error("Missing shape");
+        const root = shape.getBoundingClientRect();
+        return {
+          left: (text.left - root.left) / root.width,
+          right: (text.right - root.left) / root.width,
+          top: (text.top - root.top) / root.height,
+          bottom: (text.bottom - root.top) / root.height,
+        };
+      });
+      expect(bounds.top).toBeGreaterThan(0);
+      expect(bounds.bottom).toBeLessThan(1);
+      const narrowest = shape === "tri" ? bounds.top : 1 - bounds.bottom;
+      expect(bounds.left).toBeGreaterThan((1 - narrowest) / 2);
+      expect(bounds.right).toBeLessThan((1 + narrowest) / 2);
+    });
+
+  test("window-pane dividers leave rendered label glyphs clear", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Window",
+      nodes: [],
+      edges: [],
+      annotations: [
+        { id: "shape", kind: "shape", shape: "win-pane", text: "Invoice", x: 0, y: 0, width: 160, height: 90 },
+      ],
+    });
+    await gotoCanvas(page, SLUG);
+    const clear = await annotation(page, "shape").evaluate((root) => {
+      const text = root.querySelector('[data-testid="annotation-text-shape"]');
+      if (!text) throw new Error("Missing label");
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const r = range.getBoundingClientRect();
+      const svg = root.querySelector('[data-testid="shape-outline"]');
+      if (!svg) throw new Error("Missing outline");
+      return Array.from(svg.children)
+        .slice(1)
+        .every((line) => {
+          const b = line.getBoundingClientRect();
+          return b.right < r.left || b.left > r.right || b.bottom < r.top || b.top > r.bottom;
+        });
+    });
+    expect(clear).toBe(true);
+  });
+
+  test("Shift-resizing a new ellipse produces a circle and releasing Shift allows a rectangle", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Square",
+      nodes: [],
+      edges: [],
+      annotations: [
+        { id: "shape", kind: "shape", shape: "ellipse", text: "Circle", x: 0, y: 0, width: 160, height: 90 },
+      ],
+    });
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "shape").click();
+    await waitForSelectionSettled(page);
+    const handle = page.getByTestId("annotation-resize-shape-bottom-right");
+    const drag = async (dx: number, dy: number) => {
+      const r = await box(handle);
+      await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(r.x + dx, r.y + dy, { steps: 8 });
+      await page.mouse.up();
+    };
+    await page.keyboard.down("Shift");
+    await drag(80, 30);
+    await page.keyboard.up("Shift");
+    await expect
+      .poll(async () => {
+        const a = (await savedDiagram(page)).annotations?.[0];
+        if (!a) throw new Error("Missing shape");
+        return a.width - a.height;
+      })
+      .toBe(0);
+    await waitForStableBox(handle);
+    await drag(80, 0);
+    await expect
+      .poll(async () => {
+        const a = (await savedDiagram(page)).annotations?.[0];
+        if (!a) throw new Error("Missing shape");
+        return a.width > a.height;
+      })
+      .toBe(true);
+  });
+
+  for (const finish of ["Escape", "ControlOrMeta+Enter"])
+    test(`placement buffers annotation newlines and saves with ${finish}`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Typing",
+        nodes: [{ id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 }],
+        edges: [],
+      });
+      await gotoCanvas(page, SLUG);
+      await page.getByTestId("node-web").click();
+      await waitForSelectionSettled(page);
+      await page.keyboard.press("Alt+ArrowRight");
+      const search = page.getByTestId("quick-add-search");
+      await expect(search).toBeFocused();
+      await page.keyboard.type("hexagon");
+      await page.clock.install();
+      await pauseClock(page);
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+      await page.keyboard.type("alpha");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("beta");
+      await page.keyboard.press(finish);
+      await page.clock.resume();
+      await expect(page.getByTestId("annotation-text-shape-1")).toHaveText("alpha\nbeta");
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+      await expect
+        .poll(() => annotation(page, "shape-1").evaluate((el) => document.activeElement === el.parentElement))
+        .toBe(true);
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("annotation-editor")).toBeFocused();
+      await page.keyboard.press("Escape");
+    });
 
   test("solid shape labels meet WCAG AA across the preset colours in light and dark", async ({ page }) => {
     await seed(page, annotationShapesFixture());

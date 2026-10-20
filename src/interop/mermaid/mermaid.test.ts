@@ -5,8 +5,26 @@ import { parseMermaid, looksLikeMermaid } from "./read";
 import { diagramToMermaid } from "./write";
 import { getStencil } from "../../stencils/registry";
 import { MERMAID_SHAPES } from "./shapes";
+import { parse as parseYaml } from "yaml";
 
 describe("annotation shape syntax", () => {
+  it.each(["C:\\Users\\Ada", "C:\\temp", "trailing\\", "literal\\n\\t\\u1234", 'slash\\"quote', "tab\tbetween"])(
+    "round-trips extended YAML label %s",
+    (label) => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Escapes",
+        nodes: [],
+        edges: [],
+        annotations: [{ id: "a", kind: "shape", shape: "doc", text: label, x: 0, y: 0, width: 160, height: 90 }],
+      };
+      const exported = diagramToMermaid(d, { metadata: false });
+      const attributes = exported.match(/@\{([^\n]+)\}/)![1];
+      const parsed = parseYaml(`{${attributes}}`) as { label: string };
+      expect(parsed.label.replace(/#quot;/g, '"')).toBe(label);
+      expect(parseMermaid(exported).diagram.nodes[0].label).toBe(label);
+    },
+  );
   for (const [shape, syntax] of Object.entries(MERMAID_SHAPES)) {
     it(`${shape} preserves labels through writer and reader`, () => {
       const label = 'Payload {id}, "invoice"';

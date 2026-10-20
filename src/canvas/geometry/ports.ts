@@ -1,7 +1,8 @@
 // Port spreading: when several edges meet the same side of a node, give each its own attachment
 // point along that side, ordered by where the other end sits so the fan doesn't cross itself.
 
-import type { Side } from "../../model/types";
+import type { AnnotationShape, Side } from "../../model/types";
+import { shapeAttachment } from "../shapes/attachment";
 import { centerOf, type Point, type Rect } from "./rect";
 
 export interface PortEnd {
@@ -25,7 +26,11 @@ export function slotOffset(i: number, n: number, sideLength: number, spacing: nu
   return (i - (n - 1) / 2) * step;
 }
 
-export function sidePoint(r: Rect, side: Side, offset = 0): Point {
+export function sidePoint(r: Rect & { shape?: AnnotationShape }, side: Side, offset = 0): Point {
+  if (r.shape) {
+    const p = shapeAttachment(r.shape, r.width, r.height, side, offset);
+    return { x: r.x + p.x, y: r.y + p.y };
+  }
   const c = centerOf(r);
   switch (side) {
     case "top":

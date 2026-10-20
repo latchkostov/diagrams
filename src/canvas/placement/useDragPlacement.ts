@@ -33,6 +33,8 @@ import { dependencyVisibility } from "../dependencyVisibility";
 import { insertLine } from "../landing";
 import { memberBoxes } from "../memberBoxes";
 import { previewMembership, type GroupRect, type MemberBox } from "../membership";
+import { constrainShapeResize } from "../shapes/resize";
+import { minSize } from "../annotations";
 
 export function useDragPlacement(
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
@@ -72,7 +74,7 @@ export function useDragPlacement(
         // Boundary adoption also runs in this frame; close only after both have rendered.
         requestAnimationFrame(endGesture);
       }
-      let next = changes;
+      let next = constrainShapeResize(store.getState, changes, minSize.shape.width);
       if (store.getState().userSelectionActive) next = next.filter((c) => c.type !== "select");
       // React Flow's own selection: a click (or its Enter on a focused node).
       if (next.some((c) => c.type === "select")) menus.selecting("click");

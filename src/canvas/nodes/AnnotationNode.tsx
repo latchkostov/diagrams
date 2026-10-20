@@ -1,10 +1,18 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import {
   Handle,
   NodeResizeControl,
   ResizeControlVariant,
-  useKeyPress,
   useReactFlow,
+  useStoreApi,
+  useUpdateNodeInternals,
   type NodeProps,
 } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
@@ -13,6 +21,8 @@ import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLab
 import { MarkdownView } from "../../components/markdown/lazy";
 import { AnnotationEditor } from "./AnnotationEditor";
 import { ShapeOutline } from "./ShapeOutline";
+import { shapeAttachment } from "../shapes/attachment";
+import { beginShapeResize, endShapeResize, shapeResizeModifier } from "../shapes/resize";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
@@ -41,6 +51,10 @@ function AnnotationNodeImpl({
   const isEditing = editing?.kind === "annotation" && editing.id === id;
   const w = width ?? 0;
   const h = height ?? 0;
+  const updateInternals = useUpdateNodeInternals();
+  useLayoutEffect(() => {
+    if (kind === "shape") updateInternals(id);
+  }, [kind, data.shape, w, h, id, updateInternals]);
   const startEdit = (e: ReactMouseEvent) => {
     e.stopPropagation();
     setEditing({ kind: "annotation", id });
@@ -122,6 +136,7 @@ function AnnotationNodeImpl({
       style={
         {
           "--ann": resolved.hex,
+          "--ann-height": `${h}px`,
         } as CSSProperties
       }
       data-testid={`annotation-${id}`}
@@ -143,16 +158,20 @@ function AnnotationNodeImpl({
         <div className={`ann-body${kind === "shape" ? ` ann-body-${data.shape ?? "rect"}` : ""}`}>{text}</div>
       )}
       {isConnectable(kind) &&
-        SIDES.map((side) => (
-          <Handle
-            key={side}
-            id={side}
-            type="source"
-            position={sidePosition[side]}
-            className="dn-handle"
-            data-testid={`handle-${id}-${side}`}
-          />
-        ))}
+        SIDES.map((side) => {
+          const p = shapeAttachment(data.shape ?? "rect", w, h, side);
+          return (
+            <Handle
+              key={side}
+              id={side}
+              type="source"
+              position={sidePosition[side]}
+              className="dn-handle"
+              data-testid={`handle-${id}-${side}`}
+              style={{ left: p.x, top: p.y, right: "auto", bottom: "auto", transform: "translate(-50%, -50%)" }}
+            />
+          );
+        })}
       {selected && !isEditing && <Resizer id={id} kind={kind} />}
     </div>
   );
@@ -164,7 +183,8 @@ const LINES = ["top", "right", "bottom", "left"] as const;
 /** Resize handles on the selection: corner squares (with test ids) and draggable edges. */
 function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
   const m = minSize[kind];
-  const shiftPressed = useKeyPress("Shift");
+  const store = useStoreApi<FlowNode>();
+  useEffect(() => () => endShapeResize(store.getState), [store]);
   return (
     <>
       {LINES.map((p) => (
@@ -185,7 +205,8 @@ function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
         <NodeResizeControl
           key={p}
           position={p}
-          keepAspectRatio={shiftPressed}
+          onResizeStart={(_, size) => beginShapeResize(store.getState, id, p, size)}
+          onResize={(e) => shapeResizeModifier(store.getState, !!e.sourceEvent.shiftKey)}
           minWidth={m.width}
           minHeight={m.height}
           maxWidth={ANNOTATION_LIMITS.maxAnnotationSize}

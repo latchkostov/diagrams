@@ -11,6 +11,14 @@ const key = (k: string, mods: Partial<KeyboardEvent> = {}) => ({
 const typeAll = (keys: string[]) => keys.reduce<TypeAhead>((s, k) => typeAheadKey(s, key(k)) ?? s, { text: null });
 
 describe("typeAheadKey: keys typed before a new node's label editor opens", () => {
+  it("keeps annotation newlines and commits buffered words with Escape, Tab or Mod+Enter", () => {
+    let state: TypeAhead = { text: null };
+    for (const k of ["a", "Enter", "b"]) state = typeAheadKey(state, key(k), true)!;
+    expect(state).toEqual({ text: "a\nb" });
+    expect(typeAheadKey(state, key("Escape"), true)).toEqual({ text: "a\nb", done: "escape" });
+    expect(typeAheadKey(state, key("Tab"), true)).toEqual({ text: "a\nb", done: "enter" });
+    expect(typeAheadKey(state, key("Enter", { ctrlKey: true }), true)).toEqual({ text: "a\nb", done: "enter" });
+  });
   it("collects printable keys, T and spaces included (none reach the canvas)", () => {
     expect(typeAll(["t", "o", "p", "i", "c", " ", "A"])).toEqual({ text: "topic A" });
   });

@@ -24,6 +24,16 @@ const defaults = (raw: string) => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("container memory budget", () => {
+  it("honours an injected limit regardless of the host and isolates the shared test harness", async () => {
+    vi.spyOn(process, "constrainedMemory").mockReturnValue(128 * MiB);
+    const config = readConfig({ LD_STATIC: "off" });
+    const relay = createRelayServer({ config, memoryLimit: 4 * 1024 * MiB });
+    await relay.close();
+    expect(() => createRelayServer({ config, memoryLimit: MiB })).toThrow(MemoryBudgetError);
+    const { startServer } = await import("./harness");
+    const server = await startServer();
+    expect(server.origin).toMatch(/^http:/);
+  });
   it.each([128, 512, 1024])(
     "rejects over one quarter of a detected %i MiB limit before starting the server",
     (memory) => {
