@@ -304,13 +304,36 @@ describe("production bundle split", () => {
     expect(found(bundled(chunks), editor)).toEqual(editor.map(([what]) => what));
   });
 
-  it("loads fault playback, outage lookup and run results with the Live session", () => {
+  it("opens Live without optional callouts or simulation verification oracles", () => {
+    const optional: [string, RegExp][] = [
+      ["capacity callout", /[/\\]src[/\\]live[/\\]BottleneckCallout\.tsx$/],
+      ["callout placement", /[/\\]src[/\\]live[/\\]useFloatingPlacement\.ts$/],
+      ["narration callout", /[/\\]src[/\\]live[/\\]NoteCallout\.tsx$/],
+    ];
+    const oracles: [string, RegExp][] = [
+      ["resource, ledger and CPU oracles", /[/\\]src[/\\]sim[/\\]resourceInvariants\.ts$/],
+    ];
+    for (const build of [plain(), rooms]) {
+      const live = build.chunks.find((c) => c.name === "LiveSession");
+      expect(live).toBeDefined();
+      expect(found(bundled(closure([live!], build)), [...optional, ...oracles])).toEqual([]);
+      expect(found(bundled(build.chunks), optional)).toEqual(optional.map(([what]) => what));
+      expect(found(bundled(build.chunks), oracles)).toEqual([]);
+    }
+  });
+
+  it("loads fault playback and outage lookup with Live, and run results with narration", () => {
     const live = chunks.find((c) => c.name === "LiveSession");
     expect(live).toBeDefined();
     const playback = NOT_AT_STARTUP.filter(([what]) =>
-      ["fault execution and outage indexes", "fault display messages", "run-end result messages"].includes(what),
+      ["fault execution and outage indexes", "fault display messages"].includes(what),
     );
     expect(found(bundled(closure([live!])), playback)).toEqual(playback.map(([what]) => what));
+    const results = NOT_AT_STARTUP.filter(([what]) => what === "run-end result messages");
+    expect(found(bundled(closure([live!])), results)).toEqual([]);
+    const narration = chunks.find((c) => c.name === "NoteCallout");
+    expect(narration).toBeDefined();
+    expect(found(bundled(closure([narration!])), results)).toEqual(["run-end result messages"]);
   });
 
   it("loads the trace card on demand, apart from the Live session", () => {

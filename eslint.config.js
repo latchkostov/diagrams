@@ -145,14 +145,14 @@ const INTERACTION_RULES = [
  *   arrow keys), and an inert note's Remove button hands focus to its own section as it removes itself.
  * - SheetResizeHandle.tsx: the handle focuses itself on a press, so its arrow keys resize the sheet it belongs to.
  * - live/TraceCard.tsx: a waiting card that becomes a journey keeps focus on its own hop list.
- * - live/CapacityLayer.tsx: the bottleneck callout keeps focus on itself when its own action button goes (the
+ * - live/BottleneckCallout.tsx: the bottleneck callout keeps focus on itself when its own action button goes (the
  *   trouble callout's return to the canvas is row L3).
  */
 const FOCUS_LOCAL = [
   "src/canvas/inspector/fields.tsx",
   "src/canvas/SheetResizeHandle.tsx",
   "src/live/TraceCard.tsx",
-  "src/live/CapacityLayer.tsx",
+  "src/live/BottleneckCallout.tsx",
 ];
 
 export default tseslint.config(

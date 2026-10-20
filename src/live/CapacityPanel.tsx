@@ -47,7 +47,7 @@ import {
   type LiveInputs,
   type NodeHeat,
 } from "./capacityModel";
-import { BottleneckCallout } from "./CapacityLayer";
+import { BottleneckCallout } from "./lazyBottleneckCallout";
 import { formatRate, formatScale } from "./format";
 import { LiveIcon } from "./icons";
 import { usePanelEscape } from "./usePanelEscape";
