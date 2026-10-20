@@ -161,6 +161,7 @@ export interface CpuTick {
   }[];
 }
 export interface ResourceState {
+  ledger?: LedgerState;
   time: number;
   scale: number;
   capacityMultiplier: number;
@@ -177,6 +178,7 @@ export interface ResourceState {
     activeReplicas: number;
     fleet?: Fleet;
     cpuTick?: CpuTick;
+    executionLedger?: boolean;
     cpuTail?: ReadonlySet<ResourceWork>;
     props: {
       concurrency: number;
@@ -258,6 +260,23 @@ export function assertResourceInvariants(state: ResourceState) {
         }
       for (const work of all)
         fail(!work.resumeAtAdmission || takeovers.has(work), "takeover flag has no admission path");
+    }
+    if (node.executionLedger && node.status === "up") {
+      const threads = new Set<number>();
+      const running = new Set([
+        ...(node.workQueues?.working ?? []),
+        ...(node.workQueues?.takeovers ?? []),
+        ...node.working.filter((work) => work.slotted),
+      ]);
+      for (const work of running) {
+        const reservation = work.thread === undefined ? undefined : state.ledger?.reservations.get(work.thread);
+        fail(
+          reservation?.scope === "thread" && reservation.owner === node.id,
+          "running work has no live thread reservation",
+        );
+        fail(!threads.has(work.thread!), "running work shares a thread reservation");
+        threads.add(work.thread!);
+      }
     }
     let tails = 0;
     for (const tail of node.threadTails?.values() ?? []) tails += tail.weight;

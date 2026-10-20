@@ -1,4 +1,5 @@
 import fc from "fast-check";
+import { resourceLesson } from "../model/autoscaling";
 import { expect, it } from "vitest";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
@@ -83,6 +84,7 @@ type Action =
   | { kind: "SetStatus"; index: number; status: NodeStatus; tick: boolean }
   | { kind: "Cut/Restore"; index: number; cut: boolean }
   | { kind: "SetProps"; index: number; concurrency: number; maxInFlight?: number }
+  | { kind: "Resources"; index: number; enabled: boolean; cpuMs: number }
   | { kind: "SetScale"; scale: number }
   | { kind: "Checkpoint" }
   | { kind: "Restore" };
@@ -94,7 +96,9 @@ class WaitCommand implements fc.Command<Model, Real> {
   }
   run(model: Model, real: Real): void {
     const action = this.action;
-    const tiers = real.diagram.nodes.filter((n) => n.id.startsWith("tier") || n.id === "cpu-target");
+    const tiers = real.diagram.nodes.filter(
+      (n) => n.id.startsWith("tier") || n.id === "cpu-target" || n.id === "standalone",
+    );
     if (action.kind === "SetScale") model.scale = action.scale;
     if (action.kind === "Checkpoint") model.savedScale = model.scale;
     if (action.kind === "Restore") model.scale = model.savedScale!;
@@ -127,6 +131,13 @@ class WaitCommand implements fc.Command<Model, Real> {
           });
           break;
         }
+        case "Resources":
+          e.setNodeProps(tiers[action.index % tiers.length].id, {
+            resources: action.enabled
+              ? { ...resourceLesson(), cpuMsPerMessage: action.cpuMs, startup: { delayMs: 0, jitterFraction: 0 } }
+              : undefined,
+          });
+          break;
         case "SetScale":
           e.setScale(action.scale);
           break;
@@ -168,6 +179,12 @@ function commands(scaleOne: boolean) {
     fc.record({
       kind: fc.constant("SetScale" as const),
       scale: scaleOne ? fc.constant(1) : fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 10),
+    }),
+    fc.record({
+      kind: fc.constant("Resources" as const),
+      index: fc.nat(4),
+      enabled: fc.boolean(),
+      cpuMs: fc.integer({ min: 0, max: 100 }),
     }),
     fc.constant({ kind: "Checkpoint" as const }),
     fc.constant({ kind: "Restore" as const }),

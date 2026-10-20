@@ -1090,3 +1090,28 @@ it("shared diagnostic aggregation visits each owner once per configuration batch
   expect(admissionModule.admissionLimits(state).get(sharedConcurrencyKey("account"))).toBe(2);
   expect(visits.mock.calls.length).toBeLessThan(count * 8);
 });
+
+it("execution-room waits preserve quota credit", () => {
+  const state = emptyAdmission();
+  const policy = { api: { maxInFlight: 10, quotas: [q(10)] }, endpoints: [], slots: 10 };
+  // Populate the bucket without spending it, then repeat the admission phase at the same clock.
+  expect(attemptAdmission(state, "api", policy, undefined, undefined, 0, 10, 10, [], true, undefined, 0)).toEqual({
+    rejected: "concurrency",
+    waiting: true,
+  });
+  const before = structuredClone({ buckets: state.buckets, inFlight: state.inFlight });
+  for (let attempt = 0; attempt < 20; attempt++) {
+    expect(attemptAdmission(state, "api", policy, undefined, undefined, 0, 10, 10, [], true, undefined, 0)).toEqual({
+      rejected: "concurrency",
+      waiting: true,
+    });
+    expect({ buckets: state.buckets, inFlight: state.inFlight }).toEqual(before);
+  }
+  const admitted = attemptAdmission(state, "api", policy, undefined, undefined, 0, 10, 10, [], true, undefined, 10);
+  if ("rejected" in admitted) throw new Error(admitted.rejected);
+  expect([...state.buckets.values()].map((bucket) => bucket.tokens)).toEqual([0]);
+  expect(admitted.leases.thread.weight).toBe(10);
+  releaseAdmissions(state, admitted.leases);
+  expect([...state.inFlight.values()].every((count) => count === 0)).toBe(true);
+  expect([...state.buckets.values()].map((bucket) => bucket.tokens)).toEqual([0]);
+});
