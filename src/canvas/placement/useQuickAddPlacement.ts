@@ -84,10 +84,16 @@ export function useQuickAddPlacement(
             return tr("canvas.addANode");
           },
           items: () =>
-            quickAddMenu((s) => {
-              pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
-              pushRecentStencil(s.id);
-            }, getRecentStencils()),
+            quickAddMenu(
+              (s) => {
+                pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
+                pushRecentStencil(s.id);
+              },
+              getRecentStencils(),
+              (sh) => {
+                pickNamed(() => editor.createConnected({ from: fromId, shape: sh.id, toward: dir }), sh.label);
+              },
+            ),
         },
         { platform: platform() },
       );
@@ -100,10 +106,8 @@ export function useQuickAddPlacement(
       if (readOnly || live || presenting) return;
       menus.closeMenu("command");
       hideTip();
-      pickNamed(
-        () => editor.createConnected({ from: fromId, clone: true, toward }),
-        editor.getNode(fromId)?.label ?? "",
-      );
+      const fallback = editor.getNode(fromId)?.label ?? editor.getAnnotation(fromId)?.text ?? "";
+      pickNamed(() => editor.createConnected({ from: fromId, clone: true, toward }), fallback);
     },
     [readOnly, live, presenting, editor, hideTip, pickNamed, menus],
   );
@@ -144,10 +148,19 @@ export function paneQuickAdd(
         // Quick-add opens the new node's name (decision 3), so what's typed next names it instead of reaching the
         // canvas's one-key shortcuts (T, L, C).
         items: () =>
-          quickAddMenu((s) => {
-            pickNamed(() => editor.addNamed(s.id, point), s.label);
-            pushRecentStencil(s.id);
-          }, getRecentStencils()),
+          quickAddMenu(
+            (s) => {
+              pickNamed(() => editor.addNamed(s.id, point), s.label);
+              pushRecentStencil(s.id);
+            },
+            getRecentStencils(),
+            (sh) => {
+              pickNamed(() => {
+                const id = editor.addAnnotation("shape", { at: point, shape: sh.id });
+                return id ? { id, edge: null, merge: `new:${id}` } : null;
+              }, sh.label);
+            },
+          ),
       },
       { via: "pointer", platform: platform() },
     );

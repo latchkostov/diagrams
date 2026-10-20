@@ -7,6 +7,7 @@ import { tokens } from "./fuzzy";
 import type { CanvasHost, LiveHost, SessionHost } from "./host";
 import type { Command } from "./rank";
 import { t } from "../i18n";
+import { shapeMenu } from "../canvas/shapes/menu";
 
 /*
  * Where palette commands come from. Everything is derived from what the app already exposes: the
@@ -94,12 +95,17 @@ function leafLabel(parent: string, leaf: string): string {
   return leaf.toLowerCase().includes(first) ? leaf : t("chrome.valueValue", { parent, leaf });
 }
 
-function leaves(items: MenuNode[], trail: string[] = []): { item: MenuItem; trail: string[] }[] {
-  const out: { item: MenuItem; trail: string[] }[] = [];
+function leaves(
+  items: MenuNode[],
+  trail: string[] = [],
+  searchOnly = false,
+): { item: MenuItem; trail: string[]; searchOnly: boolean }[] {
+  const out: { item: MenuItem; trail: string[]; searchOnly: boolean }[] = [];
   for (const n of items) {
     if (n.type !== "item" || (n.disabled && !n.hint)) continue;
-    if (n.children) out.push(...leaves(n.children, [...trail, n.label]));
-    else out.push({ item: n, trail });
+    const only = searchOnly || !!n.paletteSearchOnly;
+    if (n.children) out.push(...leaves(n.children, [...trail, n.label], only));
+    else out.push({ item: n, trail, searchOnly: only });
   }
   return out;
 }
@@ -131,10 +137,11 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
           keywords: node.keywords,
           run: node.run,
           documentScoped: node.documentScoped,
+          searchOnly: node.paletteSearchOnly,
         });
         continue;
       }
-      const kids = leaves(node.children);
+      const kids = leaves(node.children, [], node.paletteSearchOnly);
       if (!kids.length) continue;
       add({
         id: `action:${node.id}`,
@@ -147,7 +154,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
         hint: node.hint,
         documentScoped: node.documentScoped,
       });
-      for (const { item, trail } of kids) {
+      for (const { item, trail, searchOnly } of kids) {
         add({
           id: `action:${item.id}`,
           group: "actions",
@@ -163,6 +170,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
           danger: item.danger,
           keywords: [label, ...trail.slice(1), item.keywords ?? "", item.hint ?? ""].join(" ").trim(),
           idle: false,
+          searchOnly,
           run: item.run,
           documentScoped: node.documentScoped || item.documentScoped,
         });
@@ -222,6 +230,21 @@ export function collectCommands(input: SourceInput): Command[] {
       run: input.present,
     });
   if (onCanvas) out.push(...actionCommands(input.registry, contextsFor(editor!, canvas.live ? "live" : "edit")));
+  if (onCanvas && !canvas.live && canvas.openPicker)
+    out.push({
+      id: "action:canvas.add-shape",
+      group: "actions",
+      label: t("shape.addShape"),
+      icon: "shapes",
+      run: () =>
+        canvas.openPicker?.({
+          label: t("shape.selectShape"),
+          testId: "shape-picker",
+          searchable: t("shape.searchShapes"),
+          items: () =>
+            shapeMenu("add-shape", (s) => ({ run: () => void editor!.addAnnotation("shape", { shape: s.id }) })),
+        }),
+    });
   if (onCanvas && !canvas.live && input.editTogether)
     out.push({
       id: "file:edit-together",

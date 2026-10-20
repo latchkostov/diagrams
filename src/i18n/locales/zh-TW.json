@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "其幾何資料必須為有限值。",
   "edit.coordinateBudget": "已超出座標範圍。請將選取物件移近原點。",
   "edit.annotationLimit": "無法轉換此邊界：圖表中已有 {limit} 則註解。請刪除一則註解後再試一次。",
+  "edit.annotationInsertLimit": "此圖表已達到 {limit, number} 則註解的上限。請刪除一則註解後再試。",
   "edit.annotationTextLimit": "無法轉換此邊界：其標籤超過 {limit} 個字元。請縮短標籤後重試。",
   "edit.annotationSize": "尺寸必須介於 1 到 {limit} 像素之間。請選取更小的範圍。",
   "broker.partitions": "分割區",

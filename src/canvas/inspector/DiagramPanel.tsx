@@ -1,5 +1,6 @@
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
-import { useState, type CSSProperties } from "react";
+import { useLayoutEffect, useState, type CSSProperties } from "react";
+import { useInteractionOrLocal } from "../interaction";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
 import { MarkdownEditor } from "../../components/markdown/lazy";
@@ -13,6 +14,8 @@ import { countText } from "./selectionSummary";
 import { type InspectorProps } from "./types";
 
 export function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps) {
+  const { controller } = useInteractionOrLocal();
+  useLayoutEffect(() => controller.rendered());
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
   const color = meta.color;
   const isCustomColor = !!color && !ANNOTATION_COLOR_IDS.includes(color as (typeof ANNOTATION_COLOR_IDS)[number]);

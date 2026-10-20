@@ -1,10 +1,18 @@
 import { memo, useLayoutEffect, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
-import { Handle, NodeResizeControl, ResizeControlVariant, useReactFlow, type NodeProps } from "@xyflow/react";
+import {
+  Handle,
+  NodeResizeControl,
+  ResizeControlVariant,
+  useKeyPress,
+  useReactFlow,
+  type NodeProps,
+} from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
-import type { AnnotationKind, AnnotationShape } from "../../model/types";
-import { resolveAnnotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
+import type { AnnotationKind } from "../../model/types";
+import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLabel, minSize } from "../annotations";
 import { MarkdownView } from "../../components/markdown/lazy";
 import { AnnotationEditor } from "./AnnotationEditor";
+import { ShapeOutline } from "./ShapeOutline";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
@@ -26,7 +34,7 @@ function AnnotationNodeImpl({
   positionAbsoluteX,
   positionAbsoluteY,
 }: NodeProps<AnnotationFlowNode>) {
-  const { editing, setEditing, settleText } = useDiagram();
+  const { editing, setEditing, settleText, annotationCommands } = useDiagram();
   const { updateNode, deleteElements } = useReactFlow<FlowNode>();
   const kind = data.kind;
   const resolved = resolveAnnotationColor(data.color, kind);
@@ -39,24 +47,37 @@ function AnnotationNodeImpl({
   };
 
   const commit = (text: string | null, overflow: number) => {
+    const merge = (isEditing && editing.merge) || annotationCommands?.creating(id);
+    const finish = () => {
+      if (merge) annotationCommands?.doneNaming(merge);
+    };
     setEditing(null);
-    if (text === null) return;
+    if (text === null) return finish();
     // An emptied caption has nothing left to show: remove it (undo brings it back).
     if (kind === "text" && !text.trim()) {
       void deleteElements({ nodes: [{ id }] });
-      return;
+      return finish();
     }
     // Unchanged (Esc straight away): nothing to write.
-    if (text === data.text && overflow <= 0) return;
-    updateNode(id, (n) =>
-      n.type !== "annotation"
-        ? {}
-        : {
-            data: { ...n.data, text: annotationText(text) },
-            // Text and notes grow to fit what was typed (never shrink: a size you chose stays).
-            ...(kind !== "zone" && overflow > 0 ? { height: annotationSize(Math.ceil(h + overflow)) } : {}),
-          },
-    );
+    if (text === data.text && overflow <= 0) return finish();
+    const height = kind !== "zone" && overflow > 0 ? annotationSize(Math.ceil(h + overflow)) : undefined;
+    if (annotationCommands)
+      annotationCommands.updateAnnotation(
+        id,
+        { text: annotationText(text), ...(height !== undefined ? { height } : {}) },
+        { merge: merge || undefined },
+      );
+    else
+      updateNode(id, (n) =>
+        n.type !== "annotation"
+          ? {}
+          : {
+              data: { ...n.data, text: annotationText(text) },
+              // Text and notes grow to fit what was typed (never shrink: a size you chose stays).
+              ...(kind !== "zone" && overflow > 0 ? { height: annotationSize(Math.ceil(h + overflow)) } : {}),
+            },
+      );
+    finish();
     // Text isn't a routing obstacle: if it grew over a node or an edge, it moves clear.
     if (kind === "text" && text !== data.text)
       settleText?.(id, { x: positionAbsoluteX, y: positionAbsoluteY, width: w, height: h });
@@ -79,7 +100,12 @@ function AnnotationNodeImpl({
 
   const supportsMarkdown = kind === "note" || kind === "text";
   const text = isEditing ? (
-    <AnnotationEditor value={data.text} kind={kind} onDone={commit} />
+    <AnnotationEditor
+      value={editing.text ?? data.text}
+      caret={editing.text !== undefined ? "end" : undefined}
+      kind={kind}
+      onDone={commit}
+    />
   ) : (
     <div className="ann-content" ref={content} data-testid={`annotation-text-${id}`}>
       {supportsMarkdown && data.text.trim() ? (
@@ -92,7 +118,7 @@ function AnnotationNodeImpl({
 
   return (
     <div
-      className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
+      className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${kind === "shape" && isOpenShape(data.shape) ? " ann-shape-open" : ""}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
       style={
         {
           "--ann": resolved.hex,
@@ -138,6 +164,7 @@ const LINES = ["top", "right", "bottom", "left"] as const;
 /** Resize handles on the selection: corner squares (with test ids) and draggable edges. */
 function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
   const m = minSize[kind];
+  const shiftPressed = useKeyPress("Shift");
   return (
     <>
       {LINES.map((p) => (
@@ -158,6 +185,7 @@ function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
         <NodeResizeControl
           key={p}
           position={p}
+          keepAspectRatio={shiftPressed}
           minWidth={m.width}
           minHeight={m.height}
           maxWidth={ANNOTATION_LIMITS.maxAnnotationSize}
@@ -168,45 +196,6 @@ function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
         </NodeResizeControl>
       ))}
     </>
-  );
-}
-
-/** Outlines drawn at the node's real pixel size, so strokes and corners stay crisp at any size. */
-export function ShapeOutline({ shape, w, h }: { shape: AnnotationShape; w: number; h: number }) {
-  if (w <= 0 || h <= 0) return null;
-  const i = 0.75;
-  let body;
-  switch (shape) {
-    case "rounded":
-      body = <rect x={i} y={i} width={w - 2 * i} height={h - 2 * i} rx={Math.min(16, h / 3)} />;
-      break;
-    case "ellipse":
-      body = <ellipse cx={w / 2} cy={h / 2} rx={w / 2 - i} ry={h / 2 - i} />;
-      break;
-    case "diamond":
-      body = <polygon points={`${w / 2},${i} ${w - i},${h / 2} ${w / 2},${h - i} ${i},${h / 2}`} />;
-      break;
-    case "cylinder": {
-      const rx = w / 2 - i;
-      const ry = Math.min(14, h * 0.16);
-      body = (
-        <>
-          <path
-            d={`M${i},${ry + i} V${h - ry - i} A${rx},${ry} 0 0 0 ${w - i},${h - ry - i} V${ry + i}`}
-            className="ann-shape-side"
-          />
-          <ellipse cx={w / 2} cy={ry + i} rx={rx} ry={ry} className="ann-shape-top" />
-        </>
-      );
-      break;
-    }
-    default:
-      body = <rect x={i} y={i} width={w - 2 * i} height={h - 2 * i} rx={3} />;
-  }
-  return (
-    <svg className="ann-shape-svg" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
-      {body}
-    </svg>
   );
 }
 

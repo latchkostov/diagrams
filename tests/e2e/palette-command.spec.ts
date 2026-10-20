@@ -96,6 +96,24 @@ test.describe("command palette", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("browsing actions opens Add shape and the searchable shape picker", async ({ page, consoleErrors }) => {
+    await openPalette(page);
+    await input(page).fill(">");
+    await expect(item(page, "action:canvas.fit")).toBeAttached();
+    const addShape = item(page, "action:canvas.add-shape");
+    await expect(addShape).toHaveText("Add shape…");
+    await addShape.click();
+    await expect(palette(page)).toHaveCount(0);
+    await expect(page.getByTestId("shape-picker")).toBeVisible();
+    await page.getByTestId("shape-picker-search").fill("hexagon");
+    await page.getByTestId("context-menu-item-add-shape:hexagon").click();
+    await expect(page.getByTestId("annotation-shape-1")).toHaveAttribute("data-shape", "hexagon");
+    await expect(page.getByTestId("shape-picker")).toHaveCount(0);
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId("annotation-shape-1")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
   test("with one node selected, a stencil is added next to it and connected, as one undo step", async ({
     page,
     consoleErrors,

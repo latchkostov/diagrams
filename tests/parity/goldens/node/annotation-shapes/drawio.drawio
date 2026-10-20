@@ -1,0 +1,302 @@
+<mxfile host="Diagrams" agent="Diagrams" version="24.0.0" type="device">
+  <diagram id="dg-f0xt3u" name="Annotation shapes">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <object id="0" dg_format="diagrams/v1">
+          <mxCell />
+        </object>
+        <mxCell id="1" parent="0" />
+        <object id="dg-a-outline-rect" label="Invoice&lt;br&gt;approval" dg_id="outline-rect" dg_annotation="shape" dg_shape="rect" dg_text="Invoice&#10;approval">
+          <mxCell style="rounded=0;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-rounded" label="Invoice&lt;br&gt;approval" dg_id="outline-rounded" dg_annotation="shape" dg_shape="rounded" dg_text="Invoice&#10;approval">
+          <mxCell style="rounded=1;arcSize=10;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-ellipse" label="Invoice&lt;br&gt;approval" dg_id="outline-ellipse" dg_annotation="shape" dg_shape="ellipse" dg_text="Invoice&#10;approval">
+          <mxCell style="ellipse;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-diamond" label="Invoice&lt;br&gt;approval" dg_id="outline-diamond" dg_annotation="shape" dg_shape="diamond" dg_text="Invoice&#10;approval">
+          <mxCell style="rhombus;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-cylinder" label="Invoice&lt;br&gt;approval" dg_id="outline-cylinder" dg_annotation="shape" dg_shape="cylinder" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=12;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-stadium" label="Invoice&lt;br&gt;approval" dg_id="outline-stadium" dg_annotation="shape" dg_shape="stadium" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=ext;rounded=1;arcSize=50;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1400" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-subroutine" label="Invoice&lt;br&gt;approval" dg_id="outline-subroutine" dg_annotation="shape" dg_shape="subroutine" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=process;backgroundOutline=1;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1680" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-dbl-circ" label="Invoice&lt;br&gt;approval" dg_id="outline-dbl-circ" dg_annotation="shape" dg_shape="dbl-circ" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=doubleEllipse;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="0" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-hexagon" label="Invoice&lt;br&gt;approval" dg_id="outline-hexagon" dg_annotation="shape" dg_shape="hexagon" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=hexagon;perimeter=hexagonPerimeter2;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-lean-r" label="Invoice&lt;br&gt;approval" dg_id="outline-lean-r" dg_annotation="shape" dg_shape="lean-r" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=parallelogram;perimeter=parallelogramPerimeter;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-lean-l" label="Invoice&lt;br&gt;approval" dg_id="outline-lean-l" dg_annotation="shape" dg_shape="lean-l" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=parallelogram;perimeter=parallelogramPerimeter;flipH=1;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-trap-b" label="Invoice&lt;br&gt;approval" dg_id="outline-trap-b" dg_annotation="shape" dg_shape="trap-b" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=trapezoid;perimeter=trapezoidPerimeter;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-trap-t" label="Invoice&lt;br&gt;approval" dg_id="outline-trap-t" dg_annotation="shape" dg_shape="trap-t" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=trapezoid;perimeter=trapezoidPerimeter;flipV=1;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-sl-rect" label="Invoice&lt;br&gt;approval" dg_id="outline-sl-rect" dg_annotation="shape" dg_shape="sl-rect" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=manualInput;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1400" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-notch-rect" label="Invoice&lt;br&gt;approval" dg_id="outline-notch-rect" dg_annotation="shape" dg_shape="notch-rect" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=card;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1680" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-lin-rect" label="Invoice&lt;br&gt;approval" dg_id="outline-lin-rect" dg_annotation="shape" dg_shape="lin-rect" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=process;dashed=1;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-div-rect" label="Invoice&lt;br&gt;approval" dg_id="outline-div-rect" dg_annotation="shape" dg_shape="div-rect" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=process;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-tag-rect" label="Invoice&lt;br&gt;approval" dg_id="outline-tag-rect" dg_annotation="shape" dg_shape="tag-rect" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=folder;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-processes" label="Invoice&lt;br&gt;approval" dg_id="outline-processes" dg_annotation="shape" dg_shape="processes" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=processes;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-delay" label="Invoice&lt;br&gt;approval" dg_id="outline-delay" dg_annotation="shape" dg_shape="delay" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=delay;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-notch-pent" label="Invoice&lt;br&gt;approval" dg_id="outline-notch-pent" dg_annotation="shape" dg_shape="notch-pent" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=loopLimit;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-hourglass" label="Invoice&lt;br&gt;approval" dg_id="outline-hourglass" dg_annotation="shape" dg_shape="hourglass" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=collate;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1400" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-fork" label="Invoice&lt;br&gt;approval" dg_id="outline-fork" dg_annotation="shape" dg_shape="fork" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1680" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-datastore" label="Invoice&lt;br&gt;approval" dg_id="outline-datastore" dg_annotation="shape" dg_shape="datastore" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=datastore;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-das" label="Invoice&lt;br&gt;approval" dg_id="outline-das" dg_annotation="shape" dg_shape="das" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=tapeData;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-lin-cyl" label="Invoice&lt;br&gt;approval" dg_id="outline-lin-cyl" dg_annotation="shape" dg_shape="lin-cyl" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=cylinder3;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-bow-rect" label="Invoice&lt;br&gt;approval" dg_id="outline-bow-rect" dg_annotation="shape" dg_shape="bow-rect" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=dataStorage;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-flag" label="Invoice&lt;br&gt;approval" dg_id="outline-flag" dg_annotation="shape" dg_shape="flag" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=tape;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-win-pane" label="Invoice&lt;br&gt;approval" dg_id="outline-win-pane" dg_annotation="shape" dg_shape="win-pane" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=internalStorage;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-doc" label="Invoice&lt;br&gt;approval" dg_id="outline-doc" dg_annotation="shape" dg_shape="doc" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=document;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1400" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-docs" label="Invoice&lt;br&gt;approval" dg_id="outline-docs" dg_annotation="shape" dg_shape="docs" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=documents;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1680" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-lin-doc" label="Invoice&lt;br&gt;approval" dg_id="outline-lin-doc" dg_annotation="shape" dg_shape="lin-doc" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=document;dashed=1;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="600" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-tag-doc" label="Invoice&lt;br&gt;approval" dg_id="outline-tag-doc" dg_annotation="shape" dg_shape="tag-doc" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=note;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-bolt" label="Invoice&lt;br&gt;approval" dg_id="outline-bolt" dg_annotation="shape" dg_shape="bolt" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=lightning;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-comment" label="Invoice&lt;br&gt;approval" dg_id="outline-comment" dg_annotation="shape" dg_shape="comment" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=curlyBracket;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-brace-r" label="Invoice&lt;br&gt;approval" dg_id="outline-brace-r" dg_annotation="shape" dg_shape="brace-r" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=curlyBracket;flipH=1;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-braces" label="Invoice&lt;br&gt;approval" dg_id="outline-braces" dg_annotation="shape" dg_shape="braces" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=curlyBracket;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-curv-trap" label="Invoice&lt;br&gt;approval" dg_id="outline-curv-trap" dg_annotation="shape" dg_shape="curv-trap" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=display;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1400" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-asym" label="Invoice&lt;br&gt;approval" dg_id="outline-asym" dg_annotation="shape" dg_shape="asym" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=singleArrow;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1680" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-f-circ" label="Invoice&lt;br&gt;approval" dg_id="outline-f-circ" dg_annotation="shape" dg_shape="f-circ" dg_text="Invoice&#10;approval">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1960" y="800" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-framed-circle" label="Invoice&lt;br&gt;approval" dg_id="outline-framed-circle" dg_annotation="shape" dg_shape="framed-circle" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=doubleEllipse;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="1000" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-cross-circ" label="Invoice&lt;br&gt;approval" dg_id="outline-cross-circ" dg_annotation="shape" dg_shape="cross-circ" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=xor;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="1000" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-tri" label="Invoice&lt;br&gt;approval" dg_id="outline-tri" dg_annotation="shape" dg_shape="tri" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=triangle;direction=north;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="1000" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-outline-flip-tri" label="Invoice&lt;br&gt;approval" dg_id="outline-flip-tri" dg_annotation="shape" dg_shape="flip-tri" dg_text="Invoice&#10;approval">
+          <mxCell style="shape=triangle;direction=south;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="1000" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-fork-white" label="Readable label" dg_id="solid-fork-white" dg_annotation="shape" dg_shape="fork" dg_color="white" dg_text="Readable label">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#FFFFFF;strokeColor=#F8FAFC;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="1200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-fork-neutral" label="Readable label" dg_id="solid-fork-neutral" dg_annotation="shape" dg_shape="fork" dg_color="neutral" dg_text="Readable label">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="1200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-fork-yellow" label="Readable label" dg_id="solid-fork-yellow" dg_annotation="shape" dg_shape="fork" dg_color="yellow" dg_text="Readable label">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#FFF4C2;strokeColor=#E0A800;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="1200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-fork-green" label="Readable label" dg_id="solid-fork-green" dg_annotation="shape" dg_shape="fork" dg_color="green" dg_text="Readable label">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#DCF5E8;strokeColor=#1F9D61;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="1200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-fork-blue" label="Readable label" dg_id="solid-fork-blue" dg_annotation="shape" dg_shape="fork" dg_color="blue" dg_text="Readable label">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#DFEBFE;strokeColor=#3B82F6;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="1200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-fork-purple" label="Readable label" dg_id="solid-fork-purple" dg_annotation="shape" dg_shape="fork" dg_color="purple" dg_text="Readable label">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#EDE7FE;strokeColor=#8B5CF6;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1400" y="1200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-fork-red" label="Readable label" dg_id="solid-fork-red" dg_annotation="shape" dg_shape="fork" dg_color="red" dg_text="Readable label">
+          <mxCell style="shape=line;strokeWidth=4;html=1;whiteSpace=wrap;fontSize=14;fillColor=#FDE3E4;strokeColor=#E5484D;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1680" y="1200" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-f-circ-white" label="Readable label" dg_id="solid-f-circ-white" dg_annotation="shape" dg_shape="f-circ" dg_color="white" dg_text="Readable label">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#FFFFFF;strokeColor=#F8FAFC;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="0" y="1400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-f-circ-neutral" label="Readable label" dg_id="solid-f-circ-neutral" dg_annotation="shape" dg_shape="f-circ" dg_color="neutral" dg_text="Readable label">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="280" y="1400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-f-circ-yellow" label="Readable label" dg_id="solid-f-circ-yellow" dg_annotation="shape" dg_shape="f-circ" dg_color="yellow" dg_text="Readable label">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#FFF4C2;strokeColor=#E0A800;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="560" y="1400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-f-circ-green" label="Readable label" dg_id="solid-f-circ-green" dg_annotation="shape" dg_shape="f-circ" dg_color="green" dg_text="Readable label">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#DCF5E8;strokeColor=#1F9D61;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="840" y="1400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-f-circ-blue" label="Readable label" dg_id="solid-f-circ-blue" dg_annotation="shape" dg_shape="f-circ" dg_color="blue" dg_text="Readable label">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#DFEBFE;strokeColor=#3B82F6;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="1400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-f-circ-purple" label="Readable label" dg_id="solid-f-circ-purple" dg_annotation="shape" dg_shape="f-circ" dg_color="purple" dg_text="Readable label">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#EDE7FE;strokeColor=#8B5CF6;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1400" y="1400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="dg-a-solid-f-circ-red" label="Readable label" dg_id="solid-f-circ-red" dg_annotation="shape" dg_shape="f-circ" dg_color="red" dg_text="Readable label">
+          <mxCell style="ellipse;fillColor=#1F2937;html=1;whiteSpace=wrap;fontSize=14;fillColor=#FDE3E4;strokeColor=#E5484D;fontColor=#1F2937;" vertex="1" parent="1">
+            <mxGeometry x="1680" y="1400" width="240" height="160" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

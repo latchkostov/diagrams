@@ -385,6 +385,41 @@ test.describe("renaming in the inspector", () => {
     await expect(nodes(page).filter({ hasText: "Session store" })).toHaveCount(0);
   });
 
+  for (const connected of [false, true]) {
+    test(`shape quick-add preserves typing before focus and names in its creation undo step (${connected ? "connected" : "canvas"})`, async ({
+      page,
+    }) => {
+      if (connected) {
+        await page.getByTestId("node-c").click();
+        await page.keyboard.press("Alt+ArrowRight");
+      } else {
+        const r = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
+        await page.mouse.dblclick(r.x + 120, r.y + r.height - 120);
+      }
+      await page.getByTestId("quick-add-search").fill("triangle");
+      await page.clock.install();
+      await pauseClock(page);
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("Invoice ", { delay: 0 });
+      const field = page.getByTestId("annotation-editor");
+      await expect(field).toHaveCount(0);
+      await page.clock.runFor(1000);
+      await expect(field).toBeFocused();
+      await expect(field).toHaveValue("Invoice ");
+      expect(await field.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd])).toEqual([8, 8]);
+      // The creation debounce has long elapsed; naming still belongs to that same undo step.
+      await page.clock.runFor(3000);
+      await page.keyboard.type("approved");
+      await expect(field).toHaveValue("Invoice approved");
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("annotation-text-shape-1")).toHaveText("Invoice approved");
+      await page.keyboard.press(`${MOD}+z`);
+      await expect(page.getByTestId("annotation-shape-1")).toHaveCount(0);
+      await page.keyboard.press(`${MOD}+Shift+z`);
+      await expect(page.getByTestId("annotation-text-shape-1")).toHaveText("Invoice approved");
+    });
+  }
+
   test("click-away separates successive renames", async ({ page }) => {
     await page.getByTestId("node-c").dblclick();
     const label = page.getByTestId("inspector-field-label");

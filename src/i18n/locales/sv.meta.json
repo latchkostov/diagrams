@@ -1222,6 +1222,7 @@
     "edit.finiteGeometry": "433a6742",
     "edit.coordinateBudget": "c57201c3",
     "edit.annotationLimit": "3cac0555",
+    "edit.annotationInsertLimit": "812629d7",
     "edit.annotationTextLimit": "dc8d326e",
     "edit.annotationSize": "b6905baa",
     "broker.partitions": "92fe9b2e",

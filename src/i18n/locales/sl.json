@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "geometrija mora biti končna.",
   "edit.coordinateBudget": "zunaj omejitve koordinat. Premaknite izbor bližje izhodišču.",
   "edit.annotationLimit": "Te meje ni mogoče pretvoriti: diagram že vsebuje {limit} anotacij. Odstranite anotacijo in poskusite znova.",
+  "edit.annotationInsertLimit": "Ta diagram je dosegel omejitev {limit, number} anotacij. Odstranite anotacijo in poskusite znova.",
   "edit.annotationTextLimit": "Te meje ni bilo mogoče pretvoriti: njena oznaka presega {limit} znakov. Skrajšajte oznako in poskusite znova.",
   "edit.annotationSize": "velikost mora biti med 1 in {limit} slikovnimi pikami. Izberite manjši izbor.",
   "broker.partitions": "Particije",

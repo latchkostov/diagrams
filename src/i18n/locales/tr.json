@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "geometrisi sonlu olmalıdır.",
   "edit.coordinateBudget": "koordinat sınırının dışında. Seçimi başlangıç noktasına yaklaştırın.",
   "edit.annotationLimit": "Bu sınır dönüştürülemiyor: diyagramda zaten {limit} ek açıklama var. Bir ek açıklamayı kaldırıp tekrar deneyin.",
+  "edit.annotationInsertLimit": "Bu diyagram {limit, number} açıklama sınırına ulaştı. Bir açıklamayı kaldırıp tekrar deneyin.",
   "edit.annotationTextLimit": "Bu sınır dönüştürülemedi: etiketi {limit} karakteri aşıyor. Etiketi kısaltıp yeniden deneyin.",
   "edit.annotationSize": "boyutu 1 ile {limit} piksel arasında olmalıdır. Daha küçük bir seçim yapın.",
   "broker.partitions": "Partitionlar",

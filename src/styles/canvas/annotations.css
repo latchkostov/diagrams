@@ -251,6 +251,15 @@
   stroke-linejoin: round;
 }
 
+.ann-shape-open .ann-shape-svg > *,
+.ann-shape-svg > .ann-shape-stroke-only {
+  fill: none;
+}
+
+.ann-shape-svg > .ann-shape-fill-only {
+  stroke: none;
+}
+
 .ann-shape-svg > .ann-shape-top {
   fill: color-mix(in oklab, var(--ann) 15%, var(--node-bg));
 }
@@ -265,16 +274,60 @@
   text-align: center;
 }
 
-.ann-body-ellipse {
+.ann-shape .ann-body-ellipse {
   padding: 12% 16%;
 }
 
-.ann-body-diamond {
+.ann-shape .ann-body-diamond {
   padding: 20% 24%;
 }
 
 .ann-shape .ann-body-cylinder {
   padding-top: 30px;
+}
+
+.ann-shape .ann-body-hexagon,
+.ann-shape .ann-body-lean-r,
+.ann-shape .ann-body-lean-l,
+.ann-shape .ann-body-trap-b,
+.ann-shape .ann-body-trap-t,
+.ann-shape .ann-body-braces {
+  padding: 8px 16%;
+}
+
+.ann-shape .ann-body-tri {
+  padding: 25% 15% 10% 15%;
+}
+
+.ann-shape .ann-body-flip-tri {
+  padding: 10% 15% 25% 15%;
+}
+
+.ann-shape .ann-body-hourglass {
+  padding: 8px 22%;
+}
+
+.ann-shape .ann-body-doc,
+.ann-shape .ann-body-docs,
+.ann-shape .ann-body-lin-doc,
+.ann-shape .ann-body-tag-doc {
+  padding-bottom: 16px;
+}
+
+.ann-shape .ann-body-asym {
+  padding-right: 18%;
+}
+
+.ann-shape .ann-body-curv-trap {
+  padding-left: 18%;
+}
+
+.ann-shape .ann-body-comment {
+  padding-left: 18%;
+}
+
+.ann-shape .ann-body-brace-r {
+  padding-right: 18%;
 }
 
 .ann-shape .ann-content {

@@ -1,3 +1,4 @@
+import { lazyComponent } from "../lib/lazyLoad";
 import { TRAFFIC_PATH } from "./glyphPaths";
 import { RELATION_GLYPHS } from "./relationGlyphs";
 
@@ -65,7 +66,6 @@ const paths = {
   tone: "M8 2.5a5.5 5.5 0 1 0 0 11c.8 0 1.2-.5 1.2-1.1 0-.9-.7-1-.7-1.9 0-.6.5-1 1.1-1h1.4a2.5 2.5 0 0 0 2.5-2.5C13.5 4.7 11 2.5 8 2.5Z",
   "select-all": "M2.5 5V2.5H5M7 2.5h2M11 2.5h2.5V5M13.5 7v2M13.5 11v2.5H11M9 13.5H7M5 13.5H2.5V11M2.5 9V7",
   layout: "M2.5 3h4v3h-4zM9.5 10h4v3h-4zM9.5 3h4v3h-4zM6.5 4.5h3M11.5 6v4",
-  shapes: "M2.5 2.5h5v5h-5zM11 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM5 9.5l2.5 4h-5zM9 9.5h4.5v4H9z",
   sparkle: "M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M12 4l-2 2M6 10l-2 2",
   // AI: a four-point spark and a small one.
   ai: "M6.5 2.5c.45 2.6 1.4 3.55 4 4-2.6.45-3.55 1.4-4 4-.45-2.6-1.4-3.55-4-4 2.6-.45 3.55-1.4 4-4ZM12 9.5c.2 1.15.6 1.55 1.75 1.75-1.15.2-1.55.6-1.75 1.75-.2-1.15-.6-1.55-1.75-1.75 1.15-.2 1.55-.6 1.75-1.75Z",
@@ -80,19 +80,21 @@ const paths = {
   note: "M2.75 2.75h10.5v6.5l-4 4h-6.5zM13.25 9.25h-4v4M5 5.5h6M5 8h3.5",
   zone: "M2.5 5V4a1.5 1.5 0 0 1 1.5-1.5h1M7 2.5h2M11 2.5h1a1.5 1.5 0 0 1 1.5 1.5v1M13.5 7v2M13.5 11v1a1.5 1.5 0 0 1-1.5 1.5h-1M9 13.5H7M5 13.5H4A1.5 1.5 0 0 1 2.5 12v-1M2.5 9V7M5 5.5h3.5",
   "shape-rect": "M2.5 4h11v8h-11z",
-  "shape-rounded": "M5 4h6a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 11 12H5a2.5 2.5 0 0 1-2.5-2.5v-3A2.5 2.5 0 0 1 5 4Z",
   "shape-ellipse": "M8 12.5c3 0 5.5-2 5.5-4.5S11 3.5 8 3.5 2.5 5.5 2.5 8s2.5 4.5 5.5 4.5Z",
   "shape-diamond": "M8 2 14 8 8 14 2 8z",
-  "shape-cylinder": "M3 4.5c0-1.1 2.24-2 5-2s5 .9 5 2-2.24 2-5 2-5-.9-5-2ZM3 4.5v7c0 1.1 2.24 2 5 2s5-.9 5-2v-7",
 } as const;
 
 /** 16 px glyphs, plus the relationship glyphs drawn on Lucide's 24 px grid. */
-export type IconName = keyof typeof paths | keyof typeof RELATION_GLYPHS;
+export type IconName =
+  keyof typeof paths | keyof typeof RELATION_GLYPHS | keyof typeof import("./shapeIconPaths").SHAPE_ICON_PATHS;
+
+const ExtendedShapeIcon = lazyComponent(() => import("./ShapeIcon").then((m) => m.ShapeIcon));
 
 const glyph24: Readonly<Record<string, string>> = RELATION_GLYPHS;
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   const big = glyph24[name];
+  const path = big ?? (paths as Readonly<Record<string, string>>)[name];
   return (
     <svg
       width={size}
@@ -105,7 +107,7 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d={big ?? (paths as Readonly<Record<string, string>>)[name] ?? ""} />
+      {path ? <path d={path} /> : <ExtendedShapeIcon name={name} />}
     </svg>
   );
 }

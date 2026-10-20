@@ -1,4 +1,5 @@
 import { waitingFixture } from "./waitingFixture";
+import { annotationShapesFixture } from "./annotationShapesFixture";
 import { faultDrillFixture } from "./faultDrillFixture";
 import { kedaFixture } from "./kedaFixture";
 import { ImportRetryLab } from "./ImportRetryLab";
@@ -853,6 +854,7 @@ const auditSources: Record<string, { label: string; diagram: () => DiagramFile }
   "imported-terraform": { label: "Imported: Terraform (AWS plan)", diagram: importedTerraform },
   "imported-terraform-azure": { label: "Imported: Terraform (Azure state)", diagram: importedTerraformAzure },
   annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
+  "annotation-shapes": { label: "Annotation shapes and label contrast", diagram: annotationShapesFixture },
   "stress-150": {
     label: "Stress: 150 nodes",
     diagram: () => stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: false, direction: "LR" }),

@@ -719,6 +719,35 @@ button.insp-input.dropdown-trigger {
   color: var(--accent);
 }
 
+.insp-toolbar .icon-btn.insp-more-shapes-btn {
+  width: auto;
+  min-width: 44px;
+  padding: 0 6px;
+  gap: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.insp-toolbar .icon-btn.insp-more-shapes-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+  border-color: var(--text-3);
+}
+
+.insp-toolbar .icon-btn.insp-more-shapes-btn.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--surface),
+    0 0 0 2.5px var(--accent);
+}
+
 .insp-size {
   display: flex;
   align-items: center;

@@ -3,16 +3,16 @@ import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
 import { lazyComponent } from "../lib/lazyLoad";
-import { DiagramPanel } from "./inspector/DiagramPanel";
 import { EdgePanel } from "./inspector/EdgePanel";
 import { GroupPanel } from "./inspector/GroupPanel";
-import { MultiPanel } from "./inspector/MultiPanel";
 import { NodePanel } from "./inspector/NodePanel";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
 import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
 
 const AnnotationPanel = lazyComponent(() => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel));
+const DiagramPanel = lazyComponent(() => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel));
+const MultiPanel = lazyComponent(() => import("./inspector/MultiPanel").then((m) => m.MultiPanel));
 
 export function Inspector(p: InspectorProps) {
   // The canvas's focus controller moves focus into the fields; outside a canvas (the Lab), one of its own.

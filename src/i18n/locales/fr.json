@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "sa géométrie doit être finie.",
   "edit.coordinateBudget": "hors des limites de coordonnées. Rapprochez la sélection de l’origine.",
   "edit.annotationLimit": "Impossible de convertir ce périmètre: le diagramme contient déjà {limit} annotations. Supprimez une annotation et réessayez.",
+  "edit.annotationInsertLimit": "Ce diagramme a atteint la limite de {limit, number} annotations. Supprimez une annotation et réessayez.",
   "edit.annotationTextLimit": "Impossible de convertir ce périmètre : son libellé dépasse {limit} caractères. Raccourcissez le libellé et réessayez.",
   "edit.annotationSize": "sa taille doit être comprise entre 1 et {limit} pixels. Choisissez une sélection plus petite.",
   "broker.partitions": "Partitions",

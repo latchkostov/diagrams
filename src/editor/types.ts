@@ -143,7 +143,14 @@ export interface EditorApi {
    * both stencils) and committed together as one undo step, tagged `merge` so naming the node joins it. The new
    * node is fed by `from` (→, ↓, a drop) or feeds it (←, ↑).
    */
-  createConnected(req: { from: string; stencil?: string; clone?: boolean; toward?: Toward; at?: XY }): NewNode | null;
+  createConnected(req: {
+    from: string;
+    stencil?: string;
+    shape?: AnnotationShape;
+    clone?: boolean;
+    toward?: Toward;
+    at?: XY;
+  }): NewNode | null;
   /**
    * Insert node on an edge (its menu, Ctrl+K, a stencil dropped on it): a new node at `at`, else the free place
    * nearest the middle of the edge's ends, and the edge split around it (src/model/edgeSplit.ts), one undo step.

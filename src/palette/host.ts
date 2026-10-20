@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { EditorApi } from "../editor/types";
+import type { MenuState } from "../canvas/menus/useCanvasMenus";
 import type { LiveState } from "../live/controller";
 import { createRunQueue, type RunRequest } from "../live/runQueue";
 
@@ -34,6 +35,8 @@ export interface CanvasHost {
    * selected, next to it (downstream) and connected from it. Returns the new node id.
    */
   addStencil(stencilId: string): string;
+  /** Opens a searchable insertion menu at the canvas centre. */
+  openPicker?(menu: Pick<MenuState, "label" | "testId" | "searchable" | "items">): void;
 }
 
 export interface LiveHost {

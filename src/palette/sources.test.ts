@@ -214,6 +214,27 @@ describe("palette sources", () => {
     expect(stencils[1].idle).toBe(false);
   });
 
+  it("opens the canvas shape picker from one editable-canvas action", () => {
+    const openPicker = vi.fn();
+    const addAnnotation = vi.fn();
+    const canvas = { ...host(), editor: { ...fakeEditor(), addAnnotation }, openPicker };
+    const command = collectCommands(input({ canvas })).find((c) => c.id === "action:canvas.add-shape");
+    expect(command?.label).toBe("Add shape…");
+    command?.run?.();
+    expect(openPicker).toHaveBeenCalledOnce();
+    const picker = openPicker.mock.calls[0][0] as Parameters<NonNullable<CanvasHost["openPicker"]>>[0];
+    expect(picker).toMatchObject({ label: "Select shape", searchable: "Search shapes", testId: "shape-picker" });
+    const basic = picker.items().find((item) => item.type === "item" && item.id === "add-shape:cat:basic");
+    if (basic?.type !== "item") throw new Error("Missing basic shapes");
+    const hexagon = basic.children?.find((item) => item.type === "item" && item.id === "add-shape:hexagon");
+    if (hexagon?.type !== "item") throw new Error("Missing hexagon");
+    hexagon.run?.();
+    expect(addAnnotation).toHaveBeenCalledWith("shape", { shape: "hexagon" });
+    for (const over of [{ canvas: { ...canvas, live: true } }, { view: "gallery" as const }, { canvas: null }]) {
+      expect(collectCommands(input({ canvas, ...over })).map((c) => c.id)).not.toContain("action:canvas.add-shape");
+    }
+  });
+
   it("runs commands through the host", () => {
     const inp = input();
     const cs = collectCommands(inp);

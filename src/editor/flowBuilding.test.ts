@@ -19,6 +19,105 @@ import * as convert from "../canvas/convert";
 import * as toasts from "../interop/ui/toast";
 import { parsePayload, makePayload } from "./clipboard";
 import { validateDiagram } from "../interop/native";
+import { ANNOTATION_LIMITS } from "../model/annotations";
+
+describe("connected annotation persistence", () => {
+  it("reuses a deleted annotation id while reserving queued insertion ids", () => {
+    const t = setup();
+    const first = t.api.addAnnotation("shape")!;
+    t.commit();
+    t.api.deleteElements({ nodeIds: [first] });
+    t.commit();
+    expect(t.api.addAnnotation("shape")).toBe(first);
+    expect(t.api.addAnnotation("shape")).not.toBe(first);
+  });
+  const shape = {
+    id: "source",
+    kind: "shape" as const,
+    text: "Invoice",
+    shape: "doc" as const,
+    color: "purple",
+    textSize: "xl" as const,
+    x: 0,
+    y: 0,
+    width: 240,
+    height: 140,
+  };
+  const fixture = (count = 1): DiagramFile => ({
+    format: "diagrams/v1",
+    title: "Shapes",
+    nodes: [],
+    edges: [],
+    annotations: Array.from({ length: count }, (_, i) => ({ ...shape, id: i ? `shape-${i}` : shape.id, x: i * 250 })),
+  });
+  for (const path of ["ordinary", "connected", "clone"] as const) {
+    const insert = (t: ReturnType<typeof setup>, at = { x: 500, y: 500 }) =>
+      path === "ordinary"
+        ? t.api.addAnnotation("shape", { at, shape: "doc" })
+        : t.api.createConnected({ from: "source", at, ...(path === "clone" ? { clone: true } : { shape: "doc" }) });
+    it(`${path} respects the annotation limit, including queued additions, without persisting a refused edit`, () => {
+      const t = setup([], fixture(ANNOTATION_LIMITS.maxAnnotations - 1));
+      expect(insert(t)).not.toBeNull();
+      const notify = vi.spyOn(toasts, "notify");
+      try {
+        const hints = t.hint.mock.calls.length;
+        expect(insert(t)).toBeNull();
+        expect(t.hint).toHaveBeenCalledTimes(hints);
+        expect(notify).toHaveBeenLastCalledWith(
+          "This diagram has reached the limit of 2,000 annotations. Remove an annotation and try again.",
+          {
+            kind: "error",
+          },
+        );
+        t.commit();
+        const saved = t.api.getDiagram();
+        expect(saved.annotations).toHaveLength(ANNOTATION_LIMITS.maxAnnotations);
+        expect(saved.edges).toHaveLength(path === "ordinary" ? 0 : 1);
+        const reopened = validateDiagram(saved);
+        expect(reopened.ok).toBe(true);
+        if (reopened.ok) expect(reopened.warnings).toEqual([]);
+        const before = structuredClone(saved);
+        expect(insert(t)).toBeNull();
+        t.commit();
+        expect(t.api.getDiagram()).toEqual(before);
+      } finally {
+        notify.mockRestore();
+      }
+    });
+    it(`${path} refuses out-of-budget geometry before opening history or adding an edge`, () => {
+      const t = setup([], fixture());
+      const before = structuredClone(t.api.getDiagram());
+      expect(insert(t, { x: ANNOTATION_LIMITS.maxCoordinate + 1000, y: 0 })).toBeNull();
+      expect(t.hint).not.toHaveBeenCalled();
+      t.commit();
+      expect(t.api.getDiagram()).toEqual(before);
+    });
+  }
+  it.each(["left", "right"] as const)(
+    "connected clones preserve appearance and destination membership (%s)",
+    (toward) => {
+      const d = fixture();
+      d.groups = [{ id: "old", label: "Original", x: -20, y: -20, width: 280, height: 180 }];
+      d.annotations![0].group = "old";
+      const t = setup([], d);
+      const made = t.api.createConnected({ from: "source", clone: true, toward })!;
+      t.commit();
+      expect(t.api.getAnnotation(made.id)).toMatchObject({
+        text: shape.text,
+        shape: shape.shape,
+        color: shape.color,
+        textSize: "xl",
+        width: 240,
+        height: 140,
+      });
+      expect(t.api.getAnnotation(made.id)?.group).toBeUndefined();
+      expect(t.api.getEdge(made.edge!)).toMatchObject(
+        toward === "right" ? { from: "source", to: made.id } : { from: made.id, to: "source" },
+      );
+      expect(validateDiagram(t.api.getDiagram()).ok).toBe(true);
+    },
+  );
+});
 
 // Flow building (batch 3): the next node one gap beside a node, connected the right way (D3), the selection-
 // aware rail and Ctrl+K (D13, decision 4), and rewiring edges through the editor (D8).

@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "jeho geometria musí byť konečná.",
   "edit.coordinateBudget": "je mimo rozsahu súradníc. Presuňte výber bližšie k počiatku.",
   "edit.annotationLimit": "Túto hranicu nemožno konvertovať: diagram už obsahuje {limit} anotácií. Odstráňte anotáciu a skúste to znova.",
+  "edit.annotationInsertLimit": "Tento diagram dosiahol limit {limit, number} anotácií. Odstráňte anotáciu a skúste to znova.",
   "edit.annotationTextLimit": "Túto hranicu nemožno previesť: jej popis presahuje {limit} znakov. Skráťte popis a skúste to znova.",
   "edit.annotationSize": "veľkosť musí byť od 1 do {limit} pixelov. Zvoľte menší výber.",
   "broker.partitions": "Partície",

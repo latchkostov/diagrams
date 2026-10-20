@@ -699,8 +699,8 @@ describe("the downloadable skill", () => {
       ]),
     );
     const zip = zipSkill(files);
-    // Includes offline latency recorder/readout and markdown rendering; retain download budget with headroom.
-    expect(zip.length).toBeLessThan(825_000);
+    // Includes offline latency recorder/readout, markdown rendering and expanded shapes; retain download budget with headroom.
+    expect(zip.length).toBeLessThan(835_000);
     expect(zipSkill(readSkill()).equals(zip)).toBe(true);
     // Read the local file entries back.
     const out = new Map<string, string>();

@@ -101,7 +101,7 @@ and a `shape` (a plain outline, the only kind an edge may end on) need `x`, `y`,
 
 - Boundary `tone`: `azure`, `aws`, `gcp`, `k8s`, `onprem`, `neutral`
 - Edge `kind`: `async`, `sync`; `relation`: `flow`, `config`, `secret`, `identity`, `telemetry`, `deploy`, `depends`; `sourceSide` / `targetSide`: `top`, `right`, `bottom`, `left`
-- Annotation `kind`: `text`, `note`, `zone`, `shape`; `shape`: `rect`, `rounded`, `ellipse`, `diamond`, `cylinder`; `color`: `white`, `neutral`, `yellow`, `green`, `blue`, `purple`, `red` or hex (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`; alpha is preserved); `textSize`: `s`, `m`, `l`, `xl`
+- Annotation `kind`: `text`, `note`, `zone`, `shape`; `shape`: `rect`, `rounded`, `ellipse`, `diamond`, `cylinder`, `stadium`, `subroutine`, `dbl-circ`, `hexagon`, `lean-r`, `lean-l`, `trap-b`, `trap-t`, `sl-rect`, `notch-rect`, `lin-rect`, `div-rect`, `tag-rect`, `processes`, `delay`, `notch-pent`, `hourglass`, `fork`, `datastore`, `das`, `lin-cyl`, `bow-rect`, `flag`, `win-pane`, `doc`, `docs`, `lin-doc`, `tag-doc`, `bolt`, `comment`, `brace-r`, `braces`, `curv-trap`, `asym`, `f-circ`, `framed-circle`, `cross-circ`, `tri`, `flip-tri`; `color`: `white`, `neutral`, `yellow`, `green`, `blue`, `purple`, `red` or hex (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`; alpha is preserved); `textSize`: `s`, `m`, `l`, `xl`
 - Limits: 5,000 nodes, 20,000 edges, coordinates within ±1,000,000
 
 <!-- END GENERATED enums -->

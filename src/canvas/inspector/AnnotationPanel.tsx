@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useInteractionOrLocal } from "../interaction";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
+import { ContextMenu } from "../../components/ContextMenu";
 import { Icon } from "../../components/Icon";
 import { MarkdownEditor } from "../../components/markdown/lazy";
 import { t } from "../../i18n";
@@ -9,13 +10,14 @@ import { ANNOTATION_LIMITS, annotationText } from "../../model/annotations";
 import {
   ANNOTATION_COLORS,
   ANNOTATION_COLOR_IDS,
-  ANNOTATION_SHAPES,
+  DEFAULT_ANNOTATION_SHAPES,
   ANNOTATION_TEXT_SIZES,
   annotationColor,
   minSize,
   resolveAnnotationColor,
   textSizeLabel,
 } from "../annotations";
+import { shapeMenu } from "../shapes/menu";
 import type { AnnotationFlowNode } from "../types";
 import { CopyId, Field, Section, Segmented, SizeInput } from "./fields";
 import { bulkStep } from "./editTransactions";
@@ -37,6 +39,9 @@ export function AnnotationPanel({
   const resolved = resolveAnnotationColor(note.data.color, kind);
   const isCustomColor = !resolved.isPreset;
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
+  const [shapePicker, setShapePicker] = useState<{ x: number; y: number } | null>(null);
+  const currentShape = note.data.shape ?? "rect";
+  const isDefaultShape = (DEFAULT_ANNOTATION_SHAPES as readonly string[]).includes(currentShape);
   const min = minSize[kind];
   const supportsMarkdown = kind === "note" || kind === "text";
   const setText = (text: string) => editor.updateAnnotation(id, { text: annotationText(text) }, merge("text"));
@@ -98,13 +103,13 @@ export function AnnotationPanel({
             aria-label={t("inspector.shape")}
             data-testid="inspector-field-shape"
           >
-            {ANNOTATION_SHAPES.map((sh) => (
+            {DEFAULT_ANNOTATION_SHAPES.map((sh) => (
               <button
                 key={sh}
                 type="button"
                 role="radio"
-                aria-checked={(note.data.shape ?? "rect") === sh}
-                className={`icon-btn${(note.data.shape ?? "rect") === sh ? " is-on" : ""}`}
+                aria-checked={currentShape === sh}
+                className={`icon-btn${currentShape === sh ? " is-on" : ""}`}
                 title={shapeLabel[sh]}
                 aria-label={shapeLabel[sh]}
                 onClick={() => editor.updateAnnotation(id, { shape: sh })}
@@ -113,7 +118,37 @@ export function AnnotationPanel({
                 <Icon name={`shape-${sh}`} />
               </button>
             ))}
+            <button
+              type="button"
+              className={`icon-btn insp-more-shapes-btn${!isDefaultShape ? " is-on" : ""}`}
+              title={!isDefaultShape ? `${shapeLabel[currentShape]} (${t("shape.moreShapes")})` : t("shape.moreShapes")}
+              aria-label={t("shape.moreShapes")}
+              aria-haspopup="menu"
+              aria-expanded={!!shapePicker}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setShapePicker({ x: r.left, y: r.bottom + 4 });
+              }}
+              data-testid="inspector-more-shapes-btn"
+            >
+              <Icon name={!isDefaultShape ? (`shape-${currentShape}` as const) : "shapes"} size={16} />
+              <Icon name="chevron-down" size={12} />
+            </button>
           </div>
+          {shapePicker && (
+            <ContextMenu
+              x={shapePicker.x}
+              y={shapePicker.y}
+              label={t("shape.selectShape")}
+              testId="shape-picker"
+              searchable={t("shape.searchShapes")}
+              items={shapeMenu("pick-shape", (s) => ({
+                checked: currentShape === s.id,
+                run: () => editor.updateAnnotation(id, { shape: s.id }),
+              }))}
+              onClose={() => setShapePicker(null)}
+            />
+          )}
         </Field>
       )}
       <Field label={t("inspector.colour")} group>

@@ -29,6 +29,7 @@ import { Icon, type IconName } from "../components/Icon";
 import { safeStorage } from "../lib/storage";
 import { formatCombo, shortcutKeys } from "../editor/shortcuts";
 import { ANNOTATION_DND_MIME, annotationDragValue } from "./annotations";
+import { SHAPES_CATALOG } from "./shapes/catalog";
 
 export { STENCIL_DND_MIME };
 
@@ -415,18 +416,18 @@ const ANNOTATE: readonly AnnotateItem[] = [
 /** What search finds: each outline by name, so "ellipse" or "cylinder" adds that one directly. */
 const ANNOTATE_SEARCH: readonly AnnotateItem[] = [
   ...TEXT_NOTE_ZONE,
-  ...(["rect", "rounded", "ellipse", "diamond", "cylinder"] as const).map((shape) => ({
+  ...SHAPES_CATALOG.map((s) => ({
     kind: "shape" as const,
-    shape,
+    shape: s.id,
     get label() {
-      return shape === "rounded" ? t("chrome.rounded") : shapeLabel[shape];
+      return s.id === "rounded" ? t("chrome.rounded") : s.label;
     },
-    icon: `shape-${shape}` as IconName,
+    icon: `shape-${s.id}` as IconName,
     get hint() {
-      return t("chrome.valueAPlainShapeForWhenNoStencilFits", { shape: shapeLabel[shape] });
+      return t("chrome.valueAPlainShapeForWhenNoStencilFits", { shape: s.label });
     },
     get keywords() {
-      return `shape outline ${shapeLabel[shape]}${shape === "rect" ? " box" : ""}`;
+      return `shape outline ${s.label} ${s.keywords}${s.id === "rect" ? " box" : ""}`;
     },
   })),
 ];

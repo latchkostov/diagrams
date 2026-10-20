@@ -1220,6 +1220,7 @@
   "edit.finiteGeometry": "die Geometrie muss endlich sein.",
   "edit.coordinateBudget": "außerhalb des Koordinatenbereichs. Die Auswahl näher zum Ursprung verschieben.",
   "edit.annotationLimit": "Diese Begrenzung kann nicht konvertiert werden: Das Diagramm enthält bereits {limit} Anmerkungen. Entfernen Sie eine Anmerkung und versuchen Sie es erneut.",
+  "edit.annotationInsertLimit": "Dieses Diagramm hat die Grenze von {limit, number} Anmerkungen erreicht. Entfernen Sie eine Anmerkung und versuchen Sie es erneut.",
   "edit.annotationTextLimit": "Diese Begrenzung kann nicht konvertiert werden: Ihre Beschriftung überschreitet {limit} Zeichen. Kürzen Sie die Beschriftung und versuchen Sie es erneut.",
   "edit.annotationSize": "die Größe muss zwischen 1 und {limit} Pixeln liegen. Eine kleinere Auswahl wählen.",
   "broker.partitions": "Partitionen",

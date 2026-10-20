@@ -4,7 +4,8 @@ import { type AlignMode } from "../../editor/arrange";
 import { t } from "../../i18n";
 import { Field, Section } from "./fields";
 import { type InspectorProps } from "./types";
-import { useState, type CSSProperties } from "react";
+import { useLayoutEffect, useState, type CSSProperties } from "react";
+import { useInteractionOrLocal } from "../interaction";
 import { ContextMenu } from "../../components/ContextMenu";
 import { StencilIcon } from "../../components/StencilIcon";
 import { stencilMenu } from "../../editor/builtinActions";
@@ -77,6 +78,8 @@ const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
 ];
 
 export function MultiPanel(p: InspectorProps) {
+  const { controller } = useInteractionOrLocal();
+  useLayoutEffect(() => controller.rendered());
   const { editor, selectedNodes, selectedEdges, selectedGroups, selectedAnnotations = [] } = p;
   const nodeIds = selectedNodes.map((n) => n.id);
   const groupableIds = [

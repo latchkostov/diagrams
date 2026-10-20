@@ -1,6 +1,7 @@
 import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { annotationShapesFixture } from "../../src/lab/annotationShapesFixture";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -101,6 +102,68 @@ async function seed(page: Page, diagram: unknown) {
 }
 
 test.describe("annotations", () => {
+  test("shape labels reserve their outline-specific padding", async ({ page }) => {
+    await seed(page, annotationShapesFixture());
+    await gotoCanvas(page, SLUG);
+    for (const [shape, expected] of [
+      ["tri", [60, 36, 24, 36]],
+      ["flip-tri", [24, 36, 60, 36]],
+      ["trap-t", [8, 38.4, 8, 38.4]],
+      ["braces", [8, 38.4, 8, 38.4]],
+      ["comment", [8, 12, 8, 43.2]],
+      ["brace-r", [8, 43.2, 8, 12]],
+    ] as const) {
+      const padding = await page.getByTestId(`annotation-text-outline-${shape}`).evaluate((el) => {
+        if (!el.parentElement) throw new Error("Missing annotation body");
+        const style = getComputedStyle(el.parentElement);
+        return [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].map(parseFloat);
+      });
+      expected.forEach((value, i) => expect(padding[i], `${shape}, side ${i}`).toBeCloseTo(value, 1));
+    }
+  });
+
+  test("solid shape labels meet WCAG AA across the preset colours in light and dark", async ({ page }) => {
+    await seed(page, annotationShapesFixture());
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId("shape-outline")).toHaveCount(58);
+    for (const theme of ["light", "dark"]) {
+      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
+        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
+      );
+      await expect
+        .poll(async () => {
+          const contrasts = await page.getByTestId(/^annotation-solid-/).evaluateAll((els) => {
+            const ctx = document.createElement("canvas").getContext("2d");
+            if (!ctx) throw new Error("Missing colour context");
+            const luminance = (color: string) => {
+              ctx.fillStyle = color;
+              ctx.fillRect(0, 0, 1, 1);
+              return Array.from(ctx.getImageData(0, 0, 1, 1).data)
+                .slice(0, 3)
+                .map((v) => {
+                  const c = v / 255;
+                  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+                })
+                .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+            };
+            return els.map((el) => {
+              const ink = luminance(getComputedStyle(el).color);
+              const outline = el.firstElementChild?.firstElementChild;
+              if (!outline) throw new Error("Missing shape outline");
+              const fill = luminance(getComputedStyle(outline).fill);
+              return {
+                id: el.getAttribute("data-testid"),
+                ratio: (Math.max(ink, fill) + 0.05) / (Math.min(ink, fill) + 0.05),
+              };
+            });
+          });
+          expect(contrasts).toHaveLength(14);
+          return contrasts.filter((c) => c.ratio < 4.5);
+        })
+        .toEqual([]);
+      if (theme === "light") await page.getByTestId("theme-toggle").click();
+    }
+  });
   for (const control of ["top-left", "line-left"] as const) {
     test(`${control} resize stops at the persistence limit and a connected shape reopens`, async ({
       page,

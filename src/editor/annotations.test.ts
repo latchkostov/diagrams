@@ -73,6 +73,11 @@ describe("annotation actions", () => {
       "annotate:shape:ellipse",
       "annotate:shape:diamond",
       "annotate:shape:cylinder",
+      "annotate-shape:cat:basic",
+      "annotate-shape:cat:flowchart",
+      "annotate-shape:cat:storage",
+      "annotate-shape:cat:document",
+      "annotate-shape:cat:connector",
     ]);
     shapes[2].run!();
     items(add.children!)[1].run!();

@@ -7,6 +7,7 @@ import {
   annotationAriaLabel,
   annotationTitle,
   isConnectable,
+  isOpenShape,
   isObstacle,
   parseAnnotationDrag,
   resolveAnnotationColor,
@@ -311,5 +312,14 @@ describe("annotation colors", () => {
     expect(accessibleColor("#000000e6", whiteLum, "#0f172a")).toBe("#000000e6");
     expect(accessibleColor("#ffffff40", darkLum, "#f8fafc")).toBe("#f8fafc");
     expect(accessibleColor("#ffffffe6", darkLum, "#f8fafc")).toBe("#ffffffe6");
+  });
+
+  it("detects open shapes that need stroke-only rendering", () => {
+    expect(isOpenShape("comment")).toBe(true);
+    expect(isOpenShape("brace-r")).toBe(true);
+    expect(isOpenShape("braces")).toBe(true);
+    expect(isOpenShape("rect")).toBe(false);
+    expect(isOpenShape("diamond")).toBe(false);
+    expect(isOpenShape(undefined)).toBe(false);
   });
 });

@@ -10,16 +10,17 @@ import type {
 // in nodes/AnnotationNode.tsx; routing, the overlap audit, interop and validation read from here.
 
 import { ANNOTATION_KINDS, ANNOTATION_SHAPES, ANNOTATION_LIMITS } from "../model/annotations";
-export { ANNOTATION_KINDS, ANNOTATION_SHAPES, ANNOTATION_TEXT_SIZES, ANNOTATION_COLOR_IDS } from "../model/annotations";
+export {
+  ANNOTATION_KINDS,
+  ANNOTATION_SHAPES,
+  DEFAULT_ANNOTATION_SHAPES,
+  ANNOTATION_TEXT_SIZES,
+  ANNOTATION_COLOR_IDS,
+} from "../model/annotations";
+import { shapeLabel } from "../i18n/chrome";
+export { shapeLabel };
 
 export const kindLabel: Record<AnnotationKind, string> = { text: "Text", note: "Note", zone: "Zone", shape: "Shape" };
-export const shapeLabel: Record<AnnotationShape, string> = {
-  rect: "Rectangle",
-  rounded: "Rounded rectangle",
-  ellipse: "Ellipse",
-  diamond: "Diamond",
-  cylinder: "Cylinder",
-};
 export const textSizeLabel: Record<AnnotationTextSize, string> = { s: "S", m: "M", l: "L", xl: "XL" };
 /** Font size (px) per text size. Titles read at a distance; notes stay compact. */
 export const textSizePx: Record<AnnotationTextSize, number> = { s: 12, m: 14, l: 18, xl: 26 };
@@ -139,3 +140,7 @@ export function parseAnnotationDrag(v: string): { kind: AnnotationKind; shape?: 
   if (kind !== "shape") return { kind };
   return { kind, shape: shape && ANNOTATION_SHAPES.includes(shape) ? shape : "rect" };
 }
+
+/** Open shapes (brackets, braces) only have stroke, no fill. */
+export const isOpenShape = (shape: AnnotationShape | undefined): boolean =>
+  shape === "comment" || shape === "brace-r" || shape === "braces";

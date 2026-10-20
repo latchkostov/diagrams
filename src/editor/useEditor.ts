@@ -37,6 +37,7 @@ import {
   annotationCoordinate,
   annotationText,
 } from "../model/annotations";
+import { cloneAnnotation } from "./cloneAnnotation";
 import { foregroundLayerOrder } from "../model/layers";
 import { notify } from "../interop/ui/toast";
 import { isDependency, relationOf, type DependencyRelation } from "../model/relations";
@@ -295,7 +296,6 @@ export function createEditor(
     width: n.measured?.width ?? n.width ?? deps().nodeSize.width,
     height: n.measured?.height ?? n.height ?? deps().nodeSize.height,
   });
-  const pendingIds = new Set<string>();
   const diagram = () => fromFlow(deps().meta, committed.getNodes(), committed.getEdges());
   const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
   const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
@@ -417,9 +417,6 @@ export function createEditor(
     if (!acceptNodes(candidate, edges, meta, retry)) return false;
     // Metadata the insertion needs (request routes it brought) lands in the same step.
     if (meta && meta !== deps().meta) deps().setMeta(meta);
-    const existing = new Set([...current.map((n) => n.id), ...currentEdges().map((e) => e.id)]);
-    const reserved = [...candidate, ...edges].map((item) => item.id).filter((id) => !existing.has(id));
-    for (const id of reserved) pendingIds.add(id);
     if (opts) deps().history.hint(opts.merge);
     setNodes(candidate);
     setEdges(edges);
@@ -572,12 +569,10 @@ export function createEditor(
   ];
   /** Ids in use: nodes, notes, boundaries and connections share one id space (validateDiagram). */
   const takenIds = () => {
-    const committed = [
-      ...rf.getNodes().map((n) => (isGroup(n) ? n.data.groupId : n.id)),
-      ...rf.getEdges().map((e) => e.id),
-    ];
-    for (const id of committed) pendingIds.delete(id);
-    return new Set([...pendingIds, ...committed]);
+    return new Set([
+      ...currentNodes().map((n) => (isGroup(n) ? n.data.groupId : n.id)),
+      ...currentEdges().map((e) => e.id),
+    ]);
   };
   /**
    * What a copy stays off: cards, notes and shapes (not boundaries, zones or text, which things may sit
@@ -665,6 +660,32 @@ export function createEditor(
         settled([...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node], new Set([node.id])).nodes,
       edges,
     );
+  /** Every annotation insert uses the staged count and persistence geometry before opening history. */
+  const insertAnnotation = (node: AnnotationFlowNode, edges: (cur: DiagramFlowEdge[]) => DiagramFlowEdge[]) => {
+    if (currentNodes().filter(isAnnotation).length >= ANNOTATION_LIMITS.maxAnnotations) {
+      notify(t("edit.annotationInsertLimit", { limit: ANNOTATION_LIMITS.maxAnnotations }), { kind: "error" });
+      return false;
+    }
+    const geometryError = annotationGeometryReason({ ...node.position, width: node.width!, height: node.height! });
+    if (geometryError) {
+      notify(
+        t("chrome.couldnTAddValueValue", {
+          kind: kindLabel[node.data.kind].toLowerCase(),
+          error: annotationGeometryMessage(geometryError),
+        }),
+        { kind: "error" },
+      );
+      return false;
+    }
+    const merge = `new:${node.id}`;
+    beginCreation(merge);
+    const inserted =
+      node.data.kind === "zone"
+        ? commitNodes((cur) => [node, ...cur.map((n) => (n.selected ? { ...n, selected: false } : n))], edges)
+        : addSettled(node, edges);
+    if (!inserted) deps().history.end?.(merge);
+    return inserted;
+  };
   /** One function for every annotation patch (one or many). */
   const patchAnnotation = (
     n: AnnotationFlowNode,
@@ -915,8 +936,7 @@ export function createEditor(
 
     addAnnotation: (kind, opts = {}) => {
       const size = defaultSize[kind];
-      const ns = rf.getNodes();
-      if (ns.filter(isAnnotation).length >= ANNOTATION_LIMITS.maxAnnotations) return null;
+      const ns = currentNodes();
       const pointed = opts.at ?? (opts.atPointer ? deps().pointer?.() : undefined);
       // A zone added with things selected marks them: it's drawn around them, with room for its label.
       const wrapped =
@@ -932,19 +952,6 @@ export function createEditor(
         const x = kind === "text" && pointed ? c.x - 8 : c.x - size.width / 2;
         at = { x: snap10(x), y: snap10(c.y - size.height / 2), ...size };
       }
-      const geometryError = annotationGeometryReason(at);
-      if (geometryError) {
-        notify(
-          t("chrome.couldnTAddValueValue", {
-            kind: kindLabel[kind].toLowerCase(),
-            error: annotationGeometryMessage(geometryError),
-          }),
-          {
-            kind: "error",
-          },
-        );
-        return null;
-      }
       const id = allocateId(annotationIdBase(kind), takenIds());
       const node: AnnotationFlowNode = {
         ...annotationToFlow({
@@ -956,12 +963,7 @@ export function createEditor(
         }),
         selected: true,
       };
-      deps().setNodes((cur) => {
-        const rest = cur.map((n) => (n.selected ? { ...n, selected: false } : n));
-        // Zones go to the back (they're backgrounds); everything else on top.
-        return kind === "zone" ? [node, ...rest] : [...rest, node];
-      });
-      deps().setEdges((cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
+      if (!insertAnnotation(node, (cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)))) return null;
       if (kind !== "shape") deps().setEditing({ kind: "annotation", id });
       return id;
     },
@@ -1163,13 +1165,54 @@ export function createEditor(
       const n = rf.getNode(fromId);
       if (!n || !takesEdges(n)) return null;
       const from = box(n);
-      return spotBeside(from, toward, clone ? { width: from.width, height: from.height } : deps().nodeSize);
+      return spotBeside(
+        from,
+        toward,
+        clone || (isAnnotation(n) && n.data.kind === "shape")
+          ? { width: from.width, height: from.height }
+          : deps().nodeSize,
+      );
     },
     createConnected: (req) => {
-      const ns = rf.getNodes();
+      const ns = currentNodes();
       const src = ns.find((n) => n.id === req.from);
       if (!src || !takesEdges(src)) return null;
       const srcStencil = isDiagram(src) ? src.data.stencil : undefined;
+      const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+
+      if (req.shape || (req.clone && isAnnotation(src))) {
+        if (!req.shape && (!isAnnotation(src) || src.data.kind !== "shape")) return null;
+        const size = req.shape ? defaultSize.shape : box(src);
+        const spot = req.at
+          ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
+          : spotBeside(box(src), toward, size);
+        const position = { x: snap10(spot.x), y: snap10(spot.y) };
+        const id = allocateId(annotationIdBase("shape"), takenIds());
+        const annotation =
+          !req.shape && isAnnotation(src)
+            ? cloneAnnotation({ ...src.data, ...box(src), id: src.id }, { id, ...position, group: undefined })
+            : {
+                id,
+                kind: "shape" as const,
+                text: defaultText.shape,
+                ...position,
+                width: size.width,
+                height: size.height,
+                shape: req.shape,
+              };
+        const node: AnnotationFlowNode = { ...annotationToFlow(annotation), selected: true };
+        const ends = [
+          { id: src.id, stencil: srcStencil },
+          { id, stencil: undefined },
+        ];
+        const [fromEnd, toEnd] = req.at || isDownstream(toward) ? ends : [ends[1], ends[0]];
+        const edge = newEdge(fromEnd, toEnd, currentEdges());
+        if (!insertAnnotation(node, (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]))
+          return null;
+        explainEdge(edge);
+        return { id, edge: edge.id, merge: `new:${id}` };
+      }
+
       let data: DiagramFlowNode["data"];
       let size = deps().nodeSize;
       if (req.clone) {
@@ -1193,7 +1236,6 @@ export function createEditor(
         };
       }
       // Where: the drop point (a dropped connection, centred on it), else one gap beside the node that way.
-      const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
       const spot = req.at
         ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
         : spotBeside(box(src), toward, size);

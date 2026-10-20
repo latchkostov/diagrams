@@ -3702,13 +3702,7 @@ var tn = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, nn = (e) => ty
 	"note",
 	"zone",
 	"shape"
-], an = [
-	"rect",
-	"rounded",
-	"ellipse",
-	"diamond",
-	"cylinder"
-], on = [
+], an = /* @__PURE__ */ "rect.rounded.ellipse.diamond.cylinder.stadium.subroutine.dbl-circ.hexagon.lean-r.lean-l.trap-b.trap-t.sl-rect.notch-rect.lin-rect.div-rect.tag-rect.processes.delay.notch-pent.hourglass.fork.datastore.das.lin-cyl.bow-rect.flag.win-pane.doc.docs.lin-doc.tag-doc.bolt.comment.brace-r.braces.curv-trap.asym.f-circ.framed-circle.cross-circ.tri.flip-tri".split("."), on = [
 	"s",
 	"m",
 	"l",
@@ -4031,13 +4025,13 @@ function An(e) {
 			let t = H(e.setup) && H(e.setup.props) ? e.setup.props : {};
 			for (let [e, n] of Object.entries(t)) if (Ht(n)) return {
 				ok: !1,
-				error: E(1684, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: e })
+				error: E(1685, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: e })
 			};
 			if (Array.isArray(e.timeline)) for (let t of e.timeline) {
 				let e = H(t) && H(t.action) ? t.action : void 0;
 				if (e?.do === "props" && Ht(e.props)) return {
 					ok: !1,
-					error: E(1684, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof e.node == "string" ? e.node : "(invalid node)" })
+					error: E(1685, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof e.node == "string" ? e.node : "(invalid node)" })
 				};
 			}
 		}
@@ -4102,7 +4096,7 @@ function An(e) {
 		};
 		if (h.add(r), typeof a.label != "string" && (a.label = typeof a.label == "number" ? String(a.label) : ""), a.sublabel !== void 0 && typeof a.sublabel != "string" && delete a.sublabel, a.description !== void 0 && typeof a.description != "string" && delete a.description, a.group !== void 0 && !p.has(a.group) && (i.push(`Node "${t.id}" referred to a missing group and was taken out of it.`), delete a.group), a.props !== void 0 && !H(a.props) && delete a.props, Ht(a.props)) return {
 			ok: !1,
-			error: E(1684, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: t.id })
+			error: E(1685, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: t.id })
 		};
 		let o = a.props === void 0 ? void 0 : en(a.props);
 		if (o) return {
@@ -4172,7 +4166,7 @@ function An(e) {
 		};
 		if (r.label !== void 0 && typeof r.label != "string" && delete r.label, r.kind !== void 0 && r.kind !== "async" && r.kind !== "sync" && delete r.kind, r.sourceSide !== void 0 && !Dn.has(r.sourceSide) && delete r.sourceSide, r.targetSide !== void 0 && !Dn.has(r.targetSide) && delete r.targetSide, r.props !== void 0 && !H(r.props) && delete r.props, Zt(r.props)) return {
 			ok: !1,
-			error: E(1629, (e) => "Connection “" + e.id + "” needs a finite nonnegative networkDelayMs up to " + e.limit.toLocaleString("en") + ".", {
+			error: E(1630, (e) => "Connection “" + e.id + "” needs a finite nonnegative networkDelayMs up to " + e.limit.toLocaleString("en") + ".", {
 				id: t.id,
 				limit: P.timeMs
 			})

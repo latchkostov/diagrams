@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { EditorApi } from "../editor/types";
-import { paletteHost, publish } from "./host";
+import { paletteHost, publish, type CanvasHost } from "./host";
 import { placeNextTo, type Box } from "../canvas/placement";
 
 // The canvas half of the palette host. Kept apart from ./host so the palette itself never pulls in
@@ -29,6 +29,7 @@ export function useCanvasHost(
      * React Flow shows a card once it's measured, and a hidden one can't take focus).
      */
     focus?: (id: string, placed: boolean) => void;
+    openPicker?: CanvasHost["openPicker"];
   },
 ) {
   const instanceId = useId();
@@ -48,6 +49,7 @@ export function useCanvasHost(
     revision,
     goTo,
     focus,
+    openPicker,
   } = opts;
   useEffect(() => {
     if (!enabled) return;
@@ -70,6 +72,7 @@ export function useCanvasHost(
       onDevice,
       allowOnDevice,
       documentId,
+      openPicker,
       focusNode(id) {
         const box = boxOf(id);
         editor.select({ nodeIds: [id] });
@@ -100,5 +103,6 @@ export function useCanvasHost(
     revision,
     goTo,
     focus,
+    openPicker,
   ]);
 }
