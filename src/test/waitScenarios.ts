@@ -20,10 +20,11 @@ export const arbWaitDiagram = fc
   .record({
     tiers: fc.array(tier, { minLength: 2, maxLength: 4 }),
     sharedAllocation: fc.boolean(),
+    cpuCalleeMs: fc.option(fc.integer({ min: 0, max: 100 }), { nil: undefined }),
     scale: fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 4, 10),
     deadlineMs: fc.option(fc.integer({ min: 100, max: 2000 }), { nil: undefined }),
   })
-  .map(({ tiers, sharedAllocation, scale, deadlineMs }) => {
+  .map(({ tiers, sharedAllocation, cpuCalleeMs, scale, deadlineMs }) => {
     const diagram = waitingFixture();
     const prototype = diagram.nodes[1];
     if (tiers.some((t) => t.managed) || sharedAllocation) {
@@ -116,6 +117,39 @@ export const arbWaitDiagram = fc
         { id: "sibling-input", from: "source", to: "sibling", props: { travelMs: 10 } },
         { id: "sibling-call", from: "sibling", to: "side", kind: "sync", props: { travelMs: 10, networkDelayMs: 10 } },
       );
+    }
+    // A genuine resource-backed leaf also runs alongside managed/shared admission.
+    // Managed stencils do not enable fleet resources; putting CPU on those nodes is dormant.
+    if (cpuCalleeMs !== undefined) {
+      diagram.nodes.push({
+        ...prototype,
+        id: "cpu-target",
+        label: "CPU worker",
+        x: 660,
+        y: 600,
+        props: {
+          concurrency: tiers[0].concurrency,
+          replicas: tiers[0].replicas,
+          latencyMs: 0,
+          jitter: 0,
+          resources: { ...resourceLesson(), cpuMsPerMessage: cpuCalleeMs, startup: { delayMs: 0, jitterFraction: 0 } },
+        },
+      });
+      diagram.edges.push({
+        id: "cpu-call",
+        from: "tier0",
+        to: "cpu-target",
+        kind: "sync",
+        props: {
+          travelMs: 10,
+          networkDelayMs: 10,
+          caller: {
+            poolConnections: tiers[0].pool,
+            wait: tiers[0].mode === "nonblocking" ? "non-blocking" : "blocking",
+            replyMs: tiers[0].replyMs,
+          },
+        },
+      });
     }
     diagram.edges.push({ id: "output", from: "tier0", to: "result", props: { travelMs: 10 } });
     return { diagram, scale, deadlineMs };

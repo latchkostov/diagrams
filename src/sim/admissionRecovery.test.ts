@@ -86,7 +86,8 @@ it.each(["node", "endpoint", "shared"])("recovery resizes to a reduced %s cap wi
   releaseAdmission(state, admitted.leases.thread);
   const smaller: AdmissionPolicy = {
     ...policy,
-    api: { ...policy.api, maxInFlight: scope === "endpoint" ? 4 : 1 },
+    api: { ...policy.api, maxInFlight: scope === "node" ? 1 : 4 },
+    ...(scope === "shared" ? { accountConcurrency: 1 } : {}),
     endpoints: [{ ...policy.endpoints[0], behaviour: { maxInFlight: scope === "endpoint" ? 1 : 4 } }],
   };
   reconfigureAdmission(state, [{ id: "caller", policy: smaller }], undefined, 0);

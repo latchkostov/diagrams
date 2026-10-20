@@ -124,12 +124,30 @@ export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
 }
 
 interface Work extends ResourceWork {
+  thread?: number;
+  executionWeight?: number;
+  weight?: number;
   resumeAtAdmission?: boolean;
   slotted?: boolean;
   delivery?: unknown;
   held?: boolean;
   scope?: Reservation["scope"];
   releaseAt?: number;
+}
+export interface CpuTick {
+  before: number;
+  capacityMs: number;
+  charges: {
+    before: number;
+    after: number;
+    logicalBefore?: number;
+    logicalAfter?: number;
+    backlogBefore: number;
+    backlogAfter?: number;
+    eligible: boolean;
+    weight?: number;
+    cpuMs?: number;
+  }[];
 }
 export interface ResourceState {
   time: number;
@@ -147,6 +165,7 @@ export interface ResourceState {
     status: string;
     activeReplicas: number;
     fleet?: Fleet;
+    cpuTick?: CpuTick;
     props: {
       concurrency: number;
       resources?: ComputeResources;
@@ -169,7 +188,13 @@ const pausedClocks = new WeakMap<
 >();
 const memoryClocks = new WeakMap<
   Fleet,
-  { published: number; occupancy: number; retained: Set<Work>; up: boolean; capacity: number }
+  {
+    published: number;
+    occupancy: number;
+    retained: Map<Work, { weight: number; thread?: number }>;
+    up: boolean;
+    capacity: number;
+  }
 >();
 const previousDesired = new WeakMap<Fleet, number>();
 /** A3: cooldown clocks as they stood before this step, to judge the step's own decision. */
@@ -245,6 +270,33 @@ export function assertResourceInvariants(state: ResourceState) {
     }
     fail(!!f, "enabled resources have no fleet");
     if (!f) continue;
+    if (node.cpuTick) {
+      let logical = 0,
+        tails = 0;
+      for (const charge of node.cpuTick.charges) {
+        const spent = charge.before - charge.after;
+        fail(Number.isFinite(spent) && spent >= -1e-8, "invalid CPU charge");
+        const firstWave = (charge.logicalBefore ?? 0) - (charge.logicalAfter ?? 0);
+        if (charge.logicalBefore !== undefined) {
+          fail(charge.logicalBefore <= charge.weight! * charge.cpuMs! + 1e-8, "logical CPU exceeds reserved real work");
+          fail(
+            Math.abs(firstWave - (charge.eligible ? Math.min(charge.logicalBefore, spent) : 0)) < 1e-8,
+            "logical CPU share disagrees",
+          );
+          fail(
+            Math.abs(spent - firstWave - charge.backlogBefore + (charge.backlogAfter ?? 0)) < 1e-8,
+            "working CPU charged a later wave",
+          );
+        }
+        logical += firstWave;
+        tails += spent - firstWave;
+      }
+      fail(
+        Math.abs(f.totalCpu - node.cpuTick.before - logical - tails) < 1e-6,
+        "CPU charged differs from work plus tails",
+      );
+      fail(logical + tails <= node.cpuTick.capacityMs + 1e-8, "CPU exceeds fleet budget");
+    }
     const previousCount = previousDesired.get(f);
     previousDesired.set(f, f.desired);
     fail(
@@ -370,7 +422,8 @@ export function assertResourceInvariants(state: ResourceState) {
       if (work.scope) {
         fail(work.scope === "thread" && work.releaseAt !== undefined, "invalid thread tail");
         fail(!!work.cpuParts?.length || work.replica !== undefined, "resource-backed thread tail has no CPU ownership");
-      } else if (state.scale === 1) fail(work.replica !== undefined, "working attempt has no reservation");
+      } else if (state.scale === 1)
+        fail(work.replica !== undefined || !!work.cpuParts?.length, "working attempt has no reservation");
       if (work.replica !== undefined) {
         reservations.set(work.replica, (reservations.get(work.replica) ?? 0) + 1);
         if (previousAttempts && previousAttempts.get(work) !== work.replica) acquired.add(work.replica);
@@ -387,21 +440,27 @@ export function assertResourceInvariants(state: ResourceState) {
         node.props.admission?.slots ?? Infinity,
         node.props.admission?.api.maxInFlight ?? Infinity,
       );
-      const retained = new Set(
-        node.working.filter(
-          (w) => w.cpuParts?.length && (w.cpuBackoffUntil !== undefined || (w.memorySlots ?? 0) > capacity),
-        ),
+      const weight = (work: Work) => work.weight ?? work.executionWeight ?? state.scale;
+      const retained = new Map(
+        node.working
+          .filter((w) => w.cpuParts?.length && (w.cpuBackoffUntil !== undefined || (w.memorySlots ?? 0) > capacity))
+          .map((work) => [work, { weight: weight(work), thread: work.thread }] as const),
       );
       const allowance = Math.max(
         capacity,
         Math.min(
-          node.working.length * state.scale,
+          node.working.reduce((sum, work) => sum + weight(work), 0),
           node.working.reduce((max, w) => Math.max(max, w.memorySlots ?? 0), 0),
         ),
       );
       if (previous?.up && node.status === "up") {
-        const continuous = [...retained].filter((w) => previous.retained.has(w)).length;
-        const occupancy = Math.min(continuous * state.scale, allowance, previous.capacity);
+        let continuous = 0;
+        for (const [work, held] of retained) {
+          const before = previous.retained.get(work);
+          // A same-tick shutdown/reacquisition can reuse Work while replacing its ownership.
+          if (before && before.thread === held.thread) continuous += Math.min(held.weight, before.weight);
+        }
+        const occupancy = Math.min(continuous, allowance, previous.capacity);
         const integrated =
           f.lastPublish === previous.published
             ? f.occupancy - previous.occupancy

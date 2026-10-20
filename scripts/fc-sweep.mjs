@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { BUSY_EXIT, BusyError } from "./gate/budget.mjs";
+import { withSweepBudget } from "./fc-sweep-budget.mjs";
 import { randomInt } from "node:crypto";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -60,61 +62,72 @@ const runs = [
   ...seeds.map((seed) => ({ seed, multiplier: options.multiplier })),
 ];
 if (!runs.length) throw new Error("Select at least one seed");
-const report = join(root, "tests/.output/fc-sweep", new Date().toISOString().replace(/[:.]/g, "-"));
-mkdirSync(report, { recursive: true });
-const started = performance.now();
-const results = [];
-let next = 0;
-let failed = false;
-function save() {
-  writeFileSync(
-    join(report, "results.json"),
-    JSON.stringify(
-      { node: process.version, files, runs, results, seconds: (performance.now() - started) / 1000 },
-      null,
-      2,
-    ) + "\n",
-  );
-}
-save();
-console.log(`Sweeping ${runs.length} seeds on ${process.version}, ${options.jobs} jobs; files: ${files.join(", ")}`);
-console.log(`Reports: ${report}`);
-async function worker() {
-  while (!failed && next < runs.length) {
-    const index = next++;
-    const run = runs[index];
-    const at = performance.now();
-    const env = { ...process.env, FC_SEED: String(run.seed), FC_RUN_MULTIPLIER: String(run.multiplier) };
-    delete env.FC_PATH;
-    let output = "";
-    const child = spawn(
-      process.execPath,
-      [join(root, "node_modules/vitest/vitest.mjs"), "run", ...files, "--maxWorkers", "1"],
-      { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] },
-    );
-    child.stdout.on("data", (data) => (output += data));
-    child.stderr.on("data", (data) => (output += data));
-    const code = await new Promise((accept) => {
-      child.on("error", (error) => {
-        output += error.stack;
-        accept(1);
-      });
-      child.on("close", (code) => accept(code ?? 1));
-    });
-    const seconds = (performance.now() - at) / 1000;
-    writeFileSync(join(report, `${index + 1}-${run.seed}-x${run.multiplier}.log`), output);
-    results.push({ ...run, code, seconds });
-    failed ||= code !== 0;
-    console.log(
-      `${code === 0 ? "PASS" : "FAIL"} ${index + 1}/${runs.length} seed=${run.seed} multiplier=${run.multiplier} (${seconds.toFixed(2)}s)`,
-    );
-    if (code !== 0) console.error(output); // Preserve fast-check's seed, path and reduced counterexample.
+try {
+  const branch = execFileSync("git", ["branch", "--show-current"], { cwd: root, encoding: "utf8" }).trim();
+  await withSweepBudget({ root, jobs: options.jobs, count: runs.length, branch }, async () => {
+    const report = join(root, "tests/.output/fc-sweep", new Date().toISOString().replace(/[:.]/g, "-"));
+    mkdirSync(report, { recursive: true });
+    const started = performance.now();
+    const results = [];
+    let next = 0;
+    let failed = false;
+    function save() {
+      writeFileSync(
+        join(report, "results.json"),
+        JSON.stringify(
+          { node: process.version, files, runs, results, seconds: (performance.now() - started) / 1000 },
+          null,
+          2,
+        ) + "\n",
+      );
+    }
     save();
-  }
+    console.log(
+      `Sweeping ${runs.length} seeds on ${process.version}, ${options.jobs} jobs; files: ${files.join(", ")}`,
+    );
+    console.log(`Reports: ${report}`);
+    async function worker() {
+      while (!failed && next < runs.length) {
+        const index = next++;
+        const run = runs[index];
+        const at = performance.now();
+        const env = { ...process.env, FC_SEED: String(run.seed), FC_RUN_MULTIPLIER: String(run.multiplier) };
+        delete env.FC_PATH;
+        let output = "";
+        const child = spawn(
+          process.execPath,
+          [join(root, "node_modules/vitest/vitest.mjs"), "run", ...files, "--maxWorkers", "1"],
+          { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] },
+        );
+        child.stdout.on("data", (data) => (output += data));
+        child.stderr.on("data", (data) => (output += data));
+        const code = await new Promise((accept) => {
+          child.on("error", (error) => {
+            output += error.stack;
+            accept(1);
+          });
+          child.on("close", (code) => accept(code ?? 1));
+        });
+        const seconds = (performance.now() - at) / 1000;
+        writeFileSync(join(report, `${index + 1}-${run.seed}-x${run.multiplier}.log`), output);
+        results.push({ ...run, code, seconds });
+        failed ||= code !== 0;
+        console.log(
+          `${code === 0 ? "PASS" : "FAIL"} ${index + 1}/${runs.length} seed=${run.seed} multiplier=${run.multiplier} (${seconds.toFixed(2)}s)`,
+        );
+        if (code !== 0) console.error(output); // Preserve fast-check's seed, path and reduced counterexample.
+        save();
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(options.jobs, runs.length) }, worker));
+    const seconds = (performance.now() - started) / 1000;
+    console.log(
+      `SUMMARY: ${results.filter((r) => r.code === 0).length} passed, ${results.filter((r) => r.code !== 0).length} failed, ${runs.length - results.length} unrun; ${seconds.toFixed(2)}s`,
+    );
+    process.exitCode = failed ? 1 : 0;
+  });
+} catch (error) {
+  if (!(error instanceof BusyError)) throw error;
+  console.error(error.message);
+  process.exitCode = BUSY_EXIT;
 }
-await Promise.all(Array.from({ length: Math.min(options.jobs, runs.length) }, worker));
-const seconds = (performance.now() - started) / 1000;
-console.log(
-  `SUMMARY: ${results.filter((r) => r.code === 0).length} passed, ${results.filter((r) => r.code !== 0).length} failed, ${runs.length - results.length} unrun; ${seconds.toFixed(2)}s`,
-);
-process.exitCode = failed ? 1 : 0;

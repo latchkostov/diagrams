@@ -14,6 +14,9 @@ export interface ResourceWork extends SampledWork {
   /** Sampled memory allowance retained when concurrency is lowered on an existing attempt. */
   memorySlots?: number;
   cpuRemaining?: number;
+  logicalCpuRemaining?: number;
+  cpuPerRequest?: number;
+  cpuBacklog?: number;
   cpuBackoffUntil?: number;
   retryAdmissionAt?: number;
 }
@@ -22,6 +25,9 @@ export function clearResourceWork(work: ResourceWork) {
   work.memorySlots = undefined;
   work.cpuParts = undefined;
   work.cpuRemaining = undefined;
+  work.logicalCpuRemaining = undefined;
+  work.cpuPerRequest = undefined;
+  work.cpuBacklog = undefined;
   work.cpuBackoffUntil = undefined;
 }
 export function shiftWorkDeadlines(work: ResourceWork, duration: number) {

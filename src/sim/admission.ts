@@ -128,6 +128,10 @@ export interface AdmissionState {
   policies: Map<string, AdmissionPolicy>;
   compiled: Map<AdmissionPolicy, Map<string, CompiledNode>>;
   owners: Map<AdmissionPolicy, string>;
+  /** Incremental diagnostic limits: policy edits only revisit their own keys. */
+  nodeLimits: Map<string, Map<string, number>>;
+  limitOwners: Map<string, Map<string, number>>;
+  limits: Map<string, number>;
 }
 export const emptyAdmission = (): AdmissionState => ({
   buckets: new Map(),
@@ -141,6 +145,9 @@ export const emptyAdmission = (): AdmissionState => ({
   policies: new Map(),
   compiled: new Map(),
   owners: new Map(),
+  nodeLimits: new Map(),
+  limitOwners: new Map(),
+  limits: new Map(),
 });
 /** Checkpoint replacement keeps admission state mutations within its owner. */
 export function restoreAdmission(
@@ -179,7 +186,9 @@ function allocate(
 ): number | null {
   let weight = Math.min(represented, maxWeight);
   for (const [key, cap] of limits) weight = Math.min(weight, cap - (state.inFlight.get(key) ?? 0));
-  if (weight < Math.min(1, represented)) return null;
+  const minimum = Math.min(1, represented);
+  if (weight + 1e-9 < minimum) return null;
+  weight = Math.max(weight, minimum);
   if (!partial) return weight + 1e-9 < maxWeight ? null : maxWeight;
   return weight;
 }
@@ -237,12 +246,30 @@ export function reacquire(
 
 /** Limits used by the diagnostic oracle, including endpoints not yet called. */
 export function admissionLimits(state: AdmissionState): Map<string, number> {
-  const limits = new Map([...state.allocations].map(([id, cap]) => [sharedConcurrencyKey(id), cap]));
-  for (const nodes of state.compiled.values())
-    for (const node of nodes.values())
-      for (const call of node.calls.values())
-        for (const [key, cap] of call.limits) limits.set(key, Math.min(limits.get(key) ?? Infinity, cap));
-  return limits;
+  return new Map(
+    [...state.allocations].map(([id, cap]) => [sharedConcurrencyKey(id), cap] as const).concat([...state.limits]),
+  );
+}
+
+function updateLimits(state: AdmissionState, node: string, limits: Map<string, number>): void {
+  const keys = new Set([...(state.nodeLimits.get(node)?.keys() ?? []), ...limits.keys()]);
+  for (const key of keys) {
+    const owners = state.limitOwners.get(key) ?? new Map<string, number>();
+    const cap = limits.get(key);
+    if (cap === undefined) owners.delete(node);
+    else owners.set(node, cap);
+    if (owners.size) state.limitOwners.set(key, owners);
+    else state.limitOwners.delete(key);
+    let current = Infinity;
+    for (const cap of owners.values()) current = Math.min(current, cap);
+    if (current === Infinity) state.limits.delete(key);
+    else state.limits.set(key, current);
+    const excess = (state.inFlight.get(key) ?? 0) - current;
+    if (excess > 0) state.retainedExcess.set(key, excess);
+    else state.retainedExcess.delete(key);
+  }
+  if (limits.size) state.nodeLimits.set(node, limits);
+  else state.nodeLimits.delete(node);
 }
 
 /** Resume an already admitted request: reserve execution capacity without another quota transaction. */
@@ -324,6 +351,9 @@ export function configureAdmission(state: AdmissionState, policies: AdmissionPol
   state.owners.clear();
   state.compiled.clear();
   state.allocations.clear();
+  state.nodeLimits.clear();
+  state.limitOwners.clear();
+  state.limits.clear();
   state.sharedQuotas = new Map((planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
   state.explicitAllocations = new Map((planning?.sharedAllocations ?? []).map((a) => [a.id, a.maxInFlight]));
   for (const policy of policies) register(state, policy);
@@ -344,6 +374,10 @@ function compileNode(state: AdmissionState, node: string, policy: AdmissionPolic
   const nodes = state.compiled.get(cacheKey) ?? new Map<string, CompiledNode>();
   nodes.set(node, compiled);
   state.compiled.set(cacheKey, nodes);
+  const limits = new Map<string, number>();
+  for (const call of compiled.calls.values())
+    for (const [key, cap] of call.limits) limits.set(key, Math.min(limits.get(key) ?? Infinity, cap));
+  updateLimits(state, node, limits);
   return compiled;
 }
 /** Apply only changed node definitions, and invalidate callers of changed shared definitions.
@@ -389,7 +423,10 @@ export function reconfigureAdmission(
       state.policies.set(id, policy);
       state.owners.set(policy, id);
       affected.add(policy);
-    } else state.policies.delete(id);
+    } else {
+      state.policies.delete(id);
+      updateLimits(state, id, new Map());
+    }
   }
   for (const key of touched) {
     resolveShared(state, key);
@@ -416,11 +453,6 @@ export function reconfigureAdmission(
           bucket.tokens = Math.min(bucket.tokens, bucket.capacity);
         }
       }
-  }
-  state.retainedExcess.clear();
-  for (const [key, cap] of admissionLimits(state)) {
-    const excess = (state.inFlight.get(key) ?? 0) - cap;
-    if (excess > 0) state.retainedExcess.set(key, excess);
   }
 }
 /** Only refill, check, charge and lease accounting remain in the per-attempt path. */

@@ -6,7 +6,7 @@ import { drainRetiredLedger } from "../test/ledgerDrain";
 import { createEngine, randomDraws } from "./engine";
 import {
   assertLedgerInvariants,
-  assertAdmissionInvariants,
+  assertResourceInvariants,
   assertOutcomeInvariants,
   type LedgerInvariantState,
 } from "./resourceInvariants";
@@ -37,7 +37,7 @@ function probe(diagram: DiagramFile, scale: number, seed: number): Probe {
       state = { ...s, nodes: [...s.nodes] };
       assertLedgerInvariants(state);
     },
-    verifyResources: assertAdmissionInvariants,
+    verifyResources: assertResourceInvariants,
     verifyOutcomes: assertOutcomeInvariants,
   });
   engine.load(diagram);
@@ -94,7 +94,7 @@ class WaitCommand implements fc.Command<Model, Real> {
   }
   run(model: Model, real: Real): void {
     const action = this.action;
-    const tiers = real.diagram.nodes.filter((n) => n.id.startsWith("tier"));
+    const tiers = real.diagram.nodes.filter((n) => n.id.startsWith("tier") || n.id === "cpu-target");
     if (action.kind === "SetScale") model.scale = action.scale;
     if (action.kind === "Checkpoint") model.savedScale = model.scale;
     if (action.kind === "Restore") model.scale = model.savedScale!;
@@ -154,14 +154,14 @@ function commands(scaleOne: boolean) {
     fc.record({ kind: fc.constant("Step" as const), ticks: fc.integer({ min: 1, max: 80 }) }),
     fc.record({
       kind: fc.constant("SetStatus" as const),
-      index: fc.nat(3),
+      index: fc.nat(4),
       status: fc.constantFrom<NodeStatus>("down", "paused", "up"),
       tick: fc.boolean(),
     }),
-    fc.record({ kind: fc.constant("Cut/Restore" as const), index: fc.nat(3), cut: fc.boolean() }),
+    fc.record({ kind: fc.constant("Cut/Restore" as const), index: fc.nat(4), cut: fc.boolean() }),
     fc.record({
       kind: fc.constant("SetProps" as const),
-      index: fc.nat(3),
+      index: fc.nat(4),
       concurrency: fc.integer({ min: 1, max: 8 }),
       maxInFlight: fc.option(fc.integer({ min: 1, max: 8 }), { nil: undefined }),
     }),
@@ -312,7 +312,8 @@ it("generated shared callers recover from down/up during backoff", () => {
         for (const p of real.probes) {
           drain(p);
           const recovered = p.engine.snapshot().nodes.tier0;
-          expect(recovered.processed + recovered.failed).toBeGreaterThan(1);
+          expect(recovered.processed).toBeGreaterThan(0);
+          expect(recovered.failed).toBeGreaterThan(0);
           expect(p.engine.snapshot().nodes.sibling.processed).toBe(1);
         }
         hits++;

@@ -282,6 +282,24 @@ export function releaseReplica(f: Fleet, id: number | undefined, concurrency: nu
     f.free.push(id);
   } else if (busy.count < concurrency) f.partial.add(id);
 }
+/** A scale-1 owner finishes on its original identity before sampled work may reuse it. */
+export function recycleIdleReplicas(f: Fleet): void {
+  if (!f.free.length) return;
+  for (const id of f.free) {
+    const replica = f.busy.get(id);
+    if (!replica || replica.count) continue;
+    forgetReplica(f, id);
+    f.partial.delete(id);
+    f.ranges.push({ first: id, last: id, at: 0 });
+  }
+  f.free = [];
+  f.ranges = f.ranges
+    .slice(f.rangeHead)
+    .filter((c) => c.first <= c.last)
+    .sort((a, b) => a.first - b.first);
+  f.rangeHead = 0;
+  f.rangesDirty = true;
+}
 export function drainingCount(f: Fleet): number {
   return f.draining;
 }

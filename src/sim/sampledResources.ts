@@ -1,4 +1,4 @@
-import { compactReadyRanges, type Cohort, type Fleet } from "./autoscaling";
+import { recycleIdleReplicas, compactReadyRanges, type Cohort, type Fleet } from "./autoscaling";
 
 import { MAX_CPU_PARTS } from "./resourceWork";
 function reserve(f: Fleet, count: number): boolean {
@@ -76,7 +76,13 @@ export function sampledParts(
   cpu: number,
   working: SampledWork[] | (() => SampledWork[]),
 ): CpuPart[] | undefined {
+  recycleIdleReplicas(f);
   compactReadyRanges(f, working);
+  eligible = Math.min(
+    eligible,
+    f.ranges.slice(f.rangeHead).reduce((sum, range) => sum + Math.max(0, size(range)), 0),
+  );
+  if (!eligible) return undefined;
   let resolved: SampledWork[] | undefined;
   const owners = () => (resolved ??= typeof working === "function" ? working() : working);
   let left = eligible,
