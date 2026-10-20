@@ -132,6 +132,7 @@ export interface AdmissionState {
   nodeLimits: Map<string, Map<string, number>>;
   limitOwners: Map<string, Map<string, number>>;
   limits: Map<string, number>;
+  dirtyLimits: Set<string>;
 }
 export const emptyAdmission = (): AdmissionState => ({
   buckets: new Map(),
@@ -148,6 +149,7 @@ export const emptyAdmission = (): AdmissionState => ({
   nodeLimits: new Map(),
   limitOwners: new Map(),
   limits: new Map(),
+  dirtyLimits: new Set(),
 });
 /** Checkpoint replacement keeps admission state mutations within its owner. */
 export function restoreAdmission(
@@ -212,12 +214,10 @@ export function reacquire(
     : undefined;
   const call = compiled?.calls.get(capacity.endpointId);
   if (policy && (!call || call.rejected)) return null;
-  const request = capacity.request
-    ? { ...capacity.request, keys: [...new Set([...capacity.request.keys, ...(call?.limits.keys() ?? [])])] }
-    : undefined;
+  const request = capacity.request ? { ...capacity.request, keys: [...(call?.limits.keys() ?? [])] } : undefined;
   const thread = {
     ...capacity.thread,
-    keys: [...new Set([...capacity.thread.keys, ...(policy ? [slotsKey(node)] : [])])],
+    keys: policy ? [slotsKey(node)] : [],
   };
   const limits = new Map(call?.limits);
   limits.set(slotsKey(node), slots);
@@ -246,6 +246,7 @@ export function reacquire(
 
 /** Limits used by the diagnostic oracle, including endpoints not yet called. */
 export function admissionLimits(state: AdmissionState): Map<string, number> {
+  refreshLimits(state);
   return new Map(
     [...state.allocations].map(([id, cap]) => [sharedConcurrencyKey(id), cap] as const).concat([...state.limits]),
   );
@@ -260,16 +261,24 @@ function updateLimits(state: AdmissionState, node: string, limits: Map<string, n
     else owners.set(node, cap);
     if (owners.size) state.limitOwners.set(key, owners);
     else state.limitOwners.delete(key);
+    state.dirtyLimits.add(key);
+  }
+  if (limits.size) state.nodeLimits.set(node, limits);
+  else state.nodeLimits.delete(node);
+}
+
+/** Configuration batches touch owner maps first, then refresh each aggregate once. */
+function refreshLimits(state: AdmissionState): void {
+  for (const key of state.dirtyLimits) {
     let current = Infinity;
-    for (const cap of owners.values()) current = Math.min(current, cap);
+    for (const cap of state.limitOwners.get(key)?.values() ?? []) current = Math.min(current, cap);
     if (current === Infinity) state.limits.delete(key);
     else state.limits.set(key, current);
     const excess = (state.inFlight.get(key) ?? 0) - current;
     if (excess > 0) state.retainedExcess.set(key, excess);
     else state.retainedExcess.delete(key);
   }
-  if (limits.size) state.nodeLimits.set(node, limits);
-  else state.nodeLimits.delete(node);
+  state.dirtyLimits.clear();
 }
 
 /** Resume an already admitted request: reserve execution capacity without another quota transaction. */
@@ -354,6 +363,7 @@ export function configureAdmission(state: AdmissionState, policies: AdmissionPol
   state.nodeLimits.clear();
   state.limitOwners.clear();
   state.limits.clear();
+  state.dirtyLimits.clear();
   state.sharedQuotas = new Map((planning?.sharedQuotas ?? []).map((q) => [q.id, q]));
   state.explicitAllocations = new Map((planning?.sharedAllocations ?? []).map((a) => [a.id, a.maxInFlight]));
   for (const policy of policies) register(state, policy);
@@ -454,6 +464,7 @@ export function reconfigureAdmission(
         }
       }
   }
+  refreshLimits(state);
 }
 /** Only refill, check, charge and lease accounting remain in the per-attempt path. */
 export function attemptAdmission(
@@ -468,9 +479,10 @@ export function attemptAdmission(
   extra: readonly Requirement[] = [],
   partialOccupancy = false,
   retained?: AdmissionLeases,
+  executionRoom = Infinity,
 ):
   | { leases: AdmissionLeases & { thread: AdmissionLease }; latencyMs?: number; errorRate?: number }
-  | { rejected: string } {
+  | { rejected: string; waiting?: boolean } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
   const call = compiled.calls.get(endpointId);
@@ -493,9 +505,12 @@ export function attemptAdmission(
     partial: partialOccupancy && !retained,
   });
   if (occupancy === null) return { rejected: "concurrency" };
+  if (!retained?.thread && executionRoom + 1e-9 < Math.min(1, weight))
+    return { rejected: "concurrency", waiting: true };
+  const executionWeight = retained?.thread ? occupancy : Math.min(occupancy, executionRoom);
   for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
-  const reservation = reserveCallerOccupancy(weight, occupancy);
+  const reservation = reserveCallerOccupancy(weight, executionWeight);
   const leases = separateAdmission({ keys, ...reservation }, slots === undefined ? undefined : compiled.slots);
   if (retained) {
     // Quotas and policy validation succeeded before any existing occupancy changes.

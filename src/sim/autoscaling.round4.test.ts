@@ -255,3 +255,16 @@ it("CPU-budget-refused HPA shrinks keep actual desired and applied policy histor
     spy.mockRestore();
   }
 });
+
+it("sampled admission stops reading fragmented ready ranges once eligible capacity is reached", () => {
+  const f = fleets.createFleet(1),
+    r = resourceLesson();
+  r.startup = { delayMs: 5000, jitterFraction: 0.5 };
+  fleets.reconcileFleet(f, 10000, r, 10, 42, "worker");
+  fleets.advanceFleet(f, 5010);
+  const working = [{ cpuParts: sampledParts(f, 1, 100, []) }];
+  const ranges = countingReads(f.ranges);
+  f.ranges = ranges.items;
+  expect(sampledParts(f, 1, 100, working)).toHaveLength(1);
+  expect(ranges.reads()).toBeLessThan(f.ranges.length / 8);
+});

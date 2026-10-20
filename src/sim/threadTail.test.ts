@@ -251,7 +251,7 @@ it("non-blocking thread tails retain draining Kafka partition ownership", () => 
   expect([...assigned().allocations.values()].reduce((a, b) => a + b, 0)).toBe(3);
 });
 
-it("memory separates retained thread weight from the open off-thread request", () => {
+it("memory counts the request reservation once while its independent thread tail drains", () => {
   const p = probe(true, 9);
   p.e.inject("source", 1);
   p.e.step(10);
@@ -264,7 +264,12 @@ it("memory separates retained thread weight from the open off-thread request", (
     p.e.step(10);
   const before = p.occupancy();
   p.e.step(10);
-  expect(p.occupancy() - before).toBe((9 + 10) * 10);
+  const requests = [...p.state().ledger.reservations.values()].filter(
+    (r) => r.scope === "request" && r.owner === "caller",
+  );
+  expect(requests).toHaveLength(1);
+  expect(requests[0].weight).toBe(9);
+  expect(p.occupancy() - before).toBe(requests[0].weight * 10);
   expect(realSnapshot(p.e.snapshot()).nodes.caller.threads?.working).toBe(9);
   p.e.step(1000 - p.e.metrics().time);
   expect(p.e.snapshot().nodes.caller.resources?.memoryMiB).toBe(p.publishedOccupancy());
@@ -285,7 +290,13 @@ it.each([false, true])("scale changes preserve resource-backed non-blocking thre
   const current = [...p.state().ledger.reservations.values()].find((r) => r.scope === "thread");
   expect(current).toBe(tail);
   expect(realSnapshot(p.e.snapshot()).nodes.caller.threads?.working).toBe(2);
-  if (enabled) expect(p.e.snapshot().nodes.caller.resources?.memoryMiB).toBe(2 + 1);
+  if (enabled) {
+    const request = [...p.state().ledger.reservations.values()].find(
+      (r) => r.scope === "request" && r.owner === "caller",
+    )!;
+    expect(request.weight).toBe(2);
+    expect(p.e.snapshot().nodes.caller.resources?.memoryMiB).toBe(request.weight);
+  }
   p.e.step(30_000);
   expect(p.e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 0, inFlight: 0 });
   expect(p.e.snapshot().nodes.result.processed).toBe(1);

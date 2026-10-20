@@ -1,7 +1,16 @@
 import { revisionAtLeast } from "../model/revisions";
 import { faultProblem, type Fault } from "../model/faults";
 import { faultTopology, faultActive, faultKey } from "../model/faultRuntime";
-import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget, type ResourceWork } from "./resourceWork";
+import {
+  clearResourceWork,
+  shiftWorkDeadlines,
+  createCpuPartBudget,
+  type ResourceWork,
+  type CpuTail,
+  deliveryGroup,
+  ownsCpu,
+  cancelCpu,
+} from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
 import { t } from "../i18n/core";
@@ -184,6 +193,7 @@ interface Delivery {
   original: Message;
 }
 interface Work {
+  group?: Group;
   admissibleActive?: number;
   attempt?: Attempt<Message>;
   residentWeight?: number;
@@ -275,6 +285,8 @@ interface Node {
   admissionDirty: boolean;
   residentWeight: number;
   residentCount: number;
+  requestWeight: number;
+  requestCount: number;
   heldCalls: number;
   offThreadCalls: number;
   freeFlight: number;
@@ -282,7 +294,7 @@ interface Node {
   waitingOn: Map<string, number>;
   waits: boolean;
   callTarget: boolean;
-  cpuTail: Set<ResourceWork>;
+  cpuTail: Set<CpuTail<Group>>;
   sampledExecution: boolean;
   cpuTick?: import("./resourceInvariants").CpuTick;
   incoming: number;
@@ -451,9 +463,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ? node.threadWeight[reservation.phase] - reservation.weight
         : 0;
       if (node.threadTails.delete(reservation.id)) {
-        endResources(node, reservation);
+        endResources(node, reservation as Reservation<Group>);
         if (reservation.phase === "work" && node.status === "up" && !node.fleet) admitPending(node);
       }
+      return;
+    }
+    if (reservation.scope === "request") {
+      const node = nodes.get(reservation.owner)!;
+      node.requestWeight = --node.requestCount ? node.requestWeight - reservation.weight : 0;
       return;
     }
     if (reservation.scope !== "pool") return;
@@ -494,10 +511,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.threadWeight[phase] += reservation.weight;
     node.threadCount[phase]++;
   }
-  const memoryRequests = (node: Node) =>
-    callerReservations(node)
-      ? node.threadWeight.work + node.threadWeight.wait + node.offThreadCalls * scale
-      : residentRequests(node);
+  const executionOccupancy = (node: Node): number =>
+    callerReservations(node) || (waits() && node.fleet)
+      ? node.threadWeight.work + node.threadWeight.wait + (callerReservations(node) ? 0 : (node.fleet?.active ?? 0))
+      : node.fleet && scale === 1 && !node.sampledExecution
+        ? node.fleet.active
+        : threadOccupancy(node) * scale;
+  const memoryRequests = (node: Node) => (callerReservations(node) ? node.requestWeight : residentRequests(node));
   /** Each represented request lives in work, a call, or the continuation queue, never in a tail. */
   function residentRequests(node: Node): number {
     return waits() ? node.residentWeight : (node.working.length + node.heldCalls) * scale;
@@ -929,7 +949,27 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       attempt(node, work);
     }
-    if (node.status === "down" || !callerReservations(node)) return;
+    if (node.status === "down") return;
+    if (!callerReservations(node)) {
+      // Sampled processors outside the call graph still own real execution slots.
+      // Numeric execution remains in fleet.active until its original owner ends.
+      if (waits() && node.fleet && node.sampledExecution && work.replica === undefined && !ledger.get(work.thread)) {
+        const thread = ledger.reserve<Group>(
+          { owner: node.id, scope: "thread", startActive: node.activeMs },
+          work.threadLease?.represented ?? scale,
+          slots(node) - executionOccupancy(node),
+          work.threadLease?.weight,
+        );
+        if (!thread) throw new Error("Processor admitted without thread capacity");
+        thread.requestWeight = thread.weight;
+        work.thread = thread.id;
+        // Admission leases stay on Work for this legacy retry path; the ledger
+        // owns execution occupancy without charging those same keys again.
+        node.threadWeight.work += thread.weight;
+        node.threadCount.work++;
+      }
+      return;
+    }
     work.serviceMs = work.retryAdmissionAt === undefined ? work.remaining : (work.waitRemaining ?? 0);
     const retainedThread = ledger.get<Group>(work.thread);
     if (retainedThread) {
@@ -1021,6 +1061,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         Infinity,
         work.admissibleActive ?? node.activeMs,
       )!;
+      node.requestWeight += request.weight;
+      node.requestCount++;
       work.requestLease = request.id;
       work.lease = undefined;
     }
@@ -1151,12 +1193,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const owners = new Map<Group, Set<number>>();
       const sampled = new Map<Group, ResourceWork[]>();
       for (const work of resourceWork(node)) {
-        const group =
-          "scope" in work
-            ? (work as Reservation<Group>).group
-            : "delivery" in work
-              ? (work as Work).delivery?.group
-              : undefined;
+        const group = deliveryGroup(work);
         if (!group) continue;
         if (work.cpuParts?.length) {
           const owned = sampled.get(group) ?? [];
@@ -1603,7 +1640,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!r || work.serviceMs === undefined) return;
     const elapsed = node.activeMs - (r.segmentActive ?? r.startActive);
     const localHold = elapsed;
-    if ((work.cpuRemaining ?? 0) > 1e-8 && (work.logicalCpuRemaining ?? Infinity) <= 1e-8) node.cpuTail.add(work);
+    if (ownsCpu(work) && (work.cpuRemaining ?? 0) > 1e-8 && (work.logicalCpuRemaining ?? Infinity) <= 1e-8)
+      node.cpuTail.add(work);
     r.heldMs += Math.max(0, localHold);
     r.segmentActive = node.activeMs;
     work.serviceMs = undefined;
@@ -1622,7 +1660,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.cpuParts = work.cpuRemaining = work.replica = work.logicalCpuRemaining = work.cpuBacklog = undefined;
     node.threadTails.set(r.id, r);
     work.localThread = r.id;
-    if (immediate || opts.ledgerHold === "none") ledger.release(r);
+    if (immediate || !callerReservations(node) || opts.ledgerHold === "none") ledger.release(r);
     // Resource-backed nodes have a second admission phase after logical replies.
     else
       ledger.retire(r, node.activeMs - (r.segmentActive ?? r.startActive), node.activeMs, node.fleet ? 0 : undefined);
@@ -2318,8 +2356,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             thread: retainedThread ? { ...retainedThread, keys: retainedThread.keys ?? [] } : undefined,
           }
         : undefined,
+      waits() && (node.fleet || callerReservations(node))
+        ? slots(node) -
+            executionOccupancy(node) +
+            (retainedThread?.weight ?? 0) +
+            (!callerReservations(node) && work.replica !== undefined ? 1 : 0)
+        : Infinity,
     );
     if ("rejected" in outcome) {
+      if (outcome.waiting) {
+        endResources(node, work);
+        admit(node, work);
+        return false;
+      }
       retireThread(node, work);
       if (node.table) {
         refuse(node, work, outcome.rejected, quotaReason(outcome.rejected) ? 429 : undefined, work.route?.rule);
@@ -2671,10 +2720,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       broker: (t) => readBrokerMetric(t),
     };
   }
-  function resourceWork(node: Node): (Work | Reservation<Group> | ResourceWork)[] {
+  function resourceWork(node: Node): CpuTail<Group>[] {
     return node.heldCalls || node.threadTails.size || node.takeovers.length || node.cpuTail.size
       ? [
-          ...new Set<Work | Reservation<Group> | ResourceWork>([
+          ...new Set<CpuTail<Group>>([
             ...node.working,
             ...node.takeovers,
             ...[...node.calls.values()].filter((c) => c.held).map((c) => c.work),
@@ -2705,6 +2754,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return true;
   }
   function startResources(node: Node, work: Work): boolean {
+    work.group = work.delivery?.group;
     if (!node.fleet || !node.props.resources) return true;
     const represented =
       ledger.get(work.thread)?.represented ??
@@ -2748,10 +2798,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const residence = Math.max(STEP, node.props.latencyMs, (r.cpuMsPerMessage * node.props.concurrency) / cores);
     node.fleet!.memoryCredit += scale * (backoff + residence);
   }
-  function endResources(node: Node, work: ResourceWork): void {
+  function endResources(node: Node, work: CpuTail<Group>): void {
     if (!node.fleet) return;
     if (node.cpuTail.delete(work) && node.status === "up" && (work.cpuRemaining ?? 0) > 1e-8) {
-      node.cpuTail.add({ cpuParts: work.cpuParts, cpuRemaining: work.cpuRemaining, replica: work.replica });
+      node.cpuTail.add({
+        group: deliveryGroup(work),
+        cpuParts: work.cpuParts,
+        cpuRemaining: work.cpuRemaining,
+        replica: work.replica,
+      });
       work.cpuParts = undefined;
       work.replica = undefined;
     }
@@ -2790,6 +2845,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
           if (node.status === "down" || expired) {
             work.resumeAtAdmission = false;
+            cancelCpu(work);
             settleWork(node, work, false, false);
             work.slotted = false;
             endResources(node, work);
@@ -2822,10 +2878,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       while (
         (node.resume.length || node.pending.length) &&
         (node.status === "down" ||
-          (callerReservations(node)
-            ? slots(node) - node.threadWeight.work - node.threadWeight.wait + 1e-9 >= Math.min(1, scale)
-            : (node.fleet && scale === 1 ? node.fleet.active : threadOccupancy(node)) <
-              slots(node) / (node.fleet ? scale : 1)))
+          (node.fleet || callerReservations(node)
+            ? waits()
+              ? slots(node) - executionOccupancy(node) + 1e-9 >= Math.min(1, scale)
+              : executionOccupancy(node) < slots(node)
+            : threadOccupancy(node) < slots(node)))
       ) {
         // Brokers without consumers retain their messages until a new diagram is loaded.
         if (isBroker(node) && !node.groups.length) break;
@@ -3069,9 +3126,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ? {
               before: node.fleet.totalCpu,
               capacityMs:
-                ((node.props.resources!.cpuLimitMilli ?? node.props.resources!.availableCpuMilli ?? Infinity) / 1000) *
-                STEP *
-                (node.fleet.ready + node.fleet.draining),
+                node.fleet.ready + node.fleet.draining === 0
+                  ? 0
+                  : ((node.props.resources!.cpuLimitMilli ?? node.props.resources!.availableCpuMilli ?? Infinity) /
+                      1000) *
+                    STEP *
+                    (node.fleet.ready + node.fleet.draining),
               charges: [],
             }
           : undefined;
@@ -3219,6 +3279,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (graceExpired) {
             work.retained = false;
             work.slotted = false;
+            cancelCpu(work);
             endResources(node, work);
             settleWork(node, work, false, false);
           } else if (
@@ -3451,6 +3512,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.threadCount = { work: 0, wait: 0 };
       node.residentWeight = 0;
       node.residentCount = 0;
+      node.requestWeight = node.requestCount = 0;
       node.activeMs = 0;
       node.heldCalls = 0;
       node.offThreadCalls = 0;
@@ -3730,6 +3792,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           admissionDirty: false,
           residentWeight: 0,
           residentCount: 0,
+          requestWeight: 0,
+          requestCount: 0,
           heldCalls: 0,
           offThreadCalls: 0,
           freeFlight: 0,

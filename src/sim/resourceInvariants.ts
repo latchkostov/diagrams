@@ -1,6 +1,6 @@
 import { replicaRange } from "../model/autoscaling";
 import type { AutoscalingConfig, ComputeResources } from "../model/autoscaling";
-import { MAX_CPU_PARTS, type CpuPartBudget } from "./resourceWork";
+import { MAX_CPU_PARTS, ownsCpu, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";
 import type { ResourceWork } from "./resourceWork";
 import type { LedgerState, Reservation } from "./ledger";
@@ -8,7 +8,12 @@ import type { LedgerState, Reservation } from "./ledger";
 export interface LedgerInvariantState {
   time: number;
   ledger: LedgerState;
-  nodes: Iterable<{ id: string; activeMs: number; threadWeight?: Record<"work" | "wait", number> }>;
+  nodes: Iterable<{
+    id: string;
+    activeMs: number;
+    threadWeight?: Record<"work" | "wait", number>;
+    requestWeight?: number;
+  }>;
   edges: Iterable<{
     id: string;
     poolUsed: number;
@@ -39,6 +44,7 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
   const clocks = new Map(nodeList.map((node) => [node.id, node.activeMs]));
   const threads = new Map<string, Record<"work" | "wait", number>>();
   const pools = new Map<string, number>();
+  const requests = new Map<string, number>();
   for (const [id, reservation] of ledger.reservations) {
     const owner = ledger.owners.get(reservation.owner);
     check(id === reservation.id && !!owner?.reservations.has(id), "orphan reservation");
@@ -49,6 +55,8 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
     check(clocks.has(reservation.owner), "unknown owner");
     check(reservation.room >= Math.min(1, reservation.represented), "reserved without room");
     check(reservation.weight <= reservation.room && reservation.weight <= reservation.cap, "reservation exceeds gate");
+    if (reservation.scope === "request")
+      requests.set(reservation.owner, (requests.get(reservation.owner) ?? 0) + reservation.weight);
     if (reservation.scope === "thread") {
       check(reservation.weight <= reservation.requestWeight!, "thread exceeds request lease");
       const sums = threads.get(reservation.owner) ?? { work: 0, wait: 0 };
@@ -66,12 +74,15 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
       pools.set(reservation.edge!, (pools.get(reservation.edge!) ?? 0) + reservation.weight);
     }
   }
-  for (const node of nodeList)
+  for (const node of nodeList) {
+    if (node.requestWeight !== undefined)
+      check(Math.abs(node.requestWeight - (requests.get(node.id) ?? 0)) < 1e-8, "request aggregate disagrees");
     if (node.threadWeight) {
       const sums = threads.get(node.id) ?? { work: 0, wait: 0 };
       for (const phase of ["work", "wait"] as const)
         check(Math.abs(sums[phase] - node.threadWeight[phase]) < 1e-8, "thread aggregate disagrees");
     }
+  }
   for (const [ownerId, owner] of ledger.owners) {
     check(owner.reservations.size > 0 || owner.credits.size > 0, "empty owner retained");
     for (const credits of owner.credits.values()) {
@@ -166,6 +177,7 @@ export interface ResourceState {
     activeReplicas: number;
     fleet?: Fleet;
     cpuTick?: CpuTick;
+    cpuTail?: ReadonlySet<ResourceWork>;
     props: {
       concurrency: number;
       resources?: ComputeResources;
@@ -415,6 +427,7 @@ export function assertResourceInvariants(state: ResourceState) {
       queued.every((w) => w.replica === undefined && w.cpuParts === undefined),
       "queued work owns a reservation",
     );
+    for (const tail of node.cpuTail ?? []) fail(ownsCpu(tail), "CPU tail has no live owner");
     const reservations = new Map<number, number>();
     const previousAttempts = reservationAttempts.get(f);
     const acquired = new Set<number>();

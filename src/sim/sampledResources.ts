@@ -78,10 +78,10 @@ export function sampledParts(
 ): CpuPart[] | undefined {
   recycleIdleReplicas(f);
   compactReadyRanges(f, working);
-  eligible = Math.min(
-    eligible,
-    f.ranges.slice(f.rangeHead).reduce((sum, range) => sum + Math.max(0, size(range)), 0),
-  );
+  let available = 0;
+  for (let i = f.rangeHead; i < f.ranges.length && available < eligible; i++)
+    available += Math.max(0, size(f.ranges[i]));
+  eligible = Math.min(eligible, available);
   if (!eligible) return undefined;
   let resolved: SampledWork[] | undefined;
   const owners = () => (resolved ??= typeof working === "function" ? working() : working);

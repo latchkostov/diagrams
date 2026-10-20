@@ -1,3 +1,4 @@
+import { sharedConcurrencyKey } from "./admissionPolicy";
 import { describe, expect, it, vi } from "vitest";
 import { createEngine } from "./engine";
 import { createSimulationRun } from "./simulation";
@@ -1051,4 +1052,41 @@ it("retained excess reconfiguration updates only changed keys", () => {
   } finally {
     clear.mockRestore();
   }
+});
+
+it("shared diagnostic aggregation visits each owner once per configuration batch", () => {
+  const state = emptyAdmission();
+  const visits = vi.spyOn(state.limitOwners, "get");
+  const count = 128;
+  admissionModule.reconfigureAdmission(
+    state,
+    Array.from({ length: count }, (_, i) => ({
+      id: String(i),
+      policy: { api: { sharedConcurrency: "account", maxInFlight: 4 }, endpoints: [] },
+    })),
+    undefined,
+    0,
+  );
+  const shared = state.limitOwners.get(sharedConcurrencyKey("account"))!;
+  let owners = 0;
+  const values = shared.values.bind(shared);
+  vi.spyOn(shared, "values").mockImplementation(function* () {
+    for (const value of values()) {
+      owners++;
+      yield value;
+    }
+    return undefined;
+  });
+  admissionModule.reconfigureAdmission(
+    state,
+    Array.from({ length: count }, (_, i) => ({
+      id: String(i),
+      policy: { api: { sharedConcurrency: "account", maxInFlight: 2 }, endpoints: [] },
+    })),
+    undefined,
+    0,
+  );
+  expect(owners).toBe(count);
+  expect(admissionModule.admissionLimits(state).get(sharedConcurrencyKey("account"))).toBe(2);
+  expect(visits.mock.calls.length).toBeLessThan(count * 8);
 });
