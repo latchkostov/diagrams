@@ -26,6 +26,18 @@ continue to release on their existing clocks. Every pre-W1 and scale-1 W1 golden
 in this step. No planning, agent, checks, evidence, exports, layout or routes change. Full details are in
 [the release fragment](release-notes/2026-10-19-engine-attempts-r2.md).
 
+## Engine thread reservations R3 (2026-10-19)
+
+Only `node/sim/blocking-call/free-play.json` changes, at scale ten. Direction: thread occupancy
+becomes 6.4 dots (64 reserved threads), replacing seven rounded dots. Caller completions initially
+rise by one to three dots; later checkpoints fall by five, sixteen and twenty-two dots (final
+1,391 versus 1,413, 1.56% lower), as exact partial-capacity holds remove rounded excess capacity.
+Downstream counts, backlogs, rates, event positions and latency summaries follow the changed
+schedule. Logical outcomes still follow the first wave rather than capacity release.
+`node/sim/corpus-w1-sampling/sampled.json` and `node/waits/w1-sampling/sampled.json` remain identical,
+as do all pre-W1, scale-one W1 and non-simulation goldens. See the
+[release fragment](release-notes/2026-10-19-engine-thread-reservations-r3.md).
+
 ## Resizable Inspector (2026-10-16)
 
 Exactly 19 goldens change intentionally: the three new Inspector messages update

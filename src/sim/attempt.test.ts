@@ -309,7 +309,7 @@ it.each([false, true])(
     expect(e.snapshot().nodes.caller.processed).toBe(resourceFailure ? 0 : 1);
     expect(e.snapshot().nodes.caller.failed).toBe(resourceFailure ? 1 : 0);
     expect(e.snapshot().nodes.result.processed).toBe(resourceFailure ? 0 : 1);
-    expect(e.snapshot().nodes.caller.inFlight).toBe(1);
+    expect(e.snapshot().nodes.caller.inFlight).toBe(0.1);
     e.step(1000);
     expect(e.snapshot().nodes.caller.inFlight).toBe(0);
   },
@@ -355,7 +355,7 @@ it("an in-place retry takes over the reservation and adds the previous attempt's
           for (const w of n.working) {
             if (parts === undefined) parts = w.cpuParts;
             expect(w.cpuParts).toBe(parts);
-            owners.add(w);
+            owners.add(w.cpuParts);
           }
     },
     verifyLedger: assertLedgerInvariants,
@@ -367,7 +367,7 @@ it("an in-place retry takes over the reservation and adds the previous attempt's
   e.load(d);
   e.inject("source", 1);
   for (let tick = 0; tick < 100 && !e.snapshot().nodes.caller.failed; tick++) e.step(10);
-  expect(e.snapshot().nodes.caller).toMatchObject({ failed: 1, inFlight: 1 });
+  expect(e.snapshot().nodes.caller).toMatchObject({ failed: 1, inFlight: 0.1 });
   e.setNodeProps("partner", { api: { latencyMs: 250, errorRate: 0 } });
   for (let tick = 0; tick < 100 && !e.snapshot().nodes.caller.processed; tick++) e.step(10);
   expect(e.snapshot().nodes.caller).toMatchObject({ failed: 1, processed: 1 });
@@ -375,7 +375,7 @@ it("an in-place retry takes over the reservation and adds the previous attempt's
   expect(owners.size).toBe(1);
   const settledAt = e.metrics().time;
   e.step(7 * settledAt);
-  expect(e.snapshot().nodes.caller.inFlight).toBe(1);
+  expect(e.snapshot().nodes.caller.inFlight).toBe(0.1);
   e.step(10 * settledAt);
   expect(e.snapshot().nodes.caller.inFlight).toBe(0);
   expect(e.metrics().inSystem).toBe(0);
@@ -450,7 +450,9 @@ it("I7: spaced logical outcomes are independent of ledger holds", () => {
       };
       const probes = [probe(), probe("none")];
       for (let i = 0; i < 3; i++) {
-        for (const p of probes) p.e.inject("source", 1);
+        // I7 compares a single attempt family without broker redelivery. Managed
+        // scenarios may have a broker source; its retries intentionally wait for capacity.
+        for (const p of probes) p.e.inject("tier0", 1);
         let idle = false;
         for (let tick = 0; tick < 3000 && !idle; tick++) {
           for (const p of probes) p.e.step(10);
