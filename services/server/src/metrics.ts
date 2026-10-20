@@ -3,7 +3,16 @@ import type { ServerConfig } from "./config";
 
 /** Labels are from server-owned constants only; never request fields or room identities. */
 export type RefusalReason =
-  "origin" | "ip-cap" | "socket-cap" | "buffers" | "draining" | "protocol" | "room-cap" | "rate" | "size";
+  | "origin"
+  | "ip-cap"
+  | "socket-cap"
+  | "buffers"
+  | "draining"
+  | "protocol"
+  | "room-cap"
+  | "server-cap"
+  | "rate"
+  | "size";
 export class Metrics {
   bytesIn = 0;
   bytesOut = 0;

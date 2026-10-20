@@ -51,6 +51,21 @@ describe("self-host smoke container ownership", () => {
     expect(check).not.toHaveBeenCalled();
   });
 
+  it("runs the server with a read-only root and no writable mounts, passing runtime base and relay mode", async () => {
+    const { run } = docker();
+    await withSmokeContainer(run, "server", async () => {}, {
+      server: true,
+      env: { LD_BASE: "/tools/diagrams/", LD_STATIC: "off" },
+    });
+    const args = run.mock.calls[0][1];
+    expect(args).toContain("--read-only");
+    expect(args).toContain("--cap-drop=ALL");
+    expect(args).toContain("no-new-privileges:true");
+    expect(args).not.toContain("--tmpfs");
+    expect(args).toContain("LD_BASE=/tools/diagrams/");
+    expect(args).toContain("LD_STATIC=off");
+  });
+
   it("failed creation never removes a container it did not create", async () => {
     const { containers, run } = docker("create");
     await expect(withSmokeContainer(run, "image", vi.fn())).rejects.toThrow("failed create");

@@ -1,6 +1,8 @@
 import type { Plugin } from "vite";
 import { readDeployment, resolveDeploymentEnv } from "./deployment-env";
 import { COMMON_HEADERS, cspDirectives, EMBED_SCRIPT_HEADERS, OPENER_POLICY } from "./security-headers";
+import { hostingBase } from "./hosting-base";
+export { hostingBase } from "./hosting-base";
 
 /**
  * Security headers for a self-hosted copy (docs/SELF-HOSTING.md), from the same policy the public site sends
@@ -141,13 +143,6 @@ ${script}
     }
 }
 `;
-}
-
-/** Shared directory validation for paths inserted into hosting configuration. */
-export function hostingBase(base = "/"): string {
-  if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base))
-    throw new Error("base must start and end with / and contain only letters, digits, _ or -");
-  return base;
 }
 
 export interface HeaderRoute {

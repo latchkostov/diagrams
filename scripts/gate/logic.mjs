@@ -2,7 +2,19 @@ import { createHash } from "node:crypto";
 import { e2eBuild, selfHostProfiles } from "../e2e-profiles.mjs";
 import { shardFiles } from "../e2e-shard.mjs";
 
-export const CATEGORIES = ["lint", "typecheck", "format", "i18n", "skill", "unit", "build", "size", "parity", "e2e"];
+export const CATEGORIES = [
+  "lint",
+  "typecheck",
+  "format",
+  "i18n",
+  "skill",
+  "unit",
+  "build",
+  "size",
+  "parity",
+  "e2e",
+  "docker",
+];
 export const GIB = 1024 ** 3;
 export const gitFiles = (output) => output.split("\0").filter(Boolean);
 
@@ -184,6 +196,7 @@ export function plan(config, changed = [], root) {
   if (wanted.has("build") || wanted.has("size")) groups.push([step("build", ["build"])]);
   if (wanted.has("size")) groups.push([step("size", ["size"])]);
   if (wanted.has("parity")) groups.push([step("parity", ["parity", ...(!config.docker ? ["--tier", "node"] : [])])]);
+  if (wanted.has("docker") && config.docker) groups.push([step("docker", ["self-host:smoke"])]);
   const specs = config.shard
     ? shardFiles(config.shard.current, config.shard.total, root)
     : config.specs.length

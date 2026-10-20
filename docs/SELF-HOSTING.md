@@ -234,8 +234,39 @@ docker compose down
 ```
 
 Compose binds loopback and uses a read-only filesystem, writable `/tmp` and no Linux capabilities. Put it behind
-your HTTPS/SSO proxy. `pnpm self-host:smoke` builds root and sub-path images, starts them on loopback 6225/6226,
+your HTTPS/SSO proxy. `pnpm self-host:smoke` builds root and sub-path images, starts them on assigned loopback ports,
 checks headers, caching, gzip and routing, then removes both containers. CI runs it without publishing images.
+
+## Server behind nginx or Caddy
+
+The in-memory collaboration server is built with `services/server/Dockerfile`; its Compose service is
+`deploy/self-host/server/compose.yaml`. Use generated `nginx/nginx.server.conf` or `caddy/Caddyfile.server`
+to proxy both the site and WebSockets. Set `LD_BASE` to the same directory prefix used when generating
+the proxy config (`pnpm headers:self-host --base /tools/diagrams/`). Keep that prefix intact upstream.
+Set `LD_ORIGIN` to the public proxy origin, including scheme and optional port, without a path or trailing slash.
+
+For one proxy directly facing clients, set `LD_TRUST_PROXY=1` and `LD_TRUST_PROXY_HOPS=1` on the server.
+Compose forwards both variables and defaults to proxy trust disabled for direct access. Enable trust only
+when clients cannot reach the server directly: use a private container network or firewall, and expose
+only the proxy. Otherwise clients could bypass the proxy's forwarding-header protection.
+
+nginx appends its observed client address with `$proxy_add_x_forwarded_for`. Admission counts from the
+right of `X-Forwarded-For`, so a caller's spoofed prefix cannot change the selected IP. With two trusted
+proxies that each append their observed peer, set `LD_TRUST_PROXY_HOPS=2`; every path to the server must
+have that same trusted chain. Never count caller-supplied entries as trusted hops.
+[Caddy supplies forwarding headers by default](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#headers),
+discarding untrusted incoming values. Keep the generated Caddy defaults for a single proxy; deployments
+with additional proxies must explicitly configure Caddy's trusted proxy ranges and match the server's
+hop count to the resulting chain. Do not override `X-Forwarded-For` with the raw incoming header.
+
+For a separately hosted static site, set `LD_STATIC=off` and use `server/relay-only.nginx.conf` or
+`server/relay-only.Caddyfile` at its proxy. The nginx fragment supplies an HTTP-context map and a server-context
+location; install each in the indicated context beside the existing static routes. The server keeps
+`/healthz` available but returns HTTP 404 for static content. Its healthcheck follows `LD_HOST`, mapping
+wildcard IPv4/IPv6 binds to the corresponding loopback address.
+
+`pnpm self-host:smoke --server-only` exercises nginx and Caddy at root and subpaths, in site-and-relay
+and relay-only modes, with real bidirectional WebSocket frames, rejected origins and spoofed forwarding headers.
 
 ## Kubernetes and Helm
 
