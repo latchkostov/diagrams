@@ -85,6 +85,7 @@ type Action =
   | { kind: "Cut/Restore"; index: number; cut: boolean }
   | { kind: "SetProps"; index: number; concurrency: number; maxInFlight?: number }
   | { kind: "Resources"; index: number; enabled: boolean; cpuMs: number }
+  | { kind: "RecoverAndEnableResources"; index: number; concurrency: number; cpuMs: number }
   | { kind: "SetScale"; scale: number }
   | { kind: "Checkpoint" }
   | { kind: "Restore" };
@@ -138,6 +139,21 @@ class WaitCommand implements fc.Command<Model, Real> {
               : undefined,
           });
           break;
+        case "RecoverAndEnableResources": {
+          const id = tiers[action.index % tiers.length].id;
+          // Timeline actions at the same timestamp run before the next engine tick.
+          e.setNodeStatus(id, "down");
+          e.setNodeStatus(id, "up");
+          e.setNodeProps(id, {
+            concurrency: action.concurrency,
+            resources: {
+              ...resourceLesson(),
+              cpuMsPerMessage: action.cpuMs,
+              startup: { delayMs: 0, jitterFraction: 0 },
+            },
+          });
+          break;
+        }
         case "SetScale":
           e.setScale(action.scale);
           break;
@@ -184,6 +200,12 @@ function commands(scaleOne: boolean) {
       kind: fc.constant("Resources" as const),
       index: fc.nat(4),
       enabled: fc.boolean(),
+      cpuMs: fc.integer({ min: 0, max: 100 }),
+    }),
+    fc.record({
+      kind: fc.constant("RecoverAndEnableResources" as const),
+      index: fc.nat(5),
+      concurrency: fc.integer({ min: 1, max: 4 }),
       cpuMs: fc.integer({ min: 0, max: 100 }),
     }),
     fc.constant({ kind: "Checkpoint" as const }),

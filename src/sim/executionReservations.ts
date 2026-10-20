@@ -212,8 +212,7 @@ export function createExecutionReservations<
       time = context.time();
     work.group = work.delivery?.group ?? work.group;
     // Live resource enabling attaches CPU to the execution slot already held by this work.
-    if (work.slotted && node.status !== "down" && !reacquireCapacity(node, work))
-      throw new Error("Running work lost its execution reservation");
+    if (work.slotted && node.status !== "down" && !reacquireCapacity(node, work)) return false;
     if (!node.fleet || !node.props.resources) return true;
     const represented =
       ledger.get(work.thread)?.represented ??

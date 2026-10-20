@@ -823,10 +823,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (call.attempt.outcome) settleAttempt(call, call.attempt.outcome.ok);
         else if (call.held && !call.blockingRemaining && call.outstanding.size) detachCallThread(call);
         else if (node.fleet) {
-          const at =
-            call.work.replica === undefined
-              ? Math.min(...(call.work.cpuParts ?? []).map((p) => p.drainAt ?? Infinity))
-              : (node.fleet.busy.get(call.work.replica)?.drainAt ?? Infinity);
+          const at = executionGraceDeadline(node, call.work);
           if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
         }
       }
@@ -1204,7 +1201,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               scheduleWork(node, work, work.resumeAtAdmission ? "takeovers" : "working");
             } else {
               work.slotted = false;
-              scheduleWork(node, work, "pending");
+              wakeDelivery(work);
+              admit(node, work);
             }
           }
           for (const call of node.calls.values()) if (call.held) execution.attachIdleResources(node, call.work);
@@ -1505,7 +1503,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function scheduleThreadGrace(id: number, work: Reservation<Group>): void {
-    const at = Math.min(...(work.cpuParts ?? []).map((p) => p.drainAt ?? Infinity));
+    const at = executionGraceDeadline(nodes.get(work.owner)!, work);
     if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, thread: id });
   }
 
@@ -1860,7 +1858,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (reservation) {
           const node = nodes.get(reservation.owner)!;
           const work = node.threadTails.get(reservation.id)!;
-          if (node.status !== "paused" && work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time))
+          if (node.status !== "paused" && executionGraceDeadline(node, work) <= time)
             execution.releaseThread(reservation);
         }
         continue;
@@ -1868,13 +1866,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (event.call !== undefined) {
         const call = calls.get(event.call);
         if (event.grace !== undefined) {
-          if (
-            call &&
-            call.node.status !== "paused" &&
-            ((call.work.replica !== undefined &&
-              (call.node.fleet?.busy.get(call.work.replica)?.drainAt ?? Infinity) <= time) ||
-              call.work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time))
-          ) {
+          if (call && call.node.status !== "paused" && executionGraceDeadline(call.node, call.work) <= time) {
             settleAttempt(call, false, true);
           }
           continue;
@@ -2545,6 +2537,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ]
       : node.working;
   }
+  /** Every execution owner uses the same physical termination clock. */
+  function executionGraceDeadline(node: Node, work: ResourceWork): number {
+    let at = work.replica === undefined ? Infinity : (node.fleet?.busy.get(work.replica)?.drainAt ?? Infinity);
+    for (const part of work.cpuParts ?? []) at = Math.min(at, part.drainAt ?? Infinity);
+    return at;
+  }
   function reconcileResources(node: Node, desired: number): boolean {
     const f = node.fleet!,
       r = node.props.resources!;
@@ -2556,10 +2554,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     reconcileFleet(f, desired, r, lifecycleTime, seed, node.id);
     if (sampled) retainSampledDrains(f, before, resourceWork(node), lifecycleTime + r.terminationGraceMs);
     for (const call of node.calls.values()) {
-      const at =
-        call.work.replica === undefined
-          ? Math.min(...(call.work.cpuParts ?? []).map((p) => p.drainAt ?? Infinity))
-          : (f.busy.get(call.work.replica)?.drainAt ?? Infinity);
+      const at = executionGraceDeadline(node, call.work);
       if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
     }
     for (const [id, work] of node.threadTails) scheduleThreadGrace(id, work);
@@ -2589,10 +2584,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const work of takeovers) {
           if (!work.resumeAtAdmission) continue;
           const f = node.fleet;
-          const expired =
-            f &&
-            ((work.replica !== undefined && (f.busy.get(work.replica)?.drainAt ?? Infinity) <= time) ||
-              work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
+          const expired = f && executionGraceDeadline(node, work) <= time;
           if (node.status === "down" || expired) {
             work.resumeAtAdmission = false;
             cancelCpu(work);
@@ -2804,7 +2796,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const logicalBefore = logical?.logicalCpuRemaining;
     const backlogBefore = logical?.cpuBacklog ?? 0;
     const eligible = (work.cpuBackoffUntil ?? 0) <= time;
-    const available = (eligible ? (logicalBefore ?? 0) : 0) + backlogBefore;
+    // A partial first wave can occupy only its reserved requests' replica capacity.
+    // Cohort CPU beyond that wave remains available to the tail after completion.
+    const cores = (node.props.resources!.cpuLimitMilli ?? node.props.resources!.availableCpuMilli ?? Infinity) / 1000;
+    const firstWaveBudget = eligible
+      ? Math.min(
+          logicalBefore ?? 0,
+          (logical?.executionWeight ?? ledger.get(logical?.thread)?.weight ?? 0) * cores * STEP,
+        )
+      : 0;
+    const available = firstWaveBudget + backlogBefore;
     if (logicalBefore !== undefined && available <= 1e-8) return;
     const fraction = logicalBefore === undefined || !before ? 1 : Math.min(1, available / before);
     if (work.cpuParts) {
@@ -2831,7 +2832,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     const spent = before - (work.cpuRemaining ?? 0);
     if (logicalBefore !== undefined) {
-      const firstWave = eligible ? Math.min(logicalBefore, spent) : 0;
+      const firstWave = Math.min(firstWaveBudget, spent);
       logical!.logicalCpuRemaining = logicalBefore - firstWave;
       logical!.cpuBacklog = Math.max(0, backlogBefore - (spent - firstWave));
     }
@@ -2970,13 +2971,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                   )
             : 0;
         for (const tail of node.cpuTail) {
-          if (tail.cpuParts?.some((part) => (part.drainAt ?? Infinity) <= time)) {
+          if (executionGraceDeadline(node, tail) <= time) {
             node.cpuTail.delete(tail);
             const owned = "scope" in tail ? ledger.get((tail as Reservation).id) === tail : "message" in tail;
             // The logical grace event still needs the expired range identity.
             if (owned) {
-              for (const part of tail.cpuParts) part.cpu = 0;
-              tail.cpuRemaining = 0;
+              cancelCpu(tail);
             } else endResources(node, tail);
             continue;
           }
@@ -3022,10 +3022,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (f && r && node.status === "up" && ((work.cpuBackoffUntil ?? 0) <= time || (work.cpuBacklog ?? 0) > 0)) {
             spendCpu(node, work, cpuBudgets);
           }
-          const graceExpired =
-            f &&
-            ((work.replica !== undefined && (f.busy.get(work.replica)?.drainAt ?? Infinity) <= time) ||
-              work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
+          const graceExpired = f && executionGraceDeadline(node, work) <= time;
           if (graceExpired) {
             work.retained = false;
             work.slotted = false;

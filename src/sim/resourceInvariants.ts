@@ -4,6 +4,7 @@ import { MAX_CPU_PARTS, ownsCpu, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";
 import type { ResourceWork } from "./resourceWork";
 import type { LedgerState, Reservation } from "./ledger";
+import { STEP } from "./timing";
 
 export interface LedgerInvariantState {
   time: number;
@@ -310,8 +311,12 @@ export function assertResourceInvariants(state: ResourceState) {
         const firstWave = (charge.logicalBefore ?? 0) - (charge.logicalAfter ?? 0);
         if (charge.logicalBefore !== undefined) {
           fail(charge.logicalBefore <= charge.weight! * charge.cpuMs! + 1e-8, "logical CPU exceeds reserved real work");
+          const cores =
+            (node.props.resources.cpuLimitMilli ?? node.props.resources.availableCpuMilli ?? Infinity) / 1000;
           fail(
-            Math.abs(firstWave - (charge.eligible ? Math.min(charge.logicalBefore, spent) : 0)) < 1e-8,
+            Math.abs(
+              firstWave - (charge.eligible ? Math.min(charge.logicalBefore, spent, charge.weight! * cores * STEP) : 0),
+            ) < 1e-8,
             "logical CPU share disagrees",
           );
           fail(
