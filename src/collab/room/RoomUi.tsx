@@ -37,7 +37,7 @@ import { createInteractionController } from "../../canvas/interaction/controller
 import { createDomPort, domScheduler } from "../../canvas/interaction/domPort";
 import { interactionJournal } from "../../canvas/interaction/journal";
 import { RECONNECT_MS } from "./timing";
-import { hasTrackers, roomEndpoints, serviceHosts } from "./endpoints";
+import { hasRoomServices, roomServiceHosts, relayMode } from "./transport";
 import { roomWatch, type Prompt, type WatchState, type WatchTogether } from "./watch";
 import { rolesOf } from "./roles";
 import "./room.css";
@@ -62,7 +62,7 @@ const dialogClosed = (opener: HTMLElement | null) =>
   roomFocus.dispatch({ type: "dialog.closed", dialog: "room", opener });
 
 /** What a room contacts, as the consent dialogs name it: this build's trackers and ICE servers, by host. */
-const services = () => serviceHosts(roomEndpoints()).join(", ");
+const services = () => roomServiceHosts().join(", ");
 
 function useRoom(room: RoomLifecycle) {
   return useSyncExternalStore(room.subscribe, room.getSnapshot);
@@ -162,10 +162,19 @@ const CHIP_TEXT: Record<RoomState, (peers: number) => string> = {
   here: (peers) => t("collab.chipHere", { count: peers + 1 }),
   reconnecting: () => t("collab.chipReconnecting"),
   alone: () => t("collab.chipAlone"),
-  failed: () => (hasTrackers() ? t("collab.chipFailed") : t("collab.chipNoServers")),
+  failed: () => (hasRoomServices() ? t("collab.chipFailed") : t("collab.chipNoServers")),
 };
 
 /** Why nothing can connect, when this build names no tracker: said plainly, with the fix for whoever runs it. */
+const connectionFailure = (state: string) =>
+  state === "room-full"
+    ? t("collab.roomFull")
+    : state === "server-full"
+      ? t("collab.serverFull")
+      : state === "server-unreachable"
+        ? t("collab.serverUnreachable")
+        : t("collab.connectionFailed");
+
 const noServers = () => t("collab.noServers", { app: BRAND_NAME });
 
 const LINK_PROBLEMS: Record<RoomLinkProblem, () => string> = {
@@ -449,13 +458,19 @@ function StartDialog({
       }
     >
       <ul className="ix-privacy-list" data-testid="room-start-disclosure">
-        <li>{t("collab.ipPeers")}</li>
-        <li>{t("collab.ipTrackers")}</li>
+        {relayMode ? (
+          <li>{t("collab.ipServer", { host: services() })}</li>
+        ) : (
+          <>
+            <li>{t("collab.ipPeers")}</li>
+            <li>{t("collab.ipTrackers")}</li>
+          </>
+        )}
         <li>{t("collab.encrypted")}</li>
       </ul>
       <NameField value={alias} onChange={setAlias} testId="room-start-alias" />
       <p className="ix-muted" data-testid="room-services">
-        {hasTrackers() ? t("collab.services", { list: services() }) : noServers()}
+        {hasRoomServices() ? t("collab.services", { list: services() }) : noServers()}
       </p>
     </Dialog>
   );
@@ -534,14 +549,20 @@ function JoinDialog({ room, alias: suggested }: { room: RoomLifecycle; alias: st
       }
     >
       <ul className="ix-privacy-list" data-testid="room-join-disclosure">
-        <li>{t("collab.joinIpPeers")}</li>
-        <li>{t("collab.ipTrackers")}</li>
+        {relayMode ? (
+          <li>{t("collab.joinIpServer", { host: services() })}</li>
+        ) : (
+          <>
+            <li>{t("collab.joinIpPeers")}</li>
+            <li>{t("collab.ipTrackers")}</li>
+          </>
+        )}
         <li>{t("collab.encrypted")}</li>
       </ul>
       <NameField value={alias} onChange={setAlias} testId="room-join-alias" />
       <p className="ix-muted">{t("collab.unverified")}</p>
       <p className="ix-muted" data-testid="room-services">
-        {hasTrackers() ? t("collab.services", { list: services() }) : noServers()}
+        {hasRoomServices() ? t("collab.services", { list: services() }) : noServers()}
       </p>
     </Dialog>
   );
@@ -1016,9 +1037,9 @@ function RoomAlert({
   if (state !== "failed") return null;
   return (
     <div className="room-alert" role="alert" data-testid="room-alert" style={{ insetBlockStart: top + 8 }}>
-      {hasTrackers() ? (
+      {hasRoomServices() ? (
         <p>
-          <strong>{t("collab.connectionFailed")}</strong>
+          <strong>{connectionFailure(open.session.connectivity)}</strong>
           {open.session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
         </p>
       ) : (
@@ -1052,6 +1073,10 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
   useLocale();
   const snap = useRoom(room);
   const session = snap.open?.session;
+  const connectivity = useSyncExternalStore(
+    (fn) => (session ? session.onChange(fn) : () => {}),
+    () => session?.connectivity,
+  );
   // Knock-to-join: at the door (the session says when it's let in).
   const knocking = useSyncExternalStore(
     (fn) => (session ? session.onChange(fn) : () => {}),
@@ -1072,7 +1097,7 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
       tabIndex={-1}
       className="room-connecting"
       data-testid="room-connecting"
-      data-connectivity={session?.connectivity}
+      data-connectivity={connectivity}
       data-knocking={knocking ? "true" : "false"}
       // Why it's still waiting, for diagnostics (the hint below says it): nobody yet, checking who's here, or the
       // diagram on its way; and what this page refused so far, by reason.
@@ -1113,7 +1138,7 @@ function ConnectingFailure({
   // attempt (Retry starts a fresh wait).
   const unanswered = session.noAnswer;
   if (!session.connectionFailed && !unanswered) return null;
-  const servers = hasTrackers();
+  const servers = hasRoomServices();
   return (
     <div
       role="alert"
@@ -1125,8 +1150,8 @@ function ConnectingFailure({
           {noServers()} {t("collab.noServersHint")}
         </p>
       ) : (
-        <p>
-          {unanswered ? t("collab.noAnswer") : t("collab.connectionFailed")}
+        <p data-testid="room-connecting-explanation">
+          {unanswered ? t("collab.noAnswer") : connectionFailure(session.connectivity)}
           {!unanswered && session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
         </p>
       )}

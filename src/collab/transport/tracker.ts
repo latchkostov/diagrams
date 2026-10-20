@@ -2,6 +2,7 @@ import { base64UrlToBytes, bytesToBase64Url, bytesToText, textToBytes } from "..
 import { realClock, type Clock } from "../clock";
 import { COLLAB_LIMITS } from "../limits";
 import { secureRandom, type RandomBytes } from "../random";
+import { reconnectDelay } from "./backoff";
 import {
   FrameTooLargeError,
   type CollabTransport,
@@ -56,7 +57,6 @@ const MAX_PARTIAL_PER_PEER = 4;
 const OFFER_TTL_MS = 30_000;
 const GATHER_TIMEOUT_MS = 5_000;
 const SIGNAL_PREFIX = "ld1.";
-const RECONNECT_MAX_MS = 120_000;
 
 interface Tracker {
   url: string;
@@ -512,8 +512,7 @@ export function createTrackerTransport(opts: TrackerOptions): TrackerTransport {
 
   function reconnect(tracker: Tracker) {
     if (closed || tracker.cancelReconnect) return;
-    const base = Math.min(RECONNECT_MAX_MS, 1_000 * 2 ** Math.min(tracker.failures++, 7));
-    const delay = base * (0.5 + random(1)[0] / 510);
+    const delay = reconnectDelay(tracker.failures++, random);
     tracker.cancelReconnect = clock.after(delay, () => {
       tracker.cancelReconnect = undefined;
       connectTracker(tracker);

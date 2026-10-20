@@ -12,6 +12,7 @@ import {
   deploymentDefines,
   INTERNAL_DEFAULTS,
   readDeployment,
+  relayUrl,
   unreachableFiles,
   type Deployment,
 } from "../../scripts/deployment-env";
@@ -32,11 +33,37 @@ const PUBLIC: Deployment = {
   locales: "",
   languageChoice: true,
   collab: false,
+  collabMode: "off",
+  collabServer: "",
   collabTrackers: [...APPROVED_TRACKERS],
   collabIceServers: APPROVED_STUN.map((urls) => ({ urls })),
 };
 
 describe("reading the switches", () => {
+  it("selects one transport, retains the public alias, and validates relay URLs", () => {
+    expect(readDeployment({ VITE_ENABLE_COLLAB: "1" }).collabMode).toBe("public");
+    expect(readDeployment({ VITE_COLLAB: "", VITE_ENABLE_COLLAB: "1" }).collabMode).toBe("public");
+    expect(readDeployment({ VITE_ENABLE_COLLAB: "1", VITE_COLLAB: "off" }).collab).toBe(false);
+    expect(readDeployment({ ...INTERNAL_DEFAULTS, VITE_COLLAB: "server" })).toMatchObject({
+      collab: true,
+      collabMode: "server",
+      shareLinks: false,
+      collabServer: "",
+    });
+    expect(
+      readDeployment({ VITE_COLLAB: "server", VITE_COLLAB_SERVER: "wss://Relay.example:8443/collab/v1" }).collabServer,
+    ).toBe("wss://relay.example:8443/collab/v1");
+    expect(() => readDeployment({ VITE_COLLAB: "typo" })).toThrow(/VITE_COLLAB/);
+    for (const value of [
+      "/collab/v1",
+      "ws://relay.example",
+      "https://relay.example",
+      "wss://user:pass@relay.example",
+      "wss://relay.example/?key=secret",
+      "wss://relay.example/#secret",
+    ])
+      expect(() => relayUrl(value), value).toThrow();
+  });
   it("no variables: the public site", () => {
     expect(readDeployment({})).toEqual(PUBLIC);
   });
@@ -48,17 +75,17 @@ describe("reading the switches", () => {
       expect(readDeployment({ VITE_DISABLE_AI_TOOLS: value })).toEqual({ ...PUBLIC, aiTools: false });
       expect(readDeployment({ VITE_DISABLE_ONDEVICE: value })).toEqual({ ...PUBLIC, onDevice: false });
       expect(readDeployment({ VITE_PRIVATE_BY_DEFAULT: value })).toEqual({ ...PUBLIC, privateByDefault: true });
-      expect(readDeployment({ VITE_ENABLE_COLLAB: value })).toEqual({ ...PUBLIC, collab: true });
+      expect(readDeployment({ VITE_ENABLE_COLLAB: value })).toEqual({ ...PUBLIC, collab: true, collabMode: "public" });
     }
     for (const value of ["", "0", "false", "no", "off", "2"])
       expect(readDeployment({ VITE_DISABLE_SHARE_LINKS: value, VITE_PRIVATE_BY_DEFAULT: value })).toEqual(PUBLIC);
   });
 
-  it("Edit together is opt-in, and never without share links", () => {
+  it("Edit together is opt-in, independently of share links", () => {
     expect(readDeployment({}).collab).toBe(false);
     expect(readDeployment({ VITE_ENABLE_COLLAB: "0" }).collab).toBe(false);
-    expect(readDeployment({ VITE_ENABLE_COLLAB: "1", VITE_DISABLE_SHARE_LINKS: "1" }).collab).toBe(false);
-    expect(readDeployment({ ...INTERNAL_DEFAULTS, VITE_ENABLE_COLLAB: "1" }).collab).toBe(false);
+    expect(readDeployment({ VITE_ENABLE_COLLAB: "1", VITE_DISABLE_SHARE_LINKS: "1" }).collab).toBe(true);
+    expect(readDeployment({ ...INTERNAL_DEFAULTS, VITE_ENABLE_COLLAB: "1" }).collab).toBe(true);
   });
 
   it("a room's trackers: wss:// URLs, deduplicated; unset, the approved two; anything else stops the build", () => {
@@ -161,7 +188,9 @@ describe("this build (no switches set)", () => {
       locales: deployment.LOCALES,
       languageChoice: deployment.LANGUAGE_CHOICE,
       collab: deployment.COLLAB,
-      // Not in src/lib/deployment.ts: only the room's own code reads them (src/collab/room/endpoints.ts).
+      collabMode: deployment.COLLAB_MODE,
+      collabServer: "",
+      // Not in src/lib/deployment.ts: only the room's own code reads them (src/collab/room/transport.ts).
       collabTrackers: PUBLIC.collabTrackers,
       collabIceServers: PUBLIC.collabIceServers,
     }).toEqual(PUBLIC);
@@ -265,6 +294,13 @@ describe("the gates under each switch", () => {
     expect(tools.EDIT_TOOLS).not.toContain("get_share_link");
     expect(tools.LIVE_TOOLS).toEqual(["describe_diagram", "check_diagram"]);
     expect(tools.publishedTools(false)).toHaveLength(6);
+  });
+
+  it("server rooms are independent of share links and still refuse Private diagrams", async () => {
+    const { gates } = await withDeployment({ SHARE_LINKS: false, COLLAB: true, COLLAB_MODE: "server" });
+    expect(gates.canCollaborate({})).toBe(true);
+    expect(gates.canCollaborate({ private: true })).toBe(false);
+    expect(gates.canCollaborate({ localOnly: true })).toBe(false);
   });
 
   it("VITE_DISABLE_AI_TOOLS: no AI tools for any diagram; the on-device model stays", async () => {

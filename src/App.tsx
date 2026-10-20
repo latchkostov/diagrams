@@ -77,10 +77,9 @@ const LabView =
  * would still see this import, and the code the room shares with the canvas would leave the canvas's own chunk.
  */
 declare const __DEPLOYMENT_COLLAB__: boolean;
-declare const __DEPLOYMENT_SHARE_LINKS__: boolean;
 type RoomsModule = typeof import("./collab/room");
 const loadRooms =
-  (import.meta.env.DEV || import.meta.env.VITE_E2E === "1" || __DEPLOYMENT_COLLAB__) && __DEPLOYMENT_SHARE_LINKS__
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1" || __DEPLOYMENT_COLLAB__
     ? loadOnce(() => import("./collab/room"))
     : undefined;
 const noRoomSubscribe = () => () => {};

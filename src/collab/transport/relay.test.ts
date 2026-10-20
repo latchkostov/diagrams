@@ -51,12 +51,12 @@ describeTransportConformance("WebSocket relay (real server)", (seed) => {
                 expect(envelope?.length).toBeGreaterThanOrEqual(48);
                 expect([...envelope!.subarray(0, 3)]).toEqual([0x4c, 0x44, 1]);
               }
-              for (const tap of taps) tap(bytes);
             } else {
               const hello = parseHello(Buffer.from(bytes).toString());
               expect(hello).toEqual({ t: "hello", v: 1, room: ids[seed] });
               expect(hello?.room).toHaveLength(43);
             }
+            for (const tap of taps) tap(bytes);
           });
         };
         relay.wss.on("connection", observe);
@@ -99,6 +99,36 @@ describeTransportConformance("WebSocket relay (real server)", (seed) => {
 });
 
 describe("relay reconnect and lifecycle", () => {
+  it("reports server capacity separately from room capacity without automatic retries", async () => {
+    const server = await startServer({ LD_MAX_ROOMS: "1" });
+    const opened: WebSocket[] = [];
+    const clock = new FakeClock();
+    const connect = (roomId: string) => {
+      const transport = createRelayTransport({
+        url: `${server.origin.replace("http:", "ws:")}/collab/v1`,
+        roomId,
+        WebSocket: browserSockets(server.origin, opened),
+        clock,
+      });
+      transports.push(transport);
+      return transport;
+    };
+    const host = connect(ids[0]);
+    await barrier(opened.at(-1)!);
+    expect(host.connectivity?.()).toBe("connected");
+    const guest = connect(ids[1]);
+    await barrier(opened.at(-1)!);
+    expect(guest.connectivity?.()).toBe("server-full");
+    const before = opened.length;
+    clock.advance(RELAY_LIMITS.pingIntervalMs * 2);
+    expect(opened).toHaveLength(before);
+    host.close();
+    await Promise.all(opened.map(barrier));
+    guest.retry?.();
+    await barrier(opened.at(-1)!);
+    expect(guest.connectivity?.()).toBe("connected");
+    sockets.push(...opened);
+  });
   it("can close while connecting without retaining timers or delivering events", async () => {
     const clock = new FakeClock();
     const t = createRelayTransport({

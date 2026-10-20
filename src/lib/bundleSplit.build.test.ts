@@ -372,7 +372,7 @@ describe("production bundle split with Edit together on (VITE_ENABLE_COLLAB=1)",
     const [room] = naming;
     expect(startup(rooms).has(room)).toBe(false);
     expect(closure([canvasChunk(rooms)], rooms).has(room)).toBe(false);
-    expect(bundled([room]).some((id) => /[/\\]src[/\\]collab[/\\]room[/\\]endpoints\.ts$/.test(id))).toBe(true);
+    expect(bundled([room]).some((id) => /[/\\]src[/\\]collab[/\\]room[/\\]transport\.ts$/.test(id))).toBe(true);
     const sockets = [...new Set(room.code.match(/\bwss?:\/\/[A-Za-z0-9.-]+[^"'`\s,\]]*/g) ?? [])].sort();
     expect(sockets).toEqual([...APPROVED_TRACKERS].sort());
     expect([...new Set(room.code.match(/\bstuns?:[A-Za-z0-9.-]+(?::\d+)?/g) ?? [])]).toEqual([...APPROVED_STUN]);

@@ -17,9 +17,11 @@ ARG VITE_DISABLE_ONDEVICE
 ARG VITE_PRIVATE_BY_DEFAULT
 ARG VITE_BRAND_NAME
 ARG VITE_LOCALES
-# Edit together: off unless VITE_ENABLE_COLLAB=1. Its trackers, STUN and TURN are build values too (unset: the
-# approved public trackers and STUN, no TURN); the headers below follow the same variables.
+# Edit together: VITE_COLLAB=off|public|server (VITE_ENABLE_COLLAB=1 aliases public).
+# Endpoints are build values too; the generated headers follow the selected transport.
 ARG VITE_ENABLE_COLLAB
+ARG VITE_COLLAB
+ARG VITE_COLLAB_SERVER
 ARG VITE_COLLAB_TRACKERS
 ARG VITE_COLLAB_STUN
 ARG VITE_COLLAB_TURN

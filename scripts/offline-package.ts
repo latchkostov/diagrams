@@ -16,6 +16,7 @@ export function offlineBuildEnv(
   return {
     ...shell,
     VITE_E2E: "",
+    VITE_COLLAB: "off",
     VITE_DISABLE_SHARE_LINKS: "1",
     VITE_DISABLE_LINK_OPEN: "1",
     VITE_DISABLE_AI_TOOLS: "1",

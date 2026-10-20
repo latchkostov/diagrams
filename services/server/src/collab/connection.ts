@@ -117,7 +117,7 @@ export function attachConnection(opts: {
       }
       const room = rooms.join(hello.room, peer, socket);
       if (!room) {
-        refuse(RELAY_CLOSE.full);
+        refuse(rooms.get(hello.room) ? RELAY_CLOSE.full : RELAY_CLOSE.serverFull);
         return;
       }
       roomId = hello.room;

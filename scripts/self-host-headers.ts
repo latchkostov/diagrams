@@ -13,8 +13,8 @@ import { COMMON_HEADERS, cspDirectives, EMBED_SCRIPT_HEADERS, OPENER_POLICY } fr
  *    Microsoft or Dropbox, so their script, connect and frame sources go (`providers: true` keeps them).
  *  - frame-ancestors: the app, and its read-only embeds, may be framed by this site and the domains you list
  *    (an intranet, a wiki), never by any site. With no list, by this site only.
- *  - Edit together is off unless the copy is built with VITE_ENABLE_COLLAB=1; then its trackers' origins join the
- *    app's connect-src (`collab`), as on the public site.
+ *  - Edit together has one compiled transport: public trackers or a relay. Their origins join the app's
+ *    connect-src; a same-origin relay needs no extra source.
  */
 
 export interface SelfHostOptions {
@@ -27,12 +27,17 @@ export interface SelfHostOptions {
    * approved two): their origins join connect-src, never an embed's. `collabTrackers()` reads them as the build does.
    */
   collab?: readonly string[];
+  collabServer?: string;
 }
 
 /** The trackers a copy built from this environment uses, when it has rooms; none when it hasn't. */
 export function collabTrackers(env: Record<string, string | undefined>): string[] {
   const d = readDeployment(env);
-  return d.collab ? d.collabTrackers : [];
+  return d.collabMode === "public"
+    ? d.collabTrackers
+    : d.collabMode === "server" && d.collabServer
+      ? [d.collabServer]
+      : [];
 }
 
 /** An origin a CSP source list accepts: https, a host (optionally `*.`), an optional port; nothing else. */
@@ -54,7 +59,7 @@ export function frameAncestorList(list: readonly string[] = []): string[] {
 /** The policy for the app (`embed: false`) or an embed, for a self-hosted copy. */
 export function selfHostCsp(o: SelfHostOptions & { embed: boolean }): string {
   const ancestors = frameAncestorList(o.frameAncestors);
-  return cspDirectives({ embed: o.embed, collab: o.collab })
+  return cspDirectives({ embed: o.embed, collab: o.collab, collabServer: o.collabServer })
     .map(([name, values]): [string, string[]] => {
       if (name === "frame-ancestors") return [name, ["'self'", ...(o.embed ? ancestors : [])]];
       // Keep keywords and schemes ('self', data:, blob:, 'unsafe-inline') and the trackers (wss:); the storage
@@ -87,8 +92,10 @@ const banner = (comment: string, o: SelfHostOptions) => {
             ? `${comment} No storage providers: build without the cloud storage variables.`
             : `${comment} No outside origins: build without the cloud storage variables.`,
         ]),
-    ...(o.collab?.length
-      ? [`${comment} Edit together: build with VITE_ENABLE_COLLAB=1; its trackers: ${o.collab.join(", ")}.`]
+    ...(o.collab?.length || o.collabServer
+      ? [
+          `${comment} Edit together endpoints: ${[...(o.collab ?? []), ...(o.collabServer ? [o.collabServer] : [])].join(", ")}. Set the matching VITE_COLLAB build mode.`,
+        ]
       : []),
   ].join("\n");
 };

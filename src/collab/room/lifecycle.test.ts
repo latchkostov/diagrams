@@ -19,6 +19,27 @@ import { RoomLifecycle, type RoomLibrary } from "./lifecycle";
 import { memoryTabRoom } from "./tabRoom";
 import { parseRoster } from "./roomRoster";
 import { serializeNative } from "../../interop/native";
+import { CONNECTION_WAIT_MS } from "../session";
+
+it.each(["server-unreachable", "room-full", "server-full"] as const)(
+  "surfaces relay failure %s and retains the local copy",
+  async (failure) => {
+    const clock = new FakeClock();
+    const net = new MemoryNetwork();
+    const b = browser(net, clock, 1);
+    const diagram = canaryDiagram();
+    const slug = b.library.create(diagram);
+    await b.room.start({ slug, diagram });
+    const transport = b.transports[0];
+    transport.connectivity = () => failure;
+    session(b).retryConnection();
+    clock.advance(CONNECTION_WAIT_MS);
+    expect(session(b).connectivity).toBe(failure);
+    expect(session(b).connectionFailed).toBe(true);
+    await b.room.leave();
+    expect(b.library.read(slug)?.title).toBe(diagram.title);
+  },
+);
 
 // The room lifecycle (Edit together, plan E2) on the in-memory network: who seeds the room, what a link may do
 // before consent, the copy in Your diagrams, and a reload.

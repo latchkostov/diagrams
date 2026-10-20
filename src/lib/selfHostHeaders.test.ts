@@ -28,6 +28,23 @@ const directive = (csp: string, name: string) =>
     .split(" ") ?? [];
 
 describe("self-hosting headers", () => {
+  it("server mode uses self by default and exactly the configured relay origin cross-origin", () => {
+    expect(collabTrackers({ VITE_COLLAB: "server" })).toEqual([]);
+    expect(directive(selfHostCsp({ embed: false }), "connect-src")).toEqual(["'self'"]);
+    const url = "wss://relay.example:8443/tools/collab/v1";
+    const sources = collabTrackers({ VITE_COLLAB: "server", VITE_COLLAB_SERVER: url });
+    expect(sources).toEqual([url]);
+    expect(directive(selfHostCsp({ embed: false, collab: sources }), "connect-src")).toEqual([
+      "'self'",
+      "wss://relay.example:8443",
+    ]);
+    expect(directive(selfHostCsp({ embed: false, collabServer: url }), "connect-src")).toEqual([
+      "'self'",
+      "wss://relay.example:8443",
+    ]);
+    expect(directive(selfHostCsp({ embed: true, collabServer: url }), "connect-src")).toEqual(["'self'"]);
+    expect(() => selfHostCsp({ embed: false, collabServer: "wss://relay.example/#secret" })).toThrow();
+  });
   it("deploy/self-host/ is generated from scripts/self-host-headers.ts (run `pnpm regen` if this fails)", () => {
     for (const [name, text] of Object.entries(selfHostSamples()))
       expect(read(`deploy/self-host/${name}`), name).toBe(text);
@@ -55,7 +72,7 @@ describe("self-hosting headers", () => {
 
   it("Edit together: off unless the copy is built with it; then its trackers in the app's connect-src only", () => {
     expect(collabTrackers({})).toEqual([]);
-    expect(collabTrackers({ VITE_ENABLE_COLLAB: "1", VITE_DISABLE_SHARE_LINKS: "1" })).toEqual([]);
+    expect(collabTrackers({ VITE_COLLAB: "server", VITE_DISABLE_SHARE_LINKS: "1" })).toEqual([]);
     expect(collabTrackers({ VITE_ENABLE_COLLAB: "1" })).toEqual([
       "wss://tracker.openwebtorrent.com",
       "wss://tracker.webtorrent.dev",
@@ -67,7 +84,7 @@ describe("self-hosting headers", () => {
       "wss://t.acme.com:8443",
     ]);
     expect(directive(selfHostCsp({ embed: true, collab: own }), "connect-src")).toEqual(["'self'"]);
-    expect(nginxHeaders({ collab: own })).toContain("Edit together: build with VITE_ENABLE_COLLAB=1");
+    expect(nginxHeaders({ collab: own })).toContain("Edit together endpoints:");
     expect(selfHostHeadersFor("/", { collab: own })["Content-Security-Policy"]).toContain("wss://t.acme.com:8443");
     expect(selfHostHeadersFor("/?embed=1", { collab: own })["Content-Security-Policy"]).not.toContain("wss:");
   });

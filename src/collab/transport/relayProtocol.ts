@@ -27,6 +27,7 @@ export const RELAY_CLOSE = {
   badFrame: 4000,
   origin: 4003,
   full: 4008,
+  serverFull: 4013,
   rate: 4029,
   restart: 1012,
   tooBig: 1009,

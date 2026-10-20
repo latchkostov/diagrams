@@ -18,6 +18,7 @@ interface Output {
   files: string[];
   /** The startup JavaScript: the entry and what it imports statically. */
   startup: string;
+  headers: string;
 }
 
 /** A production build with exactly these deployment variables (src/test/productionBuild.ts). */
@@ -46,6 +47,7 @@ async function buildWith(env: Record<string, string>): Promise<Output> {
     startup: startupChunks({ chunks, assets, html })
       .map((c) => c.code)
       .join("\n"),
+    headers: String(assets.find((asset) => asset.fileName === "headers.json")?.source ?? ""),
   };
 }
 
@@ -122,11 +124,11 @@ beforeAll(async () => {
   Object.assign(process.env, AMBIENT);
   try {
     publicBuild = await buildWith({});
-    // Edit together asked for, with a copy's own endpoints, but without share links: still none (a room is a kind
-    // of link), and none of the endpoints either.
+    // Internal copies can use relay rooms independently of share links.
     internal = await buildWith({
       ...INTERNAL_DEFAULTS,
-      ...OWN,
+      VITE_COLLAB: "server",
+      VITE_COLLAB_SERVER: "wss://relay.intranet.example/tools/collab/v1",
       VITE_BRAND_NAME: "Acme Diagrams (internal)",
     } as Record<string, string>);
     locked = await buildWith({
@@ -205,9 +207,15 @@ describe("Edit together in the production build", () => {
     }
   });
 
-  it("asked for without share links: still none, and none of the copy's endpoints", () => {
-    expect(roomModules(internal)).toEqual([]);
-    expect(internal.code).not.toMatch(/tracker\.(?:openwebtorrent\.com|webtorrent\.dev)|stun\.cloudflare\.com/);
+  it("server rooms work without share links and carry no WebRTC or STUN", () => {
+    expect(roomModules(internal)).toEqual(ROOM_CODE.map(String));
+    expect(internal.code).toContain("livediagrams.relay.v1");
+    expect(internal.code).toContain("wss://relay.intranet.example/tools/collab/v1");
+    expect(internal.startup).not.toContain("relay.intranet.example");
+    expect(internal.headers).toContain("connect-src 'self' wss://relay.intranet.example;");
+    expect(internal.code.match(/.{0,40}(?:RTCPeerConnection|stuns?:|stun\.cloudflare\.com).{0,80}/g) ?? []).toEqual([]);
+    expect(internal.modules.some((id) => id.endsWith("/collab/transport/tracker.ts"))).toBe(false);
+    expect(internal.startup).not.toContain("livediagrams.relay.v1");
     for (const value of OWN_VALUES) expect(internal.code, value).not.toContain(value);
   });
 

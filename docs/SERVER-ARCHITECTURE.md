@@ -29,7 +29,7 @@ later authentication or a shared registry without teaching the relay about docum
 Origin, per-IP and total-socket admission run before WebSocket upgrade. Refusals return plain
 HTTP 403 (Origin), 429 (per-IP), or 503 (capacity/draining), then destroy the connection;
 refused requests never enter the WebSocket client set. Browser clients see a failed connection.
-Close codes after upgrade are 4000 (protocol/hello timeout), 4008 (room/room-count cap),
+Close codes after upgrade are 4000 (protocol/hello timeout), 4008 (room cap), 4013 (server room-count cap),
 4029 (rate/backpressure), 1009 (size), and 1012 (restart). 4003 remains reserved for Origin.
 
 One server-owned outbound budget reserves bytes before every data, membership, ping or pong

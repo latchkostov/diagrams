@@ -360,7 +360,7 @@ export class WatchTogether {
   }
 
   /** For tests (e2e builds): this person's run, its tick and digest. */
-  probe(): { tick: number; digest: number; playing: boolean; run?: string } | undefined {
+  probe(): { tick: number; digest: number; playing: boolean; busy: boolean; run?: string } | undefined {
     const c = this.bridge?.watchBridge.session()?.controller;
     if (!c) return undefined;
     const { snapshot, draws } = c.digestInputs();
@@ -368,6 +368,7 @@ export class WatchTogether {
       tick: c.tick,
       digest: snapshotDigest(snapshot, draws),
       playing: c.getState().playing,
+      busy: c.busy,
       run: this.driver?.runId ?? this.state.show?.run,
     };
   }

@@ -7,7 +7,7 @@ import { emulateTracker } from "./collab-tracker";
 // chooses Watch and follows the same run in lockstep. "The same state" is the run digest (src/sim/digest.ts) on the
 // same tick, read through the e2e build's probe (window.__watch). Selectors are data-testid only.
 
-type Probe = { tick: number; digest: number; playing: boolean } | undefined;
+type Probe = { tick: number; digest: number; playing: boolean; busy: boolean } | undefined;
 const probe = (page: Page) =>
   page.evaluate(() => (window as unknown as { __watch?: { probe(): Probe } }).__watch?.probe());
 const chip = (page: Page) => page.getByTestId("room-chip");
@@ -92,19 +92,8 @@ async function guestWatches(guest: Page, via: "toast" | "menu") {
 async function sameStateAfterPause(host: Page, guest: Page) {
   await host.getByTestId("live-play").click();
   await expect(host.getByTestId("live-play")).not.toHaveAttribute("data-state", "playing");
-  // Paused, and any rebuild (a rate change replays the run to the same moment) finished: the tick stands still.
-  let last = -1;
-  await expect
-    .poll(
-      async () => {
-        const tick = (await run(host)).tick;
-        const still = tick === last;
-        last = tick;
-        return still;
-      },
-      { intervals: [400], timeout: 20_000 },
-    )
-    .toBe(true);
+  // A rate change can pause between replay slices: wait for the replay itself before sampling its tick.
+  await expect.poll(async () => (await run(host)).busy, { timeout: 20_000 }).toBe(false);
   const at = await run(host);
   await expect.poll(async () => (await probe(guest))?.tick, { timeout: 20_000 }).toBe(at.tick);
   expect((await probe(guest))?.digest).toBe((await probe(host))?.digest);

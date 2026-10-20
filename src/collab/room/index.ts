@@ -11,8 +11,7 @@ import {
 import { onClearDevice } from "../../lib/clearDevice";
 import { canCollaborate } from "../../lib/localOnly";
 import { IndexedDbRecoveryStore } from "../recoveryStore";
-import { createTrackerTransport } from "../transport/tracker";
-import { roomEndpoints } from "./endpoints";
+import { roomTransport } from "./transport";
 import { RoomLifecycle } from "./lifecycle";
 import { memberId } from "./roomRoster";
 import { sessionTabRoom } from "./tabRoom";
@@ -57,16 +56,7 @@ const memberTaken = (member: string) =>
 
 export const room = new RoomLifecycle({
   memberTaken,
-  transport: (keys) => {
-    const { trackers, iceServers } = roomEndpoints();
-    return createTrackerTransport({
-      trackers,
-      iceServers,
-      discovery: keys.discovery,
-      signal: keys.signal,
-      maxPeers: ROOM_CAP - 1,
-    });
-  },
+  transport: roomTransport,
   recovery: () => {
     if (typeof indexedDB === "undefined") return undefined;
     return (store ??= new IndexedDbRecoveryStore());

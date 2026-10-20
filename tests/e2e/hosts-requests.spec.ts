@@ -7,7 +7,7 @@ import { emulateTracker } from "./collab-tracker";
 // moving at a tick (the old host then follows the new driver's run, checked by digest), and the host leaving on
 // purpose (the earliest co-host takes the room). Selectors are data-testid only.
 
-type Probe = { tick: number; digest: number; playing: boolean; run?: string } | undefined;
+type Probe = { tick: number; digest: number; playing: boolean; busy: boolean; run?: string } | undefined;
 const probe = (page: Page) =>
   page.evaluate(() => (window as unknown as { __watch?: { probe(): Probe } }).__watch?.probe());
 const chip = (page: Page) => page.getByTestId("room-chip");
@@ -72,18 +72,8 @@ async function watches(guest: Page) {
 async function sameStateAfterPause(driver: Page, follower: Page) {
   await driver.getByTestId("live-play").click();
   await expect(driver.getByTestId("live-play")).not.toHaveAttribute("data-state", "playing");
-  let last = -1;
-  await expect
-    .poll(
-      async () => {
-        const tick = (await run(driver)).tick;
-        const still = tick === last;
-        last = tick;
-        return still;
-      },
-      { intervals: [400], timeout: 20_000 },
-    )
-    .toBe(true);
+  // A replay may hold the same intermediate tick between frames; it must finish before we compare runs.
+  await expect.poll(async () => (await run(driver)).busy, { timeout: 20_000 }).toBe(false);
   const at = await run(driver);
   await expect.poll(async () => (await probe(follower))?.tick, { timeout: 20_000 }).toBe(at.tick);
   expect((await probe(follower))?.digest).toBe((await probe(driver))?.digest);

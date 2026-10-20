@@ -16,7 +16,7 @@ export const DEPLOYMENT_SWITCHES = [
   "VITE_DISABLE_ONDEVICE",
   "VITE_PRIVATE_BY_DEFAULT",
   // Edit together (rooms): opt-in. On for livediagrams.dev (its build settings set it), off for every other copy
-  // unless it sets it. Never without share links (a room is a kind of link).
+  // unless it sets it. Independent of share links.
   "VITE_ENABLE_COLLAB",
 ] as const;
 
@@ -30,6 +30,8 @@ export const DEPLOYMENT_SWITCHES = [
  *    username and credential are in the page for anyone who can open it, like every other build value.
  */
 export const COLLAB_VARIABLES = [
+  "VITE_COLLAB",
+  "VITE_COLLAB_SERVER",
   "VITE_COLLAB_TRACKERS",
   "VITE_COLLAB_STUN",
   "VITE_COLLAB_TURN",
@@ -89,8 +91,10 @@ export interface Deployment {
   locales: string;
   /** More than one language: View ▸ Language… and Ctrl+K's Language… exist. */
   languageChoice: boolean;
-  /** Edit together (rooms) in a production build: VITE_ENABLE_COLLAB, and share links on. */
+  /** Edit together (rooms) in a production build: VITE_COLLAB (or the public alias VITE_ENABLE_COLLAB). */
   collab: boolean;
+  collabMode: "off" | "public" | "server";
+  collabServer: string;
   /** The trackers a room announces to: VITE_COLLAB_TRACKERS, else APPROVED_TRACKERS. */
   collabTrackers: string[];
   /** The ICE servers a room's connections use: VITE_COLLAB_STUN and VITE_COLLAB_TURN, else APPROVED_STUN. */
@@ -183,7 +187,17 @@ export function resolveDeploymentEnv(
  * The deployment the variables describe. No variables: the public site's, but for Edit together, which is opt-in
  * (livediagrams.dev sets VITE_ENABLE_COLLAB=1 in its build settings).
  */
+export function relayUrl(value: string | undefined): string {
+  if (!value?.trim()) return "";
+  const url = new URL(value.trim());
+  if (url.protocol !== "wss:" || !url.hostname || url.username || url.password || url.search || url.hash)
+    throw new Error("VITE_COLLAB_SERVER takes an absolute wss:// URL without credentials, query or fragment");
+  return url.href;
+}
+
 export function readDeployment(env: Record<string, string | undefined>): Deployment {
+  const collabMode = env.VITE_COLLAB?.trim() || (on(env.VITE_ENABLE_COLLAB) ? "public" : "off");
+  if (!["off", "public", "server"].includes(collabMode)) throw new Error("VITE_COLLAB takes off, public or server");
   return {
     shareLinks: !on(env.VITE_DISABLE_SHARE_LINKS),
     linkOpen: !on(env.VITE_DISABLE_LINK_OPEN),
@@ -194,9 +208,11 @@ export function readDeployment(env: Record<string, string | undefined>): Deploym
     brandName: brandName(env.VITE_BRAND_NAME),
     locales: localeList(env.VITE_LOCALES),
     languageChoice: !localeList(env.VITE_LOCALES) || localeList(env.VITE_LOCALES).includes(","),
-    collab: on(env.VITE_ENABLE_COLLAB) && !on(env.VITE_DISABLE_SHARE_LINKS),
-    collabTrackers: trackerList(env.VITE_COLLAB_TRACKERS),
-    collabIceServers: iceServerList(env),
+    collab: collabMode !== "off",
+    collabMode: collabMode as Deployment["collabMode"],
+    collabServer: relayUrl(env.VITE_COLLAB_SERVER),
+    collabTrackers: collabMode === "server" ? [] : trackerList(env.VITE_COLLAB_TRACKERS),
+    collabIceServers: collabMode === "server" ? [] : iceServerList(env),
   };
 }
 
@@ -212,7 +228,9 @@ export const DEPLOYMENT_KEYS: Record<keyof Deployment, string> = {
   locales: "__DEPLOYMENT_LOCALES__",
   languageChoice: "__DEPLOYMENT_LANGUAGE_CHOICE__",
   collab: "__DEPLOYMENT_COLLAB__",
-  // Read by src/collab/room/endpoints.ts only, so they land in the room's own chunk (never at startup), and only in
+  collabMode: "__DEPLOYMENT_COLLAB_MODE__",
+  collabServer: "__DEPLOYMENT_COLLAB_SERVER__",
+  // Read by src/collab/room/transport.ts only, so they land in the room's own chunk (never at startup), and only in
   // a build that has rooms.
   collabTrackers: "__DEPLOYMENT_COLLAB_TRACKERS__",
   collabIceServers: "__DEPLOYMENT_COLLAB_ICE_SERVERS__",

@@ -138,7 +138,7 @@ describe("relay core (real loopback sockets)", () => {
     const a = await connect(s, s.origin, room);
     await barrier(a.socket);
     const b = await connect(s, s.origin, "B".repeat(43));
-    expect(await b.closed).toBe(RELAY_CLOSE.full);
+    expect(await b.closed).toBe(RELAY_CLOSE.serverFull);
     const c = await connect(s, s.origin, room);
     await barrier(c.socket);
     expect(await rejectUpgrade(s)).toBe(503);
