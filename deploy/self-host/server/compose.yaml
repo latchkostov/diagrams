@@ -14,6 +14,9 @@ services:
       LD_STATIC: ${LD_STATIC:-on}
       # The public origin, including scheme and optional port, when behind a TLS proxy.
       LD_ORIGIN: ${LD_ORIGIN:-http://localhost:8080}
+      # Enable only when this listener is reachable exclusively through trusted proxies.
+      LD_TRUST_PROXY: ${LD_TRUST_PROXY:-0}
+      LD_TRUST_PROXY_HOPS: ${LD_TRUST_PROXY_HOPS:-1}
     ports:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped

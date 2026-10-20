@@ -6,7 +6,8 @@ import { healthcheck } from "./healthcheck";
 const log = createLog();
 try {
   if (process.argv.includes("--healthcheck")) {
-    process.exitCode = (await healthcheck(readConfig().port)) ? 0 : 1;
+    const { port, host } = readConfig();
+    process.exitCode = (await healthcheck(port, host)) ? 0 : 1;
   } else {
     const relay = createRelayServer({ log });
     await relay.listen();

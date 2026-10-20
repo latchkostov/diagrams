@@ -8,6 +8,7 @@ import console from "node:console";
 import { spawnSync } from "node:child_process";
 import { runnerImport } from "vite";
 import { chromium, expect } from "@playwright/test";
+import { deploymentVariants } from "./server-deployment-smoke.mjs";
 
 const load = async (name) => (await runnerImport(path.resolve(name), { configFile: false, logLevel: "error" })).module;
 const { withSmokeContainer, waitForStableEndpoint } = await load("scripts/self-host-container.ts");
@@ -66,6 +67,14 @@ try {
   const config = JSON.parse(run("docker", ["image", "inspect", "--format", "{{json .Config}}", image], true));
   expect(config.User).toBe("nonroot:nonroot");
   expect(config.Volumes ?? {}).toEqual({});
+  await deploymentVariants({
+    run,
+    image,
+    scratch,
+    ...(await load("scripts/self-host-templates.ts")),
+    waitForStableEndpoint,
+    protocol: await load("src/collab/transport/relayProtocol.ts"),
+  });
   for (const base of ["/", "/tools/diagrams/"]) {
     await withSmokeContainer(
       run,

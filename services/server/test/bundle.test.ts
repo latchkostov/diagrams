@@ -18,7 +18,7 @@ it("bundles a standalone runtime with a healthcheck CLI that never starts anothe
     requests.push(req.url ?? "");
     res.writeHead(status).end();
   });
-  server.listen(0, "127.0.0.1");
+  server.listen(0, "::1");
   await once(server, "listening");
   try {
     const output = join(directory, "main.mjs");
@@ -30,7 +30,7 @@ it("bundles a standalone runtime with a healthcheck CLI that never starts anothe
     const address = server.address();
     if (!address || typeof address === "string") throw new Error("Missing port");
     const options = {
-      env: { ...process.env, LD_PORT: String(address.port), LD_STATIC_DIR: join(directory, "absent") },
+      env: { ...process.env, LD_HOST: "::1", LD_PORT: String(address.port), LD_STATIC_DIR: join(directory, "absent") },
     };
     await execFile(process.execPath, [output, "--healthcheck"], options);
     expect(requests).toEqual(["/healthz"]);
