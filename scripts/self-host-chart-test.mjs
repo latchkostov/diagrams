@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import console from "node:console";
 import { parseAllDocuments } from "yaml";
 
@@ -24,11 +24,16 @@ const template = (...settings) => {
 };
 const resources = (output) => Object.fromEntries(parseAllDocuments(output).map((doc) => [doc.toJS().kind, doc.toJS()]));
 
-// Frozen pre-S5 rendering: the default static deployment remains byte-for-byte identical.
+// Frozen pre-S5 rendering: the default static deployment is unchanged. Compared as parsed
+// manifests (tests/fixtures/helm-static-pre-s5.json, rendered from the pre-S5 chart), because
+// Helm versions format the same manifests with different bytes.
 const original = template();
-assert.equal(
-  createHash("sha256").update(original).digest("hex"),
-  "68a958f978d0a9e0b5be94ef107bf3f39cc4d1d7113b18a537e8f30b13be1c6c",
+const frozen = JSON.parse(readFileSync("tests/fixtures/helm-static-pre-s5.json", "utf8"));
+assert.deepEqual(
+  parseAllDocuments(original)
+    .map((doc) => doc.toJS())
+    .filter(Boolean),
+  frozen,
 );
 assert.equal(template("mode=static"), original);
 const staticDeployment = resources(template("replicas=4", "image.tag=custom")).Deployment;
@@ -125,4 +130,4 @@ assert.equal(
   overridden.Deployment.spec.template.spec.containers[0].env.find(({ name }) => name === "LD_TOTAL_BUFFER_BYTES").value,
   "268435456",
 );
-console.log("PASS Helm static byte parity and server image, singleton, Recreate, env, probes, hardening and ingress");
+console.log("PASS Helm static parity and server image, singleton, Recreate, env, probes, hardening and ingress");

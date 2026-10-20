@@ -1,0 +1,145 @@
+[
+  {
+    "apiVersion": "v1",
+    "kind": "Service",
+    "metadata": {
+      "name": "diagrams"
+    },
+    "spec": {
+      "selector": {
+        "app.kubernetes.io/instance": "diagrams"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "port": 80,
+          "targetPort": "http"
+        }
+      ]
+    }
+  },
+  {
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {
+      "name": "diagrams"
+    },
+    "spec": {
+      "replicas": 2,
+      "selector": {
+        "matchLabels": {
+          "app.kubernetes.io/instance": "diagrams"
+        }
+      },
+      "template": {
+        "metadata": {
+          "labels": {
+            "app.kubernetes.io/instance": "diagrams"
+          },
+          "annotations": {
+            "livediagrams.dev/build": "{\"basePath\":\"/\",\"frameAncestors\":\"\",\"profile\":\"internal\",\"switches\":{\"VITE_BRAND_NAME\":\"Live Diagrams\",\"VITE_COLLAB_STUN\":\"\",\"VITE_COLLAB_TRACKERS\":\"\",\"VITE_COLLAB_TURN\":\"\",\"VITE_COLLAB_TURN_USERNAME\":\"\",\"VITE_DISABLE_AI_TOOLS\":\"1\",\"VITE_DISABLE_LINK_OPEN\":\"0\",\"VITE_DISABLE_ONDEVICE\":\"0\",\"VITE_DISABLE_SHARE_LINKS\":\"1\",\"VITE_ENABLE_COLLAB\":\"0\",\"VITE_LOCALES\":\"\",\"VITE_PRIVATE_BY_DEFAULT\":\"1\"}}"
+          }
+        },
+        "spec": {
+          "securityContext": {
+            "runAsNonRoot": true,
+            "runAsUser": 101,
+            "runAsGroup": 101,
+            "fsGroup": 101
+          },
+          "containers": [
+            {
+              "name": "live-diagrams",
+              "image": "live-diagrams:local",
+              "imagePullPolicy": "IfNotPresent",
+              "ports": [
+                {
+                  "name": "http",
+                  "containerPort": 8080
+                }
+              ],
+              "securityContext": {
+                "allowPrivilegeEscalation": false,
+                "readOnlyRootFilesystem": true,
+                "capabilities": {
+                  "drop": ["ALL"]
+                }
+              },
+              "readinessProbe": {
+                "httpGet": {
+                  "path": "/healthz",
+                  "port": "http"
+                }
+              },
+              "livenessProbe": {
+                "httpGet": {
+                  "path": "/healthz",
+                  "port": "http"
+                }
+              },
+              "resources": {
+                "limits": {
+                  "cpu": "500m",
+                  "memory": "128Mi"
+                },
+                "requests": {
+                  "cpu": "50m",
+                  "memory": "32Mi"
+                }
+              },
+              "volumeMounts": [
+                {
+                  "name": "tmp",
+                  "mountPath": "/tmp"
+                }
+              ]
+            }
+          ],
+          "volumes": [
+            {
+              "name": "tmp",
+              "emptyDir": {}
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "apiVersion": "networking.k8s.io/v1",
+    "kind": "Ingress",
+    "metadata": {
+      "name": "diagrams"
+    },
+    "spec": {
+      "ingressClassName": "nginx",
+      "tls": [
+        {
+          "hosts": ["diagrams.example.com"],
+          "secretName": "live-diagrams-tls"
+        }
+      ],
+      "rules": [
+        {
+          "host": "diagrams.example.com",
+          "http": {
+            "paths": [
+              {
+                "path": "/",
+                "pathType": "Prefix",
+                "backend": {
+                  "service": {
+                    "name": "diagrams",
+                    "port": {
+                      "name": "http"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+]
