@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { hostingBase } from "./self-host-templates";
+import { hostingBase } from "./hosting-base";
 
 /** The Vite build uses relative assets. Anchor them when a static server serves index at a deep SPA route. */
 export function prepareSite(directory: string, base = "/"): void {

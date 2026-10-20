@@ -29,6 +29,52 @@ describe("self-host kit", () => {
       expect(read(`deploy/self-host/${file}`), file).toBe(contents);
   });
 
+  it("preserves WebSocket paths and upgrades in server and relay-only proxy variants", () => {
+    const templates = hostingTemplates(options);
+    for (const target of ["nginx/nginx.server.conf", "server/relay-only.nginx.conf"]) {
+      const conf = templates[target];
+      expect(conf).toContain("proxy_pass http://diagrams:8080;");
+      expect(conf).toContain("proxy_http_version 1.1;");
+      expect(conf).toContain("proxy_set_header Upgrade $http_upgrade;");
+      expect(conf).toContain("proxy_set_header Connection $live_diagrams_connection;");
+      expect(conf).toContain("proxy_read_timeout 1h;");
+      expect(conf).not.toContain("try_files");
+    }
+    expect(templates["nginx/nginx.server.conf"]).toContain("location / {");
+    expect(templates["server/relay-only.nginx.conf"]).toContain("location /tools/diagrams/collab/ {");
+    expect(templates["caddy/Caddyfile.server"]).toContain("reverse_proxy diagrams:8080");
+    expect(templates["server/relay-only.Caddyfile"]).toContain("reverse_proxy /tools/diagrams/collab/* diagrams:8080");
+    expect(templates["server/relay-only.Caddyfile"]).not.toContain("handle_path");
+    for (const conf of [templates["caddy/Caddyfile.server"], templates["nginx/nginx.server.conf"]])
+      expect(conf).toContain("LD_ORIGIN");
+  });
+
+  it("ships a hardened server compose service with no writable mounts or database", () => {
+    const compose = parseAllDocuments(read("deploy/self-host/server/compose.yaml"))[0].toJS() as {
+      services: Record<
+        string,
+        {
+          read_only: boolean;
+          cap_drop: string[];
+          security_opt: string[];
+          volumes?: unknown;
+          tmpfs?: unknown;
+          healthcheck: { test: string[] };
+          build: { context: string; dockerfile: string };
+        }
+      >;
+    };
+    expect(Object.keys(compose.services)).toEqual(["diagrams"]);
+    const server = compose.services.diagrams;
+    expect(server.read_only).toBe(true);
+    expect(server.cap_drop).toEqual(["ALL"]);
+    expect(server.security_opt).toEqual(["no-new-privileges:true"]);
+    expect(server.volumes).toBeUndefined();
+    expect(server.tmpfs).toBeUndefined();
+    expect(server.healthcheck.test).toEqual(["CMD", "/nodejs/bin/node", "main.js", "--healthcheck"]);
+    expect(server.build).toMatchObject({ context: "../../..", dockerfile: "services/server/Dockerfile" });
+  });
+
   it("generates each host's CSP, common and module-script headers from the source", () => {
     const templates = hostingTemplates(options);
     for (const target of [

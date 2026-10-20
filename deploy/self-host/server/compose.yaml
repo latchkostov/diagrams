@@ -1,0 +1,31 @@
+services:
+  diagrams:
+    image: live-diagrams-server:local
+    build:
+      context: ../../..
+      dockerfile: services/server/Dockerfile
+      args:
+        VITE_BRAND_NAME: ${VITE_BRAND_NAME-}
+        VITE_LOCALES: ${VITE_LOCALES-}
+        VITE_DISABLE_ONDEVICE: ${VITE_DISABLE_ONDEVICE-}
+        FRAME_ANCESTORS: ${FRAME_ANCESTORS-}
+    environment:
+      LD_BASE: ${LD_BASE:-/}
+      LD_STATIC: ${LD_STATIC:-on}
+      # The public origin, including scheme and optional port, when behind a TLS proxy.
+      LD_ORIGIN: ${LD_ORIGIN:-http://localhost:8080}
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "main.js", "--healthcheck"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+# A future database can be a sibling service; this relay is entirely in memory.

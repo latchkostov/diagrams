@@ -134,11 +134,14 @@ describe("relay core (real loopback sockets)", () => {
     expect(clock.pending).toBe(0);
   });
   it("caps total rooms and sockets independently", async () => {
-    const s = await startServer({ LD_MAX_ROOMS: "1", LD_MAX_SOCKETS: "2" });
+    const s = await startServer({ LD_MAX_ROOMS: "1", LD_MAX_SOCKETS: "2", LD_METRICS: "1" });
     const a = await connect(s, s.origin, room);
     await barrier(a.socket);
     const b = await connect(s, s.origin, "B".repeat(43));
     expect(await b.closed).toBe(RELAY_CLOSE.serverFull);
+    const metrics = await (await fetch(`${s.origin}/metrics`)).text();
+    expect(metrics).toContain('refusals_total{reason="server-cap"} 1');
+    expect(metrics).not.toContain('reason="rate"');
     const c = await connect(s, s.origin, room);
     await barrier(c.socket);
     expect(await rejectUpgrade(s)).toBe(503);
