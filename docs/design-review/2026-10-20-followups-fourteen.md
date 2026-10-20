@@ -13,3 +13,11 @@ destination. Pointer traversal through Shapes, category and leaf checks that the
 No extra toolbar controls, host-dependent test assumptions or relaxed assertions were needed. Keeping
 rectangular attachment points, preserving a non-square initial ratio under Shift, and moving an open
 menu under the pointer were rejected because they disagree with visible geometry or established gestures.
+
+## Export contract test ownership
+
+The full Linux matrix exposed an export-contract test checking a transient notification after filesystem
+persistence. The test now holds its page clock during that test-only I/O and resumes before importing
+or reloading. Both notification assertions and every complete-file comparison remain intact. The
+clock-controlled spec passed three Linux runs (126 cases) under concurrent load. Clean master passed
+the original spec twice, so the failure was fixed rather than waived as pre-existing.
