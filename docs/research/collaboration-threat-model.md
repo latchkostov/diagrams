@@ -61,12 +61,33 @@ CI with the offline capture in `src/collab/transport/tracker.test.ts`.
 | Observer                              | Sees                                                                                                                                                                                         | Never sees                                                                                 |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Static host (our site or a self-host) | Page and chunk requests, IP, user agent. Not the fragment (browsers don't send it).                                                                                                          | The room secret, the diagram.                                                              |
+| Self-hosted relay                     | Client IP addresses, user agent, timing, opaque room IDs, membership counts, frame sizes/counts; clear envelope channel, random sender ID and counter.                                       | Diagram or presence content, room links, secrets or keys.                                  |
 | BitTorrent tracker (spike)            | IP and timing; `info_hash` (the room's discovery hash); random `peer_id` and `offer_id`; offers/answers as `ld1.<ciphertext>`; message counts and sizes; which peers announce the same hash. | The secret, any key, SDP, ICE candidates (and the IPs inside them), the diagram, presence. |
 | STUN                                  | The caller's address.                                                                                                                                                                        | Anything else.                                                                             |
 | TURN (not in C0)                      | Both endpoints' addresses, timing, byte counts.                                                                                                                                              | Content (DTLS plus our envelopes).                                                         |
 | A peer over WebRTC                    | Everything a member sees, plus the other peer's IP on a direct path.                                                                                                                         | Nothing is hidden from a member except other rooms.                                        |
 | A network observer                    | Encrypted WebRTC/WSS traffic, endpoints, timing, sizes.                                                                                                                                      | Content.                                                                                   |
 | A member                              | The diagram, presence, every session id in the room.                                                                                                                                         | The local `private` flag, other people's views, selections and inspectors.                 |
+
+The relay row is covered by the real-server transport capture and `pnpm self-host:smoke --server-only`.
+Rooms travel in the first WebSocket frame, never the URL. Server stdout uses a whitelist of event/code fields;
+IPs are off unless `LD_LOG_IPS=1`. The smoke test asserts that neither its synthetic diagram canary nor any
+actual lobby/content room ID appears in `docker logs`. No payloads, keys or raw room IDs belong in logs or
+metric labels. Proxy access logs should likewise omit cookies and authorization headers; do not enable
+WebSocket frame/body logging.
+
+`LD_TRUST_PROXY=1` makes the forwarding chain a security boundary. Only enable it with a listener that clients
+cannot reach directly. Admission selects the `LD_TRUST_PROXY_HOPS`th address from the **right** of
+`X-Forwarded-For`: nginx appends the observed peer and Caddy discards untrusted incoming values by default.
+Counting caller-supplied prefixes, trusting too many hops, or allowing direct access permits IP spoofing and
+quota bypass. All routes must have the same trusted chain. The proxy smoke checks spoof resistance and
+independent quotas for two real client containers through nginx/Caddy, including subpaths and relay-only mode.
+
+Origin checks and quotas are not authentication. Protect the UI and relay with SSO or a VPN. A relay can drop,
+delay or replay traffic and lie about membership; authenticated encryption prevents reading or forging content,
+and replay windows reject repeats. An operator who also publishes the UI could instead ship JavaScript that
+leaks keys: encryption does not protect against that publisher. Private diagrams stay blocked from rooms in
+every mode pending the independent crypto review, with no escape hatch.
 
 ## Attacks and mitigations
 

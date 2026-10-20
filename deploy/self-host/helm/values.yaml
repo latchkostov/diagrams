@@ -1,8 +1,21 @@
+# static preserves the existing site-only deployment; server uses one in-memory relay.
+mode: static
 image:
   repository: live-diagrams
   tag: local
   pullPolicy: IfNotPresent
 replicas: 2
+server:
+  image:
+    repository: live-diagrams-server
+    tag: local
+    pullPolicy: IfNotPresent
+  # Runtime settings only. LD_BASE follows build.basePath; the listener stays on 8080.
+  # Add any documented LD_* setting here. Omit LD_ORIGIN for direct HTTP access.
+  env:
+    LD_TRUST_PROXY: "0"
+    LD_TRUST_PROXY_HOPS: "1"
+    LD_ROOM_CAP: "8"
 # Build metadata only: changing these values does NOT rebuild the image or change the app.
 # Build a matching image with Docker --build-arg and set image.tag to that version.
 build:
@@ -15,7 +28,8 @@ build:
     VITE_PRIVATE_BY_DEFAULT: "1"
     VITE_BRAND_NAME: Live Diagrams
     VITE_LOCALES: ""
-    # Edit together: off unless "1" (and share links on). Unset endpoints: the public trackers and Cloudflare STUN.
+    # Static image build metadata only. Rooms are independent of share links.
+    # VITE_ENABLE_COLLAB=1 aliases VITE_COLLAB=public (public trackers and STUN).
     # A TURN credential is compiled into the page: anyone who can open the site can read it.
     VITE_ENABLE_COLLAB: "0"
     VITE_COLLAB_TRACKERS: ""

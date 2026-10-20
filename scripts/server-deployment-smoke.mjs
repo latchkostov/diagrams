@@ -1,15 +1,16 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { on, once } from "node:events";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import console from "node:console";
 import { URL } from "node:url";
-import { expect } from "@playwright/test";
+import { chromium, expect } from "@playwright/test";
 
 const { fetch, AbortSignal } = globalThis;
 // ws belongs to the server workspace, rather than the browser application's dependencies.
 const { WebSocket } = createRequire(new URL("../services/server/package.json", import.meta.url))("ws");
+const { build } = createRequire(new URL("../services/server/package.json", import.meta.url))("esbuild");
 
 async function receive(socket, binary) {
   // A hang backstop, not a performance assertion. Ignore membership notices while awaiting data.
@@ -85,6 +86,19 @@ async function exerciseRelay(origin, base, protocol) {
 
 /** Deployment variants forward collaboration at root and subpaths. */
 export async function deploymentVariants({ run, image, scratch, hostingTemplates, waitForStableEndpoint, protocol }) {
+  const clientFile = path.join(scratch, "proxy-client.mjs");
+  await build({
+    stdin: {
+      contents: await readFile(new URL("./server-proxy-client.mjs", import.meta.url), "utf8"),
+      resolveDir: path.resolve("services/server"),
+    },
+    bundle: true,
+    platform: "node",
+    target: "node24",
+    format: "esm",
+    banner: { js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' },
+    outfile: clientFile,
+  });
   for (const base of ["/", "/tools/diagrams/"]) {
     for (const proxy of ["nginx", "caddy"]) {
       for (const relayOnly of [false, true]) {
@@ -210,9 +224,65 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
             return response.status === 501;
           });
           expect((await fetch(`${origin}${base}`)).status).toBe(relayOnly ? 404 : 200);
+          if (!relayOnly) {
+            const browser = await chromium.launch();
+            try {
+              const page = await browser.newPage();
+              const errors = [];
+              page.on("pageerror", (error) => errors.push(error.message));
+              await page.goto(`${origin}${base}a/deep/route?view=canvas&example=kafka-order-pipeline`);
+              await expect(page.getByTestId("brand")).toHaveText("Live Diagrams");
+              await expect(page.getByTestId("node-gateway")).toBeVisible();
+              await page.getByTestId("file-button").click();
+              await expect(page.getByTestId("file-share")).toBeVisible();
+              expect(errors).toEqual([]);
+            } finally {
+              await browser.close();
+            }
+          }
           await exerciseRelay(origin, base, protocol);
+          // Each container has its own network address. Client A fills its quota and keeps it
+          // occupied while B fills a separate quota, even though both send the same spoofed XFF.
+          for (let client = 0; client < 2; client++) {
+            const name = `ld-client-${suffix}-${client}`;
+            containers.push(
+              run(
+                "docker",
+                [
+                  "create",
+                  "--name",
+                  name,
+                  "--network",
+                  network,
+                  "--read-only",
+                  "--cap-drop=ALL",
+                  "--security-opt",
+                  "no-new-privileges:true",
+                  "-v",
+                  `${clientFile}:/app/proxy-client.mjs:ro`,
+                  image,
+                  "/app/proxy-client.mjs",
+                  `ws://${proxyName}:8080${base}collab/v1`,
+                  origin,
+                ],
+                true,
+              ).trim(),
+            );
+            run("docker", ["start", name]);
+            await expect
+              .poll(() => run("docker", ["logs", name], true), { timeout: 30_000 })
+              .toContain("PASS independent client quota");
+          }
+          for (let client = 0; client < 2; client++)
+            expect(
+              run(
+                "docker",
+                ["inspect", "--format", "{{.State.Running}}", `ld-client-${suffix}-${client}`],
+                true,
+              ).trim(),
+            ).toBe("true");
           console.log(
-            `PASS deployment variants forward collaboration at root and subpaths: ${proxy} ${base} LD_STATIC=${relayOnly ? "off" : "on"}; two-way frames, origin and spoofed-XFF admission`,
+            `PASS deployment variants forward collaboration at root and subpaths: ${proxy} ${base} LD_STATIC=${relayOnly ? "off" : "on"}; app content, two-way frames, origin, spoofed-XFF and independent client quotas`,
           );
         } finally {
           try {

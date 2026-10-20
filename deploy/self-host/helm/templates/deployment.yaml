@@ -1,9 +1,17 @@
+{{- if not (has .Values.mode (list "static" "server")) }}
+{{- fail "mode must be static or server" }}
+{{- end }}
+{{- $server := eq .Values.mode "server" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}
 spec:
-  replicas: {{ .Values.replicas }}
+  replicas: {{ if $server }}1{{ else }}{{ .Values.replicas }}{{ end }}
+  {{- if $server }}
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}
@@ -15,17 +23,33 @@ spec:
         {{- /* The TURN credential is a build input, not metadata: never in the annotation. */}}
         {{- $build := deepCopy .Values.build }}
         {{- $_ := unset $build.switches "VITE_COLLAB_TURN_CREDENTIAL" }}
+        {{- if $server }}
+        {{- $_ := set $build.switches "VITE_COLLAB" "server" }}
+        {{- $_ := set $build.switches "VITE_COLLAB_SERVER" "" }}
+        {{- end }}
         livediagrams.dev/build: {{ $build | toJson | quote }}
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 101
-        runAsGroup: 101
-        fsGroup: 101
+        runAsUser: {{ if $server }}65532{{ else }}101{{ end }}
+        runAsGroup: {{ if $server }}65532{{ else }}101{{ end }}
+        fsGroup: {{ if $server }}65532{{ else }}101{{ end }}
       containers:
         - name: live-diagrams
-          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- $image := ternary .Values.server.image .Values.image $server }}
+          image: {{ printf "%s:%s" $image.repository $image.tag | quote }}
+          imagePullPolicy: {{ $image.pullPolicy }}
+          {{- if $server }}
+          env:
+            {{- $env := mergeOverwrite (deepCopy .Values.server.env) (dict "LD_BASE" .Values.build.basePath "LD_HOST" "0.0.0.0" "LD_PORT" "8080" "LD_STATIC_DIR" "/app/site") }}
+            {{- range $name, $value := $env }}
+            {{- if not (hasPrefix "LD_" $name) }}
+            {{- fail "server.env accepts only LD_* runtime settings" }}
+            {{- end }}
+            - name: {{ $name }}
+              value: {{ $value | toString | quote }}
+            {{- end }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 8080
@@ -36,7 +60,7 @@ spec:
               drop: [ALL]
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: {{ if $server }}/readyz{{ else }}/healthz{{ end }}
               port: http
           livenessProbe:
             httpGet:
@@ -44,9 +68,11 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if not $server }}
           volumeMounts:
             - name: tmp
               mountPath: /tmp
       volumes:
         - name: tmp
           emptyDir: {}
+      {{- end }}
