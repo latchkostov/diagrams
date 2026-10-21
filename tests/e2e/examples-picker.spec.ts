@@ -179,9 +179,8 @@ const BY_THEME: Record<string, string[]> = {
   integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
     "blocking-call",
-    "scale-on-busy-threads",
-    "pool-of-40",
     "slow-payment-provider",
+    "scale-on-busy-threads",
     "outbox-saga-checkout",
     "zone-outage-drill",
     "branch-to-datacentre",
@@ -275,7 +274,7 @@ test("Routing filter finds the route table showcases and runs the parcel API's s
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("routing");
-  await expect(publicExampleCards(page)).toHaveCount(7);
+  await expect(publicExampleCards(page)).toHaveCount(6);
   for (const slug of [
     "delivery-dispatch",
     "black-friday-commerce",
@@ -283,9 +282,9 @@ test("Routing filter finds the route table showcases and runs the parcel API's s
     "recommendations-feature-store",
     "video-on-demand-pipeline",
     "api-route-table",
-    "pool-of-40",
   ])
     await expect(page.getByTestId(`example-card-${slug}`)).toBeVisible();
+  await expect(page.getByTestId("example-card-pool-of-40")).toHaveCount(0);
   await page.getByTestId("example-run-api-route-table").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("busy-afternoon");

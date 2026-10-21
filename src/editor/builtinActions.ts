@@ -889,20 +889,49 @@ export function builtinActions(): Action[] {
       label: () => t("threads.simulation"),
       when: (ctx) =>
         isFlowEdgeTarget(ctx) &&
-        ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" &&
-        revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w1") &&
-        !!effectiveCallerPolicy(ctx.editor, ctx.edgeId!)?.editable,
+        (ctx.mode !== "live" ||
+          (ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" &&
+            revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w1") &&
+            !!effectiveCallerPolicy(ctx.editor, ctx.edgeId!)?.editable)),
       children: (ctx) => {
-        const effective = effectiveCallerPolicy(ctx.editor, ctx.edgeId!)!;
-        const blocking = effective.policy.blocking;
-        return [
-          {
-            type: "item",
-            id: "edge.wait",
-            label: blocking ? t("threads.freeAction") : t("threads.holdAction"),
-            run: () => effective.set({ wait: blocking ? "non-blocking" : "blocking" }),
-          },
-        ];
+        const effective =
+          ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" &&
+          revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w1")
+            ? effectiveCallerPolicy(ctx.editor, ctx.edgeId!)
+            : undefined;
+        const waiting: MenuNode[] = effective?.editable
+          ? [
+              {
+                type: "item",
+                id: "edge.wait",
+                label: effective.policy.blocking ? t("threads.freeAction") : t("threads.holdAction"),
+                run: () => effective.set({ wait: effective.policy.blocking ? "non-blocking" : "blocking" }),
+              },
+            ]
+          : [];
+        return ctx.mode === "live"
+          ? waiting
+          : [
+              ...waiting,
+              {
+                type: "item",
+                id: "edge.toggle-dlq",
+                label: t("menu.deadLetterPath"),
+                icon: "inbox",
+                checked: ctx.editor.getEdge(ctx.edgeId!)?.props?.dlq === true,
+                run: () =>
+                  ctx.editor.setEdgeProps(ctx.edgeId!, {
+                    dlq: ctx.editor.getEdge(ctx.edgeId!)?.props?.dlq === true ? undefined : true,
+                  }),
+              },
+              {
+                type: "item",
+                id: "edge.consumer-group",
+                label: t("menu.setConsumerGroup"),
+                icon: "users",
+                run: () => ctx.editor.openInspector("group"),
+              },
+            ];
       },
     },
     {
@@ -979,6 +1008,7 @@ export function builtinActions(): Action[] {
     {
       id: "edge.toggle-dlq",
       section: "edge",
+      paletteOnly: true,
       targets: ["edge"],
       get label() {
         return t("menu.deadLetterPath");
@@ -994,6 +1024,7 @@ export function builtinActions(): Action[] {
     {
       id: "edge.consumer-group",
       section: "edge",
+      paletteOnly: true,
       targets: ["edge"],
       get label() {
         return t("menu.setConsumerGroup");

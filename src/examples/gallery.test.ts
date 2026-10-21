@@ -105,13 +105,19 @@ describe("example gallery", () => {
       "recommendations-feature-store",
       "video-on-demand-pipeline",
       "api-route-table",
-      "pool-of-40",
     ]);
+  });
+  it("teaches requests that wait in blocking, timeout, pool and busy-thread order", () => {
+    expect(
+      filterExamples(publicItems, "", "requestsWait")
+        .flatMap((s) => s.items)
+        .map((e) => e.slug),
+    ).toEqual(["blocking-call", "slow-payment-provider", "scale-on-busy-threads"]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
-      "scale-on-busy-threads": ["requestsWait", "partitions", "autoscaling"],
-      "pool-of-40": ["requestsWait", "faultDrills", "routing"],
+      "scale-on-busy-threads": ["requestsWait", "autoscaling"],
+      "slow-payment-provider": ["requestsWait", "faultDrills"],
       "partitions-vs-subscriptions": ["partitions"],
       "shared-worker-pool": ["partitions"],
       "shared-api-quotas": ["rateLimits"],
@@ -145,7 +151,7 @@ describe("example gallery", () => {
   it("publishes only supported, evidence-backed tags and saved simulation ids", async () => {
     for (const e of publicItems) {
       const d = await loadExample(e.slug);
-      expect(e.shows).toEqual(exampleShows(d));
+      expect(e.shows).toEqual(exampleShows(d).filter((tag) => !e.omitShows?.includes(tag)));
       expect(e.shows?.every((id) => exampleFeatures.some((f) => f.id === id))).toBe(true);
       expect(e.simulation).toBe(d.simulations?.[0]?.id);
     }

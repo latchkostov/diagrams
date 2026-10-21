@@ -8,13 +8,13 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "234571bf144807a704dae9e2e6b6deb8b2ccab5c8833ca7b68fe21d5b4a852e6", "bytes": 3761 },
+    "decoded": { "sha256": "4fa1917dbc6abc576569587541592f9d6377ec78480faf8d81e08219e15d9e18", "bytes": 3765 },
     "sameAsFile": true,
     "warned": false
   },
   "exportHtml": {
     "status": 0,
-    "stdout": "<tmp>/export.html (<size>, plays \"Blocking: CPU says all is well\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stdout": "<tmp>/export.html (<size>, plays \"Threads held: CPU says all is well\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
     "stderr": "",
     "payload": {
       "version": 1,
@@ -146,7 +146,7 @@
         "simulations": [
           {
             "id": "blocking",
-            "title": "Blocking: CPU says all is well",
+            "title": "Threads held: CPU says all is well",
             "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
             "seed": 17,
             "scale": 1,

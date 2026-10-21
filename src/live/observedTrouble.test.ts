@@ -136,7 +136,8 @@ describe("trouble seen in playback", () => {
   });
   it("offers Add a timeout when a saved simulation disables the inherited deadline", () => {
     const d = waitingFixture();
-    d.nodes[0].props!.ratePerSec = 100;
+    d.nodes[0].props!.ratePerSec = 120;
+    d.nodes[1].props!.concurrency = 100;
     d.edges[1].props!.caller = { deadlineMs: 600 };
     const effective = simulationEdges(d, {
       id: "unbounded",
@@ -149,12 +150,12 @@ describe("trouble seen in playback", () => {
     expect(observed.find((t) => t.kind === "threads-exhausted")?.action).toEqual({
       kind: "add-timeout",
       edge: "call",
-      deadlineMs: 1000,
+      deadlineMs: 600,
     });
     d.edges[1].props!.caller = {};
     expect(watch(d, 12, (e) => e.setFault({ kind: "slow", node: "partner", factor: 10 }))).toEqual(observed);
   });
-  it("refreshes the timeout action when a link is cut on a paused run", () => {
+  it("keeps Free the thread when a cut call cannot afford a normal reply", () => {
     const d = waitingFixture();
     d.nodes[0].props!.ratePerSec = 100;
     d.groups = ["local", "remote"].map((id) => ({ id, label: id, x: 0, y: 0, width: 100, height: 100 }));
@@ -174,11 +175,12 @@ describe("trouble seen in playback", () => {
     e.setFault({ kind: "link", edge: "call", cut: true });
     expect(
       watcher.observe(realSnapshot(e.snapshot()), d).find((t) => t.kind === "threads-exhausted")?.action.kind,
-    ).toBe("add-timeout");
+    ).toBe("free-thread");
   });
   it("offers a timeout before freeing threads on cut calls, unless a timeout already exists", () => {
     const d = waitingFixture();
-    d.nodes[0].props!.ratePerSec = 100;
+    d.nodes[0].props!.ratePerSec = 120;
+    d.nodes[1].props!.concurrency = 100;
     d.groups = ["local", "remote"].map((id) => ({ id, label: id, x: 0, y: 0, width: 100, height: 100 }));
     d.nodes[1].group = "local";
     d.nodes[2].group = "remote";
@@ -186,7 +188,7 @@ describe("trouble seen in playback", () => {
     expect(troubles.find((t) => t.kind === "threads-exhausted")?.action).toEqual({
       kind: "add-timeout",
       edge: "call",
-      deadlineMs: 1000,
+      deadlineMs: 600,
     });
     d.edges[1].props!.caller = { deadlineMs: 100_000 };
     const bounded = watch(structuredClone(d), 12, (e) => e.setFault({ kind: "link", edge: "call", cut: true }));
@@ -554,4 +556,46 @@ describe("third review", () => {
     expect(trouble?.detail).toContain("dropped on arrival");
     expect(realSnapshot(e.snapshot()).nodes.q.outageDropped).toBe(300);
   });
+});
+
+it("indexes timeout adjacency once instead of materializing all edges for every losing node", () => {
+  const count = 300;
+  const d: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Independent workers",
+    nodes: Array.from({ length: count }, (_, i) => ({
+      id: `worker-${i}`,
+      label: `Worker ${i}`,
+      stencil: "service.go",
+      x: i * 200,
+      y: 0,
+    })),
+    edges: Array.from({ length: count }, (_, i) => ({
+      id: `edge-${i}`,
+      from: `worker-${i}`,
+      to: `worker-${(i + 1) % count}`,
+      kind: "async",
+    })),
+  };
+  const frame = (dropped: number): WatchedFrame => ({
+    time: 0,
+    nodes: Object.fromEntries(d.nodes.map((n) => [n.id, { status: "up", lag: {}, dropped }])),
+  });
+  const watcher = new TroubleWatcher();
+  watcher.observe(frame(0), d); // Compile and cache the shape before counting diagnosis work.
+  let entries = 0;
+  const iterator = Map.prototype[Symbol.iterator];
+  const spy = vi.spyOn(Map.prototype, Symbol.iterator).mockImplementation(function* (this: Map<unknown, unknown>) {
+    for (const entry of iterator.call(this)) {
+      entries++;
+      yield entry;
+    }
+    return undefined;
+  });
+  try {
+    expect(watcher.observe(frame(1), d)).toHaveLength(count);
+    expect(entries).toBeLessThanOrEqual(8 * count);
+  } finally {
+    spy.mockRestore();
+  }
 });

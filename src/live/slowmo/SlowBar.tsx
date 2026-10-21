@@ -14,7 +14,23 @@ const seconds = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(2)} s`;
 export function SlowBar({ slow }: { slow: SlowMotion }) {
   const s = useSyncExternalStore(slow.subscribe, slow.getState, slow.getState);
   const script = s.script;
-  if (!script) return null;
+  if (!script)
+    return s.loading ? (
+      // The script code is still downloading: live is held, and Esc gives it back.
+      <span
+        className="lv-slowmo-chip is-loading"
+        role="status"
+        aria-live="polite"
+        data-testid="slowmo-loading"
+        title="Live is paused until slow motion is ready. Esc goes back to live."
+      >
+        <LiveIcon name="slowmo" size={13} />
+        <span>
+          Loading slow motion…<span className="lv-slowmo-sep"> · </span>
+          <span className="lv-slowmo-paused">Esc to cancel</span>
+        </span>
+      </span>
+    ) : null;
   const total = Math.max(1, script.duration);
   const pct = (ms: number) => `${((ms / total) * 100).toFixed(3)}%`;
   return (

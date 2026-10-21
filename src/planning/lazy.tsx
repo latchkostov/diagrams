@@ -29,5 +29,4 @@ export const AutoscalingFields = lazyComponent(() => loadPlanning().then((m) => 
 export const RouteTableFields = lazyComponent(() => loadPlanning().then((m) => m.RouteTableFields));
 export const TrafficMixFields = lazyComponent(() => loadPlanning().then((m) => m.TrafficMixFields));
 export const EdgeRouteFields = lazyComponent(() => loadPlanning().then((m) => m.EdgeRouteFields));
-export const CallWaitFields = lazyComponent(() => import("./CallWaitFields").then((m) => m.CallWaitFields));
 export const RequestRoutesSection = lazyComponent(() => loadPlanning().then((m) => m.RequestRoutesSection));

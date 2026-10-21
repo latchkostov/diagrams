@@ -21,7 +21,7 @@ test("Connection pool is the same editable field for held and freed threads", as
   await gotoCanvas(page, "blocking-call");
   await waitForStableViewport(page);
   await page.getByTestId("edge-call").dblclick();
-  await page.getByTestId("inspector-section-edge-advanced").click();
+  await page.getByTestId("inspector-section-edge-simulation").click();
   const pool = page.getByTestId("inspector-field-poolConnections");
   await expect(pool).toHaveAccessibleName("Connection pool");
   await pool.fill("40");
@@ -30,7 +30,6 @@ test("Connection pool is the same editable field for held and freed threads", as
   await expect
     .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
     .toMatchObject({ poolConnections: 40 });
-  await page.getByTestId("inspector-section-edge-simulation").click();
   await page.getByTestId("inspector-field-wait").click();
   await page.getByTestId("context-menu-item-non-blocking").click();
   await expect(pool).toHaveValue("40");
@@ -50,8 +49,8 @@ test("HPA offers a modelled busy-thread metric with percent and per-pod targets"
   await page.getByTestId("autoscaling-advanced-toggle").click();
   await page.getByTestId("autoscaling-metric").selectOption("busyThreads");
   await expect(page.getByTestId("autoscaling-metric")).toContainText("Busy threads (modelled custom metric)");
-  await expect(page.getByTestId("autoscaling-target")).toHaveAccessibleName("Busy threads (% of Concurrency)");
-  await page.getByTestId("autoscaling-busy-unit").selectOption("averageValue");
+  await expect(page.getByTestId("autoscaling-target")).toHaveAccessibleName("Busy threads (% of threads per pod)");
+  await page.getByTestId("autoscaling-busy-unit-averageValue").click();
   await expect(page.getByTestId("autoscaling-target")).toHaveAccessibleName("Busy threads per pod");
   await expect
     .poll(async () => (await savedDiagram(page)).nodes[1].props?.autoscaling)
@@ -70,7 +69,7 @@ test("planner offers Scale on busy threads for a waiting majority", async ({ pag
   await pauseClock(page);
   await page.getByTestId("node-caller").dblclick();
   await page.getByTestId("planning-live-details-toggle").click();
-  await expect(page.getByTestId("autoscaling-plan-text")).toContainText("more than half the busy threads are waiting");
+  await expect(page.getByTestId("autoscaling-plan-text")).toContainText("most of its threads are waiting on calls");
   await expect(page.getByTestId("autoscaling-plan-text")).toContainText("Scale on busy threads");
   await expect(page.getByTestId("autoscaling-plan-text")).not.toContainText("Lower the target");
 });

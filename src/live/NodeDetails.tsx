@@ -13,6 +13,7 @@ import { useLive } from "./context";
 import { LatencyReadout } from "./LatencyReadout";
 import { ThreadCeiling } from "./ThreadCeiling";
 import type { BadgeProps } from "./NodeBadges";
+import { nodeOutcome } from "./nodeOutcome";
 
 const doneLabel: Record<SimRole, string> = {
   source: "Sent",
@@ -53,11 +54,10 @@ export function NodeDetails({
     kind: profileOf(node.data.stencil)?.family === "serverless" ? "execution" : "thread",
   });
   const threadBusy = s.threads ? s.threads.working + s.threads.waiting : 0;
-  const callCounts = diagram.edges
-    .filter((e) => e.from === node.id)
-    .map((e) => live.controller.getState().snapshot.edges[e.id]?.calls);
-  const timedOut = callCounts.reduce((sum, c) => sum + (c?.timedOut ?? 0), 0);
-  const late = callCounts.reduce((sum, c) => sum + (c?.late ?? 0), 0);
+  const outcome = nodeOutcome(effective, live.controller.getState().snapshot, node.id);
+  const pools = effective.edges.filter(
+    (e) => e.from === node.id && (e.props?.caller as { poolConnections?: number } | undefined)?.poolConnections,
+  );
   const broker = s.role === "topic" || s.role === "queue" || s.role === "stream";
   const held = broker ? heldWords(s) : null;
   const unread = !!held?.lead;
@@ -187,15 +187,36 @@ export function NodeDetails({
               ? t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })
               : t("threads.unknownPool", { busy: threadBusy, noun: threadNoun })}
           </p>
-          <p>
-            {s.threads.waiting
-              ? t("threads.waiting", {
-                  working: s.threads.working,
-                  count: s.threads.waitingOn[0]?.[1] ?? s.threads.waiting,
-                  name: waitingLabel,
-                })
-              : t("threads.noneWaiting", { count: s.threads.working })}
-          </p>
+          {!pools.length && (
+            <p>
+              {s.threads.waiting
+                ? t("threads.waiting", {
+                    working: s.threads.working,
+                    count: s.threads.waitingOn[0]?.[1] ?? s.threads.waiting,
+                    name: waitingLabel,
+                  })
+                : t("threads.noneWaiting", { count: s.threads.working })}
+            </p>
+          )}
+          {pools.map((e) => {
+            const calls = live.controller.getState().snapshot.edges[e.id]?.calls;
+            const queued = live.controller.queuedCalls(e.id);
+            const caller = e.props?.caller as { poolConnections: number; wait?: string };
+            const values = {
+              working: s.threads?.working ?? 0,
+              count: calls?.inFlight ?? 0,
+              queued,
+              pool: caller.poolConnections,
+              name: diagram.nodes.find((n) => n.id === e.to)?.label ?? e.to,
+            };
+            return (
+              <p key={e.id} data-testid={`pool-detail-${e.id}`}>
+                {caller.wait === "non-blocking"
+                  ? t("threads.poolFreeDetail", values)
+                  : t("threads.poolHeldDetail", values)}
+              </p>
+            );
+          })}
         </div>
       )}
       {s.threads && Number.isFinite(s.threads.slots) && wait && (
@@ -205,13 +226,10 @@ export function NodeDetails({
         />
       )}
       {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
-      {(!!timedOut || !!late) && (
-        <div className="lv-call-outcomes" data-testid={`call-outcomes-${node.id}`}>
-          {!!timedOut && (
-            <p data-testid={`call-timeouts-${node.id}`}>{t("threads.timeoutCount", { count: timedOut })}</p>
-          )}
-          {!!late && <p data-testid={`call-late-${node.id}`}>{t("threads.lateCount", { count: late })}</p>}
-        </div>
+      {outcome && (
+        <p className="lv-call-outcomes" data-testid={`node-outcome-${node.id}`}>
+          {outcome}
+        </p>
       )}
       {!!s.threads?.inFlight && (
         <p>
@@ -257,9 +275,6 @@ export function NodeDetails({
         </p>
       )}
       {cap && cap.level !== "idle" && !unread && <Row label="Capacity" value={cap.text} />}
-      {s.failed > 0 && <Row label="Failed attempts" value={formatCount(s.failed)} bad />}
-      {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}
-      {s.dropped > 0 && <Row label="Dropped" value={formatCount(s.dropped)} bad />}
       {blocked > 0 && <Row label="Blocked by a deny rule" value={formatCount(blocked)} />}
       {rejected > 0 && <Row label={t("admission.rejected")} value={formatCount(rejected)} />}
       {groups && Object.keys(s.lag).length > 1 && (

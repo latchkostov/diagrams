@@ -22,6 +22,8 @@ import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";
 import { useFollowing } from "../watchBridge";
 import { LiveSync } from "./liveSync";
+import { useInteraction } from "../../canvas/interaction";
+import type { ApplyThreadFix } from "../threadFixes";
 export function useLiveDiagramChanges({
   session,
   editor,
@@ -82,6 +84,7 @@ export function useLiveFixes({
   const { slowRef } = spotlight;
   const { showEvents, saveSimulation } = commands;
   const { showCapacity, capacity, openCapacity } = capacityInputs;
+  const interaction = useInteraction();
   /** A node added one gap downstream may land past the view's edge: bring it in, clear of an open panel (as addEntry). */
   const revealAdded = useCallback(
     () => camera.dispatch({ type: "live.added", panel: capacityOpen }),
@@ -126,7 +129,7 @@ export function useLiveFixes({
     session.state.snapshot.nodes,
   );
   const runTroubleAction = useCallback(
-    (action: TroubleAction) => {
+    (action: TroubleAction, label: string, applyFix?: ApplyThreadFix) => {
       if (slowRef.current?.session.active && action.kind !== "events" && action.kind !== "inputs") return;
       if (action.kind === "restore-boundary")
         controller.setFault({ kind: "boundary", boundary: action.boundary, down: false });
@@ -142,16 +145,15 @@ export function useLiveFixes({
           flash(t("liveSession.addedDeadLetter"));
           revealAdded();
         }
-      } else if (action.kind === "free-thread") {
-        if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ wait: "non-blocking" });
-      } else if (action.kind === "add-timeout") {
-        if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ deadlineMs: action.deadlineMs });
+      } else if (action.kind === "free-thread" || action.kind === "add-timeout" || action.kind === "scale-threads") {
+        // The callout's chunk brought the code its button runs (src/live/threadFixes.ts).
+        if (editor && applyFix) applyFix({ editor, controller, interaction }, action, label);
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },
     // Session-owned refs and setters are stable; preserve the original dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded],
+    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded, interaction],
   );
   // Only while editing in live view (never presenting, recording, embedded or in the Lab, heat map or not). With the
   // heat map on, a callout is already there: trouble leads it, unless the plan diagnoses the same lag (troubleLeads).
@@ -181,6 +183,7 @@ export function useLiveFixes({
       (t.action.kind !== "add-consumer" &&
         t.action.kind !== "add-dlq" &&
         t.action.kind !== "free-thread" &&
+        t.action.kind !== "scale-threads" &&
         t.action.kind !== "add-timeout"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */

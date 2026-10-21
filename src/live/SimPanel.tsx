@@ -1279,7 +1279,7 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
           >
             {FIELDS.map((f) => (
               <option key={f.value} value={f.value}>
-                {f.value === "rejected" ? translate("admission.rejected") : f.label}
+                {f.value === "rejected" ? translate("admission.rejectedMetric") : f.label}
               </option>
             ))}
           </select>

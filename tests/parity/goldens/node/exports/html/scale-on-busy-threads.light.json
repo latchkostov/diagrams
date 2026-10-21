@@ -1,12 +1,12 @@
 {
-  "file": { "sha256": "e8f117105d31eccb6b156ef3f4546aaafd4374a2c959c3b5eba49bc534636f55", "bytes": 14993 },
+  "file": { "sha256": "e902b9d99958f5b7fa8e2c59b277c69e8f2c55db703db5230f98e6f95cc70492", "bytes": 14815 },
   "payload": {
     "version": 1,
     "diagram": {
       "format": "diagrams/v2",
       "planning": { "revision": "p3-w1" },
       "title": "Scale on busy threads",
-      "description": "A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.",
+      "description": "CPU stays low while threads wait on a slow partner, so CPU scaling never adds pods. Compare: scale on busy threads (up to 10 pods), or free the thread while waiting. The partner's replies vary by 10%.",
       "nodes": [
         {
           "id": "source",
@@ -125,7 +125,7 @@
       "simulations": [
         {
           "id": "blocking",
-          "title": "Blocking: CPU says all is well",
+          "title": "Threads held: CPU says all is well",
           "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
           "seed": 17,
           "scale": 2,
@@ -153,7 +153,7 @@
         {
           "id": "busy-threads",
           "title": "Scale on busy threads",
-          "description": "Busy threads at 70% of Concurrency: more pods start within ten seconds and the lag drains.",
+          "description": "Scale at 70% of threads per pod: more pods start within ten seconds and the lag drains.",
           "seed": 17,
           "scale": 2,
           "durationMs": 50000,
@@ -169,7 +169,7 @@
           "expectations": [
             {
               "id": "lag",
-              "label": "Applications lag stays below 1,000",
+              "label": "Applications lag ends below 100",
               "metric": { "node": "applications", "field": "backlog" },
               "op": "<",
               "value": 100,
@@ -241,7 +241,7 @@
           "expectations": [
             {
               "id": "lag",
-              "label": "Applications lag stays below 1,000",
+              "label": "Applications lag ends below 100",
               "metric": { "node": "applications", "field": "backlog" },
               "op": "<",
               "value": 100,

@@ -3,6 +3,8 @@ import type { CheckResult } from "../../checks/types";
 import type { CheckRequest, CheckResponse } from "../../checks/worker";
 import type { ScalingPlan } from "../../sim/scalingPlanner";
 import { rememberPlans } from "../../lib/scenarioPlanner";
+import type { ThreadFixRequest } from "../../live/threadFixPlan";
+import type { TroubleAction } from "../../live/observedTrouble";
 
 // Runs the checks for the canvas: in a worker (src/checks/worker.ts) so the main thread only copies the
 // diagram, or, where workers aren't available, by loading the engine (a lazy chunk) and running it here.
@@ -44,6 +46,26 @@ function getWorker(): Worker | null {
 }
 
 const loadEngine = () => import("../../checks/run");
+
+/**
+ * No speculative callout fixes, and no reruns on the UI thread. The caller keeps at most one in flight
+ * (src/live/useObservedTrouble.ts); a failed worker resolves to no fix.
+ */
+export async function threadFixOffThread(threadFix: ThreadFixRequest): Promise<TroubleAction | undefined> {
+  const w = typeof Worker === "function" ? getWorker() : null;
+  if (!w) return;
+  const id = ++seq;
+  try {
+    const response = await new Promise<CheckResponse>((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      // The context's diagram is the request's: one copy crosses to the worker.
+      w.postMessage({ id, diagram: threadFix.context.origin.diagram, threadFix } satisfies CheckRequest);
+    });
+    return "threadFix" in response ? response.threadFix : undefined;
+  } catch {
+    return;
+  }
+}
 
 /** The checks for `diagram`. Rejects only if the engine itself can't load. */
 export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckResult> {

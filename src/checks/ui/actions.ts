@@ -35,6 +35,10 @@ export function applyFix(editor: EditorApi, finding: Finding, option?: string): 
   }
   const diff = editor.applyDiagram(result.diagram, { merge: `check:fix:${++seq}` });
   if (!diff.hasChanges) return false;
+  if (fresh?.scalingPlan?.kind === "busyThreads") {
+    editor.select({ nodeIds: [finding.target] });
+    editor.openInspector("autoscaling-target");
+  }
   const added = diff.added.nodes.map((id) => result.diagram.nodes.find((n) => n.id === id)?.label).filter(Boolean);
   const text = added.length ? `Added ${added.join(", ")}` : `${chosen?.label ?? fresh!.fix!.label}: done`;
   notify(text, {

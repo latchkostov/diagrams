@@ -2483,7 +2483,7 @@ const en = {
   "autoscaling.startingBadge": "Ready: {ready, number} · Starting: {starting, number}",
   "autoscaling.drainingBadge": "Ready: {ready, number} · Draining: {draining, number}",
   "autoscaling.busyName": "Busy threads (modelled custom metric)",
-  "autoscaling.busyTarget": "Busy threads (% of Concurrency)",
+  "autoscaling.busyTarget": "Busy threads (% of threads per pod)",
   "autoscaling.busyAverage": "Busy threads per pod",
   "autoscaling.busyUnit": "Target unit",
   "autoscaling.noPodMetric": "No pod metric",
@@ -2491,8 +2491,70 @@ const en = {
     "Busy threads is a modelled HPA or KEDA metric. ECS custom metrics are unsupported.",
   "autoscaling.scaleBusy": "Scale on busy threads",
   "autoscaling.planBusy":
-    "In “{simulation}”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun confirmed a smaller backlog.",
+    "In “{simulation}”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
   "threads.modelRequired": "Busy-thread scaling needs the Requests that wait model.",
+  "autoscaling.busyHint":
+    "Not built into Kubernetes: your service would publish it (for example through Prometheus). Here the simulator counts threads that are working or waiting on a call.",
+  "autoscaling.perPod": "per pod",
+  "admission.rejectedMetric": "rejected",
+  "threads.simulationOverride": "In this simulation · diagram: {value}",
+  "threads.exhaustedTimeout": "{cause} {name} gave up after {seconds, number} s (504).",
+  "runResult.timeoutLesson":
+    "Payments failed in {seconds, number} s instead of {gatewaySeconds, number} s. {name} kept {free, number} threads free; {status} completed {count, number} order-status requests.",
+  "runResult.stalledLesson":
+    "{name} ran out of threads; {gateway} gave up after {seconds, number} s (504). Order status slowed too: {status} completed {count, number} requests.",
+  "runResult.poolLesson":
+    "{name}: {mode, select, held {threads held while waiting for the pool} other {threads freed while waiting for the pool}}. {status} completed {count, number} order-status requests.",
+  "runResult.busyLesson":
+    "{name}: {mode, select, free {freed threads while waiting} busy {scaled on busy threads} other {scaled on CPU}}; reached {peak, number} pods. {broker} ended with {count, number} waiting.",
+  "threads.addedTimeoutSimulation": "Added a {ms, number} ms timeout to {from} → {to} in “{simulation}”",
+  "threads.addedTimeoutDiagram": "Added a {ms, number} ms timeout to {from} → {to} in the diagram",
+  "threads.lostCount": "{count, plural, one {# message lost} other {# messages lost}}",
+  "threads.fixedSimulation": "{fix} in “{simulation}” · done",
+  "threads.fixedDiagram": "{fix} in the diagram · done",
+  "threads.lossOutcome":
+    "{count, number} lost{timeouts, select, all {, all timed out after {seconds, number} s} some { · {timedOut, number} timed out} other {}}{deadLettered, plural, =0 {} other { · # dead-lettered · {dropped, number} dropped}}",
+  "threads.outcome":
+    "{outcome}{attempts, select, show { · {failed, plural, one {# failed attempt} other {# failed attempts}}} other {}}{late, plural, =0 {} one { · # late reply discarded} other { · # late replies discarded}}",
+  "threads.pillHeldTitle": "{count, number} {from} threads held while waiting for {to}",
+  "threads.pillFreeTitle":
+    "{count, number} calls from {from} to {to} in flight, no thread held · {queued, number} queued for a connection",
+  "threads.pillPoolHeld":
+    "⌛ {count, number} calls · {queued, number} waiting for a connection{timedOut, plural, =0 {} other { · ✕ # timed out}}",
+  "threads.pillPoolFree":
+    "↗ {count, number} of {pool, number} connections · {queued, number} queued{timedOut, plural, =0 {} other { · ✕ # timed out}}",
+  "threads.poolHeldDetail":
+    "{working, number} working · {count, number} waiting on {name} · {queued, number} waiting for a connection (pool of {pool, number})",
+  "threads.poolFreeDetail":
+    "{working, number} working · {count, number} calls to {name} in flight · {queued, number} queued for a connection (pool of {pool, number}); no thread held",
+  "threads.gatewayOutcome": "{count, number} failed: {name} gave up after {seconds, number} s (504 passed to caller)",
+  "trouble.timedOut": "{name} gave up on {count, number} requests after {seconds, number} s (504)",
+  "trouble.timeoutAnnounce": "{name} is timing out requests (504)",
+  "trouble.down": "{name} is down",
+  "trouble.downBroker": "Messages sent to it are dropped until it's back.",
+  "trouble.downService": "Messages sent to it fail until it's back.",
+  "trouble.dropping": "{name} is losing messages: {count} dropped",
+  "trouble.lossAnnounce": "{name} is losing messages",
+  "trouble.outageLoss": "Messages sent to it while it was down were dropped on arrival.",
+  "trouble.noDlq": "They ran out of deliveries, and no dead-letter queue keeps them.",
+  "trouble.noRetry": "Messages that fail here are dropped: nothing retries them.",
+  "trouble.noReader": "Nobody reads {name}",
+  "trouble.kept": "Messages wait in it until a consumer takes them: {count} so far, and rising.",
+  "trouble.lag": "{name} is falling behind: lag {count} and rising",
+  "trouble.lagAnnounce": "{name} is falling behind",
+  "trouble.readers": "{names} {count, plural, one {doesn't} other {don't}} keep up with it.",
+  "trouble.consumers": "Its consumers don't keep up with it.",
+  "trouble.waiting": "Messages wait in {names} until it's back.",
+  "trouble.waitingCount": "Messages wait in {names} until it's back ({count} so far).",
+  "threads.waitHint": "Hold a thread until the reply arrives, or free it so other requests can use it.",
+  "planning.more": "More",
+  "threads.poolCeiling": "Connection pool limits calls to {rate} req/s.",
+  "trouble.restore": "Restore",
+  "trouble.addConsumer": "Add a consumer",
+  "trouble.addDlq": "Add dead-letter queue",
+  "trouble.events": "Show events",
+  "trouble.inputs": "Inputs…",
+  "trouble.dismiss": "Dismiss",
   "autoscaling.cpuName": "CPU",
   "autoscaling.hpaName": "Kubernetes HPA",
   "autoscaling.range": "Replica range · Initial: {initial, number} · Minimum: {min, number} · Maximum: {max, number}",
@@ -2501,7 +2563,7 @@ const en = {
   "autoscaling.cloudReason":
     "{reason, select, alarm {Waiting for the alarm: {periods, number} of {needed, number} periods} step {Step adjustment} rule {Scale rule} flapping {Deferred: scaling in would trigger a scale-out} request {Requests are waiting: adding capacity on demand} default {A metric can't be read: default capacity} cooldown {Waiting for the cooldown} target {Target} tolerance {Within tolerance} missing {No data: keeping capacity} max {Maximum reached} other {Unknown}}",
   "autoscaling.cloudMetric":
-    "{kind, select, cpuRequest {{value}% of the CPU request (target {target}%)} memoryRequest {{value}% of the memory request (target {target}%)} cpuMilli {{value}m CPU per replica (target {target}m)} memoryMiB {{value} MiB memory per replica (target {target} MiB)} backlog {{value} waiting messages (target {target} per worker)} cpu {{value}% of allocated CPU (target {target}%)} memory {{value}% of allocated memory (target {target}%)} busyThreads {{value}% of Concurrency (target {target}%)} busyThreadsPerPod {{value} busy threads per pod (target {target})} concurrency {{value}% of maximum concurrency (target {target}%)} httpRate {{value} HTTP requests/s (target {target} per replica)} albRequestCountPerTarget {{value} requests per task per minute (target {target})} albRequestCount {{value} load balancer requests per minute (threshold {target})} httpQueue {{value} queued requests per instance (threshold {target})} other {{value} (target {target})}}",
+    "{kind, select, cpuRequest {{value}% of the CPU request (target {target}%)} memoryRequest {{value}% of the memory request (target {target}%)} cpuMilli {{value}m CPU per replica (target {target}m)} memoryMiB {{value} MiB memory per replica (target {target} MiB)} backlog {{value} waiting messages (target {target} per worker)} cpu {{value}% of allocated CPU (target {target}%)} memory {{value}% of allocated memory (target {target}%)} busyThreads {{value}% of threads per pod (target {target}%)} busyThreadsPerPod {{value} busy threads per pod (target {target})} concurrency {{value}% of maximum concurrency (target {target}%)} httpRate {{value} HTTP requests/s (target {target} per replica)} albRequestCountPerTarget {{value} requests per task per minute (target {target})} albRequestCount {{value} load balancer requests per minute (threshold {target})} httpQueue {{value} queued requests per instance (threshold {target})} other {{value} (target {target})}}",
   "autoscaling.minCount":
     "{unit, select, tasks {Minimum tasks} instances {Minimum instances} other {Minimum replicas}}",
   "autoscaling.maxCount":
@@ -2870,7 +2932,7 @@ const en = {
   "threads.lateCount": "Late replies discarded: {count, number}",
   "threads.timedOutMetric": "timed out",
   "threads.deadlocked": "Deadlocked: every thread waits on a loop. A timeout breaks the wait.",
-  "examples.paymentTimeoutSummary": "A slow provider: compare waiting forever with a 600 ms timeout",
+  "examples.paymentTimeoutSummary": "A slow provider: compare timeouts and pools while order status keeps working",
   "threads.holdAction": "Hold a thread while waiting",
   "threads.simulation": "Simulation",
   "threads.callAdvanced": "Call settings · Advanced",

@@ -98,9 +98,9 @@ describe("recent-feature showcases", () => {
     expect(runs[2].engine.snapshot().nodes.applications.backlog).toBeLessThan(100);
   });
   it("shows forty payment connections while the DB-only order-status route keeps working", () => {
-    const d = diagram("pool-of-40");
-    expect(exampleMetadata["pool-of-40"].shows).toContain("requestsWait");
-    const runs = d.simulations!.map((s) => createSimulationRun(d, s));
+    const d = diagram("slow-payment-provider");
+    expect(exampleMetadata["slow-payment-provider"].shows).toContain("requestsWait");
+    const runs = d.simulations!.slice(2).map((s) => createSimulationRun(d, s));
     for (const run of runs) run.step(8000);
     const free = runs[0].engine.snapshot(),
       held = runs[1].engine.snapshot();
@@ -126,6 +126,9 @@ describe("recent-feature showcases", () => {
     expect(b.edges.pay.calls!.timedOut).toBeGreaterThan(100);
     expect(b.edges.pay.calls!.late).toBeGreaterThan(0);
     expect(b.edges.route.calls!.timedOut).toBe(0);
+    expect(b.nodes.orders.throughput).toBeGreaterThan(10);
+    expect(b.nodes.orders.processed).toBeGreaterThan(a.nodes.orders.processed);
+    expect(b.routes?.status.completed ?? 0).toBeGreaterThan(100);
     stalled.step(12000);
     bounded.step(12000);
     expect(stalled.engine.snapshot().edges.route.calls!.timedOut).toBeGreaterThan(0);

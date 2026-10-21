@@ -1,12 +1,12 @@
 {
-  "file": { "sha256": "d61863ae63a3db9620cb3cf8dfe7213c57edf3a165fe29384505b01740cb9283", "bytes": 13198 },
+  "file": { "sha256": "ec3b2edba2c4f9353b5a30792e3f0aa2a5aba277817c71013b3efb4d57e13655", "bytes": 13022 },
   "payload": {
     "version": 1,
     "diagram": {
       "format": "diagrams/v2",
       "planning": { "revision": "p3-w1" },
       "title": "Scale on busy threads",
-      "description": "A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.",
+      "description": "CPU stays low while threads wait on a slow partner, so CPU scaling never adds pods. Compare: scale on busy threads (up to 10 pods), or free the thread while waiting. The partner's replies vary by 10%.",
       "nodes": [
         {
           "id": "source",
@@ -142,7 +142,7 @@
           "expectations": [
             {
               "id": "lag",
-              "label": "Applications lag stays below 1,000",
+              "label": "Applications lag ends below 100",
               "metric": { "node": "applications", "field": "backlog" },
               "op": "<",
               "value": 100,

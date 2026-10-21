@@ -13,8 +13,8 @@ export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
       {p.unmeasured && <p>{t("autoscaling.unmeasured")}</p>}
       <p>
         {t("autoscaling.configured", {
-          initial: formatNumber(p.initialCapacity),
-          max: formatNumber(p.maxCapacity),
+          initial: formatNumber(p.initialCapacity, { maximumSignificantDigits: 3 }),
+          max: formatNumber(p.maxCapacity, { maximumSignificantDigits: 3 }),
           startup: formatNumber(p.startupMs / 1000),
         })}
       </p>

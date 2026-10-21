@@ -191,7 +191,7 @@ it.each([false, true])("Live details label busy-thread targets with their units 
     target: average ? 5 : 50,
   };
   const html = renderToStaticMarkup(<ResourceDetails metrics={metrics} />);
-  expect(html).toContain(average ? "10 busy threads per pod (target 5)" : "100% of Concurrency (target 50%)");
+  expect(html).toContain(average ? "10 busy threads per pod (target 5)" : "100% of threads per pod (target 50%)");
   expect(html).not.toContain("Memory target");
   expect(html).not.toContain("Target (MiB)");
 });

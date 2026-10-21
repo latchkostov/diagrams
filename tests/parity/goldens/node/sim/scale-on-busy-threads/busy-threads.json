@@ -5,7 +5,7 @@
     "done": true,
     "scale": 2,
     "multipliers": { "traffic": 1, "capacity": 1 },
-    "expectations": [{ "id": "lag", "label": "Applications lag stays below 1,000", "status": "pass", "value": 0 }],
+    "expectations": [{ "id": "lag", "label": "Applications lag ends below 100", "status": "pass", "value": 0 }],
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "Applications" },
       { "atMs": 40000, "kind": "traffic", "label": "Applications ends" }

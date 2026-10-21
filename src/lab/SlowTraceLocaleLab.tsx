@@ -3,7 +3,7 @@ import { LiveController } from "../live/controller";
 import { TraceCard } from "../live/TraceCard";
 import type { TraceFlow } from "../live/TraceLab";
 import { useSlowTraceCard } from "../live/session/useTraceSpotlight";
-import { buildScript, PACING } from "../live/slowmo/script";
+import { buildScript, frameAt, stepStop, PACING } from "../live/slowmo/script";
 import { SlowMotion } from "../live/slowmo/session";
 import type { SlowMotionView } from "../live/slowmo/useSlowMotion";
 import { stencilRole } from "../stencils/roles";
@@ -16,7 +16,10 @@ export function SlowTraceLocaleLab({ flow }: { flow: TraceFlow }) {
   const [slow] = useState<SlowMotionView>(() => {
     const trace = traceOnce(flow.diagram, { simulation: flow.simulation });
     if (!trace) throw new Error("The slow-motion locale fixture needs a finished trace");
-    const session = new SlowMotion(new LiveController(flow.diagram));
+    const session = new SlowMotion(new LiveController(flow.diagram), {
+      build: () => script,
+      code: { buildScript, frameAt, stepStop },
+    });
     const script = buildScript({
       trace,
       diagram: flow.diagram,

@@ -4,6 +4,8 @@ import { plannerFixture } from "../lab/plannerFixture";
 import type { DiagramFile } from "../model/types";
 import type { AppServiceController, AutoscalingConfig } from "../model/autoscaling";
 import { cloudFixture } from "../lab/cloudFixture";
+import busy from "../examples/scale-on-busy-threads.json";
+import type { VerificationContext } from "./headless";
 import { createEngine, WorkBudgetError } from "./engine";
 
 const plan = (d: DiagramFile) => planScaling(structuredClone(d))[0];
@@ -253,4 +255,111 @@ describe("planner bounds and cache (review round 1)", () => {
     });
     expect(reads[1] / reads[0]).toBeLessThan(10);
   });
+});
+
+it("keeps planner sampling independent of redundant replay-control boundaries", () => {
+  const d = structuredClone(busy) as DiagramFile;
+  const sim = d.simulations![0];
+  sim.durationMs = 10000;
+  sim.timeline = [];
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: Array.from({ length: 99 }, (_, i) => ({ time: (i + 1) * 100, op: { kind: "traffic", on: false } })),
+  };
+  const baseline = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 100000 });
+  expect(planScaling(d, { ticks: 0, runs: 0 }, { remaining: 100000 }, context)).toEqual(baseline);
+});
+
+it("counts a recorded control at the horizon in the planner's last sample", () => {
+  // Review 20261021-141142 P1: 2,000 messages injected at the end of the busy-thread run stay queued.
+  const d = structuredClone(busy) as DiagramFile;
+  const sim = d.simulations![0];
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [{ time: 50_000, op: { kind: "inject", node: "applications", count: 2000 } }],
+  };
+  const [plan] = planScaling({ ...d, simulations: [sim] }, { ticks: 0, runs: 0 }, { remaining: 1_000_000 }, context);
+  const suggestion = plan.suggestions.find((s) => s.verified);
+  expect(suggestion).toBeDefined();
+  expect(suggestion!.verified!.endBacklog).toBeGreaterThanOrEqual(2000);
+});
+
+it("sizes against a Capacity reduction the live run recorded, as against the same reduction in the simulation", () => {
+  // Review 20261021-141142 P2: playback saturates at 2 replicas after Capacity × 0.5; the planner must see that too.
+  const d = structuredClone(busy) as DiagramFile;
+  const caller = d.nodes.find((n) => n.id === "caller")!;
+  const a = caller.props!.autoscaling as AutoscalingConfig;
+  if (a.mode !== "on" || a.controller.kind !== "hpa") throw new Error("Fixture needs an HPA");
+  a.controller.maxReplicas = a.controller.minReplicas = a.controller.initialReplicas = 4;
+  a.controller.settings.metrics[0].source = { kind: "pods", metric: "busyThreads" };
+  const sim = d.simulations![0];
+  const scripted = planScaling(
+    { ...d, simulations: [{ ...sim, multipliers: { capacity: 0.5 } }] },
+    { ticks: 0, runs: 0 },
+    { remaining: 1_000_000 },
+  )[0].suggestions.find((s) => s.node === "caller");
+  expect(scripted).toMatchObject({ kind: "max", verified: expect.anything() });
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [{ time: 0, op: { kind: "configuration", patches: {}, multipliers: { traffic: 1, capacity: 0.5 } } }],
+  };
+  const recorded = planScaling(
+    { ...d, simulations: [sim] },
+    { ticks: 0, runs: 0 },
+    { remaining: 1_000_000 },
+    context,
+  )[0].suggestions.find((s) => s.node === "caller");
+  expect(recorded).toMatchObject({ kind: "max", from: 4, verified: expect.anything() });
+  expect(recorded!.to).toBe(scripted!.to);
+});
+
+it("sizes from decisions made at the Capacity × in force, not one a recorded change replaced", () => {
+  // Review 20261021-150030: Traffic ×6 / Capacity ×2 for 240 s, then a recorded Traffic ×3 / Capacity ×0.5.
+  // The ×2 decision (27 replicas) must not be read at ×0.5 (an authored maximum of 54); 28 already drains it.
+  const d = plannerFixture();
+  const sim = d.simulations![0];
+  sim.durationMs = 480_000;
+  sim.traffic[0].shape = { kind: "constant", ratePerSec: 115 / 3, durationMs: 480_000 };
+  sim.multipliers = { traffic: 6, capacity: 2 };
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [
+      { time: 240_000, op: { kind: "configuration", patches: {}, multipliers: { traffic: 3, capacity: 0.5 } } },
+    ],
+  };
+  const [plan] = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 1_000_000 }, context);
+  const max = plan.suggestions.find((s) => s.kind === "max");
+  // The normalized maximum is applicable and verified: it drains the replay, and it's what the fix writes.
+  expect(max).toMatchObject({ to: 28, verified: { maxed: false, endBacklog: 0 } });
+  expect(max!.fix).toEqual([
+    {
+      node: "worker",
+      props: { autoscaling: expect.objectContaining({ controller: expect.objectContaining({ maxReplicas: 28 }) }) },
+    },
+  ]);
+});
+
+it("keeps each refined peak with the Capacity × it was wanted under", () => {
+  // Review 20261021-153556: Traffic ×1 / Capacity ×0.25, then a recorded Traffic ×10 / Capacity ×1 at 240 s. The
+  // refined peak is wanted at ×1; reading it at the first observation's ×0.25 stopped refinement early at 37.
+  const d = plannerFixture();
+  const sim = d.simulations![0];
+  sim.durationMs = 480_000;
+  sim.traffic[0].shape = { kind: "constant", ratePerSec: 115 / 3, durationMs: 480_000 };
+  sim.multipliers = { traffic: 1, capacity: 0.25 };
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [
+      { time: 240_000, op: { kind: "configuration", patches: {}, multipliers: { traffic: 10, capacity: 1 } } },
+    ],
+  };
+  const [plan] = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 1_000_000 }, context);
+  const max = plan.suggestions.find((s) => s.kind === "max");
+  expect(max).toMatchObject({ to: 44, verified: { maxed: false } });
+  expect(max!.fix).toBeDefined();
 });

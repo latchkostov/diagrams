@@ -182,6 +182,7 @@ interface Delivery {
 }
 interface Work extends ExecutionWork<Group> {
   failureCode?: number;
+  timeoutOrigin?: string;
   attempt?: Attempt<Message>;
   residentWeight?: number;
   /** Owns its preceding thread while awaiting the ordinary continuation phase. */
@@ -273,6 +274,7 @@ interface Node {
   deadLettered: number;
   dropped: number;
   outageDropped: number;
+  timeoutLosses: Map<string, number>;
   /** Stopped by a deny rule on an outgoing connection (on purpose, so never `dropped`). */
   blocked: number;
   rejected: number;
@@ -311,6 +313,7 @@ interface Call extends LogicalCall {
   brokerHeld?: boolean;
 }
 interface Logical {
+  timeoutOrigin?: string;
   timeout?: boolean;
   code?: number;
   id: number;
@@ -709,7 +712,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return out;
   }
 
-  function drop(node: Node, message: Message, reason: string, via?: Edge): void {
+  function drop(node: Node, message: Message, reason: string, via?: Edge, timeoutOrigin?: string): void {
+    if (timeoutOrigin) node.timeoutLosses.set(timeoutOrigin, (node.timeoutLosses.get(timeoutOrigin) ?? 0) + 1);
     node.dropped++;
     if (reason === "node down") node.outageDropped++;
     if (opts.onLoss) {
@@ -1468,6 +1472,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           call: work.message.returnCall,
           ok,
           code,
+          timeoutOrigin: work.timeoutOrigin,
           visualAt: start + Math.max(STEP, edge.travelMs),
         });
       const visible = drawn < maxParticles;
@@ -1970,6 +1975,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (!event.ok) {
           edge!.calls.failed++;
           call.work.failureCode = event.code;
+          call.work.timeoutOrigin = event.timeout ? edge!.id : event.timeoutOrigin;
         }
         releaseCallEdge(call, edge!);
         call.branches.get(edge!.id)!.state = event.timeout ? "timedOut" : event.ok ? "replied" : "failed";
@@ -2102,6 +2108,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         step(work.message, "retry", work.delivery.broker.id, { attempt: work.message.attempts });
       if (retry === "inplace") {
         work.failureCode = undefined;
+        work.timeoutOrigin = undefined;
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.waitRemaining = node.props.retryBackoffMs;
         if (node.props.resources) {
@@ -2137,7 +2144,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       endAdmission(work);
       answer(work, false, work.failureCode);
       if (node.props.admission && node.status !== "down") gone(node, work.message, "end", "processing failed");
-      else drop(node, work.message, node.status === "down" ? "node down" : "processing failed", work.via);
+      else
+        drop(
+          node,
+          work.message,
+          node.status === "down" ? "node down" : "processing failed",
+          work.via,
+          node.status === "down" ? undefined : work.timeoutOrigin,
+        );
     }
   }
 
@@ -3375,6 +3389,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.deadLettered = 0;
       node.dropped = 0;
       node.outageDropped = 0;
+      node.timeoutLosses.clear();
       node.blocked = 0;
       node.rejected = 0;
       node.rejectionReasons = Object.create(null);
@@ -3673,6 +3688,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           deadLettered: 0,
           dropped: 0,
           outageDropped: 0,
+          timeoutLosses: new Map(),
           blocked: 0,
           rejected: 0,
           rejectionReasons: Object.create(null),
@@ -3859,6 +3875,23 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         frame.routes = counts;
       }
       return frame;
+    },
+    timeoutLosses(expected) {
+      return Object.fromEntries(
+        [...nodes].map(([id, node]) => [
+          id,
+          [...node.timeoutLosses].reduce((sum, [edge, count]) => sum + (expected.has(edge) ? count : 0), 0),
+        ]),
+      );
+    },
+    queuedCalls(edgeId: string): number {
+      return faultEdges.get(edgeId)?.poolPending.length ?? 0;
+    },
+    replicaBounds(nodeId) {
+      const a = nodes.get(nodeId)?.props.autoscaling;
+      if (a?.mode !== "on") return undefined;
+      const { min, max } = replicaRange(a.controller, capacityMultiplier);
+      return { min, max, multiplier: capacityMultiplier };
     },
     snapshot(): SimSnapshot {
       const frame = engine.frame();

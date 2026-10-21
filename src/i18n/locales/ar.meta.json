@@ -1934,6 +1934,11 @@
     "autoscaling.invalidPolicy": "97291d57",
     "autoscaling.startingBadge": "24fba85c",
     "autoscaling.drainingBadge": "d0234008",
+    "threads.lostCount": "5ad47ba9",
+    "threads.fixedSimulation": "d219833c",
+    "threads.fixedDiagram": "a1784154",
+    "threads.lossOutcome": "c5afa4e3",
+    "threads.outcome": "b5c3f550",
     "autoscaling.cpuName": "3c2510a9",
     "autoscaling.hpaName": "236307a2",
     "autoscaling.range": "c6cb0c36",
@@ -2016,6 +2021,7 @@
     "staticSkill.back": "5e3e1b73",
     "staticSkill.copy": "658f3664",
     "staticSkill.copied": "8dc21305",
-    "staticSkill.selectCopy": "d4deeedd"
+    "staticSkill.selectCopy": "d4deeedd",
+    "examples.paymentTimeoutSummary": "4c50b7d5"
   }
 }

@@ -6,6 +6,7 @@ import * as simulations from "../sim/simulation";
 import { emptyInputs } from "./capacityModel";
 import { LiveController } from "./controller";
 import { SlowMotion } from "./slowmo/session";
+import { buildScript, frameAt, stepStop } from "./slowmo/script";
 
 const diagram: DiagramFile = {
   format: "diagrams/v2",
@@ -217,6 +218,7 @@ describe("budget recovery requires a rebuild", () => {
     c.setInputs({ ...emptyInputs(), traffic: 10 });
     c.setPlaying(true);
     const slow = new SlowMotion(c, {
+      code: { buildScript, frameAt, stepStop },
       build: () => {
         throw new Error("No trace expected");
       },

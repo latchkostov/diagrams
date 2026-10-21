@@ -4,6 +4,6 @@
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 1142 dropped at shop in “No timeouts”; 1142 dropped at gateway in “No timeouts”; 1968 dropped at shop in “A 600 ms timeout”; 1968 dropped at gateway in “A 600 ms timeout”; 1968 dropped at checkout in “A 600 ms timeout”." }
+    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 1059 dropped at shop in “No timeouts”; 1059 dropped at gateway in “No timeouts”; 1687 dropped at shop in “A 600 ms timeout”; 1687 dropped at gateway in “A 600 ms timeout”; 1687 dropped at checkout in “A 600 ms timeout”; 1156 …" }
   }
 }

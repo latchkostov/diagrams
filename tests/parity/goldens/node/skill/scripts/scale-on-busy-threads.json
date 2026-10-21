@@ -8,13 +8,13 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "d12aecf4ea9bd22742bfc58e7e78630f2a98976b4b3acc0d41851f57f7308637", "bytes": 5107 },
+    "decoded": { "sha256": "fc8cae15b443c04cc0f51dc18f7f7dd2255ea6c24defe0b2cda844a41abcacc6", "bytes": 4929 },
     "sameAsFile": true,
     "warned": false
   },
   "exportHtml": {
     "status": 0,
-    "stdout": "<tmp>/export.html (<size>, plays \"Blocking: CPU says all is well\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stdout": "<tmp>/export.html (<size>, plays \"Threads held: CPU says all is well\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
     "stderr": "",
     "payload": {
       "version": 1,
@@ -22,7 +22,7 @@
         "format": "diagrams/v2",
         "planning": { "revision": "p3-w1" },
         "title": "Scale on busy threads",
-        "description": "A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.",
+        "description": "CPU stays low while threads wait on a slow partner, so CPU scaling never adds pods. Compare: scale on busy threads (up to 10 pods), or free the thread while waiting. The partner's replies vary by 10%.",
         "nodes": [
           {
             "id": "source",
@@ -146,7 +146,7 @@
         "simulations": [
           {
             "id": "blocking",
-            "title": "Blocking: CPU says all is well",
+            "title": "Threads held: CPU says all is well",
             "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
             "seed": 17,
             "scale": 2,
@@ -174,7 +174,7 @@
           {
             "id": "busy-threads",
             "title": "Scale on busy threads",
-            "description": "Busy threads at 70% of Concurrency: more pods start within ten seconds and the lag drains.",
+            "description": "Scale at 70% of threads per pod: more pods start within ten seconds and the lag drains.",
             "seed": 17,
             "scale": 2,
             "durationMs": 50000,
@@ -190,7 +190,7 @@
             "expectations": [
               {
                 "id": "lag",
-                "label": "Applications lag stays below 1,000",
+                "label": "Applications lag ends below 100",
                 "metric": { "node": "applications", "field": "backlog" },
                 "op": "<",
                 "value": 100,
@@ -262,7 +262,7 @@
             "expectations": [
               {
                 "id": "lag",
-                "label": "Applications lag stays below 1,000",
+                "label": "Applications lag ends below 100",
                 "metric": { "node": "applications", "field": "backlog" },
                 "op": "<",
                 "value": 100,

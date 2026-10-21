@@ -197,6 +197,23 @@ select.insp-input {
   padding-right: 58px;
 }
 
+.insp-unit-wrap.has-unit-toggle .insp-input {
+  padding-inline-end: 116px;
+}
+.insp-unit-wrap.has-unit-toggle .insp-seg {
+  position: absolute;
+  inset-inline-end: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  margin: 0;
+}
+.insp-unit-wrap.has-unit-toggle .insp-seg button {
+  flex: none;
+  white-space: nowrap;
+  padding-inline: 8px;
+}
+
 .insp-unit {
   position: absolute;
   right: 9px;

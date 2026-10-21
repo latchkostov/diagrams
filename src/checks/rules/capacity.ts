@@ -2,7 +2,7 @@ import { revisionAtLeast } from "../../model/revisions";
 import { englishAssignmentLabel } from "../../model/brokers";
 import { resolveNodeProps } from "../../sim/defaults";
 import type { DiagramOp } from "../../ai";
-import type { NodeCapacity } from "../../sim/capacity";
+import { analyzeCapacity, type NodeCapacity } from "../../sim/capacity";
 import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
 import { brokerFeeds } from "../../sim/topology";
 import { formatRate, isBroker, type CheckContext } from "../context";
@@ -57,7 +57,35 @@ export const capacity: CheckRule = {
     "A service or broker over 100% at the diagram's own rates has a backlog that only grows. " +
     "Uses Show capacity's analysis at free-play rates (each source's rate), and reports the busiest service or broker.",
   detect(ctx) {
-    const analysis = ctx.capacity();
+    const initial = ctx.capacity();
+    // A sustained-capacity check credits busy-thread scaling up to its configured
+    // maximum. Reuse the normal planner so partition assignments and upstream
+    // brokers receive the same credit, while fixed and CPU-only fleets stay unchanged.
+    const readyReplicas = Object.fromEntries(
+      Object.entries(initial.resolved).flatMap(([id, p]) => {
+        const a = p.autoscaling;
+        const settings = a?.mode === "on" && "settings" in a.controller ? a.controller.settings : undefined;
+        return p.resources &&
+          a?.mode === "on" &&
+          settings &&
+          settings.up.selectPolicy !== "Disabled" &&
+          (settings.up.selectPolicy === "Min"
+            ? settings.up.policies.length > 0 && settings.up.policies.every((policy) => policy.value > 0)
+            : settings.up.policies.some((policy) => policy.value > 0)) &&
+          settings.metrics.some(
+            (m) =>
+              m.source.kind === "pods" &&
+              (m.target.kind === "averageValue" ? p.concurrency : 100) >
+                (m.target.kind === "averageValue" ? m.target.value : m.target.percentOfRequest) *
+                  (1 + settings.tolerance),
+          )
+          ? [[id, a.controller.maxReplicas]]
+          : [];
+      }),
+    );
+    const analysis = Object.keys(readyReplicas).length
+      ? analyzeCapacity(ctx.diagram, ctx.planning(), { readyReplicas })
+      : initial;
     const bindings = bindingValidator(ctx.diagram.nodes, ctx.diagram.edges);
     // Scenario sizing from saved simulations outranks configured steady-state arithmetic for the same node.
     const planned = scalingFindings(ctx);

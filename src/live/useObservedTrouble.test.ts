@@ -1,5 +1,8 @@
 import { expect, it, vi } from "vitest";
 import type { DiagramFile, Simulation } from "../model/types";
+import payment from "../examples/slow-payment-provider.json";
+import type { TroubleAction } from "./observedTrouble";
+import type { ThreadFixRequest } from "./threadFixPlan";
 import { LiveController } from "./controller";
 import { TroubleTracker } from "./useObservedTrouble";
 
@@ -95,4 +98,80 @@ it.each([
   expect(c.snapshot().nodes.worker.dropped).toBe(1);
   expect(tracker.current()).toMatchObject({ kind: "dropping", node: "worker" });
   off();
+});
+
+it.each([0, 0.3])("keeps unrelated losses visible when another request times out (failure rate %s)", (failureRate) => {
+  const d = structuredClone(payment) as DiagramFile;
+  d.nodes.find((n) => n.id === "checkout")!.props!.failureRate = failureRate;
+  const c = new LiveController(d);
+  c.selectSimulation(d.simulations![1]);
+  const tracker = new TroubleTracker(c);
+  const stop = tracker.subscribe(() => {});
+  try {
+    for (let i = 0; i < 200; i++) c.step(100);
+    const st = c.getState();
+    expect(st.snapshot.edges.pay.calls!.timedOut).toBeGreaterThan(0);
+    if (failureRate) {
+      expect(st.snapshot.nodes.checkout.dropped).toBeGreaterThan(c.expectedTimeoutLosses().checkout);
+      expect(tracker.current()).toMatchObject({ kind: "dropping", node: "gateway" });
+      tracker.dismiss(tracker.current()!.key);
+      expect(tracker.current()).toMatchObject({ kind: "dropping", node: "checkout" });
+      expect(tracker.current()!.headline).toContain("losing");
+    } else expect(tracker.current()).toBeUndefined();
+  } finally {
+    stop();
+    c.dispose();
+  }
+});
+
+it("invalidates completed and pending fixes on live configuration changes without a new run", async () => {
+  const d = payment as DiagramFile;
+  const c = new LiveController(d);
+  c.selectSimulation(d.simulations![0]);
+  const pending: { request: ThreadFixRequest; resolve: (fix: TroubleAction | undefined) => void }[] = [];
+  const tracker = new TroubleTracker(c, (request) => new Promise((resolve) => pending.push({ request, resolve })));
+  const stop = tracker.subscribe(() => {});
+  const fix = { kind: "add-timeout" as const, edge: "pay", deadlineMs: 600 };
+  const settle = async () => {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+  try {
+    for (let i = 0; i < 150; i++) c.step(100);
+    expect(pending).toHaveLength(1);
+    const generation = c.getState().generation;
+    c.setNodeProps("checkout", { concurrency: 65 });
+    expect(c.getState().generation).toBe(generation);
+    // Single flight: the newer revision waits for the outstanding request, whose answer is then stale.
+    expect(pending).toHaveLength(1);
+    pending[0].resolve(fix);
+    await settle();
+    expect(tracker.current()?.action.kind).toBe("events");
+    expect(pending).toHaveLength(2);
+    pending[1].resolve(fix);
+    await settle();
+    expect(tracker.current()?.action).toEqual(fix);
+    c.setNodeProps("checkout", { concurrency: 64 });
+    expect(tracker.current()?.action.kind).toBe("events");
+    expect(pending).toHaveLength(3);
+    expect(pending[2].request.context.controls.at(-1)?.op).toMatchObject({
+      kind: "props",
+      patch: { concurrency: 64 },
+    });
+    pending[2].resolve(undefined);
+    await settle();
+    c.setInputs({ rates: {}, props: {}, traffic: 0.1 });
+    expect(c.getState().generation).toBe(generation);
+    expect(pending).toHaveLength(4);
+    // The run's origin keeps the traffic it started with; the change is a control at the time it was made.
+    expect(pending[3].request.context.origin.simulation.multipliers?.traffic ?? 1).toBe(1);
+    expect(pending[3].request.context.controls.at(-1)).toMatchObject({
+      time: c.snapshot().time,
+      op: { kind: "configuration", multipliers: { traffic: 0.1 } },
+    });
+    pending[3].resolve(undefined);
+    await settle();
+  } finally {
+    stop();
+    c.dispose();
+  }
 });

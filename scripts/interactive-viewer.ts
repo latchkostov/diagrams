@@ -114,6 +114,11 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     stub: () => 'export const runChecksOffThread = () => Promise.reject(new Error("No checks in an exported file."));',
   },
   {
+    name: "editor-only callout fixes",
+    path: "/src/live/useObservedTrouble.ts",
+    stub: () => "export const useObservedTrouble = () => ({ trouble: undefined, dismiss() {}, shown() {} });",
+  },
+  {
     name: "the checks count, card and markers",
     path: "/src/canvas/checks/ChecksViews.tsx",
     stub: () =>

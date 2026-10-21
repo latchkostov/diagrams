@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "c91dab87dc0eaa7edcec82edbf748ea2e97e3f6a612783b834b13514ae8a01c5",
-    "bytes": 12621,
+    "sha256": "c7333e27e70ec5a23d3c598dca76309035193c20c7f8ace6e44dff01327b4653",
+    "bytes": 12625,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.database": "generic-database e85b3d97d2e8de44", "generic.external-api": "generic-external-api 8115696d1b46c6c6", "generic.service": "generic-service 6ec0da29f56c9e80", "generic.topic": "generic-topic 7f5daeea368c1577" }
   },
   "readBack": [
@@ -136,7 +136,7 @@
         "simulations": [
           {
             "id": "blocking",
-            "title": "Blocking: CPU says all is well",
+            "title": "Threads held: CPU says all is well",
             "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
             "seed": 17,
             "scale": 1,

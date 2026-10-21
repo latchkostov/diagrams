@@ -216,8 +216,8 @@ export type FocusEvent =
   | { type: "live.key"; key: LiveKey; action: LiveKeyAction }
   /** A pausing note while presenting: its Continue button takes the keyboard. */
   | { type: "narration.waiting"; resume: ElementHandle }
-  /** A floating Live callout went away (dismissed, the trouble over) while focus was inside it. */
-  | { type: "callout.closed"; hadFocus: boolean }
+  /** A Live callout went away; its Undo toast gives focus back after the history commit. */
+  | { type: "callout.closed"; hadFocus: boolean; undo?: true }
   /** A notice containing keyboard focus is about to disappear; hand it to the surviving status. */
   | { type: "notice.closed"; status: ElementHandle }
   /** A Live panel's field should take the cursor once the panel lists it (a new entry point's rate). */
