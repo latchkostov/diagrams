@@ -219,6 +219,21 @@ it("ignores expired timers after success and restores pending deadlines exactly"
   expect(e.snapshot()).toEqual(expected);
 });
 
+it.each(["blocking", "non-blocking"] as const)("discards a late error without counting a %s timeout twice", (mode) => {
+  const d = fixture(mode);
+  d.nodes[2].props!.api = { latencyMs: 250, errorRate: 1 };
+  const e = createEngine();
+  e.load(d);
+  e.inject("source", 1);
+  e.step(170);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ timedOut: 1, failed: 1, late: 0 });
+  e.step(500);
+  expect(e.snapshot().nodes.partner.failed).toBe(1);
+  expect(e.snapshot().nodes.caller.failed).toBe(1);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ timedOut: 1, failed: 1, late: 1, inFlight: 0, held: 0 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
 it("propagates a gateway's 504 upstream and discards its late reply", () => {
   const d = fixture();
   d.nodes.push({ id: "gateway", stencil: "generic.adc", label: "Gateway", x: 0, y: 0 });

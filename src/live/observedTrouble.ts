@@ -6,7 +6,8 @@ import { formatCount } from "./format";
 import { brokerList, waitDetail } from "./capacityModel";
 import { t } from "../i18n";
 import type { NodeSimState } from "../sim/types";
-import { suggestedDeadlineMs } from "../sim/callPolicy";
+import { callPolicy, suggestedDeadlineMs } from "../sim/callPolicy";
+import type { EdgeSimProps } from "../sim/types";
 import { waitingDetails } from "./waitingDetails";
 import type { Fault } from "../model/faults";
 import { resolveNodeProps } from "../sim/defaults";
@@ -166,17 +167,27 @@ function shapeOf(d: DiagramFile): Shape {
   const role = new Map(d.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
   const nodes = new Map(d.nodes.map((n) => [n.id, n]));
   const plan = waitingDetails(d, Object.fromEntries(d.nodes.map((n) => [n.id, n.props ?? {}])));
-  const deadlines = new Map(
-    d.edges.map((e) => [e.id, (e.props?.caller as { deadlineMs?: number } | undefined)?.deadlineMs]),
+  const responses = new Map(
+    Array.from(new Set(d.edges.map((e) => e.to)), (id) => {
+      const target = nodes.get(id);
+      return [
+        id,
+        plan?.nodes.get(id)?.memoryResidenceMs ?? (target ? resolvedTiming(resolveNodeProps(d, target)).workMs : 0),
+      ] as const;
+    }),
   );
+  const deadlines = new Map<string, number | undefined>();
   const suggestions = new Map(
     d.edges.map((e) => {
-      const target = nodes.get(e.to);
-      const wait = plan?.nodes.get(e.to);
-      const response = wait?.memoryResidenceMs ?? (target ? resolvedTiming(resolveNodeProps(d, target)).workMs : 0);
+      deadlines.set(
+        e.id,
+        callPolicy(nodes.get(e.from)?.stencil ?? "", e.props?.caller as EdgeSimProps["caller"]).deadlineMs,
+      );
       return [
         e.id,
-        suggestedDeadlineMs(response + 2 * (typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0)),
+        suggestedDeadlineMs(
+          responses.get(e.to)! + 2 * (typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0),
+        ),
       ];
     }),
   );

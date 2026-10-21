@@ -69,41 +69,87 @@ for (const draft of ["1.5", "-"]) {
       await expect(page.getByTestId("inspector-invalid-deadlineMs")).toBeVisible();
     }
     await field.blur();
-    if (draft === "1.5") await expect(field).toHaveValue("600");
+    if (draft === "1.5") {
+      await expect(field).toHaveValue("600");
+      await expect(field).not.toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByTestId("inspector-invalid-deadlineMs")).toBeHidden();
+    }
     await page.clock.runFor(400);
     expect((await savedDiagram(page)).edges[1].props?.caller).toMatchObject({ deadlineMs: 600 });
   });
 }
 
-test("the callout adds a timeout before offering to free the thread, as one undo step", async ({ page }) => {
+test("an external timeout update replaces invalid feedback with the restored valid value", async ({ page }) => {
   const d = waitingFixture();
-  d.simulations = [
-    {
-      id: "slow",
-      title: "Slow call",
-      durationMs: 20000,
-      traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 100, durationMs: 20000 } }],
-      timeline: [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "partner", factor: 10 } } }],
-    },
-  ];
+  d.edges[1].props = { ...d.edges[1].props, caller: { deadlineMs: 600 } };
+  await page.clock.install();
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "blocking-call",
     d,
   });
-  await page.clock.install();
-  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=slow");
-  await pauseClock(page);
-  await page.getByTestId("live-play").click();
-  await page.clock.runFor(11000);
-  await page.getByTestId("live-play").click();
-  await expect(page.getByTestId("trouble-action")).toHaveText("Add a timeout");
-  await page.getByTestId("trouble-action").click();
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").dblclick();
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  const field = page.getByTestId("inspector-field-deadlineMs");
+  await field.fill("700");
   await page.clock.runFor(400);
-  await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.caller).toMatchObject({ deadlineMs: 1000 });
+  await field.selectText();
+  await field.press("-");
+  await field.blur();
+  await expect(field).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByTestId("inspector-invalid-deadlineMs")).toBeVisible();
   await page.getByTestId("undo-button").click();
   await page.clock.runFor(400);
-  await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.caller).toBeUndefined();
+  await expect(field).toHaveValue("600");
+  await expect(field).not.toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByTestId("inspector-invalid-deadlineMs")).toBeHidden();
 });
+
+for (const disabled of [false, true]) {
+  test(`the callout adds a timeout as one undo step (saved no-timeout override: ${disabled})`, async ({ page }) => {
+    const d = waitingFixture();
+    if (disabled) d.edges[1].props = { ...d.edges[1].props, caller: { deadlineMs: 600 } };
+    d.simulations = [
+      {
+        id: "slow",
+        title: "Slow call",
+        durationMs: 20000,
+        ...(disabled ? { setup: { edges: { call: { caller: { deadlineMs: null } } } } } : {}),
+        traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 100, durationMs: 20000 } }],
+        timeline: [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "partner", factor: 10 } } }],
+      },
+    ];
+    await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+      key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+      d,
+    });
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=slow");
+    await pauseClock(page);
+    await page.getByTestId("live-play").click();
+    await page.clock.runFor(11000);
+    await page.getByTestId("live-play").click();
+    await expect(page.getByTestId("trouble-action")).toHaveText("Add a timeout");
+    await page.getByTestId("trouble-action").click();
+    await page.clock.runFor(400);
+    await expect
+      .poll(async () => {
+        const saved = await savedDiagram(page);
+        return disabled ? saved.simulations?.[0].setup?.edges?.call.caller : saved.edges[1].props?.caller;
+      })
+      .toMatchObject({ deadlineMs: 1000 });
+    await page.getByTestId("undo-button").click();
+    await page.clock.runFor(400);
+    await expect
+      .poll(async () => {
+        const saved = await savedDiagram(page);
+        return disabled ? saved.simulations?.[0].setup?.edges?.call.caller : saved.edges[1].props?.caller;
+      })
+      .toEqual(disabled ? { deadlineMs: null } : undefined);
+    if (disabled) expect((await savedDiagram(page)).edges[1].props?.caller).toEqual({ deadlineMs: 600 });
+  });
+}
 
 for (const simulation of ["no-timeouts", "timeout-600"]) {
   test(`slow payment provider: ${simulation}`, async ({ page }) => {

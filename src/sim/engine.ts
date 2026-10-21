@@ -1944,7 +1944,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ledger.releaseDue(edge.from.id, edge.from.activeMs);
           dispatchCalls(edge);
         }
-        if (!event.ok) edge!.calls.failed++;
         if (!call || call.attempt.outcome || !call.outstanding.delete(edge!.id)) {
           edge!.calls.late++;
           continue;
@@ -1952,6 +1951,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         cancelDeadline(call, edge!);
         if (event.timeout) edge!.calls.timedOut++;
         if (!event.ok) {
+          edge!.calls.failed++;
           call.work.failureCode = event.code;
         }
         releaseCallEdge(call, edge!);

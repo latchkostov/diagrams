@@ -391,9 +391,11 @@ export function SimInput({
   const [invalid, setInvalid] = useState(false);
   const feedback = useId();
   const focused = useRef(false);
-  const badDraft = useRef(false);
   useEffect(() => {
-    if (!focused.current) setDraft(external);
+    if (!focused.current) {
+      setDraft(external);
+      setInvalid(false);
+    }
   }, [external]);
   return (
     <>
@@ -411,16 +413,17 @@ export function SimInput({
             aria-invalid={invalid || undefined}
             aria-describedby={invalid ? feedback : undefined}
             onFocus={() => (focused.current = true)}
-            onBlur={() => {
+            onBlur={(e) => {
               focused.current = false;
-              if (!badDraft.current) setDraft(external);
+              const bad = e.currentTarget.validity.badInput;
+              if (!bad) setDraft(external);
+              setInvalid(bad);
               setOver(false);
             }}
             onChange={(e) => {
               const raw = e.target.value;
               setDraft(raw);
               const bad = field.kind === "number" && e.currentTarget.validity.badInput;
-              badDraft.current = bad;
               const fractional = integer && raw !== "" && !Number.isInteger(Number(raw));
               setInvalid(bad || fractional);
               if (bad || fractional) return;
