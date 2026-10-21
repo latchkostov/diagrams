@@ -9,21 +9,15 @@ import "../styles/interop.css";
 import "../interop/embed/hostEmbed.css";
 import "./viewer/viewer.css";
 import "virtual:viewer-fonts.css";
-import { SettingsProvider } from "../harness/SettingsProvider";
 import { markWorkerUnsupported } from "../live/liveRenderer";
 import { ViewerAdapter } from "./viewer/adapter";
-import { Toaster } from "../interop/ui/Toaster";
 import { BundleApp } from "./viewer/BundleApp";
 
 markWorkerUnsupported();
 const adapter = new ViewerAdapter();
 const root = createRoot(document.getElementById("root")!);
-root.render(
-  <SettingsProvider>
-    <BundleApp adapter={adapter} />
-    <Toaster />
-  </SettingsProvider>,
-);
+declare const __VIEWER_ATTRIBUTION__: "show" | "hide";
+root.render(<BundleApp adapter={adapter} attribution={__VIEWER_ATTRIBUTION__} />);
 
 // A same-frame platform bridge calls this object; no message listener or network/storage transport.
 declare global {

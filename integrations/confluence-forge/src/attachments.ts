@@ -10,10 +10,14 @@ export interface Attachment {
 export const MAX_FILE_BYTES = 8_000_000;
 
 export function readDiagram(text: string) {
-  if (new TextEncoder().encode(text).byteLength > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
+  checkBytes(text);
   const loaded = loadDiagram(text);
   if (!loaded.ok) throw new Error(t("viewerForge.invalid"));
   return loaded.diagram;
+}
+
+function checkBytes(text: string): void {
+  if (new TextEncoder().encode(text).byteLength > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
 }
 
 export async function listAttachments(request: ConfluenceRequest, page: string): Promise<Attachment[]> {
@@ -41,14 +45,48 @@ export async function listAttachments(request: ConfluenceRequest, page: string):
   return attachments;
 }
 
-export async function downloadDiagram(request: ConfluenceRequest, page: string, attachment: string) {
+/** Bound the bridge transfer before requesting bytes, then pin the checked immutable version. */
+export async function downloadDiagramText(
+  request: ConfluenceRequest,
+  page: string,
+  attachment: string,
+): Promise<string> {
+  page = contentId(page);
+  attachment = contentId(attachment);
+  const metadata = await request(`/wiki/api/v2/attachments/${attachment}`);
+  if (!metadata.ok) throw new Error(t("viewerForge.downloadError", { status: metadata.status }));
+  const data = (await metadata.json()) as {
+    id: string;
+    pageId: string;
+    fileSize: number;
+    version?: { number: number };
+  };
+  if (data.fileSize > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
+  if (
+    contentId(data.id) !== attachment ||
+    contentId(data.pageId) !== page ||
+    !Number.isSafeInteger(data.fileSize) ||
+    data.fileSize < 0 ||
+    !Number.isSafeInteger(data.version?.number) ||
+    data.version!.number < 1
+  )
+    throw new Error(t("viewerForge.bridgeError"));
   const response = await request(
-    `/wiki/rest/api/content/${contentId(page)}/child/attachment/${contentId(attachment)}/download`,
+    `/wiki/rest/api/content/${page}/child/attachment/${attachment}/download?version=${data.version!.number}`,
   );
   // Bridge must return bytes after the product redirect. Never fetch a Location/downloadLink in the browser.
   if (!response.ok) throw new Error(t("viewerForge.downloadError", { status: response.status }));
   if (Number(response.headers.get("content-length")) > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
-  return readDiagram(await response.text());
+  const text = await response.text();
+  const bytes = new TextEncoder().encode(text).byteLength;
+  if (bytes > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
+  // Response.text() may strip a UTF-8 BOM; it must never exceed the checked version's size.
+  if (bytes > data.fileSize) throw new Error(t("viewerForge.bridgeError"));
+  return text;
+}
+
+export async function downloadDiagram(request: ConfluenceRequest, page: string, attachment: string) {
+  return readDiagram(await downloadDiagramText(request, page, attachment));
 }
 
 export async function uploadDiagram(

@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { configForStorage, contentId, DEFAULT_CONFIG } from "../../integrations/confluence-forge/src/config";
-import { listAttachments, downloadDiagram, uploadDiagram } from "../../integrations/confluence-forge/src/attachments";
+import {
+  listAttachments,
+  downloadDiagram,
+  downloadDiagramText,
+  uploadDiagram,
+  MAX_FILE_BYTES,
+} from "../../integrations/confluence-forge/src/attachments";
 import { checkManifest, checkBudget } from "../../integrations/confluence-forge/check.mjs";
+import { t } from "../i18n/core";
 import { textFieldsFixture } from "../lab/textFieldsFixture";
 
 describe("Forge configuration is a reference, never a diagram", () => {
@@ -61,14 +68,94 @@ describe("Forge attachment transport", () => {
     expect(request).toHaveBeenCalledTimes(3);
   });
   it("downloads through the reader bridge and makes a private in-memory diagram", async () => {
-    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify(textFieldsFixture)));
+    const text = JSON.stringify(textFieldsFixture);
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          id: "7",
+          pageId: "42",
+          fileSize: new TextEncoder().encode(text).byteLength,
+          version: { number: 3 },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(text));
     expect(await downloadDiagram(request, "42", "7")).toMatchObject({ title: "Fields", private: true });
-    expect(request).toHaveBeenCalledWith("/wiki/rest/api/content/42/child/attachment/7/download");
+    expect(request.mock.calls.map(([path]) => path)).toEqual([
+      "/wiki/api/v2/attachments/7",
+      "/wiki/rest/api/content/42/child/attachment/7/download?version=3",
+    ]);
   });
   it.each([403, 404, 302])("reports denied, missing and unresolved redirect responses (%i)", async (status) => {
     await expect(downloadDiagram(vi.fn().mockResolvedValue(new Response(null, { status })), "42", "7")).rejects.toThrow(
       String(status),
     );
+  });
+  it("rejects oversized metadata before requesting any body", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json({ id: "7", pageId: "42", fileSize: MAX_FILE_BYTES + 1, version: { number: 3 } }),
+      );
+    await expect(downloadDiagramText(request, "42", "7")).rejects.toThrow(t("viewerForge.tooLarge"));
+    expect(request.mock.calls).toEqual([["/wiki/api/v2/attachments/7"]]);
+  });
+  it("downloads the checked version when the current attachment is replaced", async () => {
+    const text = JSON.stringify(textFieldsFixture);
+    const request = vi.fn(async (path: string) => {
+      if (path === "/wiki/api/v2/attachments/7")
+        return Response.json({
+          id: "7",
+          pageId: "42",
+          fileSize: new TextEncoder().encode(text).byteLength,
+          version: { number: 3 },
+        });
+      // Version 4 is a larger replacement. The checked version must still be requested.
+      return new Response(path.endsWith("?version=3") ? text : "x".repeat(MAX_FILE_BYTES + 1));
+    });
+    expect(await downloadDiagramText(request, "42", "7")).toBe(text);
+    expect(request).toHaveBeenLastCalledWith("/wiki/rest/api/content/42/child/attachment/7/download?version=3");
+  });
+  it.each([
+    { id: "8", pageId: "42", fileSize: 1, version: { number: 3 } },
+    { id: "7", pageId: "43", fileSize: 1, version: { number: 3 } },
+    { id: "7", pageId: "42", fileSize: 1, version: { number: 0 } },
+    { id: "7", pageId: "42", fileSize: -1, version: { number: 3 } },
+  ])("rejects inconsistent metadata without downloading: %j", async (metadata) => {
+    const request = vi.fn().mockResolvedValue(Response.json(metadata));
+    await expect(downloadDiagramText(request, "42", "7")).rejects.toThrow();
+    expect(request).toHaveBeenCalledOnce();
+  });
+  it("rejects bytes inconsistent with the checked version", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ id: "7", pageId: "42", fileSize: 1, version: { number: 3 } }))
+      .mockResolvedValueOnce(new Response("{}"));
+    await expect(downloadDiagramText(request, "42", "7")).rejects.toThrow(t("viewerForge.bridgeError"));
+  });
+  it("upload enforces the UTF-8 byte boundary using otherwise valid JSON", async () => {
+    const base = JSON.stringify({ ...textFieldsFixture, description: "" });
+    const remaining = MAX_FILE_BYTES - new TextEncoder().encode(base).byteLength;
+    const atLimit = JSON.stringify({
+      ...textFieldsFixture,
+      description: "\u00e9".repeat(Math.floor(remaining / 2)) + "a".repeat(remaining % 2),
+    });
+    expect(new TextEncoder().encode(atLimit).byteLength).toBe(MAX_FILE_BYTES);
+    const request = vi.fn().mockResolvedValue(Response.json({ id: "9", title: "boundary.livediagram.json" }));
+    await expect(uploadDiagram(request, "42", new File([atLimit], "boundary.livediagram.json"))).resolves.toMatchObject(
+      { id: "9" },
+    );
+    request.mockClear();
+    const above = atLimit + " ";
+    // Exercise both the File.size preflight and the defensive text-byte check.
+    const big = new File([above], "boundary.livediagram.json");
+    const read = vi.spyOn(big, "text");
+    await expect(uploadDiagram(request, "42", big)).rejects.toThrow(t("viewerForge.tooLarge"));
+    expect(read).not.toHaveBeenCalled();
+    const inaccurateSize = new File([above], "boundary.livediagram.json");
+    Object.defineProperty(inaccurateSize, "size", { value: MAX_FILE_BYTES });
+    await expect(uploadDiagram(request, "42", inaccurateSize)).rejects.toThrow(t("viewerForge.tooLarge"));
+    expect(request).not.toHaveBeenCalled();
   });
   it("uploads with multipart data; replace preserves the ID and filename", async () => {
     const request = vi.fn().mockResolvedValue(Response.json({ id: "att7", title: "orders.livediagram.json" }));
@@ -93,7 +180,6 @@ describe("Forge attachment transport", () => {
     for (const file of [
       new File(["{}"], "bad.json"),
       new File(['{"format":"diagrams/v99"}'], "new.livediagram.json"),
-      new File([" ".repeat(8_000_001)], "big.livediagram.json"),
     ]) {
       await expect(uploadDiagram(request, "42", file)).rejects.toThrow();
     }

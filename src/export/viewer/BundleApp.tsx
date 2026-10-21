@@ -5,8 +5,32 @@ import { HostCanvasBridge, ViewerCanvas } from "../../interop/embed/ViewerCanvas
 import { ViewerAdapter } from "./adapter";
 import { ViewerControls } from "./ViewerControls";
 import { t } from "../../i18n";
+import { SettingsProvider } from "../../harness/SettingsProvider";
+import { Toaster } from "../../interop/ui/Toaster";
 
-export function BundleApp({ adapter }: { adapter: ViewerAdapter }) {
+export function BundleApp({
+  adapter,
+  attribution,
+}: {
+  adapter: ViewerAdapter;
+  attribution?: CanvasViewerOptions["attribution"];
+}) {
+  const theme = useSyncExternalStore(adapter.subscribe, adapter.getTheme);
+  return (
+    <SettingsProvider theme={theme}>
+      <BundleContent adapter={adapter} attribution={attribution} />
+      <Toaster />
+    </SettingsProvider>
+  );
+}
+
+function BundleContent({
+  adapter,
+  attribution,
+}: {
+  adapter: ViewerAdapter;
+  attribution?: CanvasViewerOptions["attribution"];
+}) {
   const state = useSyncExternalStore(adapter.subscribe, adapter.getSnapshot);
   if (!state.diagram)
     return (
@@ -14,10 +38,16 @@ export function BundleApp({ adapter }: { adapter: ViewerAdapter }) {
         {state.error ?? t("common.loading")}
       </div>
     );
-  return <BundleDiagram key={state.generation} adapter={adapter} />;
+  return <BundleDiagram key={state.generation} adapter={adapter} attribution={attribution} />;
 }
 
-function BundleDiagram({ adapter }: { adapter: ViewerAdapter }) {
+function BundleDiagram({
+  adapter,
+  attribution,
+}: {
+  adapter: ViewerAdapter;
+  attribution?: CanvasViewerOptions["attribution"];
+}) {
   const { diagram, generation } = adapter.getSnapshot();
   const fitRef = useRef<() => void>(() => {});
   const [live, setLive] = useState(false);
@@ -33,8 +63,9 @@ function BundleDiagram({ adapter }: { adapter: ViewerAdapter }) {
       live: { live: false, sim: null, speed: null, paused: false },
       wheel: false,
       onLive,
+      attribution,
     }),
-    [onLive],
+    [onLive, attribution],
   );
   if (!diagram) return null;
   return (

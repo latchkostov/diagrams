@@ -2,7 +2,7 @@ import "virtual:forge-viewer";
 import { requestConfluence, view } from "@forge/bridge";
 import { t } from "../../../src/i18n/core";
 import { configForStorage, contentId } from "./config";
-import { downloadDiagram } from "./attachments";
+import { downloadDiagramText } from "./attachments";
 import { element, errorMessage, followTheme } from "./dom";
 import "./view.css";
 
@@ -17,7 +17,12 @@ async function main() {
   try {
     const context = await view.getContext();
     const config = configForStorage(context.extension.config);
-    followTheme(config, () => view.theme.enable());
+    const adapter = window.liveDiagramsViewer;
+    followTheme(
+      config,
+      () => view.theme.enable(),
+      (theme) => adapter.setTheme(theme),
+    );
     if (!config.attachmentId) {
       status.textContent = t("viewerForge.configure");
       return;
@@ -28,15 +33,19 @@ async function main() {
     } catch {
       throw new Error(t("viewerForge.pageRequired"));
     }
-    const diagram = await downloadDiagram(requestConfluence, page, config.attachmentId);
-    if (config.simulation && !diagram.simulations?.some((s) => s.id === config.simulation))
-      throw new Error(t("viewerForge.missingSimulation"));
-    const adapter = window.liveDiagramsViewer;
+    const text = await downloadDiagramText(requestConfluence, page, config.attachmentId);
     adapter.on("size", ({ height }) => {
       root.style.height = `${config.height || Math.max(200, Math.min(1600, height))}px`;
     });
     root.style.height = `${config.height || 380}px`;
-    if (!adapter.load(diagram)) throw new Error(t("viewerForge.invalid"));
+    let missingSimulation = false;
+    const off = adapter.on("loaded", ({ simulations }) => {
+      missingSimulation = !!config.simulation && !simulations.some((s) => s.id === config.simulation);
+    });
+    const loaded = adapter.load(text);
+    off();
+    if (!loaded) throw new Error(t("viewerForge.invalid"));
+    if (missingSimulation) throw new Error(t("viewerForge.missingSimulation"));
     root.hidden = false;
     document.body.classList.add("forge-still");
     const play = element("button", "forge-play", t("viewerForge.play"));

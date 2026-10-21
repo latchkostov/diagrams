@@ -89,7 +89,16 @@ async function main() {
       refreshButtons();
     });
     const busy = async (task: () => Promise<void>) => {
+      const focused =
+        document.activeElement instanceof HTMLElement && fields.contains(document.activeElement)
+          ? document.activeElement
+          : null;
+      let movedFocus = false;
+      const onFocus = (event: FocusEvent) => {
+        if (event.target !== document.body) movedFocus = true;
+      };
       fields.disabled = true;
+      document.addEventListener("focusin", onFocus);
       status.setAttribute("role", "status");
       status.textContent = t("viewerForge.loading");
       try {
@@ -101,6 +110,8 @@ async function main() {
       } finally {
         fields.disabled = false;
         refreshButtons();
+        document.removeEventListener("focusin", onFocus);
+        if (!movedFocus && focused && document.activeElement === document.body) focused.focus();
       }
     };
     const readSelection = async (simulation = "") => {

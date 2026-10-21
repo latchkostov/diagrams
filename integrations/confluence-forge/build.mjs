@@ -8,4 +8,4 @@ const root = resolve(app, "../..");
 const {
   module: { buildForge },
 } = await runnerImport(resolve(app, "build.ts"), { root, configFile: false });
-await buildForge(root, process.argv.includes("--fake"));
+await buildForge(root, process.argv.includes("--fake"), process.env.FORGE_TEST_WORKER);

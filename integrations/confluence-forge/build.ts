@@ -6,22 +6,17 @@ import { i18n } from "../../scripts/i18n-plugin";
 import { checkManifest, checkBudget } from "./check.mjs";
 
 /** Offline packaging. The fake bridge can only be built into tests/.output, never deployable resources. */
-export async function buildForge(root: string, fake = false): Promise<void> {
+export async function buildForge(root: string, fake = false, testWorker?: string): Promise<void> {
   const app = resolve(root, "integrations/confluence-forge");
   checkManifest(readFileSync(resolve(app, "manifest.yml"), "utf8"));
-  const out = fake ? resolve(root, "tests/.output/confluence-forge") : resolve(app, "dist");
-  const viewer = await buildViewerBundle(root, [
-    {
-      name: "forge-no-outbound-attribution",
-      enforce: "pre",
-      transform(code, id) {
-        if (!id.replaceAll("\\", "/").endsWith("/src/canvas/CanvasView.tsx")) return;
-        const marker = 'attributionPosition="bottom-right"';
-        if (!code.includes(marker)) this.error("Canvas attribution changed; review Forge's no-outbound-link policy.");
-        return code.replace(marker, "proOptions={{ hideAttribution: true }}");
-      },
-    },
-  ]);
+  if (testWorker !== undefined && !/^\d+$/.test(testWorker)) throw new Error("Invalid Forge test worker");
+  const out =
+    testWorker !== undefined
+      ? resolve(root, `tests/.output/confluence-forge-${testWorker}/${fake ? "fake" : "real"}`)
+      : fake
+        ? resolve(root, "tests/.output/confluence-forge")
+        : resolve(app, "dist");
+  const viewer = await buildViewerBundle(root, { attribution: "hide" });
   const viewerEntry = (JSON.parse(String(viewer.get("manifest.json"))) as { entry: string }).entry;
   const prepared = new Map<string, string | Uint8Array>();
   for (const surface of ["view", "config"]) {

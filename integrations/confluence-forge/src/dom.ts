@@ -16,17 +16,23 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : t("viewerForge.bridgeError");
 }
 
-export function followTheme(config: MacroConfig, enable: () => Promise<void>): void {
+export function followTheme(
+  config: MacroConfig,
+  enable: () => Promise<void>,
+  setTheme: (theme: "light" | "dark") => void = (theme) => {
+    document.documentElement.dataset.theme = theme;
+  },
+): void {
   const root = document.documentElement;
   const update = () => {
     const host = root.dataset.colorMode;
     const theme = config.theme === "auto" ? (host === "dark" ? "dark" : "light") : config.theme;
-    if (root.dataset.theme !== theme) root.dataset.theme = theme;
+    setTheme(theme);
   };
   update();
   // Forge injects data-color-mode and updates it when the reader changes Confluence's theme.
   const observer = new MutationObserver(update);
-  observer.observe(root, { attributes: true, attributeFilter: ["data-color-mode", "data-theme"] });
+  observer.observe(root, { attributes: true, attributeFilter: ["data-color-mode"] });
   void enable()
     .then(update)
     .catch(() => {
