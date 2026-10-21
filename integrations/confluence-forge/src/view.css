@@ -11,6 +11,11 @@ body {
   flex-direction: column;
 }
 header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   padding: 8px 12px;
 }
 header:empty {
@@ -19,6 +24,15 @@ header:empty {
 #root {
   flex: none;
   width: 100%;
+}
+.forge-modal,
+.forge-modal body {
+  height: 100%;
+  overflow: hidden;
+}
+.forge-modal #root {
+  flex: 1;
+  min-height: 0;
 }
 .ix-embed.viewer-bundle {
   position: relative;

@@ -27,7 +27,8 @@ describes administrator access, parameters and version-specific Velocity restric
 
 Export a **Diagram file** from Live Diagrams, attach it to the page, then insert **Live Diagram**.
 Use the attachment's download URL for **Diagram source**, for example
-`/confluence/download/attachments/12345/order-flow.livediagram.json` (retain your context path).
+`/confluence/download/attachments/12345/order-flow.diagram.json` (retain your context path).
+Older `.livediagram.json` files are also accepted.
 Absolute URLs must have the same origin as the page. The host fetches with its existing session;
 readers still need permission to download the attachment. Do not use a share link or public URL.
 

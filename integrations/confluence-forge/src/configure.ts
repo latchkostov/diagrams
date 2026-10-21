@@ -1,7 +1,7 @@
 import { requestConfluence, view } from "@forge/bridge";
 import { t } from "../../../src/i18n/core";
 import { configForStorage, contentId } from "./config";
-import { downloadDiagram, listAttachments, uploadDiagram, type Attachment } from "./attachments";
+import { DIAGRAM_FILE_ACCEPT, downloadDiagram, listAttachments, uploadDiagram, type Attachment } from "./attachments";
 import { element, errorMessage, followTheme } from "./dom";
 import "../../../src/styles/tokens.css";
 import "./configure.css";
@@ -51,6 +51,10 @@ async function main() {
       height.add(new Option(t("viewerForge.heightPixels", { height: value }), String(value)));
     height.value = String(config.height);
     label(t("viewerForge.height"), height);
+    const heightHelp = element("p", "forge-height-help", t("viewerForge.heightHelp"));
+    heightHelp.id = "forge-height-help";
+    height.setAttribute("aria-describedby", heightHelp.id);
+    fields.append(heightHelp);
     const theme = element("select", "forge-theme");
     theme.add(new Option(t("viewerForge.autoTheme"), "auto"));
     theme.add(new Option(t("viewerForge.light"), "light"));
@@ -59,7 +63,7 @@ async function main() {
     label(t("viewerForge.theme"), theme);
     const file = element("input", "forge-file");
     file.type = "file";
-    file.accept = ".livediagram.json,application/json";
+    file.accept = DIAGRAM_FILE_ACCEPT;
     label(t("viewerForge.file"), file);
     const help = element("p", "forge-upload-help", t("viewerForge.uploadHelp"));
     fields.append(help);

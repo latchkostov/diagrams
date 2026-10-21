@@ -12,7 +12,7 @@
 const en = {
   "viewerForge.play": "Play diagram",
   "viewerForge.loading": "Loading the page attachment…",
-  "viewerForge.configure": "Edit this macro to choose a .livediagram.json attachment on this page.",
+  "viewerForge.configure": "Edit this macro to choose a .diagram.json attachment on this page.",
   "viewerForge.pageRequired": "Publish this page first, then insert Live Diagram and choose an attachment.",
   "viewerForge.downloadError":
     "The attachment could not be downloaded ({status}). You may not have permission, or it may have been removed. Ask a page editor to check the attachment and app access.",
@@ -24,12 +24,12 @@ const en = {
   "viewerForge.missingSimulation":
     "The selected simulation is no longer in this attachment. Edit the macro to choose another simulation or Free play.",
   "viewerForge.attachment": "Page attachment",
-  "viewerForge.choose": "Choose a .livediagram.json attachment…",
+  "viewerForge.choose": "Choose a .diagram.json attachment…",
   "viewerForge.upload": "Upload a new attachment",
   "viewerForge.replace": "Replace selected attachment",
   "viewerForge.uploadHelp":
     "Uploads are saved to the page immediately, even if you cancel this configuration. Replacing creates a new attachment version. Restore earlier versions in Confluence’s attachment history.",
-  "viewerForge.file": "Diagram file (.livediagram.json)",
+  "viewerForge.file": "Diagram file (.diagram.json)",
   "viewerForge.uploaded": "Attachment saved to the page.",
   "viewerForge.uploadError":
     "Confluence could not save the attachment ({status}). Check that you can edit this page and add attachments.",
@@ -37,6 +37,11 @@ const en = {
   "viewerForge.freePlay": "Free play",
   "viewerForge.height": "Height",
   "viewerForge.autoHeight": "Automatic",
+  "viewerForge.heightHelp":
+    "Automatic fits the diagram to the column width, between 480 and 900 px. Fixed heights stay fixed.",
+  "viewerForge.maximise": "Maximise diagram",
+  "viewerForge.close": "Close diagram",
+  "viewerForge.modalError": "Confluence could not maximise the diagram. Try again.",
   "viewerForge.heightPixels": "{height} px",
   "viewerForge.theme": "Theme",
   "viewerForge.autoTheme": "Follow Confluence",
@@ -45,7 +50,7 @@ const en = {
   "viewerForge.save": "Save",
   "viewerForge.cancel": "Cancel",
   "viewerForge.saveError": "Confluence could not save the macro settings. Try again.",
-  "viewerForge.invalidFilename": "Choose a file whose name ends in .livediagram.json.",
+  "viewerForge.invalidFilename": "Choose a .diagram.json file. Older .livediagram.json files are also accepted.",
   "node.openDocumentation": "Open documentation",
   "latency.heading": "Async latency",
   "latency.p50": "p50 {duration}",

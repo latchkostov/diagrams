@@ -334,6 +334,8 @@ use a host with HTTP security headers for sensitive deployments.
 
 ## Confluence Data Center
 
+Use the native `.diagram.json` export for attachments; older `.livediagram.json` files are also accepted.
+
 Install the [user-macro recipe](../deploy/self-host/confluence-dc/README.md) to render an attachment or
 inline Diagram file JSON using your self-hosted `<live-diagram>` component. The Confluence page supplies
 the data with its own session and permissions; the viewer holds it only in memory. No public diagram URL

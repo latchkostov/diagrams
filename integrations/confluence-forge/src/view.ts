@@ -1,9 +1,10 @@
 import "virtual:forge-viewer";
-import { requestConfluence, view } from "@forge/bridge";
+import { Modal, requestConfluence, view } from "@forge/bridge";
 import { t } from "../../../src/i18n/core";
 import { configForStorage, contentId } from "./config";
 import { downloadDiagramText } from "./attachments";
 import { element, errorMessage, followTheme } from "./dom";
+import { macroHeight } from "./height";
 import "./view.css";
 
 async function main() {
@@ -16,7 +17,27 @@ async function main() {
   root.hidden = true;
   try {
     const context = await view.getContext();
-    const config = configForStorage(context.extension.config);
+    const modal = context.extension.modal as { pageId?: unknown; config?: unknown } | undefined;
+    const config = configForStorage(modal ? modal.config : context.extension.config);
+    if (modal) {
+      document.documentElement.classList.add("forge-modal");
+      // Available even if loading or validating the attachment fails.
+      const close = element("button", "forge-close", t("viewerForge.close"));
+      close.type = "button";
+      const dismiss = () =>
+        void view.close().catch(() => {
+          status.setAttribute("role", "alert");
+          status.textContent = t("viewerForge.bridgeError");
+          header.append(status);
+        });
+      close.addEventListener("click", dismiss);
+      window.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || event.defaultPrevented) return;
+        event.preventDefault();
+        dismiss();
+      });
+      header.append(close);
+    }
     const adapter = window.liveDiagramsViewer;
     followTheme(
       config,
@@ -29,15 +50,21 @@ async function main() {
     }
     let page: string;
     try {
-      page = contentId(context.extension.content?.id);
+      page = contentId(modal ? modal.pageId : context.extension.content?.id);
     } catch {
       throw new Error(t("viewerForge.pageRequired"));
     }
     const text = await downloadDiagramText(requestConfluence, page, config.attachmentId);
-    adapter.on("size", ({ height }) => {
-      root.style.height = `${config.height || Math.max(200, Math.min(1600, height))}px`;
-    });
-    root.style.height = `${config.height || 380}px`;
+    if (!modal) {
+      const resize = (fitted?: number) => {
+        const height = `${macroHeight(config.height, fitted)}px`;
+        // Forge observes document content to resize the iframe (no view.resize in bridge 7.2).
+        // Avoid even redundant writes when a host or viewer repeats its size report.
+        if (root.style.height !== height) root.style.height = height;
+      };
+      adapter.on("size", ({ height }) => resize(height));
+      resize();
+    }
     let missingSimulation = false;
     const off = adapter.on("loaded", ({ simulations }) => {
       missingSimulation = !!config.simulation && !simulations.some((s) => s.id === config.simulation);
@@ -56,7 +83,39 @@ async function main() {
       play.hidden = true;
     });
     status.remove();
-    header.append(play);
+    header.prepend(play);
+    if (!modal) {
+      const expand = element("button", "forge-maximise", t("viewerForge.maximise"));
+      expand.type = "button";
+      let open = false;
+      expand.addEventListener("click", () => {
+        if (open) return;
+        open = true;
+        expand.disabled = true;
+        status.remove();
+        adapter.stop();
+        void new Modal({
+          resource: "diagram-view",
+          size: "max",
+          context: { pageId: page, config },
+          closeOnEscape: true,
+          onClose: () => {
+            open = false;
+            expand.disabled = false;
+            expand.focus();
+          },
+        })
+          .open()
+          .catch(() => {
+            open = false;
+            expand.disabled = false;
+            status.setAttribute("role", "alert");
+            status.textContent = t("viewerForge.modalError");
+            header.append(status);
+          });
+      });
+      header.append(expand);
+    }
   } catch (error) {
     root.hidden = true;
     status.setAttribute("role", "alert");
