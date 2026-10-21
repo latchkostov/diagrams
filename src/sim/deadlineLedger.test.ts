@@ -84,6 +84,8 @@ it.each([1, 3, 10])(
     expect(engine.snapshot().nodes.caller.failed).toBe(0);
     expect(engine.snapshot().edges.call.calls).toMatchObject({ timedOut: 1, late: 1 });
     const pool = [...state.ledger.reservations.values()].find((reservation) => reservation.scope === "pool");
+    // Today's sampled hold; this changes with the cohort design in
+    // docs/backlog/2026-10-20-deadline-queued-cohorts.md.
     if (scale > 1) expect(pool).toMatchObject({ heldMs: 103, weight: 1, represented: scale });
     engine.setScale(1);
     engine.setNodeStatus("caller", "up");

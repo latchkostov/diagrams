@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { beforeAll, expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";
@@ -68,31 +68,66 @@ it("does not dispatch pool-queued requests after their deadline", () => {
   expect(s.inSystem).toBe(0);
 });
 
-it("cleans expired queued branches while sampled pool residence continues", () => {
+function queuedDeadlineRun(scale: number) {
   const d = fixture("non-blocking", 600);
   d.nodes[1].props!.concurrency = 100;
   d.edges[1].props!.caller = { wait: "non-blocking", poolConnections: 1, deadlineMs: 600, replyMs: 10 };
-  const e = createEngine({ scale: 10, maxParticles: 0 });
+  const dispatched = new Map<number, number>();
+  const e = createEngine({
+    scale,
+    maxParticles: 0,
+    verifyLedger({ ledger }) {
+      for (const lease of ledger.reservations.values()) {
+        if (lease.scope === "pool" && lease.edge === "call") dispatched.set(lease.id, lease.weight);
+      }
+    },
+  });
+  const advance = (ms: number) => {
+    for (let elapsed = 0; elapsed < ms; elapsed += 10) e.step(10);
+  };
   e.load(d);
-  e.inject("source", 2);
-  e.step(50);
+  e.inject("source", 20 / scale);
+  advance(50);
   const queued = e.checkpoint();
-  e.step(950);
-  expect(e.snapshot().edges.call.calls).toMatchObject({ timedOut: 1, late: 0 });
-  expect(e.snapshot().edges.call.delivered).toBe(1);
-  expect(e.snapshot().inSystem).toBe(0);
+  advance(950);
   const expired = e.snapshot();
   e.restore(queued);
-  e.step(950);
+  advance(950);
   expect(e.snapshot()).toEqual(expired);
+  expect(expired.inSystem).toBe(0);
   const checkpoint = e.checkpoint();
-  e.step(3000);
+  advance(3000);
   const expected = e.snapshot();
   expect(expected.edges.call.calls!.inFlight).toBe(0);
-  expect(expected.edges.call.delivered).toBe(1);
+  expect(expected.edges.call.delivered).toBe(expired.edges.call.delivered);
   e.restore(checkpoint);
-  e.step(3000);
+  advance(3000);
   expect(e.snapshot()).toEqual(expected);
+  const real = realSnapshot(expected);
+  return {
+    processed: real.nodes.partner.processed,
+    timedOut: real.edges.call.calls!.timedOut,
+    late: real.edges.call.calls!.late,
+    delivered: real.edges.call.delivered,
+    dispatched: [...dispatched.values()].reduce((sum, weight) => sum + weight, 0),
+  };
+}
+
+let queuedDeadlineRuns: ReturnType<typeof queuedDeadlineRun>[];
+beforeAll(() => {
+  // Keep simulation, replay and cleanup checks outside it.fails: a crash must fail the suite.
+  queuedDeadlineRuns = [1, 10].map(queuedDeadlineRun);
+});
+
+it("queued calls that time out are never sent at scale 1", () => {
+  // Owner decision 2026-10-20: only already-sent work can reply late.
+  expect(queuedDeadlineRuns[0]).toEqual({ processed: 3, timedOut: 18, late: 1, delivered: 3, dispatched: 3 });
+});
+
+// Sampling accuracy: docs/backlog/2026-10-20-deadline-queued-cohorts.md
+it.fails("I1 known gap: queued deadline calls at scale 10 equal scale 1", () => {
+  // Only the accuracy assertion can satisfy this expected failure.
+  expect(queuedDeadlineRuns[1]).toEqual(queuedDeadlineRuns[0]);
 });
 
 it("releases a cut sibling's pool after fail-fast and drains after restoring the link", () => {
