@@ -9,7 +9,7 @@
           "rule": "capacity",
           "severity": "warning",
           "title": "Decision service: scenario sizing",
-          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "message": "In “Threads held: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
           "targets": ["caller"],
           "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
         }
@@ -28,7 +28,7 @@
           "rule": "capacity",
           "severity": "warning",
           "title": "Decision service: scenario sizing",
-          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "message": "In “Threads held: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
           "targets": ["caller"],
           "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
         }
@@ -47,7 +47,7 @@
           "rule": "capacity",
           "severity": "warning",
           "title": "Decision service: scenario sizing",
-          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "message": "In “Threads held: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
           "targets": ["caller"],
           "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
         }
@@ -66,7 +66,7 @@
           "rule": "capacity",
           "severity": "warning",
           "title": "Decision service: scenario sizing",
-          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "message": "In “Threads held: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
           "targets": ["caller"],
           "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
         }

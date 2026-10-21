@@ -189,16 +189,22 @@ test.describe("relationships", () => {
     page,
     consoleErrors,
   }) => {
-    // A flow: Relationship, Dead-letter path and consumer group are there; the old toggle is gone.
+    // A flow: Relationship and Simulation settings are there; the old toggle is gone.
     await page.getByTestId("edge-label-api-to-sb").click({ button: "right" });
     await expect(menuItem(page, "edge.relationship")).toBeVisible();
     await expect(menuItem(page, "edge.toggle-kind")).toHaveCount(0);
-    await expect(menuItem(page, "edge.toggle-dlq")).toBeVisible();
+    await expect(menuItem(page, "edge.simulation")).toBeVisible();
+    await expect(menuItem(page, "edge.toggle-dlq")).toHaveCount(0);
     const flowRows = await page
       .getByTestId("context-menu")
       .getByTestId(/^context-menu-item-/)
       .count();
     expect(flowRows).toBeLessThanOrEqual(12);
+    await menuItem(page, "edge.simulation").click();
+    await expect(menuItem(page, "edge.toggle-dlq")).toBeVisible();
+    await expect(menuItem(page, "edge.consumer-group")).toBeVisible();
+    await page.getByTestId("context-menu-sub").press("Escape");
+    await expect(page.getByTestId("context-menu")).toBeFocused();
     await menuItem(page, "edge.relationship").click();
     await expect(menuItem(page, "relation:message")).toHaveAttribute("aria-checked", "true");
     for (const r of ["request", "config", "secret", "identity", "telemetry", "deploy", "depends"])

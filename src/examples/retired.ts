@@ -11,6 +11,10 @@ export interface RetiredExample {
 }
 
 export const RETIRED_EXAMPLES: Readonly<Record<string, RetiredExample>> = {
+  "pool-of-40": {
+    replacement: "slow-payment-provider",
+    simulations: { "pool-40": "pool-40", "blocking-pool": "blocking-pool" },
+  },
   "multi-region-active-active": {
     replacement: "cell-based-bookings",
     simulations: { failover: "region-evacuation", "both-write": "region-evacuation" },

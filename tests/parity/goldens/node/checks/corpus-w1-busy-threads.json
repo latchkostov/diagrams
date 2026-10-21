@@ -82,7 +82,7 @@
       "results": [{ "i": 0, "op": "update", "id": "caller" }],
       "nodes": 6,
       "edges": 5,
-      "findingsAfter": ["capacity:caller"]
+      "findingsAfter": []
     }
   }
 }

@@ -4,7 +4,7 @@ import type { AutoscalingConfig, ExecutableController } from "../model/autoscali
 import { replicaRange } from "../model/autoscaling";
 import { stencilRole } from "../stencils/roles";
 import { brokerRole } from "../model/brokerRoutes";
-import { createSimulationRun, estimateTotalMs } from "./simulation";
+import { estimateTotalMs } from "./simulation";
 import { FaultTimelineError } from "../model/faultRuntime";
 import { resolveMultiplier, resolveScale } from "./units";
 import { resolveNodeProps } from "./defaults";
@@ -13,6 +13,7 @@ import { scalingMetricKind } from "./scalingMetric";
 import { WorkBudgetError } from "./engine";
 import { LifecycleBudgetError, resourceBudgetExceeded } from "../model/resourceBudget";
 import { simulationContent } from "./simulationContent";
+import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "./headless";
 import { offThreadPlans } from "../lib/scenarioPlanner";
 
 // Scenario sizing (docs/SIMULATION.md § A3 planner). For each saved simulation, play it headless with the same
@@ -94,6 +95,9 @@ interface Observation {
   processed: number;
   /** The scaler's own desired count when the startup backlog peaked. */
   startupDesired?: number;
+  /** The run's Capacity × when `wanted` and `startupDesired` were seen (a replayed control can change it). */
+  wantedMultiplier?: number;
+  startupMultiplier?: number;
   /** The simulation's backlog goals about this node or its inputs that failed. */
   goalsFailed: string[];
   working?: number;
@@ -161,66 +165,6 @@ function ownsPolicy(sim: Simulation, node: string): boolean {
     )
   );
 }
-/**
- * What one arrival at each node can become: itself, plus what every connection it sends a copy down becomes
- * (an upper bound: a route that picks one connection still counts them all). Fan-out compounds through every stage.
- * A connection back into the path counts nothing here: the run's message budget bounds cycles.
- */
-function downstream(d: DiagramFile): (id: string) => number {
-  const out = new Map<string, string[]>();
-  for (const e of d.edges) {
-    if (e.relation && e.relation !== "flow") continue;
-    const list = out.get(e.from);
-    if (list) list.push(e.to);
-    else out.set(e.from, [e.to]);
-  }
-  const memo = new Map<string, number>();
-  const visiting = new Set<string>();
-  return (root) => {
-    if (memo.has(root)) return memo.get(root)!;
-    // Iterative post-order: a long chain never deepens the call stack.
-    const stack: [string, number][] = [[root, 0]];
-    visiting.add(root);
-    while (stack.length) {
-      const top = stack[stack.length - 1];
-      const next = out.get(top[0]) ?? [];
-      if (top[1] < next.length) {
-        const child = next[top[1]++];
-        if (!memo.has(child) && !visiting.has(child)) {
-          visiting.add(child);
-          stack.push([child, 0]);
-        }
-      } else {
-        stack.pop();
-        visiting.delete(top[0]);
-        let sum = 1;
-        for (const child of next) sum += memo.get(child) ?? 0;
-        memo.set(top[0], Math.min(sum, 1e15));
-      }
-    }
-    return memo.get(root)!;
-  };
-}
-function startWork(d: DiagramFile, sim: Simulation): number {
-  const reach = downstream(d);
-  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0);
-  let sent = 0;
-  for (const p of sim.traffic) {
-    const s = p.shape;
-    sent +=
-      reach(p.node) *
-      (s.kind === "burst"
-        ? n(s.count)
-        : s.kind === "constant"
-          ? (n(s.ratePerSec) * n(s.durationMs)) / 1000
-          : s.kind === "spike"
-            ? (Math.max(n(s.baseRate), n(s.peakRate)) * n(s.durationMs)) / 1000
-            : s.stages.reduce((sum, st) => sum + (n(st.targetRate) * n(st.durationMs)) / 1000, n(s.startRate)));
-  }
-  for (const { action } of sim.timeline ?? []) if (action.do === "inject") sent += reach(action.node) * n(action.count);
-  return (sent * resolveMultiplier(sim.multipliers?.traffic)) / resolveScale(sim.scale);
-}
-
 /** The policy with its primary target set to `value`, when `metricKind` is what that target measures. */
 function withTarget(
   a: AutoscalingConfig,
@@ -263,9 +207,9 @@ function observe(
   d: DiagramFile,
   sim: Simulation,
   watched: Watched[],
-  counter: { ticks: number; messages: { remaining: number } },
+  counter: { ticks: number; messages: { remaining: number }; context?: VerificationContext },
 ) {
-  const run = createSimulationRun(d, sim, { messageBudget: counter.messages });
+  const run = createHeadlessRun(d, sim, counter.messages, counter.context);
   run.setTraceActions(false);
   const engine = run.engine;
   const scale = resolveScale(sim.scale);
@@ -288,10 +232,15 @@ function observe(
     ]),
   );
   const recent = new Map(watched.map((w) => [w.id, [] as number[]]));
-  // The run's own policies: a verification rerun plays the suggested ranges.
+  // The run's own policies: a verification rerun plays the suggested ranges. Playback reports the range it scales
+  // within now, so a replayed Capacity × or policy change counts from its moment on.
   const maxOf = new Map(scalers(d).map((x) => [x.id, replicaRange(x.controller, multiplier).max]));
+  const boundsOf = (w: Watched) =>
+    engine.replicaBounds(w.id) ?? { max: maxOf.get(w.id) ?? replicaRange(w.controller, multiplier).max, multiplier };
   const since = new Map<string, number>(),
     fullSince = new Map<string, number>();
+  /** Each scaler's replica range and Capacity ×, and since when: a decision counts only under the range it saw. */
+  const rangeSince = new Map<string, { key: string; at: number }>();
   const backlogOf = (w: Watched) =>
     ((engine.measure({ node: w.id, field: "backlog" }) ?? 0) +
       w.inputs.reduce(
@@ -323,20 +272,35 @@ function observe(
         o.working = (o.working ?? 0) + (threads?.working ?? 0);
         o.waiting = (o.waiting ?? 0) + (threads?.waiting ?? 0);
       }
+      const bounds = boundsOf(w);
       if (f.starting > 0 && backlog > o.startupBacklog) {
         o.startupBacklog = backlog;
         o.startupDesired = f.desired;
+        o.startupMultiplier = bounds.multiplier;
       }
       o.peakDesired = Math.max(o.peakDesired, f.desired);
       const decision: ScalingDecisionReadout | undefined = f.decision;
-      const max = maxOf.get(w.id) ?? replicaRange(w.controller, multiplier).max;
+      const max = bounds.max;
+      // A replayed Capacity × or policy change starts a new stretch: earlier decisions and fleets were sized for
+      // another range, so neither the steady state nor a decision from before it counts under the new one.
+      const range = `${bounds.max}:${bounds.multiplier}`;
+      const ranged = rangeSince.get(w.id);
+      if (ranged?.key !== range) {
+        if (ranged) fullSince.delete(w.id);
+        rangeSince.set(w.id, { key: range, at: ranged ? now : -Infinity });
+      }
       // Steady state at the maximum: every replica ready, so the metric is per replica of a full fleet.
       // …and the decision's own metric window lies inside that stretch, with the whole maximum fleet ready.
       const full = f.desired >= max && f.ready >= max && !f.starting;
       if (!full) fullSince.delete(w.id);
       else if (!fullSince.has(w.id)) fullSince.set(w.id, now);
       const from = (decision?.at ?? -Infinity) - (decision?.windowMs ?? 0);
-      const steady = since.has(w.id) && fullSince.has(w.id) && from >= since.get(w.id)! && from >= fullSince.get(w.id)!;
+      const steady =
+        since.has(w.id) &&
+        fullSince.has(w.id) &&
+        from >= since.get(w.id)! &&
+        from >= fullSince.get(w.id)! &&
+        from >= rangeSince.get(w.id)!.at;
       if (decision && steady && decision.reason !== "override") {
         // What the scaler wanted beyond its maximum: its own unclamped recommendation, or (rule and step
         // controllers, whose raw is one step) the count that brings the observed metric to its target.
@@ -345,10 +309,12 @@ function observe(
             ? Math.ceil((f.ready * decision.metric) / decision.target)
             : 0;
         const wanted = Math.max(decision.raw, proportional);
-        if (wanted > max && wanted >= o.wanted)
+        // Peaks compare as authored replicas: each at the Capacity × it was wanted under.
+        if (wanted > max && wanted / bounds.multiplier >= o.wanted / (o.wantedMultiplier ?? bounds.multiplier))
           Object.assign(o, {
             maxed: true,
             wanted,
+            wantedMultiplier: bounds.multiplier,
             metric: decision.metric,
             target: decision.target,
             metricKind: scalingMetricKind(decision),
@@ -379,15 +345,12 @@ function observe(
     }
   };
   let time = 0;
-  while (!run.state().done && time < horizon) {
-    if (run.state().waiting) run.resume();
-    run.step(PLANNER_LIMITS.sampleMs);
+  advanceHeadless(run, horizon, () => {
     const now = run.state().time;
     counter.ticks += Math.max(0, (now - time) / 10);
-    if (now === time) break;
     time = now;
     sample();
-  }
+  });
   // Goals: the simulation's own backlog/lag/in-flight expectations about each scaler or its input brokers.
   const failed = new Set(
     run
@@ -430,7 +393,7 @@ function withRange(a: AutoscalingConfig, key: "maxReplicas" | "minReplicas", val
   return next;
 }
 
-type Counter = { ticks: number; runs: number; messages: { remaining: number } };
+type Counter = { ticks: number; runs: number; messages: { remaining: number }; context?: VerificationContext };
 function unavailable(sim: Simulation, reason: NonNullable<ScalingPlan["reason"]>): ScalingPlan {
   return {
     simulation: sim.id,
@@ -474,17 +437,20 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
   if (startWork(d, sim) > PLANNER_LIMITS.startWork)
     return { ...base, status: "unavailable", reason: "start", runs: 0, ticks: 0 };
   const multiplier = resolveMultiplier(sim.multipliers?.capacity);
-  const local = { ticks: 0, messages: counter.messages };
+  const local = { ticks: 0, messages: counter.messages, context: counter.context };
   let runs = 1;
   const first = observe(d, sim, watched, local);
   const nodes = new Map(d.nodes.map((n) => [n.id, n]));
-  const authored = (n: number) => Math.min(10_000, Math.max(1, Math.ceil(n / multiplier)));
+  /** Replicas playback ran (at Capacity × `m`, the simulation's unless a replayed control changed it) as authored. */
+  const authored = (n: number, m = multiplier) => Math.min(10_000, Math.max(1, Math.ceil(n / m)));
   let suggestions: PlanSuggestion[] = [];
+  /** The Capacity × each suggestion's `wanted` was seen under, kept with it through every refinement. */
+  const wantedAt = new Map<string, number>();
   /** More partitions, and the maximum to read them, as one fix. */
-  const partitionFix = (w: Watched, a: AutoscalingConfig, broker: string, wanted: number) => {
+  const partitionFix = (w: Watched, a: AutoscalingConfig, broker: string, wanted: number, m?: number) => {
     const partitions = Number(nodes.get(broker)?.props?.partitions ?? 1);
     const to = Math.min(10_000, Math.max(partitions + 1, wanted));
-    const max = authored(to);
+    const max = authored(to, m);
     return {
       kind: "partitions" as const,
       broker,
@@ -507,6 +473,7 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
     if (o.maxed && o.metricKind?.startsWith("busyThreads") && o.endBacklog === 0) continue;
     const a = nodes.get(w.id)!.props!.autoscaling as AutoscalingConfig;
     const c = w.controller;
+    wantedAt.set(w.id, o.wantedMultiplier ?? multiplier);
     const common = {
       node: w.id,
       adapter: c.kind,
@@ -518,9 +485,10 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
       startupBacklog: o.startupBacklog,
       endBacklog: o.endBacklog,
     };
-    if (o.maxed && o.partitions) suggestions.push({ ...common, ...partitionFix(w, a, o.partitions, o.wanted) });
+    if (o.maxed && o.partitions)
+      suggestions.push({ ...common, ...partitionFix(w, a, o.partitions, o.wanted, o.wantedMultiplier) });
     else if (o.maxed && c.maxReplicas < 10_000) {
-      const to = Math.max(c.maxReplicas + 1, authored(o.wanted));
+      const to = Math.max(c.maxReplicas + 1, authored(o.wanted, o.wantedMultiplier));
       suggestions.push({
         ...common,
         kind: "max",
@@ -572,10 +540,10 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
       !o.maxed &&
       o.goalsFailed.length &&
       o.startupBacklog > 0 &&
-      (o.startupDesired ?? 0) > replicaRange(c, multiplier).min
+      (o.startupDesired ?? 0) > replicaRange(c, o.startupMultiplier ?? multiplier).min
     ) {
       // A backlog goal failed while replicas started: keep what the scaler wanted then warm from the start.
-      const to = Math.min(c.maxReplicas, authored(o.startupDesired ?? 0));
+      const to = Math.min(c.maxReplicas, authored(o.startupDesired ?? 0, o.startupMultiplier));
       if (to > c.minReplicas)
         suggestions.push({
           ...common,
@@ -605,10 +573,18 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
         rejected: after.rejected,
       };
       const before = first.get(s.node)!;
-      if (s.kind === "max" && after.maxed && after.wanted > s.wanted && runs < PLANNER_LIMITS.runs) {
+      // Peaks compare as authored replicas, each at its own Capacity × (a refined one may come from another phase).
+      const wantedBefore = s.wanted / (wantedAt.get(s.node) ?? multiplier);
+      if (
+        s.kind === "max" &&
+        after.maxed &&
+        after.wanted / (after.wantedMultiplier ?? multiplier) > wantedBefore &&
+        runs < PLANNER_LIMITS.runs
+      ) {
         // Still at the new maximum wanting more: refine once more from the rerun's own peak.
         refined = true;
-        const to = Math.max(s.to + 1, authored(after.wanted));
+        const to = Math.max(s.to + 1, authored(after.wanted, after.wantedMultiplier));
+        wantedAt.set(s.node, after.wantedMultiplier ?? multiplier);
         const a = nodes.get(s.node)!.props!.autoscaling as AutoscalingConfig;
         return {
           ...s,
@@ -673,24 +649,27 @@ const cache = new Map<string, ScalingPlan[]>();
 export function planScaling(
   d: DiagramFile,
   counter: { ticks: number; runs: number; messages?: number } = { ticks: 0, runs: 0 },
+  messageBudget?: { remaining: number },
+  context?: VerificationContext,
 ): ScalingPlan[] {
   if (!revisionAtLeast(d.planning?.revision, "p3-a1") || !d.simulations?.length) return [];
   const key = simulationContent(d);
   const hit = cache.get(key);
-  if (hit) return hit;
+  if (hit && !messageBudget) return hit;
   if (!scalers(d).length) return [];
   const sims = d.simulations.slice(0, PLANNER_LIMITS.simulations);
-  const messages = { remaining: PLANNER_LIMITS.messages };
-  const run = { ticks: 0, runs: 0, messages };
+  const messages = messageBudget ?? { remaining: PLANNER_LIMITS.messages };
+  const available = messages.remaining;
+  const run = { ticks: 0, runs: 0, messages, context };
   const plans =
     planWork(d) > PLANNER_LIMITS.work
       ? sims.map((sim) => unavailable(sim, "budget"))
       : sims.map((sim) => planSimulation(d, sim, run));
   counter.ticks += run.ticks;
   counter.runs += run.runs;
-  counter.messages = (counter.messages ?? 0) + PLANNER_LIMITS.messages - messages.remaining;
+  counter.messages = (counter.messages ?? 0) + available - messages.remaining;
   if (cache.size >= 4) cache.delete(cache.keys().next().value!);
-  cache.set(key, plans);
+  if (!messageBudget) cache.set(key, plans);
   return plans;
 }
 

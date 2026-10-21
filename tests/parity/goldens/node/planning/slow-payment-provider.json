@@ -1,22 +1,22 @@
 {
-  "autoScale": { "freePlay": 2, "no-timeouts": 2, "timeout-600": 2 },
+  "autoScale": { "freePlay": 5, "no-timeouts": 2, "timeout-600": 2, "pool-40": 2, "blocking-pool": 2 },
   "brokerAssignments": { "brokers": {}, "consumers": {} },
   "edit": {
     "configured": true,
     "simulation": "free-play",
     "analysis": {
       "bottleneck": "checkout",
-      "suggestion": "Checkout: 25% utilized",
+      "suggestion": "Checkout: 29% utilized",
       "converged": true,
       "iterations": 4,
       "nodes [capacity, offered, utilization, replicas, active, idle]": {
-        "shop": ["Infinity", 120, 0, 1, 1, 0],
-        "gateway": [97656.25, 120, 0.0012288, 1, 1, 0, { "device": true }],
-        "checkout": [476.1904761904762, 120, 0.252, 4, 4, 0],
+        "shop": ["Infinity", 140, 0, 1, 1, 0],
+        "gateway": [97656.25, 140, 0.0014336, 1, 1, 0, { "device": true }],
+        "checkout": [476.1904761904762, 140, 0.294, 4, 4, 0],
         "payment": ["Infinity", 120, 0, 1, 1, 0],
-        "orders": ["Infinity", 120, 0, 1, 1, 0]
+        "orders": ["Infinity", 20, 0, 1, 1, 0]
       },
-      "connections": { "browse": 120, "route": 120, "pay": 120, "save": 120 },
+      "connections": { "browse": 140, "route": 140, "pay": 120, "save": 20 },
       "offeredTypes": { "shop": ["Shop"], "gateway": ["Shop"], "checkout": ["Shop"], "payment": ["Shop"], "orders": ["Shop"] }
     },
     "explanations": {
@@ -28,7 +28,7 @@
         "evidence": "configured",
         "unit": "req/s",
         "capacity": 97656.25,
-        "offered": 120,
+        "offered": 140,
         "replicas": 1,
         "baseReplicas": 1,
         "omittedContributors": 0,
@@ -36,12 +36,16 @@
         "assignments": [],
         "slots": "Infinity",
         "seconds": 0,
-        "utilization": 0.0012288,
+        "utilization": 0.0014336,
         "growth": 0,
-        "contributors": [{ "edge": "browse", "node": "shop", "label": "Shop", "rate": 120 }],
+        "contributors": [{ "edge": "browse", "node": "shop", "label": "Shop", "rate": 140 }],
         "target": 0.5,
         "changes": null,
-        "converged": true
+        "converged": true,
+        "routes": [
+          { "route": "checkout", "address": "POST /checkout", "offered": 120, "rejected": 0, "throttled": 0 },
+          { "route": "status", "address": "GET /status", "offered": 20, "rejected": 0, "throttled": 0 }
+        ]
       },
       "checkout": {
         "waits": { "workMs": 10, "callMs": 200, "threadHoldMs": 210, "memoryResidenceMs": 210, "slots": 100, "ceiling": 476.1904761904762 },
@@ -52,7 +56,7 @@
         "evidence": "configured",
         "unit": "req/s",
         "capacity": 476.1904761904762,
-        "offered": 120,
+        "offered": 140,
         "replicas": 4,
         "baseReplicas": 4,
         "omittedContributors": 0,
@@ -60,13 +64,17 @@
         "assignments": [],
         "slots": 25,
         "seconds": 0.21,
-        "utilization": 0.252,
+        "utilization": 0.294,
         "growth": 0,
-        "contributors": [{ "edge": "route", "node": "gateway", "label": "Shop", "rate": 120, "via": "API gateway" }],
+        "contributors": [{ "edge": "route", "node": "gateway", "label": "Shop", "rate": 140, "via": "API gateway" }],
         "target": 0.5,
         "minimumReplicas": 4,
         "changes": null,
-        "converged": true
+        "converged": true,
+        "routes": [
+          { "route": "checkout", "address": "POST /checkout", "offered": 120, "rejected": 0, "throttled": 0 },
+          { "route": "status", "address": "GET /status", "offered": 20, "rejected": 0, "throttled": 0 }
+        ]
       },
       "payment": {
         "managed": "api",
@@ -90,7 +98,8 @@
         "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout", "rate": 120 }],
         "target": 0.5,
         "changes": null,
-        "converged": true
+        "converged": true,
+        "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 120, "rejected": 0, "throttled": 0 }]
       }
     },
     "capabilities": {
@@ -106,7 +115,7 @@
     "resolved": {
       "shop": {
         "profile": { "family": "client", "revision": "p3-w1", "evidence": [], "units": "real" },
-        "ratePerSec": 120,
+        "ratePerSec": 140,
         "latencyMs": 0,
         "concurrency": "Infinity",
         "replicas": 1,
@@ -202,16 +211,102 @@
         "converged": true,
         "iterations": 4,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
-          "shop": ["Infinity", 120, 0, 1, 1, 0],
-          "gateway": [97656.25, 120, 0.0012288, 1, 1, 0, { "device": true }],
-          "checkout": [476.1904761904762, 120, 0.252, 4, 4, 0],
-          "payment": ["Infinity", 120, 0, 1, 1, 0],
-          "orders": ["Infinity", 120, 0, 1, 1, 0]
+          "shop": ["Infinity", 119.99999999999999, 0, 1, 1, 0],
+          "gateway": [97656.25, 119.99999999999999, 0.0012288, 1, 1, 0, { "device": true }],
+          "checkout": [476.1904761904762, 119.99999999999999, 0.25199999999999995, 4, 4, 0],
+          "payment": ["Infinity", 102.85714285714285, 0, 1, 1, 0],
+          "orders": ["Infinity", 17.142857142857142, 0, 1, 1, 0]
         },
-        "connections": { "browse": 120, "route": 120, "pay": 120, "save": 120 },
+        "connections": { "browse": 119.99999999999999, "route": 119.99999999999999, "pay": 102.85714285714285, "save": 17.142857142857142 },
         "offeredTypes": { "shop": ["Checkout"], "gateway": ["Checkout"], "checkout": ["Checkout"], "payment": ["Checkout"], "orders": ["Checkout"] }
       },
-      "explanations": "(same as edit)",
+      "explanations": {
+        "gateway": {
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 97656.25,
+          "offered": 119.99999999999999,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0.0012288,
+          "growth": 0,
+          "contributors": [{ "edge": "browse", "node": "shop", "label": "Shop", "rate": 119.99999999999999 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "checkout": {
+          "waits": { "workMs": 10, "callMs": 200, "threadHoldMs": 210, "memoryResidenceMs": 210, "slots": 100, "ceiling": 476.1904761904762 },
+          "id": "checkout",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 476.1904761904762,
+          "offered": 119.99999999999999,
+          "replicas": 4,
+          "baseReplicas": 4,
+          "omittedContributors": 0,
+          "activeReplicas": 4,
+          "assignments": [],
+          "slots": 25,
+          "seconds": 0.21,
+          "utilization": 0.25199999999999995,
+          "growth": 0,
+          "contributors": [
+            { "edge": "route", "node": "gateway", "label": "Shop", "rate": 119.99999999999999, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 4,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "payment": {
+          "managed": "api",
+          "id": "payment",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 102.85714285714285,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.2,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout", "rate": 102.85714285714285 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 }
+          ]
+        }
+      },
       "capabilities": "(same as edit)",
       "sizing": "(same as edit)",
       "redundancy": "(same as edit)",
@@ -226,16 +321,322 @@
         "converged": true,
         "iterations": 4,
         "nodes [capacity, offered, utilization, replicas, active, idle]": {
-          "shop": ["Infinity", 120, 0, 1, 1, 0],
-          "gateway": [97656.25, 120, 0.0012288, 1, 1, 0, { "device": true }],
-          "checkout": [476.1904761904762, 120, 0.252, 4, 4, 0],
-          "payment": ["Infinity", 120, 0, 1, 1, 0],
-          "orders": ["Infinity", 120, 0, 1, 1, 0]
+          "shop": ["Infinity", 119.99999999999999, 0, 1, 1, 0],
+          "gateway": [97656.25, 119.99999999999999, 0.0012288, 1, 1, 0, { "device": true }],
+          "checkout": [476.1904761904762, 119.99999999999999, 0.25199999999999995, 4, 4, 0],
+          "payment": ["Infinity", 102.85714285714285, 0, 1, 1, 0],
+          "orders": ["Infinity", 17.142857142857142, 0, 1, 1, 0]
         },
-        "connections": { "browse": 120, "route": 120, "pay": 120, "save": 120 },
+        "connections": { "browse": 119.99999999999999, "route": 119.99999999999999, "pay": 102.85714285714285, "save": 17.142857142857142 },
         "offeredTypes": { "shop": ["Checkout"], "gateway": ["Checkout"], "checkout": ["Checkout"], "payment": ["Checkout"], "orders": ["Checkout"] }
       },
-      "explanations": "(same as edit)",
+      "explanations": {
+        "gateway": {
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 97656.25,
+          "offered": 119.99999999999999,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0.0012288,
+          "growth": 0,
+          "contributors": [{ "edge": "browse", "node": "shop", "label": "Shop", "rate": 119.99999999999999 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "checkout": {
+          "waits": { "workMs": 10, "callMs": 200, "threadHoldMs": 210, "memoryResidenceMs": 210, "slots": 100, "ceiling": 476.1904761904762 },
+          "id": "checkout",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 476.1904761904762,
+          "offered": 119.99999999999999,
+          "replicas": 4,
+          "baseReplicas": 4,
+          "omittedContributors": 0,
+          "activeReplicas": 4,
+          "assignments": [],
+          "slots": 25,
+          "seconds": 0.21,
+          "utilization": 0.25199999999999995,
+          "growth": 0,
+          "contributors": [
+            { "edge": "route", "node": "gateway", "label": "Shop", "rate": 119.99999999999999, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 4,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "payment": {
+          "managed": "api",
+          "id": "payment",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 102.85714285714285,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.2,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout", "rate": 102.85714285714285 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 }
+          ]
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "pool-40": {
+      "configured": "(same as edit)",
+      "simulation": "pool-40",
+      "analysis": {
+        "bottleneck": "checkout",
+        "suggestion": "Checkout: 60% utilized",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "shop": ["Infinity", 119.99999999999999, 0, 1, 1, 0],
+          "gateway": [97656.25, 119.99999999999999, 0.0012288, 1, 1, 0, { "device": true }],
+          "checkout": [200, 119.99999999999999, 0.6, 4, 4, 0],
+          "payment": ["Infinity", 102.85714285714285, 0, 1, 1, 0],
+          "orders": ["Infinity", 17.142857142857142, 0, 1, 1, 0]
+        },
+        "connections": { "browse": 119.99999999999999, "route": 119.99999999999999, "pay": 102.85714285714285, "save": 17.142857142857142 },
+        "offeredTypes": { "shop": ["Checkout"], "gateway": ["Checkout"], "checkout": ["Checkout"], "payment": ["Checkout"], "orders": ["Checkout"] }
+      },
+      "explanations": {
+        "gateway": {
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 97656.25,
+          "offered": 119.99999999999999,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0.0012288,
+          "growth": 0,
+          "contributors": [{ "edge": "browse", "node": "shop", "label": "Shop", "rate": 119.99999999999999 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "checkout": {
+          "waits": { "workMs": 10, "callMs": 10, "threadHoldMs": 20, "memoryResidenceMs": 220, "replyMs": 10, "replies": 1, "poolCeiling": 200, "slots": 100, "ceiling": 5000 },
+          "id": "checkout",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 200,
+          "offered": 119.99999999999999,
+          "replicas": 4,
+          "baseReplicas": 4,
+          "omittedContributors": 0,
+          "activeReplicas": 4,
+          "assignments": [],
+          "slots": 25,
+          "seconds": 0.02,
+          "utilization": 0.6,
+          "growth": 0,
+          "contributors": [
+            { "edge": "route", "node": "gateway", "label": "Shop", "rate": 119.99999999999999, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 4,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "payment": {
+          "managed": "api",
+          "id": "payment",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 102.85714285714285,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.2,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout", "rate": 102.85714285714285 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 }
+          ]
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "blocking-pool": {
+      "configured": "(same as edit)",
+      "simulation": "blocking-pool",
+      "analysis": {
+        "bottleneck": "checkout",
+        "suggestion": "Checkout: 60% utilized",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "shop": ["Infinity", 119.99999999999999, 0, 1, 1, 0],
+          "gateway": [97656.25, 119.99999999999999, 0.0012288, 1, 1, 0, { "device": true }],
+          "checkout": [200, 119.99999999999999, 0.6, 4, 4, 0],
+          "payment": ["Infinity", 102.85714285714285, 0, 1, 1, 0],
+          "orders": ["Infinity", 17.142857142857142, 0, 1, 1, 0]
+        },
+        "connections": { "browse": 119.99999999999999, "route": 119.99999999999999, "pay": 102.85714285714285, "save": 17.142857142857142 },
+        "offeredTypes": { "shop": ["Checkout"], "gateway": ["Checkout"], "checkout": ["Checkout"], "payment": ["Checkout"], "orders": ["Checkout"] }
+      },
+      "explanations": {
+        "gateway": {
+          "id": "gateway",
+          "role": "gateway",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 97656.25,
+          "offered": 119.99999999999999,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0.0012288,
+          "growth": 0,
+          "contributors": [{ "edge": "browse", "node": "shop", "label": "Shop", "rate": 119.99999999999999 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "checkout": {
+          "waits": { "workMs": 10, "callMs": 200, "threadHoldMs": 210, "memoryResidenceMs": 210, "poolCeiling": 200, "slots": 100, "ceiling": 476.1904761904762 },
+          "id": "checkout",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 200,
+          "offered": 119.99999999999999,
+          "replicas": 4,
+          "baseReplicas": 4,
+          "omittedContributors": 0,
+          "activeReplicas": 4,
+          "assignments": [],
+          "slots": 25,
+          "seconds": 0.21,
+          "utilization": 0.6,
+          "growth": 0,
+          "contributors": [
+            { "edge": "route", "node": "gateway", "label": "Shop", "rate": 119.99999999999999, "via": "API gateway" }
+          ],
+          "target": 0.5,
+          "minimumReplicas": 4,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 },
+            { "route": "status", "address": "GET /status", "offered": 17.142857142857142, "rejected": 0, "throttled": 0 }
+          ]
+        },
+        "payment": {
+          "managed": "api",
+          "id": "payment",
+          "role": "sink",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": "Infinity",
+          "offered": 102.85714285714285,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0.2,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout", "rate": 102.85714285714285 }],
+          "target": 0.5,
+          "changes": null,
+          "converged": true,
+          "routes": [
+            { "route": "checkout", "address": "POST /checkout", "offered": 102.85714285714285, "rejected": 0, "throttled": 0 }
+          ]
+        }
+      },
       "capabilities": "(same as edit)",
       "sizing": "(same as edit)",
       "redundancy": "(same as edit)",
@@ -250,16 +651,16 @@
           "tone": "ok",
           "top": "checkout",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Checkout at 25% · 120/s of 476/s",
+          "detail": "Busiest: Checkout at 29% · 140/s of 476/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "shop": ["idle", "120/s · no limit", { "modeled": false }],
-            "gateway": ["ok", "0% · 120/s of 98k/s"],
-            "checkout": ["ok", "25% · 120/s of 476/s"],
+            "shop": ["idle", "140/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 140/s of 98k/s"],
+            "checkout": ["ok", "29% · 140/s of 476/s"],
             "payment": ["idle", "Limits unknown; enter measured or contracted values."],
-            "orders": ["idle", "120/s · no limit", { "modeled": false }]
+            "orders": ["idle", "20/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -270,19 +671,19 @@
           "tone": "over",
           "top": "checkout",
           "headline": "Checkout is over capacity",
-          "detail": "126% · 600/s of 476/s",
+          "detail": "147% · 700/s of 476/s",
           "fix": {
-            "changes": [{ "nodeId": "checkout", "key": "replicas", "from": 4, "to": 10, "label": "Checkout" }],
-            "label": "Checkout 4 → 10 replicas"
+            "changes": [{ "nodeId": "checkout", "key": "replicas", "from": 4, "to": 11, "label": "Checkout" }],
+            "label": "Checkout 4 → 11 replicas"
           },
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "shop": ["idle", "600/s · no limit", { "modeled": false }],
-            "gateway": ["ok", "1% · 600/s of 98k/s"],
-            "checkout": ["over", "126% · 600/s of 476/s"],
+            "shop": ["idle", "700/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "1% · 700/s of 98k/s"],
+            "checkout": ["over", "147% · 700/s of 476/s"],
             "payment": ["idle", "Limits unknown; enter measured or contracted values."],
-            "orders": ["idle", "600/s · no limit", { "modeled": false }]
+            "orders": ["idle", "100/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -293,16 +694,16 @@
           "tone": "ok",
           "top": "checkout",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Checkout at 50% · 120/s of 238/s",
+          "detail": "Busiest: Checkout at 59% · 140/s of 238/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "shop": ["idle", "120/s · no limit", { "modeled": false }],
-            "gateway": ["ok", "0% · 120/s of 98k/s"],
-            "checkout": ["ok", "50% · 120/s of 238/s"],
+            "shop": ["idle", "140/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 140/s of 98k/s"],
+            "checkout": ["ok", "59% · 140/s of 238/s"],
             "payment": ["idle", "Limits unknown; enter measured or contracted values."],
-            "orders": ["idle", "120/s · no limit", { "modeled": false }]
+            "orders": ["idle", "20/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -313,16 +714,16 @@
           "tone": "ok",
           "top": "checkout",
           "headline": "Healthy: every service has headroom",
-          "detail": "Busiest: Checkout at 25% · 120/s of 476/s",
+          "detail": "Busiest: Checkout at 29% · 140/s of 476/s",
           "fix": null,
           "addConsumer": null,
           "converged": true,
           "nodes": {
-            "shop": ["idle", "120/s · no limit", { "modeled": false }],
-            "gateway": ["ok", "0% · 120/s of 98k/s"],
-            "checkout": ["ok", "25% · 120/s of 476/s"],
+            "shop": ["idle", "140/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 140/s of 98k/s"],
+            "checkout": ["ok", "29% · 140/s of 476/s"],
             "payment": ["idle", "Limits unknown; enter measured or contracted values."],
-            "orders": ["idle", "120/s · no limit", { "modeled": false }]
+            "orders": ["idle", "20/s · no limit", { "modeled": false }]
           }
         },
         "partitionsNotes": {}
@@ -341,7 +742,7 @@
         "gateway": ["ok", "0% · 120/s of 98k/s"],
         "checkout": ["ok", "25% · 120/s of 476/s"],
         "payment": ["idle", "Limits unknown; enter measured or contracted values."],
-        "orders": ["idle", "120/s · no limit", { "modeled": false }]
+        "orders": ["idle", "17/s · no limit", { "modeled": false }]
       }
     },
     "timeout-600": {
@@ -357,7 +758,39 @@
         "gateway": ["ok", "0% · 120/s of 98k/s"],
         "checkout": ["ok", "25% · 120/s of 476/s"],
         "payment": ["idle", "Limits unknown; enter measured or contracted values."],
-        "orders": ["idle", "120/s · no limit", { "modeled": false }]
+        "orders": ["idle", "17/s · no limit", { "modeled": false }]
+      }
+    },
+    "pool-40": {
+      "tone": "warn",
+      "top": "checkout",
+      "headline": "Checkout is busy",
+      "detail": "60% · 120/s of 200/s. Still some headroom.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "120/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "0% · 120/s of 98k/s"],
+        "checkout": ["warn", "60% · 120/s of 200/s"],
+        "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+        "orders": ["idle", "17/s · no limit", { "modeled": false }]
+      }
+    },
+    "blocking-pool": {
+      "tone": "warn",
+      "top": "checkout",
+      "headline": "Checkout is busy",
+      "detail": "60% · 120/s of 200/s. Still some headroom.",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "120/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "0% · 120/s of 98k/s"],
+        "checkout": ["warn", "60% · 120/s of 200/s"],
+        "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+        "orders": ["idle", "17/s · no limit", { "modeled": false }]
       }
     }
   }

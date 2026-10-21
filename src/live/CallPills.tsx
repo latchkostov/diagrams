@@ -11,6 +11,10 @@ export interface ActiveCall {
   held: number;
   inFlight: number;
   timedOut?: number;
+  queued?: number;
+  pool?: number;
+  from?: string;
+  to?: string;
 }
 
 /** One shared placement pass: inactive connections never mount routing consumers. */
@@ -61,17 +65,27 @@ export const CallPills = memo(
         ),
       ]);
     }, [nodes, routes, style, direction, captions, hideDependencies, readoutScale, presenting]);
-    const labels = calls.map(({ id, held, inFlight, timedOut }) => ({
+    const labels = calls.map(({ id, held, inFlight, timedOut, queued = 0, pool, from = "", to = "" }) => ({
       id,
       timedOut,
-      text: timedOut
-        ? t("threads.pillTimeout", { count: timedOut })
-        : held
-          ? t("threads.pillHeld", { count: held })
-          : t("threads.pillFlight", { count: inFlight }),
+      title: held
+        ? t("threads.pillHeldTitle", { count: held, from, to })
+        : t("threads.pillFreeTitle", { count: inFlight, queued, from, to }),
+      text:
+        pool && (held || inFlight || queued) && held
+          ? t("threads.pillPoolHeld", { count: inFlight, queued, timedOut: timedOut ?? 0 })
+          : pool && (inFlight || queued)
+            ? t("threads.pillPoolFree", { count: inFlight, pool, queued, timedOut: timedOut ?? 0 })
+            : timedOut
+              ? t("threads.pillTimeout", { count: timedOut })
+              : held
+                ? t("threads.pillHeld", { count: held })
+                : t("threads.pillFlight", { count: inFlight }),
     }));
     // Count changes of the same text dimensions reuse the entire placement pass.
-    const dimensions = JSON.stringify(labels.map(({ id, text }) => ({ id, width: text.length * 7 + 16, height: 20 })));
+    const dimensions = JSON.stringify(
+      labels.map(({ id, text }) => ({ id, width: (text.length * 7 + 16) * readoutScale, height: 20 * readoutScale })),
+    );
     const placements = useMemo(
       () =>
         placeCallPills(JSON.parse(dimensions) as PillSize[], routes, obstacles, {
@@ -82,14 +96,16 @@ export const CallPills = memo(
         }),
       [dimensions, routes, obstacles, tx, ty, zoom, viewWidth, viewHeight],
     );
-    return labels.map(({ id, text, timedOut }) => {
+    return labels.map(({ id, text, title, timedOut }) => {
       const box = placements.get(id);
       if (!box) return null;
       return (
         <span
           key={id}
           className={`lv-call-pill${timedOut ? " is-timeout" : ""}`}
-          style={{ left: box.x, top: box.y }}
+          style={{ left: box.x, top: box.y, transform: `scale(${readoutScale})`, transformOrigin: "top left" }}
+          title={title}
+          aria-label={`${text} · ${title}`}
           data-testid={`call-pill-${id}`}
         >
           {text}
@@ -106,6 +122,10 @@ export const CallPills = memo(
         c.id === b.calls[i].id &&
         c.held === b.calls[i].held &&
         c.inFlight === b.calls[i].inFlight &&
-        c.timedOut === b.calls[i].timedOut,
+        c.timedOut === b.calls[i].timedOut &&
+        c.queued === b.calls[i].queued &&
+        c.pool === b.calls[i].pool &&
+        c.from === b.calls[i].from &&
+        c.to === b.calls[i].to,
     ),
 );

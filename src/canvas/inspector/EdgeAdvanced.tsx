@@ -1,6 +1,4 @@
-import { revisionAtLeast } from "../../model/revisions";
 import { t } from "../../i18n";
-import { CallWaitFields } from "../../planning/lazy";
 import { SIM_LIMITS } from "../../model/simLimits";
 import { DEFAULT_TRAVEL_MS } from "../../sim/topology";
 import type { DiagramFlowEdge } from "../types";
@@ -21,7 +19,6 @@ type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {
 };
 
 export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: EdgeAdvancedProps) {
-  const requestWait = flow && data.kind === "sync" && revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w1");
   return (
     <Disclosure id="edge-advanced" title={t("inspector.advanced")}>
       <div className="insp-row2">
@@ -42,15 +39,6 @@ export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: E
       </div>
       {flow && (
         <>
-          {requestWait && (
-            <CallWaitFields
-              advanced
-              editor={editor}
-              edgeId={edge.id}
-              caller={props.caller}
-              stencil={editor.getNode(edge.source)?.stencil ?? ""}
-            />
-          )}
           <SimInput
             name="travelMs"
             field={{

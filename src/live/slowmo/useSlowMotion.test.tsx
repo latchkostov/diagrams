@@ -6,6 +6,7 @@ import type { DiagramFile } from "../../model/types";
 import type { CameraController } from "../../canvas/camera";
 import { LiveController } from "../controller";
 import { useSlowMotion, type SlowMotionView } from "./useSlowMotion";
+import { loadSlowScript } from "./scriptChunk";
 
 // Mount the hook's effects after rendering, with a small EventTarget instead of a canvas DOM.
 const lifecycle = vi.hoisted(() => ({ effects: [] as EffectCallback[] }));
@@ -21,7 +22,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it.each([0, 2000])("Escape restores the entry viewport after a pending Inputs rebuild at %s", (at) => {
+it.each([0, 2000])("Escape restores the entry viewport after a pending Inputs rebuild at %s", async (at) => {
+  // The live view downloads slow motion's script code when idle (scriptChunk.ts); here it has arrived.
+  await loadSlowScript();
   vi.useFakeTimers();
   const diagram = JSON.parse(readFileSync("src/examples/kafka-order-pipeline.json", "utf8")) as DiagramFile;
   const controller = new LiveController(diagram, { replayDelayMs: 250 });

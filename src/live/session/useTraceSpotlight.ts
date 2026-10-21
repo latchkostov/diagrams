@@ -5,7 +5,7 @@ import type { MessageTrace } from "../../sim/types";
 import { buildJourney, formatDuration as formatSpan } from "../../trace/journey";
 import { type TraceChoice } from "../context";
 import { downstreamOfEdge, edgesWithin } from "../graph";
-import { PACING } from "../slowmo/script";
+import { PACING } from "../slowmo/pacing";
 import type { SlowSource } from "../slowmo/session";
 import { useSlowMotion, type SlowMotionView } from "../slowmo/useSlowMotion";
 import { suggestedMessageType } from "../storm";

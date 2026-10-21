@@ -33,6 +33,9 @@ export function Toaster() {
       if (before?.isConnected && (!now || now === document.body || now === button)) before.focus();
     };
   }, [focusAction, toastId]);
+  // Where the keyboard was before it reached the action (Tab, or a click): pressing it gives the focus back there
+  // when the toast goes, unless the action moved it on (a lazy part's Retry, an Undo).
+  const cameFrom = useRef<HTMLElement | null>(null);
   // One bottom-centre stack: the toast sits above the hint or the live bar instead of over them (they
   // can appear, move or resize while it shows, so it follows them).
   const el = useRef<HTMLDivElement>(null);
@@ -94,9 +97,20 @@ export function Toaster() {
         <button
           ref={action}
           className="ix-toast-action"
+          onFocus={(e) => {
+            const from = e.relatedTarget;
+            if (from instanceof HTMLElement && !e.currentTarget.parentElement?.contains(from)) cameFrom.current = from;
+          }}
           onClick={() => {
+            const back = cameFrom.current;
+            cameFrom.current = null;
             t.action!.run();
             if (!t.blocking) toast.dismiss(t.id);
+            if (back && !focusAction)
+              requestAnimationFrame(() => {
+                const now = document.activeElement;
+                if (back.isConnected && (!now || now === document.body)) back.focus();
+              });
           }}
           data-testid={t.action.testId ?? "toast-action"}
         >

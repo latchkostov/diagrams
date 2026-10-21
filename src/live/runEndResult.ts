@@ -1,10 +1,73 @@
 import { t } from "../i18n";
 import type { DiagramFile } from "../model/types";
 import type { LiveState } from "./controller";
+import { simulationEdges } from "../sim/simulationEdges";
+import type { EdgeSimProps } from "../sim/types";
 
 /** The final run evidence, in real units. Authored expectation labels and IDs are never parsed as prose. */
 export function runEndResult(state: LiveState, diagram: DiagramFile): string | undefined {
   if (!state.run?.done) return;
+  const effective = simulationEdges(diagram, state.running ?? undefined);
+  const statusEdge = effective.edges.find((e) =>
+    (e.props?.requestFilter as EdgeSimProps["requestFilter"])?.methods?.includes("GET"),
+  );
+  const statusNode = statusEdge && effective.nodes.find((n) => n.id === statusEdge.to);
+  const status = statusNode && state.snapshot.nodes[statusNode.id];
+  const call =
+    statusEdge &&
+    effective.edges.find((e) => e.from === statusEdge.from && e.id !== statusEdge.id && e.kind === "sync");
+  const policy = call?.props?.caller as EdgeSimProps["caller"];
+  const caller = call && state.snapshot.nodes[call.from];
+  const gatewayEdge =
+    call && effective.edges.find((e) => e.to === call.from && (e.props?.caller as EdgeSimProps["caller"])?.deadlineMs);
+  const gatewayDeadline = (gatewayEdge?.props?.caller as EdgeSimProps["caller"])?.deadlineMs;
+  const name = effective.nodes.find((n) => n.id === call?.from)?.label ?? call?.from ?? "";
+  if (call && status && statusNode && policy?.poolConnections)
+    return t("runResult.poolLesson", {
+      name,
+      mode: policy.wait === "non-blocking" ? "free" : "held",
+      status: statusNode.label,
+      count: status.processed,
+    });
+  if (call && status && statusNode && caller?.threads && gatewayEdge && gatewayDeadline) {
+    if (policy?.deadlineMs && state.snapshot.edges[call.id]?.calls?.timedOut)
+      return t("runResult.timeoutLesson", {
+        name,
+        seconds: policy.deadlineMs / 1000,
+        gatewaySeconds: gatewayDeadline / 1000,
+        free: Math.max(0, caller.threads.slots - caller.threads.working - caller.threads.waiting),
+        status: statusNode.label,
+        count: status.processed,
+      });
+    if (state.snapshot.edges[gatewayEdge.id]?.calls?.timedOut)
+      return t("runResult.stalledLesson", {
+        name,
+        gateway: effective.nodes.find((n) => n.id === gatewayEdge.from)?.label ?? gatewayEdge.from,
+        seconds: gatewayDeadline / 1000,
+        status: statusNode.label,
+        count: status.processed,
+      });
+  }
+  const scaled = effective.nodes.find((n) => state.snapshot.nodes[n.id]?.threads && state.snapshot.nodes[n.id]?.fleet);
+  const fleet = scaled && state.snapshot.nodes[scaled.id].fleet;
+  const incoming = scaled && effective.edges.find((e) => e.to === scaled.id && state.snapshot.nodes[e.from]?.lag);
+  const broker = incoming && effective.nodes.find((n) => n.id === incoming.from);
+  if (scaled && fleet && broker) {
+    const outgoing = effective.edges.find((e) => e.from === scaled.id && e.kind === "sync");
+    const free = (outgoing?.props?.caller as EdgeSimProps["caller"])?.wait === "non-blocking";
+    const a = state.configuration[scaled.id]?.autoscaling as import("../sim/types").NodeSimProps["autoscaling"];
+    const busy =
+      a?.mode === "on" &&
+      "settings" in a.controller &&
+      a.controller.settings.metrics.some((m) => m.source.kind === "pods");
+    return t("runResult.busyLesson", {
+      name: scaled.label,
+      mode: free ? "free" : busy ? "busy" : "cpu",
+      peak: Math.max(fleet.ready, ...fleet.history.map((p) => p.ready)),
+      broker: broker.label,
+      count: state.snapshot.nodes[broker.id].backlog,
+    });
+  }
   const largest = diagram.nodes.reduce<{ count: number; label: string }>(
     (loss, node) => {
       const sample = state.snapshot.nodes[node.id];

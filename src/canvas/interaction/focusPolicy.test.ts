@@ -315,6 +315,11 @@ describe("focusPolicy: the rules, row by row", () => {
     const callout = focusPolicy(state(), { type: "callout.closed", hadFocus: true }).command as FocusMove;
     const field = focusPolicy(state(), { type: "panel.field", panel: "p", field: "f" }).command as FocusMove;
     expect(callout.onlyIfLost).toBe(true);
+    expect(focusPolicy(state(), { type: "callout.closed", hadFocus: true, undo: true }).command).toMatchObject({
+      target: { kind: "canvas" },
+      when: "commit",
+      onlyIfLost: true,
+    });
     expect([field.select, field.again]).toEqual(["all", undefined]);
   });
 

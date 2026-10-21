@@ -9,6 +9,7 @@ import { profileOf } from "../stencils/profiles";
 import { checkAutoscaling } from "../model/autoscalingSchema";
 import { useState, useMemo, useRef, type ReactNode } from "react";
 import { NumberField } from "./NumberField";
+import { Segmented } from "../canvas/inspector/fields";
 import { flushSync } from "react-dom";
 import {
   cloudLesson,
@@ -179,6 +180,26 @@ export function AutoscalingFields({
     });
   };
   const metric = c?.settings.metrics[0];
+  const unitToggle =
+    metric?.source.kind === "pods" ? (
+      <Segmented
+        value={metric.target.kind}
+        options={[
+          { value: "utilization", label: "%" },
+          { value: "averageValue", label: t("autoscaling.perPod") },
+        ]}
+        label={t("autoscaling.busyUnit")}
+        testId="autoscaling-busy-unit"
+        onChange={(unit) =>
+          patch((n) => {
+            n.settings.metrics[0].target =
+              unit === "averageValue"
+                ? { kind: "averageValue", value: 4 }
+                : { kind: "utilization", percentOfRequest: 70 };
+          }, "busyUnit")
+        }
+      />
+    ) : undefined;
   const trigger = c?.kind === "keda" ? c.triggers[0] : undefined;
   const selectSource = (key: string) => {
     const choice = choices.find((v) => v.key === key);
@@ -488,6 +509,7 @@ export function AutoscalingFields({
         <>
           <NumberField
             name="target"
+            unitToggle={!trigger ? unitToggle : undefined}
             inputRef={targetRef}
             label={
               trigger
@@ -599,10 +621,16 @@ export function AutoscalingFields({
               </label>
             )}
             {metric?.source.kind === "pods" && (
+              <p className="insp-note" data-testid="autoscaling-busy-hint">
+                {t("autoscaling.busyHint")}
+              </p>
+            )}
+            {metric?.source.kind === "pods" && (
               <>
                 {trigger && (
                   <NumberField
                     name="busy-target"
+                    unitToggle={unitToggle}
                     label={
                       metric.target.kind === "averageValue" ? t("autoscaling.busyAverage") : t("autoscaling.busyTarget")
                     }
@@ -619,25 +647,6 @@ export function AutoscalingFields({
                     }
                   />
                 )}
-                <label className="insp-field">
-                  <span className="insp-label">{t("autoscaling.busyUnit")}</span>
-                  <select
-                    className="insp-input"
-                    data-testid="autoscaling-busy-unit"
-                    value={metric.target.kind}
-                    onChange={(e) =>
-                      patch((n) => {
-                        n.settings.metrics[0].target =
-                          e.currentTarget.value === "averageValue"
-                            ? { kind: "averageValue", value: 4 }
-                            : { kind: "utilization", percentOfRequest: 70 };
-                      }, "busyUnit")
-                    }
-                  >
-                    <option value="utilization">{t("autoscaling.busyTarget")}</option>
-                    <option value="averageValue">{t("autoscaling.busyAverage")}</option>
-                  </select>
-                </label>
               </>
             )}
             {trigger && c.kind === "keda" && (

@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "f04a77f73e30b1dc7b66772c196961032ac11383067c708b90ebf7b5b567eea1", "bytes": 13652 },
+  "file": { "sha256": "d8241f98a1923cc4e84ba164dc2af5d2ceb9e2b1728b0cf519bb720e27481353", "bytes": 13656 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -125,7 +125,7 @@
       "simulations": [
         {
           "id": "blocking",
-          "title": "Blocking: CPU says all is well",
+          "title": "Threads held: CPU says all is well",
           "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
           "seed": 17,
           "scale": 1,

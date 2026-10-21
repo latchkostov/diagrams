@@ -17,6 +17,19 @@
   white-space: nowrap;
 }
 
+/* Loading slow motion's code: the status gives up its width before any live control does, so More stays in the
+   bar at any width; it ellipsizes on screen and reads in full to screen readers. */
+.lv-slowmo-chip.is-loading {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.lv-slowmo-chip.is-loading > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .lv-slowmo-sep,
 .lv-slowmo-paused {
   color: var(--text-2);

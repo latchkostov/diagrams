@@ -72,7 +72,7 @@ test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable
   expect(
     await x.evaluate((el) => {
       const findings = document.querySelector('[data-testid="inspector-findings"]');
-      return !!findings && !!(el.compareDocumentPosition(findings) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return !!findings && !!(el.compareDocumentPosition(findings) & Node.DOCUMENT_POSITION_PRECEDING);
     }),
   ).toBe(true);
   await page.keyboard.press("Shift+Digit1");

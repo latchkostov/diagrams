@@ -37,6 +37,7 @@ export function NodePanel({
   counts,
   readDiagram,
   meta,
+  focus,
 }: InspectorProps & { node: DiagramFlowNode }) {
   const stencil = getStencil(node.data.stencil);
   const role = stencil.simRole;
@@ -86,6 +87,7 @@ export function NodePanel({
 
   return (
     <>
+      {findings}
       <NodeIdentity
         node={node}
         editor={editor}
@@ -113,6 +115,7 @@ export function NodePanel({
       />
 
       <NodeSimulation
+        reveal={focus?.name === "autoscaling-target" ? focus.seq : undefined}
         node={node}
         editor={editor}
         meta={meta}
@@ -138,8 +141,6 @@ export function NodePanel({
           onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
         />
       </Disclosure>
-
-      {findings}
 
       {picker && (
         <ContextMenu

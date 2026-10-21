@@ -23,6 +23,8 @@ import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
 import { HA_LABEL } from "../stencils/netDevices";
 import { latencyLabel, latencySampling } from "./latencyFormat";
+import { callPolicy } from "../sim/callPolicy";
+import type { EdgeSimProps } from "../sim/types";
 
 import { lazyComponent } from "../lib/lazyLoad";
 
@@ -52,6 +54,7 @@ export function NodeBadges({
   const labels = nodeFaultLabels(faults);
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
+  const names = useMemo(() => new Map(diagram.nodes.map((n) => [n.id, n.label || n.id])), [diagram]);
   const topology = useMemo(() => compileTopology(diagram), [diagram]);
   const assignmentMultiplier = resolveMultiplier(state.inputs.capacity ?? state.running?.multipliers?.capacity);
   const assignments = useMemo(
@@ -82,11 +85,24 @@ export function NodeBadges({
   }
   const boundaryFault = state.snapshot.faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
-  const activeCalls = Object.entries(state.snapshot.edges).flatMap(([id, edge]) =>
-    edge.calls && (edge.calls.held || edge.calls.inFlight || edge.calls.timedOut)
-      ? [{ id, held: edge.calls.held, inFlight: edge.calls.inFlight, timedOut: edge.calls.timedOut }]
-      : [],
-  );
+  const activeCalls = diagram.edges.flatMap((e) => {
+    const calls = state.snapshot.edges[e.id]?.calls;
+    if (!calls) return [];
+    const queued = ui.controller.queuedCalls(e.id);
+    if (!(calls.held || calls.inFlight || calls.timedOut || queued)) return [];
+    const override = state.running?.setup?.edges?.[e.id]?.caller;
+    const policy = callPolicy("", { ...(e.props?.caller as EdgeSimProps["caller"]), ...override });
+    return [
+      {
+        id: e.id,
+        ...calls,
+        queued,
+        pool: policy.pool,
+        from: names.get(e.from) ?? e.from,
+        to: names.get(e.to) ?? e.to,
+      },
+    ];
+  });
   return (
     <div
       className={`lv-badges${presenting ? " is-presenting" : ""}`}
@@ -250,7 +266,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
   const h = node.measured?.height ?? node.height ?? 72;
   const broker = BROKERS.has(s.role);
   const heat = heatOf(s.backlog);
-  const problems = s.failed + s.deadLettered + s.dropped;
+  const problems = s.deadLettered + s.dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
   const rejected = s.rejected ?? 0;
@@ -312,7 +328,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       {problems > 0 && s.status !== "down" && (
         <div
           className="lv-alert mono"
-          title={`${problems} failed, dead-lettered or dropped`}
+          title={t("threads.lostCount", { count: problems })}
           data-testid={`node-alert-${node.id}`}
         >
           {formatCount(problems)}

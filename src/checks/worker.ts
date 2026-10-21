@@ -6,14 +6,18 @@ import type { DiagramFile } from "../model/types";
 import { runChecks } from "./run";
 import type { CheckResult } from "./types";
 import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";
+import { confirmedThreadFix, type ThreadFixRequest } from "../live/threadFixPlan";
+import type { TroubleAction } from "../live/observedTrouble";
 
 export interface CheckRequest {
   id: number;
   diagram: DiagramFile;
   /** Scenario sizing only (live playback): the same memoized planner the capacity check uses. */
   plan?: true;
+  threadFix?: ThreadFixRequest;
 }
 export type CheckResponse =
+  | { id: number; threadFix: TroubleAction | undefined }
   | { id: number; result: CheckResult; plans?: ScalingPlan[] }
   | { id: number; plans: ScalingPlan[] }
   | { id: number; error: string };
@@ -27,7 +31,8 @@ const scope = self as unknown as WorkerScope;
 scope.onmessage = (e) => {
   const { id, diagram, plan } = e.data;
   try {
-    if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
+    if (e.data.threadFix) scope.postMessage({ id, threadFix: confirmedThreadFix(e.data.threadFix) });
+    else if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
     else {
       // The capacity check's plans go back with its result (memoized: no second run), for main-thread readers.
       // A diagram with capacity turned off plans nothing.

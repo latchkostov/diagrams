@@ -82,7 +82,7 @@ export function FindingRow({
     const focused = !!row && row.contains(document.activeElement);
     if (!applyFix(host.editor, f, option)) return;
     host.applied?.();
-    if (focused && row) focusNeighbour(row);
+    if (focused && row && f.scalingPlan?.kind !== "busyThreads") focusNeighbour(row);
   };
   const t = (part: string) => `${testPrefix}-${part}-${f.id}`;
   // Names only for the chips drawn, from the check's one index: a loop of 1,500 services costs five lookups.

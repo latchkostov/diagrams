@@ -1,7 +1,7 @@
 {
   "evidence": {
     "played": [
-      { "id": "blocking", "title": "Blocking: CPU says all is well", "playedMs": 20000, "capped": false },
+      { "id": "blocking", "title": "Threads held: CPU says all is well", "playedMs": 20000, "capped": false },
       { "id": "free-thread", "title": "Free the thread while waiting", "playedMs": 60000, "capped": false }
     ],
     "unplayed": [],
