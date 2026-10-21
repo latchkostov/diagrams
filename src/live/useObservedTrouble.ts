@@ -22,6 +22,7 @@ export class TroubleTracker {
   private picked: Trouble | undefined;
   private listeners = new Set<() => void>();
   private unsubscribe?: () => void;
+  private verification = "";
   private fixes = new Map<string, TroubleAction | undefined>();
 
   constructor(
@@ -67,44 +68,39 @@ export class TroubleTracker {
       this.watcher.reset();
       this.fixes.clear();
     }
-    const observed = this.watcher.observe(
-      st.snapshot,
+    const context = this.controller.verificationContext();
+    const verification = JSON.stringify([context, st.configuration]);
+    if (verification !== this.verification) {
+      this.verification = verification;
+      this.fixes.clear();
+    }
+    const expected = this.controller.expectedTimeoutLosses();
+    const snapshot = {
+      ...st.snapshot,
+      expectedTimeouts: new Set(
+        Object.entries(st.running?.setup?.edges ?? {})
+          .filter(([, setup]) => !!setup.caller?.deadlineMs)
+          .map(([id]) => id),
+      ),
+      nodes: Object.fromEntries(
+        Object.entries(st.snapshot.nodes).map(([id, n]) => [
+          id,
+          { ...n, dropped: Math.max(0, n.dropped - (expected[id] ?? 0)) },
+        ]),
+      ),
+    };
+    const relevant = this.watcher.observe(
+      snapshot,
       simulationEdges(this.controller.currentDiagram, st.running ?? undefined),
     );
-    // The run deliberately demonstrates failing fast. Its outcomes and result line
-    // teach that trade-off; don't replace them with an unrelated loss symptom.
-    const expected = new Set<string>();
     const diagram = this.controller.currentDiagram;
-    const edges = new Map(diagram.edges.map((e) => [e.id, e]));
-    const incoming = new Map<string, string[]>();
-    for (const e of diagram.edges)
-      if (e.kind === "sync") {
-        const list = incoming.get(e.to) ?? [];
-        list.push(e.from);
-        incoming.set(e.to, list);
-      }
-    for (const [id, setup] of Object.entries(st.running?.setup?.edges ?? {})) {
-      if (!(setup.caller?.deadlineMs && st.snapshot.edges[id]?.calls?.timedOut)) continue;
-      const from = edges.get(id)?.from;
-      if (!from) continue;
-      const pending = [from];
-      while (pending.length) {
-        const node = pending.pop()!;
-        if (expected.has(node)) continue;
-        expected.add(node);
-        pending.push(...(incoming.get(node) ?? []));
-      }
-    }
-    const relevant = expected.size
-      ? observed.filter((trouble) => trouble.kind !== "dropping" || !expected.has(trouble.node))
-      : observed;
     const now = relevant.map((trouble) => {
       if (trouble.kind !== "threads-exhausted") return trouble;
       const key = `${run}:${trouble.key}:${JSON.stringify(trouble.action)}`;
       if (!this.fixes.has(key)) {
         this.fixes.set(key, undefined);
-        void this.verify(diagram, { simulation: st.running, trouble, time: st.snapshot.time }).then((fix) => {
-          if (this.run !== run) return;
+        void this.verify(diagram, { simulation: st.running, context, trouble, time: st.snapshot.time }).then((fix) => {
+          if (this.run !== run || this.verification !== verification) return;
           this.fixes.set(key, fix);
           this.observe();
         });

@@ -4,7 +4,7 @@ import type { AutoscalingConfig, ExecutableController } from "../model/autoscali
 import { replicaRange } from "../model/autoscaling";
 import { stencilRole } from "../stencils/roles";
 import { brokerRole } from "../model/brokerRoutes";
-import { createSimulationRun, estimateTotalMs } from "./simulation";
+import { estimateTotalMs } from "./simulation";
 import { FaultTimelineError } from "../model/faultRuntime";
 import { resolveMultiplier, resolveScale } from "./units";
 import { resolveNodeProps } from "./defaults";
@@ -13,6 +13,7 @@ import { scalingMetricKind } from "./scalingMetric";
 import { WorkBudgetError } from "./engine";
 import { LifecycleBudgetError, resourceBudgetExceeded } from "../model/resourceBudget";
 import { simulationContent } from "./simulationContent";
+import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "./headless";
 import { offThreadPlans } from "../lib/scenarioPlanner";
 
 // Scenario sizing (docs/SIMULATION.md § A3 planner). For each saved simulation, play it headless with the same
@@ -161,66 +162,6 @@ function ownsPolicy(sim: Simulation, node: string): boolean {
     )
   );
 }
-/**
- * What one arrival at each node can become: itself, plus what every connection it sends a copy down becomes
- * (an upper bound: a route that picks one connection still counts them all). Fan-out compounds through every stage.
- * A connection back into the path counts nothing here: the run's message budget bounds cycles.
- */
-function downstream(d: DiagramFile): (id: string) => number {
-  const out = new Map<string, string[]>();
-  for (const e of d.edges) {
-    if (e.relation && e.relation !== "flow") continue;
-    const list = out.get(e.from);
-    if (list) list.push(e.to);
-    else out.set(e.from, [e.to]);
-  }
-  const memo = new Map<string, number>();
-  const visiting = new Set<string>();
-  return (root) => {
-    if (memo.has(root)) return memo.get(root)!;
-    // Iterative post-order: a long chain never deepens the call stack.
-    const stack: [string, number][] = [[root, 0]];
-    visiting.add(root);
-    while (stack.length) {
-      const top = stack[stack.length - 1];
-      const next = out.get(top[0]) ?? [];
-      if (top[1] < next.length) {
-        const child = next[top[1]++];
-        if (!memo.has(child) && !visiting.has(child)) {
-          visiting.add(child);
-          stack.push([child, 0]);
-        }
-      } else {
-        stack.pop();
-        visiting.delete(top[0]);
-        let sum = 1;
-        for (const child of next) sum += memo.get(child) ?? 0;
-        memo.set(top[0], Math.min(sum, 1e15));
-      }
-    }
-    return memo.get(root)!;
-  };
-}
-function startWork(d: DiagramFile, sim: Simulation): number {
-  const reach = downstream(d);
-  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0);
-  let sent = 0;
-  for (const p of sim.traffic) {
-    const s = p.shape;
-    sent +=
-      reach(p.node) *
-      (s.kind === "burst"
-        ? n(s.count)
-        : s.kind === "constant"
-          ? (n(s.ratePerSec) * n(s.durationMs)) / 1000
-          : s.kind === "spike"
-            ? (Math.max(n(s.baseRate), n(s.peakRate)) * n(s.durationMs)) / 1000
-            : s.stages.reduce((sum, st) => sum + (n(st.targetRate) * n(st.durationMs)) / 1000, n(s.startRate)));
-  }
-  for (const { action } of sim.timeline ?? []) if (action.do === "inject") sent += reach(action.node) * n(action.count);
-  return (sent * resolveMultiplier(sim.multipliers?.traffic)) / resolveScale(sim.scale);
-}
-
 /** The policy with its primary target set to `value`, when `metricKind` is what that target measures. */
 function withTarget(
   a: AutoscalingConfig,
@@ -263,9 +204,9 @@ function observe(
   d: DiagramFile,
   sim: Simulation,
   watched: Watched[],
-  counter: { ticks: number; messages: { remaining: number } },
+  counter: { ticks: number; messages: { remaining: number }; context?: VerificationContext },
 ) {
-  const run = createSimulationRun(d, sim, { messageBudget: counter.messages });
+  const run = createHeadlessRun(d, sim, counter.messages, counter.context);
   run.setTraceActions(false);
   const engine = run.engine;
   const scale = resolveScale(sim.scale);
@@ -379,15 +320,12 @@ function observe(
     }
   };
   let time = 0;
-  while (!run.state().done && time < horizon) {
-    if (run.state().waiting) run.resume();
-    run.step(PLANNER_LIMITS.sampleMs);
+  advanceHeadless(run, horizon, () => {
     const now = run.state().time;
     counter.ticks += Math.max(0, (now - time) / 10);
-    if (now === time) break;
     time = now;
     sample();
-  }
+  });
   // Goals: the simulation's own backlog/lag/in-flight expectations about each scaler or its input brokers.
   const failed = new Set(
     run
@@ -430,7 +368,7 @@ function withRange(a: AutoscalingConfig, key: "maxReplicas" | "minReplicas", val
   return next;
 }
 
-type Counter = { ticks: number; runs: number; messages: { remaining: number } };
+type Counter = { ticks: number; runs: number; messages: { remaining: number }; context?: VerificationContext };
 function unavailable(sim: Simulation, reason: NonNullable<ScalingPlan["reason"]>): ScalingPlan {
   return {
     simulation: sim.id,
@@ -474,7 +412,7 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
   if (startWork(d, sim) > PLANNER_LIMITS.startWork)
     return { ...base, status: "unavailable", reason: "start", runs: 0, ticks: 0 };
   const multiplier = resolveMultiplier(sim.multipliers?.capacity);
-  const local = { ticks: 0, messages: counter.messages };
+  const local = { ticks: 0, messages: counter.messages, context: counter.context };
   let runs = 1;
   const first = observe(d, sim, watched, local);
   const nodes = new Map(d.nodes.map((n) => [n.id, n]));
@@ -673,24 +611,27 @@ const cache = new Map<string, ScalingPlan[]>();
 export function planScaling(
   d: DiagramFile,
   counter: { ticks: number; runs: number; messages?: number } = { ticks: 0, runs: 0 },
+  messageBudget?: { remaining: number },
+  context?: VerificationContext,
 ): ScalingPlan[] {
   if (!revisionAtLeast(d.planning?.revision, "p3-a1") || !d.simulations?.length) return [];
   const key = simulationContent(d);
   const hit = cache.get(key);
-  if (hit) return hit;
+  if (hit && !messageBudget) return hit;
   if (!scalers(d).length) return [];
   const sims = d.simulations.slice(0, PLANNER_LIMITS.simulations);
-  const messages = { remaining: PLANNER_LIMITS.messages };
-  const run = { ticks: 0, runs: 0, messages };
+  const messages = messageBudget ?? { remaining: PLANNER_LIMITS.messages };
+  const available = messages.remaining;
+  const run = { ticks: 0, runs: 0, messages, context };
   const plans =
     planWork(d) > PLANNER_LIMITS.work
       ? sims.map((sim) => unavailable(sim, "budget"))
       : sims.map((sim) => planSimulation(d, sim, run));
   counter.ticks += run.ticks;
   counter.runs += run.runs;
-  counter.messages = (counter.messages ?? 0) + PLANNER_LIMITS.messages - messages.remaining;
+  counter.messages = (counter.messages ?? 0) + available - messages.remaining;
   if (cache.size >= 4) cache.delete(cache.keys().next().value!);
-  cache.set(key, plans);
+  if (!messageBudget) cache.set(key, plans);
   return plans;
 }
 

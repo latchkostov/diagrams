@@ -64,10 +64,21 @@ export const capacity: CheckRule = {
     const readyReplicas = Object.fromEntries(
       Object.entries(initial.resolved).flatMap(([id, p]) => {
         const a = p.autoscaling;
+        const settings = a?.mode === "on" && "settings" in a.controller ? a.controller.settings : undefined;
         return p.resources &&
           a?.mode === "on" &&
-          "settings" in a.controller &&
-          a.controller.settings.metrics.some((m) => m.source.kind === "pods")
+          settings &&
+          settings.up.selectPolicy !== "Disabled" &&
+          (settings.up.selectPolicy === "Min"
+            ? settings.up.policies.length > 0 && settings.up.policies.every((policy) => policy.value > 0)
+            : settings.up.policies.some((policy) => policy.value > 0)) &&
+          settings.metrics.some(
+            (m) =>
+              m.source.kind === "pods" &&
+              (m.target.kind === "averageValue" ? p.concurrency : 100) >
+                (m.target.kind === "averageValue" ? m.target.value : m.target.percentOfRequest) *
+                  (1 + settings.tolerance),
+          )
           ? [[id, a.controller.maxReplicas]]
           : [];
       }),

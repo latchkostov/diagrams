@@ -415,6 +415,8 @@ export interface EngineCheckpoint {
 export interface SimEngine {
   /** Sampled calls waiting for a connection, read without changing playback or its snapshot format. */
   queuedCalls(edgeId: string): number;
+  /** Sampled terminal losses caused by the named timeout edges, including propagated failures. */
+  timeoutLosses(edges: ReadonlySet<string>): Record<string, number>;
   /** Message lineage: follow one message and its copies hop by hop. Its state is part of checkpoints. */
   readonly tracer: MessageTracer;
   replicaPage(nodeId: string, page?: number): import("./autoscaling").ReplicaRow[];

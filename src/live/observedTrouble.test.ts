@@ -557,3 +557,45 @@ describe("third review", () => {
     expect(realSnapshot(e.snapshot()).nodes.q.outageDropped).toBe(300);
   });
 });
+
+it("indexes timeout adjacency once instead of materializing all edges for every losing node", () => {
+  const count = 300;
+  const d: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Independent workers",
+    nodes: Array.from({ length: count }, (_, i) => ({
+      id: `worker-${i}`,
+      label: `Worker ${i}`,
+      stencil: "service.go",
+      x: i * 200,
+      y: 0,
+    })),
+    edges: Array.from({ length: count }, (_, i) => ({
+      id: `edge-${i}`,
+      from: `worker-${i}`,
+      to: `worker-${(i + 1) % count}`,
+      kind: "async",
+    })),
+  };
+  const frame = (dropped: number): WatchedFrame => ({
+    time: 0,
+    nodes: Object.fromEntries(d.nodes.map((n) => [n.id, { status: "up", lag: {}, dropped }])),
+  });
+  const watcher = new TroubleWatcher();
+  watcher.observe(frame(0), d); // Compile and cache the shape before counting diagnosis work.
+  let entries = 0;
+  const iterator = Map.prototype[Symbol.iterator];
+  const spy = vi.spyOn(Map.prototype, Symbol.iterator).mockImplementation(function* (this: Map<unknown, unknown>) {
+    for (const entry of iterator.call(this)) {
+      entries++;
+      yield entry;
+    }
+    return undefined;
+  });
+  try {
+    expect(watcher.observe(frame(1), d)).toHaveLength(count);
+    expect(entries).toBeLessThanOrEqual(8 * count);
+  } finally {
+    spy.mockRestore();
+  }
+});

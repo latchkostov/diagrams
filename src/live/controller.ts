@@ -23,6 +23,7 @@ import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
 import { createEngine, randomDraws, WorkBudgetError } from "../sim/engine";
+import type { VerificationContext, ReplayControl } from "../sim/headless";
 import { createSimulationRun } from "../sim/simulation";
 import type {
   EngineOptions,
@@ -189,6 +190,7 @@ export class LiveController {
   private held = false;
   private speed = 1;
   private traffic = false;
+  private initialTraffic = false;
   private generation = 0;
   private tweaks = new Map<string, NodeTweak>();
   private listeners = new Set<() => void>();
@@ -225,6 +227,39 @@ export class LiveController {
   /** This run's ops so far, in order. */
   controlLog(): readonly LogEntry[] {
     return this.log;
+  }
+
+  /** Only losses actually caused by the simulation's explicitly overridden deadlines are expected. */
+  expectedTimeoutLosses(): Record<string, number> {
+    const edges = new Set(
+      Object.entries(this.sim?.setup?.edges ?? {})
+        .filter(([, setup]) => !!setup.caller?.deadlineMs)
+        .map(([id]) => id),
+    );
+    return Object.fromEntries(
+      Object.entries(this.engine.timeoutLosses(edges)).map(([id, count]) => [id, count * this.scale]),
+    );
+  }
+
+  /** Serializable origin and controls for a same-seed replay of this run, including live what-ifs. */
+  verificationContext(): VerificationContext {
+    const simulation: Simulation = this.sim
+      ? { ...this.sim, seed: this.sim.seed ?? this.opts.seed ?? DEFAULT_SEED, scale: this.scale }
+      : {
+          id: "free-play",
+          title: "Free play",
+          seed: this.opts.seed ?? DEFAULT_SEED,
+          scale: this.freeScale,
+          durationMs: 60000,
+          traffic: [],
+          setup: { props: this.freeApplied },
+          multipliers: { capacity: this.inputs.capacity ?? 1 },
+        };
+    const controls = this.pendingAfter(0, this.tick).flatMap((entry) => {
+      const op = this.replayOp(entry);
+      return op && op.kind !== "resume" ? [{ time: tickTime(entry.tick), op: op as ReplayControl }] : [];
+    });
+    return structuredClone({ simulation, controls, initialTraffic: this.initialTraffic });
   }
 
   /** Each op as it's logged, with who made it (shared Live sends them; nothing else listens yet). */
@@ -405,6 +440,7 @@ export class LiveController {
 
   /** A new run: its log starts empty. */
   private newRun(): void {
+    this.initialTraffic = this.traffic;
     this.run++;
     this.seq = 0;
     this.applied = 0;

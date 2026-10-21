@@ -70,6 +70,7 @@ export interface WatchedNode {
 }
 export interface WatchedFrame {
   faults?: readonly Fault[];
+  expectedTimeouts?: ReadonlySet<string>;
   time: number;
   /** Real messages per dot (default 1). */
   scale?: number;
@@ -172,6 +173,8 @@ interface Shape {
   deadlines: Map<string, number | undefined>;
   responses: Map<string, number>;
   sources: Map<string, string>;
+  incomingTimeouts: Map<string, string[]>;
+  outgoingCalls: Map<string, string[]>;
   cyclic: Set<string>;
 }
 
@@ -205,6 +208,18 @@ function shapeOf(d: DiagramFile): Shape {
       ];
     }),
   );
+  const incomingTimeouts = new Map<string, string[]>(),
+    outgoingCalls = new Map<string, string[]>();
+  for (const e of d.edges) {
+    if (e.kind !== "sync" || (e.relation && e.relation !== "flow")) continue;
+    const outgoing = outgoingCalls.get(e.from) ?? [];
+    outgoing.push(e.id);
+    outgoingCalls.set(e.from, outgoing);
+    if (deadlines.get(e.id) === undefined) continue;
+    const incoming = incomingTimeouts.get(e.to) ?? [];
+    incoming.push(e.id);
+    incomingTimeouts.set(e.to, incoming);
+  }
   const compiled = compileTopology(d);
   const deadLetterTargets = new Set<string>(),
     hasDeadLetterRoute = new Set<string>();
@@ -232,6 +247,8 @@ function shapeOf(d: DiagramFile): Shape {
     groups: compiled.groups,
     targets: new Map(d.edges.map((e) => [e.id, e.to])),
     deadlines,
+    incomingTimeouts,
+    outgoingCalls,
     responses: callResponses,
     sources: new Map(d.edges.map((e) => [e.id, e.from])),
     cyclic: new Set([...(plan?.nodes ?? [])].filter(([, n]) => !Number.isFinite(n.threadHoldMs)).map(([id]) => id)),
@@ -307,12 +324,9 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
             : (Math.max(0, total - before) * 1000) / elapsed;
         const deadlineMs = affordableTimeout(d.responses.get(edge) ?? 0, n.threads.slots, rate);
         const timeout = d.deadlines.get(edge) === undefined && stalled && deadlineMs !== undefined;
-        const upstream = [...d.targets].find(
-          ([incoming, target]) =>
-            target === id &&
-            (frame.edges?.[incoming]?.calls?.timedOut ?? 0) > 0 &&
-            d.deadlines.get(incoming) !== undefined,
-        );
+        const upstream = d.incomingTimeouts
+          .get(id)
+          ?.find((incoming) => (frame.edges?.[incoming]?.calls?.timedOut ?? 0) > 0);
         const detail = d.cyclic.has(id)
           ? t("threads.deadlocked")
           : t("threads.exhaustedDetail", { count: exhausted.count, name: name(target) });
@@ -325,8 +339,8 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
           detail: upstream
             ? t("threads.exhaustedTimeout", {
                 cause: detail,
-                name: name(d.sources.get(upstream[0])!),
-                seconds: d.deadlines.get(upstream[0])! / 1000,
+                name: name(d.sources.get(upstream)!),
+                seconds: d.deadlines.get(upstream)! / 1000,
               })
             : detail,
           action: timeout ? { kind: "add-timeout", edge, deadlineMs: deadlineMs! } : { kind: "free-thread", edge },
@@ -340,11 +354,11 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       const broker = BROKERS.has(r);
       const outage = (n.outageDropped ?? 0) - (oldest?.outageDropped.get(id) ?? 0);
       const exhausted = broker && lost > outage;
-      const timeoutEdge = [...d.sources].find(
-        ([edge, source]) => source === id && (frame.edges?.[edge]?.calls?.timedOut ?? 0) > 0,
-      );
-      const timeoutCount = timeoutEdge ? (frame.edges?.[timeoutEdge[0]]?.calls?.timedOut ?? 0) : 0;
-      const timeoutMs = timeoutEdge ? d.deadlines.get(timeoutEdge[0]) : undefined;
+      const timeoutEdge = d.outgoingCalls
+        .get(id)
+        ?.find((edge) => !frame.expectedTimeouts?.has(edge) && (frame.edges?.[edge]?.calls?.timedOut ?? 0) > 0);
+      const timeoutCount = timeoutEdge ? (frame.edges?.[timeoutEdge]?.calls?.timedOut ?? 0) : 0;
+      const timeoutMs = timeoutEdge ? d.deadlines.get(timeoutEdge) : undefined;
       out.push({
         key: `dropping:${id}`,
         kind: "dropping",
