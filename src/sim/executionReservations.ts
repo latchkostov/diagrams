@@ -340,7 +340,7 @@ export function createExecutionReservations<
     work.cpuParts = work.cpuRemaining = work.replica = work.logicalCpuRemaining = work.cpuBacklog = undefined;
     node.threadTails.set(r.id, r);
     work.localThread = r.id;
-    if (immediate || !callerReservations(node) || context.immediateHolds()) ledger.release(r);
+    if (immediate || !usesLedger(node) || context.immediateHolds()) ledger.release(r);
     // Stretch only the turnaround that scale one actually waits through: a
     // reply before this tick's next admission opportunity has no extra lag.
     else

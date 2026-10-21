@@ -12,6 +12,41 @@ import {
 
 const resources = () => ({ ...resourceLesson(), startup: { delayMs: 0, jitterFraction: 0 } });
 
+it.each([false, true])("standalone first completion follows scale one (resources=%s)", (withResources) => {
+  const d = waitingFixture();
+  d.edges = d.edges.filter((edge) => edge.id !== "call");
+  d.nodes[1].props = {
+    replicas: 1,
+    concurrency: 1,
+    latencyMs: 1000,
+    jitter: 0,
+    ...(withResources ? { resources: { ...resources(), cpuMsPerMessage: 0 } } : {}),
+  };
+  for (const scale of [1, 10]) {
+    let state!: LedgerInvariantState;
+    const e = createEngine({
+      scale,
+      verifyResources: assertResourceInvariants,
+      verifyLedger(s) {
+        state = s;
+        assertLedgerInvariants(s);
+      },
+    });
+    e.load(d);
+    // Both runs receive ten real requests at the same instant.
+    e.inject("caller", 10 / scale);
+    e.step(1000);
+    expect(e.snapshot().nodes.caller.processed).toBe(0);
+    e.step(10);
+    expect(e.snapshot().nodes.caller.processed).toBe(1);
+    if (scale === 10) {
+      const tail = [...state.ledger.reservations.values()].find((r) => r.owner === "caller")!;
+      expect(tail.releaseAt).toBe(10010);
+      expect(tail.admissionLagMs).toBe(0);
+    }
+  }
+});
+
 it("a detached Kafka CPU tail retains its draining partition", () => {
   const d = waitingFixture();
   d.nodes[0].stencil = "kafka.topic";
@@ -81,14 +116,20 @@ it.each([false, true])(
     const e = createEngine({ scale: 10, verifyResources: assertResourceInvariants });
     e.load(d);
     e.inject("caller", 1);
-    e.step(active ? 10010 : 12000);
-    expect(e.snapshot().nodes.caller.processed).toBe(active ? 0 : 1);
+    e.step(active ? 1010 : 12000);
+    expect(e.snapshot().nodes.caller.processed).toBe(1);
     e.setScale(1);
     e.inject("caller", 10);
+    if (active) {
+      // Logical work is done, but the original ten-member hold still owns the slot.
+      e.step(8990);
+      expect(e.snapshot().nodes.caller.inFlight).toBe(0);
+      expect(e.snapshot().nodes.caller.processed).toBe(1);
+    }
     e.step(10);
     expect(e.snapshot().nodes.caller.inFlight).toBe(1);
     e.step(1000);
-    expect(e.snapshot().nodes.caller.processed).toBe(active ? 1 : 2);
+    expect(e.snapshot().nodes.caller.processed).toBe(2);
     e.step(10000);
     expect(e.snapshot().nodes.caller.processed).toBe(11);
   },
@@ -352,7 +393,7 @@ it.each([false, true])("enabling resources preserves the sampled standalone slot
   });
   e.load(d);
   e.inject("caller", queued ? 2 : 1);
-  e.step(10010);
+  e.step(10);
   expect(e.snapshot().nodes.caller.inFlight).toBe(1);
   const existing = [...state.ledger.reservations.values()].find((r) => r.owner === "caller" && r.scope === "thread");
   expect(existing).toBeDefined();
@@ -383,7 +424,7 @@ it("the execution oracle rejects missing and shared running thread ownership", (
   });
   e.load(d);
   e.inject("caller", 2);
-  e.step(1100);
+  e.step(10);
   const work = [...state.nodes].find((n) => n.id === "caller")!.working;
   expect(work).toHaveLength(2);
   const original = work[1].thread;

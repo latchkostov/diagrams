@@ -8,7 +8,7 @@ Latency p50/p95 comparisons apply only when every pool is divisible by N.
 Investigate the unresolved gaps below; do not filter generators, weaken admission invariants,
 or permit tiny, effectively permanent reservations. The wait-test wrapper rework belongs here too.
 
-The three remaining original minimal reproductions are named `it.fails` tests in `src/sim/scaleEquivalence.test.ts`,
+The two remaining original minimal reproductions are named `it.fails` tests in `src/sim/scaleEquivalence.test.ts`,
 using `src/test/scaleEquivalence.ts`. A correction must remove the corresponding expected-failure
 marker. Existing gating properties stay unchanged; generated I1 is opt-in exploration with no quarantine predicate.
 These cases inject 100 real requests/s for 20 seconds, quantized at cohort boundaries, with seed 7.
@@ -18,11 +18,11 @@ Numbers below are real caller/worker completions, not dots.
 
 ## Legacy queue workers
 
-One resource-backed queue worker outside the call graph, one slot, 10 ms local latency and zero
-CPU: same-arrivals scale 1 completes 1,997 (continuous: 1,998); scale 1.01 completes 1,008.99.
-Allowed difference: 41.96.
-There are no request calls or connection pools. The legacy `serviceCredit` path survives for
-nonparticipants; trace fractional credit and the next admission tick.
+Resolved in sampling PR 3: W1 processors outside the call graph retire through the ledger;
+`serviceCredit` remains only for pre-W1 processors and gateway ceilings. Ordinary I1 regressions
+pass at scales 1.01, 1.1 and 2.5. Real completions improve from 1,008.99 to 1,996.77 against
+the same-arrivals scale-one 1,997 reference at 1.01; from 1,098.9 to 1,996.5 against 1,997 at
+1.1; and from 1,665 to 1,997.5 against 1,996 at 2.5. Caller occupancy semantics are unchanged.
 Generated parent: seed `20261018`, path `0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:2:2`.
 
 ## Managed request admission

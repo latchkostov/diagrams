@@ -2714,11 +2714,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (isBroker(node) && !node.groups.length) break;
         if (
           node.status === "up" &&
-          ((!callerReservations(node) &&
-            !node.props.admission &&
-            node.role === "processor" &&
-            scale > 1 &&
-            node.props.latencyMs > 0) ||
+          ((!waits() && !node.props.admission && node.role === "processor" && scale > 1 && node.props.latencyMs > 0) ||
             limit < Infinity)
         ) {
           if (node.serviceCredit < 1 - 1e-9) break;
@@ -2976,9 +2972,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       releasingEarly = true;
       ledger.releaseDue(node.id, node.activeMs);
       releasingEarly = false;
-      // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
+      // Pre-W1 processors use service pacing; W1 turnover belongs to the ledger.
       if (
-        !callerReservations(node) &&
+        !waits() &&
         !node.props.admission &&
         node.role === "processor" &&
         scale > 1 &&

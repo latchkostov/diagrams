@@ -39,6 +39,12 @@ function legacyWorker() {
   return diagram;
 }
 
+function preW1LegacyWorker() {
+  const diagram = legacyWorker();
+  diagram.planning!.revision = "p3-a1";
+  return diagram;
+}
+
 function managedCall() {
   const diagram = zeroWorkCall();
   diagram.nodes[0].stencil = "generic.queue";
@@ -111,7 +117,6 @@ function slowCallee() {
 // Exact siblings prevent an unrelated mismatch from satisfying an expected failure.
 // docs/backlog/2026-10-20-engine-r5-i1-counterexamples.md
 const gaps = [
-  { name: "legacy queue-worker serviceCredit", fixture: legacyWorker, scale: 1.01, baseline: 1997, dots: 999 },
   { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 396 },
   { name: "fractional capacity fragmentation", fixture: fragmentation, scale: 1.1, baseline: 999, dots: 799 },
   { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 200 },
@@ -119,7 +124,15 @@ const gaps = [
   { name: "CPU contention without a pool", fixture: () => cpuContention(false), scale: 1.1, baseline: 570, dots: 333 },
   { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
-for (const gap of gaps) {
+// Preserve the historical serviceCredit snapshot: only W1 moves onto ledger pacing.
+const legacyPin = {
+  name: "legacy queue-worker serviceCredit",
+  fixture: preW1LegacyWorker,
+  scale: 1.01,
+  baseline: 1997,
+  dots: 999,
+};
+for (const gap of [legacyPin, ...gaps]) {
   describe(`${gap.name} at scale ${gap.scale}`, () => {
     let runs: ReturnType<typeof constantRateRuns>;
     beforeAll(() => {
@@ -151,11 +164,23 @@ for (const gap of gaps) {
       };
       expect({ baseline: outcomes(runs.baseline), sampled: outcomes(runs.sampled) }).toMatchSnapshot();
     });
-    it.fails("I1 known gap: preserves real outcomes at the same arrival instants", () => {
-      expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
-    });
+    if (gap !== legacyPin)
+      it.fails("I1 known gap: preserves real outcomes at the same arrival instants", () => {
+        expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+      });
   });
 }
+
+it.each([
+  { scale: 1.01, baseline: 1997, dots: 1977 },
+  { scale: 1.1, baseline: 1997, dots: 1815 },
+  { scale: 2.5, baseline: 1996, dots: 799 },
+])("I1 regression: standalone queue-worker turnover at scale $scale", ({ scale, baseline, dots }) => {
+  const runs = constantRateRuns(legacyWorker(), scale);
+  expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(baseline);
+  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(dots * scale);
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
 
 it.each([1.5, 2, 3, 4])("I1 regression: sub-tick local work at scale %s", (scale) => {
   const runs = constantRateRuns(subTick(), scale);
