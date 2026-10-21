@@ -61,7 +61,13 @@ export function zipSkill(files: SkillFile[], folder = SKILL_NAME): Buffer {
   let offset = 0;
   for (const f of files) {
     const name = Buffer.from(`${folder}/${f.name}`, "utf8");
-    const body = deflateRawSync(f.data, { level: 9 });
+    let body = deflateRawSync(f.data, { level: 9 });
+    // The viewer and icon catalog compress best with different hash-table sizes.
+    // Keep the smallest lossless stream per entry; ties retain the default bytes.
+    for (const memLevel of [6, 7, 9]) {
+      const candidate = deflateRawSync(f.data, { level: 9, memLevel });
+      if (candidate.length < body.length) body = candidate;
+    }
     const crc = crc32(f.data);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
