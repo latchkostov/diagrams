@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { STEP } from "./timing";
 import { ADMISSION_LAG_MS, SampledLedger } from "./ledger";
 import { countingReads, GROWTH_FACTOR } from "../test/complexity";
 import { drainRetiredLedger } from "../test/ledgerDrain";
@@ -124,8 +125,8 @@ it.each([1.5, 1])("a paused caller returns unused admitted slots after a shrink 
   const d = waitingFixture();
   d.nodes[1].stencil = "aws.lambda";
   d.nodes[1].props = {
-    concurrency: 2,
-    maxConcurrency: 2,
+    concurrency: 3,
+    maxConcurrency: 3,
     scaling: "fixed",
     jitter: 0,
     api: { latencyMs: 10 },
@@ -333,7 +334,8 @@ it.each([1, 2, 7, 10])("thread holds represent sequential scale-1 turnovers (wei
   const ledger = new SampledLedger();
   const r = ledger.reserve({ owner: "caller", scope: "thread", phase: "wait", startActive: 20 }, 10, weight)!;
   ledger.retire(r, 260, 280);
-  expect(r.releaseAt).toBe(20 + ((260 + ADMISSION_LAG_MS) * 10) / weight - ADMISSION_LAG_MS);
+  expect(r.turnoverAt).toBe(20 + ((260 + ADMISSION_LAG_MS) * 10) / weight);
+  expect(r.releaseAt).toBe(Math.floor(r.turnoverAt! / STEP) * STEP - ADMISSION_LAG_MS);
   expect(ledger.state.reservations.has(r.id)).toBe(weight < 10);
 });
 
@@ -342,7 +344,8 @@ it("fractional credits transfer capacity once, merge, and obey attempt eligibili
   for (let i = 0; i < 2; i++) {
     const r = ledger.reserve(pool(), 7, 2)!;
     ledger.retire(r, 135, 135);
-    expect(r.releaseAt).toBe(472.5);
+    expect(r.turnoverAt).toBe(r.scope === "pool" ? 472.5 : 482.5);
+    expect(r.releaseAt).toBe(470);
   }
   ledger.releaseDue("caller", 480);
   expect(ledger.audit().pool).toBe(4);
@@ -366,10 +369,11 @@ it("unused fractional credits expire after their admission tick and do not bank 
   const ledger = new SampledLedger();
   const r = ledger.reserve({ owner: "caller", scope: "thread", phase: "wait", startActive: 10 }, 7, 4)!;
   ledger.retire(r, 260, 270);
-  expect(r.releaseAt).toBe(472.5);
+  expect(r.turnoverAt).toBe(r.scope === "pool" ? 472.5 : 482.5);
+  expect(r.releaseAt).toBe(470);
   ledger.releaseDue("caller", 480);
   expect(ledger.audit().thread).toBe(4);
-  expect(ledger.state.owners.get("caller")!.heap).toEqual([{ id: r.id, end: 482.5 }]);
+  expect(ledger.state.owners.get("caller")!.heap).toEqual([]);
   ledger.releaseDue("caller", 490);
   expect([...ledger.state.owners.get("caller")!.credits.values()]).toEqual([[{ weight: 4, freeAt: 482.5 }]]);
   ledger.expireCredits("caller", 480);
@@ -410,9 +414,9 @@ it("checkpoint restores a fractional thread release before its admission phase",
   });
   engine.load(d);
   engine.inject("source", 20);
-  engine.step(480);
+  engine.step(470);
   expect(state.ledger.owners.get("caller")!.heap).toEqual([
-    { id: [...state.ledger.reservations.values()].find((r) => r.scope === "thread")!.id, end: 482.5 },
+    { id: [...state.ledger.reservations.values()].find((r) => r.scope === "thread")!.id, end: 480 },
   ]);
   const checkpoint = engine.checkpoint();
   engine.step(5000);

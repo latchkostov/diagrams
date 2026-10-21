@@ -26,6 +26,34 @@ recorded below. `node/sim/corpus-w1-sampling/sampled.json` and `node/waits/w1-sa
 never changed. Every pre-W1, scale-one W1 and non-simulation golden stayed unchanged.
 R5 expects no golden changes, including for its zero-local-work correction.
 
+## Sampling accuracy A (2026-10-20)
+
+The reviewed output delta contains four scale-ten records. Scale-one records are unchanged.
+These differences still require deliberate recording after the exact-timing compatibility tests
+are reconciled; the reference goldens have not been updated yet.
+
+- `node/sim/blocking-call/free-play.json`: final real caller completions fall 13,710→13,670.
+  A same-diagram, seed-7, 60-second scale-one run completes 12,000, reducing the difference
+  1,710→1,670. This is a partial improvement: store completions rise 13,650→13,670 against
+  11,960 at scale one, increasing that difference 1,690→1,710. CPU contention remains deferred.
+  Queue lengths, sampled rates, event fingerprints, and latency samples follow the new schedule.
+- `node/sim/corpus-w1-deadline/blocking-10.json`: earlier fractional turnover moves mean
+  end-to-end latency 685→680 ms and p90 1,100→1,090 ms; caller wait mean falls 415→410 ms.
+  Scale-one means are 765 and 495 ms, so these means move away from scale one. End-to-end
+  p50 remains 820 ms, matching scale one. Final outcomes are unchanged; rates and two event
+  fingerprints follow the earlier release. This does not resolve the pooled-deadline gap.
+- `node/sim/corpus-w1-deadline/non-blocking-10.json`: mean end-to-end latency falls 310→305 ms
+  against 315 ms at scale one; caller wait mean falls 96.25→90 ms against 100 ms. These means
+  move away from scale one. End-to-end p50 stays 320 ms, matching scale one. Final outcomes
+  are unchanged; the final downstream smoothed rate and one event fingerprint move with turnover.
+- `node/waits/w1-deadline/non-blocking-10.json`: at 200 ms, failure continuations complete
+  all four dots instead of three. Caller/source failures become 40 real requests instead of 30,
+  versus 32 at scale one; the difference grows 2→8. Input in-flight falls one dot to zero and
+  total in-system falls six dots to four. This is the earlier logical continuation schedule,
+  not a claim that pooled deadlines are now scale-equivalent.
+
+Regeneration also refreshes the skill's bundled HTML viewer to carry the engine corrections.
+
 ## Engine attempts R2 (2026-10-19)
 
 Only `node/sim/blocking-call/free-play.json` changes: at scale 10, logical answers and outputs arrive

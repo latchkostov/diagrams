@@ -17,13 +17,13 @@ does: occupancy may temporarily exceed the new limit, and further admission wait
 Pausing freezes capacity holds. Recovery reacquires capacity through the same allocator as new work,
 so it cannot invent extra threads, connections or shared API slots.
 
-**Known gaps.** Sampling is an approximation, especially with very small pools or work shorter than
-the simulation's 10 ms tick. It can substantially understate throughput for queue workers, managed
-API admission, unequal pools with fractional leftover room, and even equal one-slot services doing
-1 ms of local work. Calls that combine a connection pool with a timeout can also substantially
-understate completed requests and late replies at scale > 1; see the
-[pooled timeout follow-up](backlog/2026-10-20-deadline-queued-cohorts.md). The first four cases are tracked in the [sampling accuracy work item](backlog/2026-10-20-engine-r5-i1-counterexamples.md),
-with reproductions and measured differences. Use scale 1 when small capacity boundaries matter.
+**Known gaps.** Sampling can change throughput when requests compete for a service's CPU, or when
+a Lambda caller waits for replies from both ordinary services and services with CPU/memory resources.
+Calls that combine a connection pool with a timeout can also substantially understate completed
+requests and late replies at scale > 1; see the
+[pooled timeout follow-up](backlog/2026-10-20-deadline-queued-cohorts.md).
+The [sampling accuracy work item](backlog/2026-10-20-engine-r5-i1-counterexamples.md) records the
+remaining classes and measured differences. Use scale 1 when small capacity boundaries matter.
 The general scale-equivalence bound below is an accuracy target, not a guarantee across all diagrams.
 
 ### Technical model

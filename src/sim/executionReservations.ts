@@ -61,6 +61,7 @@ export function createExecutionReservations<
   resourceWork: (node: Node) => CpuTail<Group>[];
   scheduleThreadGrace: (id: number, work: Reservation<Group>) => void;
   immediateHolds: () => boolean;
+  admissionLag: (node: Node) => number;
 }) {
   type Work = ExecutionWork<Group>;
   const { ledger, callerReservations, slots, resourceWork, scheduleThreadGrace } = context;
@@ -202,7 +203,8 @@ export function createExecutionReservations<
       thread.requestWeight = request.weight;
       thread.heldMs = Math.max(
         0,
-        ((tail.releaseAt! + (tail.admissionLagMs ?? 0) - node.activeMs) * tail.weight) / tail.represented,
+        (((tail.turnoverAt ?? tail.releaseAt! + (tail.admissionLagMs ?? 0)) - node.activeMs) * tail.weight) /
+          tail.represented,
       );
     }
   }
@@ -340,15 +342,14 @@ export function createExecutionReservations<
     node.threadTails.set(r.id, r);
     work.localThread = r.id;
     if (immediate || !callerReservations(node) || context.immediateHolds()) ledger.release(r);
-    // Resource-backed nodes have a second admission phase after logical replies.
-    // Zero-local-work callers also start in admission itself; their scale-one
-    // turnaround has no extra work-loop tick to stretch with the cohort.
+    // Stretch only the turnaround that this settlement phase actually incurs.
+    // Incoming replies precede admission; later blocking replies wait another tick.
     else
       ledger.retire(
         r,
         node.activeMs - (r.segmentActive ?? r.startActive),
         node.activeMs,
-        admissionLagMs ?? (node.fleet || r.heldMs === 0 ? 0 : undefined),
+        admissionLagMs ?? (r.phase === "work" ? 0 : context.admissionLag(node)),
       );
     if (node.threadTails.has(r.id)) scheduleThreadGrace(r.id, r);
   }

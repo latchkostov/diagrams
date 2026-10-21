@@ -12,12 +12,28 @@ export interface CallerOccupancy {
   represented: number;
 }
 
+/** Pack a finite pool without stranding less than one request between cohorts.
+ * Keep the minimum-weight guard: balance the earlier grants rather than admitting a tiny tail. */
+export function allocationWeight(represented: number, room: number, cap = Infinity): number {
+  const maximum = Math.min(represented, cap);
+  const weight = Math.min(maximum, room);
+  if (Number.isFinite(room) && maximum > 0 && room > maximum) {
+    const remainder = room % maximum;
+    const minimum = Math.min(1, represented);
+    if (remainder > 1e-9 && remainder + 1e-9 < minimum) {
+      const packed = room / Math.ceil(room / maximum);
+      if (packed >= minimum) return packed;
+    }
+  }
+  return weight;
+}
+
 export function reserveCallerOccupancy(
   represented: number,
   available: number,
   retained?: CallerOccupancy,
 ): CallerOccupancy {
-  return { weight: Math.min(represented, available, retained?.weight ?? Infinity), represented };
+  return { weight: allocationWeight(represented, available, retained?.weight ?? Infinity), represented };
 }
 
 export function occupancyFraction(reservation: CallerOccupancy): number {
@@ -49,6 +65,8 @@ export interface Reservation<Group = unknown> extends ResourceWork {
   cap: number;
   requestWeight?: number;
   admissionLagMs?: number;
+  /** Exact turnover, including fractional debt carried into the next cohort. */
+  turnoverAt?: number;
 }
 export interface ReleaseCredit {
   weight: number;
@@ -88,7 +106,7 @@ export class SampledLedger {
     const minimum = Math.min(1, represented);
     if (room < minimum && room + 1e-9 >= minimum) room = minimum;
     if (cap < minimum && cap + 1e-9 >= minimum) cap = minimum;
-    const weight = Math.min(represented, room, cap);
+    const weight = allocationWeight(represented, room, cap);
     // A partial dot needs at least one real request's room. Tiny fractional
     // leftovers must not create leases whose residence is effectively permanent.
     if (!Number.isFinite(represented) || !Number.isFinite(weight) || weight < Math.min(1, represented) || !(weight > 0))
@@ -108,7 +126,7 @@ export class SampledLedger {
     if (remaining > 1e-9) startActive = scope.startActive;
     const reservation: Reservation<Group> = {
       ...scope,
-      startActive: Math.min(scope.startActive, startActive),
+      startActive,
       segmentActive: scope.startActive,
       id: this.state.nextReservation++,
       represented,
@@ -147,7 +165,13 @@ export class SampledLedger {
         : reservation.startActive +
           ((reservation.heldMs + admissionLagMs) * reservation.represented) / reservation.weight -
           admissionLagMs;
-    reservation.releaseAt = Math.max(ownerActiveMs, releaseAt);
+    // Quantize capacity turnover, carrying the exact fractional debt into the
+    // next cohort. Repeatedly rounding upward loses capacity on fresh arrivals.
+    reservation.turnoverAt = releaseAt + admissionLagMs;
+    reservation.releaseAt = Math.max(
+      ownerActiveMs,
+      Math.floor((releaseAt + admissionLagMs + 1e-9) / STEP) * STEP - admissionLagMs,
+    );
     if (reservation.weight === reservation.represented || reservation.releaseAt <= ownerActiveMs + 1e-9) {
       // Logical completion still bounds releaseAt (I4), but clamping must not
       // discard the exact turnover carried into the next already-eligible dot.
@@ -176,9 +200,9 @@ export class SampledLedger {
     while (owner.heap.length && owner.heap[0].end <= activeMs + 1e-9) {
       const due = popDue(owner.heap, owner.indices);
       const reservation = this.state.reservations.get(due.id)!;
-      // Blocking settlement follows admission. Its freed capacity becomes
-      // admissible one phase later, including the exact fractional remainder.
-      const freeAt = due.end;
+      // Preserve the exact turnover even when this tick borrowed a fraction of
+      // the next tick's capacity. The next reservation repays that fraction.
+      const freeAt = reservation.turnoverAt!;
       this.credit(reservation, freeAt);
       this.release(reservation);
     }

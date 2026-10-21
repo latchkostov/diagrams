@@ -5,6 +5,8 @@ import { assertLedgerInvariants, assertOutcomeInvariants, assertResourceInvarian
 import { STEP } from "../sim/timing";
 import type { EdgeSimProps, NodeSimProps, SimSnapshot } from "../sim/types";
 import { realSnapshot } from "../sim/units";
+import { resolveProps } from "../sim/defaults";
+import { stencilRole } from "../stencils/roles";
 
 /** I1 is an additional floor: callers retain their tighter, scenario-specific bounds. */
 export function expectScaleEquivalent(baseline: SimSnapshot, sampled: SimSnapshot, pool: number, faults = 0) {
@@ -28,7 +30,7 @@ export function expectScaleEquivalent(baseline: SimSnapshot, sampled: SimSnapsho
 
 /** Replay a fresh constant-rate interval; command histories include edits/restores and
  * are not themselves constant-rate, fixed-scale I1 experiments. Keep all generated pools. */
-export function checkConstantRateEquivalence(diagram: DiagramFile, scale: number, seed = 7) {
+export function constantRateSnapshots(diagram: DiagramFile, scale: number, seed = 7) {
   const pools = diagram.nodes.flatMap((n) => {
     const p = n.props as NodeSimProps | undefined;
     return [
@@ -68,5 +70,25 @@ export function checkConstantRateEquivalence(diagram: DiagramFile, scale: number
   };
   const baseline = run(1),
     sampled = run(scale);
+  return { baseline, sampled, pools };
+}
+
+export function checkConstantRateEquivalence(diagram: DiagramFile, scale: number, seed = 7) {
+  const { baseline, sampled, pools } = constantRateSnapshots(diagram, scale, seed);
   expectScaleEquivalent(baseline, sampled, Math.min(...pools));
+  if (pools.every((pool) => Math.abs(pool / scale - Math.round(pool / scale)) < 1e-9)) {
+    const jitter = diagram.nodes.reduce((sum, node) => {
+      const p = resolveProps(stencilRole(node.stencil), node.label, node.props ?? {}, node.stencil, diagram.planning);
+      return sum + p.latencyMs * p.jitter;
+    }, 0);
+    for (const [id, node] of Object.entries(baseline.nodes)) {
+      const other = sampled.nodes[id];
+      if (!node.latency?.samples || !other.latency?.samples) continue;
+      for (const percentile of ["p50", "p95"] as const)
+        expect(
+          Math.abs(other.latency[percentile] - node.latency[percentile]),
+          `I1 ${id}.${percentile}`,
+        ).toBeLessThanOrEqual(STEP + jitter);
+    }
+  }
 }

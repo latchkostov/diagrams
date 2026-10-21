@@ -470,7 +470,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let outcomeChecks = new Map<number, Attempt<Message>>();
   let nextLogical = 1;
   const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
-  const callerReservations = (node: Node) => (node.waits || node.callTarget) && node.role === "processor";
+  const callerReservations = (node: Node) => waits() && node.role === "processor";
   const threadOccupancy = (node: Node) =>
     callerReservations(node)
       ? (node.threadWeight.work + node.threadWeight.wait) / scale
@@ -492,6 +492,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         : threadOccupancy(node) * scale;
   const memoryRequests = (node: Node) => (callerReservations(node) ? node.requestWeight : residentRequests(node));
 
+  let admissionLag = 0;
   const execution = createExecutionReservations<Group, Node>({
     ledger,
     admission: () => admission,
@@ -503,6 +504,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     resourceWork,
     scheduleThreadGrace,
     immediateHolds: () => opts.ledgerHold === "none",
+    admissionLag: (node) => (node.fleet ? 0 : admissionLag),
   });
   const { reacquireCapacity, startResources, endResources, retireThread } = execution;
 
@@ -2936,9 +2938,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         resourceClock = true;
         break;
       }
-    if (!resourceClock) admitIncoming();
-
+    admissionLag = 0;
     earlyPoolWakes = new Set();
+    releasingEarly = true;
+    for (const node of nodes.values()) ledger.releaseDue(node.id, node.activeMs);
+    releasingEarly = false;
+    if (!resourceClock) admitIncoming();
+    admissionLag = STEP;
+
     for (const node of nodes.values()) {
       node.cpuTick =
         opts.verifyResources && node.fleet
@@ -2954,9 +2961,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               charges: [],
             }
           : undefined;
-      releasingEarly = true;
-      ledger.releaseDue(node.id, node.activeMs);
-      releasingEarly = false;
+
       // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
       if (
         !callerReservations(node) &&
