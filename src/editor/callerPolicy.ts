@@ -25,6 +25,9 @@ export function effectiveCallerPolicy(
   const editable = !live?.slowmo.active && !draft;
   return {
     caller,
+    diagramCaller: edge.props?.caller as EdgeSimProps["caller"],
+    override: override?.caller,
+    simulation: saved && override ? saved.title : undefined,
     policy: callPolicy(editor.getNode(edge.from)?.stencil ?? "", caller),
     editable,
     set(patch: EdgeSimProps["caller"]) {

@@ -8,13 +8,13 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "e47b9238f7b1f5f4d88a09c682b194821c25ffa123f924f2560812038219d395", "bytes": 3954 },
+    "decoded": { "sha256": "b4a7627cb9dd1a4bfd9e4ab712878b5052007d49e4df666e4f2b7f8bea0f48b1", "bytes": 3972 },
     "sameAsFile": true,
     "warned": false
   },
   "exportHtml": {
     "status": 0,
-    "stdout": "<tmp>/export.html (<size>, plays \"A pool of 40\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stdout": "<tmp>/export.html (<size>, plays \"Threads freed while waiting for the pool\" when opened)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
     "stderr": "",
     "payload": {
       "version": 1,
@@ -28,7 +28,7 @@
           ]
         },
         "title": "A pool of 40",
-        "description": "A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.",
+        "description": "Checkout handles payments and order status. Payment calls share forty connections. Compare holding threads while waiting for a connection with freeing them so order status can keep working.",
         "nodes": [
           {
             "id": "shop",
@@ -103,7 +103,7 @@
         "simulations": [
           {
             "id": "pool-40",
-            "title": "A pool of 40",
+            "title": "Threads freed while waiting for the pool",
             "description": "Payment calls wait off-thread for one of forty connections. Order status only calls Orders DB and keeps completing during the slowdown. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
             "seed": 17,
             "scale": 1,
@@ -133,7 +133,7 @@
               },
               {
                 "id": "expected-shop",
-                "label": "shop reports payment failures",
+                "label": "Shop reports payment failures",
                 "metric": { "node": "shop", "field": "dropped" },
                 "op": ">",
                 "value": 0,
@@ -141,7 +141,7 @@
               },
               {
                 "id": "expected-gateway",
-                "label": "gateway reports payment failures",
+                "label": "API gateway reports payment failures",
                 "metric": { "node": "gateway", "field": "dropped" },
                 "op": ">",
                 "value": 0,
@@ -151,7 +151,7 @@
           },
           {
             "id": "blocking-pool",
-            "title": "Blocking waits still hold threads",
+            "title": "Threads held while waiting for the pool",
             "description": "The same pool holds waiting threads as well as connections. Order-status work queues behind them. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
             "seed": 17,
             "scale": 1,
@@ -181,7 +181,7 @@
               },
               {
                 "id": "expected-shop",
-                "label": "shop reports payment failures",
+                "label": "Shop reports payment failures",
                 "metric": { "node": "shop", "field": "dropped" },
                 "op": ">",
                 "value": 0,
@@ -189,7 +189,7 @@
               },
               {
                 "id": "expected-gateway",
-                "label": "gateway reports payment failures",
+                "label": "API gateway reports payment failures",
                 "metric": { "node": "gateway", "field": "dropped" },
                 "op": ">",
                 "value": 0,

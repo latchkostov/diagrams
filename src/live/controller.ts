@@ -1322,6 +1322,11 @@ export class LiveController {
     return this.engine.replicaPage(nodeId, page);
   }
 
+  /** Observational pool count in real calls; snapshots and simulation results stay unchanged. */
+  queuedCalls(edgeId: string): number {
+    return this.engine.queuedCalls(edgeId) * this.scale;
+  }
+
   updateDiagram(next: DiagramFile): DiagramUpdate {
     const key = structuralKey(next);
     const previousNodes = new Map(this.diagram.nodes.map((n) => [n.id, n]));

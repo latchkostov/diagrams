@@ -52,44 +52,8 @@ export function ExplanationView({
         target: formatPercent(x.target),
       })
     : undefined;
-  return (
-    <div
-      className="planning-explanation"
-      ref={heading}
-      tabIndex={-1}
-      role={hover ? undefined : "region"}
-      aria-label={hover ? undefined : t("planning.heading")}
-      data-testid={`planning-explanation-${x.id}`}
-      data-reason={x.reason}
-      data-fix-id={x.fixId}
-    >
-      <small>{t("planning.configured")}</small>
-      <p data-testid="planning-arithmetic">
-        {x.status !== "up"
-          ? t("planning.unavailable", { name, status: x.status, offered: rate(x.offered) })
-          : x.reason === "no-reader"
-            ? x.role !== "queue"
-              ? t("planning.noReader", { name, rate: rate(x.offered) })
-              : t("planning.noQueueReader", { name, rate: rate(x.offered) })
-            : x.resources
-              ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
-              : x.managed
-                ? Number.isFinite(x.capacity)
-                  ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
-                  : t("admission.unknown")
-                : !Number.isFinite(x.capacity)
-                  ? t("planning.instant", { name, offered: rate(x.offered) })
-                  : Number.isFinite(x.slots)
-                    ? t("planning.summary", {
-                        name,
-                        capacity: rate(x.capacity),
-                        offered: rate(x.offered),
-                        replicas: x.activeReplicas,
-                        slots: x.slots,
-                        seconds: formatProcessingSeconds(x.seconds),
-                      })
-                    : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
-      </p>
+  const details = (
+    <>
       {!hover && x.waits && (
         <ThreadCeiling
           wait={x.waits}
@@ -152,6 +116,54 @@ export function ExplanationView({
           {t("planning.target", { target: formatPercent(x.target) })}
           {sizing && <> {sizing}</>}
         </p>
+      )}
+    </>
+  );
+  return (
+    <div
+      className="planning-explanation"
+      ref={heading}
+      tabIndex={-1}
+      role={hover ? undefined : "region"}
+      aria-label={hover ? undefined : t("planning.heading")}
+      data-testid={`planning-explanation-${x.id}`}
+      data-reason={x.reason}
+      data-fix-id={x.fixId}
+    >
+      <small>{t("planning.configured")}</small>
+      <p data-testid="planning-arithmetic">
+        {x.status !== "up"
+          ? t("planning.unavailable", { name, status: x.status, offered: rate(x.offered) })
+          : x.reason === "no-reader"
+            ? x.role !== "queue"
+              ? t("planning.noReader", { name, rate: rate(x.offered) })
+              : t("planning.noQueueReader", { name, rate: rate(x.offered) })
+            : x.resources
+              ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
+              : x.managed
+                ? Number.isFinite(x.capacity)
+                  ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
+                  : t("admission.unknown")
+                : !Number.isFinite(x.capacity)
+                  ? t("planning.instant", { name, offered: rate(x.offered) })
+                  : Number.isFinite(x.slots)
+                    ? t("planning.summary", {
+                        name,
+                        capacity: rate(x.capacity),
+                        offered: rate(x.offered),
+                        replicas: x.activeReplicas,
+                        slots: x.slots,
+                        seconds: formatProcessingSeconds(x.seconds),
+                      })
+                    : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
+      </p>
+      {hover ? (
+        details
+      ) : (
+        <details className="planning-more" data-testid="planning-more">
+          <summary data-testid="planning-more-toggle">{t("planning.more")}</summary>
+          {details}
+        </details>
       )}
       {x.observed && (
         <p data-testid="planning-observed">

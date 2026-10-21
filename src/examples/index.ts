@@ -12,6 +12,8 @@ interface ExampleInfo extends ExampleMetadata {
   summary?: string | (() => string);
   /** Shown on the start card before "All examples". */
   featured?: boolean;
+  /** Configured mechanisms that this lesson does not teach. */
+  omitShows?: readonly string[];
 }
 
 interface PublicExample extends ExampleInfo {
@@ -95,10 +97,25 @@ const publicExamples: PublicExample[] = (
       theme: "systems",
       summary: "HQ, SD-WAN branches, spine and leaf, a fibre-cut drill",
     },
-    { slug: "blocking-call", theme: "reliability", summary: msg("examples.blockingSummary") },
-    { slug: "scale-on-busy-threads", theme: "reliability", summary: msg("examples.busySummary") },
-    { slug: "pool-of-40", theme: "reliability", summary: msg("examples.poolSummary") },
-    { slug: "slow-payment-provider", theme: "reliability", summary: msg("examples.paymentTimeoutSummary") },
+    {
+      slug: "blocking-call",
+      omitShows: ["partitions"],
+      theme: "reliability",
+      summary: msg("examples.blockingSummary"),
+    },
+    {
+      slug: "slow-payment-provider",
+      omitShows: ["routing"],
+      theme: "reliability",
+      summary: msg("examples.paymentTimeoutSummary"),
+    },
+    { slug: "pool-of-40", omitShows: ["routing"], theme: "reliability", summary: msg("examples.poolSummary") },
+    {
+      slug: "scale-on-busy-threads",
+      omitShows: ["partitions"],
+      theme: "reliability",
+      summary: msg("examples.busySummary"),
+    },
     {
       slug: "where-the-time-goes",
       theme: "streaming",
@@ -228,7 +245,10 @@ const publicExamples: PublicExample[] = (
       summary: "A compact DMZ with allowed web and blocked probes",
     },
   ] as const
-).map((example) => ({ ...example, ...exampleMetadata[example.slug] }));
+).map((example) => {
+  const info: ExampleInfo = { ...example, ...exampleMetadata[example.slug] };
+  return { ...info, shows: info.shows?.filter((tag) => !info.omitShows?.includes(tag)) };
+});
 
 export const examples: Example[] = [...privateExamples, ...publicExamples];
 

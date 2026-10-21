@@ -7,7 +7,7 @@
       "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
       "rationale": "Played headless with the same engine and seed as playback; a suggestion is offered as a fix only when a rerun with it bears it out.",
       "fix": { "label": "Scale on busy threads" },
-      "shownMessage": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun confirmed a smaller backlog.",
+      "shownMessage": "In “Blocking: CPU says all is well”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
       "shownRationale": "Played with the same engine and seed as playback. A suggestion is a fix only when a rerun with it bears it out."
     }
   },

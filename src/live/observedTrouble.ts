@@ -3,10 +3,11 @@ import { stencilRole } from "../stencils/roles";
 import { brokerFeeds, compileTopology, deadLetterRoutes, type CompiledGroup } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
 import { formatCount } from "./format";
-import { brokerList, waitDetail } from "./capacityModel";
-import { t } from "../i18n";
+import { formatList } from "../i18n/format";
+import { t, getLocale } from "../i18n";
 import type { NodeSimState } from "../sim/types";
-import { callPolicy, suggestedDeadlineMs } from "../sim/callPolicy";
+import { callPolicy } from "../sim/callPolicy";
+import { affordableTimeout } from "./affordableTimeout";
 import type { EdgeSimProps } from "../sim/types";
 import { waitingDetails } from "./waitingDetails";
 import type { Fault } from "../model/faults";
@@ -57,6 +58,10 @@ export interface WatchedNode {
   dropped: number;
   outageDropped?: number;
   noConsumer?: true;
+  processed?: number;
+  failed?: number;
+  inFlight?: number;
+  fleet?: NodeSimState["fleet"];
 }
 export interface WatchedFrame {
   faults?: readonly Fault[];
@@ -64,6 +69,7 @@ export interface WatchedFrame {
   /** Real messages per dot (default 1). */
   scale?: number;
   nodes: Record<string, WatchedNode>;
+  edges?: Record<string, { calls?: { timedOut: number } }>;
 }
 
 interface Sample {
@@ -72,11 +78,12 @@ interface Sample {
   lag: Map<string, number>;
   dropped: Map<string, number>;
   outageDropped: Map<string, number>;
+  arrivals: Map<string, number>;
 }
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["queue", "topic", "stream"]);
 const maxLag = (n: WatchedNode) => Math.max(n.backlog ?? 0, ...Object.values(n.lag), 0);
-const KIND_ORDER: Record<TroubleKind, number> = { down: 0, dropping: 1, "threads-exhausted": 2, lag: 3 };
+const KIND_ORDER: Record<TroubleKind, number> = { down: 0, "threads-exhausted": 1, dropping: 2, lag: 3 };
 
 /**
  * Samples snapshots about once a simulated second and reports the trouble they show, worst first: down, then
@@ -110,7 +117,8 @@ export class TroubleWatcher {
       const lag = new Map<string, number>(),
         exhausted = new Map<string, { edge: string; count: number }>(),
         dropped = new Map<string, number>(),
-        outageDropped = new Map<string, number>();
+        outageDropped = new Map<string, number>(),
+        arrivals = new Map<string, number>();
       for (const [id, n] of Object.entries(frame.nodes)) {
         lag.set(id, maxLag(n));
         const t = n.threads;
@@ -118,12 +126,14 @@ export class TroubleWatcher {
           exhausted.set(id, { edge: t.waitingOn[0][0], count: t.waitingOn[0][1] });
         dropped.set(id, n.dropped);
         outageDropped.set(id, n.outageDropped ?? 0);
+        if (n.processed !== undefined)
+          arrivals.set(id, n.processed + (n.failed ?? 0) + (n.inFlight ?? 0) + (n.backlog ?? 0));
       }
-      this.samples.push({ time: frame.time, lag, dropped, outageDropped, exhausted });
+      this.samples.push({ time: frame.time, lag, dropped, outageDropped, exhausted, arrivals });
       while (this.samples.length > 2 && this.samples[1].time <= frame.time - WINDOW_MS) this.samples.shift();
       sampled = true;
     }
-    let statuses = JSON.stringify(frame.faults ?? []),
+    let statuses = `${getLocale()}:${JSON.stringify(frame.faults ?? [])}`,
       losses = "";
     for (const [id, n] of Object.entries(frame.nodes)) {
       if (n.status !== "up") statuses += `${id}:${n.status};`;
@@ -155,7 +165,8 @@ interface Shape {
   groups: Map<string, CompiledGroup[]>;
   targets: Map<string, string>;
   deadlines: Map<string, number | undefined>;
-  suggestions: Map<string, number>;
+  responses: Map<string, number>;
+  sources: Map<string, string>;
   cyclic: Set<string>;
 }
 
@@ -177,7 +188,7 @@ function shapeOf(d: DiagramFile): Shape {
     }),
   );
   const deadlines = new Map<string, number | undefined>();
-  const suggestions = new Map(
+  const callResponses = new Map(
     d.edges.map((e) => {
       deadlines.set(
         e.id,
@@ -185,9 +196,7 @@ function shapeOf(d: DiagramFile): Shape {
       );
       return [
         e.id,
-        suggestedDeadlineMs(
-          responses.get(e.to)! + 2 * (typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0),
-        ),
+        responses.get(e.to)! + 2 * (typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0),
       ];
     }),
   );
@@ -218,7 +227,8 @@ function shapeOf(d: DiagramFile): Shape {
     groups: compiled.groups,
     targets: new Map(d.edges.map((e) => [e.id, e.to])),
     deadlines,
-    suggestions,
+    responses: callResponses,
+    sources: new Map(d.edges.map((e) => [e.id, e.from])),
     cyclic: new Set([...(plan?.nodes ?? [])].filter(([, n]) => !Number.isFinite(n.threadHoldMs)).map(([id]) => id)),
   };
   shapes.set(d, shape);
@@ -247,50 +257,26 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
         // What waits for it: its groups' lag at the brokers that feed it (a queue's whole backlog).
         let waiting = 0;
         for (const { broker, group } of d.memberships.get(id) ?? []) waiting += frame.nodes[broker]?.lag[group] ?? 0;
-        detail = waitDetail(feeds.map(name), waiting);
-      } else if (feeds === null)
-        detail = BROKERS.has(r)
-          ? "Messages sent to it are dropped until it's back."
-          : "Messages sent to it fail until it's back.";
+        detail =
+          waiting > 0
+            ? t("trouble.waitingCount", { names: formatList(feeds.map(name)), count: formatCount(waiting) })
+            : t("trouble.waiting", { names: formatList(feeds.map(name)) });
+      } else if (feeds === null) detail = BROKERS.has(r) ? t("trouble.downBroker") : t("trouble.downService");
       else detail = "";
       out.push({
         key: `down:${id}`,
         kind: "down",
         node: id,
-        headline: `${name(id)} is down`,
-        announce: `${name(id)} is down`,
+        headline: t("trouble.down", { name: name(id) }),
+        announce: t("trouble.down", { name: name(id) }),
         detail,
         action: { kind: "revive", node: id },
       });
       continue;
     }
-    // Loss needs no long history: a short run that drops one message says so.
-    const lost = oldest ? n.dropped - (oldest.dropped.get(id) ?? 0) : 0;
-    if (lost > 0) {
-      const broker = BROKERS.has(r);
-      const outage = (n.outageDropped ?? 0) - (oldest?.outageDropped.get(id) ?? 0);
-      const exhausted = broker && lost > outage;
-      out.push({
-        key: `dropping:${id}`,
-        kind: "dropping",
-        node: id,
-        headline: `${name(id)} is losing messages: ${formatCount(n.dropped)} dropped`,
-        announce: `${name(id)} is losing messages`,
-        detail:
-          broker && !exhausted
-            ? "Messages sent to it while it was down were dropped on arrival."
-            : broker
-              ? "They ran out of deliveries, and no dead-letter queue keeps them."
-              : "Messages that fail here are dropped: nothing retries them.",
-        action:
-          exhausted && !d.hasDeadLetterRoute.has(id) ? { kind: "add-dlq", node: id } : { kind: "events", node: id },
-      });
-      continue;
-    }
-    if (!spanned) continue;
     let exhausted: { edge: string; count: number } | undefined;
     for (let i = samples.length - 1; i >= 0 && !exhausted; i--) exhausted = samples[i].exhausted.get(id);
-    if (n.threads && exhausted) {
+    if (spanned && n.threads && exhausted && !n.fleet?.starting) {
       const { edge } = exhausted;
       const feeds = d.memberships.get(id) ?? [];
       const rising =
@@ -306,23 +292,73 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
               (f.kind === "link" && f.edge === edge && f.cut) ||
               (f.kind === "slow" && f.node === target && f.factor > 1),
           );
-        const timeout = d.deadlines.get(edge) === undefined && stalled;
+        const before = oldest.arrivals.get(id);
+        const elapsed = frame.time - oldest.time;
+        const total =
+          n.processed === undefined ? undefined : n.processed + (n.failed ?? 0) + (n.inFlight ?? 0) + (n.backlog ?? 0);
+        const rate =
+          before === undefined || total === undefined || elapsed <= 0
+            ? 0
+            : (Math.max(0, total - before) * 1000) / elapsed;
+        const deadlineMs = affordableTimeout(d.responses.get(edge) ?? 0, n.threads.slots, rate);
+        const timeout = d.deadlines.get(edge) === undefined && stalled && deadlineMs !== undefined;
+        const upstream = [...d.targets].find(
+          ([incoming, target]) =>
+            target === id &&
+            (frame.edges?.[incoming]?.calls?.timedOut ?? 0) > 0 &&
+            d.deadlines.get(incoming) !== undefined,
+        );
+        const detail = d.cyclic.has(id)
+          ? t("threads.deadlocked")
+          : t("threads.exhaustedDetail", { count: exhausted.count, name: name(target) });
         out.push({
           key: `threads-exhausted:${id}`,
           kind: "threads-exhausted",
           node: id,
           headline: t("threads.exhausted", { name: name(id) }),
           announce: t("threads.exhausted", { name: name(id) }),
-          detail: d.cyclic.has(id)
-            ? t("threads.deadlocked")
-            : t("threads.exhaustedDetail", { count: exhausted.count, name: name(target) }),
-          action: timeout
-            ? { kind: "add-timeout", edge, deadlineMs: d.suggestions.get(edge)! }
-            : { kind: "free-thread", edge },
+          detail: upstream
+            ? t("threads.exhaustedTimeout", {
+                cause: detail,
+                name: name(d.sources.get(upstream[0])!),
+                seconds: d.deadlines.get(upstream[0])! / 1000,
+              })
+            : detail,
+          action: timeout ? { kind: "add-timeout", edge, deadlineMs: deadlineMs! } : { kind: "free-thread", edge },
         });
         continue;
       }
     }
+    // Loss needs no long history: a short run that drops one message says so.
+    const lost = oldest ? n.dropped - (oldest.dropped.get(id) ?? 0) : 0;
+    if (lost > 0) {
+      const broker = BROKERS.has(r);
+      const outage = (n.outageDropped ?? 0) - (oldest?.outageDropped.get(id) ?? 0);
+      const exhausted = broker && lost > outage;
+      const timeoutEdge = [...d.sources].find(
+        ([edge, source]) => source === id && (frame.edges?.[edge]?.calls?.timedOut ?? 0) > 0,
+      );
+      const timeoutCount = timeoutEdge ? (frame.edges?.[timeoutEdge[0]]?.calls?.timedOut ?? 0) : 0;
+      const timeoutMs = timeoutEdge ? d.deadlines.get(timeoutEdge[0]) : undefined;
+      out.push({
+        key: `dropping:${id}`,
+        kind: "dropping",
+        node: id,
+        headline:
+          timeoutMs !== undefined
+            ? t("trouble.timedOut", { name: name(id), count: timeoutCount, seconds: timeoutMs / 1000 })
+            : t("trouble.dropping", { name: name(id), count: formatCount(n.dropped) }),
+        announce:
+          timeoutMs !== undefined
+            ? t("trouble.timeoutAnnounce", { name: name(id) })
+            : t("trouble.lossAnnounce", { name: name(id) }),
+        detail: broker && !exhausted ? t("trouble.outageLoss") : broker ? t("trouble.noDlq") : t("trouble.noRetry"),
+        action:
+          exhausted && !d.hasDeadLetterRoute.has(id) ? { kind: "add-dlq", node: id } : { kind: "events", node: id },
+      });
+      continue;
+    }
+    if (!spanned) continue;
     // A dead-letter queue keeps what it gets on purpose, read or not: its backlog is no trouble.
     if (!BROKERS.has(r) || (n.noConsumer && r !== "queue") || d.deadLetterTargets.has(id)) continue;
     const now = maxLag(n),
@@ -341,9 +377,9 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
         key: `lag:${id}`,
         kind: "lag",
         node: id,
-        headline: `Nobody reads ${name(id)}`,
-        announce: `Nobody reads ${name(id)}`,
-        detail: `Messages wait in it until a consumer takes them: ${formatCount(now)} so far, and rising.`,
+        headline: t("trouble.noReader", { name: name(id) }),
+        announce: t("trouble.noReader", { name: name(id) }),
+        detail: t("trouble.kept", { count: formatCount(now) }),
         action: { kind: "add-consumer", node: id },
       });
       continue;
@@ -354,17 +390,17 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       (worst, g) => ((n.lag[g.name] ?? 0) > (worst ? (n.lag[worst.name] ?? 0) : -1) ? g : worst),
       undefined,
     );
-    const readers = behind ? brokerList(behind.members.map(name)) : "";
+    const readers = behind ? formatList(behind.members.map(name)) : "";
     out.push({
       key: `lag:${id}`,
       kind: "lag",
       node: id,
-      headline: `${name(id)} is falling behind: lag ${formatCount(now)} and rising`,
-      announce: `${name(id)} is falling behind`,
+      headline: t("trouble.lag", { name: name(id), count: formatCount(now) }),
+      announce: t("trouble.lagAnnounce", { name: name(id) }),
       detail:
         behind && readers
-          ? `${readers} ${behind.members.length > 1 ? "don't" : "doesn't"} keep up with it.`
-          : "Its consumers don't keep up with it.",
+          ? t("trouble.readers", { names: readers, count: behind.members.length })
+          : t("trouble.consumers"),
       action: { kind: "inputs" },
       related: behind?.members ?? [],
     });

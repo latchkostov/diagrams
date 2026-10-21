@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "843556fbeffb7c53d56ce84ce26d594d616a52ecf877fec92ccb52a4aad63b3e",
-    "bytes": 11558,
+    "sha256": "adf2e6b322822e7b946f336a18a8b7bd1233939cf3eacbcdb7f48b7c6f2388ab",
+    "bytes": 12877,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.adc": "net-adc 5a4604d3be814648", "generic.database": "generic-database e85b3d97d2e8de44", "generic.external-api": "generic-external-api 8115696d1b46c6c6", "generic.service": "generic-service 6ec0da29f56c9e80" }
   },
   "readBack": [
@@ -9,11 +9,30 @@
       "warnings": [],
       "diagram": {
         "format": "diagrams/v2",
-        "planning": { "revision": "p3-w1" },
+        "planning": {
+          "revision": "p3-w1",
+          "requestRoutes": [
+            { "id": "checkout", "label": "Checkout", "address": { "method": "POST", "path": "/checkout" } },
+            { "id": "status", "label": "Order status", "address": { "method": "GET", "path": "/status" } }
+          ]
+        },
         "title": "A slow payment provider",
-        "description": "At three seconds the payment provider slows tenfold. Compare Checkout filling its threads with a 600 ms timeout: payments fail fast while Checkout keeps serving requests. Timeouts do not cancel the provider's work.",
+        "description": "At three seconds the payment provider slows tenfold. Compare Checkout running out of threads with a 600 ms timeout: payments fail fast while order status keeps working. Timeouts do not cancel the provider's work.",
         "nodes": [
-          { "id": "shop", "stencil": "client.user", "label": "Shop", "x": 0, "y": 180, "props": { "ratePerSec": 120 } },
+          {
+            "id": "shop",
+            "stencil": "client.user",
+            "label": "Shop",
+            "x": 0,
+            "y": 180,
+            "props": {
+              "ratePerSec": 120,
+              "trafficMix": {
+                "mode": "rates",
+                "entries": [{ "routeId": "checkout", "ratePerSec": 120 }, { "routeId": "status", "ratePerSec": 20 }]
+              }
+            }
+          },
           { "id": "gateway", "stencil": "generic.adc", "label": "API gateway", "sublabel": "5 s timeout", "x": 320, "y": 180 },
           {
             "id": "checkout",
@@ -51,8 +70,20 @@
             "kind": "sync",
             "props": { "travelMs": 100, "caller": { "deadlineMs": 5000 } }
           },
-          { "id": "pay", "from": "checkout", "to": "payment", "kind": "sync", "props": { "travelMs": 200 } },
-          { "id": "save", "from": "checkout", "to": "orders", "kind": "sync", "props": { "travelMs": 100 } }
+          {
+            "id": "pay",
+            "from": "checkout",
+            "to": "payment",
+            "kind": "sync",
+            "props": { "travelMs": 200, "requestFilter": { "methods": ["POST"] } }
+          },
+          {
+            "id": "save",
+            "from": "checkout",
+            "to": "orders",
+            "kind": "sync",
+            "props": { "travelMs": 100, "requestFilter": { "methods": ["GET"] } }
+          }
         ],
         "simulations": [
           {
@@ -79,7 +110,7 @@
             "expectations": [
               {
                 "id": "gateway-timeouts",
-                "label": "No gateway timeouts",
+                "label": "No API gateway timeouts",
                 "metric": { "node": "gateway", "field": "timedOut" },
                 "op": "==",
                 "value": 0,
@@ -90,7 +121,7 @@
                 "id": "expected-failure-gateway",
                 "metric": { "field": "dropped", "node": "gateway" },
                 "when": "eventually",
-                "label": "gateway reports failed checkouts",
+                "label": "API gateway reports failed checkouts",
                 "op": ">"
               },
               {
@@ -98,8 +129,16 @@
                 "id": "expected-failure-shop",
                 "metric": { "field": "dropped", "node": "shop" },
                 "when": "eventually",
-                "label": "shop reports failed checkouts",
+                "label": "Shop reports failed checkouts",
                 "op": ">"
+              },
+              {
+                "id": "status",
+                "label": "Orders DB order-status work falls behind",
+                "metric": { "node": "orders", "field": "processed" },
+                "op": "<",
+                "value": 300,
+                "when": "end"
               }
             ]
           },
@@ -128,7 +167,7 @@
             "expectations": [
               {
                 "id": "gateway-timeouts",
-                "label": "No gateway timeouts",
+                "label": "No API gateway timeouts",
                 "metric": { "node": "gateway", "field": "timedOut" },
                 "op": "==",
                 "value": 0,
@@ -147,7 +186,7 @@
                 "id": "expected-failure-checkout",
                 "metric": { "field": "dropped", "node": "checkout" },
                 "when": "eventually",
-                "label": "checkout reports failed checkouts",
+                "label": "Checkout reports failed checkouts",
                 "op": ">"
               },
               {
@@ -155,7 +194,7 @@
                 "id": "expected-failure-gateway",
                 "metric": { "field": "dropped", "node": "gateway" },
                 "when": "eventually",
-                "label": "gateway reports failed checkouts",
+                "label": "API gateway reports failed checkouts",
                 "op": ">"
               },
               {
@@ -163,8 +202,16 @@
                 "id": "expected-failure-shop",
                 "metric": { "field": "dropped", "node": "shop" },
                 "when": "eventually",
-                "label": "shop reports failed checkouts",
+                "label": "Shop reports failed checkouts",
                 "op": ">"
+              },
+              {
+                "id": "status",
+                "label": "Orders DB keeps serving order status",
+                "metric": { "node": "orders", "field": "processed" },
+                "op": ">",
+                "value": 300,
+                "when": "end"
               }
             ]
           }

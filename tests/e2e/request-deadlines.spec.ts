@@ -109,6 +109,7 @@ test("an external timeout update replaces invalid feedback with the restored val
 for (const disabled of [false, true]) {
   test(`the callout adds a timeout as one undo step (saved no-timeout override: ${disabled})`, async ({ page }) => {
     const d = waitingFixture();
+    d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
     if (disabled) d.edges[1].props = { ...d.edges[1].props, caller: { deadlineMs: 600 } };
     d.simulations = [
       {
@@ -116,7 +117,7 @@ for (const disabled of [false, true]) {
         title: "Slow call",
         durationMs: 20000,
         ...(disabled ? { setup: { edges: { call: { caller: { deadlineMs: null } } } } } : {}),
-        traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 100, durationMs: 20000 } }],
+        traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 120, durationMs: 20000 } }],
         timeline: [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "partner", factor: 10 } } }],
       },
     ];
@@ -138,7 +139,7 @@ for (const disabled of [false, true]) {
         const saved = await savedDiagram(page);
         return disabled ? saved.simulations?.[0].setup?.edges?.call.caller : saved.edges[1].props?.caller;
       })
-      .toMatchObject({ deadlineMs: 1000 });
+      .toMatchObject({ deadlineMs: 600 });
     await page.getByTestId("undo-button").click();
     await page.clock.runFor(400);
     await expect
@@ -162,7 +163,10 @@ for (const simulation of ["no-timeouts", "timeout-600"]) {
     const meter = page.getByTestId("thread-meter-checkout");
     const waiting = Number(await meter.getAttribute("data-waiting"));
     if (simulation === "no-timeouts") {
-      expect(waiting).toBeGreaterThanOrEqual(98);
+      // The new status route can be doing local work in the last few slots.
+      // Exhaustion concerns all busy threads, including those useful requests.
+      expect(Number(await meter.getAttribute("aria-valuenow"))).toBeGreaterThanOrEqual(98);
+      expect(waiting).toBeGreaterThan(90);
       await expect(page.getByTestId("call-pill-pay")).toContainText("held");
       await page.getByTestId("live-play").click();
       await page.clock.runFor(8000);

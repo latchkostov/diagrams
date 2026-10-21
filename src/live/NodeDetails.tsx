@@ -13,6 +13,7 @@ import { useLive } from "./context";
 import { LatencyReadout } from "./LatencyReadout";
 import { ThreadCeiling } from "./ThreadCeiling";
 import type { BadgeProps } from "./NodeBadges";
+import { timeoutOutcome } from "./timeoutOutcome";
 
 const doneLabel: Record<SimRole, string> = {
   source: "Sent",
@@ -58,6 +59,10 @@ export function NodeDetails({
     .map((e) => live.controller.getState().snapshot.edges[e.id]?.calls);
   const timedOut = callCounts.reduce((sum, c) => sum + (c?.timedOut ?? 0), 0);
   const late = callCounts.reduce((sum, c) => sum + (c?.late ?? 0), 0);
+  const gatewayOutcome = timeoutOutcome(effective, live.controller.getState().snapshot, node.id);
+  const pools = effective.edges.filter(
+    (e) => e.from === node.id && (e.props?.caller as { poolConnections?: number } | undefined)?.poolConnections,
+  );
   const broker = s.role === "topic" || s.role === "queue" || s.role === "stream";
   const held = broker ? heldWords(s) : null;
   const unread = !!held?.lead;
@@ -187,15 +192,36 @@ export function NodeDetails({
               ? t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })
               : t("threads.unknownPool", { busy: threadBusy, noun: threadNoun })}
           </p>
-          <p>
-            {s.threads.waiting
-              ? t("threads.waiting", {
-                  working: s.threads.working,
-                  count: s.threads.waitingOn[0]?.[1] ?? s.threads.waiting,
-                  name: waitingLabel,
-                })
-              : t("threads.noneWaiting", { count: s.threads.working })}
-          </p>
+          {!pools.length && (
+            <p>
+              {s.threads.waiting
+                ? t("threads.waiting", {
+                    working: s.threads.working,
+                    count: s.threads.waitingOn[0]?.[1] ?? s.threads.waiting,
+                    name: waitingLabel,
+                  })
+                : t("threads.noneWaiting", { count: s.threads.working })}
+            </p>
+          )}
+          {pools.map((e) => {
+            const calls = live.controller.getState().snapshot.edges[e.id]?.calls;
+            const queued = live.controller.queuedCalls(e.id);
+            const caller = e.props?.caller as { poolConnections: number; wait?: string };
+            const values = {
+              working: s.threads?.working ?? 0,
+              count: calls?.inFlight ?? 0,
+              queued,
+              pool: caller.poolConnections,
+              name: diagram.nodes.find((n) => n.id === e.to)?.label ?? e.to,
+            };
+            return (
+              <p key={e.id} data-testid={`pool-detail-${e.id}`}>
+                {caller.wait === "non-blocking"
+                  ? t("threads.poolFreeDetail", values)
+                  : t("threads.poolHeldDetail", values)}
+              </p>
+            );
+          })}
         </div>
       )}
       {s.threads && Number.isFinite(s.threads.slots) && wait && (
@@ -213,6 +239,7 @@ export function NodeDetails({
           {!!late && <p data-testid={`call-late-${node.id}`}>{t("threads.lateCount", { count: late })}</p>}
         </div>
       )}
+      {gatewayOutcome && <p data-testid={`gateway-outcome-${node.id}`}>{gatewayOutcome}</p>}
       {!!s.threads?.inFlight && (
         <p>
           {t("threads.inFlight", { count: s.threads.inFlight })} · {t("threads.memoryHint")}

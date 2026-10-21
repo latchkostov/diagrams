@@ -145,7 +145,33 @@ export function useLiveFixes({
       } else if (action.kind === "free-thread") {
         if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ wait: "non-blocking" });
       } else if (action.kind === "add-timeout") {
-        if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ deadlineMs: action.deadlineMs });
+        if (editor) {
+          const effective = effectiveCallerPolicy(editor, action.edge);
+          const edge = editor.getEdge(action.edge);
+          if (effective?.editable && edge) {
+            effective.set({ deadlineMs: action.deadlineMs });
+            const from = editor.getNode(edge.from)?.label || edge.from;
+            const to = editor.getNode(edge.to)?.label || edge.to;
+            notify(
+              effective.simulation
+                ? t("threads.addedTimeoutSimulation", {
+                    ms: action.deadlineMs,
+                    from,
+                    to,
+                    simulation: effective.simulation,
+                  })
+                : t("threads.addedTimeoutDiagram", { ms: action.deadlineMs, from, to }),
+              {
+                action: {
+                  label: t("shortcuts.undo"),
+                  run: () => editor.undo(),
+                  testId: "add-timeout-undo",
+                  undoes: true,
+                },
+              },
+            );
+          }
+        }
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },

@@ -44,6 +44,7 @@ type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram
   merge: (field: string) => { merge: string };
   routed: boolean;
   routing: ReactNode;
+  reveal?: number;
   router: boolean;
   mixer: boolean;
 };
@@ -64,10 +65,12 @@ export function NodeSimulation({
   routing,
   router,
   mixer,
+  reveal,
 }: NodeSimulationProps) {
   return (
     <Disclosure
       id="node-simulation"
+      reveal={reveal}
       title={t("inspector.simulation")}
       aside={
         <span
@@ -378,12 +381,14 @@ export function SimInput({
   value,
   onChange,
   integer = false,
+  visibleHint = false,
 }: {
   name: string;
   field: SimField;
   value: unknown;
   onChange: (v: SimValue) => void;
   integer?: boolean;
+  visibleHint?: boolean;
 }) {
   const external = showSim(field.kind, value);
   const [draft, setDraft] = useState(external);
@@ -400,7 +405,7 @@ export function SimInput({
   }, [external]);
   return (
     <>
-      <Field label={field.label} hint={field.hint}>
+      <Field label={field.label} hint={visibleHint ? undefined : field.hint}>
         <span className="insp-unit-wrap">
           <input
             className={`insp-input${field.kind === "number" ? " mono" : ""}`}
@@ -412,7 +417,11 @@ export function SimInput({
             value={draft}
             placeholder={field.placeholder}
             aria-invalid={invalid || undefined}
-            aria-describedby={invalid ? feedback : undefined}
+            aria-describedby={
+              [invalid ? feedback : "", visibleHint && field.hint ? `${feedback}-hint` : ""]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
             onFocus={() => (focused.current = true)}
             onBlur={(e) => {
               focused.current = false;
@@ -471,6 +480,11 @@ export function SimInput({
           </small>
         )}
       </Field>
+      {visibleHint && field.hint && (
+        <small id={`${feedback}-hint`} className="insp-note" data-testid={`inspector-hint-${name}`}>
+          {field.hint}
+        </small>
+      )}
       {field.note && (
         <p className="insp-note insp-field-note" data-testid={`inspector-note-${name}`}>
           {field.note}

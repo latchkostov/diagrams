@@ -1,4 +1,4 @@
-import { useId, useState, type Ref } from "react";
+import { useId, useState, type Ref, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { formatNumber } from "../i18n/format";
 import { t } from "../i18n";
@@ -14,6 +14,7 @@ export function NumberField({
   max = 600_000,
   integer = false,
   optional = false,
+  unitToggle,
 }: {
   inputRef?: Ref<HTMLInputElement>;
   name: string;
@@ -24,6 +25,7 @@ export function NumberField({
   max?: number;
   integer?: boolean;
   optional?: boolean;
+  unitToggle?: ReactNode;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -49,34 +51,41 @@ export function NumberField({
     } else setInvalid(true);
   };
   return (
-    <label className="insp-field">
-      <span className="insp-label">{label}</span>
-      <input
-        ref={inputRef}
-        className="insp-input mono"
-        data-testid={`autoscaling-${name}`}
-        type="number"
-        min={min}
-        max={max}
-        step={integer ? 1 : "any"}
-        value={draft ?? value ?? ""}
-        aria-invalid={invalid}
-        aria-describedby={invalid ? feedback : undefined}
-        onFocus={() => {
-          if (draft === null) setDraft(value === undefined ? "" : String(value));
-        }}
-        onBlur={(e) => commitInput(e.currentTarget)}
-        onKeyDown={(e) => {
-          // The window Save shortcut snapshots the document later in this same event.
-          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") flushSync(() => commitInput(e.currentTarget));
-        }}
-        placeholder={t("admission.unknownShort")}
-        onChange={(e) => {
-          setDraft(e.currentTarget.value);
-          setBadInput(e.currentTarget.validity.badInput);
-          setInvalid(false);
-        }}
-      />
+    <div className="insp-field">
+      <label className="insp-label" htmlFor={`${feedback}-input`}>
+        {label}
+      </label>
+      <span className={`insp-unit-wrap${unitToggle ? " has-unit-toggle" : ""}`}>
+        <input
+          id={`${feedback}-input`}
+          ref={inputRef}
+          className="insp-input mono"
+          aria-label={label}
+          data-testid={`autoscaling-${name}`}
+          type="number"
+          min={min}
+          max={max}
+          step={integer ? 1 : "any"}
+          value={draft ?? value ?? ""}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? feedback : undefined}
+          onFocus={() => {
+            if (draft === null) setDraft(value === undefined ? "" : String(value));
+          }}
+          onBlur={(e) => commitInput(e.currentTarget)}
+          onKeyDown={(e) => {
+            // The window Save shortcut snapshots the document later in this same event.
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") flushSync(() => commitInput(e.currentTarget));
+          }}
+          placeholder={t("admission.unknownShort")}
+          onChange={(e) => {
+            setDraft(e.currentTarget.value);
+            setBadInput(e.currentTarget.validity.badInput);
+            setInvalid(false);
+          }}
+        />
+        {unitToggle}
+      </span>
       {invalid && (
         <small id={feedback} role="status" data-testid={`autoscaling-limit-${name}`} className="insp-note">
           {t("admission.invalidNumber", {
@@ -87,6 +96,6 @@ export function NumberField({
           })}
         </small>
       )}
-    </label>
+    </div>
   );
 }

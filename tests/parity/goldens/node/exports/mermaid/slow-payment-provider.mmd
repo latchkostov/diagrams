@@ -11,4 +11,4 @@ flowchart LR
   gateway --> checkout
   checkout --> payment
   checkout --> orders
-%% diagrams:{"v":1,"description":"At three seconds the payment provider slows tenfold. Compare Checkout filling its threads with a 600 ms timeout: payments fail fast while Checkout keeps serving requests. Timeouts do not cancel the provider's work.","nodes":{"shop":["shop","client.user"],"gateway":["gateway","generic.adc"],"checkout":["checkout","generic.service"],"payment":["payment","generic.external-api"],"orders":["orders","generic.database"]},"edges":["browse","route","pay","save"],"relations":{}}
+%% diagrams:{"v":1,"description":"At three seconds the payment provider slows tenfold. Compare Checkout running out of threads with a 600 ms timeout: payments fail fast while order status keeps working. Timeouts do not cancel the provider's work.","nodes":{"shop":["shop","client.user"],"gateway":["gateway","generic.adc"],"checkout":["checkout","generic.service"],"payment":["payment","generic.external-api"],"orders":["orders","generic.database"]},"edges":["browse","route","pay","save"],"relations":{}}

@@ -169,7 +169,17 @@ export const DEVICE_KEYS = new Set<string>([...SIM_KEYS, "size", "gbps", "messag
 
 export const ADC_KEYS = new Set<string>([...DEVICE_KEYS, "healthChecks"]);
 
-export const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings"]);
+export const EDGE_KEYS = new Set([
+  "group",
+  "dlq",
+  "travelMs",
+  "filter",
+  "emits",
+  "share",
+  "settings",
+  "caller",
+  "requestFilter",
+]);
 
 export const RULE_KEYS = new Set([...EDGE_KEYS, "deny"]);
 

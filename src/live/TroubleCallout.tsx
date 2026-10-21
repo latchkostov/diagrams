@@ -1,29 +1,25 @@
 import { useEffect, useRef } from "react";
-import { t } from "../i18n";
+import { t, msg } from "../i18n";
 import { useInteraction } from "../canvas/interaction";
 import { LiveIcon } from "./icons";
 import type { Trouble, TroubleAction } from "./observedTrouble";
 import { useFloatingPlacement } from "./useFloatingPlacement";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
-const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: string; icon?: "plus" | "play" }> = {
+const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon?: "plus" | "play" }> = {
   "add-timeout": {
-    get label() {
-      return t("threads.addTimeout");
-    },
+    label: msg("threads.addTimeout"),
   },
   "free-thread": {
-    get label() {
-      return t("threads.freeAction");
-    },
+    label: msg("threads.freeAction"),
   },
-  revive: { label: "Restore", icon: "play" },
-  "restore-boundary": { label: "Restore", icon: "play" },
-  "clear-fault": { label: "Clear fault" },
-  "add-consumer": { label: "Add a consumer", icon: "plus" },
-  "add-dlq": { label: "Add dead-letter queue", icon: "plus" },
-  events: { label: "Show events" },
-  inputs: { label: "Inputs…" },
+  revive: { label: msg("trouble.restore"), icon: "play" },
+  "restore-boundary": { label: msg("trouble.restore"), icon: "play" },
+  "clear-fault": { label: msg("fault.clearAction") },
+  "add-consumer": { label: msg("trouble.addConsumer"), icon: "plus" },
+  "add-dlq": { label: msg("trouble.addDlq"), icon: "plus" },
+  events: { label: msg("trouble.events") },
+  inputs: { label: msg("trouble.inputs") },
 };
 
 interface TroubleProps {
@@ -92,14 +88,14 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
             ? t("fault.restoreNamed", { label: trouble.action.label })
             : trouble.action.kind === "clear-fault"
               ? t("fault.clearAction")
-              : action.label}
+              : action.label()}
         </button>
       )}
       <button
         className="icon-btn cap-callout-close"
         onClick={onDismiss}
-        aria-label="Dismiss"
-        title="Dismiss"
+        aria-label={t("trouble.dismiss")}
+        title={t("trouble.dismiss")}
         data-testid="trouble-dismiss"
       >
         <LiveIcon name="close" size={12} />

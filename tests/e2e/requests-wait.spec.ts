@@ -93,7 +93,7 @@ test("the caller meter and hover explain held threads and their throughput ceili
   await page.getByTestId("node-caller").hover();
   await expect(page.getByTestId("thread-detail-caller")).toContainText("4 waiting on Partner scoring API");
   await expect(page.getByTestId("thread-ceiling")).toBeVisible();
-  await expect(page.getByTestId("thread-ceiling")).toContainText("15.38 req/s = 4 threads ÷ 0.26 s");
+  await expect(page.getByTestId("thread-ceiling")).toContainText("15.4 req/s = 4 threads ÷ 0.26 s");
   await expect(page.getByTestId("thread-ceiling")).not.toContainText("msg/s");
   await expect(page.getByTestId("thread-ceiling")).toContainText("10 ms work + 250 ms call");
   await page.clock.runFor(200); // Finish the hover animation on the paused fake clock.
@@ -296,7 +296,7 @@ test("typing a fractional connection pool always saves a valid integer", async (
   await gotoCanvas(page, "blocking-call");
   await waitForStableViewport(page);
   await page.getByTestId("edge-call").dblclick();
-  await page.getByTestId("inspector-section-edge-advanced").click();
+  await page.getByTestId("inspector-section-edge-simulation").click();
   await page.getByTestId("inspector-field-poolConnections").fill("1.5");
   await expect
     .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
@@ -365,7 +365,7 @@ test("unsupported gateway callers hide reply handling", async ({ page }) => {
   await gotoCanvas(page, "blocking-call");
   await waitForStableViewport(page);
   await page.getByTestId("edge-call").dblclick();
-  await page.getByTestId("inspector-section-edge-advanced").click();
+  await page.getByTestId("inspector-section-edge-simulation").click();
   await expect(page.getByTestId("inspector-field-poolConnections")).toBeVisible();
   await expect(page.getByTestId("inspector-field-replyMs")).toHaveCount(0);
 });

@@ -2664,7 +2664,7 @@ details[open] > summary .lv-disclosure-chevron {
   color: var(--text);
   font-size: 10px;
   white-space: nowrap;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* Particles are clickable (to trace their message). */

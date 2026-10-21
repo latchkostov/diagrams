@@ -7,8 +7,8 @@
     "multipliers": { "traffic": 1, "capacity": 1 },
     "expectations": [
       { "id": "status", "label": "Order status keeps completing", "status": "pass", "value": 342 },
-      { "id": "expected-shop", "label": "shop reports payment failures", "status": "pass", "value": 1156 },
-      { "id": "expected-gateway", "label": "gateway reports payment failures", "status": "pass", "value": 1156 }
+      { "id": "expected-shop", "label": "Shop reports payment failures", "status": "pass", "value": 1156 },
+      { "id": "expected-gateway", "label": "API gateway reports payment failures", "status": "pass", "value": 1156 }
     ],
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "orders" },

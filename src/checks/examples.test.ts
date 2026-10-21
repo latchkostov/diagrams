@@ -97,11 +97,9 @@ describe("checks on the public examples", () => {
         ).toBe(false);
       }
       if (f.scalingPlan?.kind === "busyThreads") {
-        // A metric changes future scaling; the initial four-pod capacity estimate still warns.
+        // Sustained capacity credits the busy-thread fleet up to its maximum.
         const remaining = runChecks(applied.diagram).findings;
-        expect(remaining.map((g) => g.id)).toEqual(["capacity:caller"]);
-        expect(remaining[0].scalingPlan).toBeUndefined();
-        expect(remaining[0].message).toContain("the diagram's own rates");
+        expect(remaining.map((g) => g.id)).toEqual([]);
       } else {
         expect(
           runChecks(applied.diagram).findings.map((g) => g.id),
@@ -133,17 +131,17 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  */
 const PLANNED: Record<string, string[]> = {
   "pool-of-40": [
-    "1156 dropped shop in A pool of 40 (expected)",
-    "1156 dropped gateway in A pool of 40 (expected)",
-    "1326 dropped shop in Blocking waits still hold threads (expected)",
-    "1326 dropped gateway in Blocking waits still hold threads (expected)",
+    "1156 dropped shop in Threads freed while waiting for the pool (expected)",
+    "1156 dropped gateway in Threads freed while waiting for the pool (expected)",
+    "1326 dropped shop in Threads held while waiting for the pool (expected)",
+    "1326 dropped gateway in Threads held while waiting for the pool (expected)",
   ],
   "slow-payment-provider": [
-    "1142 dropped shop in No timeouts (expected)",
-    "1142 dropped gateway in No timeouts (expected)",
-    "1968 dropped shop in A 600 ms timeout (expected)",
-    "1968 dropped gateway in A 600 ms timeout (expected)",
-    "1968 dropped checkout in A 600 ms timeout (expected)",
+    "1059 dropped shop in No timeouts (expected)",
+    "1059 dropped gateway in No timeouts (expected)",
+    "1687 dropped shop in A 600 ms timeout (expected)",
+    "1687 dropped gateway in A 600 ms timeout (expected)",
+    "1687 dropped checkout in A 600 ms timeout (expected)",
   ],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],

@@ -11,4 +11,4 @@ flowchart LR
   gateway --> checkout
   checkout --> payment
   checkout --> orders
-%% diagrams:{"v":1,"description":"A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.","nodes":{"shop":["shop","client.user"],"gateway":["gateway","generic.adc"],"checkout":["checkout","generic.service"],"payment":["payment","generic.external-api"],"orders":["orders","generic.database"]},"edges":["browse","route","pay","save"],"relations":{}}
+%% diagrams:{"v":1,"description":"Checkout handles payments and order status. Payment calls share forty connections. Compare holding threads while waiting for a connection with freeing them so order status can keep working.","nodes":{"shop":["shop","client.user"],"gateway":["gateway","generic.adc"],"checkout":["checkout","generic.service"],"payment":["payment","generic.external-api"],"orders":["orders","generic.database"]},"edges":["browse","route","pay","save"],"relations":{}}

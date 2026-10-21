@@ -2,6 +2,7 @@ import { useCallback, useState, useSyncExternalStore } from "react";
 import type { LiveController } from "./controller";
 import { TroubleWatcher, pickTrouble, type Trouble, type TroubleMemory } from "./observedTrouble";
 import { simulationEdges } from "../sim/simulationEdges";
+import { state as language } from "../i18n";
 
 /**
  * The run's trouble for the callout (src/live/observedTrouble.ts), read on every controller publication: a status
@@ -27,7 +28,14 @@ export class TroubleTracker {
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
-    if (!this.unsubscribe) this.unsubscribe = this.controller.subscribe(this.observe);
+    if (!this.unsubscribe) {
+      const stop = this.controller.subscribe(this.observe);
+      language.f.add(this.observe);
+      this.unsubscribe = () => {
+        stop();
+        language.f.delete(this.observe);
+      };
+    }
     // Catch any controller publication between construction/render and subscription.
     this.observe();
     return () => {
@@ -47,10 +55,37 @@ export class TroubleTracker {
       this.memory = { shown: new Set(), ended: new Set(), dismissed: new Set() };
       this.watcher.reset();
     }
-    const now = this.watcher.observe(
+    const observed = this.watcher.observe(
       st.snapshot,
       simulationEdges(this.controller.currentDiagram, st.running ?? undefined),
     );
+    // The run deliberately demonstrates failing fast. Its outcomes and result line
+    // teach that trade-off; don't replace them with an unrelated loss symptom.
+    const expected = new Set<string>();
+    const diagram = this.controller.currentDiagram;
+    const edges = new Map(diagram.edges.map((e) => [e.id, e]));
+    const incoming = new Map<string, string[]>();
+    for (const e of diagram.edges)
+      if (e.kind === "sync") {
+        const list = incoming.get(e.to) ?? [];
+        list.push(e.from);
+        incoming.set(e.to, list);
+      }
+    for (const [id, setup] of Object.entries(st.running?.setup?.edges ?? {})) {
+      if (!(setup.caller?.deadlineMs && st.snapshot.edges[id]?.calls?.timedOut)) continue;
+      const from = edges.get(id)?.from;
+      if (!from) continue;
+      const pending = [from];
+      while (pending.length) {
+        const node = pending.pop()!;
+        if (expected.has(node)) continue;
+        expected.add(node);
+        pending.push(...(incoming.get(node) ?? []));
+      }
+    }
+    const now = expected.size
+      ? observed.filter((trouble) => trouble.kind !== "dropping" || !expected.has(trouble.node))
+      : observed;
     if (now !== this.troubles) {
       this.troubles = now;
       this.picked = pickTrouble(now, this.memory, this.watcher.warm);

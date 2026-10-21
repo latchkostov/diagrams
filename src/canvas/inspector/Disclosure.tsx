@@ -20,14 +20,22 @@ export function Disclosure({
   aside,
   count,
   children,
+  reveal,
 }: {
   id: string;
   title: string;
   aside?: ReactNode;
   count?: number;
   children: ReactNode;
+  /** An explicit field-focus request opens its section before the first focus pass. */
+  reveal?: number;
 }) {
-  const [open, setOpen] = useState(() => readOpen()[id] === true);
+  const [open, setOpen] = useState(() => reveal !== undefined || readOpen()[id] === true);
+  const [revealed, setRevealed] = useState(reveal);
+  if (reveal !== undefined && reveal !== revealed) {
+    setRevealed(reveal);
+    if (!open) setOpen(true);
+  }
   const toggle = () => {
     setOpen(!open);
     safeStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));

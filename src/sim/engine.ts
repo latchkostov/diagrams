@@ -3839,6 +3839,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       return frame;
     },
+    queuedCalls(edgeId: string): number {
+      return faultEdges.get(edgeId)?.poolPending.length ?? 0;
+    },
     snapshot(): SimSnapshot {
       const frame = engine.frame();
       const edgeStates: SimSnapshot["edges"] = Object.create(null);

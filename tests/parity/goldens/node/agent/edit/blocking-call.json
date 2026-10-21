@@ -335,7 +335,7 @@
     "simulations": [
       {
         "id": "blocking",
-        "title": "Blocking: CPU says all is well",
+        "title": "Threads held: CPU says all is well",
         "description": "At 400 requests/s the 64 threads fill. CPU scaling stays at four replicas while Applications pile up.",
         "seed": 17,
         "scale": 1,

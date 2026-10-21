@@ -6,7 +6,8 @@ import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../../edi
 import { t } from "../../i18n";
 import { brokerSpec } from "../../model/brokers";
 import { relationNote, relationOf, isDependency } from "../../model/relations";
-import { CallWaitFields, EdgeRouteFields } from "../../planning/lazy";
+import { EdgeRouteFields } from "../../planning/lazy";
+import { CallWaitFields } from "./CallWaitFields";
 import { groupLabel } from "../../stencils/brokerVocabulary";
 import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";

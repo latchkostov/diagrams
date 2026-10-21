@@ -22,7 +22,7 @@
     ]
   },
   "title": "A pool of 40",
-  "description": "A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.",
+  "description": "Checkout handles payments and order status. Payment calls share forty connections. Compare holding threads while waiting for a connection with freeing them so order status can keep working.",
   "nodes": [
     {
       "id": "shop",
@@ -150,7 +150,7 @@
   "simulations": [
     {
       "id": "pool-40",
-      "title": "A pool of 40",
+      "title": "Threads freed while waiting for the pool",
       "description": "Payment calls wait off-thread for one of forty connections. Order status only calls Orders DB and keeps completing during the slowdown. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
       "seed": 17,
       "scale": 1,
@@ -194,7 +194,7 @@
         },
         {
           "id": "expected-shop",
-          "label": "shop reports payment failures",
+          "label": "Shop reports payment failures",
           "metric": {
             "node": "shop",
             "field": "dropped"
@@ -205,7 +205,7 @@
         },
         {
           "id": "expected-gateway",
-          "label": "gateway reports payment failures",
+          "label": "API gateway reports payment failures",
           "metric": {
             "node": "gateway",
             "field": "dropped"
@@ -218,7 +218,7 @@
     },
     {
       "id": "blocking-pool",
-      "title": "Blocking waits still hold threads",
+      "title": "Threads held while waiting for the pool",
       "description": "The same pool holds waiting threads as well as connections. Order-status work queues behind them. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
       "seed": 17,
       "scale": 1,
@@ -262,7 +262,7 @@
         },
         {
           "id": "expected-shop",
-          "label": "shop reports payment failures",
+          "label": "Shop reports payment failures",
           "metric": {
             "node": "shop",
             "field": "dropped"
@@ -273,7 +273,7 @@
         },
         {
           "id": "expected-gateway",
-          "label": "gateway reports payment failures",
+          "label": "API gateway reports payment failures",
           "metric": {
             "node": "gateway",
             "field": "dropped"

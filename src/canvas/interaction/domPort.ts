@@ -93,7 +93,11 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         // A request made while the Inspector is folded (or still shows the previous item) waits for it.
         const inspector = document.querySelector('[data-testid="inspector"]');
         if (!inspector || inspector.getAttribute("data-collapsed") === "1") return { state: "parked" };
-        const el = inspector.querySelector(`[data-testid="inspector-field-${target.name}"]`);
+        const el = inspector.querySelector(
+          target.name === "autoscaling-target"
+            ? '[data-testid="autoscaling-target"]'
+            : `[data-testid="inspector-field-${target.name}"]`,
+        );
         if (!el || (target.owner && el.getAttribute("data-name-field") !== target.owner)) return { state: "parked" };
         return { state: "ready", el };
       }

@@ -97,8 +97,12 @@ test.describe("editor", () => {
     await expect(menuItem(page, "edge.relationship")).toBeVisible();
     await expect(menuItem(page, "edge.route")).toBeVisible();
 
-    // The Simulation section stays hidden until the sim UI registers actions.
-    await expect(page.getByTestId("context-menu")).not.toContainText("Simulation");
+    // Connection settings are grouped under Simulation; live-only actions stay hidden.
+    await menuItem(page, "edge.simulation").click();
+    await expect(menuItem(page, "edge.toggle-dlq")).toBeVisible();
+    await expect(menuItem(page, "edge.consumer-group")).toBeVisible();
+    await expect(menuItem(page, "sim.inject")).toHaveCount(0);
+    await page.keyboard.press("Escape");
     // Outside click closes it.
     await clickEmpty(page);
     await expect(page.getByTestId("context-menu")).toHaveCount(0);
