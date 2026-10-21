@@ -57,6 +57,7 @@ export function createExecutionReservations<
   time: () => number;
   waits: () => boolean;
   callerReservations: (node: Node) => boolean;
+  admissionLag: (node: Node) => number;
   slots: (node: Node) => number;
   resourceWork: (node: Node) => CpuTail<Group>[];
   scheduleThreadGrace: (id: number, work: Reservation<Group>) => void;
@@ -340,15 +341,14 @@ export function createExecutionReservations<
     node.threadTails.set(r.id, r);
     work.localThread = r.id;
     if (immediate || !callerReservations(node) || context.immediateHolds()) ledger.release(r);
-    // Resource-backed nodes have a second admission phase after logical replies.
-    // Zero-local-work callers also start in admission itself; their scale-one
-    // turnaround has no extra work-loop tick to stretch with the cohort.
+    // Stretch only the turnaround that scale one actually waits through: a
+    // reply before this tick's next admission opportunity has no extra lag.
     else
       ledger.retire(
         r,
         node.activeMs - (r.segmentActive ?? r.startActive),
         node.activeMs,
-        admissionLagMs ?? (node.fleet || r.heldMs === 0 ? 0 : undefined),
+        admissionLagMs ?? (r.phase === "wait" ? context.admissionLag(node) : 0),
       );
     if (node.threadTails.has(r.id)) scheduleThreadGrace(r.id, r);
   }
