@@ -1,0 +1,57 @@
+name: Live Diagram for Confluence
+description: Report a problem with the free Confluence Cloud app.
+title: "[Confluence] "
+labels: [confluence]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Support is public. **Never attach private or work diagrams.**
+        Use an invented, generic example. Remove site names, account details and confidential content from screenshots.
+        This app supports Confluence Cloud only, not Server or Data Center.
+  - type: dropdown
+    id: confluence-type
+    attributes:
+      label: Confluence version or URL type
+      description: Choose the type, without posting your actual site URL.
+      options:
+        - Confluence Cloud (*.atlassian.net)
+        - Confluence Cloud (custom domain)
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and app version
+      description: Browser version and Live Diagram app version, if available from your admin.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Tell us how to reproduce this with a generic diagram. Include any error message after removing sensitive details.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots (optional)
+      description: Never attach private or work diagrams. Share only a generic example with site names and personal details removed.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have removed private or work diagrams, confidential information and personal details.
+          required: true

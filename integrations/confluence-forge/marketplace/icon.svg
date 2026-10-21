@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Live Diagrams connected nodes">
+  <rect width="256" height="256" rx="64" fill="#1b2434"/>
+  <rect x="37" y="53" width="75" height="54" rx="19" fill="#8f96ff"/>
+  <path d="M104 80h27c17 0 29 13 29 30v10c0 17 12 29 27 29" fill="none" stroke="#8f96ff" stroke-width="16" stroke-linecap="round"/>
+  <rect x="144" y="149" width="75" height="54" rx="19" fill="#e7ebf3"/>
+</svg>

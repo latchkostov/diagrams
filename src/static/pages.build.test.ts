@@ -57,9 +57,11 @@ describe("standalone page builds", () => {
   it.each([
     ["auth.html", "4c02b08ab1b0d5fdcdb969224f486b2a00b04c73059c217cd2c25f637bc35df7"],
     ["skill/index.html", "59bcb008ec6ff8f0b5db9acc7cacdc37c9f19ddeee3bf9e30552a04a5ddec13b"],
-    ["privacy.html", "f4ea5ed15fc3f7dd9a22b4deadd12c8468ea8e6cbe6a4b976586ecf171a74d12"],
+    // Reviewed Confluence documentation and privacy section: 2026-10-20 release fragment.
+    ["privacy.html", "0f7c05ad307d4cdbe63aa70075e1c97699c41fb552085da11c1ad1cce7426571"],
     ["terms.html", "cb89aa1a41a51dff21c05569e5304008c00178b285d956c16e699a3c37842a3b"],
-  ])("preserves baseline markup apart from stable binding attributes: %s", (file, hash) => {
+    ["confluence.html", "a55920dda125d6c080dfde1e9fb46eb5b15fe26b300b345a013bc4c861acbba8"],
+  ])("preserves reviewed markup apart from stable binding attributes: %s", (file, hash) => {
     const html = readFileSync(resolve("public", file), "utf8")
       .replaceAll("\r\n", "\n")
       .replace(/ data-slot="[^"]*"/g, "")

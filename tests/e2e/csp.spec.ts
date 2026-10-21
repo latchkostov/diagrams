@@ -257,6 +257,31 @@ test.describe("Content-Security-Policy", () => {
     expect(messages.filter((m) => /Permissions[- ]Policy|Unrecognized feature/i.test(m))).toEqual([]);
   });
 
+  test("Confluence documentation and privacy links work on the production static site", async ({ page }) => {
+    const csp = await watch(page);
+    const documentation = await page.goto("./confluence.html");
+    expect(documentation?.status()).toBe(200);
+    expectPolicy(documentation);
+    await expect(page.getByTestId("confluence-title")).toHaveText("Live Diagram for Confluence");
+    await expect(page.getByTestId("confluence-marketplace-status")).toContainText("coming soon");
+    await expect(page.getByTestId("confluence-steps")).toContainText(".diagram.json");
+    await expect(page.getByTestId("confluence-support")).toHaveAttribute(
+      "href",
+      "https://github.com/latchkostov/diagrams/issues/new?template=confluence-app.yml",
+    );
+    await expect(page.getByTestId("confluence-support-guidance")).toContainText(
+      "Never attach private or work diagrams.",
+    );
+    await page.getByTestId("confluence-privacy").click();
+    await expect(page.getByTestId("privacy-confluence-title")).toHaveText("Live Diagram for Confluence");
+    await expect(page.getByTestId("privacy-confluence")).toContainText("write:confluence-file");
+    await page.getByTestId("privacy-confluence-docs").click();
+    await expect(page.getByTestId("confluence-title")).toBeVisible();
+    await page.getByTestId("confluence-terms").click();
+    await expect(page.getByTestId("terms-title")).toBeVisible();
+    expect(await csp.violations()).toEqual([]);
+  });
+
   test("the static pages: privacy, terms, sign-in redirect, skill install page", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const csp = await watch(page);
