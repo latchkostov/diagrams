@@ -500,7 +500,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     time: () => time,
     waits,
     callerReservations,
-    admissionLag: (node) => (node.admittedAt === time && (!node.props.admission || incomingAt === time) ? STEP : 0),
+    // A settled wait's lag to its node's next admission phase. Ordinary-clock arrivals
+    // admit before that tick's due releases, so only a cohort's N/w - 1 inner turnarounds
+    // wait for a later phase; its final release must precede the next arrivals.
+    admissionLag: (node, reservation) =>
+      node.admittedAt !== time || (node.props.admission && incomingAt !== time)
+        ? 0
+        : node.props.admission && incomingBeforeReleases
+          ? STEP * (1 - reservation.weight / reservation.represented)
+          : STEP,
     slots,
     resourceWork,
     scheduleThreadGrace,
@@ -527,6 +535,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let sourceEmitted = 0;
   let time = 0;
   let incomingAt: number | undefined;
+  /** The last arrival phase ran before the tick's due releases (no resource clock). */
+  let incomingBeforeReleases = false;
   let accumulator = 0;
   let speed = 1;
   let traffic = false;
@@ -2944,6 +2954,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         resourceClock = true;
         break;
       }
+    incomingBeforeReleases = !resourceClock;
     if (!resourceClock) {
       admitIncoming();
       incomingAt = time;
@@ -3305,6 +3316,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     refreshSourceRate();
     time = 0;
     incomingAt = undefined;
+    incomingBeforeReleases = false;
     accumulator = 0;
     inSystem = 0;
     drawn = 0;
@@ -3459,6 +3471,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const clock = {
         time,
         incomingAt,
+        incomingBeforeReleases,
         accumulator,
         speed,
         traffic,
@@ -3531,6 +3544,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ({
           time,
           incomingAt,
+          incomingBeforeReleases,
           accumulator,
           speed,
           traffic,

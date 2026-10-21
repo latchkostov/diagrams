@@ -61,7 +61,7 @@ export function createExecutionReservations<
   time: () => number;
   waits: () => boolean;
   callerReservations: (node: Node) => boolean;
-  admissionLag: (node: Node) => number;
+  admissionLag: (node: Node, reservation: Reservation<Group>) => number;
   slots: (node: Node) => number;
   resourceWork: (node: Node) => CpuTail<Group>[];
   scheduleThreadGrace: (id: number, work: Reservation<Group>) => void;
@@ -366,7 +366,7 @@ export function createExecutionReservations<
         r,
         node.activeMs - (r.segmentActive ?? r.startActive),
         node.activeMs,
-        admissionLagMs ?? (r.phase === "wait" ? context.admissionLag(node) : 0),
+        admissionLagMs ?? (r.phase === "wait" ? context.admissionLag(node, r) : 0),
       );
     if (node.threadTails.has(r.id)) scheduleThreadGrace(r.id, r);
   }

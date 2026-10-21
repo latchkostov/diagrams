@@ -111,6 +111,23 @@ function managedJoin() {
   return diagram;
 }
 
+/** Admit-on-arrival caller whose blocking reply settles in the tick it was admitted. */
+function managedZeroWork() {
+  const diagram = zeroWorkCall();
+  diagram.nodes[1].stencil = "aws.lambda";
+  diagram.nodes[1].props = {
+    concurrency: 1,
+    replicas: 1,
+    latencyMs: 0,
+    jitter: 0,
+    scaling: "fixed",
+    maxConcurrency: 1,
+    api: { latencyMs: 0 },
+  };
+  diagram.edges[1].props = { travelMs: 10, networkDelayMs: 0, caller: { wait: "blocking", replyMs: 0 } };
+  return diagram;
+}
+
 function slowCallee() {
   const diagram = zeroWorkCall();
   diagram.nodes[1].props!.concurrency = 4;
@@ -218,6 +235,26 @@ it.each([2, 4])("I1 regression: Lambda joins ordinary and fleet replies at scale
   expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(500);
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
+
+// Ordinary-clock arrivals admit before the tick's due releases; the cohort's last turnaround
+// must not wait for another phase (review of #227: 666 completed, 1,332 rejected at scale 2).
+it.each([
+  { scale: 2, ratePerSec: 100, baseline: [999, 1000], sampled: [1000, 1000] },
+  { scale: 2, ratePerSec: 200, baseline: [1000, 3000], sampled: [1000, 3000] },
+  { scale: 1.5, ratePerSec: 200, baseline: [1000, 2999], sampled: [1000.5, 2998.5] },
+])(
+  "I1 regression: managed zero-work caller turnaround with zero network delay at scale $scale, $ratePerSec/s",
+  ({ scale, ratePerSec, baseline, sampled }) => {
+    const runs = constantRateRuns(managedZeroWork(), scale, { ratePerSec });
+    const outcome = (snapshot: SimSnapshot) => {
+      const caller = realSnapshot(snapshot).nodes.caller;
+      return [caller.processed, caller.rejected];
+    };
+    expect(outcome(runs.baseline)).toEqual(baseline);
+    expect(outcome(runs.sampled)).toEqual(sampled);
+    expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+  },
+);
 
 let zeroLocalBaseline: SimSnapshot;
 const zeroLocalSamples = new Map<number, SimSnapshot>();
