@@ -1044,3 +1044,28 @@ The rejected-transaction follow-up rebases onto #139 and regenerates from master
 It changes no golden: every existing non-routing output and every routing corpus/showcase record stays
 unchanged. Refused normalization paths are covered by failing-without-the-fix regressions and 5,000
 generated rejection shapes rather than by re-recording an existing output.
+
+## Request deadlines on R1–R4 (2026-10-20, #197)
+
+Every existing diagram-output golden and every scale-one deadline golden is unchanged. The
+60 new example/corpus goldens retain the original PR's data except these scale-ten records:
+
+- `node/sim/corpus-w1-deadline/blocking-10.json`: first-wave end-to-end p50 falls 860→820 ms,
+  mean 715→685 ms and caller wait p50 570→550 ms. Event fingerprints and final throughput
+  sampling follow the earlier logical schedule; final outcome totals are unchanged.
+- `node/sim/corpus-w1-deadline/non-blocking-10.json`: first-wave end-to-end p50 falls
+  340→320 ms, mean 325→310 ms and caller wait p50 130→110 ms. Event fingerprints and final
+  throughput sampling follow the earlier schedule, with unchanged final outcome totals.
+- `node/waits/w1-deadline/blocking-10.json`: the caller meter becomes 0.4 dots (four real
+  threads); timeouts settle earlier, finishing all four dots by 1.1 s.
+- `node/waits/w1-deadline/non-blocking-10.json`: four downstream dots are admitted by 100 ms
+  instead of three; three failure continuations finish by 200 ms instead of two. The caller
+  meter becomes 0.4 dots; late-reply timing follows the earlier downstream schedule.
+
+`node/sim/slow-payment-provider/free-play.json` and its trace remain identical to the original
+PR. Six existing shared records intentionally change: `node/agent/tools.json` and
+`node/skill/public-schemas.json` gain shared expectation metrics and nullable deadline overrides;
+`node/skill/files.json` records the regenerated spec; `node/skill/current-stencils.json` records
+the new example's ranking; `node/skill/validate.txt` adds corpus validation; and
+`node/i18n/catalogs.json` gains ten English messages, their fingerprints and fallback counts.
+See [the release fragment](release-notes/2026-10-20-request-deadlines-ledger.md).

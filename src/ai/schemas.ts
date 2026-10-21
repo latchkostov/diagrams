@@ -1,3 +1,4 @@
+import { METRIC_FIELDS } from "../model/types";
 import { faultSchema, DRILL_PRESETS } from "../model/faults";
 import { requestRoutesSchema } from "../model/requestRouting";
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
@@ -536,18 +537,7 @@ export const set_simulationSchema: JsonSchema = {
             },
             metric: {
               type: "string",
-              enum: [
-                "processed",
-                "backlog",
-                "inFlight",
-                "failed",
-                "deadLettered",
-                "dropped",
-                "blocked",
-                "throughput",
-                "lag",
-                "inSystem",
-              ],
+              enum: [...METRIC_FIELDS, "inSystem"],
             },
             op: {
               type: "string",

@@ -81,6 +81,28 @@ const freePlay = (slug: string) => {
 };
 
 describe("recent-feature showcases", () => {
+  it("shows slow payments saturating threads or failing fast with a timeout", () => {
+    const d = diagram("slow-payment-provider");
+    expect(exampleMetadata["slow-payment-provider"].shows).toContain("requestsWait");
+    expect(exampleMetadata["slow-payment-provider"].shows).toContain("faultDrills");
+    const [stalled, bounded] = d.simulations!.map((s) => createSimulationRun(d, s));
+    stalled.step(8000);
+    bounded.step(8000);
+    const a = stalled.engine.snapshot(),
+      b = bounded.engine.snapshot();
+    expect(a.nodes.checkout.threads!.waiting).toBeGreaterThanOrEqual(98);
+    expect(a.nodes.checkout.backlog).toBeGreaterThan(100);
+    expect(b.nodes.checkout.threads!.waiting).toBeLessThan(80);
+    expect(b.nodes.checkout.backlog).toBeLessThan(5);
+    expect(b.edges.pay.calls!.timedOut).toBeGreaterThan(100);
+    expect(b.edges.pay.calls!.late).toBeGreaterThan(0);
+    expect(b.edges.route.calls!.timedOut).toBe(0);
+    stalled.step(12000);
+    bounded.step(12000);
+    expect(stalled.engine.snapshot().edges.route.calls!.timedOut).toBeGreaterThan(0);
+    expect(stalled.state().expectations![0].status).toBe("fail");
+    expect(bounded.state().expectations!.every((e) => e.status === "pass")).toBe(true);
+  });
   it("frees threads within ten seconds and lets CPU scaling answer the spike", () => {
     const d = diagram("blocking-call");
     const run = createSimulationRun(

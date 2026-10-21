@@ -1,0 +1,278 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-w1"
+  },
+  "title": "A slow payment provider",
+  "description": "At three seconds the payment provider slows tenfold. Compare Checkout filling its threads with a 600 ms timeout: payments fail fast while Checkout keeps serving requests. Timeouts do not cancel the provider's work.",
+  "nodes": [
+    {
+      "id": "shop",
+      "stencil": "client.user",
+      "label": "Shop",
+      "x": 0,
+      "y": 180,
+      "props": {
+        "ratePerSec": 120
+      }
+    },
+    {
+      "id": "gateway",
+      "stencil": "generic.adc",
+      "label": "API gateway",
+      "sublabel": "5 s timeout",
+      "x": 320,
+      "y": 180
+    },
+    {
+      "id": "checkout",
+      "stencil": "generic.service",
+      "label": "Checkout",
+      "sublabel": "4 replicas · 25 threads each",
+      "x": 660,
+      "y": 180,
+      "props": {
+        "replicas": 4,
+        "concurrency": 25,
+        "latencyMs": 10,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "payment",
+      "stencil": "generic.external-api",
+      "label": "Payment provider",
+      "sublabel": "200 ms · slows ×10 at 3 s",
+      "x": 1020,
+      "y": 180,
+      "props": {
+        "latencyMs": 200,
+        "api": {
+          "latencyMs": 200
+        },
+        "jitter": 0
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "generic.database",
+      "label": "Orders DB",
+      "x": 1020,
+      "y": 420,
+      "props": {
+        "latencyMs": 5,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "browse",
+      "from": "shop",
+      "to": "gateway",
+      "kind": "sync",
+      "props": {
+        "travelMs": 100
+      }
+    },
+    {
+      "id": "route",
+      "from": "gateway",
+      "to": "checkout",
+      "kind": "sync",
+      "props": {
+        "travelMs": 100,
+        "caller": {
+          "deadlineMs": 5000
+        }
+      }
+    },
+    {
+      "id": "pay",
+      "from": "checkout",
+      "to": "payment",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "save",
+      "from": "checkout",
+      "to": "orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 100
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "no-timeouts",
+      "title": "No timeouts",
+      "description": "Checkout fills all 100 threads after the slowdown. Its queue keeps growing; the gateway eventually returns 504s after waiting five seconds.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "gateway-timeouts",
+          "label": "No gateway timeouts",
+          "metric": {
+            "node": "gateway",
+            "field": "timedOut"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-gateway",
+          "metric": {
+            "field": "dropped",
+            "node": "gateway"
+          },
+          "when": "eventually",
+          "label": "gateway reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-shop",
+          "metric": {
+            "field": "dropped",
+            "node": "shop"
+          },
+          "when": "eventually",
+          "label": "shop reports failed checkouts",
+          "op": ">"
+        }
+      ]
+    },
+    {
+      "id": "timeout-600",
+      "title": "A 600 ms timeout",
+      "description": "Payments time out, then their late replies are discarded. Checkout releases each thread after 600 ms and the gateway never times out: degradation instead of a stall.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "setup": {
+        "edges": {
+          "pay": {
+            "caller": {
+              "deadlineMs": 600
+            }
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "gateway-timeouts",
+          "label": "No gateway timeouts",
+          "metric": {
+            "node": "gateway",
+            "field": "timedOut"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        },
+        {
+          "id": "payments-timeout",
+          "label": "Payments fail fast",
+          "metric": {
+            "node": "checkout",
+            "field": "timedOut"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-checkout",
+          "metric": {
+            "field": "dropped",
+            "node": "checkout"
+          },
+          "when": "eventually",
+          "label": "checkout reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-gateway",
+          "metric": {
+            "field": "dropped",
+            "node": "gateway"
+          },
+          "when": "eventually",
+          "label": "gateway reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-shop",
+          "metric": {
+            "field": "dropped",
+            "node": "shop"
+          },
+          "when": "eventually",
+          "label": "shop reports failed checkouts",
+          "op": ">"
+        }
+      ]
+    }
+  ]
+}

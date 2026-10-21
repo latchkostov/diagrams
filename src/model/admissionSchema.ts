@@ -71,7 +71,7 @@ export const callerSchema: JsonSchema = {
   properties: {
     wait: { enum: ["blocking", "non-blocking"] },
     replyMs: time,
-    deadlineMs: time,
+    deadlineMs: { anyOf: [time, { type: "null" }] },
     retry,
     poolConnections: { type: "integer", minimum: 1, maximum: 10000 },
   },

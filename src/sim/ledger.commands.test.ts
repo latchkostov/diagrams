@@ -12,7 +12,7 @@ import {
   type LedgerInvariantState,
 } from "./resourceInvariants";
 import type { DiagramFile } from "../model/types";
-import type { EngineCheckpoint, NodeStatus, SimEngine } from "./types";
+import type { EdgeSimProps, EngineCheckpoint, NodeStatus, SimEngine } from "./types";
 
 interface Model {
   scale: number;
@@ -254,22 +254,34 @@ it.each([false, true])(
   "I2/I3/I5/I6: command interleavings are write-once, deterministic and release all leases (scaleOne=%s)",
   (scaleOne) => {
     fc.assert(
-      fc.property(arbWaitDiagram, commands(scaleOne), fc.integer(), ({ diagram, scale }, sequence, seed) => {
-        const model: Model = { scale: scaleOne ? 1 : scale };
-        const real: Real = { diagram, probes: [probe(diagram, model.scale, seed), probe(diagram, model.scale, seed)] };
-        fc.modelRun(() => ({ model, real }), sequence);
-        // Cuts have no deadlines in R1. Down explicitly cancels unanswered calls before draining.
-        for (const p of real.probes) {
-          for (const node of diagram.nodes) p.engine.setNodeStatus(node.id, "down");
-          // Brokers retain queued deliveries while down. Cancel the outstanding calls,
-          // then restore delivery paths so their backlog can drain too.
-          for (const node of diagram.nodes) p.engine.setNodeStatus(node.id, "up");
-          for (const edge of diagram.edges) p.engine.setFault({ kind: "link", edge: edge.id, cut: false });
-          drain(p);
-          if (scaleOne) expect([...p.state().ledger.owners.values()].every((o) => o.heap.length === 0)).toBe(true);
-        }
-        compare(real, model);
-      }),
+      fc.property(
+        arbWaitDiagram,
+        commands(scaleOne),
+        fc.integer(),
+        ({ diagram, scale, deadlineMs }, sequence, seed) => {
+          for (const edge of diagram.edges) {
+            if (edge.kind !== "sync") continue;
+            edge.props = { ...edge.props, caller: { ...(edge.props?.caller as EdgeSimProps["caller"]), deadlineMs } };
+          }
+          const model: Model = { scale: scaleOne ? 1 : scale };
+          const real: Real = {
+            diagram,
+            probes: [probe(diagram, model.scale, seed), probe(diagram, model.scale, seed)],
+          };
+          fc.modelRun(() => ({ model, real }), sequence);
+          // Calls without a deadline still need explicit cancellation before the final drain.
+          for (const p of real.probes) {
+            for (const node of diagram.nodes) p.engine.setNodeStatus(node.id, "down");
+            // Brokers retain queued deliveries while down. Cancel the outstanding calls,
+            // then restore delivery paths so their backlog can drain too.
+            for (const node of diagram.nodes) p.engine.setNodeStatus(node.id, "up");
+            for (const edge of diagram.edges) p.engine.setFault({ kind: "link", edge: edge.id, cut: false });
+            drain(p);
+            if (scaleOne) expect([...p.state().ledger.owners.values()].every((o) => o.heap.length === 0)).toBe(true);
+          }
+          compare(real, model);
+        },
+      ),
       { numRuns: propertyRuns(40) },
     );
   },

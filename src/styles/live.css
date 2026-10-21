@@ -2553,7 +2553,9 @@ details[open] > summary .lv-disclosure-chevron {
   display: block;
 }
 .lv-detail.is-compact
-  > :not(.planning-explanation):not(.lv-detail-more):not(.lv-latency):not(.lv-thread-detail):not(.lv-thread-ceiling),
+  > :not(.planning-explanation):not(.lv-detail-more):not(.lv-latency):not(.lv-thread-detail):not(
+    .lv-thread-ceiling
+  ):not(.lv-call-outcomes),
 .lv-detail.is-compact .planning-explanation > :not([data-testid="planning-arithmetic"]) {
   display: none;
 }
@@ -2572,7 +2574,8 @@ details[open] > summary .lv-disclosure-chevron {
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
-.lv-detail.is-summary > :not(.lv-latency):not(.lv-detail-more):not(.lv-thread-detail):not(.lv-thread-ceiling),
+.lv-detail.is-summary
+  > :not(.lv-latency):not(.lv-detail-more):not(.lv-thread-detail):not(.lv-thread-ceiling):not(.lv-call-outcomes),
 .lv-detail.is-summary .lv-latency > strong {
   display: none;
 }
@@ -2668,4 +2671,7 @@ details[open] > summary .lv-disclosure-chevron {
 .react-flow[data-live-particle="hover"] .react-flow__pane,
 .react-flow[data-live-particle="hover"] .react-flow__edge {
   cursor: pointer;
+}
+.lv-call-pill.is-timeout {
+  color: var(--danger);
 }

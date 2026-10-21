@@ -24,13 +24,13 @@ async function importFirst(xml: string) {
 
 it("round-trips non-blocking calls, reply handling, caps and saved simulation overrides", async () => {
   const d = waitingFixture();
-  d.edges[1].props = { caller: { wait: "non-blocking", replyMs: 30, poolConnections: 2 } };
+  d.edges[1].props = { caller: { wait: "non-blocking", replyMs: 30, poolConnections: 2, deadlineMs: 600 } };
   d.simulations = [
     {
       id: "freed",
       title: "Free the thread",
       traffic: [],
-      setup: { edges: { call: { caller: { wait: "blocking" } } } },
+      setup: { edges: { call: { caller: { wait: "blocking", deadlineMs: 100 } } } },
     },
   ];
   const imported = await importFirst(diagramToDrawio(d));

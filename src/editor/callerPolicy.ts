@@ -30,7 +30,11 @@ export function effectiveCallerPolicy(
     set(patch: EdgeSimProps["caller"]) {
       if (!editable) return;
       const normalized = Object.fromEntries(
-        Object.entries({ ...override?.caller, ...patch }).filter(([, v]) => v !== undefined),
+        Object.entries({
+          ...override?.caller,
+          ...patch,
+          ...(Object.hasOwn(patch ?? {}, "deadlineMs") && patch?.deadlineMs === undefined ? { deadlineMs: null } : {}),
+        }).filter(([, v]) => v !== undefined),
       );
       if (saved && override) {
         const next = {

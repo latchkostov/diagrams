@@ -83,8 +83,8 @@ export function NodeBadges({
   const boundaryFault = state.snapshot.faults?.some((fault) => fault.kind === "boundary") ?? false;
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
   const activeCalls = Object.entries(state.snapshot.edges).flatMap(([id, edge]) =>
-    edge.calls && (edge.calls.held || edge.calls.inFlight)
-      ? [{ id, held: edge.calls.held, inFlight: edge.calls.inFlight }]
+    edge.calls && (edge.calls.held || edge.calls.inFlight || edge.calls.timedOut)
+      ? [{ id, held: edge.calls.held, inFlight: edge.calls.inFlight, timedOut: edge.calls.timedOut }]
       : [],
   );
   return (

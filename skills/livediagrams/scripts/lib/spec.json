@@ -3058,9 +3058,16 @@
           "maximum": 600000
         },
         "deadlineMs": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 600000
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 600000
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "retry": {
           "type": "object",

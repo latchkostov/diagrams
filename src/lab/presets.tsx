@@ -1,5 +1,6 @@
 import { waitingFixture } from "./waitingFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
+import slowPayment from "../examples/slow-payment-provider.json";
 import { faultDrillFixture } from "./faultDrillFixture";
 import { kedaFixture } from "./kedaFixture";
 import { ImportRetryLab } from "./ImportRetryLab";
@@ -282,6 +283,14 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "request-deadlines",
+    title: "Request deadlines",
+    group: "Diagrams",
+    description: "Slow payments, bounded thread holds and late replies.",
+    diagram: () => structuredClone(slowPayment) as DiagramFile,
+  },
   {
     kind: "diagram",
     id: "requests-wait",

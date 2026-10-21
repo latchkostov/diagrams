@@ -1,0 +1,197 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-w1"
+  },
+  "title": "Request deadlines",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.user",
+      "label": "Applications",
+      "x": 0,
+      "y": 0,
+      "props": {
+        "ratePerSec": 0
+      }
+    },
+    {
+      "id": "caller",
+      "stencil": "generic.service",
+      "label": "Decision service",
+      "x": 330,
+      "y": 0,
+      "props": {
+        "replicas": 1,
+        "concurrency": 4,
+        "latencyMs": 10,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "partner",
+      "stencil": "generic.external-api",
+      "label": "Partner scoring API",
+      "x": 660,
+      "y": 0,
+      "props": {
+        "api": {
+          "latencyMs": 250
+        },
+        "latencyMs": 250,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "result",
+      "stencil": "generic.database",
+      "label": "Case store",
+      "x": 660,
+      "y": 220,
+      "props": {
+        "latencyMs": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input",
+      "from": "source",
+      "to": "caller",
+      "props": {
+        "travelMs": 10
+      },
+      "kind": "sync"
+    },
+    {
+      "id": "call",
+      "from": "caller",
+      "to": "partner",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "caller": {
+          "deadlineMs": 100
+        }
+      }
+    },
+    {
+      "id": "output",
+      "from": "caller",
+      "to": "result",
+      "props": {
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "blocking-1",
+      "durationMs": 4000,
+      "traffic": [
+        {
+          "id": "burst",
+          "shape": {
+            "count": 40,
+            "kind": "burst"
+          },
+          "node": "source"
+        }
+      ],
+      "scale": 1,
+      "title": "blocking at scale 1",
+      "setup": {
+        "edges": {
+          "call": {
+            "caller": {
+              "deadlineMs": 100,
+              "wait": "blocking"
+            }
+          }
+        }
+      },
+      "seed": 17
+    },
+    {
+      "id": "blocking-10",
+      "durationMs": 4000,
+      "traffic": [
+        {
+          "id": "burst",
+          "shape": {
+            "count": 40,
+            "kind": "burst"
+          },
+          "node": "source"
+        }
+      ],
+      "scale": 10,
+      "title": "blocking at scale 10",
+      "setup": {
+        "edges": {
+          "call": {
+            "caller": {
+              "deadlineMs": 100,
+              "wait": "blocking"
+            }
+          }
+        }
+      },
+      "seed": 17
+    },
+    {
+      "id": "non-blocking-1",
+      "durationMs": 4000,
+      "traffic": [
+        {
+          "id": "burst",
+          "shape": {
+            "count": 40,
+            "kind": "burst"
+          },
+          "node": "source"
+        }
+      ],
+      "scale": 1,
+      "title": "non-blocking at scale 1",
+      "setup": {
+        "edges": {
+          "call": {
+            "caller": {
+              "deadlineMs": 100,
+              "wait": "non-blocking"
+            }
+          }
+        }
+      },
+      "seed": 17
+    },
+    {
+      "id": "non-blocking-10",
+      "durationMs": 4000,
+      "traffic": [
+        {
+          "id": "burst",
+          "shape": {
+            "count": 40,
+            "kind": "burst"
+          },
+          "node": "source"
+        }
+      ],
+      "scale": 10,
+      "title": "non-blocking at scale 10",
+      "setup": {
+        "edges": {
+          "call": {
+            "caller": {
+              "deadlineMs": 100,
+              "wait": "non-blocking"
+            }
+          }
+        }
+      },
+      "seed": 17
+    }
+  ]
+}

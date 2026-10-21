@@ -483,6 +483,7 @@ const OPS = new Set(["<", "<=", "==", ">=", ">"]);
 const WHEN = new Set(["always", "eventually", "end", "at"]);
 const STATUS = new Set(["up", "paused", "down"]);
 const METRICS = new Set([
+  "timedOut",
   "processed",
   "backlog",
   "inFlight",

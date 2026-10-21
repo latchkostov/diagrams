@@ -1,0 +1,12 @@
+---
+title: Request deadlines
+---
+flowchart LR
+  source(["Applications"])
+  caller["Decision service"]
+  partner(["Partner scoring API"])
+  result[("Case store")]
+  source --> caller
+  caller --> partner
+  caller -.-> result
+  linkStyle 2 stroke-dasharray: 6 4

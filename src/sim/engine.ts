@@ -40,7 +40,7 @@ import { hasServiceTime, resolveProps, type ResolvedProps } from "./defaults";
 import { activeUnits } from "../stencils/netDevices";
 import { pushDue, popDue, removeDue } from "./dueHeap";
 import { SampledLedger, type Reservation } from "./ledger";
-import { settleOnce, type Attempt, type LogicalCall } from "./attempt";
+import { raceReply, settleOnce, type Attempt, type LogicalCall } from "./attempt";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
 import {
@@ -181,6 +181,7 @@ interface Delivery {
   original: Message;
 }
 interface Work extends ExecutionWork<Group> {
+  failureCode?: number;
   attempt?: Attempt<Message>;
   residentWeight?: number;
   /** Owns its preceding thread while awaiting the ordinary continuation phase. */
@@ -308,6 +309,8 @@ interface Call extends LogicalCall {
   brokerHeld?: boolean;
 }
 interface Logical {
+  timeout?: boolean;
+  code?: number;
   id: number;
   end: number;
   edge?: Edge;
@@ -455,6 +458,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let echoExpiries: EchoExpiry[] = [];
   let echoByTime = new Map<number, EchoExpiry>();
   let logical: Logical[] = [];
+  let logicalIndices = new Map<number, number>();
+  function scheduleLogical(event: Logical): void {
+    pushDue(logical, event, logicalIndices);
+  }
   let calls = new Map<number, Call>();
   let nextCall = 1;
   let nextAttempt = 1;
@@ -751,7 +758,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (edge.deny) {
       block(message, edge, extra);
       if (waits() && message.returnCall !== undefined)
-        pushDue(logical, { id: nextLogical++, end: time, edge, call: message.returnCall, ok: false });
+        scheduleLogical({ id: nextLogical++, end: time, edge, call: message.returnCall, ok: false });
     } else if (cut(edge)) cutPush(edge, message);
     else if (waits() && edge.sync && kind === "message" && !delivery) {
       const start = Math.max(time, message.visualAt ?? time);
@@ -765,7 +772,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       edge.active++;
       edge.to.incoming++;
       keepEcho(trip);
-      pushDue(logical, {
+      scheduleLogical({
         id: nextLogical++,
         end: time + edge.networkDelayMs,
         edge,
@@ -824,7 +831,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         else if (call.held && !call.blockingRemaining && call.outstanding.size) detachCallThread(call);
         else if (node.fleet) {
           const at = executionGraceDeadline(node, call.work);
-          if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
+          if (Number.isFinite(at)) scheduleLogical({ id: nextLogical++, end: at, call: call.id, grace: at });
         }
       }
     if (status === "up" && execution.usesLedger(node) && !callerReservations(node)) {
@@ -1445,12 +1452,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const edge = work.via;
       const start = Math.max(time, work.message.visualAt ?? time);
       if (!cut(edge))
-        pushDue(logical, {
+        scheduleLogical({
           id: nextLogical++,
           end: time + edge.networkDelayMs,
           edge,
           call: work.message.returnCall,
           ok,
+          code,
           visualAt: start + Math.max(STEP, edge.travelMs),
         });
       const visible = drawn < maxParticles;
@@ -1489,8 +1497,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     });
   }
 
-  function decide(a: Attempt<Message>, ok: boolean, code?: number): void {
-    settleOnce(a, ok, code, time);
+  function decide(a: Attempt<Message>, ok: boolean, code?: number, at = time): void {
+    settleOnce(a, ok, code, at);
     if (opts.verifyOutcomes) outcomeChecks.set(a.id, a);
   }
 
@@ -1504,7 +1512,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function scheduleThreadGrace(id: number, work: Reservation<Group>): void {
     const at = executionGraceDeadline(nodes.get(work.owner)!, work);
-    if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, thread: id });
+    if (Number.isFinite(at)) scheduleLogical({ id: nextLogical++, end: at, thread: id });
   }
 
   /** The first wave finishes logically; remaining cohort CPU keeps running independently. */
@@ -1570,7 +1578,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node,
       work,
       outstanding: new Set(requests.map((e) => e.id)),
-      branches: new Map(requests.map((e) => [e.id, { state: "queued", expiresAt: Infinity }])),
+      branches: new Map(
+        requests.map((e) => [e.id, { state: "queued", expiresAt: time + (e.policy?.deadlineMs ?? Infinity) }]),
+      ),
       blockingRemaining: requests.filter((e) => e.policy?.blocking).length,
       held: node.role === "processor" && !nonblocking,
       replyMs: requests.reduce((sum, e) => sum + (e.policy?.replyMs ?? 0), 0),
@@ -1620,6 +1630,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         { id: call.id, end: call.id, call, message: branch, admissibleActive: node.activeMs },
         edge.poolPendingIndices,
       );
+      const timing = call.branches.get(edge.id)!;
+      if (Number.isFinite(timing.expiresAt)) {
+        timing.deadlineEvent = nextLogical++;
+        scheduleLogical({
+          id: timing.deadlineEvent,
+          end: timing.expiresAt,
+          edge,
+          call: call.id,
+          timeout: true,
+          ok: false,
+          code: 504,
+        });
+      }
       dispatchCalls(edge);
     }
     return true;
@@ -1629,7 +1652,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (edge.from.status === "down" || earlyPoolWakes?.has(edge)) return;
     while (edge.poolPending.length && edge.poolUsed < (edge.policy?.pool ?? Infinity)) {
       const next = edge.poolPending[0];
-      if (!calls.has(next.call.id)) {
+      if (
+        !calls.has(next.call.id) ||
+        next.call.attempt.outcome ||
+        raceReply(next.call.branches.get(edge.id)!, time) === "timeout"
+      ) {
         popDue(edge.poolPending, edge.poolPendingIndices);
         gone(edge.from, next.message, "end", "call already failed");
         continue;
@@ -1666,6 +1693,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         work.route ? { rule: work.route.rule, weight: work.route.weight } : undefined,
       );
     }
+  }
+
+  function cancelDeadline(call: Call, edge: Edge): void {
+    const branch = call.branches.get(edge.id)!;
+    if (branch.deadlineEvent !== undefined) {
+      removeDue(logical, branch.deadlineEvent, logicalIndices);
+      branch.deadlineEvent = undefined;
+    }
+  }
+
+  function retirePool(edge: Edge, callId: number, holdMs: number): void {
+    const lease = ledger.get(edge.poolLeases.get(callId));
+    if (!lease) return;
+    if (opts.ledgerHold === "none") ledger.release(lease);
+    else ledger.retire(lease, holdMs, edge.from.activeMs);
+    edge.poolLeases.delete(callId);
   }
 
   function cancelPending(edge: Edge, callId: number): void {
@@ -1733,7 +1776,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function settleAttempt(call: Call, ok: boolean, releaseNow = false): void {
     const { node, work } = call;
     const a = call.attempt;
-    decide(a, ok);
+    decide(a, ok, work.failureCode);
+    const hasDeadline = [...call.branches.values()].some((branch) => Number.isFinite(branch.expiresAt));
+    for (const id of call.branches.keys()) {
+      const edge = faultEdges.get(id)!;
+      cancelDeadline(call, edge);
+      cancelPending(edge, call.id);
+      if (!a.outcome!.ok && hasDeadline) retirePool(edge, call.id, a.outcome!.at - call.startedAt);
+    }
     if (a.committed) {
       if (releaseNow) releaseCall(call);
       return;
@@ -1822,7 +1872,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     wakeDelivery(work);
     if (retry !== "inplace") {
-      retireThread(node, work, releaseNow || node.status === "down");
+      // Direct expiry precedes admission; a propagated 504 can arrive after a
+      // child's continuation and keeps the normal reply-phase turnaround.
+      const timedOut = [...call.branches.values()].some((branch) => branch.state === "timedOut");
+      retireThread(node, work, releaseNow || node.status === "down", timedOut ? 0 : undefined);
       retireRequest(work, releaseNow);
     }
     if (ok) complete(node, work);
@@ -1851,7 +1904,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** Idle work is O(1): only due arrivals, replies and drain expiries visit call records. */
   function drainLogical(): void {
     while (logical.length && logical[0].end <= time) {
-      const event = popDue(logical);
+      const event = popDue(logical, logicalIndices);
       const edge = event.edge;
       if (event.thread !== undefined) {
         const reservation = ledger.state.reservations.get(event.thread);
@@ -1871,15 +1924,23 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
           continue;
         }
+        if (event.timeout && (!call || call.attempt.outcome || !call.outstanding.has(edge!.id))) continue;
+        if (
+          !event.timeout &&
+          call &&
+          !call.attempt.outcome &&
+          call.outstanding.has(edge!.id) &&
+          raceReply(call.branches.get(edge!.id)!, event.end) === "timeout"
+        ) {
+          event.timeout = true;
+          event.ok = false;
+          event.code = 504;
+          edge!.calls.late++;
+        }
         if (edge) {
-          const id = edge.poolLeases.get(event.call);
-          const lease = id === undefined ? undefined : ledger.state.reservations.get(id);
-          if (lease) {
-            if (opts.ledgerHold === "none") ledger.release(lease);
-            // Remote work continues on its logical timeline while the owner is paused.
-            else ledger.retire(lease, time - lease.startedAt!, edge.from.activeMs);
-            edge.poolLeases.delete(event.call);
-          }
+          const lease = ledger.get(edge.poolLeases.get(event.call));
+          if (lease)
+            retirePool(edge, event.call, event.timeout ? edge.policy!.deadlineMs! : event.end - lease.startedAt!);
           ledger.releaseDue(edge.from.id, edge.from.activeMs);
           dispatchCalls(edge);
         }
@@ -1888,14 +1949,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           edge!.calls.late++;
           continue;
         }
+        cancelDeadline(call, edge!);
+        if (event.timeout) edge!.calls.timedOut++;
+        if (!event.ok) {
+          call.work.failureCode = event.code;
+        }
         releaseCallEdge(call, edge!);
-        call.branches.get(edge!.id)!.state = event.ok ? "replied" : "failed";
+        call.branches.get(edge!.id)!.state = event.timeout ? "timedOut" : event.ok ? "replied" : "failed";
         if (edge!.policy?.blocking) call.blockingRemaining--;
         call.attempt.call!.blockingRemaining = call.blockingRemaining;
         if (call.held && call.outstanding.size && call.blockingRemaining === 0) detachCallThread(call);
         call.work.message.visualAt = Math.max(call.work.message.visualAt ?? 0, event.visualAt ?? time);
         if (call.work.outputMessage)
           call.work.outputMessage.visualAt = Math.max(call.work.outputMessage.visualAt ?? 0, event.visualAt ?? time);
+        if (event.timeout) decide(call.attempt, false, 504, call.branches.get(edge!.id)!.expiresAt);
         if (!event.ok || !call.outstanding.size) settleAttempt(call, !!event.ok);
       } else if (edge && event.message) {
         edge.to.incoming--;
@@ -2017,6 +2084,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (work.message.family.trace && work.message.attempts < work.delivery.broker.props.maxDeliveryCount)
         step(work.message, "retry", work.delivery.broker.id, { attempt: work.message.attempts });
       if (retry === "inplace") {
+        work.failureCode = undefined;
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.waitRemaining = node.props.retryBackoffMs;
         if (node.props.resources) {
@@ -2050,7 +2118,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
     } else {
       endAdmission(work);
-      answer(work, false);
+      answer(work, false, work.failureCode);
       if (node.props.admission && node.status !== "down") gone(node, work.message, "end", "processing failed");
       else drop(node, work.message, node.status === "down" ? "node down" : "processing failed", work.via);
     }
@@ -2085,7 +2153,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (work.delivery || node.role === "processor") settleWork(node, work, false);
       else {
         acknowledge(node, work);
-        answer(work, false);
+        answer(work, false, work.failureCode);
         drop(node, work.message, "node down", work.via);
       }
       return;
@@ -2183,7 +2251,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + 1;
       log("reject", node, work.message, outcome.rejected);
       acknowledge(node, work);
-      answer(work, false);
+      answer(work, false, work.failureCode);
       gone(node, work.message, "reject", outcome.rejected);
       return false;
     }
@@ -2555,7 +2623,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (sampled) retainSampledDrains(f, before, resourceWork(node), lifecycleTime + r.terminationGraceMs);
     for (const call of node.calls.values()) {
       const at = executionGraceDeadline(node, call.work);
-      if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
+      if (Number.isFinite(at)) scheduleLogical({ id: nextLogical++, end: at, call: call.id, grace: at });
     }
     for (const [id, work] of node.threadTails) scheduleThreadGrace(id, work);
     return true;
@@ -3225,6 +3293,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     echoExpiries = [];
     echoByTime.clear();
     logical = [];
+    logicalIndices.clear();
     calls.clear();
     nextCall = 1;
     nextAttempt = 1;
@@ -3349,6 +3418,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         echoByTime,
         drawnTrips,
         logical,
+        logicalIndices,
         ledger: ledger.state,
         calls,
         outcomeChecks,
@@ -3416,6 +3486,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         echoExpiries = copy.echoExpiries;
         echoByTime = copy.echoByTime;
         logical = copy.logical;
+        logicalIndices = copy.logicalIndices;
         ledger.state = copy.ledger;
         calls = copy.calls;
         outcomeChecks = copy.outcomeChecks;
@@ -3483,6 +3554,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node) return undefined;
       if (metric.field === "inFlight")
         return callerReservations(node) ? threadOccupancy(node) : node.working.length + node.heldCalls;
+      if (metric.field === "timedOut") return node.outgoing.reduce((sum, edge) => sum + edge.calls.timedOut, 0);
       if (metric.field === "backlog") {
         let backlog = node.pending.length + node.resume.length + node.staged;
         for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);

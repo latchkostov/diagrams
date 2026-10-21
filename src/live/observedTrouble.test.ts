@@ -40,6 +40,44 @@ function watch(d: DiagramFile, seconds: number, setup?: (e: ReturnType<typeof cr
 }
 
 describe("trouble seen in playback", () => {
+  it("refreshes the timeout action when a link is cut on a paused run", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 100;
+    d.groups = ["local", "remote"].map((id) => ({ id, label: id, x: 0, y: 0, width: 100, height: 100 }));
+    d.nodes[1].group = "local";
+    d.nodes[2].group = "remote";
+    const e = createEngine();
+    e.load(d);
+    e.setTraffic(true);
+    const watcher = new TroubleWatcher();
+    for (let i = 0; i < 120; i++) {
+      e.step(100);
+      watcher.observe(realSnapshot(e.snapshot()), d);
+    }
+    expect(
+      watcher.observe(realSnapshot(e.snapshot()), d).find((t) => t.kind === "threads-exhausted")?.action.kind,
+    ).toBe("free-thread");
+    e.setFault({ kind: "link", edge: "call", cut: true });
+    expect(
+      watcher.observe(realSnapshot(e.snapshot()), d).find((t) => t.kind === "threads-exhausted")?.action.kind,
+    ).toBe("add-timeout");
+  });
+  it("offers a timeout before freeing threads on cut calls, unless a timeout already exists", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 100;
+    d.groups = ["local", "remote"].map((id) => ({ id, label: id, x: 0, y: 0, width: 100, height: 100 }));
+    d.nodes[1].group = "local";
+    d.nodes[2].group = "remote";
+    const troubles = watch(d, 12, (e) => e.setFault({ kind: "link", edge: "call", cut: true }));
+    expect(troubles.find((t) => t.kind === "threads-exhausted")?.action).toEqual({
+      kind: "add-timeout",
+      edge: "call",
+      deadlineMs: 1000,
+    });
+    d.edges[1].props!.caller = { deadlineMs: 100_000 };
+    const bounded = watch(structuredClone(d), 12, (e) => e.setFault({ kind: "link", edge: "call", cut: true }));
+    expect(bounded.find((t) => t.kind === "threads-exhausted")?.action).toEqual({ kind: "free-thread", edge: "call" });
+  });
   it("keeps the exhausted-thread fix visible across reply/admission gaps while the queue rises", () => {
     const d = waitingFixture();
     d.nodes[0].props!.ratePerSec = 100;

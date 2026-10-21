@@ -1,5 +1,5 @@
 import { revisionAtLeast } from "../../model/revisions";
-import { type ReactNode, type CSSProperties, useEffect, useRef, useState } from "react";
+import { type ReactNode, type CSSProperties, useEffect, useId, useRef, useState } from "react";
 import { t } from "../../i18n";
 import { galleryRoleMeta as simRoleMeta } from "../../i18n/galleryRoles";
 import { brokerSpec, isClusterWrapper } from "../../model/brokers";
@@ -376,17 +376,22 @@ export function SimInput({
   field,
   value,
   onChange,
+  integer = false,
 }: {
   name: string;
   field: SimField;
   value: unknown;
   onChange: (v: SimValue) => void;
+  integer?: boolean;
 }) {
   const external = showSim(field.kind, value);
   const [draft, setDraft] = useState(external);
   // A number past the field's bound is saved at the bound, and says so while it's typed.
   const [over, setOver] = useState(false);
+  const [invalid, setInvalid] = useState(false);
+  const feedback = useId();
   const focused = useRef(false);
+  const badDraft = useRef(false);
   useEffect(() => {
     if (!focused.current) setDraft(external);
   }, [external]);
@@ -403,15 +408,22 @@ export function SimInput({
             step={field.step}
             value={draft}
             placeholder={field.placeholder}
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? feedback : undefined}
             onFocus={() => (focused.current = true)}
             onBlur={() => {
               focused.current = false;
-              setDraft(external);
+              if (!badDraft.current) setDraft(external);
               setOver(false);
             }}
             onChange={(e) => {
               const raw = e.target.value;
               setDraft(raw);
+              const bad = field.kind === "number" && e.currentTarget.validity.badInput;
+              badDraft.current = bad;
+              const fractional = integer && raw !== "" && !Number.isInteger(Number(raw));
+              setInvalid(bad || fractional);
+              if (bad || fractional) return;
               setOver(field.kind === "number" && field.max !== undefined && Number(raw) > field.max);
               if (field.kind === "text") return onChange(raw || undefined);
               if (field.kind === "list") {
@@ -436,6 +448,16 @@ export function SimInput({
           />
           {field.unit && <span className="insp-unit">{field.unit}</span>}
         </span>
+        {invalid && (
+          <small id={feedback} className="insp-note" role="status" data-testid={`inspector-invalid-${name}`}>
+            {t("admission.invalidNumber", {
+              min: formatNumber(field.min ?? 0),
+              max: formatNumber(field.max ?? 600_000),
+              step: "",
+              value: external || t("admission.unknownShort"),
+            })}
+          </small>
+        )}
         {over && field.max !== undefined && (
           <small className="insp-note" role="status" data-testid={`inspector-limit-${name}`}>
             {t("inspector.limit", {

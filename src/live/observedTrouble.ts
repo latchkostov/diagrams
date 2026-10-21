@@ -6,6 +6,11 @@ import { formatCount } from "./format";
 import { brokerList, waitDetail } from "./capacityModel";
 import { t } from "../i18n";
 import type { NodeSimState } from "../sim/types";
+import { suggestedDeadlineMs } from "../sim/callPolicy";
+import { waitingDetails } from "./waitingDetails";
+import type { Fault } from "../model/faults";
+import { resolveNodeProps } from "../sim/defaults";
+import { resolvedTiming } from "../sim/timing";
 
 // What playback shows going wrong, whatever the plan says (docs/research/sim-flows-review.md, F-1, F-5, F-32): a node
 // that's down, a node losing messages, a broker whose lag keeps rising. The live callout reports it on its own, with
@@ -18,6 +23,7 @@ const SAMPLE_MS = 1_000;
 export type TroubleKind = "down" | "dropping" | "threads-exhausted" | "lag";
 export type TroubleAction =
   | { kind: "free-thread"; edge: string }
+  | { kind: "add-timeout"; edge: string; deadlineMs: number }
   | { kind: "restore-boundary"; boundary: string; label: string }
   | { kind: "clear-fault"; node: string }
   | { kind: "revive"; node: string }
@@ -52,6 +58,7 @@ export interface WatchedNode {
   noConsumer?: true;
 }
 export interface WatchedFrame {
+  faults?: readonly Fault[];
   time: number;
   /** Real messages per dot (default 1). */
   scale?: number;
@@ -115,7 +122,7 @@ export class TroubleWatcher {
       while (this.samples.length > 2 && this.samples[1].time <= frame.time - WINDOW_MS) this.samples.shift();
       sampled = true;
     }
-    let statuses = "",
+    let statuses = JSON.stringify(frame.faults ?? []),
       losses = "";
     for (const [id, n] of Object.entries(frame.nodes)) {
       if (n.status !== "up") statuses += `${id}:${n.status};`;
@@ -146,6 +153,9 @@ interface Shape {
   hasDeadLetterRoute: Set<string>;
   groups: Map<string, CompiledGroup[]>;
   targets: Map<string, string>;
+  deadlines: Map<string, number | undefined>;
+  suggestions: Map<string, number>;
+  cyclic: Set<string>;
 }
 
 const shapes = new WeakMap<DiagramFile, Shape>();
@@ -154,6 +164,22 @@ function shapeOf(d: DiagramFile): Shape {
   if (known) return known;
   const labels = new Map(d.nodes.map((n) => [n.id, n.label || n.id]));
   const role = new Map(d.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
+  const nodes = new Map(d.nodes.map((n) => [n.id, n]));
+  const plan = waitingDetails(d, Object.fromEntries(d.nodes.map((n) => [n.id, n.props ?? {}])));
+  const deadlines = new Map(
+    d.edges.map((e) => [e.id, (e.props?.caller as { deadlineMs?: number } | undefined)?.deadlineMs]),
+  );
+  const suggestions = new Map(
+    d.edges.map((e) => {
+      const target = nodes.get(e.to);
+      const wait = plan?.nodes.get(e.to);
+      const response = wait?.memoryResidenceMs ?? (target ? resolvedTiming(resolveNodeProps(d, target)).workMs : 0);
+      return [
+        e.id,
+        suggestedDeadlineMs(response + 2 * (typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0)),
+      ];
+    }),
+  );
   const compiled = compileTopology(d);
   const deadLetterTargets = new Set<string>(),
     hasDeadLetterRoute = new Set<string>();
@@ -180,6 +206,9 @@ function shapeOf(d: DiagramFile): Shape {
     hasDeadLetterRoute,
     groups: compiled.groups,
     targets: new Map(d.edges.map((e) => [e.id, e.to])),
+    deadlines,
+    suggestions,
+    cyclic: new Set([...(plan?.nodes ?? [])].filter(([, n]) => !Number.isFinite(n.threadHoldMs)).map(([id]) => id)),
   };
   shapes.set(d, shape);
   return shape;
@@ -257,14 +286,28 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
         maxLag(n) > (oldest.lag.get(id) ?? 0) ||
         feeds.some(({ broker }) => maxLag(frame.nodes[broker]) > (oldest.lag.get(broker) ?? 0));
       if (edge && rising) {
+        const target = d.targets.get(edge)!;
+        const stalled =
+          d.cyclic.has(id) ||
+          frame.nodes[target]?.status !== "up" ||
+          frame.faults?.some(
+            (f) =>
+              (f.kind === "link" && f.edge === edge && f.cut) ||
+              (f.kind === "slow" && f.node === target && f.factor > 1),
+          );
+        const timeout = d.deadlines.get(edge) === undefined && stalled;
         out.push({
           key: `threads-exhausted:${id}`,
           kind: "threads-exhausted",
           node: id,
           headline: t("threads.exhausted", { name: name(id) }),
           announce: t("threads.exhausted", { name: name(id) }),
-          detail: t("threads.exhaustedDetail", { count: exhausted.count, name: name(d.targets.get(edge) ?? edge) }),
-          action: { kind: "free-thread", edge },
+          detail: d.cyclic.has(id)
+            ? t("threads.deadlocked")
+            : t("threads.exhaustedDetail", { count: exhausted.count, name: name(target) }),
+          action: timeout
+            ? { kind: "add-timeout", edge, deadlineMs: d.suggestions.get(edge)! }
+            : { kind: "free-thread", edge },
         });
         continue;
       }

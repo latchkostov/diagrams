@@ -144,6 +144,8 @@ export function useLiveFixes({
         }
       } else if (action.kind === "free-thread") {
         if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ wait: "non-blocking" });
+      } else if (action.kind === "add-timeout") {
+        if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ deadlineMs: action.deadlineMs });
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },
@@ -173,8 +175,13 @@ export function useLiveFixes({
   // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
   const troubleActionHere = (t: Trouble) =>
     !presenting &&
-    (t.action.kind !== "free-thread" || !!(editor && effectiveCallerPolicy(editor, t.action.edge)?.editable)) &&
-    (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq" && t.action.kind !== "free-thread"));
+    ((t.action.kind !== "free-thread" && t.action.kind !== "add-timeout") ||
+      !!(editor && effectiveCallerPolicy(editor, t.action.edge)?.editable)) &&
+    (editor ||
+      (t.action.kind !== "add-consumer" &&
+        t.action.kind !== "add-dlq" &&
+        t.action.kind !== "free-thread" &&
+        t.action.kind !== "add-timeout"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {

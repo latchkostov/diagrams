@@ -1,0 +1,17 @@
+---
+title: "Shop #1 · 240 ms end to end · 4 copies"
+---
+sequenceDiagram
+  participant shop as Shop
+  participant gateway as API gateway
+  participant checkout as Checkout
+  participant payment as Payment provider
+  participant orders as Orders DB
+  shop->>gateway: Shop (+0.00 s)
+  gateway->>checkout: Shop (+0.02 s)
+  checkout->>payment: Shop (+0.04 s)
+  checkout->>orders: Shop (+0.04 s)
+  orders-->>checkout: reply (+0.06 s)
+  payment-->>checkout: reply (+0.24 s)
+  checkout-->>gateway: reply (+0.24 s)
+  gateway-->>shop: reply (+0.24 s)

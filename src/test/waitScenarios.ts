@@ -14,8 +14,7 @@ const tier = fc.record({
   pool: fc.integer({ min: 1, max: 8 }),
 });
 
-/** Small acyclic call graphs. Deadline values are scenario data for #197's later migration;
- * R1 deliberately does not put unsupported deadline settings into the diagram. */
+/** Small acyclic call graphs, with optional logical deadlines for command interleavings. */
 export const arbWaitDiagram = fc
   .record({
     tiers: fc.array(tier, { minLength: 2, maxLength: 4 }),

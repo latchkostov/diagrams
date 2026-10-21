@@ -127,6 +127,7 @@ VALID <repo>/tests/parity/corpus/sim-review-diagnostic.diagram.json: 4 nodes, 3 
 VALID <repo>/tests/parity/corpus/sim-review.diagram.json: 3 nodes, 2 edges
 VALID <repo>/tests/parity/corpus/text-fields.diagram.json: 3 nodes, 1 edge, 1 boundary
 VALID <repo>/tests/parity/corpus/w1-blocking.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w1-deadline.diagram.json: 4 nodes, 3 edges, 4 simulations
 VALID <repo>/tests/parity/corpus/w1-gateway.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-held-drain.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-inflight-cap.diagram.json: 4 nodes, 3 edges, 1 simulation

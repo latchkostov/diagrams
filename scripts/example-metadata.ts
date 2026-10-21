@@ -44,7 +44,46 @@ export function exampleMetadataPlugin(): Plugin {
             ];
           }),
       );
-      return `export const ${lab ? "labMetadata" : "exampleMetadata"} = ${JSON.stringify(metadata)};`;
+      if (lab) return `export const labMetadata = ${JSON.stringify(metadata)};`;
+      // A compact row format keeps this registry within the startup budget.
+      // Reconstruct the same public objects once, without changing thumbnail data.
+      // diagramThumb rounds coordinates to tenths; integer packing is lossless.
+      const accents: string[] = [];
+      const packPoints = (points: (number | string)[][]) =>
+        points.map((point) =>
+          point.map((value, i) => {
+            if (i < 4) return Math.round(Number(value) * 10);
+            const accent = String(value);
+            let index = accents.indexOf(accent);
+            if (index < 0) {
+              index = accents.length;
+              accents.push(accent);
+            }
+            return index;
+          }),
+        );
+      const rows = Object.entries(metadata).map(([slug, value]) => {
+        const { title, description, thumb, shows, simulation } = value as {
+          title: string;
+          description?: string;
+          thumb: ReturnType<typeof diagramThumb>;
+          shows: string[];
+          simulation?: string;
+        };
+        return [
+          slug,
+          title,
+          description,
+          thumb.w,
+          thumb.h,
+          packPoints(thumb.nodes),
+          packPoints(thumb.groups),
+          thumb.edges,
+          shows,
+          simulation,
+        ];
+      });
+      return `const accents = ${JSON.stringify(accents)}; export const exampleMetadata = Object.fromEntries(${JSON.stringify(rows)}.map(([slug,title,description,w,h,nodes,groups,edges,shows,simulation]) => [slug,{title,...(description === null ? {} : {description}),thumb:{w,h,nodes:nodes.map(p=>p.map((v,i)=>i<4?v/10:accents[v])),groups:groups.map(p=>p.map(v=>v/10)),edges},shows,...(simulation === null ? {} : {simulation})}]));`;
     },
   };
 }

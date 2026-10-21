@@ -32,18 +32,39 @@ export function CallWaitFields({
   const { caller, policy, set } = effective;
   if (!advanced)
     return (
-      <Field label={t("threads.whileWaiting")}>
-        <Dropdown
-          value={policy.blocking ? "blocking" : "non-blocking"}
-          items={[
-            { value: "blocking", label: t("threads.holds") },
-            { value: "non-blocking", label: t("threads.frees") },
-          ]}
-          onChange={(wait) => set({ wait: wait as "blocking" | "non-blocking" })}
-          testId="inspector-field-wait"
-          aria-label={t("threads.whileWaiting")}
+      <>
+        <Field label={t("threads.whileWaiting")}>
+          <Dropdown
+            value={policy.blocking ? "blocking" : "non-blocking"}
+            items={[
+              { value: "blocking", label: t("threads.holds") },
+              { value: "non-blocking", label: t("threads.frees") },
+            ]}
+            onChange={(wait) => set({ wait: wait as "blocking" | "non-blocking" })}
+            testId="inspector-field-wait"
+            aria-label={t("threads.whileWaiting")}
+          />
+        </Field>
+        <SimInput
+          name="deadlineMs"
+          integer
+          field={{
+            label: t("threads.timeout"),
+            kind: "number",
+            unit: "ms",
+            min: 0,
+            max: SIM_LIMITS.timeMs,
+            step: 1,
+            placeholder: t("threads.noTimeout"),
+            hint: t("threads.timeoutHint"),
+          }}
+          value={caller?.deadlineMs}
+          onChange={(v) => {
+            if (v === undefined || (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= SIM_LIMITS.timeMs))
+              set({ deadlineMs: v as number | undefined });
+          }}
         />
-      </Field>
+      </>
     );
   if (policy.blocking) return null;
   return (
