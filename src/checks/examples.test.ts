@@ -22,6 +22,7 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
+  "slow-payment-provider": [],
   "blocking-call": ["warning capacity:caller"],
   "where-the-time-goes": [],
   "zone-outage-drill": [],
@@ -121,6 +122,13 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  * change here is a change to that table.
  */
 const PLANNED: Record<string, string[]> = {
+  "slow-payment-provider": [
+    "1142 dropped shop in No timeouts (expected)",
+    "1142 dropped gateway in No timeouts (expected)",
+    "1968 dropped shop in A 600 ms timeout (expected)",
+    "1968 dropped gateway in A 600 ms timeout (expected)",
+    "1968 dropped checkout in A 600 ms timeout (expected)",
+  ],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
   // Poison invoices quarantines its 30 commands for an operator to replay (the file's ignore says why no reader).

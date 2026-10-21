@@ -1,0 +1,126 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "blocking-1", "title": "blocking at scale 1", "playedMs": 4000, "capped": false },
+      { "id": "blocking-10", "title": "blocking at scale 10", "playedMs": 4000, "capped": false },
+      { "id": "non-blocking-1", "title": "non-blocking at scale 1", "playedMs": 4000, "capped": false },
+      { "id": "non-blocking-10", "title": "non-blocking at scale 10", "playedMs": 4000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      { "simulation": "blocking at scale 1", "node": "source", "broker": false, "what": "dropped", "count": 40 },
+      { "simulation": "blocking at scale 1", "node": "caller", "broker": false, "what": "dropped", "count": 40 },
+      { "simulation": "blocking at scale 10", "node": "source", "broker": false, "what": "dropped", "count": 40 },
+      { "simulation": "blocking at scale 10", "node": "caller", "broker": false, "what": "dropped", "count": 40 },
+      { "simulation": "non-blocking at scale 1", "node": "source", "broker": false, "what": "dropped", "count": 40 },
+      { "simulation": "non-blocking at scale 1", "node": "caller", "broker": false, "what": "dropped", "count": 40 },
+      { "simulation": "non-blocking at scale 10", "node": "source", "broker": false, "what": "dropped", "count": 40 },
+      { "simulation": "non-blocking at scale 10", "node": "caller", "broker": false, "what": "dropped", "count": 40 }
+    ],
+    "dropped": [
+      {
+        "id": "dropped:source",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "source",
+        "elements": ["source"],
+        "title": "Failed messages to Applications are lost",
+        "message": "Applications fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      },
+      {
+        "id": "dropped:caller",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "caller",
+        "elements": ["caller"],
+        "title": "Failed requests to Decision service are lost",
+        "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      }
+    ]
+  },
+  "planned": [],
+  "counted": 2,
+  "findings": [
+    {
+      "id": "single-point:caller",
+      "rule": "single-point",
+      "severity": "suggestion",
+      "target": "caller",
+      "elements": ["caller", "source"],
+      "fix": { "ops": [{ "op": "update", "target": "caller", "props": { "replicas": 2 } }], "needsChoice": false },
+      "evidence": [
+        { "simulation": "blocking at scale 1", "what": "dropped", "count": 40 },
+        { "simulation": "blocking at scale 10", "what": "dropped", "count": 40 },
+        { "simulation": "non-blocking at scale 1", "what": "dropped", "count": 40 },
+        { "simulation": "non-blocking at scale 10", "what": "dropped", "count": 40 }
+      ],
+      "evidenceText": [
+        "40 dropped in “blocking at scale 1”",
+        "40 dropped in “blocking at scale 10”",
+        "40 dropped in “non-blocking at scale 1”",
+        "40 dropped in “non-blocking at scale 10”"
+      ]
+    },
+    {
+      "id": "dropped:source",
+      "rule": "dropped",
+      "severity": "suggestion",
+      "target": "source",
+      "elements": ["source"],
+      "evidence": [
+        { "simulation": "blocking at scale 1", "what": "dropped", "count": 40 },
+        { "simulation": "blocking at scale 10", "what": "dropped", "count": 40 },
+        { "simulation": "non-blocking at scale 1", "what": "dropped", "count": 40 },
+        { "simulation": "non-blocking at scale 10", "what": "dropped", "count": 40 }
+      ],
+      "evidenceText": [
+        "40 dropped in “blocking at scale 1”",
+        "40 dropped in “blocking at scale 10”",
+        "40 dropped in “non-blocking at scale 1”",
+        "40 dropped in “non-blocking at scale 10”"
+      ]
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "single-point:caller",
+        "rule": "single-point",
+        "severity": "suggestion",
+        "title": "Every request goes through one Decision service",
+        "message": "It runs 1 replica, and every request from Applications goes through it: if it stops, Applications gets nothing.",
+        "targets": ["caller", "source"],
+        "evidence": [
+          "40 dropped in “blocking at scale 1”",
+          "40 dropped in “blocking at scale 10”",
+          "40 dropped in “non-blocking at scale 1”"
+        ],
+        "fix": {
+          "label": "Set replicas to 2",
+          "ops": [{ "op": "update", "target": "caller", "props": { "replicas": 2 } }]
+        }
+      },
+      {
+        "id": "dropped:source",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "title": "Failed messages to Applications are lost",
+        "message": "Applications fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "targets": ["source"],
+        "evidence": [
+          "40 dropped in “blocking at scale 1”",
+          "40 dropped in “blocking at scale 10”",
+          "40 dropped in “non-blocking at scale 1”"
+        ]
+      }
+    ],
+    "summary": "0 warnings, 2 suggestions.",
+    "simulations": "Played 4 saved simulations (at most 60 s each).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

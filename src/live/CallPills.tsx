@@ -10,6 +10,7 @@ export interface ActiveCall {
   id: string;
   held: number;
   inFlight: number;
+  timedOut?: number;
 }
 
 /** One shared placement pass: inactive connections never mount routing consumers. */
@@ -60,9 +61,14 @@ export const CallPills = memo(
         ),
       ]);
     }, [nodes, routes, style, direction, captions, hideDependencies, readoutScale, presenting]);
-    const labels = calls.map(({ id, held, inFlight }) => ({
+    const labels = calls.map(({ id, held, inFlight, timedOut }) => ({
       id,
-      text: held ? t("threads.pillHeld", { count: held }) : t("threads.pillFlight", { count: inFlight }),
+      timedOut,
+      text: timedOut
+        ? t("threads.pillTimeout", { count: timedOut })
+        : held
+          ? t("threads.pillHeld", { count: held })
+          : t("threads.pillFlight", { count: inFlight }),
     }));
     // Count changes of the same text dimensions reuse the entire placement pass.
     const dimensions = JSON.stringify(labels.map(({ id, text }) => ({ id, width: text.length * 7 + 16, height: 20 })));
@@ -76,11 +82,16 @@ export const CallPills = memo(
         }),
       [dimensions, routes, obstacles, tx, ty, zoom, viewWidth, viewHeight],
     );
-    return labels.map(({ id, text }) => {
+    return labels.map(({ id, text, timedOut }) => {
       const box = placements.get(id);
       if (!box) return null;
       return (
-        <span key={id} className="lv-call-pill" style={{ left: box.x, top: box.y }} data-testid={`call-pill-${id}`}>
+        <span
+          key={id}
+          className={`lv-call-pill${timedOut ? " is-timeout" : ""}`}
+          style={{ left: box.x, top: box.y }}
+          data-testid={`call-pill-${id}`}
+        >
           {text}
         </span>
       );
@@ -90,5 +101,11 @@ export const CallPills = memo(
     a.readoutScale === b.readoutScale &&
     a.presenting === b.presenting &&
     a.calls.length === b.calls.length &&
-    a.calls.every((c, i) => c.id === b.calls[i].id && c.held === b.calls[i].held && c.inFlight === b.calls[i].inFlight),
+    a.calls.every(
+      (c, i) =>
+        c.id === b.calls[i].id &&
+        c.held === b.calls[i].held &&
+        c.inFlight === b.calls[i].inFlight &&
+        c.timedOut === b.calls[i].timedOut,
+    ),
 );

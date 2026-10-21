@@ -1298,7 +1298,9 @@
                 "properties": {
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-                  "deadlineMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                  "deadlineMs": {
+                    "anyOf": [{ "type": "number", "minimum": 0, "maximum": 600000 }, { "type": "null" }]
+                  },
                   "retry": {
                     "type": "object",
                     "additionalProperties": false,
@@ -3847,7 +3849,9 @@
                 "properties": {
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-                  "deadlineMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                  "deadlineMs": {
+                    "anyOf": [{ "type": "number", "minimum": 0, "maximum": 600000 }, { "type": "null" }]
+                  },
                   "retry": {
                     "type": "object",
                     "additionalProperties": false,
@@ -6392,7 +6396,9 @@
                 "properties": {
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-                  "deadlineMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                  "deadlineMs": {
+                    "anyOf": [{ "type": "number", "minimum": 0, "maximum": 600000 }, { "type": "null" }]
+                  },
                   "retry": {
                     "type": "object",
                     "additionalProperties": false,
@@ -9097,7 +9103,9 @@
                 "properties": {
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-                  "deadlineMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                  "deadlineMs": {
+                    "anyOf": [{ "type": "number", "minimum": 0, "maximum": 600000 }, { "type": "null" }]
+                  },
                   "retry": {
                     "type": "object",
                     "additionalProperties": false,
@@ -10479,7 +10487,7 @@
               "properties": {
                 "label": { "type": "string" },
                 "node": { "$ref": "#/$defs/Ref", "description": "Omit with metric 'inSystem'." },
-                "metric": { "type": "string", "enum": ["processed", "backlog", "inFlight", "failed", "deadLettered", "dropped", "blocked", "throughput", "lag", "inSystem"] },
+                "metric": { "type": "string", "enum": ["processed", "backlog", "inFlight", "failed", "timedOut", "deadLettered", "dropped", "blocked", "rejected", "throughput", "lag", "inSystem"] },
                 "op": { "type": "string", "enum": ["<", "<=", "==", ">=", ">"] },
                 "value": { "type": "number" },
                 "when": { "type": "string", "enum": ["always", "eventually", "end"], "default": "end" }
@@ -11758,7 +11766,9 @@
                 "properties": {
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-                  "deadlineMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                  "deadlineMs": {
+                    "anyOf": [{ "type": "number", "minimum": 0, "maximum": 600000 }, { "type": "null" }]
+                  },
                   "retry": {
                     "type": "object",
                     "additionalProperties": false,
@@ -14302,7 +14312,9 @@
                 "properties": {
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-                  "deadlineMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                  "deadlineMs": {
+                    "anyOf": [{ "type": "number", "minimum": 0, "maximum": 600000 }, { "type": "null" }]
+                  },
                   "retry": {
                     "type": "object",
                     "additionalProperties": false,
@@ -16842,7 +16854,9 @@
                 "properties": {
                   "wait": { "enum": ["blocking", "non-blocking"] },
                   "replyMs": { "type": "number", "minimum": 0, "maximum": 600000 },
-                  "deadlineMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                  "deadlineMs": {
+                    "anyOf": [{ "type": "number", "minimum": 0, "maximum": 600000 }, { "type": "null" }]
+                  },
                   "retry": {
                     "type": "object",
                     "additionalProperties": false,

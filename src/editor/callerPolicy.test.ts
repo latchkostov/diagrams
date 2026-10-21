@@ -4,6 +4,8 @@ import { LiveController } from "../live/controller";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import type { EditorApi } from "./types";
 import { LiveSync } from "../live/session/liveSync";
+import { checkJsonSchema } from "../model/jsonSchema";
+import { callerSchema } from "../model/admissionSchema";
 
 it.each([true, false])("edits a saved override once and withholds an unsaved override (saved=%s)", (saved) => {
   const diagram = waitingFixture();
@@ -95,6 +97,43 @@ it("clearing saved caller overrides inherits diagram values before and after rel
   controller.dispose();
 });
 
+it("persists an explicit no-timeout override separately from inheriting the diagram deadline", () => {
+  const diagram = waitingFixture();
+  diagram.edges[1].props!.caller = { deadlineMs: 600 };
+  diagram.edges[1].props!.networkDelayMs = 400;
+  const simulation = {
+    id: "run",
+    title: "Run",
+    traffic: [],
+    setup: { edges: { call: { caller: { deadlineMs: 100 } } } },
+  };
+  diagram.simulations = [simulation];
+  const controller = new LiveController(diagram, { replayDelayMs: 0 });
+  controller.selectSimulation(simulation);
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn<EditorApi["updateMeta"]>((patch) => Object.assign(diagram, patch)),
+    setEdgeProps: vi.fn(),
+  };
+  const live = { controller, slowmo: { active: false } };
+  effectiveCallerPolicy(editor, "call", live)!.set({ deadlineMs: undefined });
+  expect(effectiveCallerPolicy(editor, "call", live)!.policy.deadlineMs).toBeUndefined();
+  const saved = JSON.parse(JSON.stringify(diagram.simulations[0])) as typeof simulation;
+  expect(saved.setup.edges.call.caller).toEqual({ deadlineMs: null });
+  expect(checkJsonSchema(saved.setup.edges.call.caller, callerSchema)).toBeUndefined();
+  controller.selectSimulation(saved);
+  expect(effectiveCallerPolicy(editor, "call", live)!.policy.deadlineMs).toBeUndefined();
+  controller.inject("source", 1);
+  controller.step(2000);
+  expect(controller.getState().snapshot.edges.call.calls).toMatchObject({ timedOut: 0 });
+  expect(controller.getState().snapshot.nodes.caller.processed).toBe(1);
+  controller.selectSimulation({ ...saved, setup: { edges: { call: { caller: {} } } } });
+  expect(effectiveCallerPolicy(editor, "call", live)!.policy.deadlineMs).toBe(600);
+  controller.dispose();
+});
+
 it("shares caller-policy edits through base ops and keeps document sync following-aware", () => {
   const diagram = waitingFixture();
   const simulation = {
@@ -127,6 +166,7 @@ it("shares caller-policy edits through base ops and keeps document sync followin
   effectiveCallerPolicy(editor, "call", { controller: host, slowmo: { active: false } })!.set({
     wait: "non-blocking",
     poolConnections: 2,
+    deadlineMs: 150,
   });
   hostSync.simulations(diagram.simulations!, () => undefined);
   followerSync.simulations(diagram.simulations!, () => undefined);
@@ -140,6 +180,10 @@ it("shares caller-policy edits through base ops and keeps document sync followin
   follower.step(100);
   expect(follower.getState().snapshot).toEqual(host.getState().snapshot);
   expect(host.getState().snapshot.edges.call.calls?.inFlight).toBe(2);
+  host.step(1000);
+  follower.step(1000);
+  expect(host.getState().snapshot.edges.call.calls?.timedOut).toBeGreaterThan(0);
+  expect(follower.getState().snapshot).toEqual(host.getState().snapshot);
   host.dispose();
   follower.dispose();
 });

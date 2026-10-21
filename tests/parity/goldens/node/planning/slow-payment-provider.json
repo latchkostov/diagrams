@@ -1,0 +1,364 @@
+{
+  "autoScale": { "freePlay": 2, "no-timeouts": 2, "timeout-600": 2 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "checkout",
+      "suggestion": "Checkout: 25% utilized",
+      "converged": true,
+      "iterations": 4,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": {
+        "shop": ["Infinity", 120, 0, 1, 1, 0],
+        "gateway": [97656.25, 120, 0.0012288, 1, 1, 0, { "device": true }],
+        "checkout": [476.1904761904762, 120, 0.252, 4, 4, 0],
+        "payment": ["Infinity", 120, 0, 1, 1, 0],
+        "orders": ["Infinity", 120, 0, 1, 1, 0]
+      },
+      "connections": { "browse": 120, "route": 120, "pay": 120, "save": 120 },
+      "offeredTypes": { "shop": ["Shop"], "gateway": ["Shop"], "checkout": ["Shop"], "payment": ["Shop"], "orders": ["Shop"] }
+    },
+    "explanations": {
+      "gateway": {
+        "id": "gateway",
+        "role": "gateway",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 97656.25,
+        "offered": 120,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0.0012288,
+        "growth": 0,
+        "contributors": [{ "edge": "browse", "node": "shop", "label": "Shop", "rate": 120 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "checkout": {
+        "waits": { "workMs": 10, "callMs": 200, "threadHoldMs": 210, "memoryResidenceMs": 210, "slots": 100, "ceiling": 476.1904761904762 },
+        "id": "checkout",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 476.1904761904762,
+        "offered": 120,
+        "replicas": 4,
+        "baseReplicas": 4,
+        "omittedContributors": 0,
+        "activeReplicas": 4,
+        "assignments": [],
+        "slots": 25,
+        "seconds": 0.21,
+        "utilization": 0.252,
+        "growth": 0,
+        "contributors": [{ "edge": "route", "node": "gateway", "label": "Shop", "rate": 120, "via": "API gateway" }],
+        "target": 0.5,
+        "minimumReplicas": 4,
+        "changes": null,
+        "converged": true
+      },
+      "payment": {
+        "managed": "api",
+        "id": "payment",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 120,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.2,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout", "rate": 120 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "shop": [{ "kind": "calls", "edge": "browse", "peer": "gateway" }],
+      "gateway": [{ "kind": "calls", "edge": "route", "peer": "checkout" }],
+      "checkout": [
+        { "kind": "calls", "edge": "pay", "peer": "payment" },
+        { "kind": "calls", "edge": "save", "peer": "orders" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "shop": {
+        "profile": { "family": "client", "revision": "p3-w1", "evidence": [], "units": "real" },
+        "ratePerSec": 120,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Shop",
+        "healthChecks": false
+      },
+      "gateway": {
+        "profile": { "family": "device", "revision": "p3-w1", "evidence": ["gbps", "latencyMs", "messageKB"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "API gateway",
+        "healthChecks": true,
+        "device": {
+          "kind": "adc",
+          "size": "campus",
+          "preset": { "model": "campus ADC", "gbps": 50, "latencyMs": 0.2 },
+          "gbps": 50,
+          "messageKB": 64,
+          "ha": "standalone",
+          "failoverMs": 3000,
+          "perUnit": 97656.25
+        }
+      },
+      "checkout": {
+        "profile": { "family": "service", "revision": "p3-w1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 10,
+        "concurrency": 25,
+        "replicas": 4,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "payment": {
+        "admission": { "api": { "latencyMs": 200 }, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3-w1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 200,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payment provider",
+        "healthChecks": false
+      },
+      "orders": {
+        "profile": { "family": "sql", "revision": "p3-w1", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders DB",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "no-timeouts": {
+      "configured": "(same as edit)",
+      "simulation": "no-timeouts",
+      "analysis": {
+        "bottleneck": "checkout",
+        "suggestion": "Checkout: 25% utilized",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "shop": ["Infinity", 120, 0, 1, 1, 0],
+          "gateway": [97656.25, 120, 0.0012288, 1, 1, 0, { "device": true }],
+          "checkout": [476.1904761904762, 120, 0.252, 4, 4, 0],
+          "payment": ["Infinity", 120, 0, 1, 1, 0],
+          "orders": ["Infinity", 120, 0, 1, 1, 0]
+        },
+        "connections": { "browse": 120, "route": 120, "pay": 120, "save": 120 },
+        "offeredTypes": { "shop": ["Checkout"], "gateway": ["Checkout"], "checkout": ["Checkout"], "payment": ["Checkout"], "orders": ["Checkout"] }
+      },
+      "explanations": "(same as edit)",
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "timeout-600": {
+      "configured": "(same as edit)",
+      "simulation": "timeout-600",
+      "analysis": {
+        "bottleneck": "checkout",
+        "suggestion": "Checkout: 25% utilized",
+        "converged": true,
+        "iterations": 4,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": {
+          "shop": ["Infinity", 120, 0, 1, 1, 0],
+          "gateway": [97656.25, 120, 0.0012288, 1, 1, 0, { "device": true }],
+          "checkout": [476.1904761904762, 120, 0.252, 4, 4, 0],
+          "payment": ["Infinity", 120, 0, 1, 1, 0],
+          "orders": ["Infinity", 120, 0, 1, 1, 0]
+        },
+        "connections": { "browse": 120, "route": 120, "pay": 120, "save": 120 },
+        "offeredTypes": { "shop": ["Checkout"], "gateway": ["Checkout"], "checkout": ["Checkout"], "payment": ["Checkout"], "orders": ["Checkout"] }
+      },
+      "explanations": "(same as edit)",
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "checkout",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout at 25% · 120/s of 476/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "120/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 120/s of 98k/s"],
+            "checkout": ["ok", "25% · 120/s of 476/s"],
+            "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["idle", "120/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "over",
+          "top": "checkout",
+          "headline": "Checkout is over capacity",
+          "detail": "126% · 600/s of 476/s",
+          "fix": {
+            "changes": [{ "nodeId": "checkout", "key": "replicas", "from": 4, "to": 10, "label": "Checkout" }],
+            "label": "Checkout 4 → 10 replicas"
+          },
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "600/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "1% · 600/s of 98k/s"],
+            "checkout": ["over", "126% · 600/s of 476/s"],
+            "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["idle", "600/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "checkout",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout at 50% · 120/s of 238/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "120/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 120/s of 98k/s"],
+            "checkout": ["ok", "50% · 120/s of 238/s"],
+            "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["idle", "120/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "checkout",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout at 25% · 120/s of 476/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "120/s · no limit", { "modeled": false }],
+            "gateway": ["ok", "0% · 120/s of 98k/s"],
+            "checkout": ["ok", "25% · 120/s of 476/s"],
+            "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+            "orders": ["idle", "120/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "no-timeouts": {
+      "tone": "ok",
+      "top": "checkout",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Checkout at 25% · 120/s of 476/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "120/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "0% · 120/s of 98k/s"],
+        "checkout": ["ok", "25% · 120/s of 476/s"],
+        "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+        "orders": ["idle", "120/s · no limit", { "modeled": false }]
+      }
+    },
+    "timeout-600": {
+      "tone": "ok",
+      "top": "checkout",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Checkout at 25% · 120/s of 476/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "120/s · no limit", { "modeled": false }],
+        "gateway": ["ok", "0% · 120/s of 98k/s"],
+        "checkout": ["ok", "25% · 120/s of 476/s"],
+        "payment": ["idle", "Limits unknown; enter measured or contracted values."],
+        "orders": ["idle", "120/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

@@ -327,7 +327,7 @@ export function createExecutionReservations<
     releaseCpuParts(node.fleet, work);
   }
   /** Retired thread ownership is capacity only; terminal residency has one finalizer. */
-  function retireThread(node: Node, work: Work, immediate = false): void {
+  function retireThread(node: Node, work: Work, immediate = false, admissionLagMs?: number): void {
     const r = ledger.get<Group>(work.thread);
     if (!r) return;
     work.thread = undefined;
@@ -348,7 +348,7 @@ export function createExecutionReservations<
         r,
         node.activeMs - (r.segmentActive ?? r.startActive),
         node.activeMs,
-        node.fleet || r.heldMs === 0 ? 0 : undefined,
+        admissionLagMs ?? (node.fleet || r.heldMs === 0 ? 0 : undefined),
       );
     if (node.threadTails.has(r.id)) scheduleThreadGrace(r.id, r);
   }

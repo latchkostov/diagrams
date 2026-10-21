@@ -20,7 +20,9 @@ so it cannot invent extra threads, connections or shared API slots.
 **Known gaps.** Sampling is an approximation, especially with very small pools or work shorter than
 the simulation's 10 ms tick. It can substantially understate throughput for queue workers, managed
 API admission, unequal pools with fractional leftover room, and even equal one-slot services doing
-1 ms of local work. These are tracked in the [sampling accuracy work item](backlog/2026-10-20-engine-r5-i1-counterexamples.md),
+1 ms of local work. Calls that combine a connection pool with a timeout can also substantially
+understate completed requests and late replies at scale > 1; see the
+[pooled timeout follow-up](backlog/2026-10-20-deadline-queued-cohorts.md). The first four cases are tracked in the [sampling accuracy work item](backlog/2026-10-20-engine-r5-i1-counterexamples.md),
 with reproductions and measured differences. Use scale 1 when small capacity boundaries matter.
 The general scale-equivalence bound below is an accuracy target, not a guarantee across all diagrams.
 
@@ -45,7 +47,7 @@ The I1 accuracy target compares constant-rate runs of at least 20 seconds agains
 processed, failed, timed-out, late, rejected and dropped total, its bound is
 `N * (ceil(S / N) + 1) * (1 + faults) + 0.02 * scaleOneTotal`, where `S` is the smallest pool.
 Latency p50/p95 comparisons apply only when all pools are divisible by `N`. Named regressions cover
-the corrected zero-work case and the four known gaps; I1 is not yet a full generated property.
+the corrected zero-work case and the five known gaps; I1 is not yet a full generated property.
 Existing generated checks for outcomes, admission, cleanup and determinism retain their coverage.
 
 ## Planning revision p3: managed admission

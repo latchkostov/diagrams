@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { toolSchemas, toolDescriptions, edit_diagramSchema, flatOpsSchema } from "./schemas";
 import { checkSchema } from "./validation";
+import { METRIC_FIELDS } from "../model/types";
 
 describe("shared tool schemas", () => {
+  it.each(METRIC_FIELDS)("accepts the simulation metric %s in agent expectations", (metric) => {
+    expect(() =>
+      checkSchema(
+        {
+          title: "Deadline check",
+          traffic: [],
+          expectations: [{ label: "Expected count", node: "caller", metric, op: ">=", value: 0 }],
+        },
+        toolSchemas.set_simulation,
+      ),
+    ).not.toThrow();
+  });
   it("provides seven self-contained JSON schemas and descriptions", () => {
     expect(Object.keys(toolSchemas)).toHaveLength(7);
     for (const [name, schema] of Object.entries(toolSchemas)) {

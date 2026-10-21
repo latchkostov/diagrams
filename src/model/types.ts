@@ -255,17 +255,20 @@ export type TimelineAction =
   /** Narration: trace the next message to arrive at (or start from) `node`, hop by hop. */
   | { do: "trace"; node: string };
 
-export type MetricField =
-  | "processed"
-  | "backlog"
-  | "inFlight"
-  | "failed"
-  | "deadLettered"
-  | "dropped"
-  | "blocked"
-  | "rejected"
-  | "throughput"
-  | "lag";
+export const METRIC_FIELDS = [
+  "processed",
+  "backlog",
+  "inFlight",
+  "failed",
+  "timedOut",
+  "deadLettered",
+  "dropped",
+  "blocked",
+  "rejected",
+  "throughput",
+  "lag",
+] as const;
+export type MetricField = (typeof METRIC_FIELDS)[number];
 
 export interface Expectation {
   id: string;

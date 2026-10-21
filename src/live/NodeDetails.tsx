@@ -53,6 +53,11 @@ export function NodeDetails({
     kind: profileOf(node.data.stencil)?.family === "serverless" ? "execution" : "thread",
   });
   const threadBusy = s.threads ? s.threads.working + s.threads.waiting : 0;
+  const callCounts = diagram.edges
+    .filter((e) => e.from === node.id)
+    .map((e) => live.controller.getState().snapshot.edges[e.id]?.calls);
+  const timedOut = callCounts.reduce((sum, c) => sum + (c?.timedOut ?? 0), 0);
+  const late = callCounts.reduce((sum, c) => sum + (c?.late ?? 0), 0);
   const broker = s.role === "topic" || s.role === "queue" || s.role === "stream";
   const held = broker ? heldWords(s) : null;
   const unread = !!held?.lead;
@@ -200,6 +205,14 @@ export function NodeDetails({
         />
       )}
       {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
+      {(!!timedOut || !!late) && (
+        <div className="lv-call-outcomes" data-testid={`call-outcomes-${node.id}`}>
+          {!!timedOut && (
+            <p data-testid={`call-timeouts-${node.id}`}>{t("threads.timeoutCount", { count: timedOut })}</p>
+          )}
+          {!!late && <p data-testid={`call-late-${node.id}`}>{t("threads.lateCount", { count: late })}</p>}
+        </div>
+      )}
       {!!s.threads?.inFlight && (
         <p>
           {t("threads.inFlight", { count: s.threads.inFlight })} · {t("threads.memoryHint")}

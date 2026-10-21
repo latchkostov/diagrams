@@ -1,6 +1,7 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import type { LiveController } from "./controller";
 import { TroubleWatcher, pickTrouble, type Trouble, type TroubleMemory } from "./observedTrouble";
+import { simulationEdges } from "../sim/simulationEdges";
 
 /**
  * The run's trouble for the callout (src/live/observedTrouble.ts), read on every controller publication: a status
@@ -46,7 +47,10 @@ export class TroubleTracker {
       this.memory = { shown: new Set(), ended: new Set(), dismissed: new Set() };
       this.watcher.reset();
     }
-    const now = this.watcher.observe(st.snapshot, this.controller.currentDiagram);
+    const now = this.watcher.observe(
+      st.snapshot,
+      simulationEdges(this.controller.currentDiagram, st.running ?? undefined),
+    );
     if (now !== this.troubles) {
       this.troubles = now;
       this.picked = pickTrouble(now, this.memory, this.watcher.warm);

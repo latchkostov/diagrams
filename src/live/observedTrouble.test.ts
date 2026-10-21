@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { realSnapshot } from "../sim/units";
 import { TroubleWatcher, pickTrouble, troubleLeads, type Trouble } from "./observedTrouble";
 import { waitingFixture } from "../lab/waitingFixture";
 import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
+import * as admission from "../model/admissionSchema";
+import * as defaults from "../sim/defaults";
+import { simulationEdges } from "../sim/simulationEdges";
 
 // What playback shows going wrong, read from seeded runs: rising lag, lost messages, a node that's down.
 
@@ -40,6 +43,106 @@ function watch(d: DiagramFile, seconds: number, setup?: (e: ReturnType<typeof cr
 }
 
 describe("trouble seen in playback", () => {
+  it("accepts documentation edges with a shape at either end", () => {
+    const d = waitingFixture();
+    d.annotations = [
+      { id: "box", kind: "shape", shape: "rect", text: "Outside simulation", x: 0, y: 0, width: 160, height: 90 },
+    ];
+    d.edges.push(
+      { id: "to-shape", from: "caller", to: "box", kind: "async" },
+      { id: "from-shape", from: "box", to: "partner", kind: "async" },
+    );
+    expect(new TroubleWatcher().observe({ time: 0, nodes: {} }, d)).toEqual([]);
+  });
+  it.each(["p3", "p3-w1"] as const)("validates fallback endpoints once per target at %s", (revision) => {
+    const d = waitingFixture();
+    d.planning = { revision };
+    d.nodes[2].props!.endpoints = Array.from({ length: 50 }, (_, i) => ({
+      id: `endpoint-${i}`,
+      method: "GET",
+      path: `/items/${i}`,
+      behaviour: {
+        quotas: Array.from({ length: 4 }, (_, q) => ({
+          id: `quota-${q}`,
+          unit: "requests",
+          amount: 1000,
+          windowMs: 1000,
+          algorithm: "token-bucket",
+        })),
+      },
+    }));
+    d.edges = Array.from({ length: 20 }, (_, i) => ({ ...d.edges[1], id: `call-${i}` }));
+    const validate = vi.spyOn(admission, "validAdmissionData");
+    const fallback = vi.spyOn(defaults, "resolveNodeProps");
+    try {
+      new TroubleWatcher().observe({ time: 0, nodes: {} }, d);
+      expect(fallback.mock.calls.filter(([, node]) => node.id === "partner")).toHaveLength(1);
+      const targetCalls = validate.mock.calls.filter(([, endpoints]) => endpoints === d.nodes[2].props!.endpoints);
+      // W1 planning independently validates the configuration once, before fallback timing.
+      expect(targetCalls).toHaveLength(revision === "p3-w1" ? 2 : 1);
+    } finally {
+      validate.mockRestore();
+      fallback.mockRestore();
+    }
+  });
+  it("offers Add a timeout when a saved simulation disables the inherited deadline", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 100;
+    d.edges[1].props!.caller = { deadlineMs: 600 };
+    const effective = simulationEdges(d, {
+      id: "unbounded",
+      title: "No timeout",
+      traffic: [],
+      setup: { edges: { call: { caller: { deadlineMs: null } } } },
+    });
+    expect(effective.edges[1].props!.caller).toEqual({ deadlineMs: null });
+    const observed = watch(effective, 12, (e) => e.setFault({ kind: "slow", node: "partner", factor: 10 }));
+    expect(observed.find((t) => t.kind === "threads-exhausted")?.action).toEqual({
+      kind: "add-timeout",
+      edge: "call",
+      deadlineMs: 1000,
+    });
+    d.edges[1].props!.caller = {};
+    expect(watch(d, 12, (e) => e.setFault({ kind: "slow", node: "partner", factor: 10 }))).toEqual(observed);
+  });
+  it("refreshes the timeout action when a link is cut on a paused run", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 100;
+    d.groups = ["local", "remote"].map((id) => ({ id, label: id, x: 0, y: 0, width: 100, height: 100 }));
+    d.nodes[1].group = "local";
+    d.nodes[2].group = "remote";
+    const e = createEngine();
+    e.load(d);
+    e.setTraffic(true);
+    const watcher = new TroubleWatcher();
+    for (let i = 0; i < 120; i++) {
+      e.step(100);
+      watcher.observe(realSnapshot(e.snapshot()), d);
+    }
+    expect(
+      watcher.observe(realSnapshot(e.snapshot()), d).find((t) => t.kind === "threads-exhausted")?.action.kind,
+    ).toBe("free-thread");
+    e.setFault({ kind: "link", edge: "call", cut: true });
+    expect(
+      watcher.observe(realSnapshot(e.snapshot()), d).find((t) => t.kind === "threads-exhausted")?.action.kind,
+    ).toBe("add-timeout");
+  });
+  it("offers a timeout before freeing threads on cut calls, unless a timeout already exists", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 100;
+    d.groups = ["local", "remote"].map((id) => ({ id, label: id, x: 0, y: 0, width: 100, height: 100 }));
+    d.nodes[1].group = "local";
+    d.nodes[2].group = "remote";
+    const troubles = watch(d, 12, (e) => e.setFault({ kind: "link", edge: "call", cut: true }));
+    expect(troubles.find((t) => t.kind === "threads-exhausted")?.action).toEqual({
+      kind: "add-timeout",
+      edge: "call",
+      deadlineMs: 1000,
+    });
+    d.edges[1].props!.caller = { deadlineMs: 100_000 };
+    const bounded = watch(structuredClone(d), 12, (e) => e.setFault({ kind: "link", edge: "call", cut: true }));
+    expect(bounded.find((t) => t.kind === "threads-exhausted")?.action).toEqual({ kind: "free-thread", edge: "call" });
+  });
   it("keeps the exhausted-thread fix visible across reply/admission gaps while the queue rises", () => {
     const d = waitingFixture();
     d.nodes[0].props!.ratePerSec = 100;

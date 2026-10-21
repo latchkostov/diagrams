@@ -713,6 +713,7 @@ describe("the downloadable skill", () => {
       at = start + size;
     }
     expect([...out.keys()]).toEqual(names.map((name) => `livediagrams/${name}`));
+    for (const file of files) expect(out.get(`livediagrams/${file.name}`)).toBe(file.data.toString("utf8"));
     expect(out.get("livediagrams/SKILL.md")).toBe(readFileSync(path.join(skill, "SKILL.md"), "utf8"));
   });
 });

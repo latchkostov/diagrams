@@ -1,3 +1,4 @@
+import { METRIC_FIELDS as METRICS } from "./types";
 import { DOCUMENTATION_LIMITS } from "./documentation";
 import { faultSchema, DRILL_PRESETS } from "./faults";
 import { nodeSimPropsSchema, edgeSimPropsSchema } from "./simProps";
@@ -26,18 +27,7 @@ const SITE = "https://www.livediagrams.dev";
 const SCHEMA = "https://json-schema.org/draft/2020-12/schema";
 const TONES = ["azure", "aws", "gcp", "k8s", "onprem", "neutral"];
 const SIDES = ["top", "right", "bottom", "left"];
-const METRICS = [
-  "processed",
-  "backlog",
-  "inFlight",
-  "failed",
-  "deadLettered",
-  "dropped",
-  "blocked",
-  "rejected",
-  "throughput",
-  "lag",
-];
+
 const OPS = ["<", "<=", "==", ">=", ">"];
 const COLOR_PATTERN = `^(?:${ANNOTATION_COLOR_IDS.join("|")}|${HEX_COLOR_REGEX.source.slice(1, -1)})$`;
 const GROUP_TONE_PATTERN = `^(?:${TONES.join("|")}|${HEX_COLOR_REGEX.source.slice(1, -1)})$`;

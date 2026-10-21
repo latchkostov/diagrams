@@ -7,6 +7,11 @@ import { useFloatingPlacement } from "./useFloatingPlacement";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: string; icon?: "plus" | "play" }> = {
+  "add-timeout": {
+    get label() {
+      return t("threads.addTimeout");
+    },
+  },
   "free-thread": {
     get label() {
       return t("threads.freeAction");

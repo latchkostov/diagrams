@@ -4,7 +4,7 @@ import type { ResolvedProps } from "./defaults";
 import { callEligible, compileTopology } from "./topology";
 import { stencilRole } from "../stencils/roles";
 import { resolvedTiming } from "./timing";
-import { callPolicy, type CallPolicy } from "./callPolicy";
+import { callOutcome, callPolicy, type CallPolicy } from "./callPolicy";
 import type { EdgeSimProps } from "./types";
 
 export interface WaitCapacity {
@@ -32,6 +32,7 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
   const parents = new Map<string, { node: string; delay: number; endpoint?: string; policy: CallPolicy }[]>();
   const callMs = new Map<string, number>();
   const response = new Map<string, number>();
+  const failures = new Map<string, number>();
   const replies = new Map<string, { ms: number; count: number; pool: number }>();
   const queue: string[] = [];
   for (const node of diagram.nodes) remaining.set(node.id, 0);
@@ -55,9 +56,11 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
     const reply = replies.get(id);
     // Playback executes a combined continuation on its 10 ms clock.
     const replyMs = reply ? Math.ceil(reply.ms / 10) * 10 : 0;
-    const waiting = (callMs.get(id) ?? 0) + replyMs;
+    const failAt = failures.get(id) ?? Infinity;
+    const responseMs = Math.min(response.get(id) ?? 0, failAt);
+    const waiting = Math.min(callMs.get(id) ?? 0, failAt) + replyMs;
     const threadHoldMs = workMs + waiting;
-    const memoryResidenceMs = workMs + (response.get(id) ?? 0) + replyMs;
+    const memoryResidenceMs = workMs + responseMs + replyMs;
     if (waiting > 0 || response.has(id))
       result.set(id, {
         workMs,
@@ -70,7 +73,9 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
       });
     for (const parent of parents.get(id) ?? []) {
       const endpointMs = resolvedTiming(props, 0, parent.endpoint).workMs;
-      const duration = endpointMs + (response.get(id) ?? 0) + replyMs + parent.delay;
+      const outcome = callOutcome(parent.policy, endpointMs + responseMs + replyMs + parent.delay, failAt < Infinity);
+      const duration = outcome.responseMs;
+      if (outcome.failed) failures.set(parent.node, Math.min(failures.get(parent.node) ?? Infinity, duration));
       response.set(parent.node, Math.max(response.get(parent.node) ?? 0, duration));
       if (parent.policy.blocking) callMs.set(parent.node, Math.max(callMs.get(parent.node) ?? 0, duration));
       else {

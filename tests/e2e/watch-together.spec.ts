@@ -44,9 +44,14 @@ async function startRoom(page: Page): Promise<string> {
 }
 
 /** The host starts a room on Kafka; the guest joins it. */
-async function twoInARoom(page: Page, context: BrowserContext, other: BrowserContext): Promise<Page> {
+async function twoInARoom(
+  page: Page,
+  context: BrowserContext,
+  other: BrowserContext,
+  example = "kafka-order-pipeline",
+): Promise<Page> {
   await emulateTracker([context, other]);
-  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await page.goto(`./?view=canvas&example=${example}`);
   await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
   const link = await startRoom(page);
   const guest = await other.newPage();
@@ -124,6 +129,27 @@ async function sameStateAfterPause(host: Page, guest: Page, holdFollower = false
 }
 
 test.describe("Watch together", () => {
+  test("a timeout edited mid-run reaches the follower through the shared run", async ({ browser, context, page }) => {
+    test.slow();
+    const other = await browser.newContext();
+    try {
+      const guest = await twoInARoom(page, context, other, "slow-payment-provider");
+      await hostPlays(page, null);
+      await guestWatches(guest, "toast");
+      await expect.poll(async () => (await run(page)).tick).toBeGreaterThan(20);
+      await waitForStableViewport(page);
+      await page.getByTestId("edge-pay").click({ button: "right" });
+      await page.getByTestId("context-menu-item-node.properties").click();
+      await page.getByTestId("inspector-section-edge-simulation").click();
+      await page.getByTestId("inspector-field-deadlineMs").fill("100");
+      await page.getByTestId("inspector-field-deadlineMs").blur();
+      await expect(page.getByTestId("call-pill-pay")).toContainText("timed out");
+      await sameStateAfterPause(page, guest);
+      await expect(guest.getByTestId("call-pill-pay")).toHaveText(await page.getByTestId("call-pill-pay").innerText());
+    } finally {
+      await other.close();
+    }
+  });
   test("the guest watches the host's Live: rps and replicas changed mid-run reach them on the same tick", async ({
     browser,
     context,

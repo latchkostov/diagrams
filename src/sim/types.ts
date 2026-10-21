@@ -258,7 +258,7 @@ export interface EdgeSimProps {
   caller?: {
     wait?: "blocking" | "non-blocking";
     replyMs?: number;
-    deadlineMs?: number;
+    deadlineMs?: number | null;
     retry?: import("../model/admission").RetryPolicy;
     poolConnections?: number;
   };

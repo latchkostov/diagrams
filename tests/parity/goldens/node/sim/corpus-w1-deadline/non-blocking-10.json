@@ -1,0 +1,54 @@
+{
+  "run": {
+    "time": 4000,
+    "totalMs": 4000,
+    "done": true,
+    "scale": 10,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [{ "atMs": 0, "kind": "traffic", "label": "burst" }]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 8,
+      "nodes": {
+        "source": { "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 4000,
+    "inSystem": 0,
+    "real": {
+      "source": { "failed": 40, "dropped": 40, "replicas": [1, 1, 0] },
+      "caller": { "failed": 40, "dropped": 40, "replicas": [1, 1, 0] },
+      "partner": { "processed": 40, "throughput": 0.994324749437371, "replicas": [1, 1, 0] },
+      "result": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 4, "call": 4, "output": 0 }
+  },
+  "events": {
+    "total": 32,
+    "byKind": { "inject": 4, "deliver": 8, "fail": 8, "drop": 8, "process": 4 },
+    "byNode": {
+      "source": { "inject": 4, "fail": 4, "drop": 4 },
+      "caller": { "deliver": 4, "fail": 4, "drop": 4 },
+      "partner": { "deliver": 4, "process": 4 }
+    },
+    "perSecond": ["6eb0363643d0", "-", "-", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 4, "retried": 0, "deadLettered": 0, "dropped": 4, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 4, "min": 270, "mean": 310, "p50": 320, "p90": 350, "max": 350 },
+    "waitMs": {
+      "caller": { "count": 8, "min": 0, "mean": 96.25, "p50": 110, "p90": 190, "max": 190 },
+      "partner": { "count": 4, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": { "partner": { "count": 4, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
+  }
+}

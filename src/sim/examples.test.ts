@@ -65,6 +65,9 @@ describe("saved example simulations with the real stencil registry", () => {
             id: e.id,
             status:
               (path === "../examples/blocking-call.json" && simulation.id === "blocking" && e.id === "lag") ||
+              (path === "../examples/slow-payment-provider.json" &&
+                simulation.id === "no-timeouts" &&
+                e.id === "gateway-timeouts") ||
               (path === "../examples/zone-outage-drill.json" &&
                 simulation.id === "no-health-checks" &&
                 e.id === "api-b-loss")

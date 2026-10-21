@@ -64,6 +64,12 @@ const FIELDS: { value: MetricField; label: string }[] = [
   { value: "lag", label: "lag" },
   { value: "inFlight", label: "in flight" },
   { value: "failed", label: "failed" },
+  {
+    value: "timedOut",
+    get label() {
+      return translate("threads.timedOutMetric");
+    },
+  },
   { value: "deadLettered", label: "dead-lettered" },
   { value: "dropped", label: "dropped" },
   { value: "blocked", label: "blocked" },

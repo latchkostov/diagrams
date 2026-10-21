@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Request deadlines",
+    "direction": "LR",
+    "nodes": [
+      { "id": "source", "stencil": "generic.service", "label": "Applications", "x": 40, "y": 100 },
+      { "id": "caller", "stencil": "generic.service", "label": "Decision service", "x": 400, "y": 100 },
+      { "id": "partner", "stencil": "client.partner", "label": "Partner scoring API", "x": 760, "y": 40 },
+      { "id": "result", "stencil": "generic.database", "label": "Case store", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-source-caller", "from": "source", "to": "caller", "kind": "sync" },
+      { "id": "e2-caller-partner", "from": "caller", "to": "partner", "kind": "sync" },
+      { "id": "e3-caller-result", "from": "caller", "to": "result", "kind": "async" }
+    ]
+  }
+}
