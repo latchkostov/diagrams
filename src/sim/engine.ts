@@ -187,7 +187,6 @@ interface Work extends ExecutionWork<Group> {
   residentWeight?: number;
   /** Owns its preceding thread while awaiting the ordinary continuation phase. */
   resumeAtAdmission?: boolean;
-  serviceMs?: number;
   waitingCall?: number;
   outputs?: Edge[];
   outputMessage?: Message;
@@ -504,7 +503,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     time: () => time,
     waits,
     callerReservations,
-    admissionLag: (node) => (node.admittedAt === time && (!node.props.admission || incomingAt === time) ? STEP : 0),
+    // A settled wait's lag to its node's next admission phase. Ordinary-clock arrivals
+    // admit before that tick's due releases, so only a cohort's N/w - 1 inner turnarounds
+    // wait for a later phase; its final release must precede the next arrivals.
+    admissionLag: (node, reservation) =>
+      node.admittedAt !== time || (node.props.admission && incomingAt !== time)
+        ? 0
+        : node.props.admission && incomingBeforeReleases
+          ? STEP * (1 - reservation.weight / reservation.represented)
+          : STEP,
     slots,
     resourceWork,
     scheduleThreadGrace,
@@ -531,6 +538,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let sourceEmitted = 0;
   let time = 0;
   let incomingAt: number | undefined;
+  /** The last arrival phase ran before the tick's due releases (no resource clock). */
+  let incomingBeforeReleases = false;
   let accumulator = 0;
   let speed = 1;
   let traffic = false;
@@ -934,11 +943,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       attempt(node, work);
     }
     if (node.status === "down") return;
+    work.workSegment = true;
     if (!callerReservations(node)) {
       if (!reacquireCapacity(node, work)) throw new Error("Processor admitted without thread capacity");
       return;
     }
-    work.serviceMs = work.retryAdmissionAt === undefined ? work.remaining : (work.waitRemaining ?? 0);
     const retainedThread = ledger.get<Group>(work.thread);
     if (retainedThread) {
       for (const r of [retainedThread, ledger.get(work.requestLease)])
@@ -955,10 +964,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (!reacquireCapacity(node, work)) throw new Error("Caller admitted without thread capacity");
     attempt(node, work).res = { thread: work.thread, request: work.requestLease };
-    if (work.cpuRemaining !== undefined) {
-      const thread = ledger.get(work.thread)!;
-      work.logicalCpuRemaining ??= (work.cpuPerRequest ?? 0) * thread.weight;
-    }
   }
 
   /** The source has been consumed by its queue/phase; invalidate any alternate admission path. */
@@ -1532,14 +1537,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** The first wave finishes logically; remaining cohort CPU keeps running independently. */
   function finishThreadWork(node: Node, work: Work): void {
     const r = ledger.get<Group>(work.thread);
-    if (!r || work.serviceMs === undefined) return;
+    if (!r || !work.workSegment) return;
     const elapsed = node.activeMs - (r.segmentActive ?? r.startActive);
     const localHold = elapsed;
     if (ownsCpu(work) && (work.cpuRemaining ?? 0) > 1e-8 && (work.logicalCpuRemaining ?? Infinity) <= 1e-8)
       node.cpuTail.add(work);
     r.heldMs += Math.max(0, localHold);
     r.segmentActive = node.activeMs;
-    work.serviceMs = undefined;
+    work.workSegment = false;
   }
 
   function retireRequest(work: Work, immediate = false): void {
@@ -1857,7 +1862,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.cpuRemaining = undefined;
       work.continuation = { ok, cpuMs: replyCpuMs(node.props.resources?.cpuMsPerMessage ?? 0, call.replies!) };
       work.cpuPerRequest = work.continuation.cpuMs;
-      const continuationCpu = work.continuation.cpuMs * (ledger.get(work.thread)?.represented ?? scale);
+      const continuationCpu = work.continuation.cpuMs * execution.cohort(work);
       work.logicalCpuRemaining =
         node.props.resources && ledger.get(work.thread)
           ? work.continuation.cpuMs * ledger.get(work.thread)!.weight
@@ -2114,13 +2119,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (node.props.resources) {
           node.cpuTail.delete(work);
           work.cpuPerRequest = node.props.resources.cpuMsPerMessage;
-          work.cpuBacklog = callerReservations(node) ? (work.cpuRemaining ?? 0) : undefined;
-          work.cpuRemaining =
-            (callerReservations(node) ? (work.cpuRemaining ?? 0) : 0) +
-            node.props.resources.cpuMsPerMessage * (ledger.get(work.thread)?.represented ?? scale);
-          work.logicalCpuRemaining = callerReservations(node)
-            ? node.props.resources.cpuMsPerMessage * (ledger.get(work.thread)?.weight ?? scale)
-            : undefined;
+          // The failed cohort's unfinished CPU stays owed, unless an outage ended the
+          // attempt: shutdown cancels CPU that has not run, here as for a retained backlog.
+          const backlog = node.status === "down" ? 0 : (work.cpuRemaining ?? 0);
+          work.cpuBacklog = execution.usesLedger(node) ? backlog : undefined;
+          work.cohort = execution.cohort(work);
+          work.cpuRemaining = (work.cpuBacklog ?? 0) + node.props.resources.cpuMsPerMessage * work.cohort;
+          const thread = execution.usesLedger(node) && ledger.get(work.thread);
+          work.logicalCpuRemaining = thread ? node.props.resources.cpuMsPerMessage * thread.weight : undefined;
           work.cpuBackoffUntil = time + node.props.retryBackoffMs;
           const count = work.cpuParts?.reduce((sum, p) => sum + p.last - p.first + 1, 0) ?? 0;
           for (const p of work.cpuParts ?? []) p.cpu = (work.cpuRemaining * (p.last - p.first + 1)) / count;
@@ -2249,7 +2255,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.via?.endpointId,
       planning,
       time,
-      retainedRequest?.represented ?? scale,
+      execution.cohort(work),
       admissionSlots(policy, node.activeReplicas),
       work.route?.quotas,
       (node.waits || node.callTarget) && node.role === "processor" && scale > 1,
@@ -2300,7 +2306,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.errorRate = outcome.errorRate;
     if (outcome.latencyMs !== undefined)
       work.remaining = outcome.latencyMs * (node.slowFactor ?? 1) * (1 + (random() * 2 - 1) * node.props.jitter);
-    if (ledger.get<Group>(work.thread)) work.serviceMs = (work.serviceMs ?? 0) + work.remaining;
+    if (ledger.get<Group>(work.thread)) work.workSegment = true;
     return true;
   }
 
@@ -2728,11 +2734,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (isBroker(node) && !node.groups.length) break;
         if (
           node.status === "up" &&
-          ((!callerReservations(node) &&
-            !node.props.admission &&
-            node.role === "processor" &&
-            scale > 1 &&
-            node.props.latencyMs > 0) ||
+          ((!waits() && !node.props.admission && node.role === "processor" && scale > 1 && node.props.latencyMs > 0) ||
             limit < Infinity)
         ) {
           if (node.serviceCredit < 1 - 1e-9) break;
@@ -2942,7 +2944,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       backlogBefore,
       backlogAfter: logical?.cpuBacklog,
       eligible,
-      weight: logical?.executionWeight,
+      weight: logical?.executionWeight ?? ledger.get(logical?.thread)?.weight,
       cpuMs: logical?.cpuPerRequest,
     });
   }
@@ -2966,6 +2968,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         resourceClock = true;
         break;
       }
+    incomingBeforeReleases = !resourceClock;
     if (!resourceClock) {
       admitIncoming();
       incomingAt = time;
@@ -2990,9 +2993,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       releasingEarly = true;
       ledger.releaseDue(node.id, node.activeMs);
       releasingEarly = false;
-      // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
+      // Pre-W1 processors use service pacing; W1 turnover belongs to the ledger.
       if (
-        !callerReservations(node) &&
+        !waits() &&
         !node.props.admission &&
         node.role === "processor" &&
         scale > 1 &&
@@ -3327,6 +3330,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     refreshSourceRate();
     time = 0;
     incomingAt = undefined;
+    incomingBeforeReleases = false;
     accumulator = 0;
     inSystem = 0;
     drawn = 0;
@@ -3482,6 +3486,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const clock = {
         time,
         incomingAt,
+        incomingBeforeReleases,
         accumulator,
         speed,
         traffic,
@@ -3554,6 +3559,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ({
           time,
           incomingAt,
+          incomingBeforeReleases,
           accumulator,
           speed,
           traffic,

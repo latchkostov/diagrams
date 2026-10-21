@@ -3,6 +3,7 @@ import { waitingFixture } from "../lab/waitingFixture";
 import { resourceLesson } from "../model/autoscaling";
 import { kedaFixture } from "../lab/kedaFixture";
 import { createEngine } from "./engine";
+import type { SimEngine } from "./types";
 import {
   assertLedgerInvariants,
   assertResourceInvariants,
@@ -11,6 +12,246 @@ import {
 } from "./resourceInvariants";
 
 const resources = () => ({ ...resourceLesson(), startup: { delayMs: 0, jitterFraction: 0 } });
+
+function standaloneRetry() {
+  const d = waitingFixture();
+  d.nodes = d.nodes.slice(0, 2);
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  d.nodes[1].props = {
+    replicas: 1,
+    concurrency: 1,
+    latencyMs: 10,
+    jitter: 0,
+    retry: "inplace",
+    retryBackoffMs: 100,
+    resources: { ...resources(), cpuMsPerMessage: 1 },
+  };
+  d.edges = d.edges.slice(0, 1);
+  return d;
+}
+
+it("standalone retry CPU initializes its first wave only after acquiring a thread", () => {
+  const d = standaloneRetry();
+  const e = createEngine({
+    scale: 10,
+    verifyResources: assertResourceInvariants,
+    verifyLedger: assertLedgerInvariants,
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 2);
+  e.step(10);
+  e.setNodeStatus("caller", "down");
+  e.step(10);
+  e.setNodeStatus("caller", "up");
+  e.step(2000);
+  expect(e.snapshot().nodes.caller.processed).toBe(2);
+});
+
+const executedCpu = (e: SimEngine, id = "caller") => e.frame().nodes[id].resources!.executedCpuMs;
+
+it("standalone retry preserves admitted CPU cost across scale edits and outage", () => {
+  const d = standaloneRetry();
+  d.nodes[1].props!.concurrency = 2;
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    scale: 1,
+    verifyResources: assertResourceInvariants,
+    verifyLedger(s) {
+      state = s;
+      assertLedgerInvariants(s);
+    },
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 2);
+  e.step(10);
+  e.setScale(3);
+  e.step(10);
+  e.setNodeStatus("caller", "down");
+  e.setScale(1);
+  e.step(10);
+  for (const node of d.nodes) e.setNodeStatus(node.id, "down");
+  for (const node of d.nodes) e.setNodeStatus(node.id, "up");
+  e.step(2000);
+  expect(e.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect(state.partBudget.used).toBe(0);
+  // The outage ends both first attempts before any CPU runs. Each retry charges its
+  // admitted cohort once: three requests admitted at scale 3, one at scale 1.
+  expect(executedCpu(e)).toBeCloseTo(4);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 2, failed: 2, deadLettered: 0, dropped: 0 });
+});
+
+function cpuBoundRetry() {
+  const d = standaloneRetry();
+  Object.assign(d.nodes[1].props!.resources!, { cpuMsPerMessage: 100, cpuLimitMilli: 1000 });
+  return d;
+}
+
+it.each([10, 1, 20])(
+  "a retry admitted during an outage charges its whole cohort's CPU after recovery (scale then %s)",
+  (recoveryScale) => {
+    let state!: LedgerInvariantState;
+    const e = createEngine({
+      scale: 10,
+      verifyResources: assertResourceInvariants,
+      verifyLedger(s) {
+        state = s;
+        assertLedgerInvariants(s);
+      },
+    });
+    e.load(cpuBoundRetry());
+    e.step(10);
+    e.inject("source", 1);
+    e.step(10);
+    // The delivery is on its way; it arrives while the worker is down and its
+    // in-place retry keeps the slot without a thread.
+    e.setNodeStatus("caller", "down");
+    e.step(30);
+    expect(e.snapshot().nodes.caller).toMatchObject({ processed: 0, failed: 1 });
+    expect(executedCpu(e)).toBe(0);
+    // Its CPU was sized for ten requests; a scale edit before recovery must not resize them.
+    e.setScale(recoveryScale);
+    e.setNodeStatus("caller", "up");
+    e.step(10);
+    const reservation = [...state.ledger.reservations.values()].find((r) => r.owner === "caller");
+    expect(reservation).toMatchObject({ scope: "thread", represented: 10, weight: 1 });
+    e.step(20_000);
+    // Ten real requests at 100 CPU-ms: the first wave runs one, its tail the other nine.
+    expect(executedCpu(e)).toBeCloseTo(1000);
+    expect(e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, deadLettered: 0, dropped: 0 });
+    expect(e.metrics().inSystem).toBe(0);
+    expect(state.ledger.reservations.size).toBe(0);
+  },
+);
+
+it("an outage cancels the CPU its ended attempt had not run; the retry charges its cohort once", () => {
+  const e = createEngine({
+    scale: 10,
+    verifyResources: assertResourceInvariants,
+    verifyLedger: assertLedgerInvariants,
+  });
+  e.load(cpuBoundRetry());
+  e.step(10);
+  e.inject("source", 1);
+  for (let tick = 0; tick < 10 && !executedCpu(e); tick++) e.step(10);
+  const ran = executedCpu(e);
+  expect(ran).toBeGreaterThan(0);
+  expect(ran).toBeLessThan(100);
+  e.setNodeStatus("caller", "down");
+  e.step(30);
+  e.setNodeStatus("caller", "up");
+  e.step(20_000);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, deadLettered: 0, dropped: 0 });
+  expect(executedCpu(e)).toBeCloseTo(ran + 1000);
+  expect(e.metrics().inSystem).toBe(0);
+});
+
+// fc-sweep seed -1230053122 (ledger.commands I2/I3/I5/I6, scaleOne=false), shrunk:
+// Inject 3, SetScale 10, SetScale 1, RecoverAndEnableResources(tier0, concurrency 1, 1 CPU-ms).
+it("a caller recovered after a scale edit sizes CPU for its admitted cohort (seed -1230053122)", () => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  const service = (id: string, props: Record<string, unknown>) => ({
+    ...d.nodes[1],
+    id,
+    props: { jitter: 0, ...props },
+  });
+  const blocking = (from: string, to: string) => ({
+    id: `${from}-${to}`,
+    from,
+    to,
+    kind: "sync" as const,
+    props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "blocking" as const, replyMs: 0 } },
+  });
+  d.nodes = [
+    d.nodes[0],
+    service("caller", { concurrency: 6, replicas: 2, latencyMs: 11 }),
+    service("tier1", { concurrency: 1, replicas: 1, latencyMs: 0 }),
+    service("tier2", { concurrency: 1, replicas: 1, latencyMs: 0 }),
+    // A competing consumer shapes which deliveries reach the caller.
+    service("worker", {
+      concurrency: 6,
+      replicas: 1,
+      latencyMs: 11,
+      retry: "inplace",
+      retryBackoffMs: 100,
+      resources: { ...resources(), cpuMsPerMessage: 0 },
+    }),
+  ];
+  d.edges = [
+    { id: "input", from: "source", to: "caller", props: { travelMs: 10 } },
+    { id: "worker-input", from: "source", to: "worker", props: { travelMs: 10 } },
+    blocking("caller", "tier1"),
+    blocking("tier1", "tier2"),
+  ];
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    scale: 1,
+    maxParticles: 0,
+    verifyResources: assertResourceInvariants,
+    verifyLedger(s) {
+      state = s;
+      assertLedgerInvariants(s);
+    },
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 3);
+  e.step(10);
+  e.setScale(10);
+  e.step(20);
+  e.setScale(1);
+  e.step(10);
+  // Both caller cohorts were admitted at scale 10 and lose their threads in this outage.
+  e.setNodeStatus("caller", "down");
+  e.setNodeStatus("caller", "up");
+  e.setNodeProps("caller", { concurrency: 1, resources: { ...resources(), cpuMsPerMessage: 1 } });
+  e.step(20_000);
+  expect(e.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 2, failed: 0 });
+  // Two recovered cohorts of ten real requests at 1 CPU-ms each.
+  expect(executedCpu(e)).toBeCloseTo(20);
+});
+
+it.each([false, true])("standalone first completion follows scale one (resources=%s)", (withResources) => {
+  const d = waitingFixture();
+  d.edges = d.edges.filter((edge) => edge.id !== "call");
+  d.nodes[1].props = {
+    replicas: 1,
+    concurrency: 1,
+    latencyMs: 1000,
+    jitter: 0,
+    ...(withResources ? { resources: { ...resources(), cpuMsPerMessage: 0 } } : {}),
+  };
+  for (const scale of [1, 10]) {
+    let state!: LedgerInvariantState;
+    const e = createEngine({
+      scale,
+      verifyResources: assertResourceInvariants,
+      verifyLedger(s) {
+        state = s;
+        assertLedgerInvariants(s);
+      },
+    });
+    e.load(d);
+    // Both runs receive ten real requests at the same instant.
+    e.inject("caller", 10 / scale);
+    e.step(1000);
+    expect(e.snapshot().nodes.caller.processed).toBe(0);
+    e.step(10);
+    expect(e.snapshot().nodes.caller.processed).toBe(1);
+    if (scale === 10) {
+      const tail = [...state.ledger.reservations.values()].find((r) => r.owner === "caller")!;
+      expect(tail.releaseAt).toBe(10010);
+      expect(tail.admissionLagMs).toBe(0);
+    }
+  }
+});
 
 it("a detached Kafka CPU tail retains its draining partition", () => {
   const d = waitingFixture();
@@ -81,14 +322,20 @@ it.each([false, true])(
     const e = createEngine({ scale: 10, verifyResources: assertResourceInvariants });
     e.load(d);
     e.inject("caller", 1);
-    e.step(active ? 10010 : 12000);
-    expect(e.snapshot().nodes.caller.processed).toBe(active ? 0 : 1);
+    e.step(active ? 1010 : 12000);
+    expect(e.snapshot().nodes.caller.processed).toBe(1);
     e.setScale(1);
     e.inject("caller", 10);
+    if (active) {
+      // Logical work is done, but the original ten-member hold still owns the slot.
+      e.step(8990);
+      expect(e.snapshot().nodes.caller.inFlight).toBe(0);
+      expect(e.snapshot().nodes.caller.processed).toBe(1);
+    }
     e.step(10);
     expect(e.snapshot().nodes.caller.inFlight).toBe(1);
     e.step(1000);
-    expect(e.snapshot().nodes.caller.processed).toBe(active ? 1 : 2);
+    expect(e.snapshot().nodes.caller.processed).toBe(2);
     e.step(10000);
     expect(e.snapshot().nodes.caller.processed).toBe(11);
   },
@@ -352,7 +599,7 @@ it.each([false, true])("enabling resources preserves the sampled standalone slot
   });
   e.load(d);
   e.inject("caller", queued ? 2 : 1);
-  e.step(10010);
+  e.step(10);
   expect(e.snapshot().nodes.caller.inFlight).toBe(1);
   const existing = [...state.ledger.reservations.values()].find((r) => r.owner === "caller" && r.scope === "thread");
   expect(existing).toBeDefined();
@@ -361,7 +608,10 @@ it.each([false, true])("enabling resources preserves the sampled standalone slot
   if (!queued) e.inject("caller", 1);
   for (let tick = 0; tick < 1000; tick++) {
     e.step(10);
-    expect(e.snapshot().nodes.caller.inFlight).toBe(1);
+    // CPU finishes its 10,000 ms first wave at the final step; the cohort's
+    // remaining CPU and the original sampled thread hold still belong to the tail.
+    expect(e.snapshot().nodes.caller.inFlight).toBe(tick === 999 ? 0 : 1);
+    expect(e.snapshot().nodes.caller.processed).toBe(tick === 999 ? 1 : 0);
     const threads = [...state.ledger.reservations.values()].filter((r) => r.owner === "caller" && r.scope === "thread");
     expect(threads).toHaveLength(1);
     expect(threads[0].weight).toBe(1);
@@ -383,7 +633,7 @@ it("the execution oracle rejects missing and shared running thread ownership", (
   });
   e.load(d);
   e.inject("caller", 2);
-  e.step(1100);
+  e.step(10);
   const work = [...state.nodes].find((n) => n.id === "caller")!.working;
   expect(work).toHaveLength(2);
   const original = work[1].thread;

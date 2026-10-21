@@ -39,6 +39,18 @@ function legacyWorker() {
   return diagram;
 }
 
+function preW1LegacyWorker() {
+  const diagram = legacyWorker();
+  diagram.planning!.revision = "p3-a1";
+  return diagram;
+}
+
+function cpuBoundStandalone() {
+  const diagram = legacyWorker();
+  Object.assign(diagram.nodes[1].props!.resources!, { cpuMsPerMessage: 100, cpuLimitMilli: 1000 });
+  return diagram;
+}
+
 function managedCall() {
   const diagram = zeroWorkCall();
   diagram.nodes[0].stencil = "generic.queue";
@@ -99,6 +111,23 @@ function managedJoin() {
   return diagram;
 }
 
+/** Admit-on-arrival caller whose blocking reply settles in the tick it was admitted. */
+function managedZeroWork() {
+  const diagram = zeroWorkCall();
+  diagram.nodes[1].stencil = "aws.lambda";
+  diagram.nodes[1].props = {
+    concurrency: 1,
+    replicas: 1,
+    latencyMs: 0,
+    jitter: 0,
+    scaling: "fixed",
+    maxConcurrency: 1,
+    api: { latencyMs: 0 },
+  };
+  diagram.edges[1].props = { travelMs: 10, networkDelayMs: 0, caller: { wait: "blocking", replyMs: 0 } };
+  return diagram;
+}
+
 function slowCallee() {
   const diagram = zeroWorkCall();
   diagram.nodes[1].props!.concurrency = 4;
@@ -111,7 +140,6 @@ function slowCallee() {
 // Exact siblings prevent an unrelated mismatch from satisfying an expected failure.
 // docs/backlog/2026-10-20-engine-r5-i1-counterexamples.md
 const gaps = [
-  { name: "legacy queue-worker serviceCredit", fixture: legacyWorker, scale: 1.01, baseline: 1997, dots: 999 },
   { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 396 },
   { name: "fractional capacity fragmentation", fixture: fragmentation, scale: 1.1, baseline: 999, dots: 799 },
   { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 200 },
@@ -119,7 +147,15 @@ const gaps = [
   { name: "CPU contention without a pool", fixture: () => cpuContention(false), scale: 1.1, baseline: 570, dots: 333 },
   { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
-for (const gap of gaps) {
+// Preserve the historical serviceCredit snapshot: only W1 moves onto ledger pacing.
+const legacyPin = {
+  name: "legacy queue-worker serviceCredit",
+  fixture: preW1LegacyWorker,
+  scale: 1.01,
+  baseline: 1997,
+  dots: 999,
+};
+for (const gap of [legacyPin, ...gaps]) {
   describe(`${gap.name} at scale ${gap.scale}`, () => {
     let runs: ReturnType<typeof constantRateRuns>;
     beforeAll(() => {
@@ -151,11 +187,23 @@ for (const gap of gaps) {
       };
       expect({ baseline: outcomes(runs.baseline), sampled: outcomes(runs.sampled) }).toMatchSnapshot();
     });
-    it.fails("I1 known gap: preserves real outcomes at the same arrival instants", () => {
-      expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
-    });
+    if (gap !== legacyPin)
+      it.fails("I1 known gap: preserves real outcomes at the same arrival instants", () => {
+        expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+      });
   });
 }
+
+it.each([
+  { scale: 1.01, baseline: 1997, dots: 1977 },
+  { scale: 1.1, baseline: 1997, dots: 1815 },
+  { scale: 2.5, baseline: 1996, dots: 799 },
+])("I1 regression: standalone queue-worker turnover at scale $scale", ({ scale, baseline, dots }) => {
+  const runs = constantRateRuns(legacyWorker(), scale);
+  expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(baseline);
+  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(dots * scale);
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
 
 it.each([1.5, 2, 3, 4])("I1 regression: sub-tick local work at scale %s", (scale) => {
   const runs = constantRateRuns(subTick(), scale);
@@ -166,12 +214,47 @@ it.each([1.5, 2, 3, 4])("I1 regression: sub-tick local work at scale %s", (scale
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 
+it.each([10, 1.1, 2.5])("I1 regression: CPU-bound standalone turnover at scale %s", (scale) => {
+  const runs = constantRateRuns(cpuBoundStandalone(), scale);
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+
+it("I1 regression: review CPU-bound standalone repro stays within the scale-one bound", () => {
+  const { baseline, sampled } = constantRateRuns(cpuBoundStandalone(), 10, {
+    ratePerSec: 100,
+    durationMs: 20_000,
+  });
+  expect(realSnapshot(baseline).nodes.caller.processed).toBe(198);
+  expect(realSnapshot(sampled).nodes.caller.processed).toBe(200);
+  expectScaleEquivalent(baseline, sampled, 1);
+});
+
 it.each([2, 4])("I1 regression: Lambda joins ordinary and fleet replies at scale %s", (scale) => {
   const runs = constantRateRuns(managedJoin(), scale);
   expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(scale === 4 ? 498 : 499);
   expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(500);
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
+
+// Ordinary-clock arrivals admit before the tick's due releases; the cohort's last turnaround
+// must not wait for another phase (review of #227: 666 completed, 1,332 rejected at scale 2).
+it.each([
+  { scale: 2, ratePerSec: 100, baseline: [999, 1000], sampled: [1000, 1000] },
+  { scale: 2, ratePerSec: 200, baseline: [1000, 3000], sampled: [1000, 3000] },
+  { scale: 1.5, ratePerSec: 200, baseline: [1000, 2999], sampled: [1000.5, 2998.5] },
+])(
+  "I1 regression: managed zero-work caller turnaround with zero network delay at scale $scale, $ratePerSec/s",
+  ({ scale, ratePerSec, baseline, sampled }) => {
+    const runs = constantRateRuns(managedZeroWork(), scale, { ratePerSec });
+    const outcome = (snapshot: SimSnapshot) => {
+      const caller = realSnapshot(snapshot).nodes.caller;
+      return [caller.processed, caller.rejected];
+    };
+    expect(outcome(runs.baseline)).toEqual(baseline);
+    expect(outcome(runs.sampled)).toEqual(sampled);
+    expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+  },
+);
 
 let zeroLocalBaseline: SimSnapshot;
 const zeroLocalSamples = new Map<number, SimSnapshot>();
@@ -238,5 +321,6 @@ it.skipIf(process.env.FC_I1_CORPUS !== "1")(
       }
     }
     console.log(`I1 CORPUS: ${passed}/${scenarios.length} passed; failing indices: ${failures.join(", ")}`);
+    expect(passed).toBeGreaterThanOrEqual(13);
   },
 );

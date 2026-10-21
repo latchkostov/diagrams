@@ -53,3 +53,35 @@ it.each(["incoming", "after-loop", "arrival-resource", "fleet"] as const)(
     expect(e.snapshot()).toEqual(expected);
   },
 );
+
+it("an admit-on-arrival caller waits only for its cohort's inner turnarounds", () => {
+  const d = waitingFixture();
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    concurrency: 1,
+    replicas: 1,
+    latencyMs: 0,
+    jitter: 0,
+    scaling: "fixed",
+    maxConcurrency: 1,
+    api: { latencyMs: 0 },
+  };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 1, replicas: 1, latencyMs: 0, jitter: 0 };
+  d.edges[1].props = { networkDelayMs: 0, caller: { wait: "blocking", replyMs: 0 } };
+  const retire = vi.spyOn(SampledLedger.prototype, "retire");
+  const e = createEngine({ scale: 2, seed: 7, maxParticles: 0 });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(5 * STEP);
+  const calls = retire.mock.calls.filter(([r]) => r.owner === "caller" && r.scope === "thread" && r.phase === "wait");
+  expect(calls).toHaveLength(1);
+  const [thread] = calls[0];
+  // Ordinary-clock arrivals admit before the tick's due releases. Of the two requests
+  // held at weight one, only the turnaround between them waits for the next phase.
+  expect([thread.weight, thread.represented, thread.heldMs]).toEqual([1, 2, STEP]);
+  expect(thread.admissionLagMs).toBe(STEP / 2);
+  // Scale one admits the second request a tick after the first settles and frees the
+  // slot for the next arrival phase: released by the preceding due-release phase.
+  expect(thread.releaseAt! + thread.admissionLagMs!).toBe(thread.startActive + 2 * (STEP + STEP) - STEP);
+});
