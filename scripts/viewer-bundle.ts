@@ -12,7 +12,10 @@ export const BUNDLE_CSP =
   "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'";
 
 /** Same viewer restrictions as Interactive HTML, with external scripts, CSS and fonts for app CSPs. */
-export async function buildViewerBundle(root: string): Promise<Map<string, string | Uint8Array>> {
+export async function buildViewerBundle(
+  root: string,
+  plugins: Plugin[] = [],
+): Promise<Map<string, string | Uint8Array>> {
   const env = process.env.NODE_ENV;
   process.env.NODE_ENV = "production";
   try {
@@ -25,6 +28,7 @@ export async function buildViewerBundle(root: string): Promise<Map<string, strin
       publicDir: false,
       envPrefix: "LIVE_DIAGRAMS_VIEWER_NEVER_",
       plugins: [
+        ...plugins,
         {
           name: "viewer-bundle-assets",
           enforce: "pre",

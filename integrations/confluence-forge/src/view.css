@@ -1,0 +1,46 @@
+html,
+body {
+  height: auto;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui, system-ui);
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+header {
+  padding: 8px 12px;
+}
+header:empty {
+  display: none;
+}
+#root {
+  flex: none;
+  width: 100%;
+}
+.ix-embed.viewer-bundle {
+  position: relative;
+  inset: auto;
+  height: 100%;
+}
+.forge-still [data-testid="live-toggle"] {
+  display: none;
+}
+button {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+[hidden] {
+  display: none !important;
+}
