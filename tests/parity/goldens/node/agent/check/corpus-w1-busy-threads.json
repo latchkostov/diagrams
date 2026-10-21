@@ -1,0 +1,79 @@
+{
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
+        {
+          "id": "capacity:caller",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Decision service: scenario sizing",
+          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "targets": ["caller"],
+          "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
+        {
+          "id": "capacity:caller",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Decision service: scenario sizing",
+          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "targets": ["caller"],
+          "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
+        {
+          "id": "capacity:caller",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Decision service: scenario sizing",
+          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "targets": ["caller"],
+          "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
+        {
+          "id": "capacity:caller",
+          "rule": "capacity",
+          "severity": "warning",
+          "title": "Decision service: scenario sizing",
+          "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+          "targets": ["caller"],
+          "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+        }
+      ],
+      "summary": "2 warnings, 0 suggestions.",
+      "simulations": "Played 3 saved simulations (at most 60 s each).",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  }
+}

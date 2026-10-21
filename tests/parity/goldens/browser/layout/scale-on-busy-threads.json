@@ -1,0 +1,28 @@
+{
+  "autoLayout": {
+    "viewport": "translate(16.457px, 343.954px) scale(0.588575)",
+    "nodes": {
+      "source": { "kind": "node", "box": "translate(40px, 100px) 233×72", "text": "Applications submitted User" },
+      "applications": { "kind": "node", "box": "translate(428px, 100px) 220×72", "text": "Applications Topic" },
+      "caller": { "kind": "node", "box": "translate(788px, 100px) 253×72", "text": "Decision service 4 replicas · 16 threads each" },
+      "partner": { "kind": "node", "box": "translate(1187px, 40px) 220×72", "text": "Partner scoring API External API" },
+      "decisions": { "kind": "node", "box": "translate(1187px, 160px) 220×72", "text": "Decisions Topic" },
+      "store": { "kind": "node", "box": "translate(1553px, 100px) 220×72", "text": "Case store Database" }
+    },
+    "edges": { "submit": "M273,136 L428,136", "consume": "M648,136 L788,136", "call": "M1041,129 L1104,129 Q1114,129 1114,119 L1114,86 Q1114,76 1124,76 L1187,76", "publish": "M1041,143 L1104,143 Q1114,143 1114,153 L1114,186 Q1114,196 1124,196 L1187,196", "save": "M1407,196 L1470,196 Q1480,196 1480,186 L1480,146 Q1480,136 1490,136 L1553,136" },
+    "labels": {}
+  },
+  "tidy": {
+    "viewport": "translate(16.457px, 303.421px) scale(0.588575)",
+    "nodes": {
+      "source": { "kind": "node", "box": "translate(0px, 240px) 233×72", "text": "Applications submitted User" },
+      "applications": { "kind": "node", "box": "translate(310px, 240px) 220×72", "text": "Applications Topic" },
+      "caller": { "kind": "node", "box": "translate(610px, 240px) 253×72", "text": "Decision service 4 replicas · 16 threads each" },
+      "partner": { "kind": "node", "box": "translate(950px, 180px) 220×72", "text": "Partner scoring API External API" },
+      "decisions": { "kind": "node", "box": "translate(950px, 300px) 220×72", "text": "Decisions Topic" },
+      "store": { "kind": "node", "box": "translate(1250px, 240px) 220×72", "text": "Case store Database" }
+    },
+    "edges": { "submit": "M233,276 L310,276", "consume": "M530,276 L610,276", "call": "M863,269 L896.5,269 Q906.5,269 906.5,259 L906.5,226 Q906.5,216 916.5,216 L950,216", "publish": "M863,283 L896.5,283 Q906.5,283 906.5,293 L906.5,326 Q906.5,336 916.5,336 L950,336", "save": "M1170,336 L1200,336 Q1210,336 1210,326 L1210,286 Q1210,276 1220,276 L1250,276" },
+    "labels": {}
+  }
+}

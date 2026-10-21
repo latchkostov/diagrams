@@ -179,6 +179,8 @@ const BY_THEME: Record<string, string[]> = {
   integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
     "blocking-call",
+    "scale-on-busy-threads",
+    "pool-of-40",
     "slow-payment-provider",
     "outbox-saga-checkout",
     "zone-outage-drill",
@@ -204,6 +206,8 @@ test("picker contains your work and a separate gallery entry; gallery filters an
   await expect(menu).toHaveAttribute("role", "menu");
   await expect(menu.getByTestId(/^picker-option-.*(?<!-title)$/)).toHaveCount(1);
   await expect(page.getByTestId(`picker-option-${SLUG}`)).toHaveCount(0);
+  await expect(page.getByTestId("picker-option-scale-on-busy-threads")).toHaveCount(0);
+  await expect(page.getByTestId("picker-option-pool-of-40")).toHaveCount(0);
   await expect(page.getByTestId("picker-new")).toBeVisible();
   await page.getByTestId("picker-browse-examples").click();
   await expect(page.getByTestId("examples-search")).toBeFocused();
@@ -245,13 +249,14 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   expectNoErrors(consoleErrors);
 });
 
-test("Autoscaling filter finds the eight autoscaling showcases and runs the HPA story", async ({ page }) => {
+test("Autoscaling filter finds the autoscaling showcases and runs the HPA story", async ({ page }) => {
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("autoscaling");
-  await expect(publicExampleCards(page)).toHaveCount(8);
+  await expect(publicExampleCards(page)).toHaveCount(9);
   for (const slug of [
     "blocking-call",
+    "scale-on-busy-threads",
     "black-friday-commerce",
     "delivery-dispatch",
     "recommendations-feature-store",
@@ -270,7 +275,7 @@ test("Routing filter finds the route table showcases and runs the parcel API's s
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("routing");
-  await expect(publicExampleCards(page)).toHaveCount(6);
+  await expect(publicExampleCards(page)).toHaveCount(7);
   for (const slug of [
     "delivery-dispatch",
     "black-friday-commerce",
@@ -278,6 +283,7 @@ test("Routing filter finds the route table showcases and runs the parcel API's s
     "recommendations-feature-store",
     "video-on-demand-pipeline",
     "api-route-table",
+    "pool-of-40",
   ])
     await expect(page.getByTestId(`example-card-${slug}`)).toBeVisible();
   await page.getByTestId("example-run-api-route-table").click();

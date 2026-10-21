@@ -66,7 +66,6 @@ export function CallWaitFields({
         />
       </>
     );
-  if (policy.blocking) return null;
   return (
     <>
       <SimInput
@@ -82,7 +81,7 @@ export function CallWaitFields({
         value={caller?.poolConnections}
         onChange={(v) => set({ poolConnections: typeof v === "number" ? Math.round(v) : undefined })}
       />
-      {stencilRole(stencil) === "processor" && (
+      {!policy.blocking && stencilRole(stencil) === "processor" && (
         <SimInput
           name="replyMs"
           field={{

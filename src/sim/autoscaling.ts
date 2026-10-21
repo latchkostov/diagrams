@@ -33,7 +33,15 @@ export interface ScalingDecision {
   /** A3: which cloud adapter decided, its metric and the policy/rule index that acted. */
   adapter?: "ecs" | "aca" | "appService" | "cloudRun";
   metricKind?:
-    "cpu" | "memory" | "albRequestCountPerTarget" | "albRequestCount" | "httpQueue" | "concurrency" | "httpRate";
+    | "cpu"
+    | "memory"
+    | "albRequestCountPerTarget"
+    | "albRequestCount"
+    | "httpQueue"
+    | "concurrency"
+    | "httpRate"
+    | "busyThreads"
+    | "busyThreadsPerPod";
   policy?: number;
   /** Consecutive breaching periods counted so far and the periods the alarm needs. */
   periods?: number;
@@ -578,6 +586,11 @@ export function metricValue(
   if (end < m.windowMs || !f.ready) return undefined;
   const window = metricWindow(f, end, m.windowMs);
   if (!window.count) return undefined;
+  if (m.source.kind === "pods") {
+    if (!window.readySamples) return undefined;
+    const absolute = window.inFlightPerReady / window.readySamples;
+    return m.target.kind === "averageValue" ? absolute : (absolute / (f.concurrency ?? 1)) * 100;
+  }
   const cpu = window.cpu / (window.count * 1000);
   const occupancy = scale > 1 ? window.occupancy / window.count : window.lastOccupancy;
   const absolute =
@@ -681,7 +694,13 @@ export function evaluateHpa(
     reason,
     metric,
     target,
-    resource: binding?.source.resource,
+    resource: binding?.source.kind === "resource" ? binding.source.resource : undefined,
+    ...(binding?.source.kind === "pods"
+      ? {
+          metricKind:
+            binding.target.kind === "averageValue" ? ("busyThreadsPerPod" as const) : ("busyThreads" as const),
+        }
+      : {}),
     targetKind: binding?.target.kind,
     windowMs: binding?.windowMs,
     metricDelayMs: binding?.metricDelayMs,

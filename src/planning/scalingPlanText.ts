@@ -52,6 +52,7 @@ export function metricPhrase(kind: string | undefined, value: number | undefined
 /** The planner's suggestion in the person's language; the same words in Checks and live playback. */
 export function planSentence(p: Plan): string {
   if (p.kind === "unavailable") return t("autoscaling.planUnavailable", { simulation: p.simulation });
+  if (p.kind === "busyThreads") return t("autoscaling.planBusy", { simulation: p.simulation });
   const where = { scaled: String(p.traffic !== 1), traffic: n(p.traffic), simulation: p.simulation };
   const platform = p.platform ?? "";
   const unit = p.unit ?? "replicas";
@@ -94,6 +95,7 @@ export function planSentence(p: Plan): string {
 
 export function planFixLabel(p: Plan): string | undefined {
   if (!p.verified || p.to === undefined) return undefined;
+  if (p.kind === "busyThreads") return t("autoscaling.scaleBusy");
   return p.kind === "partitions"
     ? t("autoscaling.planFixPartitions", { name: p.broker ?? "", to: p.to })
     : p.kind === "min"

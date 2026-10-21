@@ -16,7 +16,7 @@ export function callPolicy(stencil: string, caller?: EdgeSimProps["caller"]): Ca
   return {
     blocking,
     replyMs: blocking ? 0 : (caller?.replyMs ?? 10),
-    pool: !blocking ? caller?.poolConnections : undefined,
+    pool: caller?.poolConnections,
     deadlineMs: caller?.deadlineMs ?? undefined,
   };
 }

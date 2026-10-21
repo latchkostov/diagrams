@@ -42,7 +42,7 @@ describe("A1 configuration and common planning", () => {
   it("binds ContainerResource only to the one modelled container", () => {
     const a = hpaLesson(),
       r = resourceLesson();
-    a.controller.settings.metrics[0].source.container = "worker";
+    a.controller.settings.metrics[0].source = { kind: "resource", resource: "cpu", container: "worker" };
     expect(autoscalingProblem(r, a)).toContain("single container");
     r.container = "worker";
     expect(autoscalingProblem(r, a)).toBeUndefined();
@@ -158,7 +158,7 @@ describe("A1 configuration and common planning", () => {
   it("shows constant baseline memory above target as unfixable by adding replicas", () => {
     const d = autoscalingFixture(),
       a = hpaLesson();
-    a.controller.settings.metrics[0].source.resource = "memory";
+    a.controller.settings.metrics[0].source = { kind: "resource", resource: "memory" };
     a.controller.settings.metrics[0].target = { kind: "utilization", percentOfRequest: 40 };
     d.nodes[1].props!.autoscaling = a;
     expect(explainNode(d, "worker", { fixes: false })!.resources!.baselineAboveTarget).toBe(true);

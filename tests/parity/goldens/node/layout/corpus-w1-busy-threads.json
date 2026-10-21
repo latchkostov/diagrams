@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "source": [40, 100], "applications": [428, 100], "caller": [788, 100], "partner": [1187, 40], "decisions": [1187, 160], "store": [1553, 100] },
+    "TB": { "source": [200, 40], "applications": [200, 200], "caller": [200, 360], "decisions": [40, 520], "partner": [360, 520], "store": [200, 680] }
+  },
+  "tidy": { "source": [0, 240], "applications": [330, 240], "caller": [630, 240], "partner": [970, 180], "decisions": [970, 300], "store": [1270, 240] },
+  "arrange": {
+    "alignLeft": { "source": [0, 180], "applications": [0, 180], "caller": [0, 180], "partner": [0, 180], "decisions": [0, 420], "store": [0, 420] },
+    "alignMiddle": { "source": [0, 300], "applications": [320, 300], "caller": [660, 300], "partner": [1010, 300], "decisions": [660, 300], "store": [1010, 300] },
+    "distributeH": { "source": [0, 180], "applications": [215, 180], "caller": [403, 180], "partner": [817, 180], "decisions": [629, 420], "store": [1010, 420] },
+    "distributeV": { "source": [0, 180], "applications": [320, 228], "caller": [660, 276], "partner": [1010, 324], "decisions": [660, 372], "store": [1010, 420] },
+    "spreadH": { "source": [0, 180], "applications": [320, 180], "caller": [660, 180], "partner": [1219, 180], "decisions": [959, 180], "store": [1485, 180] },
+    "boundaryAround": { "x": -40, "y": 116, "width": 1316, "height": 416 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "source": [40, 100], "applications": [428, 100], "caller": [788, 100], "partner": [1187, 40], "decisions": [1187, 160], "store": [1553, 100] },
+    "groups": {}
+  }
+}

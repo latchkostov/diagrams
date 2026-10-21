@@ -3126,12 +3126,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             occupancy,
             time,
             STEP,
-            cloud && cloud.kind !== "ecs"
+            (cloud && cloud.kind !== "ecs") || waits()
               ? {
                   inFlight: callerReservations(node)
                     ? node.threadWeight.work + node.threadWeight.wait
                     : residentRequests(node),
-                  waiting: cloud.kind === "appService" ? waitingRequests(node) : 0,
+                  waiting: cloud?.kind === "appService" ? waitingRequests(node) : 0,
                 }
               : undefined,
           );
@@ -3543,6 +3543,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     fleet(nodeId) {
       const n = nodes.get(nodeId);
       return n?.fleet && n.props.resources ? fleetReadout(n.fleet) : undefined;
+    },
+    threadUsage(nodeId) {
+      const node = nodes.get(nodeId);
+      return waits() && node?.waits
+        ? { working: node.threadWeight.work / scale, waiting: node.threadWeight.wait / scale }
+        : undefined;
     },
     replicaPage(nodeId, page) {
       const n = nodes.get(nodeId);

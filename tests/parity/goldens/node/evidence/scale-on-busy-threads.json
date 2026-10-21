@@ -1,0 +1,92 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "blocking", "title": "Blocking: CPU says all is well", "playedMs": 50000, "capped": false },
+      { "id": "busy-threads", "title": "Scale on busy threads", "playedMs": 50000, "capped": false },
+      { "id": "free-thread", "title": "Free the thread while waiting", "playedMs": 50000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [],
+    "dropped": []
+  },
+  "planned": [],
+  "counted": 0,
+  "findings": [
+    { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "target": "applications", "elements": ["applications"] },
+    {
+      "id": "capacity:caller",
+      "rule": "capacity",
+      "severity": "warning",
+      "target": "caller",
+      "elements": ["caller"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "caller",
+            "props": {
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a1",
+                "preset": "hpa-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "hpa",
+                  "initialReplicas": 4,
+                  "minReplicas": 4,
+                  "maxReplicas": 10,
+                  "settings": {
+                    "syncMs": 1000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 30000,
+                    "cpuInitializationPeriodMs": 300000,
+                    "metrics": [
+                      {
+                        "source": { "kind": "pods", "metric": "busyThreads" },
+                        "target": { "kind": "utilization", "percentOfRequest": 70 },
+                        "windowMs": 1000,
+                        "metricDelayMs": 0
+                      }
+                    ],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 15000 },
+                        { "type": "Percent", "value": 100, "periodMs": 15000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 5000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
+      {
+        "id": "capacity:caller",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Decision service: scenario sizing",
+        "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+        "targets": ["caller"],
+        "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      }
+    ],
+    "summary": "2 warnings, 0 suggestions.",
+    "simulations": "Played 3 saved simulations (at most 60 s each).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

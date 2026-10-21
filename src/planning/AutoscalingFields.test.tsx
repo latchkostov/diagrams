@@ -85,6 +85,23 @@ it.each([{ mode: "off" }, hpaLesson()])("does not copy a diagram to render fixed
   expect(readDiagram).not.toHaveBeenCalled();
 });
 
+it.each([false, true])("gates the busy metric without copying the diagram (W1: %s)", (supportsBusyThreads) => {
+  const readDiagram = vi.fn(() => kedaFixture());
+  const html = renderToStaticMarkup(
+    <AutoscalingFields
+      stencil="service.dotnet"
+      props={{ resources: resourceLesson(), autoscaling: hpaLesson() }}
+      readDiagram={readDiagram}
+      supportsBusyThreads={supportsBusyThreads}
+      set={() => {}}
+    >
+      <span />
+    </AutoscalingFields>,
+  );
+  expect(readDiagram).not.toHaveBeenCalled();
+  expect(html.includes("Busy threads (modelled custom metric)")).toBe(supportsBusyThreads);
+});
+
 it.each([undefined, { mode: "off" }, { mode: "unsupported", provider: "Kubernetes", reason: "Unsupported metric" }])(
   "keeps imported resources and the workload lesson accessible for %s scaling",
   (autoscaling) => {

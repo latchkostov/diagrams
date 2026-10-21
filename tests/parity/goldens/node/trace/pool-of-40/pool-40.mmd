@@ -1,0 +1,14 @@
+---
+title: "Checkout #1 · 260 ms end to end · 3 copies"
+---
+sequenceDiagram
+  participant shop as Shop
+  participant gateway as API gateway
+  participant checkout as Checkout
+  participant payment as Payment provider
+  shop->>gateway: Checkout (+0.00 s)
+  gateway->>checkout: Checkout (+0.02 s)
+  checkout->>payment: Checkout (+0.04 s)
+  payment-->>checkout: reply (+0.24 s)
+  checkout-->>gateway: reply (+0.26 s)
+  gateway-->>shop: reply (+0.26 s)

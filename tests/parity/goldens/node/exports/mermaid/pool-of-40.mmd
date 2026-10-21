@@ -1,0 +1,14 @@
+---
+title: A pool of 40
+---
+flowchart LR
+  shop(["Shop"])
+  gateway["API gateway<br/>5 s timeout"]
+  checkout["Checkout<br/>4 replicas · 25 threads each"]
+  payment(["Payment provider<br/>200 ms · slows ×10 at 3 s"])
+  orders[("Orders DB")]
+  shop --> gateway
+  gateway --> checkout
+  checkout --> payment
+  checkout --> orders
+%% diagrams:{"v":1,"description":"A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.","nodes":{"shop":["shop","client.user"],"gateway":["gateway","generic.adc"],"checkout":["checkout","generic.service"],"payment":["payment","generic.external-api"],"orders":["orders","generic.database"]},"edges":["browse","route","pay","save"],"relations":{}}

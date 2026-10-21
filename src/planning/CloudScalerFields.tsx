@@ -417,6 +417,11 @@ export function CloudScalerFields({
           change={(v) => v !== undefined && patch((n) => void (n.initialReplicas = v), "initial")}
         />
         {policyField}
+        {c.kind === "ecs" && (
+          <p className="insp-note" data-testid="autoscaling-ecs-busy-unsupported">
+            {t("autoscaling.ecsBusyUnsupported")}
+          </p>
+        )}
         <p className="insp-note">{t("autoscaling.exclusions")}</p>
         <a data-testid="autoscaling-source" href={DOCS[c.kind]} target="_blank" rel="noreferrer">
           {t("autoscaling.docs", { platform })}

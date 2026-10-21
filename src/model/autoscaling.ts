@@ -37,8 +37,10 @@ export interface DirectionBehaviour {
   policies: { type: "Pods" | "Percent"; value: number; periodMs: number }[];
 }
 export interface ScalingMetric {
-  source: { kind: "resource"; resource: "cpu" | "memory"; container?: string };
-  /** CPU averageValue is millicores; memory averageValue is MiB. */
+  source:
+    { kind: "resource"; resource: "cpu" | "memory"; container?: string } | { kind: "pods"; metric: "busyThreads" };
+  /** CPU averageValue is millicores; memory is MiB; busyThreads is threads per pod.
+   * For busyThreads, utilization is a percent of Concurrency. */
   target: { kind: "utilization"; percentOfRequest: number } | { kind: "averageValue"; value: number };
   windowMs: number;
   metricDelayMs: number;

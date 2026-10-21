@@ -72,7 +72,11 @@ export function resourcePlan(
   const targetValue = (m: (typeof metrics)[number]) =>
     m.target.kind === "averageValue"
       ? m.target.value
-      : ((m.source.resource === "cpu" ? (r.cpuRequestMilli ?? 0) : (r.memoryRequestMiB ?? 0)) *
+      : ((m.source.kind === "pods"
+          ? p.concurrency
+          : m.source.resource === "cpu"
+            ? (r.cpuRequestMilli ?? 0)
+            : (r.memoryRequestMiB ?? 0)) *
           m.target.percentOfRequest) /
         100;
   const cpuMilli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
@@ -91,6 +95,7 @@ export function resourcePlan(
   const needed = [
     ...metrics.flatMap((m) => {
       const target = targetValue(m);
+      if (m.source.kind === "pods") return target ? [Math.ceil((offered * timing.threadHoldMs) / 1000 / target)] : [];
       if (m.source.resource === "cpu")
         return target && r.cpuMsPerMessage ? [Math.ceil((offered * r.cpuMsPerMessage) / target)] : [];
       return target > r.baselineMemoryMiB
@@ -127,6 +132,7 @@ export function resourcePlan(
     memoryRisk: r.memoryLimitMiB !== undefined && memoryPeakMiB > r.memoryLimitMiB,
     baselineAboveTarget: metrics.some(
       (m) =>
+        m.source.kind === "resource" &&
         m.source.resource === "memory" &&
         (r.baselineMemoryMiB > targetValue(m) ||
           (r.baselineMemoryMiB === targetValue(m) && r.memoryMiBPerMessage > 0 && offered > 0)),

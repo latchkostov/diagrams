@@ -1,0 +1,9 @@
+{
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
+  "simulations": {
+    "isError": false,
+    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 1156 dropped at shop in “A pool of 40”; 1156 dropped at gateway in “A pool of 40”; 1326 dropped at shop in “Blocking waits still hold threads”; 1326 dropped at gateway in “Blocking waits still hold threads”." }
+  }
+}

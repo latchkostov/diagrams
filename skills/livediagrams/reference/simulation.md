@@ -1,38 +1,22 @@
 # Simulations
 
-Every diagram can play in live view, where messages animate along its flow edges. A saved simulation is a
-scripted run: who sends what, what breaks and when, and what should hold true. It's stored in the diagram's
-`simulations` list, so a share link carries it. Add one when the user wants to see the system run, or asks
-"what happens if…". One or two per diagram is plenty.
+Saved `simulations` script traffic, incidents and expectations in Live. Add one when requested;
+shared diagram files and links carry the list.
 
-## What each node does
+## Roles and delivery
 
-The stencil's role (shown in [stencils.md](stencils.md)) decides how a node behaves:
+Stencil roles are listed in [stencils.md](stencils.md):
 
-- `source` starts traffic and sends a copy on every outgoing edge.
-- `gateway` routes each message to one outgoing edge, round-robin.
-- `processor` handles the message (250 ms, four at a time by default), may fail it, and sends a copy on every
-  outgoing edge.
-- `topic` and `stream` give every consumer group each message. The edges in one group (edge `props.group`)
-  compete. An edge without a group is a group of its own.
-- `queue` gives each message to one consumer (competing consumers).
-- `store` is where messages end. Its outgoing async edges act as change feeds (CDC).
-- `sink` is where messages end, without storage.
-- `none` is decoration and passes messages straight through.
+- `source` copies traffic to all outgoing flows; `gateway` selects one (round-robin).
+- `processor` works on four messages concurrently for 250 ms by default, then copies outputs.
+- `topic`/`stream` copy each message per consumer `props.group`; readers within a group compete.
+  Without `group`, each edge is independent. `queue` readers always compete.
+- `store` ends messages; async outputs are CDC. `sink` ends without storage; `none` passes through.
+- Dependencies never carry traffic. Unread topics keep messages (no lag until a group reads);
+  queues retain them. Partitions cap group readers, not publishing speed.
 
-Dependency edges (with a `relation`) never carry traffic.
-
-A topic or stream with no consumer keeps what's published: it isn't overloaded, and it has no lag (lag is per
-consumer group). Live view says "Nobody reads Kafka Topic" and offers to add a consumer. More partitions don't help:
-they cap how many consumers in one group work at once, and don't speed up publishing. A queue with no consumer
-holds its messages until one takes them.
-
-## Retries and dead letters
-
-When a processor fails a message it got from a topic, queue or stream, the message goes back to that broker
-and is redelivered. After `maxDeliveryCount` attempts (3 by default), the broker sends it down its dead-letter
-edge and counts it as `deadLettered`. A dead-letter edge leaves the broker and has `"props": { "dlq": true }`,
-or ends at a node labelled DLQ or dead-letter. A broker without one drops the message.
+Broker-delivered processing failures retry up to `maxDeliveryCount` (default 3), then follow a
+broker edge with `props.dlq: true` (or a DLQ/dead-letter target label), or drop without one.
 
 ## Faults and drills
 

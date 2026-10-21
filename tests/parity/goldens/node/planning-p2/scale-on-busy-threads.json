@@ -1,0 +1,474 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "source": { "ratePerSec": 400, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Applications submitted", "healthChecks": false },
+    "applications": { "partitions": 12, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "Applications", "healthChecks": false },
+    "caller": {
+      "replicas": 4,
+      "concurrency": 16,
+      "latencyMs": 10,
+      "jitter": 0,
+      "resources": {
+        "preset": "io-service",
+        "presetRevision": "1",
+        "cpuMsPerMessage": 5,
+        "baselineMemoryMiB": 128,
+        "memoryMiBPerMessage": 2,
+        "cpuRequestMilli": 1000,
+        "cpuLimitMilli": 1000,
+        "memoryRequestMiB": 512,
+        "memoryLimitMiB": 1024,
+        "startup": { "delayMs": 5000, "jitterFraction": 0 },
+        "terminationGraceMs": 30000
+      },
+      "autoscaling": {
+        "mode": "on",
+        "modelRevision": "a1",
+        "preset": "hpa-service",
+        "presetRevision": "1",
+        "controller": {
+          "kind": "hpa",
+          "initialReplicas": 4,
+          "minReplicas": 4,
+          "maxReplicas": 10,
+          "settings": {
+            "syncMs": 1000,
+            "tolerance": 0.1,
+            "initialReadinessDelayMs": 30000,
+            "cpuInitializationPeriodMs": 300000,
+            "metrics": [
+              {
+                "source": { "kind": "resource", "resource": "cpu" },
+                "target": { "kind": "utilization", "percentOfRequest": 70 },
+                "windowMs": 1000,
+                "metricDelayMs": 0
+              }
+            ],
+            "up": {
+              "stabilizationMs": 0,
+              "selectPolicy": "Max",
+              "policies": [
+                { "type": "Pods", "value": 4, "periodMs": 15000 },
+                { "type": "Percent", "value": 100, "periodMs": 15000 }
+              ]
+            },
+            "down": {
+              "stabilizationMs": 5000,
+              "selectPolicy": "Max",
+              "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+            }
+          }
+        }
+      },
+      "ratePerSec": 2,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Decision service",
+      "healthChecks": false,
+      "preset": "processor-lesson",
+      "presetRevision": "1"
+    },
+    "partner": {
+      "latencyMs": 250,
+      "api": { "latencyMs": 250 },
+      "jitter": 0.1,
+      "ratePerSec": 2,
+      "replicas": 1,
+      "retry": "requeue",
+      "retryBackoffMs": 0,
+      "failureRate": 0,
+      "maxDeliveryCount": 3,
+      "partitions": 3,
+      "messageType": "Partner scoring API",
+      "healthChecks": false,
+      "preset": "managed-measured",
+      "presetRevision": "2026-10-14"
+    },
+    "decisions": { "partitions": 12, "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "messageType": "Decisions", "healthChecks": false },
+    "store": { "latencyMs": 1, "ratePerSec": 2, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Case store", "healthChecks": false }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "caller.props.resources", "caller.props.autoscaling", "caller.props.preset", "caller.props.presetRevision", "partner.props.preset", "partner.props.presetRevision", "partner.props.api", "busy-threads.setup.props.caller.autoscaling"] },
+  "autoScale": { "freePlay": 10, "blocking": 10, "busy-threads": 10, "free-thread": 10 },
+  "brokerAssignments": {
+    "brokers": {
+      "applications": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+      "decisions": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" }
+    },
+    "consumers": { "caller": { "count": 4 }, "store": { "count": 1 } }
+  },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "caller",
+      "suggestion": "Decision service: 6% utilized",
+      "converged": true,
+      "iterations": 5,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 400, 0, 1, 1, 0], "applications": [6400, 400, 0.0625, 1, 1, 0], "caller": [6400, 400, 0.0625, 4, 4, 0], "partner": ["Infinity", 400, 0, 1, 1, 0], "decisions": ["Infinity", 400, 0, 1, 1, 0], "store": ["Infinity", 400, 0, 1, 1, 0] },
+      "connections": { "submit": 400, "consume": 400, "call": 400, "publish": 400, "save": 400 },
+      "offeredTypes": { "source": ["Applications submitted"], "applications": ["Applications submitted"], "caller": ["Applications submitted"], "partner": ["Applications submitted"], "decisions": ["Applications submitted"], "store": ["Applications submitted"] }
+    },
+    "explanations": {
+      "caller": {
+        "id": "caller",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 6400,
+        "offered": 400,
+        "replicas": 4,
+        "baseReplicas": 4,
+        "omittedContributors": 0,
+        "activeReplicas": 4,
+        "assignments": [],
+        "slots": 16,
+        "seconds": 0.01,
+        "utilization": 0.0625,
+        "growth": 0,
+        "contributors": [{ "edge": "consume", "node": "applications", "label": "Applications", "rate": 400 }],
+        "target": 0.5,
+        "minimumReplicas": 4,
+        "changes": null,
+        "converged": true
+      },
+      "partner": {
+        "managed": "api",
+        "id": "partner",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 400,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0.25,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "call", "node": "caller", "label": "Decision service", "rate": 400 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "source": [{ "kind": "publishes", "edge": "submit", "peer": "applications" }],
+      "caller": [
+        {
+          "kind": "consumes",
+          "edge": "consume",
+          "peer": "applications",
+          "group": "decisions",
+          "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+          "retry": "requeue",
+          "retryBackoffMs": 0
+        },
+        { "kind": "calls", "edge": "call", "peer": "partner" },
+        { "kind": "publishes", "edge": "publish", "peer": "decisions" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 400,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Applications submitted",
+        "healthChecks": false
+      },
+      "applications": {
+        "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 12,
+        "messageType": "Applications",
+        "healthChecks": false
+      },
+      "caller": {
+        "profile": { "family": "service", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 10,
+        "concurrency": 16,
+        "replicas": 4,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Decision service",
+        "healthChecks": false
+      },
+      "partner": {
+        "admission": { "api": { "latencyMs": 250 }, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 250,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.1,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Partner scoring API",
+        "healthChecks": false
+      },
+      "decisions": {
+        "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "pubsub", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 12,
+        "messageType": "Decisions",
+        "healthChecks": false
+      },
+      "store": {
+        "profile": { "family": "sql", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Case store",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "blocking": {
+      "configured": "(same as edit)",
+      "simulation": "blocking",
+      "analysis": {
+        "bottleneck": "caller",
+        "suggestion": "Decision service: 6% utilized",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 400, 0, 1, 1, 0], "applications": [6400, 400, 0.0625, 1, 1, 0], "caller": [6400, 400, 0.0625, 4, 4, 0], "partner": ["Infinity", 400, 0, 1, 1, 0], "decisions": ["Infinity", 400, 0, 1, 1, 0], "store": ["Infinity", 400, 0, 1, 1, 0] },
+        "connections": { "submit": 400, "consume": 400, "call": 400, "publish": 400, "save": 400 },
+        "offeredTypes": { "source": ["ApplicationSubmitted"], "applications": ["ApplicationSubmitted"], "caller": ["ApplicationSubmitted"], "partner": ["ApplicationSubmitted"], "decisions": ["ApplicationSubmitted"], "store": ["ApplicationSubmitted"] }
+      },
+      "explanations": "(same as edit)",
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "busy-threads": {
+      "configured": "(same as edit)",
+      "simulation": "busy-threads",
+      "analysis": {
+        "bottleneck": "caller",
+        "suggestion": "Decision service: 6% utilized",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 400, 0, 1, 1, 0], "applications": [6400, 400, 0.0625, 1, 1, 0], "caller": [6400, 400, 0.0625, 4, 4, 0], "partner": ["Infinity", 400, 0, 1, 1, 0], "decisions": ["Infinity", 400, 0, 1, 1, 0], "store": ["Infinity", 400, 0, 1, 1, 0] },
+        "connections": { "submit": 400, "consume": 400, "call": 400, "publish": 400, "save": 400 },
+        "offeredTypes": { "source": ["ApplicationSubmitted"], "applications": ["ApplicationSubmitted"], "caller": ["ApplicationSubmitted"], "partner": ["ApplicationSubmitted"], "decisions": ["ApplicationSubmitted"], "store": ["ApplicationSubmitted"] }
+      },
+      "explanations": "(same as edit)",
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    },
+    "free-thread": {
+      "configured": "(same as edit)",
+      "simulation": "free-thread",
+      "analysis": {
+        "bottleneck": "caller",
+        "suggestion": "Decision service: 6% utilized",
+        "converged": true,
+        "iterations": 5,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": ["Infinity", 400, 0, 1, 1, 0], "applications": [6400, 400, 0.0625, 1, 1, 0], "caller": [6400, 400, 0.0625, 4, 4, 0], "partner": ["Infinity", 400, 0, 1, 1, 0], "decisions": ["Infinity", 400, 0, 1, 1, 0], "store": ["Infinity", 400, 0, 1, 1, 0] },
+        "connections": { "submit": 400, "consume": 400, "call": 400, "publish": 400, "save": 400 },
+        "offeredTypes": { "source": ["ApplicationSubmitted"], "applications": ["ApplicationSubmitted"], "caller": ["ApplicationSubmitted"], "partner": ["ApplicationSubmitted"], "decisions": ["ApplicationSubmitted"], "store": ["ApplicationSubmitted"] }
+      },
+      "explanations": "(same as edit)",
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "caller",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Decision service at 6% · 400/s of 6.4k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "400/s · no limit", { "modeled": false }],
+            "applications": ["ok", "6% · 400/s of 6.4k/s"],
+            "caller": ["ok", "6% · 400/s of 6.4k/s"],
+            "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+            "decisions": ["idle", "400/s · no limit"],
+            "store": ["idle", "400/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "caller",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Decision service at 31% · 2k/s of 6.4k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "2k/s · no limit", { "modeled": false }],
+            "applications": ["ok", "31% · 2k/s of 6.4k/s"],
+            "caller": ["ok", "31% · 2k/s of 6.4k/s"],
+            "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+            "decisions": ["idle", "2k/s · no limit"],
+            "store": ["idle", "2k/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "caller",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Decision service at 13% · 400/s of 3.2k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "400/s · no limit", { "modeled": false }],
+            "applications": ["ok", "13% · 400/s of 3.2k/s"],
+            "caller": ["ok", "13% · 400/s of 3.2k/s"],
+            "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+            "decisions": ["idle", "400/s · no limit"],
+            "store": ["idle", "400/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "caller",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Decision service at 6% · 400/s of 6.4k/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", "400/s · no limit", { "modeled": false }],
+            "applications": ["ok", "6% · 400/s of 6.4k/s"],
+            "caller": ["ok", "6% · 400/s of 6.4k/s"],
+            "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+            "decisions": ["idle", "400/s · no limit"],
+            "store": ["idle", "400/s · no limit", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "blocking": {
+      "tone": "ok",
+      "top": "caller",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Decision service at 6% · 400/s of 6.4k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "400/s · no limit", { "modeled": false }],
+        "applications": ["ok", "6% · 400/s of 6.4k/s"],
+        "caller": ["ok", "6% · 400/s of 6.4k/s"],
+        "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+        "decisions": ["idle", "400/s · no limit"],
+        "store": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    },
+    "busy-threads": {
+      "tone": "ok",
+      "top": "caller",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Decision service at 6% · 400/s of 6.4k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "400/s · no limit", { "modeled": false }],
+        "applications": ["ok", "6% · 400/s of 6.4k/s"],
+        "caller": ["ok", "6% · 400/s of 6.4k/s"],
+        "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+        "decisions": ["idle", "400/s · no limit"],
+        "store": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    },
+    "free-thread": {
+      "tone": "ok",
+      "top": "caller",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Decision service at 6% · 400/s of 6.4k/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["idle", "400/s · no limit", { "modeled": false }],
+        "applications": ["ok", "6% · 400/s of 6.4k/s"],
+        "caller": ["ok", "6% · 400/s of 6.4k/s"],
+        "partner": ["idle", "Limits unknown; enter measured or contracted values."],
+        "decisions": ["idle", "400/s · no limit"],
+        "store": ["idle", "400/s · no limit", { "modeled": false }]
+      }
+    }
+  }
+}

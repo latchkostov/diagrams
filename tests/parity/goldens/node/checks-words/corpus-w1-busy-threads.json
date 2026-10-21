@@ -1,0 +1,46 @@
+{
+  "summary": "2 warnings, 0 suggestions.",
+  "findings": {
+    "capacity:applications": { "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers." },
+    "capacity:caller": {
+      "title": "Decision service: scenario sizing",
+      "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+      "rationale": "Played headless with the same engine and seed as playback; a suggestion is offered as a fix only when a rerun with it bears it out.",
+      "fix": { "label": "Scale on busy threads" },
+      "shownMessage": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun confirmed a smaller backlog.",
+      "shownRationale": "Played with the same engine and seed as playback. A suggestion is a fix only when a rerun with it bears it out."
+    }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
+      {
+        "id": "capacity:caller",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Decision service: scenario sizing",
+        "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+        "targets": ["caller"],
+        "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      }
+    ],
+    "summary": "2 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
+      {
+        "id": "capacity:caller",
+        "rule": "capacity",
+        "severity": "warning",
+        "title": "Decision service: scenario sizing",
+        "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
+        "targets": ["caller"],
+        "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      }
+    ],
+    "summary": "2 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

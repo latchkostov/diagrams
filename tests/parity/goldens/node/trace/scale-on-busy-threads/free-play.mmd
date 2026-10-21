@@ -1,0 +1,17 @@
+---
+title: "Applications submitted #1 · 620 ms end to end · 1 copy"
+---
+sequenceDiagram
+  participant source as Applications submitted
+  participant applications as Applications
+  participant caller as Decision service
+  participant partner as Partner scoring API
+  participant decisions as Decisions
+  participant store as Case store
+  source-)applications: Applications submitted (+0.00 s)
+  applications-)caller: Applications submitted (+0.10 s)
+  caller->>partner: Applications submitted (+0.12 s)
+  Note over source,store: ⏱ 280 ms at Partner scoring API: processing
+  partner-->>caller: reply (+0.40 s)
+  caller-)decisions: Applications submitted (+0.40 s)
+  decisions-)store: Applications submitted (+0.50 s)

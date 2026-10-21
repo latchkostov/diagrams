@@ -1,0 +1,2 @@
+exit 0
+VALID <repo>/src/examples/pool-of-40.json: 5 nodes, 4 edges, 2 simulations

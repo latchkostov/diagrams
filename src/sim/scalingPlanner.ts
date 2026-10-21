@@ -45,7 +45,7 @@ export interface PlanSuggestion {
   /** max: raise the maximum; min: keep instances warm for the burst; partitions: the input caps useful readers;
    *  quota: an admission quota binds, more instances can't help; target: the backlog grew while the scaler's metric
    *  stayed under its target, so lower the target. */
-  kind: "max" | "min" | "partitions" | "quota" | "target";
+  kind: "max" | "min" | "partitions" | "quota" | "target" | "busyThreads";
   /** Authored values (before Capacity ×). */
   from: number;
   to: number;
@@ -90,12 +90,15 @@ interface Observation {
   endBacklog: number;
   peakDesired: number;
   rejected: number;
+  processed: number;
   /** The scaler's own desired count when the startup backlog peaked. */
   startupDesired?: number;
   /** The simulation's backlog goals about this node or its inputs that failed. */
   goalsFailed: string[];
+  working?: number;
+  waiting?: number;
   /** The highest metric seen under its target while the backlog grew and the scaler held its count. */
-  below?: { metric: number; target: number; metricKind?: string };
+  below?: { metric: number; target: number; metricKind?: string; waitingMajority: boolean };
 }
 interface Watched {
   id: string;
@@ -239,7 +242,7 @@ function withTarget(
   const c = next.controller;
   if (c.kind === "hpa" || (c.kind === "keda" && !c.triggers.length)) {
     const m = c.settings.metrics[0];
-    if (!m || !metricKind?.startsWith(m.source.resource)) return undefined;
+    if (!m || m.source.kind !== "resource" || !metricKind?.startsWith(m.source.resource)) return undefined;
     m.target =
       m.target.kind === "utilization"
         ? { kind: "utilization", percentOfRequest: value }
@@ -289,6 +292,7 @@ function observe(
         endBacklog: 0,
         peakDesired: 0,
         rejected: 0,
+        processed: 0,
         goalsFailed: [] as string[],
       },
     ]),
@@ -322,7 +326,13 @@ function observe(
       o.backlog = Math.max(o.backlog, backlog);
       o.endBacklog = backlog;
       o.rejected = (engine.measure({ node: w.id, field: "rejected" }) ?? 0) * scale;
+      o.processed = (engine.measure({ node: w.id, field: "processed" }) ?? 0) * scale;
       if (!f) continue;
+      if (revisionAtLeast(d.planning?.revision, "p3-w1")) {
+        const threads = engine.threadUsage(w.id);
+        o.working = (o.working ?? 0) + (threads?.working ?? 0);
+        o.waiting = (o.waiting ?? 0) + (threads?.waiting ?? 0);
+      }
       if (f.starting > 0 && backlog > o.startupBacklog) {
         o.startupBacklog = backlog;
         o.startupDesired = f.desired;
@@ -368,8 +378,14 @@ function observe(
         f.desired < max &&
         decision.reason !== "override" &&
         decision.metric > (o.below?.metric ?? 0)
-      )
-        o.below = { metric: decision.metric, target: decision.target, metricKind: kindOf(decision) };
+      ) {
+        o.below = {
+          metric: decision.metric,
+          target: decision.target,
+          metricKind: kindOf(decision),
+          waitingMajority: (o.waiting ?? 0) > (o.working ?? 0),
+        };
+      }
     }
   };
   let time = 0;
@@ -492,12 +508,13 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
       ],
     };
   };
-  // CPU targets cannot repair W1's held-thread ceiling. The busy-thread suggestion arrives in PR 4.
   const waitingCallers = revisionAtLeast(d.planning?.revision, "p3-w1")
     ? new Set(d.edges.filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow")).map((e) => e.from))
     : new Set<string>();
   for (const w of watched) {
     const o = first.get(w.id)!;
+    // Busy-thread growth while catching up is not a range problem once the scenario has drained.
+    if (o.maxed && o.metricKind?.startsWith("busyThreads") && o.endBacklog === 0) continue;
     const a = nodes.get(w.id)!.props!.autoscaling as AutoscalingConfig;
     const c = w.controller;
     const common = {
@@ -521,7 +538,32 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
         to,
         fix: [{ node: w.id, props: { autoscaling: withRange(a, "maxReplicas", to) } }],
       });
-    } else if (!o.maxed && o.below && !waitingCallers.has(w.id)) {
+    } else if (
+      !o.maxed &&
+      o.below?.waitingMajority &&
+      (c.kind === "hpa" || c.kind === "keda") &&
+      o.below.metricKind?.startsWith("cpu") &&
+      // A metric change cannot help this scenario if its first new pod is ready only at its end.
+      horizonMs >
+        Math.max(c.settings.syncMs, ...c.settings.metrics.map((m) => m.windowMs + m.metricDelayMs)) +
+          (resolveNodeProps(d, nodes.get(w.id)!).resources?.startup.delayMs ?? 0)
+    ) {
+      const autoscaling = structuredClone(a);
+      if (autoscaling.mode === "on" && "settings" in autoscaling.controller) {
+        const metric = autoscaling.controller.settings.metrics.find(
+          (m) => m.source.kind === "resource" && m.source.resource === "cpu",
+        )!;
+        metric.source = { kind: "pods", metric: "busyThreads" };
+        metric.target = { kind: "utilization", percentOfRequest: 70 };
+        suggestions.push({
+          ...common,
+          kind: "busyThreads",
+          from: o.below.target,
+          to: 70,
+          fix: [{ node: w.id, props: { autoscaling } }],
+        });
+      }
+    } else if (!o.maxed && o.below && !o.below.waitingMajority && !waitingCallers.has(w.id)) {
       // Lower the target under what the backlog-bound fleet showed, so the controller acts on it.
       const to = Math.max(1, Math.floor(o.below.metric * 0.9));
       const autoscaling = to < o.below.target ? withTarget(a, o.below.metricKind, to) : undefined;
@@ -592,11 +634,13 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
       const improved =
         s.kind === "min"
           ? after.goalsFailed.length < before.goalsFailed.length
-          : s.kind === "target"
-            ? after.backlog < before.backlog
-            : s.kind === "partitions" || before.endBacklog > 0
-              ? after.endBacklog < before.endBacklog
-              : !after.maxed;
+          : s.kind === "busyThreads"
+            ? after.backlog < before.backlog && after.processed > before.processed
+            : s.kind === "target"
+              ? after.backlog < before.backlog
+              : s.kind === "partitions" || before.endBacklog > 0
+                ? after.endBacklog < before.endBacklog
+                : !after.maxed;
       if (improved) return { ...s, verified };
       // Raising the maximum didn't drain the backlog: the input's partitions bound its useful readers.
       const w = watched.find((x) => x.id === s.node)!;
@@ -612,7 +656,7 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
   // A fix the runs couldn't verify is offered only as words. A lower target or a warm minimum is a
   // speculative remedy: unless a rerun bears it out it isn't reported at all.
   suggestions = suggestions
-    .filter((s) => !((s.kind === "target" || s.kind === "min") && !(s.fix && s.verified)))
+    .filter((s) => !((s.kind === "target" || s.kind === "busyThreads" || s.kind === "min") && !(s.fix && s.verified)))
     .map((s) => (s.fix && !s.verified ? { ...s, fix: undefined } : s));
   counter.ticks += local.ticks;
   counter.runs += runs;
