@@ -9,8 +9,9 @@ The macro header retains Play as its primary action and adds a secondary Maximis
 toolbar control is duplicated. The modal replaces Maximise with Close diagram, occupies its available
 viewport even when the macro has a small fixed height, and starts still. Esc and Close dismiss it;
 closing restores focus to Maximise. Failed opening reports an error and leaves a retryable button.
-Zoom, Fit and playback remain local; attribution is suppressed and there are no outbound/download
-controls. The manifest keeps its default block layout because Forge has no wide/full-width option.
+Zoom, Fit and playback remain local; attribution and outbound app links are absent. Recording and
+sequence exports also stay local; Forge permits downloads from a user gesture and clipboard writes.
+The manifest keeps its default block layout because Forge has no wide/full-width option.
 
 Browser regressions exercise the real resource and a fake bridge under the existing no-egress CSP,
 including an outer iframe that mirrors Forge's automatic document resizing. Real-site auto-resizer

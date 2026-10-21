@@ -432,11 +432,15 @@ test("Forge picker offers native and legacy suffixes, with specific file input h
   await setup(page);
   await page.goto(`${origin}/fake/config/index.html`);
   await expect(page.getByTestId("forge-save")).toBeEnabled();
-  expect(
-    await page
-      .getByTestId("forge-attachment")
-      .evaluate((el) => Array.from((el as HTMLSelectElement).options, (option) => option.text)),
-  ).toEqual(["Choose a .diagram.json attachment…", "orders.diagram.json", "older.livediagram.json"]);
+  const picker = page.getByTestId("forge-attachment");
+  await expect(picker).toHaveJSProperty("length", 3);
+  await expect(picker).toHaveText("Choose a .diagram.json attachment…orders.diagram.jsonolder.livediagram.json");
+  // Select both IDs through the control; never enumerate a picker to discover fixtures.
+  for (const id of ["10", "7"]) {
+    await picker.selectOption(id);
+    await expect(picker).toHaveValue(id);
+    await expect(page.getByTestId("forge-save")).toBeEnabled();
+  }
   await expect(page.getByTestId("forge-file")).toHaveAttribute("accept", ".diagram.json,.livediagram.json");
   await expect(page.getByTestId("forge-height-help")).toContainText("between 480 and 900 px");
 });

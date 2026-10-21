@@ -7,7 +7,8 @@ share one suffix rule.
 Maximise opens the same resource in Forge's supported `max` modal, passing only attachment references,
 simulation and theme settings. It starts still until Play, fills the modal and closes with Esc or Close
 diagram. Inline playback pauses and closing returns focus to Maximise. No browser Fullscreen or egress
-permission is needed; the bundle exposes no download or outbound app control.
+permission is needed; no viewer action requires egress. Existing local recording and sequence exports
+remain available under Forge's download and clipboard permissions.
 
 Automatic height uses the viewer's measured fit-to-width report, bounded to 480–900 px. The lower bound
 keeps diagrams readable, and the upper bound limits page takeover. Fixed heights stay unchanged.
@@ -20,3 +21,11 @@ keys change the catalog message counts and viewerForge area fingerprints. Update
 also change that area's fingerprint. Existing locales have no viewerForge translations and continue
 to use English fallback, as documented by the i18n tooling. Diagram, simulation and rendering outputs
 stay unchanged.
+
+## Verification follow-up
+
+The full gate caught a forbidden picker-enumeration assertion in the new browser test; it now checks
+exact text, option count and selection of both attachment IDs through `data-testid`. It also exposed a
+wall-clock dependency in the existing public-example evidence test under coverage and CPU contention.
+That semantic check now injects a frozen clock while preserving every completeness and loss assertion;
+the evidence deadline tests retain their moving fake clocks. No runtime or diagram output changes.

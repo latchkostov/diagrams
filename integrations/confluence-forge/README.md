@@ -123,7 +123,9 @@ but cannot prove Confluence's permission checks, attachment redirects or multipa
 
 The reusable viewer is packaged unchanged except for suppressing its outbound React Flow attribution
 link in this integration build. Zoom, Fit, Live and simulation controls work locally; the Forge host
-supplies Maximise and Close. The viewer has no download or Open in Live Diagrams control. The default
+supplies Maximise and Close. The toolbar has no native diagram download or Open in Live Diagrams control.
+Existing recording and sequence exports stay local, with no egress. Forge's default iframe permissions
+allow user-initiated downloads and clipboard writes. The default
 viewer and main app keep their existing behavior. Runtime
 diagram content stays in memory and moves only through the reader's Forge bridge to/from Confluence.
 No Forge functions, app storage, `asApp`, remotes, external fetch permissions or runtime dependencies on
