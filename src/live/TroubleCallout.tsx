@@ -26,8 +26,8 @@ const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon
 
 interface TroubleProps {
   trouble: Trouble;
-  /** Runs the trouble's action; omitted (no button) where it can't run here. */
-  onAction?: (action: TroubleAction) => void;
+  /** Runs the trouble's action, with the button's words (a fix's toast repeats them); omitted where it can't run. */
+  onAction?: (action: TroubleAction, label: string) => void;
   onDismiss: () => void;
   /** The callout is on screen with this cause (once per cause). */
   onShown?: (key: string) => void;
@@ -42,6 +42,14 @@ interface TroubleProps {
  */
 export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating, disabledHint }: TroubleProps) {
   const action = TROUBLE_ACTIONS[trouble.action.kind];
+  const label =
+    trouble.action.kind === "restore-boundary"
+      ? t("fault.restoreNamed", { label: trouble.action.label })
+      : trouble.action.kind === "scale-threads"
+        ? (planFixLabel(trouble.action.plan) ?? "")
+        : trouble.action.kind === "clear-fault"
+          ? t("fault.clearAction")
+          : action.label();
   // On screen: this cause has had its turn this run (one hidden behind a panel or a presentation hasn't).
   useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
@@ -79,20 +87,13 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       {onAction && (
         <button
           className="btn cap-callout-apply is-fix"
-          onClick={() => onAction(trouble.action)}
+          onClick={() => onAction(trouble.action, label)}
           data-testid="trouble-action"
           data-action={trouble.action.kind}
           disabled={!!disabledHint}
           title={disabledHint}
         >
-          {action.icon && <LiveIcon name={action.icon} size={13} />}{" "}
-          {trouble.action.kind === "restore-boundary"
-            ? t("fault.restoreNamed", { label: trouble.action.label })
-            : trouble.action.kind === "scale-threads"
-              ? planFixLabel(trouble.action.plan)
-              : trouble.action.kind === "clear-fault"
-                ? t("fault.clearAction")
-                : action.label()}
+          {action.icon && <LiveIcon name={action.icon} size={13} />} {label}
         </button>
       )}
       <button

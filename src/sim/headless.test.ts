@@ -40,10 +40,10 @@ it("replays free play's actual seed, scale, rates, capacity, manual injections a
     c.setTraffic(false);
     c.step(500);
     const context = structuredClone(c.verificationContext());
-    const run = createHeadlessRun(d, context.simulation, { remaining: 10000 }, context);
+    const run = createHeadlessRun(d, context.origin.simulation, { remaining: 10000 }, context);
     advanceHeadless(run, c.snapshot().time);
-    expect(context.simulation.seed).toBe(42);
-    expect(context.simulation.scale).toBe(2);
+    expect(context.origin.simulation.seed).toBe(42);
+    expect(context.origin.simulation.scale).toBe(2);
     expect(run.engine.snapshot().nodes).toEqual(c.snapshot().nodes);
     expect(run.engine.snapshot().edges).toEqual(c.snapshot().edges);
   } finally {
@@ -61,11 +61,54 @@ it("keeps traffic inherited at a new run's origin before a later traffic-off con
     c.setTraffic(false);
     c.step(500);
     const context = c.verificationContext();
-    expect(context.initialTraffic).toBe(true);
-    const run = createHeadlessRun(d, context.simulation, { remaining: 10000 }, context);
+    expect(context.origin.initialTraffic).toBe(true);
+    const run = createHeadlessRun(d, context.origin.simulation, { remaining: 10000 }, context);
     advanceHeadless(run, c.snapshot().time);
     expect(run.engine.snapshot().nodes).toEqual(c.snapshot().nodes);
   } finally {
     c.dispose();
   }
+});
+
+it.each([501, 502, 503, 504, 50001])("reaches a %s ms horizon that ends between engine ticks", (durationMs) => {
+  const d = waitingFixture();
+  const run = createHeadlessRun(
+    d,
+    { id: "fractional", title: "Fractional", durationMs, traffic: [] },
+    { remaining: 100 },
+  );
+  advanceHeadless(run, durationMs);
+  expect(run.state().done).toBe(true);
+  expect(run.state().time).toBe(Math.ceil(durationMs / 10) * 10);
+});
+
+it("samples once per simulated second whatever replay controls split the steps", () => {
+  const d = waitingFixture();
+  const sim = {
+    id: "plain",
+    title: "Plain",
+    durationMs: 5000,
+    traffic: [{ id: "load", node: "source", shape: { kind: "constant" as const, ratePerSec: 25, durationMs: 5000 } }],
+    timeline: [{ atMs: 1500, action: { do: "note" as const, text: "Pause", pause: true } }],
+  };
+  const times = (controls: { time: number; op: { kind: "traffic"; on: false } }[]) => {
+    const run = createHeadlessRun(
+      d,
+      sim,
+      { remaining: 100000 },
+      {
+        revision: 0,
+        origin: { diagram: d, simulation: sim, initialTraffic: false },
+        controls,
+      },
+    );
+    const seen: number[] = [];
+    advanceHeadless(run, 5000, () => seen.push(run.state().time));
+    return seen;
+  };
+  const plain = times([]);
+  expect(plain).toEqual([1000, 1500, 2500, 3500, 4500, 5000]);
+  expect(
+    times(Array.from({ length: 49 }, (_, i) => ({ time: (i + 1) * 100, op: { kind: "traffic", on: false } }))),
+  ).toEqual(plain);
 });

@@ -1,7 +1,15 @@
 import type { DiagramFile, Simulation } from "../model/types";
 import { createSimulationRun } from "./simulation";
-import type { Fault } from "../model/faults";
-import type { InjectOptions, NodeSimProps, NodeStatus, SimulationRun } from "./types";
+import type { SimulationRun } from "./types";
+import {
+  applyDue,
+  dispatchReplayControl,
+  untilDue,
+  type ReplayTarget,
+  type TimedReplayControl,
+  type VerificationContext,
+} from "./replayControls";
+import { SIM_TICK_MS } from "./scheduler";
 import { resolveMultiplier, resolveScale } from "./units";
 import { WorkBudgetError } from "./engine";
 
@@ -65,40 +73,58 @@ export function startWork(d: DiagramFile, sim: Simulation): number {
   return (sent * resolveMultiplier(sim.multipliers?.traffic)) / resolveScale(sim.scale);
 }
 
-/** Advance to an absolute horizon, passing every narration pause, or reject an incomplete measurement. */
+export type { ReplayControl, TimedReplayControl, VerificationContext, VerificationOrigin } from "./replayControls";
+
+/** A headless run's recorded controls still to apply, and what they act on. */
+const replays = new WeakMap<
+  SimulationRun,
+  { controls: readonly TimedReplayControl[]; cursor: number; target: ReplayTarget }
+>();
+
+/** Applies the run's recorded controls due by now, in order; returns the ms until its next one. */
+function applyRecorded(run: SimulationRun): number {
+  const replay = replays.get(run);
+  if (!replay) return Infinity;
+  const now = run.state().time;
+  replay.cursor = applyDue(replay.controls, replay.cursor, now, (entry) =>
+    dispatchReplayControl(entry.op, replay.target),
+  );
+  return untilDue(replay.controls, replay.cursor, now);
+}
+
+/**
+ * Advance to an absolute horizon (rounded up to the engine's tick), or reject an incomplete measurement. At each
+ * boundary the recorded controls due apply first, in order (src/sim/replayControls.ts); a pausing note still waiting
+ * after them is passed. `sample` runs once per simulated second of play, and where the run stopped at a pausing note,
+ * whatever controls split the steps in between.
+ */
 export function advanceHeadless(run: SimulationRun, horizon: number, sample?: () => void): void {
-  for (let steps = 0; steps <= Math.ceil(horizon / 10) + 10000; steps++) {
+  const end = Math.ceil(horizon / SIM_TICK_MS) * SIM_TICK_MS;
+  let from = run.state().time;
+  for (let steps = 0; steps <= Math.ceil(end / SIM_TICK_MS) + 10000; steps++) {
+    const next = applyRecorded(run);
     const state = run.state();
-    if (state.done || state.time >= horizon) return;
+    if (state.done || state.time >= end) return;
     if (state.waiting) {
       run.resume();
       continue;
     }
-    run.step(Math.min(1000, horizon - state.time));
-    if (run.state().time <= state.time && !run.state().waiting)
-      throw new WorkBudgetError("Headless replay did not advance");
-    sample?.();
+    const target = Math.min(from + 1000, end);
+    run.step(Math.min(target - state.time, next));
+    const after = run.state();
+    if (after.time <= state.time && !after.waiting) throw new WorkBudgetError("Headless replay did not advance");
+    if (after.time >= target || after.waiting || after.done) {
+      sample?.();
+      from = after.time;
+    }
   }
   throw new WorkBudgetError("Headless replay did not reach its horizon");
 }
 
-export type ReplayControl =
-  | { kind: "traffic"; on: boolean }
-  | { kind: "inject"; node: string; count: number; opts?: InjectOptions }
-  | { kind: "injectSources"; count: number }
-  | { kind: "sendOne"; node: string; type?: string }
-  | { kind: "fault"; fault: Fault }
-  | { kind: "status"; node: string; status: NodeStatus }
-  | { kind: "props"; node: string; patch: NodeSimProps };
-
-/** Resolved run origin and controls, detached from playback speed and narration. */
-export interface VerificationContext {
-  simulation: Simulation;
-  controls: { time: number; op: ReplayControl }[];
-  initialTraffic: boolean;
-}
-
-/** The same control boundaries as live replay; all allocations consume the caller's shared budget. */
+/**
+ * A run of `sim` that replays `context`'s controls as `advanceHeadless` reaches them: the origin's traffic switch,
+ * then every recorded control at its time. Every allocation consumes the caller's shared budget.
+ */
 export function createHeadlessRun(
   d: DiagramFile,
   sim: Simulation,
@@ -107,47 +133,17 @@ export function createHeadlessRun(
 ): SimulationRun {
   const run = createSimulationRun(d, sim, { messageBudget });
   run.setTraceActions(false);
-  run.engine.setTraffic(context?.initialTraffic ?? false);
-  const controls = context?.controls ?? [];
-  let cursor = 0;
-  const apply = () => {
-    while (cursor < controls.length && controls[cursor].time <= run.state().time) {
-      const op = controls[cursor++].op;
-      switch (op.kind) {
-        case "traffic":
-          run.engine.setTraffic(op.on);
-          break;
-        case "fault":
-          run.engine.setFault(op.fault);
-          break;
-        case "status":
-          run.engine.setNodeStatus(op.node, op.status);
-          break;
-        case "props":
-          run.engine.setNodeProps(op.node, op.patch);
-          break;
-        case "inject":
-          run.inject(op.node, op.count, op.opts);
-          break;
-        case "sendOne":
-          run.engine.inject(op.node, 1, op.type ? { type: op.type } : undefined);
-          break;
-        case "injectSources": {
-          const flows = d.edges.filter((e) => !e.relation || e.relation === "flow");
-          const fed = new Set(flows.map((e) => e.to));
-          const sources = new Set(flows.map((e) => e.from));
-          for (const n of d.nodes) if (sources.has(n.id) && !fed.has(n.id)) run.inject(n.id, op.count);
-          break;
-        }
-      }
-    }
-  };
-  const step = run.step;
-  run.step = (ms) => {
-    apply();
-    step(Math.min(ms, controls[cursor] ? controls[cursor].time - run.state().time : Infinity));
-    apply();
-  };
-  apply();
+  run.engine.setTraffic(context?.origin.initialTraffic ?? false);
+  if (context?.controls.length)
+    replays.set(run, {
+      controls: context.controls,
+      cursor: 0,
+      target: {
+        engine: run.engine,
+        resume: () => run.resume(),
+        inject: (node, count, opts) => run.inject(node, count, opts),
+        setMultipliers: (patch) => run.setMultipliers(patch),
+      },
+    });
   return run;
 }

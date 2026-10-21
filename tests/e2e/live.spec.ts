@@ -691,9 +691,10 @@ test.describe("live view", () => {
   });
 
   test("filled live badges meet AA contrast throughout the heat gradient in both themes", async ({ page }) => {
-    await gotoLab(page, "live-badge-states");
+    // Retried failures are not losses: the red count is on the queue once its messages dead-letter (about 8 s in).
+    await gotoLab(page, "live-badge-states", { at: 10 });
     const metric = page.getByTestId("node-metric-orders");
-    const alert = page.getByTestId("node-alert-worker");
+    const alert = page.getByTestId("node-alert-jobs");
     await expect(metric).toBeVisible();
     await expect(alert).toBeVisible();
     await page.getByTestId("live-play").click();

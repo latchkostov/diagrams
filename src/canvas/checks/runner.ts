@@ -47,18 +47,19 @@ function getWorker(): Worker | null {
 
 const loadEngine = () => import("../../checks/run");
 
-/** No speculative callout fixes, and no reruns on the UI thread. */
-export async function threadFixOffThread(
-  diagram: DiagramFile,
-  threadFix: ThreadFixRequest,
-): Promise<TroubleAction | undefined> {
+/**
+ * No speculative callout fixes, and no reruns on the UI thread. The caller keeps at most one in flight
+ * (src/live/useObservedTrouble.ts); a failed worker resolves to no fix.
+ */
+export async function threadFixOffThread(threadFix: ThreadFixRequest): Promise<TroubleAction | undefined> {
   const w = typeof Worker === "function" ? getWorker() : null;
   if (!w) return;
   const id = ++seq;
   try {
     const response = await new Promise<CheckResponse>((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      w.postMessage({ id, diagram, threadFix } satisfies CheckRequest);
+      // The context's diagram is the request's: one copy crosses to the worker.
+      w.postMessage({ id, diagram: threadFix.context.origin.diagram, threadFix } satisfies CheckRequest);
     });
     return "threadFix" in response ? response.threadFix : undefined;
   } catch {

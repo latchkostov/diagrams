@@ -4,6 +4,8 @@ import { plannerFixture } from "../lab/plannerFixture";
 import type { DiagramFile } from "../model/types";
 import type { AppServiceController, AutoscalingConfig } from "../model/autoscaling";
 import { cloudFixture } from "../lab/cloudFixture";
+import busy from "../examples/scale-on-busy-threads.json";
+import type { VerificationContext } from "./headless";
 import { createEngine, WorkBudgetError } from "./engine";
 
 const plan = (d: DiagramFile) => planScaling(structuredClone(d))[0];
@@ -253,4 +255,18 @@ describe("planner bounds and cache (review round 1)", () => {
     });
     expect(reads[1] / reads[0]).toBeLessThan(10);
   });
+});
+
+it("keeps planner sampling independent of redundant replay-control boundaries", () => {
+  const d = structuredClone(busy) as DiagramFile;
+  const sim = d.simulations![0];
+  sim.durationMs = 10000;
+  sim.timeline = [];
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: Array.from({ length: 99 }, (_, i) => ({ time: (i + 1) * 100, op: { kind: "traffic", on: false } })),
+  };
+  const baseline = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 100000 });
+  expect(planScaling(d, { ticks: 0, runs: 0 }, { remaining: 100000 }, context)).toEqual(baseline);
 });

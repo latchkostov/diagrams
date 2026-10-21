@@ -22,7 +22,6 @@ import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";
 import { useFollowing } from "../watchBridge";
 import { LiveSync } from "./liveSync";
-import { planFixLabel } from "../../planning/scalingPlanText";
 import { useInteraction } from "../../canvas/interaction";
 export function useLiveDiagramChanges({
   session,
@@ -134,7 +133,7 @@ export function useLiveFixes({
     session.state.snapshot.nodes,
   );
   const runTroubleAction = useCallback(
-    (action: TroubleAction) => {
+    (action: TroubleAction, label: string) => {
       if (slowRef.current?.session.active && action.kind !== "events" && action.kind !== "inputs") return;
       if (action.kind === "restore-boundary")
         controller.setFault({ kind: "boundary", boundary: action.boundary, down: false });
@@ -179,7 +178,8 @@ export function useLiveFixes({
               }),
             });
           }
-          sayThreadFix(undoFix, planFixLabel(action.plan)!, saved?.title);
+          // The words on the button the person pressed (TroubleCallout), in their language.
+          sayThreadFix(undoFix, label, saved?.title);
         }
       } else if (action.kind === "add-timeout") {
         if (editor) {

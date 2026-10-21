@@ -1,33 +1,29 @@
-import type { DiagramFile, Simulation } from "../model/types";
+import type { Simulation } from "../model/types";
 import type { Trouble, TroubleAction } from "./observedTrouble";
 import { planScaling } from "../sim/scalingPlanner";
 import { estimateTotalMs } from "../sim/simulation";
 import { realSnapshot } from "../sim/units";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
-import { freePlaySimulation, emptyInputs } from "./capacityModel";
 import { planDescriptor } from "../planning/scalingPlanText";
 
 export const THREAD_FIX_LIMITS = { messages: 100_000, startWork: 1_000_000 };
 
 export interface ThreadFixRequest {
-  simulation: Simulation | null;
-  context?: VerificationContext;
+  /** The live run as it played (LiveController.verificationContext): every replay starts here. */
+  context: VerificationContext;
   trouble: Trouble;
+  /** When the trouble was seen (simulation ms). */
   time: number;
 }
 
 /** Cheapest means retuning an existing scaler before adding timeout failures, then
  * changing call semantics. Ties keep planner order; every fix must win a same-seed rerun. */
-export function confirmedThreadFix(d: DiagramFile, request: ThreadFixRequest): TroubleAction | undefined {
-  const { trouble } = request;
+export function confirmedThreadFix(request: ThreadFixRequest): TroubleAction | undefined {
+  const { trouble, context } = request;
   if (trouble.action.kind !== "add-timeout" && trouble.action.kind !== "free-thread") return;
   const edge = trouble.action.edge;
-  const resolved: Simulation = request.context?.simulation ??
-    request.simulation ?? {
-      ...freePlaySimulation(d, emptyInputs()),
-      seed: 7,
-      durationMs: 60000,
-    };
+  const d = context.origin.diagram;
+  const resolved = context.origin.simulation;
   const horizon = Math.min(60000, estimateTotalMs(resolved));
   if (request.time > horizon) return;
   const sim = { ...resolved, durationMs: horizon };
@@ -35,7 +31,7 @@ export function confirmedThreadFix(d: DiagramFile, request: ThreadFixRequest): T
   const messages = { remaining: THREAD_FIX_LIMITS.messages };
   if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return;
   const measure = (candidate: Simulation) => {
-    const run = createHeadlessRun(d, candidate, messages, request.context);
+    const run = createHeadlessRun(d, candidate, messages, context);
     advanceHeadless(run, horizon);
     const snapshot = realSnapshot(run.engine.snapshot());
     const n = snapshot.nodes[trouble.node];
@@ -47,7 +43,7 @@ export function confirmedThreadFix(d: DiagramFile, request: ThreadFixRequest): T
   try {
     const candidates: Extract<TroubleAction, { kind: "free-thread" | "add-timeout" }>[] = [];
     // The inspector's planner owns scaling advice. Reuse its exact verified policy and seed.
-    const plan = planScaling({ ...d, simulations: [sim] }, { ticks: 0, runs: 0 }, messages, request.context)[0];
+    const plan = planScaling({ ...d, simulations: [sim] }, { ticks: 0, runs: 0 }, messages, context)[0];
     if (plan?.reason === "budget" || plan?.reason === "start") return;
     const scaling = plan?.suggestions.find((s) => s.node === trouble.node && s.fix && s.verified);
     if (scaling?.fix)

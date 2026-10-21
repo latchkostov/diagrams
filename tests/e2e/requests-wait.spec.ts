@@ -247,6 +247,8 @@ test("the trouble fix updates the active waiting override and undo restores play
   await page.getByTestId("live-play").click();
   await page.clock.runFor(11000);
   await page.getByTestId("live-play").click();
+  // The callout offers Events until the off-thread same-seed rerun confirms the fix (single-flight verification).
+  await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "free-thread");
   await page.getByTestId("trouble-action").click();
   await page.clock.runFor(400);
   await expect

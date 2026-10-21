@@ -31,7 +31,7 @@ const scope = self as unknown as WorkerScope;
 scope.onmessage = (e) => {
   const { id, diagram, plan } = e.data;
   try {
-    if (e.data.threadFix) scope.postMessage({ id, threadFix: confirmedThreadFix(diagram, e.data.threadFix) });
+    if (e.data.threadFix) scope.postMessage({ id, threadFix: confirmedThreadFix(e.data.threadFix) });
     else if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
     else {
       // The capacity check's plans go back with its result (memoized: no second run), for main-thread readers.
