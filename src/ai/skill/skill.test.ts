@@ -1026,10 +1026,12 @@ describe("export-html.mjs", () => {
 });
 
 describe("releasing the viewer", () => {
-  it("uses commit tracking without a competing manifest version", () => {
+  it("keeps the plugin release version in one manifest, outside the downloadable skill", () => {
     const manifest = JSON.parse(readFileSync(path.join(root, ".claude-plugin", "marketplace.json"), "utf8"));
     expect(manifest.plugins[0]).not.toHaveProperty("version");
-    expect(existsSync(path.join(skill, ".claude-plugin", "plugin.json"))).toBe(false);
+    const plugin = read(path.join(skill, ".claude-plugin", "plugin.json"));
+    expect(plugin.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(readSkill().every((f) => f.name === "SKILL.md" || /^(reference|scripts)\//.test(f.name))).toBe(true);
   });
 
   it("a release that fails partway changes nothing, so a retry refreshes both assets", () => {

@@ -1,4 +1,4 @@
-// Refresh committed viewer assets; plugin updates track git commits (docs/PARALLEL-WORK.md).
+// Refresh committed viewer assets; release versions are reviewed separately (skills/livediagrams/README.md).
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -55,4 +55,4 @@ if (!stale.length) {
 // Stage every asset first and roll back a failed swap.
 viewer.applyRelease(Object.fromEntries(stale.map((rel) => [path.join(skill, rel), fresh[rel]])));
 for (const rel of stale) console.log(`wrote ${SKILL_DIR}/${rel} (${kB(fresh[rel])})`);
-console.log("Skill assets refreshed. Commit these files; Claude Code updates track git commits.");
+console.log("Skill assets refreshed. Commit these files and review the plugin README's release version policy.");

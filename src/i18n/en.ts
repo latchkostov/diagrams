@@ -2539,7 +2539,8 @@ const en = {
   "staticSkill.image": "{label}: it tells you how to export one from the app.",
   "staticSkill.linkLabel": "Share link",
   "staticSkill.link": "{label}: anyone who has the link can open the diagram, so private diagrams never get one.",
-  "staticSkill.claudeCommands": "Run these two commands in Claude Code:",
+  "staticSkill.claudeCommands":
+    "Coming soon: this skill will also be in Claude's plugin directory once approved. Run these two commands in Claude Code:",
   "staticSkill.claudeApps": "Claude apps (claude.ai, desktop)",
   "staticSkill.settings": "Settings > Capabilities > Skills",
   "staticSkill.upload": "Download {zip}, then upload it in {settings}.",
