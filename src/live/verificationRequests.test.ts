@@ -49,6 +49,42 @@ it("scripted property changes after the trouble appears never queue more verific
   }
 });
 
+it("scripted property changes preserve a completed verification", async () => {
+  // Review 20261021-141142: with the first answer settled, single flight can't hide a revision that changes on its own.
+  const d = structuredClone(payment) as DiagramFile;
+  d.simulations![0].timeline!.push(
+    ...Array.from({ length: 50 }, (_, i) => ({
+      atMs: 15010 + i * 100,
+      action: { do: "props" as const, node: "orders", props: { latencyMs: 5 + (i % 2) } },
+    })),
+  );
+  const c = new LiveController(d);
+  const { requests, verify } = held();
+  const tracker = new TroubleTracker(c, verify);
+  const stop = tracker.subscribe(() => {});
+  const fix = { kind: "add-timeout" as const, edge: "pay", deadlineMs: 600 };
+  try {
+    c.selectSimulation(d.simulations![0]);
+    for (let i = 0; i < 150; i++) c.step(100);
+    expect(requests).toHaveLength(1);
+    requests[0].resolve(fix);
+    await settle();
+    expect(tracker.current()?.action).toEqual(fix);
+    const revision = c.verificationRevision;
+    for (let i = 0; i < 50; i++) {
+      c.step(100);
+      await settle();
+      expect(tracker.current()?.action).toEqual(fix);
+    }
+    expect(c.effectiveProps("orders").latencyMs).toBe(6);
+    expect(c.verificationRevision).toBe(revision);
+    expect(requests).toHaveLength(1);
+  } finally {
+    stop();
+    c.dispose();
+  }
+});
+
 it("a burst of live changes keeps one request in flight and sends only the latest revision next", async () => {
   const d = payment as DiagramFile;
   const c = new LiveController(d);

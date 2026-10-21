@@ -24,3 +24,18 @@ second (and at pausing notes) whatever controls split the steps. No UI, examples
 A fix's toast repeats the words on the callout button that applied it, so the live view no longer loads the planning
 text for it. An end-to-end test now waits for the verified fix before pressing it, and the badge contrast test reads
 the red count where retried failures now leave it (the dead-lettering queue).
+
+## Verification review follow-ups and the live session budget
+
+Headless replays apply the controls due at a boundary before the planner samples it, so a control recorded at the
+very end (2,000 messages injected at 50 s, say) is in the last sample and in a fix's verified end backlog. The
+engine now reports the replica range a scaled node may use at the run's current Capacity × (`replicaBounds`, read
+only, outside snapshots), and the planner judges saturation and converts replica counts to authored values with it,
+so a Capacity change recorded during the run sizes the same as one saved in the simulation.
+
+The live session is back within its download budget (130,753 B gzip against 135,000 B; it was 138,039 B). Applying a
+thread fix ships in the trouble callout's own chunk and runs synchronously from its button. Slow motion's script
+(pacing, captions, frames) downloads when slow motion first starts, or once Live is idle: until it arrives the
+session shows that it is looking ahead with live paused where it was asked, Esc cancels, and a failed download goes
+back to live with a Retry that takes the keyboard and gives it back. A toast's action pressed from the keyboard now
+returns focus to where it came from when the toast goes, unless the action moved it.

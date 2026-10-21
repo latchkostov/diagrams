@@ -18,7 +18,8 @@ import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../traceCardLayout";
 import { isRecordingActive } from "../record/framing";
 import { followPan, planCamera, type CameraPlan, type FlowBox, type Insets, type View } from "./camera";
 import { SlowPainter, type PaintedLabel } from "./painter";
-import { buildScript } from "./script";
+import { loadSlowScript, slowScript } from "./scriptChunk";
+import { whenIdle } from "../../lib/lazyLoad";
 import { SlowMotion, type SlowSource, type SlowState } from "./session";
 
 type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
@@ -107,7 +108,8 @@ export function useSlowMotion(opts: {
         const zoom = plan.current?.zoom ?? store.getState().transform[2];
         const root = store.getState().domNode;
         const stencils = new Map(diagram.nodes.map((n) => [n.id, n.stencil]));
-        return buildScript({
+        // Only called once the script code arrived (session.ts waits for it before capturing).
+        return slowScript()!.buildScript({
           trace,
           diagram,
           roleOf: (id) => stencilRole(stencils.get(id) ?? ""),
@@ -124,6 +126,8 @@ export function useSlowMotion(opts: {
       },
     });
   }, [session, controller, store, boxes, pane, insets, overlays]);
+  // The script code downloads once Live is idle, so the first start rarely waits; a start before then waits for it.
+  useEffect(() => whenIdle(() => void loadSlowScript().catch(() => {})), []);
   useEffect(() => {
     const unwatch = session.watch();
     return () => {

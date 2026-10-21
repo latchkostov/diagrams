@@ -3866,6 +3866,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     queuedCalls(edgeId: string): number {
       return faultEdges.get(edgeId)?.poolPending.length ?? 0;
     },
+    replicaBounds(nodeId) {
+      const a = nodes.get(nodeId)?.props.autoscaling;
+      if (a?.mode !== "on") return undefined;
+      const { min, max } = replicaRange(a.controller, capacityMultiplier);
+      return { min, max, multiplier: capacityMultiplier };
+    },
     snapshot(): SimSnapshot {
       const frame = engine.frame();
       const edgeStates: SimSnapshot["edges"] = Object.create(null);

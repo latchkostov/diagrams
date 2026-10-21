@@ -113,9 +113,14 @@ export function advanceHeadless(run: SimulationRun, horizon: number, sample?: ()
     run.step(Math.min(target - state.time, next));
     const after = run.state();
     if (after.time <= state.time && !after.waiting) throw new WorkBudgetError("Headless replay did not advance");
-    if (after.time >= target || after.waiting || after.done) {
+    // A sample is due where a second of play ends or the run stopped at a pausing note, whatever controls split it.
+    const boundary = after.time >= target || after.waiting || after.done;
+    // What the live run did at this moment is part of it: its recorded controls apply before the sample reads it
+    // (a waiting note is still passed only afterwards, at the loop's top).
+    applyRecorded(run);
+    if (boundary) {
       sample?.();
-      from = after.time;
+      from = run.state().time;
     }
   }
   throw new WorkBudgetError("Headless replay did not reach its horizon");

@@ -270,3 +270,48 @@ it("keeps planner sampling independent of redundant replay-control boundaries", 
   const baseline = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 100000 });
   expect(planScaling(d, { ticks: 0, runs: 0 }, { remaining: 100000 }, context)).toEqual(baseline);
 });
+
+it("counts a recorded control at the horizon in the planner's last sample", () => {
+  // Review 20261021-141142 P1: 2,000 messages injected at the end of the busy-thread run stay queued.
+  const d = structuredClone(busy) as DiagramFile;
+  const sim = d.simulations![0];
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [{ time: 50_000, op: { kind: "inject", node: "applications", count: 2000 } }],
+  };
+  const [plan] = planScaling({ ...d, simulations: [sim] }, { ticks: 0, runs: 0 }, { remaining: 1_000_000 }, context);
+  const suggestion = plan.suggestions.find((s) => s.verified);
+  expect(suggestion).toBeDefined();
+  expect(suggestion!.verified!.endBacklog).toBeGreaterThanOrEqual(2000);
+});
+
+it("sizes against a Capacity reduction the live run recorded, as against the same reduction in the simulation", () => {
+  // Review 20261021-141142 P2: playback saturates at 2 replicas after Capacity × 0.5; the planner must see that too.
+  const d = structuredClone(busy) as DiagramFile;
+  const caller = d.nodes.find((n) => n.id === "caller")!;
+  const a = caller.props!.autoscaling as AutoscalingConfig;
+  if (a.mode !== "on" || a.controller.kind !== "hpa") throw new Error("Fixture needs an HPA");
+  a.controller.maxReplicas = a.controller.minReplicas = a.controller.initialReplicas = 4;
+  a.controller.settings.metrics[0].source = { kind: "pods", metric: "busyThreads" };
+  const sim = d.simulations![0];
+  const scripted = planScaling(
+    { ...d, simulations: [{ ...sim, multipliers: { capacity: 0.5 } }] },
+    { ticks: 0, runs: 0 },
+    { remaining: 1_000_000 },
+  )[0].suggestions.find((s) => s.node === "caller");
+  expect(scripted).toMatchObject({ kind: "max", verified: expect.anything() });
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [{ time: 0, op: { kind: "configuration", patches: {}, multipliers: { traffic: 1, capacity: 0.5 } } }],
+  };
+  const recorded = planScaling(
+    { ...d, simulations: [sim] },
+    { ticks: 0, runs: 0 },
+    { remaining: 1_000_000 },
+    context,
+  )[0].suggestions.find((s) => s.node === "caller");
+  expect(recorded).toMatchObject({ kind: "max", from: 4, verified: expect.anything() });
+  expect(recorded!.to).toBe(scripted!.to);
+});

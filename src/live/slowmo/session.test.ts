@@ -4,8 +4,12 @@ import type { DiagramFile, Simulation } from "../../model/types";
 import type { SimEngine } from "../../sim/types";
 import { stencilRole } from "../../stencils/roles";
 import { LiveController } from "../controller";
-import { buildScript } from "./script";
+import { buildScript, frameAt, stepStop } from "./script";
+
+/** The script code given directly: the live view downloads it on the first start (scriptChunk.ts). */
+const code = { buildScript, frameAt, stepStop };
 import { SlowMotion } from "./session";
+import { loadSlowScript } from "./scriptChunk";
 
 const kafka = JSON.parse(readFileSync("src/examples/kafka-order-pipeline.json", "utf8")) as DiagramFile;
 const stencils = new Map(kafka.nodes.map((n) => [n.id, n.stencil]));
@@ -24,6 +28,7 @@ function setup(opts: { traffic: boolean; play?: number; sim?: string; replayDela
   c.setPlaying(true);
   for (let i = 0; i < (opts.play ?? 0); i++) c.advance(16);
   const slow = new SlowMotion(c, {
+    code,
     build: (trace, waiting) => buildScript({ trace, diagram: kafka, roleOf, waiting }),
     schedule: now,
   });
@@ -202,6 +207,7 @@ describe("slow motion session", () => {
     const { c, slow, engine } = setup({ traffic: true, play: 30 });
     const frames: (() => void)[] = [];
     const deferred = new SlowMotion(c, {
+      code,
       build: (trace) => buildScript({ trace, diagram: kafka, roleOf }),
       schedule: (work) => {
         frames.push(work);
@@ -224,6 +230,7 @@ describe("slow motion session", () => {
     const { c, engine } = setup({ traffic: false, sim: "payments-outage" });
     const frames: (() => void)[] = [];
     const slow = new SlowMotion(c, {
+      code,
       build: (trace) => buildScript({ trace, diagram: kafka, roleOf }),
       schedule: (work) => {
         frames.push(work);
@@ -271,6 +278,7 @@ describe("slow motion session", () => {
     const c = new LiveController(kafka, { replayDelayMs: 0 });
     c.selectSimulation(sim);
     const slow = new SlowMotion(c, {
+      code,
       build: (trace) => buildScript({ trace, diagram: kafka, roleOf }),
       schedule: now,
     });
@@ -303,6 +311,7 @@ describe("slow motion session", () => {
     c.selectSimulation(sim);
     expect(c.getState().run?.waiting).toBe(true);
     const slow = new SlowMotion(c, {
+      code,
       build: (trace) => buildScript({ trace, diagram: kafka, roleOf }),
       schedule: now,
     });
@@ -324,4 +333,32 @@ describe("slow motion session", () => {
     expect(c.isPlaying).toBe(false);
     expect(c.isHeld).toBe(false);
   });
+});
+
+it("a first start waits, capturing, for the script code, then records; an end meanwhile cancels it", async () => {
+  const c = new LiveController(kafka);
+  c.selectSimulation(kafka.simulations!.find((s) => s.id === "black-friday")!);
+  const slow = new SlowMotion(c, {
+    build: (trace, waiting) => buildScript({ trace, diagram: kafka, roleOf, waiting }),
+    schedule: now,
+  });
+  slow.watch();
+  try {
+    // A start that ends before the code arrives never records.
+    slow.start({ kind: "next", node: "shopper" });
+    expect(slow.getState().status).toBe("capturing");
+    expect(c.isHeld).toBe(false);
+    slow.end();
+    await loadSlowScript();
+    await Promise.resolve();
+    expect(slow.getState().status).toBe("off");
+    expect(c.isHeld).toBe(false);
+    // With the code here, a start records at once, as before.
+    slow.start({ kind: "next", node: "shopper" });
+    expect(slow.getState().status).toBe("on");
+    expect(slow.frame()).not.toBeNull();
+  } finally {
+    slow.end();
+    c.dispose();
+  }
 });

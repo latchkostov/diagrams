@@ -23,6 +23,7 @@ import type { TraceSpotlight } from "./useTraceSpotlight";
 import { useFollowing } from "../watchBridge";
 import { LiveSync } from "./liveSync";
 import { useInteraction } from "../../canvas/interaction";
+import type { ApplyThreadFix } from "../threadFixes";
 export function useLiveDiagramChanges({
   session,
   editor,
@@ -84,11 +85,6 @@ export function useLiveFixes({
   const { showEvents, saveSimulation } = commands;
   const { showCapacity, capacity, openCapacity } = capacityInputs;
   const interaction = useInteraction();
-  const undoFix = useCallback(() => {
-    const hadFocus = !!document.activeElement?.closest("[data-toast]");
-    editor?.undo();
-    interaction?.dispatch({ type: "callout.closed", hadFocus, undo: true });
-  }, [editor, interaction]);
   /** A node added one gap downstream may land past the view's edge: bring it in, clear of an open panel (as addEntry). */
   const revealAdded = useCallback(
     () => camera.dispatch({ type: "live.added", panel: capacityOpen }),
@@ -133,7 +129,7 @@ export function useLiveFixes({
     session.state.snapshot.nodes,
   );
   const runTroubleAction = useCallback(
-    (action: TroubleAction, label: string) => {
+    (action: TroubleAction, label: string, applyFix?: ApplyThreadFix) => {
       if (slowRef.current?.session.active && action.kind !== "events" && action.kind !== "inputs") return;
       if (action.kind === "restore-boundary")
         controller.setFault({ kind: "boundary", boundary: action.boundary, down: false });
@@ -149,72 +145,15 @@ export function useLiveFixes({
           flash(t("liveSession.addedDeadLetter"));
           revealAdded();
         }
-      } else if (action.kind === "free-thread") {
-        if (editor) {
-          const effective = effectiveCallerPolicy(editor, action.edge);
-          if (effective?.editable) {
-            effective.set({ wait: "non-blocking" });
-            sayThreadFix(undoFix, t("threads.freeAction"), effective.simulation);
-          }
-        }
-      } else if (action.kind === "scale-threads") {
-        if (editor) {
-          const diagram = editor.getDiagram();
-          const st = controller.getState();
-          const saved = diagram.simulations?.find((s) => s.id === st.simulation?.id);
-          if (st.simulation && (!saved || JSON.stringify(st.simulation) !== JSON.stringify(saved))) return;
-          if (saved) {
-            const next = { ...saved, setup: { ...saved.setup, props: { ...saved.setup?.props } } };
-            for (const change of action.changes)
-              next.setup.props[change.node] = { ...next.setup.props[change.node], ...change.props };
-            editor.updateMeta({ simulations: diagram.simulations!.map((s) => (s.id === saved.id ? next : s)) });
-            controller.setBase(next);
-          } else {
-            editor.applyDiagram({
-              ...diagram,
-              nodes: diagram.nodes.map((n) => {
-                const change = action.changes.find((c) => c.node === n.id);
-                return change ? { ...n, props: { ...n.props, ...change.props } } : n;
-              }),
-            });
-          }
-          // The words on the button the person pressed (TroubleCallout), in their language.
-          sayThreadFix(undoFix, label, saved?.title);
-        }
-      } else if (action.kind === "add-timeout") {
-        if (editor) {
-          const effective = effectiveCallerPolicy(editor, action.edge);
-          const edge = editor.getEdge(action.edge);
-          if (effective?.editable && edge) {
-            effective.set({ deadlineMs: action.deadlineMs });
-            const from = editor.getNode(edge.from)?.label || edge.from;
-            const to = editor.getNode(edge.to)?.label || edge.to;
-            notify(
-              effective.simulation
-                ? t("threads.addedTimeoutSimulation", {
-                    ms: action.deadlineMs,
-                    from,
-                    to,
-                    simulation: effective.simulation,
-                  })
-                : t("threads.addedTimeoutDiagram", { ms: action.deadlineMs, from, to }),
-              {
-                action: {
-                  label: t("shortcuts.undo"),
-                  run: undoFix,
-                  testId: "add-timeout-undo",
-                  undoes: true,
-                },
-              },
-            );
-          }
-        }
+      } else if (action.kind === "free-thread" || action.kind === "add-timeout" || action.kind === "scale-threads") {
+        // The callout's chunk brought the code its button runs (src/live/threadFixes.ts).
+        if (editor && applyFix) applyFix({ editor, controller, interaction }, action, label);
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },
     // Session-owned refs and setters are stable; preserve the original dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded, undoFix],
+    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded, interaction],
   );
   // Only while editing in live view (never presenting, recording, embedded or in the Lab, heat map or not). With the
   // heat map on, a callout is already there: trouble leads it, unless the plan diagnoses the same lag (troubleLeads).
@@ -283,12 +222,6 @@ export function useLiveFixes({
     },
     saveInputs,
   };
-}
-
-function sayThreadFix(undo: () => void, fix: string, simulation?: string): void {
-  notify(simulation ? t("threads.fixedSimulation", { fix, simulation }) : t("threads.fixedDiagram", { fix }), {
-    action: { label: t("shortcuts.undo"), run: undo, testId: "thread-fix-undo", undoes: true },
-  });
 }
 
 /** The toast after Add a consumer, with Undo. */

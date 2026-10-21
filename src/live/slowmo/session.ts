@@ -11,7 +11,10 @@
 
 import type { MessageTrace } from "../../sim/types";
 import type { LiveController, LookAhead } from "../controller";
-import { frameAt, stepStop, type SlowFrame, type SlowScript } from "./script";
+import type { SlowFrame, SlowScript } from "./script";
+import { loadSlowScript, slowScript, type SlowScriptCode } from "./scriptChunk";
+import { notify } from "../../interop/ui/toast";
+import { LOAD_FAILED } from "../../lib/lazyLoad";
 
 /** How far ahead to look for the journey's end, in simulated ms. */
 export const LOOK_AHEAD_MS = 30_000;
@@ -58,6 +61,11 @@ export interface SlowEnv {
   build(trace: MessageTrace, waiting?: { lag(nodeId: string): number | undefined }): SlowScript;
   /** Yields between look-ahead slices (requestAnimationFrame by default). Returns a cancel. */
   schedule?(work: () => void): () => void;
+  /**
+   * The script code. Given here (tests, the Lab), it is used at once; otherwise the first start downloads it
+   * (src/live/slowmo/scriptChunk.ts) while the session is capturing, and `build` runs only after it arrived.
+   */
+  code?: SlowScriptCode;
 }
 
 const OFF: SlowState = {
@@ -92,6 +100,8 @@ export class SlowMotion {
   private cached: { t: number; script: SlowScript; frame: SlowFrame } | null = null;
   private take = 0;
   private pendingStart: SlowSource | null = null;
+  /** Bumps when a start waiting for the script code is superseded (ended, dropped, started again). */
+  private loading = 0;
 
   constructor(
     private controller: LiveController,
@@ -132,12 +142,17 @@ export class SlowMotion {
     return this.state.status === "on";
   }
 
+  /** The script code, given or downloaded; always there once a script exists. */
+  private code(): SlowScriptCode | undefined {
+    return this.env.code ?? slowScript();
+  }
+
   /** The frame at the current time (cached per time). */
   frame(): SlowFrame | null {
     const { script, t } = this.state;
     if (!script) return null;
     if (this.cached && this.cached.t === t && this.cached.script === script) return this.cached.frame;
-    const frame = frameAt(script, t, this.controller.currentDiagram);
+    const frame = this.code()!.frameAt(script, t, this.controller.currentDiagram);
     this.cached = { t, script, frame };
     return frame;
   }
@@ -154,6 +169,9 @@ export class SlowMotion {
     if (prev === "armed") this.wasPlaying = this.wasPlaying || this.controller.isPlaying;
     // Capturing before pausing: pausing publishes, and an armed session must not start twice.
     this.set({ ...OFF, status: "capturing", take: this.take });
+    this.loading++;
+    // The first start downloads the script code; live carries on (as for a rebuild) and the capture starts then.
+    if (!this.code()) return this.load(source);
     if (this.controller.busy) {
       this.pendingStart = source;
       return;
@@ -184,6 +202,31 @@ export class SlowMotion {
       else this.cancel = schedule(slice);
     };
     slice();
+  }
+
+  /**
+   * Waits for the script code, then starts. A start that was ended, dropped or replaced meanwhile does nothing; a
+   * failed download goes back to live and says so with Retry, which takes the keyboard and gives it back.
+   */
+  private load(source: SlowSource): void {
+    const token = this.loading;
+    const current = () => token === this.loading && this.state.status === "capturing";
+    // The journey starts where the person asked for it: live waits, paused, for the code (Esc or a failure resumes).
+    this.controller.setPlaying(false);
+    loadSlowScript().then(
+      () => {
+        if (current()) this.start(source);
+      },
+      (error: unknown) => {
+        if (!current()) return;
+        console.error("[diagrams] lazy load failed", error);
+        this.end();
+        notify(LOAD_FAILED, {
+          kind: "error",
+          action: { label: "Retry", run: () => this.start(source), testId: "lazy-load-retry", focus: true },
+        });
+      },
+    );
   }
 
   private finish(source: SlowSource): void {
@@ -235,6 +278,7 @@ export class SlowMotion {
   /** Back to live: exactly where it was, playing if it was. */
   end(): void {
     this.pendingStart = null;
+    this.loading++;
     const status = this.state.status;
     if (status === "off") return;
     if (status === "capturing") this.abortCapture();
@@ -249,6 +293,7 @@ export class SlowMotion {
     // This rebuild is the one a requested capture is waiting for.
     if (this.pendingStart && this.controller.busy) return false;
     this.pendingStart = null;
+    this.loading++;
     if (this.state.status === "off") return true;
     if (this.state.status === "capturing") {
       this.cancel?.();
@@ -270,6 +315,7 @@ export class SlowMotion {
   /** The live view unmounted: stop any look-ahead in progress (the engine goes with the view). */
   dispose(): void {
     this.pendingStart = null;
+    this.loading++;
     this.cancel?.();
     this.cancel = null;
   }
@@ -318,7 +364,7 @@ export class SlowMotion {
   step(dir: 1 | -1): void {
     const s = this.state;
     if (s.status !== "on" || !s.script) return;
-    this.set({ ...s, playing: false, t: stepStop(s.script, s.t, dir) });
+    this.set({ ...s, playing: false, t: this.code()!.stepStop(s.script, s.t, dir) });
   }
 
   /** A trace card row was clicked: tell the story from that hop. */
@@ -355,7 +401,7 @@ export class SlowMotion {
 
   private frameFor(s: SlowState): SlowFrame {
     if (this.cached && this.cached.t === s.t && this.cached.script === s.script) return this.cached.frame;
-    const frame = frameAt(s.script!, s.t, this.controller.currentDiagram);
+    const frame = this.code()!.frameAt(s.script!, s.t, this.controller.currentDiagram);
     this.cached = { t: s.t, script: s.script!, frame };
     return frame;
   }

@@ -5,6 +5,7 @@ import { LiveIcon } from "./icons";
 import type { Trouble, TroubleAction } from "./observedTrouble";
 import { useFloatingPlacement } from "./useFloatingPlacement";
 import { planFixLabel } from "../planning/scalingPlanText";
+import { applyThreadFix, type ApplyThreadFix } from "./threadFixes";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon?: "plus" | "play" }> = {
@@ -26,8 +27,11 @@ const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon
 
 interface TroubleProps {
   trouble: Trouble;
-  /** Runs the trouble's action, with the button's words (a fix's toast repeats them); omitted where it can't run. */
-  onAction?: (action: TroubleAction, label: string) => void;
+  /**
+   * Runs the trouble's action, with the button's words (a fix's toast repeats them) and the code that applies a
+   * thread fix, which ships in this chunk; omitted where it can't run.
+   */
+  onAction?: (action: TroubleAction, label: string, applyFix: ApplyThreadFix) => void;
   onDismiss: () => void;
   /** The callout is on screen with this cause (once per cause). */
   onShown?: (key: string) => void;
@@ -87,7 +91,7 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       {onAction && (
         <button
           className="btn cap-callout-apply is-fix"
-          onClick={() => onAction(trouble.action, label)}
+          onClick={() => onAction(trouble.action, label, applyThreadFix)}
           data-testid="trouble-action"
           data-action={trouble.action.kind}
           disabled={!!disabledHint}

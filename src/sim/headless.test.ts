@@ -112,3 +112,30 @@ it("samples once per simulated second whatever replay controls split the steps",
     times(Array.from({ length: 49 }, (_, i) => ({ time: (i + 1) * 100, op: { kind: "traffic", on: false } }))),
   ).toEqual(plain);
 });
+
+it("applies the controls due at a boundary before sampling it, the last one included", () => {
+  const d = waitingFixture();
+  const sim = { id: "end", title: "End", scale: 1, durationMs: 2000, traffic: [] };
+  const run = createHeadlessRun(
+    d,
+    sim,
+    { remaining: 100000 },
+    {
+      revision: 0,
+      origin: { diagram: d, simulation: sim, initialTraffic: false },
+      controls: [
+        { time: 1000, op: { kind: "status", node: "caller", status: "paused" } },
+        { time: 2000, op: { kind: "inject", node: "caller", count: 7 } },
+      ],
+    },
+  );
+  const seen: [number, string, number][] = [];
+  advanceHeadless(run, 2000, () => {
+    const caller = run.engine.snapshot().nodes.caller;
+    seen.push([run.state().time, caller.status, caller.backlog]);
+  });
+  expect(seen).toEqual([
+    [1000, "paused", 0],
+    [2000, "paused", 7],
+  ]);
+});
