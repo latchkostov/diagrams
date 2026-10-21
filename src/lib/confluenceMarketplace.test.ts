@@ -43,7 +43,7 @@ describe("Confluence Marketplace package", () => {
     }
   });
 
-  it("keeps documentation links local and public policy contacts on GitHub", () => {
+  it("keeps documentation links local and Confluence app support on GitHub issues", () => {
     const docs = read("public/confluence.html");
     for (const [, href] of docs.matchAll(/href="(\.[^"]+)"/g)) {
       const [path, fragment] = href.split("#");
@@ -51,10 +51,10 @@ describe("Confluence Marketplace package", () => {
       expect(existsSync(target), href).toBe(true);
       if (fragment) expect(read(target), href).toContain(`id="${fragment}"`);
     }
-    for (const page of ["confluence", "privacy", "terms"]) {
-      const html = read(`public/${page}.html`);
-      expect(html, page).not.toMatch(/mailto:/i);
-      expect(html, page).toContain("https://github.com/latchkostov/diagrams/issues");
-    }
+    // The Confluence app's support channel is GitHub issues, with no email on its page. The site-wide
+    // privacy/terms contact is unchanged (brand verification in tests/e2e/brand.spec.ts relies on it).
+    expect(docs).not.toMatch(/mailto:/i);
+    expect(docs).toContain("https://github.com/latchkostov/diagrams/issues");
+    expect(read("public/privacy.html")).toContain("https://github.com/latchkostov/diagrams/issues");
   });
 });
