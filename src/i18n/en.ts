@@ -42,6 +42,7 @@ const en = {
   "viewerForge.attachmentMissing": "The diagram attachment is no longer on this page. Ask a page editor to restore it.",
   "viewerForge.play": "Play diagram",
   "viewerForge.loading": "Loading the page attachment…",
+  "viewerForge.waitForFile": "Wait for the current file to finish loading or saving, then choose your file again.",
   "viewerForge.configure": "Edit this macro to choose a .diagram.json attachment on this page.",
   "viewerForge.pageRequired": "Publish this page first, then insert Live Diagram and choose an attachment.",
   "viewerForge.downloadError":

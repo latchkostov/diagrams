@@ -2,14 +2,7 @@ import { requestConfluence, view } from "@forge/bridge";
 import { t } from "../../../src/i18n/core";
 import type { DiagramFile } from "../../../src/model/types";
 import { configForStorage, contentId, DEFAULT_CONFIG } from "./config";
-import {
-  DIAGRAM_FILE_ACCEPT,
-  downloadDiagram,
-  listAttachments,
-  stageDiagram,
-  uploadDiagram,
-  type Attachment,
-} from "./attachments";
+import { DIAGRAM_FILE_ACCEPT, downloadDiagram, listAttachments, stageDiagram, uploadDiagram } from "./attachments";
 import { element, errorMessage, followTheme } from "./dom";
 import { HEIGHT_PRESETS } from "./height";
 import { diagramPreview } from "./preview";
@@ -46,9 +39,10 @@ async function main() {
   fields.append(file, content);
   footer.append(reason, cancel, save);
   form.append(heading, fields, status, footer);
+  form.addEventListener("submit", (event) => event.preventDefault());
   document.body.append(form);
   let closed = false;
-  let saving = false;
+  let phase: "initialising" | "ready" | "submitting" = "initialising";
   let generation = 0;
   const clearError = () => {
     status.setAttribute("role", "status");
@@ -62,7 +56,7 @@ async function main() {
     status.focus();
   };
   const close = async () => {
-    if (saving || closed) return;
+    if (phase === "submitting" || closed) return;
     closed = true;
     generation++;
     try {
@@ -87,6 +81,28 @@ async function main() {
     if (event.key === "Escape") popupOpen = false;
   });
   document.addEventListener("contextmenu", (event) => event.preventDefault());
+  const acceptsFile = () => {
+    if (closed) return false;
+    if (phase === "ready") return true;
+    showError(new Error(t("viewerForge.waitForFile")));
+    return false;
+  };
+  let chooseFile = (_chosen?: File) => {};
+  file.addEventListener("change", () => {
+    if (acceptsFile()) chooseFile(file.files?.[0]);
+    else file.value = "";
+  });
+  content.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = phase === "ready" && !closed ? "copy" : "none";
+    if (phase === "ready" && !closed) content.classList.add("dragging");
+  });
+  content.addEventListener("dragleave", () => content.classList.remove("dragging"));
+  content.addEventListener("drop", (event) => {
+    event.preventDefault();
+    content.classList.remove("dragging");
+    if (acceptsFile()) chooseFile(event.dataTransfer?.files[0]);
+  });
   // The settings surface always follows Confluence, independently of the diagram's saved theme.
   followTheme(DEFAULT_CONFIG, () => view.theme.enable());
   try {
@@ -101,17 +117,23 @@ async function main() {
     } catch {
       throw new Error(t("viewerForge.pageRequired"));
     }
-    let attachment: Attachment | undefined;
-    let staged: File | undefined;
+    let selection: { file: File; generation: number } | undefined;
+    let uploaded: { generation: number; attachmentId: string } | undefined;
     let diagram: DiagramFile | undefined;
-    let valid = false;
+    let fileLoading = false;
     let optionsOpen = false;
     let height = config.height;
     let theme = config.theme;
     let simulation = config.simulation;
+    const canSubmit = () =>
+      !closed &&
+      phase === "ready" &&
+      !fileLoading &&
+      !!diagram &&
+      (!simulation || !!diagram.simulations?.some((sim) => sim.id === simulation));
     const refresh = () => {
-      save.disabled = saving || !valid;
-      reason.textContent = valid ? "" : t("viewerForge.chooseToContinue");
+      save.disabled = !canSubmit();
+      reason.textContent = canSubmit() ? "" : t("viewerForge.chooseToContinue");
     };
     const button = (testid: string, text: string, action: () => void) => {
       const control = element("button", testid, text);
@@ -119,7 +141,9 @@ async function main() {
       control.addEventListener("click", action);
       return control;
     };
-    const pickFile = () => file.click();
+    const pickFile = () => {
+      if (acceptsFile()) file.click();
+    };
     const render = () => {
       fitPreview = () => {};
       content.replaceChildren();
@@ -138,11 +162,11 @@ async function main() {
         card.tabIndex = -1;
         card.setAttribute(
           "aria-label",
-          t("viewerForge.selectedFile", { filename: staged?.name ?? attachment?.title ?? "" }),
+          t("viewerForge.selectedFile", { filename: selection?.file.name ?? editTarget?.title ?? "" }),
         );
         const details = element("div", "forge-card-details");
         details.append(
-          element("span", "forge-filename", staged?.name ?? attachment?.title),
+          element("span", "forge-filename", selection?.file.name ?? editTarget?.title),
           button("forge-change", editing ? t("viewerForge.replaceFile") : t("viewerForge.change"), pickFile),
         );
         const preview = diagramPreview(diagram);
@@ -225,7 +249,6 @@ async function main() {
             simulation = mode === "free" ? "" : simulations.value;
             simulations.disabled = mode === "free";
             selectLabel.hidden = mode === "free";
-            valid = !simulation || saved.some((sim) => sim.id === simulation);
             clearError();
             refresh();
           },
@@ -244,8 +267,7 @@ async function main() {
         simulations.addEventListener("change", () => {
           popupOpen = false;
           simulation = simulations.value;
-          valid = saved.some((sim) => sim.id === simulation);
-          if (valid) clearError();
+          if (saved.some((sim) => sim.id === simulation)) clearError();
           refresh();
           updateSummary();
         });
@@ -286,55 +308,62 @@ async function main() {
       refresh();
     };
     const choose = async (chosen?: File) => {
-      if (!chosen || saving || closed) return;
-      const selection = ++generation;
-      valid = false;
+      if (!chosen || !acceptsFile()) return;
+      const chosenGeneration = ++generation;
+      uploaded = undefined;
+      fileLoading = true;
       refresh();
       clearError();
       try {
         const next = await stageDiagram(chosen);
-        if (closed || selection !== generation) return;
+        if (closed || chosenGeneration !== generation) return;
         diagram = next;
-        staged = chosen;
+        selection = { file: chosen, generation: chosenGeneration };
+        fileLoading = false;
         if (!next.simulations?.some((sim) => sim.id === simulation)) simulation = "";
-        valid = true;
         render();
         content.querySelector<HTMLElement>('[data-testid="forge-card"]')?.focus();
       } catch (error) {
-        if (!closed && selection === generation) showError(error);
+        if (!closed && chosenGeneration === generation) {
+          fileLoading = false;
+          refresh();
+          showError(error);
+        }
       } finally {
-        file.value = "";
+        if (chosenGeneration === generation) file.value = "";
       }
     };
-    file.addEventListener("change", () => void choose(file.files?.[0]));
-    content.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = saving ? "none" : "copy";
-      content.classList.add("dragging");
-    });
-    content.addEventListener("dragleave", () => content.classList.remove("dragging"));
-    content.addEventListener("drop", (event) => {
-      event.preventDefault();
-      content.classList.remove("dragging");
-      void choose(event.dataTransfer?.files[0]);
-    });
+    chooseFile = (chosen) => void choose(chosen);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (!valid || saving || closed) return;
-      saving = true;
+      if (!canSubmit()) return;
+      const committedSelection = selection;
+      const committedConfig = { simulation, height, theme };
+      phase = "submitting";
       fields.disabled = cancel.disabled = true;
       save.textContent = editing ? t("viewerForge.updating") : t("viewerForge.inserting");
       clearError();
       refresh();
       void (async () => {
         try {
-          if (staged) {
-            attachment = await uploadDiagram(requestConfluence, page, staged, attachment);
-            staged = undefined; // A failed config save can be retried without uploading another version.
+          let attachmentId = editTarget?.id;
+          if (committedSelection) {
+            if (uploaded?.generation !== committedSelection.generation) {
+              // An unresolved edit target must be looked up by ID, never by the replacement's name.
+              const replace = editTarget?.title
+                ? { id: editTarget.id, title: editTarget.title }
+                : editTarget
+                  ? (await listAttachments(requestConfluence, page)).find((item) => item.id === editTarget.id)
+                  : undefined;
+              if (editTarget && !replace) throw new Error(t("viewerForge.attachmentMissing"));
+              const attachment = await uploadDiagram(requestConfluence, page, committedSelection.file, replace);
+              uploaded = { generation: committedSelection.generation, attachmentId: attachment.id };
+            }
+            attachmentId = uploaded.attachmentId;
           }
           try {
             await view.submit({
-              config: configForStorage({ attachmentId: attachment?.id, simulation, height, theme }),
+              config: configForStorage({ attachmentId, ...committedConfig }),
             });
           } catch {
             throw new Error(t("viewerForge.saveError"));
@@ -343,7 +372,7 @@ async function main() {
         } catch (error) {
           showError(error);
         } finally {
-          saving = false;
+          phase = "ready";
           fields.disabled = cancel.disabled = false;
           save.textContent = editing ? t("viewerForge.update") : t("viewerForge.insert");
           refresh();
@@ -351,20 +380,39 @@ async function main() {
       })();
     });
     render();
-    if (editing) {
-      const attachments = await listAttachments(requestConfluence, page);
-      if (closed) return;
-      attachment = attachments.find((item) => item.id === config.attachmentId);
-      if (!attachment) throw new Error(t("viewerForge.attachmentMissing"));
-      diagram = await downloadDiagram(requestConfluence, page, attachment.id);
-      if (closed) return;
-      valid = !simulation || !!diagram.simulations?.some((sim) => sim.id === simulation);
-      optionsOpen = !valid;
-      render();
+    const initialGeneration = generation;
+    let loadError: unknown;
+    // Resolve once from the saved config. Upload checkpoints never change the edit target.
+    const editTarget: Readonly<{ id: string; title?: string }> | undefined = editing
+      ? await listAttachments(requestConfluence, page)
+          .then((attachments) => {
+            const target = attachments.find((item) => item.id === config.attachmentId);
+            if (!target) throw new Error(t("viewerForge.attachmentMissing"));
+            return target;
+          })
+          .catch((error: unknown) => {
+            loadError = error;
+            return { id: config.attachmentId };
+          })
+      : undefined;
+    if (closed) return;
+    try {
+      if (editTarget && !loadError) {
+        const initialDiagram = await downloadDiagram(requestConfluence, page, editTarget.id);
+        if (closed || generation !== initialGeneration) return;
+        diagram = initialDiagram;
+        optionsOpen = !!simulation && !diagram.simulations?.some((sim) => sim.id === simulation);
+      }
+    } catch (error) {
+      loadError = error;
     }
+    if (closed || generation !== initialGeneration) return;
+    phase = "ready";
     fields.disabled = false;
+    render();
     clearError();
-    if (!valid && simulation) showError(new Error(t("viewerForge.missingSimulation")));
+    if (loadError) showError(loadError);
+    else if (diagram && !canSubmit()) showError(new Error(t("viewerForge.missingSimulation")));
   } catch (error) {
     if (!closed) showError(error);
   }

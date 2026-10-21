@@ -11,7 +11,11 @@ export interface FakeState {
   parseCount?: number;
   submitError?: boolean;
   longFilename?: boolean;
+  missingAttachment?: boolean;
   uploaded?: { id: string; title: string; body: string };
+  uploadHistory?: { id: string; title: string; body: string }[];
+  fileReadPending?: boolean;
+  releaseFile?: () => void;
   pageId?: string;
   body?: string;
   calls: { path: string; method: string; filename?: string }[];
@@ -54,12 +58,18 @@ export const requestConfluence = async (path: string, options?: RequestInit) => 
   if (s.status) return new Response("Forbidden", { status: s.status });
   if (options?.method === "POST" && file) {
     if (s.uploadStatus) return new Response("Forbidden", { status: s.uploadStatus });
-    const id = path.match(/\/(\d+)\/data$/)?.[1] ?? "9";
+    const id =
+      path.match(/\/(\d+)\/data$/)?.[1] ?? (s.uploadHistory?.length ? String(11 + s.uploadHistory.length) : "9");
     s.uploaded = { id, title: file.name, body: await file.text() };
+    (s.uploadHistory ??= []).push(s.uploaded);
     return Response.json({ results: [{ id: `att${id}`, title: file.name }] });
   }
   const id = path.match(/attachment(?:s)?\/(\d+)/)?.[1] ?? "7";
-  const body = s.uploaded?.id === id ? s.uploaded.body : diagram();
+  const body =
+    s.uploadHistory
+      ?.slice()
+      .reverse()
+      .find((item) => item.id === id)?.body ?? (s.uploaded?.id === id ? s.uploaded.body : diagram());
   if (path.startsWith("/wiki/api/v2/attachments/"))
     return Response.json({
       id,
@@ -70,11 +80,17 @@ export const requestConfluence = async (path: string, options?: RequestInit) => 
   if (path.includes("/download")) return new Response(body, { headers: { "content-type": "application/json" } });
   return Response.json({
     results: [
-      {
-        id: "7",
-        title: s.longFilename ? "a-very-long-attachment-name-".repeat(8) + ".diagram.json" : "orders.diagram.json",
-      },
-      ...(s.uploaded ? [s.uploaded] : []),
+      ...(s.missingAttachment
+        ? []
+        : [
+            {
+              id: "7",
+              title: s.longFilename
+                ? "a-very-long-attachment-name-".repeat(8) + ".diagram.json"
+                : "orders.diagram.json",
+            },
+          ]),
+      ...(s.uploadHistory ?? (s.uploaded ? [s.uploaded] : [])),
       { id: "8", title: "notes.txt" },
       { id: "10", title: "older.livediagram.json" },
       { id: "11", title: "settings.json" },

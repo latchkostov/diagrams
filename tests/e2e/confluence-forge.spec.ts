@@ -420,6 +420,35 @@ const validFile = (name = "checkout.diagram.json", body = chosenDiagram) => ({
   mimeType: "application/json",
   buffer: Buffer.from(body),
 });
+const committedDiagram = (label: string) =>
+  JSON.stringify({
+    ...textFieldsFixture,
+    title: label,
+    nodes: textFieldsFixture.nodes.map((node) => (node.id === "a" ? { ...node, label } : node)),
+  });
+async function reopenCommitted(page: import("@playwright/test").Page, label: string) {
+  const saved = await page.evaluate(() => ({
+    config: (window.__forgeTest.submitted as { config: Record<string, unknown> }).config,
+    uploaded: window.__forgeTest.uploaded,
+  }));
+  await page.addInitScript((saved) => {
+    window.__forgeTest = { calls: [], ...saved };
+  }, saved);
+  await page.goto(`${origin}/fake/view/index.html`);
+  await expect(page.getByTestId("node-a")).toContainText(label);
+}
+async function dropFile(page: import("@playwright/test").Page, name: string, body = chosenDiagram) {
+  const transfer = await page.evaluateHandle(
+    ({ name, body }) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([body], name, { type: "application/json" }));
+      return transfer;
+    },
+    { name, body },
+  );
+  await page.getByTestId("forge-content").dispatchEvent("drop", { dataTransfer: transfer });
+  await transfer.dispose();
+}
 const writes = (page: import("@playwright/test").Page) =>
   page.evaluate(() => ({
     uploads: window.__forgeTest.calls.filter((call) => call.method === "POST"),
@@ -474,7 +503,7 @@ for (const [name, id, path] of [
 ] as const) {
   test(`Forge Insert commits ${name} once, versioning a same-name attachment`, async ({ page }) => {
     await openConfig(page);
-    await chooseFile(page, name);
+    await chooseFile(page, name, committedDiagram("Uploaded Order service"));
     expect(await writes(page)).toEqual({ uploads: [], saves: 0 });
     await page.evaluate(() => {
       window.__forgeTest.hold = "upload";
@@ -486,6 +515,11 @@ for (const [name, id, path] of [
     await page.keyboard.press("Escape");
     expect(await page.evaluate(() => window.__forgeTest.closed)).toBeUndefined();
     await expect.poll(() => page.evaluate(() => !!window.__forgeTest.release)).toBe(true);
+    await dropFile(page, "during-save.diagram.json");
+    await expect(page.getByTestId("forge-config-status")).toContainText("Wait for the current file");
+    await page.getByTestId("forge-file").setInputFiles(validFile("during-save.diagram.json"));
+    await page.getByTestId("forge-config").dispatchEvent("submit");
+    await expect(page.getByTestId("forge-filename")).toHaveText(name);
     await page.evaluate(() => window.__forgeTest.release?.());
     await expect
       .poll(() => page.evaluate(() => window.__forgeTest.submitted))
@@ -494,15 +528,7 @@ for (const [name, id, path] of [
       uploads: [{ path: `/wiki/rest/api/content/42/child/attachment${path}`, method: "POST", filename: name }],
       saves: 1,
     });
-    const uploaded = await page.evaluate(() => window.__forgeTest.uploaded);
-    await page.addInitScript(
-      ({ id, uploaded }) => {
-        window.__forgeTest = { calls: [], config: { attachmentId: id }, uploaded };
-      },
-      { id, uploaded },
-    );
-    await page.goto(`${origin}/fake/view/index.html`);
-    await expect(page.getByTestId("node-a")).toContainText("Order service");
+    await reopenCommitted(page, "Uploaded Order service");
   });
 }
 
@@ -536,7 +562,7 @@ for (const cancel of [false, true]) {
     await expect(page.getByTestId("forge-filename")).toHaveText("orders.diagram.json");
     const picker = page.waitForEvent("filechooser");
     await page.getByTestId("forge-change").click();
-    await (await picker).setFiles(validFile("different.diagram.json"));
+    await (await picker).setFiles(validFile("different.diagram.json", committedDiagram("Replaced Order service")));
     await expect(page.getByTestId("forge-card")).toBeFocused();
     expect(await writes(page)).toEqual({ uploads: [], saves: 0 });
     if (cancel) {
@@ -558,6 +584,7 @@ for (const cancel of [false, true]) {
         ],
         saves: 1,
       });
+      await reopenCommitted(page, "Replaced Order service");
     }
   });
 }
@@ -574,10 +601,6 @@ for (const [height, label] of [
     await expect(page.getByTestId("forge-summary")).toHaveText(`Free play · ${label}`);
     await page.getByTestId("forge-options").click();
     await expect(page.getByTestId(`forge-height-${height}`)).toHaveAttribute("aria-pressed", "true");
-    if (height !== 713) {
-      await page.getByTestId("forge-height-0").click();
-      await page.getByTestId(`forge-height-${height}`).click();
-    }
     await page.getByTestId("forge-play-mode-saved").click();
     await page.getByTestId("forge-simulation").selectOption("flow");
     await page.getByTestId("forge-theme-dark").click();
@@ -586,6 +609,193 @@ for (const [height, label] of [
       .poll(() => page.evaluate(() => window.__forgeTest.submitted))
       .toEqual({ config: { attachmentId: "7", simulation: "flow", height, theme: "dark" } });
     expect((await writes(page)).uploads).toEqual([]);
+  });
+}
+
+for (const [height, label] of [
+  [0, "Auto size"],
+  [480, "Small"],
+  [640, "Medium"],
+  [800, "Large"],
+] as const) {
+  test(`Forge size preset changes submitted height to ${height}`, async ({ page }) => {
+    await openConfig(page, { attachmentId: "7", height: height === 800 ? 480 : 800 });
+    await page.getByTestId("forge-options").click();
+    await expect(page.getByTestId(`forge-height-${height}`)).toHaveAttribute("aria-pressed", "false");
+    await page.getByTestId(`forge-height-${height}`).click();
+    await expect(page.getByTestId(`forge-height-${height}`)).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("forge-summary")).toHaveText(`Free play · ${label}`);
+    await page.getByTestId("forge-save").click();
+    await expect
+      .poll(() => page.evaluate(() => window.__forgeTest.submitted))
+      .toEqual({
+        config: { attachmentId: "7", simulation: "", height, theme: "auto" },
+      });
+  });
+}
+
+for (const [first, second, target] of [
+  ["orders.diagram.json", "independent.diagram.json", ""],
+  ["first.diagram.json", "older.livediagram.json", "/10/data"],
+] as const) {
+  test(`Forge failed Insert then Change resolves ${second} independently of ${first}`, async ({ page }) => {
+    await openConfig(page, {}, { submitError: true });
+    await chooseFile(page, first, committedDiagram("First upload"));
+    await page.getByTestId("forge-save").click();
+    await expect(page.getByTestId("forge-config-status")).toContainText("could not save the macro settings");
+    const picker = page.waitForEvent("filechooser");
+    await page.getByTestId("forge-change").click();
+    await (await picker).setFiles(validFile(second, committedDiagram("Independent upload")));
+    await expect(page.getByTestId("forge-card")).toBeFocused();
+    await page.evaluate(() => {
+      window.__forgeTest.submitError = false;
+    });
+    await page.getByTestId("forge-save").click();
+    await expect.poll(() => page.evaluate(() => window.__forgeTest.submitted)).toBeTruthy();
+    expect((await writes(page)).uploads).toHaveLength(2);
+    expect((await writes(page)).uploads[1]).toEqual({
+      path: `/wiki/rest/api/content/42/child/attachment${target}`,
+      method: "POST",
+      filename: second,
+    });
+    const history = await page.evaluate(() => window.__forgeTest.uploadHistory);
+    expect(history?.[0].body).toContain("First upload");
+    expect(history?.[1].id).not.toBe(history?.[0].id);
+    await reopenCommitted(page, "Independent upload");
+  });
+}
+
+for (const hold of ["list", "download"] as const) {
+  test(`Forge rejects drops, file picks and submits during initial ${hold}, then Replace versions the original`, async ({
+    page,
+  }) => {
+    await setup(page, { config: { attachmentId: "7", simulation: "flow" }, hold });
+    await page.goto(`${origin}/fake/config/index.html`);
+    await expect.poll(() => page.evaluate(() => !!window.__forgeTest.release)).toBe(true);
+    await dropFile(page, "too-early.diagram.json");
+    await expect(page.getByTestId("forge-config-status")).toContainText("Wait for the current file");
+    await page.getByTestId("forge-file").setInputFiles(validFile("also-early.diagram.json"));
+    await page.getByTestId("forge-config").dispatchEvent("submit");
+    await expect(page.getByTestId("forge-save")).toBeDisabled();
+    expect(await writes(page)).toEqual({ uploads: [], saves: 0 });
+    await page.evaluate(() => {
+      window.__forgeTest.hold = undefined;
+      window.__forgeTest.release?.();
+    });
+    await expect(page.getByTestId("forge-fields")).toBeEnabled();
+    await expect(page.getByTestId("forge-filename")).toHaveText("orders.diagram.json");
+    await expect(page.getByTestId("forge-summary")).toHaveText("Order flow · Auto size");
+    await chooseFile(page, "replacement.diagram.json", committedDiagram("Replacement after initialisation"));
+    await expect(page.getByTestId("forge-preview")).toHaveAccessibleName("Preview of Replacement after initialisation");
+    await expect(page.getByTestId("forge-summary")).toHaveText("Free play · Auto size");
+    await page.getByTestId("forge-save").click();
+    await expect
+      .poll(() => page.evaluate(() => window.__forgeTest.submitted))
+      .toMatchObject({ config: { attachmentId: "7" } });
+    expect((await writes(page)).uploads).toEqual([
+      {
+        path: "/wiki/rest/api/content/42/child/attachment/7/data",
+        method: "POST",
+        filename: "orders.diagram.json",
+      },
+    ]);
+    await reopenCommitted(page, "Replacement after initialisation");
+  });
+}
+
+for (const failure of ["list", "download", "invalid", "missing"] as const) {
+  test(`Forge attachment ${failure} failure restores the chooser and repairs the original target`, async ({ page }) => {
+    await setup(page, {
+      config: { attachmentId: "7" },
+      ...(failure === "invalid" ? { body: "{}" } : { hold: "list" }),
+    });
+    await page.goto(`${origin}/fake/config/index.html`);
+    if (failure !== "invalid") {
+      await expect.poll(() => page.evaluate(() => !!window.__forgeTest.release)).toBe(true);
+      await page.evaluate((failure) => {
+        window.__forgeTest.status = 403;
+        window.__forgeTest.hold = failure === "download" ? "download" : undefined;
+        if (failure === "download") window.__forgeTest.status = undefined;
+        if (failure === "missing") {
+          window.__forgeTest.status = undefined;
+          window.__forgeTest.missingAttachment = true;
+        }
+        window.__forgeTest.release?.();
+      }, failure);
+      if (failure === "download") {
+        await expect
+          .poll(() => page.evaluate(() => window.__forgeTest.calls.some((call) => call.path.includes("/download"))))
+          .toBe(true);
+        await page.evaluate(() => {
+          window.__forgeTest.status = 403;
+          window.__forgeTest.release?.();
+        });
+      }
+    }
+    await expect(page.getByTestId("forge-config-status")).toHaveAttribute("role", "alert");
+    await expect(page.getByTestId("forge-fields")).toBeEnabled();
+    await expect(page.getByTestId("forge-choose")).toBeEnabled();
+    await expect(page.getByTestId("forge-save")).toBeDisabled();
+    await page.evaluate(() => {
+      window.__forgeTest.status = undefined;
+      window.__forgeTest.hold = undefined;
+      window.__forgeTest.missingAttachment = false;
+    });
+    await chooseFile(page, "repair.diagram.json", committedDiagram("Repaired file"));
+    await page.getByTestId("forge-save").click();
+    await expect
+      .poll(() => page.evaluate(() => window.__forgeTest.submitted))
+      .toMatchObject({ config: { attachmentId: "7" } });
+    expect((await writes(page)).uploads[0].path).toBe("/wiki/rest/api/content/42/child/attachment/7/data");
+    await reopenCommitted(page, "Repaired file");
+  });
+}
+
+test("Forge rejects an invalid replacement without losing the valid selection", async ({ page }) => {
+  await openConfig(page);
+  await chooseFile(page);
+  await page.getByTestId("forge-file").setInputFiles(validFile("bad.diagram.json", "{}"));
+  await expect(page.getByTestId("forge-config-status")).toContainText("not a valid Live Diagrams file");
+  await expect(page.getByTestId("forge-filename")).toHaveText("checkout.diagram.json");
+  await expect(page.getByTestId("forge-save")).toBeEnabled();
+  await page.getByTestId("forge-save").click();
+  await expect.poll(() => page.evaluate(() => window.__forgeTest.uploaded?.body)).toBe(chosenDiagram);
+});
+
+for (const newerSelection of [false, true]) {
+  test(`Forge pending file validation ${newerSelection ? "cannot overwrite a newer selection" : "cannot be bypassed by simulation options or submission"}`, async ({
+    page,
+  }) => {
+    await openConfig(page, { attachmentId: "7", simulation: "flow" });
+    await page.getByTestId("forge-options").click();
+    await page.evaluate(() => {
+      const read = File.prototype.text;
+      File.prototype.text = async function () {
+        File.prototype.text = read;
+        window.__forgeTest.fileReadPending = true;
+        await new Promise<void>((resolve) => {
+          window.__forgeTest.releaseFile = resolve;
+        });
+        return read.call(this);
+      };
+    });
+    await page.getByTestId("forge-file").setInputFiles(validFile("slow.diagram.json", committedDiagram("Slow file")));
+    await expect.poll(() => page.evaluate(() => window.__forgeTest.fileReadPending)).toBe(true);
+    await page.getByTestId("forge-play-mode-free").click();
+    await expect(page.getByTestId("forge-save")).toBeDisabled();
+    await page.getByTestId("forge-config").dispatchEvent("submit");
+    expect(await writes(page)).toEqual({ uploads: [], saves: 0 });
+    if (newerSelection) {
+      await dropFile(page, "newest.diagram.json", committedDiagram("Newest file"));
+      await expect(page.getByTestId("forge-preview")).toHaveAccessibleName("Preview of Newest file");
+    }
+    await page.evaluate(() => window.__forgeTest.releaseFile?.());
+    const label = newerSelection ? "Newest file" : "Slow file";
+    await expect(page.getByTestId("forge-preview")).toHaveAccessibleName(`Preview of ${label}`);
+    await expect(page.getByTestId("forge-save")).toBeEnabled();
+    await page.getByTestId("forge-save").click();
+    await expect.poll(() => page.evaluate(() => window.__forgeTest.submitted)).toBeTruthy();
+    await reopenCommitted(page, label);
   });
 }
 
