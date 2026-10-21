@@ -17,18 +17,19 @@ export function errorMessage(error: unknown): string {
 }
 
 /** Async completion must not pull the reader back from Confluence or another control. */
-export function requestFocus(): (target?: HTMLElement) => void {
+export function requestFocus() {
   let moved = false;
   const cancel = () => {
     moved = true;
   };
   window.addEventListener("blur", cancel);
   document.addEventListener("focusin", cancel);
-  return (target) => {
+  const focus = (target?: HTMLElement) => {
     window.removeEventListener("blur", cancel);
     document.removeEventListener("focusin", cancel);
     if (!moved && document.hasFocus()) target?.focus();
   };
+  return Object.assign(focus, { hasMoved: () => moved });
 }
 
 export function followTheme(

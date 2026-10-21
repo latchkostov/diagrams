@@ -9,6 +9,28 @@ import { parse as parseYaml } from "yaml";
 
 describe("annotation shape syntax", () => {
   it.each([
+    ["a[State: 'pending] --> b; b --> c", "State: 'pending", undefined],
+    ["a -->|Status: 'Pending| b; b --> c", "a", "Status: 'Pending"],
+    ["a[Literal @{ label: 'pending}] --> b; b --> c", "Literal @{ label: 'pending}", undefined],
+    ["a -->|Literal @{ label: 'pending}| b; b --> c", "a", "Literal @{ label: 'pending}"],
+    [String.raw`a["C:\"] --> b; b --> c`, "C:\\", undefined],
+    [String.raw`a -->|"C:\"| b; b --> c`, "a", "C:\\"],
+  ])("preserves classic labels before semicolons: %s", (source, label, edgeLabel) => {
+    const { diagram } = parseMermaid(`flowchart LR\n${source}`);
+    expect(diagram.nodes.map((n) => [n.id, n.label])).toEqual([
+      ["a", label],
+      ["b", "b"],
+      ["c", "c"],
+    ]);
+    expect(diagram.edges.map((e) => [e.from, e.to, e.label])).toEqual([
+      ["a", "b", edgeLabel],
+      ["b", "c", undefined],
+    ]);
+    const back = parseMermaid(diagramToMermaid(diagram)).diagram;
+    expect(back.nodes.map((n) => [n.id, n.label])).toEqual(diagram.nodes.map((n) => [n.id, n.label]));
+    expect(back.edges.map((e) => [e.from, e.to, e.label])).toEqual(diagram.edges.map((e) => [e.from, e.to, e.label]));
+  });
+  it.each([
     ["'done}; retry'", "done}; retry"],
     ["'opening {; brace'", "opening {; brace"],
     ["'Ada''s }; \"invoice'", "Ada's }; \"invoice"],

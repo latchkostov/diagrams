@@ -28,6 +28,7 @@ export function diagramPreview(diagram: DiagramFile) {
   svg.setAttribute("aria-label", t("viewerForge.preview", { title: diagram.title }));
   const shape = (tag: "rect" | "line" | "text", attributes: Record<string, string | number>) => {
     const el = document.createElementNS(svg.namespaceURI, tag);
+    if (attributes.class) el.setAttribute("data-testid", `forge-${attributes.class}`);
     for (const [key, value] of Object.entries(attributes)) el.setAttribute(key, String(value));
     svg.append(el);
     return el;

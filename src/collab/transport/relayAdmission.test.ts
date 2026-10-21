@@ -45,6 +45,57 @@ function setUp(epochs: number[] = [2], pad = 0) {
 }
 
 describe("a page's admission on a relay that enforces knock-to-join", () => {
+  it("preserves acknowledged piece progress across subsequent target changes", async () => {
+    const t = setUp([1], 300_000);
+    t.c.start("challenge", "0000000000000001");
+    await t.flush();
+    const latest = () => t.of("chain").at(-1)!;
+    const acknowledge = () => t.c.onChainAck({ id: latest().id!, complete: true });
+    acknowledge();
+    t.set([1, 1, 1, 1]);
+    t.c.changed();
+    acknowledge(); // epoch 0
+    acknowledge(); // epoch 1
+    t.set([1, 1, 1, 2]);
+    t.c.changed();
+    expect(latest().chain?.starts).toEqual([{ epoch: 2, sig: "s2" }]);
+    acknowledge();
+    const entries: unknown[] = [];
+    for (let i = 0; i < 2; i++) {
+      entries.push(...latest().chain!.logs.flatMap((log) => log.entries));
+      acknowledge();
+    }
+    expect(entries.map((entry) => (entry as { sig: string }).sig)).toEqual(["e3.0", "e3.1"]);
+    const count = t.of("chain").length;
+    t.c.changed();
+    expect(t.of("chain")).toHaveLength(count);
+  });
+
+  it("does not skip an incompletely acknowledged epoch when the target changes", async () => {
+    const t = setUp([3, 1], 300_000);
+    t.c.start("challenge", "0000000000000001");
+    await t.flush();
+    const latest = () => t.of("chain").at(-1)!;
+    const first = latest();
+    t.c.onChainAck({ id: first.id!, complete: true });
+    const superseded = latest();
+    t.set([3, 1, 1]);
+    t.c.changed();
+    const roundStart = t.of("chain").length - 1;
+    t.c.onChainAck({ id: superseded.id!, complete: true });
+    expect(t.of("chain")).toHaveLength(roundStart + 1);
+    // An incomplete epoch is replayed from its start; every roster entry must still arrive.
+    for (let i = 0; i < 5; i++) t.c.onChainAck({ id: latest().id!, complete: true });
+    const sent = t.of("chain").slice(roundStart);
+    expect(
+      sent
+        .flatMap((message) => message.chain!.logs.flatMap((log) => log.entries))
+        .map((entry) => (entry as { sig: string }).sig),
+    ).toEqual(["e0.0", "e0.1", "e0.2", "e1.0", "e2.0"]);
+    const count = t.of("chain").length;
+    t.c.changed();
+    expect(t.of("chain")).toHaveLength(count);
+  });
   it("proves first, and proves again (backing off) until the relay says ok, even when no answer comes", async () => {
     const t = setUp();
     t.c.start("challenge", "0000000000000001");

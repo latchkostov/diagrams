@@ -205,7 +205,7 @@ export class RelayAdmissionController {
     if (!this.live) return;
     const target = this.admission.tip();
     if (!target || same(this.acked, target)) return;
-    const data = this.admission.chain(this.acked ? Math.min(this.held, this.acked.epoch) : this.held || undefined);
+    const data = this.admission.chain(this.held || undefined);
     const pieces = data ? ordered(relayPieces(data)) : [];
     if (!pieces.length) return;
     this.cancelPush?.();

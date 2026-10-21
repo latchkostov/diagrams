@@ -65,4 +65,7 @@ Don't add a version; a fixed one pins cached installs until it is bumped, and th
 manual version bumps. Recommend GitHub push webhook updates in the directory. The download contains only `SKILL.md`, `reference/` and `scripts/`; this README, licence,
 manifest and listing icon are plugin packaging, excluded from the skill ZIP.
 
+The [commit-based update policy](../../docs/PARALLEL-WORK.md#plugin-updates) also applies to generated
+assets refreshed by `pnpm regen` or `pnpm sync`; neither operation introduces a plugin version.
+
 Licensed under MIT; see [LICENSE](LICENSE).

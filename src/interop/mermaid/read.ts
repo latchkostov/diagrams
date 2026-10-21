@@ -96,17 +96,17 @@ const labelLines = (label: string, yamlLabel = false) =>
     .map((l) => l.trim())
     .filter(Boolean);
 
-/** Shared YAML scalar quoting, including doubled apostrophes and double-quoted escapes. */
+/** Classic labels use literal backslashes; only shape attributes use YAML scalar quoting. */
 class QuoteState {
   quote: string | undefined;
-  constructor(readonly scalarOnly = false) {}
+  constructor(readonly syntax: "classic" | "attributes") {}
   /** Returns the last consumed index, or undefined for syntax outside quotes. */
   consume(source: string, index: number): number | undefined {
     const c = source[index];
     if (this.quote) {
-      if (this.quote === '"' && c === "\\") return index + 1;
+      if (this.syntax === "attributes" && this.quote === '"' && c === "\\") return index + 1;
       if (c === this.quote) {
-        if (this.quote === "'" && source[index + 1] === "'") return index + 1;
+        if (this.syntax === "attributes" && this.quote === "'" && source[index + 1] === "'") return index + 1;
         this.quote = undefined;
       }
       return index;
@@ -114,7 +114,7 @@ class QuoteState {
     if (c !== '"' && c !== "'") return;
     let previous = index - 1;
     while (previous >= 0 && /\s/.test(source[previous])) previous--;
-    if ((c === '"' && !this.scalarOnly) || source[previous] === ":") {
+    if (this.syntax === "classic" ? c === '"' : source[previous] === ":") {
       this.quote = c;
       return index;
     }
@@ -128,7 +128,9 @@ function statements(src: string): { text: string; line: number }[] {
     const line = rawLine.trim();
     if (!line || line.startsWith("%%")) return;
     let depth = 0;
-    const quote = new QuoteState();
+    let quote = new QuoteState("classic");
+    let attributesAt: number | undefined;
+    let pipeLabel = false;
     let start = 0;
     for (let j = 0; j < line.length; j++) {
       const c = line[j];
@@ -137,9 +139,20 @@ function statements(src: string): { text: string; line: number }[] {
         j = consumed;
         continue;
       }
-      if ("[({".includes(c)) depth++;
-      else if ("])}".includes(c)) depth = Math.max(0, depth - 1);
-      else if (depth === 0 && c === ";") {
+      if (c === "|" && depth === 0) pipeLabel = !pipeLabel;
+      if ("[({".includes(c)) {
+        depth++;
+        if (c === "{" && line[j - 1] === "@" && depth === 1 && !pipeLabel) {
+          attributesAt = depth;
+          quote = new QuoteState("attributes");
+        }
+      } else if ("])}".includes(c)) {
+        if (c === "}" && depth === attributesAt) {
+          quote = new QuoteState("classic");
+          attributesAt = undefined;
+        }
+        depth = Math.max(0, depth - 1);
+      } else if (depth === 0 && c === ";") {
         const s = line.slice(start, j).trim();
         if (s) out.push({ text: s, line: i + 1 });
         start = j + 1;
@@ -186,7 +199,7 @@ class Scanner {
   /** The closing brace belongs to the attributes, never to a quoted label inside them. */
   attributes(): string {
     const start = this.i;
-    const quote = new QuoteState(true);
+    const quote = new QuoteState("attributes");
     for (; this.i < this.s.length; this.i++) {
       const c = this.s[this.i];
       const consumed = quote.consume(this.s, this.i);
