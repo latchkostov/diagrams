@@ -1,4 +1,5 @@
 import { textFieldsFixture } from "../../../src/lab/textFieldsFixture";
+import type { ModalOptions } from "@forge/bridge";
 
 export interface FakeState {
   config?: Record<string, unknown>;
@@ -13,6 +14,12 @@ export interface FakeState {
   calls: { path: string; method: string; filename?: string }[];
   submitted?: unknown;
   closed?: boolean;
+  modal?: { pageId?: unknown; config?: unknown };
+  modalOptions?: ModalOptions;
+  modalError?: boolean;
+  modalClosed?: boolean;
+  closeModal?: () => void;
+  documentHeights?: number[];
   hold?: "context" | "list" | "download";
   release?: () => void;
 }
@@ -57,12 +64,12 @@ export const requestConfluence = async (path: string, options?: RequestInit) => 
     results: [
       {
         id: "7",
-        title: s.longFilename
-          ? "a-very-long-attachment-name-".repeat(8) + ".livediagram.json"
-          : "orders.livediagram.json",
+        title: s.longFilename ? "a-very-long-attachment-name-".repeat(8) + ".diagram.json" : "orders.diagram.json",
       },
       ...(s.uploaded ? [s.uploaded] : []),
       { id: "8", title: "notes.txt" },
+      { id: "10", title: "older.livediagram.json" },
+      { id: "11", title: "settings.json" },
     ],
     _links: {},
   });
@@ -75,6 +82,7 @@ export const view = {
           extension: {
             content: { id: state().pageId ?? "42" },
             config: state().config ?? { attachmentId: "7", simulation: "", height: 0, theme: "auto" },
+            modal: state().modal,
           },
         },
   theme: {
@@ -90,3 +98,28 @@ export const view = {
     state().closed = true;
   },
 };
+
+export class Modal {
+  constructor(private options: ModalOptions) {}
+  async open() {
+    if (state().modalError) throw new Error("Modal unavailable");
+    state().modalOptions = this.options;
+    state().closeModal = () => {
+      state().modalClosed = true;
+      this.options.onClose?.(undefined);
+    };
+  }
+}
+
+// Emulate Forge's host-provided automatic iframe resizer, not an API in @forge/bridge.
+// The host observes document content, then changes the iframe viewport to match.
+const observer = new ResizeObserver(() => {
+  const height = Math.ceil(document.body.getBoundingClientRect().height);
+  (state().documentHeights ??= []).push(height);
+  const frame = window.frameElement;
+  // frameElement belongs to the parent realm, so instanceof this window's HTMLIFrameElement is false.
+  if (frame?.tagName === "IFRAME" && (frame as HTMLIFrameElement).style.height !== `${height}px`)
+    (frame as HTMLIFrameElement).style.height = `${height}px`;
+});
+observer.observe(document.body);
+window.addEventListener("pagehide", () => observer.disconnect(), { once: true });

@@ -11,6 +11,7 @@ import {
 import { checkManifest, checkBudget } from "../../integrations/confluence-forge/check.mjs";
 import { t } from "../i18n/core";
 import { textFieldsFixture } from "../lab/textFieldsFixture";
+import { macroHeight } from "../../integrations/confluence-forge/src/height";
 
 describe("Forge configuration is a reference, never a diagram", () => {
   it("allowlists only the four settings on both read and save", () => {
@@ -48,12 +49,19 @@ describe("Forge attachment transport", () => {
       .fn()
       .mockResolvedValueOnce(
         Response.json({
-          results: [{ id: "1", title: "notes.txt" }],
+          results: [
+            { id: "1", title: "notes.txt" },
+            { id: "3", title: "notes.json" },
+            { id: "4", title: "orders.diagram.json" },
+          ],
           _links: { next: "/wiki/api/v2/pages/42/attachments?cursor=a%2Fb" },
         }),
       )
       .mockResolvedValueOnce(Response.json({ results: [{ id: "2", title: "orders.livediagram.json" }] }));
-    expect(await listAttachments(request, "42")).toEqual([{ id: "2", title: "orders.livediagram.json" }]);
+    expect(await listAttachments(request, "42")).toEqual([
+      { id: "4", title: "orders.diagram.json" },
+      { id: "2", title: "orders.livediagram.json" },
+    ]);
     expect(request.mock.calls.map(([path]) => path)).toEqual([
       "/wiki/api/v2/pages/42/attachments?limit=100",
       "/wiki/api/v2/pages/42/attachments?limit=100&cursor=a%2Fb",
@@ -185,6 +193,37 @@ describe("Forge attachment transport", () => {
     }
     expect(request).not.toHaveBeenCalled();
   });
+  it.each(["orders.diagram.json", "orders.livediagram.json"])("accepts and preserves %s on upload", async (name) => {
+    const request = vi.fn().mockResolvedValue(Response.json({ results: [{ id: "7", title: name }] }));
+    await expect(uploadDiagram(request, "42", new File([JSON.stringify(textFieldsFixture)], name))).resolves.toEqual({
+      id: "7",
+      title: name,
+    });
+    const body = request.mock.calls[0][1].body as FormData;
+    expect((body.get("file") as File).name).toBe(name);
+  });
+  it.each(["orders.json", "orders.diagram.json.txt", "orders.livediagram.json.zip"])(
+    "rejects other files before reading %s",
+    async (name) => {
+      const file = new File([JSON.stringify(textFieldsFixture)], name);
+      const read = vi.spyOn(file, "text");
+      const request = vi.fn();
+      await expect(uploadDiagram(request, "42", file)).rejects.toThrow(t("viewerForge.invalidFilename"));
+      expect(read).not.toHaveBeenCalled();
+      expect(request).not.toHaveBeenCalled();
+    },
+  );
+});
+
+it("bounds automatic fit-to-width reports and preserves fixed heights", () => {
+  expect(macroHeight(0)).toBe(480);
+  expect(macroHeight(0, 200)).toBe(480);
+  expect(macroHeight(0, 720)).toBe(720);
+  expect(macroHeight(0, 1600)).toBe(900);
+  for (const fixed of [200, 600, 1600]) {
+    expect(macroHeight(fixed, 200)).toBe(fixed);
+    expect(macroHeight(fixed, 1600)).toBe(fixed);
+  }
 });
 
 it("lints the manifest offline, rejecting egress, broad scopes and fixed macro viewports", () => {

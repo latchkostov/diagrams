@@ -139,7 +139,8 @@ const PLANNED: Record<string, string[]> = {
 describe("simulation evidence on the public examples", () => {
   it.each(Object.keys(EXPECTED))("%s", (slug) => {
     const d = bySlug[slug];
-    const ev = collectEvidence(d);
+    // Semantic completeness must not depend on coverage/CPU contention. Deadline tests inject a moving clock.
+    const ev = collectEvidence(d, { now: () => 0 });
     expect(ev.played.map((p) => p.id)).toEqual((d.simulations ?? []).map((s) => s.id));
     expect(ev.played.filter((p) => p.capped)).toEqual([]);
     expect(ev.unplayed).toEqual([]);

@@ -1,8 +1,9 @@
 # Live Diagram for Confluence Cloud
 
 A private-install Forge spike and v1 groundwork: view and play a page attachment, with no editor,
-backend, outbound link, analytics or external egress. Registration and a real-site attachment API
-check are still required. Nothing in this checkout needs an Atlassian account to build or test.
+backend, outbound link, analytics or external egress. The owner verified attachment download and
+playback on a development site; the broader checklist below remains. Nothing in this checkout needs
+an Atlassian account to build or test.
 
 ## Owner: register and install on your dev site
 
@@ -34,10 +35,11 @@ check are still required. Nothing in this checkout needs an Atlassian account to
    Keep sharing disabled: this pilot needs no install link or Marketplace listing.
 
 4. Create and **publish** a Confluence page first. In page attachments, upload a valid Diagram file
-   named, for example, `orders.livediagram.json`. The file is the native JSON Diagram file exported
-   from Live Diagrams, with that suffix; renaming a PNG or Interactive HTML file won't work.
+   named, for example, `orders.diagram.json`. This is the native **Diagram file** export from
+   Live Diagrams; older `.livediagram.json` files are also accepted. Renaming a PNG or Interactive
+   HTML file won't work.
 5. Edit the page, insert **Live Diagram** from the `/` macro picker, and choose the attachment in its
-   configuration. Alternatively, choose a local `.livediagram.json` and **Upload a new attachment**
+   configuration. Alternatively, choose a local `.diagram.json` and **Upload a new attachment**
    there. Choose **Free play** or a saved simulation, **Automatic** height or a fixed height, and
    **Follow Confluence**, Light or Dark. Click **Save**, then publish the page.
 6. The macro opens as a still diagram. Press **Play diagram** (also accessible by Tab and Enter/Space).
@@ -52,10 +54,26 @@ inside this directory. After a permission change, run `forge install --upgrade -
 An app built here is designed for zero egress and Runs on Atlassian eligibility; the badge is determined
 by Atlassian after registration/deployment, not certified by this offline spike.
 
+**Automatic height** fits the measured diagram to the available column width, including margins and
+viewer controls, with a 480 px minimum and 900 px maximum. The minimum keeps a small diagram readable;
+the maximum prevents a tall diagram from taking over a page. Fixed heights are unchanged. With the
+macro's `viewportSize` omitted, Forge automatically resizes the iframe to its document content; bridge
+7.2 has no `view.resize` API. Repeated size reports do not rewrite the height.
+
+**Maximise diagram** opens the same resource in a Forge `Modal` of size `max`, still until **Play diagram**.
+It passes only the attachment reference and settings, and reads the attachment through the current user's
+bridge again. Inline playback pauses when opening. Press Esc or **Close diagram** to close; focus returns
+to Maximise. This uses the [Custom UI Modal API](https://developer.atlassian.com/platform/forge/apis-reference/ui-api-bridge/modal/),
+which is supported by the pinned bridge 7.2.0, instead of the iframe-blocked browser Fullscreen API.
+
+The [macro manifest](https://developer.atlassian.com/platform/forge/manifest-reference/modules/macro/)
+supports `layout: block` (the default), `inline` or `bodied`; it has no `wide` or `full-width` layout value.
+Keep the default block layout. Choose a wider Confluence page/column where available, or use Maximise.
+
 ## Manual dev-site checklist (not yet performed)
 
 - [ ] `forge register`, `forge lint`, deploy and private installation succeed with the two declared scopes.
-- [ ] On a published page, the config lists only `.livediagram.json` attachments, including later pages
+- [ ] On a published page, the config lists `.diagram.json` and older `.livediagram.json` attachments, including later pages
       of results. Empty pages explain how to select/upload; Cancel closes even after an error.
 - [ ] **Critical spike:** `requestConfluence` returns attachment JSON after the REST download redirect.
       Test a normal file and one near the 8 MB limit. No browser `fetch`, external URL permission or
@@ -70,6 +88,8 @@ by Atlassian after registration/deployment, not certified by this offline spike.
       Tab, Enter and Space work. A missing simulation asks the editor to choose again.
 - [ ] Automatic height fits the host column without a resize loop; fixed height stays fixed. Try narrow
       columns and several macros. Confluence light/dark changes follow live, explicit themes stay fixed.
+- [ ] Maximise opens a large, still viewer with the same simulation and theme. Esc and Close diagram
+      close it; focus returns to Maximise. No browser Fullscreen, download or outbound app links appear.
 - [ ] Browser Network shows only static resource assets and Atlassian bridge/product operations;
       no requests go to Live Diagrams or any other outside service. No CSP errors, inline scripts,
       data fonts, worker construction or outbound links appear.
@@ -102,7 +122,11 @@ The real SDK test fakes the product transport. This verifies SDK serialization a
 but cannot prove Confluence's permission checks, attachment redirects or multipart handling on a site.
 
 The reusable viewer is packaged unchanged except for suppressing its outbound React Flow attribution
-link in this integration build. The default viewer and main app keep their existing behavior. Runtime
+link in this integration build. Zoom, Fit, Live and simulation controls work locally; the Forge host
+supplies Maximise and Close. The toolbar has no native diagram download or Open in Live Diagrams control.
+Existing recording and sequence exports stay local, with no egress. Forge's default iframe permissions
+allow user-initiated downloads and clipboard writes. The default
+viewer and main app keep their existing behavior. Runtime
 diagram content stays in memory and moves only through the reader's Forge bridge to/from Confluence.
 No Forge functions, app storage, `asApp`, remotes, external fetch permissions or runtime dependencies on
 the public website are used. React Flow's styles require `permissions.content.styles: unsafe-inline`;

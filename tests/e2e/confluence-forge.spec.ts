@@ -35,6 +35,16 @@ test.beforeAll(() => {
   }
   server = createServer((request, response) => {
     const path = new URL(request.url ?? "/", "http://forge").pathname;
+    if (path === "/host.html") {
+      response.writeHead(200, {
+        "Content-Type": "text/html",
+        "Content-Security-Policy": "default-src 'none'; frame-src 'self'; style-src 'unsafe-inline'",
+      });
+      response.end(
+        '<!doctype html><html><body style="margin:0"><iframe data-testid="forge-frame" src="/fake/view/index.html" style="display:block;width:100%;border:0;height:150px"></iframe></body></html>',
+      );
+      return;
+    }
     const content = files.get(path);
     const extension = path.split(".").pop();
     const types: Record<string, string> = {
@@ -160,7 +170,7 @@ for (const replacing of [false, true]) {
     await page.goto(`${origin}/fake/config/index.html`);
     await expect(page.getByTestId("forge-save")).toBeEnabled();
     await page.getByTestId("forge-file").setInputFiles({
-      name: "local.livediagram.json",
+      name: "local.diagram.json",
       mimeType: "application/json",
       buffer: Buffer.from(
         JSON.stringify({
@@ -177,7 +187,7 @@ for (const replacing of [false, true]) {
       {
         path: `/wiki/rest/api/content/42/child/attachment${replacing ? "/7/data" : ""}`,
         method: "POST",
-        filename: replacing ? "orders.livediagram.json" : "local.livediagram.json",
+        filename: replacing ? "orders.diagram.json" : "local.diagram.json",
       },
     ]);
     expect(await page.evaluate(() => window.__forgeTest.submitted)).toBeUndefined();
@@ -254,6 +264,7 @@ test("deployable resource runs the real bridge SDK under Forge CSP with an offli
       __bridge: {
         callBridge: async (method: string, payload?: { restPath?: string }) => {
           calls.push(method);
+          if (method === "openModal") Object.assign(window, { __forgeSdkModal: payload });
           if (method === "getContext") return { extension: { content: { id: "42" }, config: { attachmentId: "7" } } };
           if (method === "enableTheming") {
             document.documentElement.dataset.colorMode = "dark";
@@ -281,12 +292,20 @@ test("deployable resource runs the real bridge SDK under Forge CSP with an offli
   await expect(page.getByTestId("node-a")).toBeVisible();
   await page.getByTestId("forge-play").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await page.getByTestId("forge-maximise").click();
+  expect(await page.evaluate(() => (window as unknown as { __forgeSdkModal: unknown }).__forgeSdkModal)).toMatchObject({
+    resource: "diagram-view",
+    size: "max",
+    closeOnEscape: true,
+    context: { pageId: "42", config: { attachmentId: "7", simulation: "", height: 0, theme: "auto" } },
+  });
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => (window as unknown as { __forgeSdkCalls: string[] }).__forgeSdkCalls)).toEqual([
     "getContext",
     "enableTheming",
     "fetchProduct",
     "fetchProduct",
+    "openModal",
   ]);
   expect(violations).toEqual([]);
   expect(requests.every((url) => url.startsWith(origin + "/"))).toBe(true);
@@ -407,4 +426,145 @@ test("Forge viewer validates attachment JSON once at the adapter boundary", asyn
   await page.goto(`${origin}/fake/view/index.html`);
   await expect(page.getByTestId("node-a")).toBeVisible();
   expect(await page.evaluate(() => window.__forgeTest.parseCount)).toBe(1);
+});
+
+test("Forge picker offers native and legacy suffixes, with specific file input hints", async ({ page }) => {
+  await setup(page);
+  await page.goto(`${origin}/fake/config/index.html`);
+  await expect(page.getByTestId("forge-save")).toBeEnabled();
+  const picker = page.getByTestId("forge-attachment");
+  await expect(picker).toHaveJSProperty("length", 3);
+  await expect(picker).toHaveText("Choose a .diagram.json attachment…orders.diagram.jsonolder.livediagram.json");
+  // Select both IDs through the control; never enumerate a picker to discover fixtures.
+  for (const id of ["10", "7"]) {
+    await picker.selectOption(id);
+    await expect(picker).toHaveValue(id);
+    await expect(page.getByTestId("forge-save")).toBeEnabled();
+  }
+  await expect(page.getByTestId("forge-file")).toHaveAttribute("accept", ".diagram.json,.livediagram.json");
+  await expect(page.getByTestId("forge-height-help")).toContainText("between 480 and 900 px");
+});
+
+test("Forge maximise opens the same resource with references only and recovers focus on close", async ({ page }) => {
+  await setup(page, { config: { attachmentId: "7", simulation: "flow", height: 600, theme: "light" } });
+  await page.goto(`${origin}/fake/view/index.html`);
+  await expect(page.getByTestId("node-a")).toBeVisible();
+  await page.getByTestId("forge-maximise").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__forgeTest.modalOptions))
+    .toEqual({
+      resource: "diagram-view",
+      size: "max",
+      closeOnEscape: true,
+      context: { pageId: "42", config: { attachmentId: "7", simulation: "flow", height: 600, theme: "light" } },
+    });
+  await expect(page.getByTestId("forge-maximise")).toBeDisabled();
+  await page.evaluate(() => window.__forgeTest.closeModal?.());
+  await expect(page.getByTestId("forge-maximise")).toBeFocused();
+  await expect(page.getByTestId("forge-maximise")).toBeEnabled();
+  await expect(page.getByTestId("present-fullscreen")).toHaveCount(0);
+  await expect(page.getByTestId(/download|open-app|open-in/)).toHaveCount(0);
+});
+
+for (const key of [true, false]) {
+  test(`Forge max modal fills its viewport, stays still and closes by ${key ? "Esc" : "button"}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 1100 });
+    await setup(page, {
+      config: { attachmentId: "8", simulation: "", height: 200, theme: "dark" },
+      pageId: "99",
+      modal: { pageId: "42", config: { attachmentId: "7", simulation: "flow", height: 200, theme: "light" } },
+    });
+    await page.goto(`${origin}/fake/view/index.html`);
+    await expect(page.getByTestId("node-a")).toBeVisible();
+    await expect(page.getByTestId("viewer-bundle")).toHaveAttribute("data-live", "0");
+    const box = await page.getByTestId("viewer-bundle").boundingBox();
+    if (!box) throw new Error("Modal viewer has no box");
+    expect(box.height).toBeGreaterThan(900);
+    expect(box.y + box.height).toBe(1100);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(1100);
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+    expect(await page.evaluate(() => window.__forgeTest.calls)).toEqual([
+      { path: "/wiki/api/v2/attachments/7", method: "GET" },
+      { path: "/wiki/rest/api/content/42/child/attachment/7/download?version=3", method: "GET" },
+    ]);
+    await expect(page.getByTestId("forge-maximise")).toHaveCount(0);
+    await expect(page.getByTestId("present-fullscreen")).toHaveCount(0);
+    await page.getByTestId("forge-play").click();
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("flow");
+    if (key) await page.keyboard.press("Escape");
+    else await page.getByTestId("forge-close").click();
+    await expect.poll(() => page.evaluate(() => window.__forgeTest.closed)).toBe(true);
+  });
+}
+
+test("Forge reports a failed modal open and allows retry", async ({ page }) => {
+  await setup(page, { modalError: true });
+  await page.goto(`${origin}/fake/view/index.html`);
+  await page.getByTestId("forge-maximise").click();
+  await expect(page.getByTestId("forge-status")).toHaveText("Confluence could not maximise the diagram. Try again.");
+  await expect(page.getByTestId("forge-maximise")).toBeEnabled();
+  await page.evaluate(() => {
+    window.__forgeTest.modalError = false;
+  });
+  await page.getByTestId("forge-maximise").click();
+  await expect.poll(() => page.evaluate(() => window.__forgeTest.modalOptions?.size)).toBe("max");
+});
+
+test("Forge Automatic follows column width and resizes the host iframe without feedback", async ({ page }) => {
+  const body = JSON.stringify({
+    ...textFieldsFixture,
+    nodes: textFieldsFixture.nodes.map((node, i) => ({ ...node, x: i * 350, y: i * 350 })),
+  });
+  await page.setViewportSize({ width: 320, height: 1200 });
+  await setup(page, { body });
+  await page.goto(`${origin}/host.html`);
+  const frame = page.frameLocator('[data-testid="forge-frame"]');
+  await expect(frame.getByTestId("node-a")).toBeVisible();
+  await expect(frame.getByTestId("viewer-bundle")).toHaveCSS("height", "480px");
+  const iframe = page.getByTestId("forge-frame");
+  await expect.poll(async () => (await iframe.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(480);
+  const initial = await iframe.boundingBox();
+  if (!initial) throw new Error("Host iframe has no box");
+  expect(initial.height).toBeGreaterThanOrEqual(480);
+  await page.setViewportSize({ width: 800, height: 1200 });
+  await expect
+    .poll(() => frame.getByTestId("viewer-bundle").evaluate((el) => el.getBoundingClientRect().height))
+    .toBeGreaterThan(480);
+  const medium = await frame.getByTestId("viewer-bundle").evaluate((el) => el.getBoundingClientRect().height);
+  expect(medium).toBeLessThan(900);
+  await page.setViewportSize({ width: 1600, height: 1200 });
+  await expect(frame.getByTestId("viewer-bundle")).toHaveCSS("height", "900px");
+  await expect
+    .poll(() =>
+      iframe.evaluate((el) => {
+        const doc = (el as HTMLIFrameElement).contentDocument;
+        if (!doc) throw new Error("Host iframe has no document");
+        return doc.body.getBoundingClientRect().height;
+      }),
+    )
+    .toBeGreaterThanOrEqual(900);
+  await expect.poll(() => iframe.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(900);
+  // Repeated size reports must not mutate the content or start another host resize cycle.
+  const counts = await iframe.evaluate(async (el) => {
+    const win = (el as HTMLIFrameElement).contentWindow as Window;
+    const root = win.document.querySelector<HTMLElement>('[data-testid="viewer-bundle"]')?.parentElement;
+    if (!root) throw new Error("Viewer has no root");
+    let writes = 0;
+    const observer = new MutationObserver((records) => {
+      writes += records.length;
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["style"] });
+    for (let i = 0; i < 8; i++) {
+      win.liveDiagramsViewer.report({ type: "resize", height: 1600 });
+      await new Promise(win.requestAnimationFrame);
+    }
+    observer.disconnect();
+    return { writes, heights: win.__forgeTest.documentHeights };
+  });
+  expect(counts.writes).toBe(0);
+  if (!counts.heights) throw new Error("Host did not observe any document sizes");
+  expect(counts.heights.length).toBeLessThan(24);
+  const final = await iframe.boundingBox();
+  if (!final) throw new Error("Host iframe has no final box");
+  expect(counts.heights.at(-1)).toBe(final.height);
 });

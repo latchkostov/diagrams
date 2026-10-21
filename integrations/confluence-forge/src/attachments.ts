@@ -8,6 +8,9 @@ export interface Attachment {
   title: string;
 }
 export const MAX_FILE_BYTES = 8_000_000;
+export const DIAGRAM_SUFFIXES = [".diagram.json", ".livediagram.json"] as const;
+export const DIAGRAM_FILE_ACCEPT = DIAGRAM_SUFFIXES.join(",");
+export const isDiagramFilename = (name: string): boolean => DIAGRAM_SUFFIXES.some((suffix) => name.endsWith(suffix));
 
 export function readDiagram(text: string) {
   checkBytes(text);
@@ -31,7 +34,7 @@ export async function listAttachments(request: ConfluenceRequest, page: string):
     if (!response.ok) throw new Error(t("viewerForge.downloadError", { status: response.status }));
     const data = (await response.json()) as { results: Attachment[]; _links?: { next?: string } };
     for (const item of data.results) {
-      if (item.title.endsWith(".livediagram.json")) attachments.push({ id: contentId(item.id), title: item.title });
+      if (isDiagramFilename(item.title)) attachments.push({ id: contentId(item.id), title: item.title });
     }
     // Do not follow server-supplied hosts, paths or arbitrary query parameters through the bridge.
     const next = data._links?.next;
@@ -95,7 +98,7 @@ export async function uploadDiagram(
   file: File,
   replace?: Attachment,
 ): Promise<Attachment> {
-  if (!file.name.endsWith(".livediagram.json")) throw new Error(t("viewerForge.invalidFilename"));
+  if (!isDiagramFilename(file.name)) throw new Error(t("viewerForge.invalidFilename"));
   if (file.size > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
   readDiagram(await file.text());
   const form = new FormData();
