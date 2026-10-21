@@ -112,13 +112,11 @@ function slowCallee() {
 // docs/backlog/2026-10-20-engine-r5-i1-counterexamples.md
 const gaps = [
   { name: "legacy queue-worker serviceCredit", fixture: legacyWorker, scale: 1.01, baseline: 1997, dots: 999 },
-  { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 332 },
+  { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 396 },
   { name: "fractional capacity fragmentation", fixture: fragmentation, scale: 1.1, baseline: 999, dots: 799 },
-  { name: "equal one-slot services with 1 ms local work", fixture: subTick, scale: 2, baseline: 499, dots: 200 },
-  { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 160 },
+  { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 200 },
   { name: "CPU contention with a pool", fixture: () => cpuContention(true), scale: 2, baseline: 399, dots: 143 },
   { name: "CPU contention without a pool", fixture: () => cpuContention(false), scale: 1.1, baseline: 570, dots: 333 },
-  { name: "Lambda joins ordinary and fleet replies", fixture: managedJoin, scale: 4, baseline: 498, dots: 100 },
   { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
 for (const gap of gaps) {
@@ -131,11 +129,49 @@ for (const gap of gaps) {
       expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(gap.baseline);
       expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(gap.dots * gap.scale);
     });
+    it("pins every node outcome and downstream timeout/late reply", () => {
+      const outcomes = (snapshot: SimSnapshot) => {
+        const real = realSnapshot(snapshot);
+        return {
+          nodes: Object.fromEntries(
+            Object.entries(real.nodes).map(([id, node]) => [
+              id,
+              (["processed", "failed", "rejected", "dropped"] as const)
+                .map((key) => `${key}=${node[key] ?? 0}`)
+                .join(", "),
+            ]),
+          ),
+          calls: Object.fromEntries(
+            Object.entries(real.edges).map(([id, edge]) => [
+              id,
+              `timedOut=${edge.calls?.timedOut ?? 0}, late=${edge.calls?.late ?? 0}`,
+            ]),
+          ),
+        };
+      };
+      expect({ baseline: outcomes(runs.baseline), sampled: outcomes(runs.sampled) }).toMatchSnapshot();
+    });
     it.fails("I1 known gap: preserves real outcomes at the same arrival instants", () => {
       expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
     });
   });
 }
+
+it.each([1.5, 2, 3, 4])("I1 regression: sub-tick local work at scale %s", (scale) => {
+  const runs = constantRateRuns(subTick(), scale);
+  if (scale === 2) {
+    expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(499);
+    expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(500);
+  }
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+
+it.each([2, 4])("I1 regression: Lambda joins ordinary and fleet replies at scale %s", (scale) => {
+  const runs = constantRateRuns(managedJoin(), scale);
+  expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(scale === 4 ? 498 : 499);
+  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(500);
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
 
 let zeroLocalBaseline: SimSnapshot;
 const zeroLocalSamples = new Map<number, SimSnapshot>();
@@ -183,20 +219,24 @@ it.skipIf(process.env.FC_I1 !== "1")("I1 exploration: generated constant-rate gr
   );
 });
 
-it.skipIf(process.env.FC_I1_CORPUS !== "1")("I1 exploration: fixed 40-sample corpus (seed 20261018)", () => {
-  const scenarios = fc.sample(arbWaitDiagram, { seed: 20261018, numRuns: 40 }).filter(({ scale }) => scale > 1);
-  let passed = 0;
-  const failures: number[] = [];
-  for (const [index, { diagram, scale }] of scenarios.entries()) {
-    // Simulation/invariant errors must escape; only accuracy failures are exploratory.
-    const runs = constantRateRuns(diagram, scale);
-    try {
-      expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
-      passed++;
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes("I1 ")) throw error;
-      failures.push(index);
+it.skipIf(process.env.FC_I1_CORPUS !== "1")(
+  "I1 exploration: fixed 40-sample corpus (seed 20261018)",
+  { timeout: 120_000 },
+  () => {
+    const scenarios = fc.sample(arbWaitDiagram, { seed: 20261018, numRuns: 40 }).filter(({ scale }) => scale > 1);
+    let passed = 0;
+    const failures: number[] = [];
+    for (const [index, { diagram, scale }] of scenarios.entries()) {
+      // Simulation/invariant errors must escape; only accuracy failures are exploratory.
+      const runs = constantRateRuns(diagram, scale);
+      try {
+        expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+        passed++;
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes("I1 ")) throw error;
+        failures.push(index);
+      }
     }
-  }
-  console.log(`I1 CORPUS: ${passed}/${scenarios.length} passed; failing indices: ${failures.join(", ")}`);
-});
+    console.log(`I1 CORPUS: ${passed}/${scenarios.length} passed; failing indices: ${failures.join(", ")}`);
+  },
+);
