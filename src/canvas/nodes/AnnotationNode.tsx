@@ -3,6 +3,7 @@ import {
   memo,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useSyncExternalStore,
   useRef,
   type CSSProperties,
@@ -91,7 +92,11 @@ function AnnotationNodeImpl({
       if (nodeElement instanceof HTMLDivElement) queueShapeMeasurement(store, id, nodeElement);
     }
   }, [kind, data.shape, w, h, geometryReady, id, store]);
-  const handles = isConnectable(kind) ? shapeHandles(data.shape ?? "rect", w, h) : undefined;
+  const handles = useMemo(() => {
+    // Geometry publication invalidates the per-node memo, even when its saved dimensions stay the same.
+    void geometryReady;
+    return isConnectable(kind) ? shapeHandles(data.shape ?? "rect", w, h) : undefined;
+  }, [kind, data.shape, w, h, geometryReady]);
   const startEdit = (e: ReactMouseEvent) => {
     e.stopPropagation();
     setEditing({ kind: "annotation", id });

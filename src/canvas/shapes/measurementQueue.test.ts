@@ -1,7 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
-import { queueShapeMeasurement } from "./measurementQueue";
+import { queueShapeMeasurement, whenShapeMeasurementsReady } from "./measurementQueue";
 
 describe("canvas handle measurement queue", () => {
+  it("readiness waits for every canvas's pending measurement batch", async () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
+    const update = vi.fn();
+    let ready = false;
+    try {
+      for (let i = 0; i < 2; i++)
+        queueShapeMeasurement({ getState: () => ({ updateNodeInternals: update }) }, "shape", {} as HTMLDivElement);
+      const done = whenShapeMeasurementsReady().then(() => {
+        ready = true;
+      });
+      await Promise.resolve();
+      expect(ready).toBe(false);
+      frames.shift()!(0);
+      await Promise.resolve();
+      expect(ready).toBe(false);
+      frames.shift()!(1);
+      await done;
+      expect(update).toHaveBeenCalledTimes(2);
+      expect(ready).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it.each([1, 100, 1000])("batches %i outline invalidations into one measurement per canvas frame", (count) => {
     const frames: FrameRequestCallback[] = [];
     const schedule = vi.fn((callback: FrameRequestCallback) => frames.push(callback));

@@ -105,6 +105,56 @@ async function seed(page: Page, diagram: unknown) {
 }
 
 test.describe("annotations", () => {
+  test("moving more shapes than the shared handle cache retains reuses each node's handles", async ({ page }) => {
+    const count = 129;
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Memoized handles",
+      nodes: [],
+      edges: [],
+      annotations: Array.from({ length: count }, (_, i) => ({
+        id: `memo-${i}`,
+        kind: "shape",
+        shape: i === count - 1 ? "tri" : "ellipse",
+        text: "",
+        x: (i % 13) * 300,
+        y: Math.floor(i / 13) * 160,
+        width: 160 + i,
+        height: 90,
+      })),
+    });
+    await gotoCanvas(page, SLUG);
+    // The last outline publishes only after attachment geometry is ready for every node.
+    await expect
+      .poll(() =>
+        annotation(page, `memo-${count - 1}`)
+          .getByTestId("shape-outline")
+          .evaluate((svg) => svg.firstElementChild?.tagName),
+      )
+      .toBe("polygon");
+    await annotation(page, "memo-0").click();
+    await waitForSelectionSettled(page);
+    await page.evaluate(() => {
+      const cos = Math.cos;
+      document.documentElement.dataset.outlineSamples = "0";
+      Math.cos = (value: number) => {
+        document.documentElement.dataset.outlineSamples = String(
+          Number(document.documentElement.dataset.outlineSamples) + 1,
+        );
+        return cos(value);
+      };
+    });
+    await page.keyboard.press(`${MOD}+a`);
+    await waitForSelectionSettled(page);
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(async () => (await savedDiagram(page)).annotations?.[0].x).toBe(10);
+    // Sampling an ellipse's attachment outline calls cos for each segment. Moving and selection
+    // keep the dimensions: even a selection larger than the shared cache must not resample.
+    expect(await page.evaluate(() => Number(document.documentElement.dataset.outlineSamples))).toBeLessThan(
+      Math.min(24, count / 8),
+    );
+  });
+
   test("default outlines do not download the extended catalog until a non-default shape is rendered", async ({
     page,
   }) => {
@@ -144,12 +194,40 @@ test.describe("annotations", () => {
       const handle = page.getByTestId("handle-source-right");
       const before = (await handle.getAttribute("style")) ?? "";
       expect(before).not.toBe("");
+      const endpoint = (locator: Locator) =>
+        locator.evaluate((root) => {
+          const path = root.children[0];
+          if (!(path instanceof SVGPathElement)) throw new Error("Missing connection path");
+          const matrix = path.getScreenCTM();
+          if (!matrix) throw new Error("Missing path transform");
+          const point = path.getPointAtLength(0).matrixTransform(matrix);
+          return { x: point.x, y: point.y };
+        });
+      const edge = page.getByTestId("edge-connection");
+      const distance = async (locator: Locator) => {
+        const point = await endpoint(locator);
+        const bounds = await box(handle);
+        return Math.hypot(point.x - bounds.x - bounds.width / 2, point.y - bounds.y - bounds.height / 2);
+      };
+      await expect.poll(() => distance(edge)).toBeLessThan(1);
+      const originalPath = await edge.evaluate((el) => el.firstElementChild?.getAttribute("d"));
       release();
       await expect.poll(() => outline.evaluate((svg) => svg.firstElementChild?.tagName)).toBe("polygon");
       expect(await outline.evaluate((svg) => [svg.getAttribute("width"), svg.getAttribute("height")])).toEqual(
         dimensions,
       );
       await expect(handle).not.toHaveAttribute("style", before);
+      await expect.poll(() => edge.evaluate((el) => el.firstElementChild?.getAttribute("d"))).not.toBe(originalPath);
+      await expect.poll(() => distance(edge)).toBeLessThan(1);
+      const from = await box(handle);
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(from.x + from.width / 2 + 80, from.y + from.height / 2 + 40, { steps: 8 });
+      const preview = page.getByTestId("connection-line");
+      await expect(preview).toBeVisible();
+      await expect.poll(() => distance(preview)).toBeLessThan(1);
+      await page.keyboard.press("Escape");
+      await page.mouse.up();
       expect(downloads).toBe(1);
     } finally {
       release();
@@ -178,21 +256,17 @@ test.describe("annotations", () => {
         const strokes = Array.from(svg.children).filter(
           (el): el is SVGGeometryElement => el instanceof SVGGeometryElement && getComputedStyle(el).stroke !== "none",
         );
+        // The four handles share the same stroke. Keep every sample and the same tolerance,
+        // but make the expensive browser geometry calls once per stroke, rather than per handle.
+        const samples = strokes.flatMap((stroke) => {
+          const length = stroke.getTotalLength();
+          return Array.from({ length: 2049 }, (_, i) => stroke.getPointAtLength((length * i) / 2048));
+        });
         return Array.from(root.querySelectorAll('[data-testid^="handle-"]')).map((handle) => {
           if (!(handle instanceof HTMLElement)) throw new Error("Missing handle");
           const x = parseFloat(handle.style.left),
             y = parseFloat(handle.style.top);
-          const distance = Math.min(
-            ...strokes.map((stroke) => {
-              const length = stroke.getTotalLength();
-              let nearest = Infinity;
-              for (let i = 0; i <= 2048; i++) {
-                const p = stroke.getPointAtLength((length * i) / 2048);
-                nearest = Math.min(nearest, Math.hypot(x - p.x, y - p.y));
-              }
-              return nearest;
-            }),
-          );
+          const distance = samples.reduce((nearest, p) => Math.min(nearest, Math.hypot(x - p.x, y - p.y)), Infinity);
           return { id: handle.getAttribute("data-testid"), distance };
         });
       }),
