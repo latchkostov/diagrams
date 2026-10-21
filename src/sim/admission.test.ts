@@ -46,6 +46,29 @@ const load = (d: DiagramFile, scale = 1) => {
   return e;
 };
 
+it.each([
+  [1.1, 2, 1],
+  [2.5, 3, 1.5],
+  [2, 2.5, 1.25],
+])("partial admission packs two cohorts at scale %s into %s slots", (represented, slots, weight) => {
+  const state = emptyAdmission();
+  const policy = { api: { maxInFlight: slots }, endpoints: [], slots };
+  const admitted = Array.from({ length: 2 }, () =>
+    attemptAdmission(state, "api", policy, undefined, undefined, 0, represented, slots, [], true),
+  );
+  for (const result of admitted) {
+    if ("rejected" in result) throw new Error(result.rejected);
+    expect(result.leases.request).toMatchObject({ represented, weight });
+    expect(result.leases.thread).toMatchObject({ represented, weight });
+  }
+  expect([...state.inFlight.values()]).toEqual([slots, slots]);
+  expect(attemptAdmission(state, "api", policy, undefined, undefined, 0, represented, slots, [], true)).toEqual({
+    rejected: "concurrency",
+  });
+  for (const result of admitted) if (!("rejected" in result)) releaseAdmissions(state, result.leases);
+  expect([...state.inFlight.values()]).toEqual([0, 0]);
+});
+
 it("paired release preserves a sibling slot after renewing unequal retained weights", () => {
   const state = emptyAdmission();
   const policy = { api: { maxInFlight: 10 }, endpoints: [], slots: 10 };

@@ -136,15 +136,92 @@ function slowCallee() {
   return diagram;
 }
 
+// Master 61957d3, same arrivals: guard every required caller completion/rejection row.
+const accuracyFixtures = {
+  managedZeroWork,
+  cpuBoundStandalone,
+  cpuPool: () => cpuContention(true),
+  legacyWorker,
+  subTick,
+  managedJoin,
+  fragmentation,
+};
+const accuracyMaster = {
+  managedZeroWork: [
+    [1.01, 669.63, 1329.16],
+    [1.1, 699.6, 1299.1000000000001],
+    [2, 1000, 1000],
+    [2.5, 1000, 1000],
+    [10, 1000, 1000],
+  ],
+  cpuBoundStandalone: [
+    [1.01, 182.81, 0],
+    [1.1, 199.10000000000002, 0],
+    [2, 200, 0],
+    [2.5, 200, 0],
+    [10, 200, 0],
+  ],
+  cpuPool: [
+    [1.01, 336.33, 0],
+    [1.1, 366.3, 0],
+    [2, 286, 0],
+    [2.5, 285, 0],
+    [10, 180, 0],
+  ],
+  legacyWorker: [
+    [1.01, 1996.77, 0],
+    [1.1, 1996.5000000000002, 0],
+    [2, 1998, 0],
+    [2.5, 1997.5, 0],
+    [10, 1990, 0],
+  ],
+  subTick: [
+    [1.01, 498.94, 0],
+    [1.1, 499.40000000000003, 0],
+    [2, 500, 0],
+    [2.5, 500, 0],
+    [10, 500, 0],
+  ],
+  managedJoin: [
+    [1.01, 398.95, 1598.83],
+    [1.1, 399.3, 1598.3000000000002],
+    [2, 500, 1498],
+    [2.5, 500, 1497.5],
+    [10, 500, 1490],
+  ],
+  fragmentation: [
+    [1.01, 806.99, 0],
+    [1.1, 878.9000000000001, 0],
+    [2, 1000, 0],
+    [2.5, 1000, 0],
+    [10, 580, 0],
+  ],
+};
+for (const [fixture, rows] of Object.entries(accuracyMaster)) {
+  it.each(rows)(`allocation accuracy: ${fixture} at scale %s`, (scale, completed, rejected) => {
+    const runs = constantRateRuns(accuracyFixtures[fixture as keyof typeof accuracyFixtures](), scale);
+    const baseline = realSnapshot(runs.baseline).nodes.caller;
+    const sampled = realSnapshot(runs.sampled).nodes.caller;
+    for (const [key, previous] of [
+      ["processed", completed],
+      ["rejected", rejected],
+    ] as const) {
+      const reference = baseline[key] ?? 0;
+      expect(Math.abs((sampled[key] ?? 0) - reference), `${fixture} ${scale} ${key}`).toBeLessThanOrEqual(
+        Math.abs(previous - reference),
+      );
+    }
+  });
+}
+
 // Same-arrivals I1 gaps: simulation and verification hooks run outside it.fails.
 // Exact siblings prevent an unrelated mismatch from satisfying an expected failure.
 // docs/backlog/2026-10-20-engine-r5-i1-counterexamples.md
 const gaps = [
   { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 396 },
-  { name: "fractional capacity fragmentation", fixture: fragmentation, scale: 1.1, baseline: 999, dots: 799 },
   { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 200 },
   { name: "CPU contention with a pool", fixture: () => cpuContention(true), scale: 2, baseline: 399, dots: 143 },
-  { name: "CPU contention without a pool", fixture: () => cpuContention(false), scale: 1.1, baseline: 570, dots: 333 },
+  { name: "CPU contention without a pool", fixture: () => cpuContention(false), scale: 1.1, baseline: 570, dots: 604 },
   { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
 // Preserve the historical serviceCredit snapshot: only W1 moves onto ledger pacing.
@@ -155,7 +232,14 @@ const legacyPin = {
   baseline: 1997,
   dots: 999,
 };
-for (const gap of [legacyPin, ...gaps]) {
+const fragmentationPin = {
+  name: "fractional capacity fragmentation",
+  fixture: fragmentation,
+  scale: 1.1,
+  baseline: 999,
+  dots: 908,
+};
+for (const gap of [legacyPin, fragmentationPin, ...gaps]) {
   describe(`${gap.name} at scale ${gap.scale}`, () => {
     let runs: ReturnType<typeof constantRateRuns>;
     beforeAll(() => {
@@ -187,7 +271,11 @@ for (const gap of [legacyPin, ...gaps]) {
       };
       expect({ baseline: outcomes(runs.baseline), sampled: outcomes(runs.sampled) }).toMatchSnapshot();
     });
-    if (gap !== legacyPin)
+    if (gap === fragmentationPin)
+      it("I1 regression: preserves real outcomes at the same arrival instants", () => {
+        expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+      });
+    else if (gap !== legacyPin)
       it.fails("I1 known gap: preserves real outcomes at the same arrival instants", () => {
         expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
       });
@@ -203,6 +291,10 @@ it.each([
   expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(baseline);
   expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(dots * scale);
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+
+it.each([1.1, 1.3, 1.5])("I1 regression: fractional capacity fragmentation at scale %s", (scale) => {
+  checkConstantRateEquivalence(fragmentation(), scale);
 });
 
 it.each([1.5, 2, 3, 4])("I1 regression: sub-tick local work at scale %s", (scale) => {

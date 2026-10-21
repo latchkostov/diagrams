@@ -12,12 +12,23 @@ export interface CallerOccupancy {
   represented: number;
 }
 
+/** Pack capacity without stranding less than one real request behind a cohort. */
+export function allocationWeight(represented: number, room: number, cap = Infinity): number {
+  const maximum = Math.min(represented, cap),
+    minimum = Math.min(1, represented);
+  if (!Number.isFinite(room) || !(maximum > 0) || room <= maximum + 1e-9) return Math.min(maximum, room);
+  const remainder = room - Math.floor(room / maximum + 1e-9) * maximum;
+  if (remainder <= 1e-9 || remainder + 1e-9 >= minimum) return maximum;
+  const packed = room / Math.ceil(room / maximum);
+  return packed + 1e-9 >= minimum ? packed : maximum;
+}
+
 export function reserveCallerOccupancy(
   represented: number,
   available: number,
   retained?: CallerOccupancy,
 ): CallerOccupancy {
-  return { weight: Math.min(represented, available, retained?.weight ?? Infinity), represented };
+  return { weight: allocationWeight(represented, available, retained?.weight ?? Infinity), represented };
 }
 
 export function occupancyFraction(reservation: CallerOccupancy): number {
@@ -88,7 +99,7 @@ export class SampledLedger {
     const minimum = Math.min(1, represented);
     if (room < minimum && room + 1e-9 >= minimum) room = minimum;
     if (cap < minimum && cap + 1e-9 >= minimum) cap = minimum;
-    const weight = Math.min(represented, room, cap);
+    const weight = allocationWeight(represented, room, cap);
     // A partial dot needs at least one real request's room. Tiny fractional
     // leftovers must not create leases whose residence is effectively permanent.
     if (!Number.isFinite(represented) || !Number.isFinite(weight) || weight < Math.min(1, represented) || !(weight > 0))
