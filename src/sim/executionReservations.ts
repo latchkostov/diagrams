@@ -21,6 +21,10 @@ export interface ExecutionWork<Group> extends ResourceWork {
   threadLease?: AdmissionLease;
   admissibleActive?: number;
   executionWeight?: number;
+  /** Represented requests its CPU was sized for before any thread or lease held them. */
+  cohort?: number;
+  /** Open from thread acquisition, or an attempt on a held thread, until its own work finishes. */
+  workSegment?: boolean;
   continuation?: { ok: boolean; cpuMs: number };
   via?: { endpointId?: string };
   delivery?: { group: Group; broker: { props: { broker?: { partitioned: boolean } } } };
@@ -66,6 +70,17 @@ export function createExecutionReservations<
   type Work = ExecutionWork<Group>;
   const { ledger, callerReservations, slots, resourceWork, scheduleThreadGrace } = context;
   const usesLedger = (node: Node) => context.waits() && node.role === "processor";
+  /** Real requests this work executes for, fixed once its thread, admission or CPU is
+   * sized. A live scale edit never resizes that cohort, even before a thread holds it. */
+  const cohort = (work: Work): number =>
+    ledger.get(work.thread)?.represented ??
+    ledger.get(work.requestLease)?.represented ??
+    work.recoveryCapacity?.request.represented ??
+    work.recoveryThread?.represented ??
+    work.lease?.represented ??
+    work.threadLease?.represented ??
+    work.cohort ??
+    context.scale();
 
   function reserveThread(
     node: Node,
@@ -87,34 +102,36 @@ export function createExecutionReservations<
     );
     if (!thread) return;
     work.thread = thread.id;
+    // Every acquisition opens a work segment, however the work reached it
+    // (admission, recovery, a retry admitted while down, or a takeover).
     // Ledger retirement scales the first wave's hold once by represented/weight.
     // Only that wave blocks logical completion; the remaining CPU belongs to a tail.
     // Waiting for the whole cohort here would scale its CPU duration twice.
+    work.workSegment = true;
     const previousWeight = work.executionWeight ?? work.recoveryThread?.weight;
     if (work.logicalCpuRemaining !== undefined && previousWeight !== undefined)
       work.logicalCpuRemaining *= thread.weight / previousWeight;
     if (work.cpuRemaining !== undefined) work.logicalCpuRemaining ??= (work.cpuPerRequest ?? 0) * thread.weight;
+    work.recoveryThread = undefined;
     node.threadWeight.work += thread.weight;
     node.threadCount.work++;
     return thread;
   }
   /** Capacity only: preserve the attempt's timing, policy and quota transaction. */
   function reacquireCapacity(node: Node, work: Work): boolean {
-    const admission = context.admission(),
-      scale = context.scale();
+    const admission = context.admission();
     if (!usesLedger(node) || ledger.get(work.thread)) return true;
     if (!callerReservations(node)) {
       const retained = work.recoveryThread ?? work.threadLease;
       const thread = reserveThread(
         node,
         work,
-        retained?.represented ?? scale,
+        cohort(work),
         slots(node) - node.threadWeight.work - node.threadWeight.wait,
         retained?.weight ?? Infinity,
       );
       if (!thread) return false;
       thread.requestWeight = thread.weight;
-      work.recoveryThread = undefined;
       return true;
     }
     const recovery = work.recoveryCapacity;
@@ -122,7 +139,7 @@ export function createExecutionReservations<
     let request = ledger.get(work.requestLease);
     // Admission can precede execution while paused. A live scale edit must not
     // resize that already-charged transaction when it enters the ledger.
-    const represented = request?.represented ?? recovery?.request.represented ?? lease?.represented ?? scale;
+    const represented = cohort(work);
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
     let cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
     let requestCapacity = recovery?.request ?? work.lease;
@@ -218,11 +235,7 @@ export function createExecutionReservations<
     // Live resource enabling attaches CPU to the execution slot already held by this work.
     if (work.slotted && node.status !== "down" && !reacquireCapacity(node, work)) return false;
     if (!node.fleet || !node.props.resources) return true;
-    const represented =
-      ledger.get(work.thread)?.represented ??
-      ledger.get(work.requestLease)?.represented ??
-      work.lease?.represented ??
-      scale;
+    const represented = cohort(work);
     work.cpuPerRequest ??= work.continuation?.cpuMs ?? node.props.resources.cpuMsPerMessage;
     const cpuRemaining = work.cpuRemaining ?? work.cpuPerRequest * represented;
     // Existing threads can exceed a newly lowered limit. Attach their CPU to the
@@ -249,7 +262,9 @@ export function createExecutionReservations<
     }
     // Failed acquisition has no execution owner yet. A later scale edit may change
     // its admitted cohort, so do not retain CPU initialized for the failed attempt.
+    // Retained CPU fixes the cohort: a later thread must execute the same requests.
     work.cpuRemaining = cpuRemaining;
+    work.cohort = represented;
     // Resources can be enabled after this request already acquired its ledger thread.
     const thread = usesLedger(node) && ledger.get(work.thread);
     if (thread) work.logicalCpuRemaining ??= work.cpuPerRequest * thread.weight;
@@ -363,6 +378,7 @@ export function createExecutionReservations<
       return node.activeMs - (thread ? (thread.segmentActive ?? thread.startActive) - thread.startActive : 0);
     },
     usesLedger,
+    cohort,
     reacquireCapacity,
     startResources,
     attachIdleResources,

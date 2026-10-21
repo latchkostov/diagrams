@@ -186,7 +186,6 @@ interface Work extends ExecutionWork<Group> {
   residentWeight?: number;
   /** Owns its preceding thread while awaiting the ordinary continuation phase. */
   resumeAtAdmission?: boolean;
-  serviceMs?: number;
   waitingCall?: number;
   outputs?: Edge[];
   outputMessage?: Message;
@@ -930,7 +929,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       attempt(node, work);
     }
     if (node.status === "down") return;
-    work.serviceMs = work.retryAdmissionAt === undefined ? work.remaining : (work.waitRemaining ?? 0);
+    work.workSegment = true;
     if (!callerReservations(node)) {
       if (!reacquireCapacity(node, work)) throw new Error("Processor admitted without thread capacity");
       return;
@@ -951,10 +950,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (!reacquireCapacity(node, work)) throw new Error("Caller admitted without thread capacity");
     attempt(node, work).res = { thread: work.thread, request: work.requestLease };
-    if (work.cpuRemaining !== undefined) {
-      const thread = ledger.get(work.thread)!;
-      work.logicalCpuRemaining ??= (work.cpuPerRequest ?? 0) * thread.weight;
-    }
   }
 
   /** The source has been consumed by its queue/phase; invalidate any alternate admission path. */
@@ -1527,14 +1522,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** The first wave finishes logically; remaining cohort CPU keeps running independently. */
   function finishThreadWork(node: Node, work: Work): void {
     const r = ledger.get<Group>(work.thread);
-    if (!r || work.serviceMs === undefined) return;
+    if (!r || !work.workSegment) return;
     const elapsed = node.activeMs - (r.segmentActive ?? r.startActive);
     const localHold = elapsed;
     if (ownsCpu(work) && (work.cpuRemaining ?? 0) > 1e-8 && (work.logicalCpuRemaining ?? Infinity) <= 1e-8)
       node.cpuTail.add(work);
     r.heldMs += Math.max(0, localHold);
     r.segmentActive = node.activeMs;
-    work.serviceMs = undefined;
+    work.workSegment = false;
   }
 
   function retireRequest(work: Work, immediate = false): void {
@@ -1852,7 +1847,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.cpuRemaining = undefined;
       work.continuation = { ok, cpuMs: replyCpuMs(node.props.resources?.cpuMsPerMessage ?? 0, call.replies!) };
       work.cpuPerRequest = work.continuation.cpuMs;
-      const continuationCpu = work.continuation.cpuMs * (ledger.get(work.thread)?.represented ?? scale);
+      const continuationCpu = work.continuation.cpuMs * execution.cohort(work);
       work.logicalCpuRemaining =
         node.props.resources && ledger.get(work.thread)
           ? work.continuation.cpuMs * ledger.get(work.thread)!.weight
@@ -2107,11 +2102,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (node.props.resources) {
           node.cpuTail.delete(work);
           work.cpuPerRequest = node.props.resources.cpuMsPerMessage;
-          work.cpuBacklog = execution.usesLedger(node) ? (work.cpuRemaining ?? 0) : undefined;
-          work.cpuRemaining =
-            (execution.usesLedger(node) ? (work.cpuRemaining ?? 0) : 0) +
-            node.props.resources.cpuMsPerMessage *
-              (ledger.get(work.thread)?.represented ?? work.recoveryThread?.represented ?? scale);
+          // The failed cohort's unfinished CPU stays owed, unless an outage ended the
+          // attempt: shutdown cancels CPU that has not run, here as for a retained backlog.
+          const backlog = node.status === "down" ? 0 : (work.cpuRemaining ?? 0);
+          work.cpuBacklog = execution.usesLedger(node) ? backlog : undefined;
+          work.cohort = execution.cohort(work);
+          work.cpuRemaining = (work.cpuBacklog ?? 0) + node.props.resources.cpuMsPerMessage * work.cohort;
           const thread = execution.usesLedger(node) && ledger.get(work.thread);
           work.logicalCpuRemaining = thread ? node.props.resources.cpuMsPerMessage * thread.weight : undefined;
           work.cpuBackoffUntil = time + node.props.retryBackoffMs;
@@ -2235,7 +2231,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.via?.endpointId,
       planning,
       time,
-      retainedRequest?.represented ?? scale,
+      execution.cohort(work),
       admissionSlots(policy, node.activeReplicas),
       work.route?.quotas,
       (node.waits || node.callTarget) && node.role === "processor" && scale > 1,
@@ -2286,7 +2282,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.errorRate = outcome.errorRate;
     if (outcome.latencyMs !== undefined)
       work.remaining = outcome.latencyMs * (node.slowFactor ?? 1) * (1 + (random() * 2 - 1) * node.props.jitter);
-    if (ledger.get<Group>(work.thread)) work.serviceMs = (work.serviceMs ?? 0) + work.remaining;
+    if (ledger.get<Group>(work.thread)) work.workSegment = true;
     return true;
   }
 

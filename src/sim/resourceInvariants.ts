@@ -138,6 +138,7 @@ export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
 interface Work extends ResourceWork {
   thread?: number;
   executionWeight?: number;
+  workSegment?: boolean;
   weight?: number;
   resumeAtAdmission?: boolean;
   slotted?: boolean;
@@ -276,12 +277,20 @@ export function assertResourceInvariants(state: ResourceState) {
           "running work has no live thread reservation",
         );
         fail(!threads.has(work.thread!), "running work shares a thread reservation");
+        // Thread acquisition opens the segment whose completion hands the cohort's CPU to its tail.
+        fail(reservation!.phase !== "work" || !!work.workSegment, "running work has no open work segment");
         if (node.props.resources && ownsCpu(work)) {
           fail(work.logicalCpuRemaining !== undefined, "ledger CPU must finish only its first wave before retirement");
           fail(
             work.logicalCpuRemaining! <=
               Math.min((work.cpuPerRequest ?? 0) * reservation!.weight, work.cpuRemaining ?? 0) + 1e-8,
             "ledger logical CPU exceeds first-wave weight or remaining cohort",
+          );
+          // CPU is sized for the cohort the thread executes; a live scale edit never resizes either.
+          const cohortCpu = (work.cpuPerRequest ?? 0) * reservation!.represented;
+          fail(
+            (work.cpuRemaining ?? 0) - (work.cpuBacklog ?? 0) <= cohortCpu * (1 + 1e-9) + 1e-8,
+            "ledger CPU exceeds its thread's represented cohort",
           );
         }
         threads.add(work.thread!);

@@ -3,6 +3,7 @@ import { waitingFixture } from "../lab/waitingFixture";
 import { resourceLesson } from "../model/autoscaling";
 import { kedaFixture } from "../lab/kedaFixture";
 import { createEngine } from "./engine";
+import type { SimEngine } from "./types";
 import {
   assertLedgerInvariants,
   assertResourceInvariants,
@@ -48,7 +49,9 @@ it("standalone retry CPU initializes its first wave only after acquiring a threa
   expect(e.snapshot().nodes.caller.processed).toBe(2);
 });
 
-it("standalone retry preserves its admitted CPU cohort across scale edits and an outage", () => {
+const executedCpu = (e: SimEngine, id = "caller") => e.frame().nodes[id].resources!.executedCpuMs;
+
+it("standalone retry preserves admitted CPU cost across scale edits and outage", () => {
   const d = standaloneRetry();
   d.nodes[1].props!.concurrency = 2;
   let state!: LedgerInvariantState;
@@ -75,6 +78,144 @@ it("standalone retry preserves its admitted CPU cohort across scale edits and an
   expect(e.metrics().inSystem).toBe(0);
   expect(state.ledger.reservations.size).toBe(0);
   expect(state.partBudget.used).toBe(0);
+  // The outage ends both first attempts before any CPU runs. Each retry charges its
+  // admitted cohort once: three requests admitted at scale 3, one at scale 1.
+  expect(executedCpu(e)).toBeCloseTo(4);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 2, failed: 2, deadLettered: 0, dropped: 0 });
+});
+
+function cpuBoundRetry() {
+  const d = standaloneRetry();
+  Object.assign(d.nodes[1].props!.resources!, { cpuMsPerMessage: 100, cpuLimitMilli: 1000 });
+  return d;
+}
+
+it.each([10, 1, 20])(
+  "a retry admitted during an outage charges its whole cohort's CPU after recovery (scale then %s)",
+  (recoveryScale) => {
+    let state!: LedgerInvariantState;
+    const e = createEngine({
+      scale: 10,
+      verifyResources: assertResourceInvariants,
+      verifyLedger(s) {
+        state = s;
+        assertLedgerInvariants(s);
+      },
+    });
+    e.load(cpuBoundRetry());
+    e.step(10);
+    e.inject("source", 1);
+    e.step(10);
+    // The delivery is on its way; it arrives while the worker is down and its
+    // in-place retry keeps the slot without a thread.
+    e.setNodeStatus("caller", "down");
+    e.step(30);
+    expect(e.snapshot().nodes.caller).toMatchObject({ processed: 0, failed: 1 });
+    expect(executedCpu(e)).toBe(0);
+    // Its CPU was sized for ten requests; a scale edit before recovery must not resize them.
+    e.setScale(recoveryScale);
+    e.setNodeStatus("caller", "up");
+    e.step(10);
+    const reservation = [...state.ledger.reservations.values()].find((r) => r.owner === "caller");
+    expect(reservation).toMatchObject({ scope: "thread", represented: 10, weight: 1 });
+    e.step(20_000);
+    // Ten real requests at 100 CPU-ms: the first wave runs one, its tail the other nine.
+    expect(executedCpu(e)).toBeCloseTo(1000);
+    expect(e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, deadLettered: 0, dropped: 0 });
+    expect(e.metrics().inSystem).toBe(0);
+    expect(state.ledger.reservations.size).toBe(0);
+  },
+);
+
+it("an outage cancels the CPU its ended attempt had not run; the retry charges its cohort once", () => {
+  const e = createEngine({
+    scale: 10,
+    verifyResources: assertResourceInvariants,
+    verifyLedger: assertLedgerInvariants,
+  });
+  e.load(cpuBoundRetry());
+  e.step(10);
+  e.inject("source", 1);
+  for (let tick = 0; tick < 10 && !executedCpu(e); tick++) e.step(10);
+  const ran = executedCpu(e);
+  expect(ran).toBeGreaterThan(0);
+  expect(ran).toBeLessThan(100);
+  e.setNodeStatus("caller", "down");
+  e.step(30);
+  e.setNodeStatus("caller", "up");
+  e.step(20_000);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, deadLettered: 0, dropped: 0 });
+  expect(executedCpu(e)).toBeCloseTo(ran + 1000);
+  expect(e.metrics().inSystem).toBe(0);
+});
+
+// fc-sweep seed -1230053122 (ledger.commands I2/I3/I5/I6, scaleOne=false), shrunk:
+// Inject 3, SetScale 10, SetScale 1, RecoverAndEnableResources(tier0, concurrency 1, 1 CPU-ms).
+it("a caller recovered after a scale edit sizes CPU for its admitted cohort (seed -1230053122)", () => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  const service = (id: string, props: Record<string, unknown>) => ({
+    ...d.nodes[1],
+    id,
+    props: { jitter: 0, ...props },
+  });
+  const blocking = (from: string, to: string) => ({
+    id: `${from}-${to}`,
+    from,
+    to,
+    kind: "sync" as const,
+    props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "blocking" as const, replyMs: 0 } },
+  });
+  d.nodes = [
+    d.nodes[0],
+    service("caller", { concurrency: 6, replicas: 2, latencyMs: 11 }),
+    service("tier1", { concurrency: 1, replicas: 1, latencyMs: 0 }),
+    service("tier2", { concurrency: 1, replicas: 1, latencyMs: 0 }),
+    // A competing consumer shapes which deliveries reach the caller.
+    service("worker", {
+      concurrency: 6,
+      replicas: 1,
+      latencyMs: 11,
+      retry: "inplace",
+      retryBackoffMs: 100,
+      resources: { ...resources(), cpuMsPerMessage: 0 },
+    }),
+  ];
+  d.edges = [
+    { id: "input", from: "source", to: "caller", props: { travelMs: 10 } },
+    { id: "worker-input", from: "source", to: "worker", props: { travelMs: 10 } },
+    blocking("caller", "tier1"),
+    blocking("tier1", "tier2"),
+  ];
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    scale: 1,
+    maxParticles: 0,
+    verifyResources: assertResourceInvariants,
+    verifyLedger(s) {
+      state = s;
+      assertLedgerInvariants(s);
+    },
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 3);
+  e.step(10);
+  e.setScale(10);
+  e.step(20);
+  e.setScale(1);
+  e.step(10);
+  // Both caller cohorts were admitted at scale 10 and lose their threads in this outage.
+  e.setNodeStatus("caller", "down");
+  e.setNodeStatus("caller", "up");
+  e.setNodeProps("caller", { concurrency: 1, resources: { ...resources(), cpuMsPerMessage: 1 } });
+  e.step(20_000);
+  expect(e.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 2, failed: 0 });
+  // Two recovered cohorts of ten real requests at 1 CPU-ms each.
+  expect(executedCpu(e)).toBeCloseTo(20);
 });
 
 it.each([false, true])("standalone first completion follows scale one (resources=%s)", (withResources) => {
