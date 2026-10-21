@@ -26,9 +26,67 @@ export function expectScaleEquivalent(baseline: SimSnapshot, sampled: SimSnapsho
       compare(edge.calls?.[key] ?? 0, b.edges[id].calls?.[key] ?? 0, `${id}.${key}`);
 }
 
-/** Replay a fresh constant-rate interval; command histories include edits/restores and
- * are not themselves constant-rate, fixed-scale I1 experiments. Keep all generated pools. */
-export function checkConstantRateEquivalence(diagram: DiagramFile, scale: number, seed = 7) {
+/** Sampled arrival instants: cohorts injected before each STEP (the original formula). */
+export function cohortArrivals(scale: number, ratePerSec = 100, durationMs = 20_000): number[] {
+  const perTick: number[] = [];
+  let injected = 0;
+  for (let time = STEP; time <= durationMs; time += STEP) {
+    const due = Math.floor((time * ratePerSec) / (1000 * scale));
+    perTick.push(due - injected);
+    injected = due;
+  }
+  return perTick;
+}
+
+/** Scale 1 at the same instants: cumulative real arrivals = floor(C * N). */
+export function sameArrivals(cohorts: readonly number[], scale: number): number[] {
+  let c = 0,
+    real = 0;
+  return cohorts.map((n) => {
+    c += n;
+    const due = Math.floor(c * scale + 1e-9);
+    const add = due - real;
+    real = due;
+    return add;
+  });
+}
+
+export function assertHarnessDriven(diagram: DiagramFile) {
+  for (const node of diagram.nodes) {
+    const props = node.props as NodeSimProps | undefined;
+    if ((props?.ratePerSec ?? 0) > 0 || props?.trafficMix !== undefined)
+      throw new Error(`I1 harness owns arrivals: ${node.id} has a source rate or traffic mix`);
+  }
+}
+
+export function drive(diagram: DiagramFile, weight: number, perTick: readonly number[], seed = 7): SimSnapshot {
+  assertHarnessDriven(diagram);
+  const e = createEngine({
+    scale: weight,
+    seed,
+    maxParticles: 0,
+    verifyLedger: assertLedgerInvariants,
+    verifyOutcomes: assertOutcomeInvariants,
+    verifyResources: assertResourceInvariants,
+  });
+  e.load(diagram);
+  for (const count of perTick) {
+    if (count > 0) e.inject("source", count);
+    e.step(STEP);
+  }
+  return e.snapshot();
+}
+
+type ConstantRateOptions = { seed?: number; ratePerSec?: number; durationMs?: number };
+
+/** Command histories include edits/restores and are not themselves constant-rate,
+ * fixed-scale I1 experiments. Replay fresh runs and keep all generated pools. */
+export function constantRateRuns(
+  diagram: DiagramFile,
+  scale: number,
+  { seed = 7, ratePerSec = 100, durationMs = 20_000 }: ConstantRateOptions = {},
+) {
+  assertHarnessDriven(diagram);
   const pools = diagram.nodes.flatMap((n) => {
     const p = n.props as NodeSimProps | undefined;
     return [
@@ -46,27 +104,23 @@ export function checkConstantRateEquivalence(diagram: DiagramFile, scale: number
   pools.push(
     ...(diagram.planning?.sharedAllocations ?? []).flatMap((a) => (a.maxInFlight === undefined ? [] : [a.maxInFlight])),
   );
-  const run = (weight: number) => {
-    const e = createEngine({
-      scale: weight,
-      seed,
-      maxParticles: 0,
-      verifyLedger: assertLedgerInvariants,
-      verifyOutcomes: assertOutcomeInvariants,
-      verifyResources: assertResourceInvariants,
-    });
-    e.load(diagram);
-    let injected = 0;
-    // 100 real requests/s, quantized only at the sampled cohort boundary.
-    for (let time = STEP; time <= 20_000; time += STEP) {
-      const due = Math.floor((time * 100) / (1000 * weight));
-      if (due > injected) e.inject("source", due - injected);
-      injected = due;
-      e.step(STEP);
-    }
-    return e.snapshot();
+  const cohorts = cohortArrivals(scale, ratePerSec, durationMs);
+  const real = sameArrivals(cohorts, scale);
+  return {
+    baseline: drive(diagram, 1, real, seed),
+    sampled: drive(diagram, scale, cohorts, seed),
+    pools,
+    cohorts,
+    real,
   };
-  const baseline = run(1),
-    sampled = run(scale);
+}
+
+export function checkConstantRateEquivalence(
+  diagram: DiagramFile,
+  scale: number,
+  seed = 7,
+  opts: Omit<ConstantRateOptions, "seed"> = {},
+) {
+  const { baseline, sampled, pools } = constantRateRuns(diagram, scale, { ...opts, seed });
   expectScaleEquivalent(baseline, sampled, Math.min(...pools));
 }
