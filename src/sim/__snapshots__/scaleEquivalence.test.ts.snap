@@ -1,0 +1,210 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CPU contention with a pool at scale 2 > pins every node outcome and downstream timeout/late reply 1`] = `
+{
+  "baseline": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=399, failed=0, rejected=0, dropped=0",
+      "partner": "processed=399, failed=0, rejected=0, dropped=0",
+      "result": "processed=399, failed=0, rejected=0, dropped=0",
+      "source": "processed=2000, failed=0, rejected=0, dropped=0",
+    },
+  },
+  "sampled": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=286, failed=0, rejected=0, dropped=0",
+      "partner": "processed=286, failed=0, rejected=0, dropped=0",
+      "result": "processed=286, failed=0, rejected=0, dropped=0",
+      "source": "processed=2000, failed=0, rejected=0, dropped=0",
+    },
+  },
+}
+`;
+
+exports[`CPU contention without a pool at scale 1.1 > pins every node outcome and downstream timeout/late reply 1`] = `
+{
+  "baseline": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=570, failed=0, rejected=0, dropped=0",
+      "partner": "processed=570, failed=0, rejected=0, dropped=0",
+      "result": "processed=570, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999, failed=0, rejected=0, dropped=0",
+    },
+  },
+  "sampled": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=366.3, failed=0, rejected=0, dropped=0",
+      "partner": "processed=366.3, failed=0, rejected=0, dropped=0",
+      "result": "processed=365.20000000000005, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999.8000000000002, failed=0, rejected=0, dropped=0",
+    },
+  },
+}
+`;
+
+exports[`fractional capacity fragmentation at scale 1.1 > pins every node outcome and downstream timeout/late reply 1`] = `
+{
+  "baseline": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=999, failed=0, rejected=0, dropped=0",
+      "partner": "processed=999, failed=0, rejected=0, dropped=0",
+      "result": "processed=998, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999, failed=0, rejected=0, dropped=0",
+    },
+  },
+  "sampled": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=878.9000000000001, failed=0, rejected=0, dropped=0",
+      "partner": "processed=878.9000000000001, failed=0, rejected=0, dropped=0",
+      "result": "processed=878.9000000000001, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999.8000000000002, failed=0, rejected=0, dropped=0",
+    },
+  },
+}
+`;
+
+exports[`legacy queue-worker serviceCredit at scale 1.01 > pins every node outcome and downstream timeout/late reply 1`] = `
+{
+  "baseline": {
+    "calls": {
+      "input": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=1997, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999, failed=0, rejected=0, dropped=0",
+    },
+  },
+  "sampled": {
+    "calls": {
+      "input": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=1008.99, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999.8, failed=0, rejected=0, dropped=0",
+    },
+  },
+}
+`;
+
+exports[`managed request admission and retained holds at scale 1.01 > pins every node outcome and downstream timeout/late reply 1`] = `
+{
+  "baseline": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=662, failed=0, rejected=1335, dropped=0",
+      "partner": "processed=663, failed=0, rejected=0, dropped=0",
+      "result": "processed=662, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999, failed=0, rejected=0, dropped=0",
+    },
+  },
+  "sampled": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=399.96, failed=0, rejected=1598.83, dropped=0",
+      "partner": "processed=399.96, failed=0, rejected=0, dropped=0",
+      "result": "processed=398.95, failed=0, rejected=0, dropped=0",
+      "source": "processed=1999.8, failed=0, rejected=0, dropped=0",
+    },
+  },
+}
+`;
+
+exports[`managed request admission at scale 2.5 > pins every node outcome and downstream timeout/late reply 1`] = `
+{
+  "baseline": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=599, failed=0, rejected=1398, dropped=0",
+      "partner": "processed=599, failed=0, rejected=0, dropped=0",
+      "result": "processed=598, failed=0, rejected=0, dropped=0",
+      "source": "processed=2000, failed=0, rejected=0, dropped=0",
+    },
+  },
+  "sampled": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=500, failed=0, rejected=1497.5, dropped=0",
+      "partner": "processed=500, failed=0, rejected=0, dropped=0",
+      "result": "processed=500, failed=0, rejected=0, dropped=0",
+      "source": "processed=2000, failed=0, rejected=0, dropped=0",
+    },
+  },
+}
+`;
+
+exports[`slow one-slot callee without a pool at scale 10 > pins every node outcome and downstream timeout/late reply 1`] = `
+{
+  "baseline": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=662, failed=0, rejected=0, dropped=0",
+      "partner": "processed=663, failed=0, rejected=0, dropped=0",
+      "result": "processed=662, failed=0, rejected=0, dropped=0",
+      "source": "processed=2000, failed=0, rejected=0, dropped=0",
+    },
+  },
+  "sampled": {
+    "calls": {
+      "call": "timedOut=0, late=0",
+      "input": "timedOut=0, late=0",
+      "output": "timedOut=0, late=0",
+    },
+    "nodes": {
+      "caller": "processed=570, failed=0, rejected=0, dropped=0",
+      "partner": "processed=570, failed=0, rejected=0, dropped=0",
+      "result": "processed=570, failed=0, rejected=0, dropped=0",
+      "source": "processed=2000, failed=0, rejected=0, dropped=0",
+    },
+  },
+}
+`;

@@ -218,6 +218,8 @@ interface RouteDecision {
 }
 interface Node {
   activeMs: number;
+  /** Last tick-loop admission phase completed by this node. */
+  admittedAt?: number;
   latency?: LatencyRecorder;
   fleet?: Fleet;
   id: string;
@@ -502,6 +504,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     time: () => time,
     waits,
     callerReservations,
+    admissionLag: (node) => (node.admittedAt === time && (!node.props.admission || incomingAt === time) ? STEP : 0),
     slots,
     resourceWork,
     scheduleThreadGrace,
@@ -527,6 +530,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let sourceRate = 0;
   let sourceEmitted = 0;
   let time = 0;
+  let incomingAt: number | undefined;
   let accumulator = 0;
   let speed = 1;
   let traffic = false;
@@ -2962,7 +2966,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         resourceClock = true;
         break;
       }
-    if (!resourceClock) admitIncoming();
+    if (!resourceClock) {
+      admitIncoming();
+      incomingAt = time;
+    }
 
     earlyPoolWakes = new Set();
     for (const node of nodes.values()) {
@@ -3210,15 +3217,25 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
         }
       }
-      if (!node.fleet) admitPending(node);
+      if (!node.fleet) {
+        admitPending(node);
+        node.admittedAt = time;
+      }
     }
     if (fleetChanges.size) assignReplicas(fleetChanges);
     drainLogical();
     const poolWakes = earlyPoolWakes;
     earlyPoolWakes = undefined;
     for (const edge of poolWakes) dispatchCalls(edge);
-    if (resourceClock) admitIncoming();
-    for (const node of nodes.values()) if (node.fleet) admitPending(node);
+    if (resourceClock) {
+      admitIncoming();
+      incomingAt = time;
+    }
+    for (const node of nodes.values())
+      if (node.fleet) {
+        admitPending(node);
+        node.admittedAt = time;
+      }
     for (const node of nodes.values()) {
       if (isBroker(node)) pull(node);
       ledger.expireCredits(node.id, node.activeMs);
@@ -3309,6 +3326,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     );
     refreshSourceRate();
     time = 0;
+    incomingAt = undefined;
     accumulator = 0;
     inSystem = 0;
     drawn = 0;
@@ -3358,6 +3376,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.residentCount = 0;
       node.requestWeight = node.requestCount = 0;
       node.activeMs = 0;
+      node.admittedAt = undefined;
       node.heldCalls = 0;
       node.offThreadCalls = 0;
       node.freeFlight = 0;
@@ -3462,6 +3481,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       });
       const clock = {
         time,
+        incomingAt,
         accumulator,
         speed,
         traffic,
@@ -3533,6 +3553,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         restoreAdmission(admission, copy.admission);
         ({
           time,
+          incomingAt,
           accumulator,
           speed,
           traffic,
