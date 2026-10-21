@@ -6,6 +6,9 @@
   { "id": "shared-database", "name": "A service uses another's database", "about": "Each service's data should be private to it and reached through its API: a second service using the same tables couples their deploys and schemas. Fires for a flow from a service into a database in a boundary that holds the service using it; warehouses, object storage and connectors don't count.", "onDemand": false },
   { "id": "entry-gateway", "name": "A client goes around the gateway", "about": "Traffic from outside should come in through a gateway or firewall that filters attacks and limits the rate. Fires for an outside client calling a service you run directly, when the diagram's other traffic comes in through a gateway; managed platforms with their own front door don't count.", "onDemand": false },
   { "id": "capacity", "name": "Can't keep up", "about": "A service or broker over 100% at the diagram's own rates has a backlog that only grows. Uses Show capacity's analysis at free-play rates (each source's rate), and reports the busiest service or broker.", "onDemand": false },
+  { "id": "blocked-threads", "name": "Runs out of threads", "about": "At the diagram's rates, waiting on calls dominates thread hold time and exhausts the pool. Uses the live callout's same-seed verified fix.", "onDemand": false },
+  { "id": "scaling-blind", "name": "CPU scaling misses waiting threads", "about": "A same-seed scenario rerun confirms a busy-thread scaling policy for a waiting caller.", "onDemand": false },
+  { "id": "call-timeout", "name": "Call has no timeout", "about": "A request to an outside API or model API has no deadline. Suggests the timeout the live callout uses, within the caller's thread budget.", "onDemand": false },
   {
     "id": "single-point",
     "name": "Every request goes through one replica",

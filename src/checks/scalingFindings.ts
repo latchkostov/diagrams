@@ -23,6 +23,18 @@ const UNIT: Record<string, string> = {
 };
 const count = (n: number) => Math.round(n).toLocaleString("en-US");
 
+export function scalingFixLabel(s: NonNullable<Finding["scalingPlan"]>): string {
+  return s.kind === "busyThreads"
+    ? "Scale on busy threads"
+    : s.kind === "partitions"
+      ? `Set ${s.broker} partitions to ${s.to}`
+      : s.kind === "min"
+        ? `Set minimum to ${s.to}`
+        : s.kind === "target"
+          ? `Lower target to ${s.to}`
+          : `Raise maximum to ${s.to}`;
+}
+
 /** Deterministic English for agents and workers; the UI translates the structured `scalingPlan` instead. */
 export function planMessage(plan: ScalingPlan, s: PlanSuggestion, names: (id: string) => string): string {
   const where = `${plan.traffic === 1 ? "In" : `At ${round(plan.traffic)}× traffic in`} “${plan.title}”`;
@@ -113,16 +125,7 @@ export function scalingFindings(ctx: CheckContext): Map<string, Finding> {
         ...(ops
           ? {
               fix: {
-                label:
-                  s.kind === "busyThreads"
-                    ? "Scale on busy threads"
-                    : s.kind === "partitions"
-                      ? `Set ${ctx.name(s.broker!)} partitions to ${s.to}`
-                      : s.kind === "min"
-                        ? `Set minimum to ${s.to}`
-                        : s.kind === "target"
-                          ? `Lower target to ${s.to}`
-                          : `Raise maximum to ${s.to}`,
+                label: scalingFixLabel(planDescriptor(plan, s, ctx.name)),
                 ops,
               },
             }

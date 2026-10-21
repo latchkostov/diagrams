@@ -2,6 +2,9 @@ import type { CompiledEdge } from "../../sim/topology";
 import { edgeName } from "../context";
 import { stronglyConnected } from "../graph";
 import type { CheckRule, Finding } from "../types";
+import { revisionAtLeast } from "../../model/revisions";
+import { callPolicy } from "../../sim/callPolicy";
+import type { EdgeSimProps } from "../../sim/types";
 
 // 3. sync-cycle: requests that go round in a circle (A calls B, which calls A): a slow call holds every service
 // on the loop, and timeouts and retries multiply around it. Strongly connected components over request
@@ -67,14 +70,24 @@ export const syncCycle: CheckRule = {
       const names = [ctx.name(first), ...loop.map((e) => ctx.name(e.to))].join(" → ");
       const more = component.length > loop.length ? ` (${component.length} services are on loops like this one)` : "";
       const edge = edgeName(ctx, closing);
+      const deadlock =
+        revisionAtLeast(ctx.diagram.planning?.revision, "p3-w1") &&
+        inside.every((e) => {
+          const policy = callPolicy(
+            ctx.nodes.get(e.from)!.stencil,
+            ctx.edges.get(e.id)?.props?.caller as EdgeSimProps["caller"],
+          );
+          return policy.blocking && policy.deadlineMs === undefined;
+        });
       findings.push({
+        ...(deadlock ? { threadDeadlock: true as const } : {}),
         id: `sync-cycle:${target}`,
         rule: "sync-cycle",
         severity: "warning",
         target,
         elements: [target, ...component.filter((id) => id !== target), ...inside.map((e) => e.id)],
         title: "Requests go round in a circle",
-        message: `${names}: each waits for the next${more}. A slow call holds all of them, and timeouts and retries multiply around the loop.`,
+        message: `${names}: each waits for the next${more}. A slow call holds all of them, and timeouts and retries multiply around the loop.${deadlock ? " Every thread can wait on the loop: deadlocked until a timeout breaks it." : ""}`,
         rationale:
           "A loop of synchronous requests is a distributed-monolith trait: none of the services can be deployed, scaled or fail on its own. Making one call a message breaks the loop.",
         fix: { label: `Make ${edge} a message`, ops: [{ op: "update", target: closing.id, kind: "async" }] },

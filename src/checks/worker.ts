@@ -4,7 +4,8 @@
 
 import type { DiagramFile } from "../model/types";
 import { runChecks } from "./run";
-import type { CheckResult } from "./types";
+import type { CheckResult, Finding } from "./types";
+import { checkedRequests } from "./requestFindings";
 import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";
 import { confirmedThreadFix, type ThreadFixRequest } from "../live/threadFixPlan";
 import type { TroubleAction } from "../live/observedTrouble";
@@ -18,7 +19,7 @@ export interface CheckRequest {
 }
 export type CheckResponse =
   | { id: number; threadFix: TroubleAction | undefined }
-  | { id: number; result: CheckResult; plans?: ScalingPlan[] }
+  | { id: number; result: CheckResult; plans?: ScalingPlan[]; requests?: Finding[] }
   | { id: number; plans: ScalingPlan[] }
   | { id: number; error: string };
 
@@ -37,7 +38,12 @@ scope.onmessage = (e) => {
       // The capacity check's plans go back with its result (memoized: no second run), for main-thread readers.
       // A diagram with capacity turned off plans nothing.
       const result = runChecks(diagram);
-      scope.postMessage({ id, result, plans: result.ran.includes("capacity") ? planScaling(diagram) : undefined });
+      scope.postMessage({
+        id,
+        result,
+        plans: result.ran.includes("capacity") ? planScaling(diagram) : undefined,
+        requests: checkedRequests(diagram),
+      });
     }
   } catch (err) {
     scope.postMessage({ id, error: err instanceof Error ? err.message : String(err) });

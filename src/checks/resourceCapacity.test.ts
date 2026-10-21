@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { resourceLesson } from "../model/autoscaling";
 import { buildContext } from "./context";
+import { runChecks } from "./run";
 import { capacity } from "./rules/capacity";
 
 it("indexes resource-warning targets once before filtering capacity candidates", () => {
@@ -51,8 +52,8 @@ it.each(["disabled", "unreachable", "tolerance", "maxed"])(
     if (kind === "disabled") a.controller.settings.up.selectPolicy = "Disabled";
     else if (kind === "maxed") a.controller.maxReplicas = a.controller.initialReplicas;
     else a.controller.settings.metrics[0].target = { kind: "averageValue", value: kind === "tolerance" ? 15 : 32 };
-    const finding = capacity.detect(buildContext(d)).find((f) => f.target === "caller");
+    const finding = runChecks(d).findings.find((f) => f.target === "caller");
     if (kind === "maxed") expect(finding?.resourceFinding).toMatchObject({ kind: "max", max: 4 });
-    else expect(finding?.title).toContain("can't keep up");
+    else expect(finding).toMatchObject({ rule: "blocked-threads", title: "Decision service runs out of threads" });
   },
 );

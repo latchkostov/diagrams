@@ -18,6 +18,7 @@ import { estimateCardSize } from "../canvas/nodes/size";
  * share the simulation's model, so a check and the live view never disagree.
  */
 export interface CheckContext {
+  local?: boolean;
   diagram: DiagramFile;
   nodes: ReadonlyMap<string, DiagramNode>;
   edges: ReadonlyMap<string, DiagramEdge>;

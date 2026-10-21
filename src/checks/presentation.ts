@@ -4,9 +4,72 @@ import { formatNumber } from "../i18n/number";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import type { Finding } from "./types";
 import { planFixLabel, planSentence } from "../planning/scalingPlanText";
+import type { CheckFix, CheckRule } from "./types";
+
+export function presentRule(rule: CheckRule): CheckRule {
+  if (rule.id === "blocked-threads")
+    return { ...rule, name: t("waitChecks.blockedName"), about: t("waitChecks.blockedAbout") };
+  if (rule.id === "scaling-blind")
+    return { ...rule, name: t("waitChecks.blindName"), about: t("waitChecks.blindAbout") };
+  if (rule.id === "call-timeout")
+    return { ...rule, name: t("waitChecks.timeoutName"), about: t("waitChecks.timeoutAbout") };
+  return rule;
+}
+
+function requestLabel(label: NonNullable<CheckFix["requestLabel"]>): string {
+  switch (label.kind) {
+    case "free":
+      return t("threads.freeAction");
+    case "scale":
+      return t("autoscaling.scaleBusy");
+    case "timeout":
+      return t("waitChecks.timeoutFix", { ms: label.value ?? 0 });
+    case "replicas":
+      return t("waitChecks.replicasFix", { count: label.value ?? 0 });
+  }
+}
 
 /** Localize broker descriptors at render time, keeping cached and worker findings deterministic. */
 export function presentFinding(finding: Finding): Finding {
+  const wait = finding.requestFinding;
+  if (wait)
+    return {
+      ...finding,
+      title:
+        wait.kind === "blocked"
+          ? t("threads.exhausted", { name: wait.name })
+          : wait.kind === "blind"
+            ? t("waitChecks.blindTitle", { name: wait.name })
+            : t("waitChecks.timeoutTitle", { name: wait.callee }),
+      message:
+        wait.kind === "blocked"
+          ? t("waitChecks.blocked", { ...wait })
+          : wait.kind === "blind"
+            ? t("waitChecks.blind", {
+                known: String(wait.cpu !== undefined && wait.target !== undefined),
+                cpu: wait.cpu ?? 0,
+                target: wait.target ?? 0,
+              })
+            : t("waitChecks.timeout", { blocking: String(wait.blocking) }),
+      rationale: t("waitChecks.why"),
+      ...(finding.fix
+        ? {
+            fix: {
+              ...finding.fix,
+              label: finding.fix.planLabel
+                ? (planFixLabel(finding.fix.planLabel) ?? finding.fix.label)
+                : finding.fix.requestLabel
+                  ? requestLabel(finding.fix.requestLabel)
+                  : finding.fix.label,
+              options: finding.fix.options?.map((o) => ({
+                ...o,
+                label: o.requestLabel ? requestLabel(o.requestLabel) : o.label,
+                short: o.requestLabel ? requestLabel(o.requestLabel) : o.short,
+              })),
+            },
+          }
+        : {}),
+    };
   const plan = finding.scalingPlan;
   if (plan) {
     const label = planFixLabel(plan);
@@ -51,12 +114,17 @@ export function presentFinding(finding: Finding): Finding {
   const note = finding.brokerAssignment;
   const fix = finding.fix;
   const rejection = finding.admissionRejection;
-  const message = rejection
+  const message = finding.threadDeadlock
     ? finding.message.replace(
-        rejection.text,
-        t("admission.rejectEstimate", { rate: explanationRate(rejection.rate, "req/s") }),
+        " Every thread can wait on the loop: deadlocked until a timeout breaks it.",
+        ` ${t("waitChecks.deadlock")}`,
       )
-    : finding.message;
+    : rejection
+      ? finding.message.replace(
+          rejection.text,
+          t("admission.rejectEstimate", { rate: explanationRate(rejection.rate, "req/s") }),
+        )
+      : finding.message;
   return {
     ...finding,
     rationale: finding.brokerRationale === "no-reader" ? t("broker.noReader") : finding.rationale,

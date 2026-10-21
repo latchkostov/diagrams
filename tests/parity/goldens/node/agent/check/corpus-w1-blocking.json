@@ -1,9 +1,47 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "call-timeout:call",
+          "rule": "call-timeout",
+          "severity": "suggestion",
+          "title": "No timeout on the call to Partner scoring API",
+          "message": "If it stalls, every thread waits.",
+          "targets": ["call", "caller", "partner"],
+          "fix": {
+            "label": "Add a 1000 ms timeout",
+            "ops": [{ "op": "update", "target": "call", "props": { "caller": { "deadlineMs": 1000 } } }]
+          }
+        }
+      ],
+      "summary": "0 warnings, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
+  },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "0 warnings, 1 suggestion." } },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 1 saved simulation (at most 60 s each)." }
+    "output": {
+      "findings": [
+        {
+          "id": "call-timeout:call",
+          "rule": "call-timeout",
+          "severity": "suggestion",
+          "title": "No timeout on the call to Partner scoring API",
+          "message": "If it stalls, every thread waits.",
+          "targets": ["call", "caller", "partner"],
+          "fix": {
+            "label": "Add a 1000 ms timeout",
+            "ops": [{ "op": "update", "target": "call", "props": { "caller": { "deadlineMs": 1000 } } }]
+          }
+        }
+      ],
+      "summary": "0 warnings, 1 suggestion.",
+      "simulations": "Played 1 saved simulation (at most 60 s each).",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    }
   }
 }

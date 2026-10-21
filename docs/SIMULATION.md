@@ -1182,3 +1182,37 @@ routes, mixes, ordered tables with overlapping matches, filters, quotas, outages
 after every action that routes add up to what sources sent, that every router decision is the first match (or
 Default) and an eligible target, that refusals add up by reason and by route, that runs are deterministic and
 replay from a checkpoint, and that everything drains.
+
+## Requests that wait
+
+Revision `p3-w1` models threads as replicas × concurrency. A Request's `caller.wait` is `blocking`
+(hold a thread) or `non-blocking` (free it); service/function defaults hold, gateway/proxy/workflow defaults
+free. Blocking capacity is threads × 1,000 ÷ hold time, including local work and the slowest parallel call.
+The node's thread meter separates working from waiting. `describe_diagram` exposes `requestsWait.threads`,
+`holdMs` and `ceilingPerSec` alongside its existing waiting explanation.
+
+Calls use simulation time, with `networkDelayMs` for physical travel; animation speed does not lengthen a
+hold. A freed call needs a continuation (`replyMs`, default 10 ms) and retains its in-flight memory.
+`caller.poolConnections` caps calls in flight: blocking callers wait for a connection with a thread held;
+freed callers queue without a thread. `caller.deadlineMs` includes pool wait. A queued call that times out
+is never dispatched; a dispatched call can finish downstream and return a late reply after its timeout.
+
+Checks use the diagram's configured rates, not the intentional overload in saved drills. `blocked-threads`
+replaces the generic capacity warning when waits dominate. Its primary action is exactly #225's
+`confirmedThreadFix`: the cheapest fix its bounded same-seed replay confirms. There is no second ranking.
+Other actions are option chips. Add replicas uses the existing sizing helper; for an autoscaled service
+it offers a fixed fleet (turning off its scaler in the same undo step). `scaling-blind` only offers a
+busy-thread policy when the same scenario planner confirms it; working busy-thread scaling is credited up
+to its reachable maximum. CPU measures work, so waiting threads can exhaust a service while CPU stays low.
+Busy threads is a modelled custom HPA/KEDA metric, not a built-in Kubernetes metric.
+
+`call-timeout` is informational (the Checks card's suggestion tier) for outside/model API Requests without
+a deadline. Its value comes from the live callout's `affordableTimeout`, including network delay and the
+caller's thread budget. This supersedes the design's 4× response / 1–2–5 / 1 s minimum rule. When no
+normal reply fits that budget, it offers no speculative timeout. Fully blocking deadline-free request
+cycles also explain the risk of deadlock.
+
+Expectation metrics `threadsBusy` and `threadsWaiting` measure real threads, just like the meter;
+`timedOut` measures outgoing calls that exceeded a deadline. For example:
+`{ "node": "caller", "field": "threadsWaiting" }`, `op: "<"`, `value: 32`, `when: "always"`.
+Public lessons: A blocking call caps throughput, Scale on busy threads, and the merged A slow payment provider.

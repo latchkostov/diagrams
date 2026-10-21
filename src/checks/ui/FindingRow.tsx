@@ -6,7 +6,7 @@ import type { Finding } from "../types";
 import { applyFix, ignoreFinding, turnOff } from "./actions";
 import { evidenceText } from "../evidenceMerge";
 import { useLocale } from "../../i18n";
-import { presentFinding } from "../presentation";
+import { presentFinding, presentRule } from "../presentation";
 
 // One finding, in the Checks card and (compact) at the top of a selected node's or edge's inspector: what's
 // wrong, why, what it involves, and its one primary action, the fix. ⋯ has Ignore here, Turn off this check
@@ -31,7 +31,10 @@ export interface RowState {
   stale: boolean;
 }
 
-const ruleOf = (id: string) => RULES.find((r) => r.id === id);
+const ruleOf = (id: string) => {
+  const rule = RULES.find((r) => r.id === id);
+  return rule ? presentRule(rule) : undefined;
+};
 
 const MAX_CHIPS = 5;
 const MAX_EVIDENCE = 3;
@@ -82,7 +85,9 @@ export function FindingRow({
     const focused = !!row && row.contains(document.activeElement);
     if (!applyFix(host.editor, f, option)) return;
     host.applied?.();
-    if (focused && row && f.scalingPlan?.kind !== "busyThreads") focusNeighbour(row);
+    const keepsTarget =
+      option === undefined && (f.scalingPlan?.kind === "busyThreads" || f.fix?.planLabel?.kind === "busyThreads");
+    if (focused && row && !keepsTarget) focusNeighbour(row);
   };
   const t = (part: string) => `${testPrefix}-${part}-${f.id}`;
   // Names only for the chips drawn, from the check's one index: a loop of 1,500 services costs five lookups.
@@ -246,7 +251,7 @@ export function FindingRow({
               disabled={state.stale}
               title={state.stale ? "Checking your change…" : o.label}
               aria-label={o.label}
-              onClick={() => fixIt(o.label)}
+              onClick={() => fixIt(finding.fix?.options?.[i]?.label)}
             >
               {o.short}
             </button>

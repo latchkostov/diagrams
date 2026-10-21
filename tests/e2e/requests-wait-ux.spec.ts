@@ -112,7 +112,7 @@ test("Scale on busy threads keeps selection, focuses the changed target, and sup
   await page.getByTestId("planning-more-toggle").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-contributors")).toBeVisible();
-  const fix = page.getByTestId("inspector-check-fix-capacity:caller");
+  const fix = page.getByTestId("inspector-check-fix-blocked-threads:caller");
   await expect(fix).toHaveText("Scale on busy threads");
   await fix.focus();
   await fix.press("Enter");
@@ -120,7 +120,10 @@ test("Scale on busy threads keeps selection, focuses the changed target, and sup
   const target = page.getByTestId("autoscaling-target");
   await expect(target).toBeFocused();
   await expect(target).toHaveAccessibleName("Busy threads (% of threads per pod)");
-  await expect(page.getByTestId("inspector-findings")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-check-row-blocked-threads:caller")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-check-row-scaling-blind:caller")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-findings").getByTestId(/^inspector-check-row-/)).toHaveCount(1);
+  await expect(page.getByTestId("inspector-check-row-call-timeout:call")).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.getByTestId("autoscaling-busy-unit-utilization")).toBeFocused();
   await page.keyboard.press("ArrowRight");

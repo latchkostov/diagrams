@@ -12,6 +12,8 @@ export type { CheckRuleId } from "../model/checks";
 export type CheckSeverity = "warning" | "suggestion";
 
 export interface CheckFix {
+  planLabel?: NonNullable<Finding["scalingPlan"]>;
+  requestLabel?: { kind: "free" | "scale" | "timeout" | "replicas"; value?: number };
   /** Neutral broker vocabulary, translated only by the UI; label stays English for agents and workers. */
   brokerChanges?: { text: string; name: string; spec: BrokerSpec; count: number }[];
   /** The button's words, naming the change ("Add dead-letter queue"). */
@@ -28,6 +30,7 @@ export interface CheckFix {
 }
 
 export interface CheckFixOption {
+  requestLabel?: CheckFix["requestLabel"];
   /** The change in words ("Put API Management in front"). */
   label: string;
   /** The chip's words: what's different about this option ("API Management"). */
@@ -38,6 +41,24 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  threadDeadlock?: true;
+  /** Requests-that-wait descriptors: English in tools, translated at render time. */
+  requestFinding?: {
+    kind: "blocked" | "blind" | "timeout";
+    name: string;
+    callee: string;
+    hold: number;
+    waiting: number;
+    rate: number;
+    needed: number;
+    slots: number;
+    replicas: number;
+    concurrency: number;
+    deadline?: number;
+    blocking?: boolean;
+    cpu?: number;
+    target?: number;
+  };
   resourceFinding?: {
     name: string;
     kind: "memory" | "invalid" | "baseline" | "max" | "keda" | "binding";

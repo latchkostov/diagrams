@@ -3,6 +3,7 @@ import type { CheckResult } from "../../checks/types";
 import type { CheckRequest, CheckResponse } from "../../checks/worker";
 import type { ScalingPlan } from "../../sim/scalingPlanner";
 import { rememberPlans } from "../../lib/scenarioPlanner";
+import { rememberRequestChecks } from "../../lib/requestCheckCache";
 import type { ThreadFixRequest } from "../../live/threadFixPlan";
 import type { TroubleAction } from "../../live/observedTrouble";
 
@@ -80,6 +81,7 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
       });
       if ("result" in response) {
         if (response.plans) rememberPlans(diagram, response.plans);
+        if (response.requests) rememberRequestChecks(diagram, response.requests);
         return response.result;
       }
     } catch {
@@ -89,7 +91,7 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
   // No worker (an old browser, a blocked script): this thread does all the checking, scenario sizing included.
   const [{ runChecks }, { planScaling }] = await Promise.all([loadEngine(), import("../../sim/scalingPlanner")]);
   if (!diagram.checks?.off?.includes("capacity")) rememberPlans(diagram, planScaling(diagram));
-  return runChecks(diagram);
+  return runChecks(diagram, { local: true });
 }
 
 /** Scenario sizing for live playback: the checks worker's planner (memoized with the capacity check's). */

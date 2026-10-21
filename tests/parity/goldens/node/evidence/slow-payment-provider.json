@@ -33,6 +33,36 @@
     { "node": "gateway", "simulation": "Threads held while waiting for the pool", "what": "dropped", "count": 1326, "why": "expected" }
   ],
   "counted": 0,
-  "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 1059 dropped at shop in “No timeouts”; 1059 dropped at gateway in “No timeouts”; 1687 dropped at shop in “A 600 ms timeout”; 1687 dropped at gateway in “A 600 ms timeout”; 1687 dropped at checkout in “A 600 ms timeout”; 1156 …" }
+  "findings": [
+    {
+      "id": "call-timeout:pay",
+      "rule": "call-timeout",
+      "severity": "suggestion",
+      "target": "pay",
+      "elements": ["pay", "checkout", "payment"],
+      "fix": {
+        "ops": [{ "op": "update", "target": "pay", "props": { "caller": { "deadlineMs": 600 } } }],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "call-timeout:pay",
+        "rule": "call-timeout",
+        "severity": "suggestion",
+        "title": "No timeout on the call to Payment provider",
+        "message": "If it stalls, every thread waits.",
+        "targets": ["pay", "checkout", "payment"],
+        "fix": {
+          "label": "Add a 600 ms timeout",
+          "ops": [{ "op": "update", "target": "pay", "props": { "caller": { "deadlineMs": 600 } } }]
+        }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 1059 dropped at shop in “No timeouts”; 1059 dropped at gateway in “No timeouts”; 1687 dropped at shop in “A 600 ms timeout”; 1687 dropped at gateway in “A 600 ms timeout”; 1687 dropped at checkout in “A 600 ms timeout”; 1156 …",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
 }

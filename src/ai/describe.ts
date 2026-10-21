@@ -49,6 +49,10 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
   const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
+  const threads = (id: string) => {
+    const w = analysis?.nodes[id]?.waits;
+    return w ? { threads: w.slots, holdMs: w.threadHoldMs, ceilingPerSec: w.ceiling } : undefined;
+  };
   // Scenario sizing: the same bounded planner result Checks and live playback show. In the editor, only what the
   // checks worker already worked out (the agent tool waits for it); never a simulation on the UI thread.
   const plans = analysis
@@ -73,6 +77,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
         ...n,
         capabilities: connections[n.id] ?? [],
         explanation: resolved(n.id),
+        ...(threads(n.id) ? { requestsWait: threads(n.id) } : {}),
       })),
       edges: take(edges),
       groups: take(groups),
@@ -98,7 +103,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const shownNodes = nodes.slice(0, Math.max(0, limit - lines.length - 1));
   for (const n of shownNodes)
     lines.push(
-      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}`,
+      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
     );
   lines.push("connections:");
   for (const e of edges)

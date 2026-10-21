@@ -120,10 +120,11 @@ it("credits busy-thread scaling only while the measured maximum can keep up", ()
   const d = structuredClone(busy) as DiagramFile;
   d.simulations = [];
   const node = d.nodes.find((n) => n.id === "caller")!;
-  expect(runChecks(d).findings.map((f) => f.id)).toContain("capacity:caller");
+  expect(runChecks(d).findings.map((f) => f.id)).toContain("blocked-threads:caller");
   const setup = (busy as DiagramFile).simulations![1].setup!.props!.caller;
   node.props = { ...node.props, ...setup };
   expect(runChecks(d).findings.map((f) => f.id)).not.toContain("capacity:caller");
+  expect(runChecks(d).findings.map((f) => f.id)).not.toContain("blocked-threads:caller");
   const a = node.props.autoscaling as { controller: { maxReplicas: number } };
   a.controller.maxReplicas = 4;
   expect(runChecks(d).findings.map((f) => f.id)).toContain("capacity:caller");

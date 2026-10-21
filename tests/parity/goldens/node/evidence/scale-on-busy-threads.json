@@ -13,13 +13,81 @@
   "planned": [],
   "counted": 0,
   "findings": [
-    { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "target": "applications", "elements": ["applications"] },
     {
-      "id": "capacity:caller",
-      "rule": "capacity",
+      "id": "blocked-threads:caller",
+      "rule": "blocked-threads",
       "severity": "warning",
       "target": "caller",
-      "elements": ["caller"],
+      "elements": ["caller", "call", "partner"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "caller",
+            "props": {
+              "autoscaling": {
+                "mode": "on",
+                "modelRevision": "a1",
+                "preset": "hpa-service",
+                "presetRevision": "1",
+                "controller": {
+                  "kind": "hpa",
+                  "initialReplicas": 4,
+                  "minReplicas": 4,
+                  "maxReplicas": 10,
+                  "settings": {
+                    "syncMs": 1000,
+                    "tolerance": 0.1,
+                    "initialReadinessDelayMs": 30000,
+                    "cpuInitializationPeriodMs": 300000,
+                    "metrics": [
+                      {
+                        "source": { "kind": "pods", "metric": "busyThreads" },
+                        "target": { "kind": "utilization", "percentOfRequest": 70 },
+                        "windowMs": 1000,
+                        "metricDelayMs": 0
+                      }
+                    ],
+                    "up": {
+                      "stabilizationMs": 0,
+                      "selectPolicy": "Max",
+                      "policies": [
+                        { "type": "Pods", "value": 4, "periodMs": 15000 },
+                        { "type": "Percent", "value": 100, "periodMs": 15000 }
+                      ]
+                    },
+                    "down": {
+                      "stabilizationMs": 5000,
+                      "selectPolicy": "Max",
+                      "policies": [{ "type": "Percent", "value": 100, "periodMs": 15000 }]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "needsChoice": false,
+        "options": [
+          {
+            "kind": null,
+            "ops": [{ "op": "update", "target": "call", "props": { "caller": { "wait": "non-blocking" } } }]
+          },
+          {
+            "kind": null,
+            "ops": [
+              { "op": "update", "target": "caller", "props": { "replicas": 12, "autoscaling": { "mode": "off" } } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "scaling-blind:caller",
+      "rule": "scaling-blind",
+      "severity": "warning",
+      "target": "caller",
+      "elements": ["caller", "call"],
       "fix": {
         "ops": [
           {
@@ -70,22 +138,32 @@
         ],
         "needsChoice": false
       }
-    }
+    },
+    { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "target": "call", "elements": ["call", "caller", "partner"] }
   ],
   "agentReport": {
     "findings": [
-      { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
       {
-        "id": "capacity:caller",
-        "rule": "capacity",
+        "id": "blocked-threads:caller",
+        "rule": "blocked-threads",
         "severity": "warning",
-        "title": "Decision service: scenario sizing",
-        "message": "In “Threads held: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
-        "targets": ["caller"],
+        "title": "Decision service runs out of threads",
+        "message": "It holds a thread for 260 ms per request (250 ms waiting on Partner scoring API). At 400 req/s it needs 104 threads; it has 64 (4 replicas × 16).",
+        "targets": ["caller", "call", "partner"],
         "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
-      }
+      },
+      {
+        "id": "scaling-blind:caller",
+        "rule": "scaling-blind",
+        "severity": "warning",
+        "title": "Decision service scales on CPU, but its threads wait",
+        "message": "At full load it uses 31% CPU against a 70% target while the backlog grows. A same-seed rerun confirmed scaling on busy threads.",
+        "targets": ["caller", "call"],
+        "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      },
+      { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["call", "caller", "partner"] }
     ],
-    "summary": "2 warnings, 0 suggestions.",
+    "summary": "2 warnings, 1 suggestion.",
     "simulations": "Played 3 saved simulations (at most 60 s each).",
     "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
   }

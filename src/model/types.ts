@@ -261,6 +261,8 @@ export const METRIC_FIELDS = [
   "inFlight",
   "failed",
   "timedOut",
+  "threadsBusy",
+  "threadsWaiting",
   "deadLettered",
   "dropped",
   "blocked",

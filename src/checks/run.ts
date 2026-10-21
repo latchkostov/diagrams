@@ -13,6 +13,7 @@ import { singlePoint } from "./rules/singlePoint";
 import { secretIdentity } from "./rules/secretIdentity";
 import { schemaRegistry } from "./rules/schemaRegistry";
 import { dropped } from "./rules/dropped";
+import { blockedThreads, scalingBlind, callTimeout } from "./requestFindings";
 
 /**
  * Every rule, in CHECK_RULES order (the order findings list them). `dropped` is raised only by Run simulations
@@ -26,6 +27,9 @@ export const RULES: readonly CheckRule[] = [
   sharedDatabase,
   entryGateway,
   capacity,
+  blockedThreads,
+  scalingBlind,
+  callTimeout,
   singlePoint,
   secretIdentity,
   schemaRegistry,
@@ -33,6 +37,8 @@ export const RULES: readonly CheckRule[] = [
 ];
 
 export interface RunOptions {
+  /** Worker-unavailable fallback only: permit verification on this thread. */
+  local?: boolean;
   /** Only these rules (default: all). Rules turned off in the diagram stay off. */
   rules?: readonly CheckRuleId[];
 }
@@ -49,6 +55,7 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
     (r) => r.id,
   );
   const ctx = buildContext(diagram);
+  ctx.local = opts.local;
   const all = RULES.filter((r) => ran.includes(r.id)).flatMap((r) => r.detect(ctx));
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
   all.sort(findingOrder(ctx.rank));

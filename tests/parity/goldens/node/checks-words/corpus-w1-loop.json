@@ -3,7 +3,7 @@
   "findings": {
     "sync-cycle:caller": {
       "title": "Requests go round in a circle",
-      "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop.",
+      "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop. Every thread can wait on the loop: deadlocked until a timeout breaks it.",
       "rationale": "A loop of synchronous requests is a distributed-monolith trait: none of the services can be deployed, scaled or fail on its own. Making one call a message breaks the loop.",
       "fix": { "label": "Make Decision service → Decision service a message" }
     }
@@ -15,7 +15,7 @@
         "rule": "sync-cycle",
         "severity": "warning",
         "title": "Requests go round in a circle",
-        "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop.",
+        "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop. Every thread can wait on the loop: deadlocked until a timeout breaks it.",
         "targets": ["caller", "call"],
         "fix": {
           "label": "Make Decision service → Decision service a message",
@@ -33,7 +33,7 @@
         "rule": "sync-cycle",
         "severity": "warning",
         "title": "Requests go round in a circle",
-        "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop.",
+        "message": "Decision service → Decision service: each waits for the next. A slow call holds all of them, and timeouts and retries multiply around the loop. Every thread can wait on the loop: deadlocked until a timeout breaks it.",
         "targets": ["caller", "call"],
         "fix": {
           "label": "Make Decision service → Decision service a message",

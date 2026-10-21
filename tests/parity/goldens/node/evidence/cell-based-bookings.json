@@ -32,5 +32,5 @@
   ],
   "counted": 0,
   "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 20 dropped at east-alb in “us-east-1 goes dark”; 245 dropped at east-c1-api in “A bad deploy stays in one cell”." }
+  "agentReport": { "findings": [], "summary": "Nothing to check. 13 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 20 dropped at east-alb in “us-east-1 goes dark”; 245 dropped at east-c1-api in “A bad deploy stays in one cell”." }
 }

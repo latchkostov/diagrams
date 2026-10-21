@@ -8,6 +8,48 @@
   },
   "planned": [],
   "counted": 0,
-  "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 1 saved simulation (at most 60 s each)." }
+  "findings": [
+    {
+      "id": "call-timeout:call",
+      "rule": "call-timeout",
+      "severity": "suggestion",
+      "target": "call",
+      "elements": ["call", "caller", "partner"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "call",
+            "props": { "caller": { "wait": "non-blocking", "replyMs": 10, "deadlineMs": 1000 } }
+          }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "call-timeout:call",
+        "rule": "call-timeout",
+        "severity": "suggestion",
+        "title": "No timeout on the call to Partner scoring API",
+        "message": "If it stalls, the call stays in flight indefinitely.",
+        "targets": ["call", "caller", "partner"],
+        "fix": {
+          "label": "Add a 1000 ms timeout",
+          "ops": [
+            {
+              "op": "update",
+              "target": "call",
+              "props": { "caller": { "wait": "non-blocking", "replyMs": 10, "deadlineMs": 1000 } }
+            }
+          ]
+        }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 1 saved simulation (at most 60 s each).",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
 }

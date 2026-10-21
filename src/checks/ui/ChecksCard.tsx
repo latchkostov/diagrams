@@ -6,6 +6,8 @@ import type { CheckResult, Finding } from "../types";
 import { turnOn, unignore } from "./actions";
 import { FindingRow, type RowHost, type RowState } from "./FindingRow";
 import { SimulationsBar, type SimulationsHost } from "./SimulationsBar";
+import { presentRule } from "../presentation";
+import { useLocale } from "../../i18n";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -27,7 +29,10 @@ export interface ChecksCardProps extends RowHost {
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-const ruleName = (id: string) => RULES.find((r) => r.id === id)?.name ?? id;
+const ruleName = (id: string) => {
+  const rule = RULES.find((r) => r.id === id);
+  return rule ? presentRule(rule).name : id;
+};
 
 /**
  * Arrow keys move between rows' heads; Home and End go to the first and last. Only from a head: in the Ignore
@@ -79,6 +84,7 @@ function useMaxHeight(card: RefObject<HTMLElement | null>, top: number): number 
 const PAGE = 40;
 
 export function ChecksCard(p: ChecksCardProps) {
+  useLocale();
   const onMount = useRef(p.onMount);
   useEffect(() => onMount.current?.(), []);
   const [foot, setFoot] = useState<"ignored" | "off" | "about" | null>(null);
@@ -267,7 +273,7 @@ export function ChecksCard(p: ChecksCardProps) {
       )}
       {foot === "about" && (
         <ul className="checks-aside is-about" data-testid="checks-about">
-          {RULES.map((rule) => (
+          {RULES.map(presentRule).map((rule) => (
             <li key={rule.id}>
               <span>
                 <strong>{rule.name}.</strong> {rule.about}

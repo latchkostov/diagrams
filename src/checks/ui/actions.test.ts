@@ -10,6 +10,10 @@ import * as simulation from "../../sim/simulation";
 import { planScaling } from "../../sim/scalingPlanner";
 import { registerScenarioPlanner, rememberPlans } from "../../lib/scenarioPlanner";
 import { plannerFixture } from "../../lab/plannerFixture";
+import payment from "../../examples/slow-payment-provider.json";
+import { catalogs } from "virtual:i18n/catalogs";
+import { state, type Catalog } from "../../i18n/core";
+import * as toast from "../../interop/ui/toast";
 
 // A fix from a cached finding is checked again on the diagram as it is now: never applied twice, never sized
 // from numbers the diagram has since changed. Each check setting is its own undo step.
@@ -172,4 +176,26 @@ describe("scenario sizing fixes in the editor", () => {
       registerScenarioPlanner(undefined);
     }
   });
+});
+
+it("a timeout Check's applied feedback and Undo translate while its ops stay English", async () => {
+  const d = payment as DiagramFile;
+  const finding = runChecks(d, { rules: ["call-timeout"] }).findings.find((f) => f.target === "pay")!;
+  const { api, replace } = editorFor(d);
+  const notify = vi.spyOn(toast, "notify");
+  try {
+    state.l = "ar";
+    state.c = (await catalogs.ar()).default as Catalog;
+    expect(applyFix(api, finding)).toBe(true);
+    expect(replace).toHaveBeenCalledTimes(1);
+    const [text, options] = notify.mock.calls.at(-1)!;
+    expect(text).toContain("تم");
+    expect(text).not.toContain("Add a 600 ms timeout");
+    expect(options?.action?.label).not.toBe("Undo");
+    expect(api.getDiagram().edges.find((e) => e.id === "pay")?.props?.caller).toMatchObject({ deadlineMs: 600 });
+  } finally {
+    notify.mockRestore();
+    state.l = "en";
+    state.c = undefined;
+  }
 });

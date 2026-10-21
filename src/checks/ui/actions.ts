@@ -4,6 +4,8 @@ import type { CheckIgnore, DiagramChecks } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
 import { runChecks } from "../run";
 import type { CheckRuleId, Finding } from "../types";
+import { presentFinding } from "../presentation";
+import { t } from "../../i18n/core";
 
 // What a person does with a finding, each one undo step: apply its fix (the same ops agents send through
 // edit_diagram, applied by the ops core), ignore it here (with an optional reason) or turn its check off for
@@ -35,15 +37,31 @@ export function applyFix(editor: EditorApi, finding: Finding, option?: string): 
   }
   const diff = editor.applyDiagram(result.diagram, { merge: `check:fix:${++seq}` });
   if (!diff.hasChanges) return false;
-  if (fresh?.scalingPlan?.kind === "busyThreads") {
+  if (
+    chosen?.requestLabel?.kind === "scale" ||
+    (option === undefined &&
+      (fresh?.scalingPlan?.kind === "busyThreads" || fresh?.fix?.planLabel?.kind === "busyThreads"))
+  ) {
     editor.select({ nodeIds: [finding.target] });
     editor.openInspector("autoscaling-target");
   }
   const added = diff.added.nodes.map((id) => result.diagram.nodes.find((n) => n.id === id)?.label).filter(Boolean);
-  const text = added.length ? `Added ${added.join(", ")}` : `${chosen?.label ?? fresh!.fix!.label}: done`;
+  const displayed = fresh?.requestFinding ? presentFinding(fresh) : fresh;
+  const displayedOption = fresh?.fix?.options?.findIndex((o) => o.label === option) ?? -1;
+  const label = displayed?.fix?.options?.[displayedOption]?.label ?? displayed?.fix?.label ?? "";
+  const text = added.length
+    ? `Added ${added.join(", ")}`
+    : fresh?.requestFinding
+      ? t("waitChecks.done", { fix: label })
+      : `${chosen?.label ?? fresh!.fix!.label}: done`;
   notify(text, {
     kind: "success",
-    action: { label: "Undo", run: () => editor.undo(), testId: "check-fix-undo", undoes: true },
+    action: {
+      label: fresh?.requestFinding ? t("shortcuts.undo") : "Undo",
+      run: () => editor.undo(),
+      testId: "check-fix-undo",
+      undoes: true,
+    },
   });
   return true;
 }
