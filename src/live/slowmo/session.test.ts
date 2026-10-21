@@ -347,8 +347,10 @@ it("a first start waits, capturing, for the script code, then records; an end me
     // A start that ends before the code arrives never records.
     slow.start({ kind: "next", node: "shopper" });
     expect(slow.getState().status).toBe("capturing");
-    expect(c.isHeld).toBe(false);
+    // Live is held while the code downloads, exactly as while the journey is recorded.
+    expect(c.isHeld).toBe(true);
     slow.end();
+    expect(c.isHeld).toBe(false);
     await loadSlowScript();
     await Promise.resolve();
     expect(slow.getState().status).toBe("off");

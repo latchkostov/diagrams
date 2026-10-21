@@ -16,10 +16,11 @@ Inputs burst). Not a rendered whole-app walkthrough.
 
 ## Downloads on first use (bundle trim)
 
-Slow motion chosen before its script has arrived looks the same as its existing look-ahead: Play is disabled, live
-waits paused, the menu's node keeps the keyboard, and the replay starts when the code arrives. Esc cancels as before.
-A failed download says so in the usual toast; its Retry takes the keyboard (the person just asked for slow motion)
-and gives it back. A trouble callout that is still downloading simply hasn't appeared yet; when its download fails,
+Slow motion chosen before its script has arrived holds live as its existing look-ahead does (Play, Continue, step
+and seek wait), and the bar's middle says "Loading slow motion… · Esc to cancel" as a status; the menu's node keeps
+the keyboard and the replay starts when the code arrives. A failed download says so in the usual toast; its Retry
+takes the keyboard only if the live view still has it (a dialog opened meanwhile keeps it, and a Retry pressed then
+waits for the dialog to close), and gives it back. A trouble callout that is still downloading simply hasn't appeared yet; when its download fails,
 the toast's Retry does not take the keyboard, since nobody asked for the callout, but pressing it hands focus back to
 where it was. Covered by hold-the-chunk tests (tests/e2e/lazy-live-fixes.spec.ts): focus, pointer and bar styles,
 and export while held, after arrival, and after a failure.

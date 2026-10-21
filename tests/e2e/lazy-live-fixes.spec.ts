@@ -1,5 +1,14 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoLive, pauseClock, waitForCameraIdle, savedDiagram, expectNoErrors } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoLive,
+  pauseClock,
+  waitForCameraIdle,
+  savedDiagram,
+  expectNoErrors,
+  openShareChooser,
+} from "./fixtures";
 
 // Live code that downloads on first use (PR #225's bundle trim): the thread-fix application ships in the trouble
 // callout's chunk, and slow motion's script loads when slow motion first starts. Each chunk is held (and failed)
@@ -26,6 +35,8 @@ async function gate(page: Page, pattern: RegExp) {
     held = true;
     if (control.fail) return route.abort("failed");
     await open;
+    // Failed while held: the download that was waiting fails too.
+    if (control.fail) return route.abort("failed");
     await route.continue();
   });
   return control;
@@ -132,10 +143,10 @@ async function openKafka(page: Page) {
     .toBeGreaterThan(40);
 }
 
-/** Slow motion from the Storefront, chosen from its menu. */
-async function slowMotionFromStorefront(page: Page) {
+/** Slow motion from a node (the Storefront by default), chosen from its menu. */
+async function slowMotionFromStorefront(page: Page, node = "shopper") {
   await waitForCameraIdle(page);
-  await page.getByTestId("node-shopper").click({ button: "right" });
+  await page.getByTestId(`node-${node}`).click({ button: "right" });
   await page.getByTestId("context-menu-item-sim.slowmo-from").click();
 }
 
@@ -186,6 +197,64 @@ test("a failed slow-motion download returns to live with a focused Retry that st
   script.fail = false;
   script.release();
   await page.keyboard.press("Enter");
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+  expect(await focused(page)).not.toBe("BODY");
+});
+
+test("pending script download freezes live controls and says so; Esc gives them back", async ({ page }) => {
+  const script = await gate(page, SCRIPT);
+  await gotoLive(page, `${KAFKA}&sim=payments-outage&speed=8`);
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+  const at = (await page.getByTestId("live-canvas").getAttribute("data-sim-time")) ?? "";
+  // The note frames Payments: slow motion from there.
+  await slowMotionFromStorefront(page, "payments");
+  await expect.poll(script.requested).toBe(true);
+  const loading = page.getByTestId("slowmo-loading");
+  await expect(loading).toHaveAttribute("role", "status");
+  await expect(loading).toContainText("Loading slow motion");
+  await expect(loading).toContainText("Esc to cancel");
+  // The note's Continue and the Enter key would pass the note: both wait with live.
+  await page.getByTestId("live-note-continue").click();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+  await expect(page.getByTestId("live-play")).toBeDisabled();
+  // The bar shows the wait in the clock's place; the frozen simulation time is the canvas's.
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", at);
+  // Esc cancels the wait: live is back, its Continue works again.
+  await page.keyboard.press("Escape");
+  await expect(loading).toHaveCount(0);
+  await expect(page.getByTestId("live-play")).toBeEnabled();
+  await page.getByTestId("live-note-continue").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  script.release();
+  await expect(page.getByTestId("live-canvas")).not.toHaveAttribute("data-slowmo", /./);
+});
+
+test("a slow-motion download failing behind a dialog leaves the dialog the keyboard; Retry waits for it", async ({
+  page,
+}) => {
+  const script = await gate(page, SCRIPT);
+  await openKafka(page);
+  await slowMotionFromStorefront(page);
+  await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+  await openShareChooser(page);
+  const inDialog = () => page.evaluate(() => !!document.activeElement?.closest('[data-testid="share-chooser"]'));
+  await expect.poll(inDialog).toBe(true);
+  script.fail = true;
+  script.release();
+  const retry = page.getByTestId("lazy-load-retry");
+  await expect(retry).toBeVisible();
+  await expect(page.getByTestId("slowmo-loading")).toHaveCount(0);
+  expect(await inDialog()).toBe(true);
+  await expect(retry).not.toBeFocused();
+  // Pressed while the dialog is open, Retry waits for it to close.
+  script.fail = false;
+  await retry.click();
+  await expect.poll(inDialog).toBe(true);
+  await expect(page.getByTestId("live-canvas")).not.toHaveAttribute("data-slowmo", /./);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
   expect(await focused(page)).not.toBe("BODY");
 });

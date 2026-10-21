@@ -13,8 +13,6 @@ import type { MessageTrace } from "../../sim/types";
 import type { LiveController, LookAhead } from "../controller";
 import type { SlowFrame, SlowScript } from "./script";
 import { loadSlowScript, slowScript, type SlowScriptCode } from "./scriptChunk";
-import { notify } from "../../interop/ui/toast";
-import { LOAD_FAILED } from "../../lib/lazyLoad";
 
 /** How far ahead to look for the journey's end, in simulated ms. */
 export const LOOK_AHEAD_MS = 30_000;
@@ -54,6 +52,8 @@ export interface SlowState {
   /** The words of the most important caption on screen (screen readers, tests). */
   caption: string;
   done: boolean;
+  /** Capturing: the script code is still downloading (the bar says so; Esc cancels). */
+  loading: boolean;
 }
 
 export interface SlowEnv {
@@ -66,6 +66,11 @@ export interface SlowEnv {
    * (src/live/slowmo/scriptChunk.ts) while the session is capturing, and `build` runs only after it arrived.
    */
   code?: SlowScriptCode;
+  /**
+   * The download failed: the session is back to live (unheld, playing as before). The view offers Retry and owns it,
+   * so nothing outlives it.
+   */
+  unavailable?(source: SlowSource): void;
 }
 
 const OFF: SlowState = {
@@ -79,6 +84,7 @@ const OFF: SlowState = {
   real: 0,
   caption: "",
   done: false,
+  loading: false,
 };
 
 function defaultSchedule(work: () => void): () => void {
@@ -162,7 +168,11 @@ export class SlowMotion {
     // Flush a debounced Inputs rebuild before taking the checkpoint. A replay to a
     // later time can yield: wait for it before borrowing the engine for recording.
     this.controller.flush();
-    if (this.controller.getState().needsRestart) return;
+    if (this.controller.getState().needsRestart) {
+      // A start that waited for its code gives live back.
+      if (this.state.status === "capturing") this.end();
+      return;
+    }
     const prev = this.state.status;
     if (prev === "capturing") this.abortCapture();
     if (prev === "off") this.wasPlaying = this.controller.isPlaying;
@@ -170,7 +180,7 @@ export class SlowMotion {
     // Capturing before pausing: pausing publishes, and an armed session must not start twice.
     this.set({ ...OFF, status: "capturing", take: this.take });
     this.loading++;
-    // The first start downloads the script code; live carries on (as for a rebuild) and the capture starts then.
+    // The first start downloads the script code first: live is frozen meanwhile, as for the look-ahead itself.
     if (!this.code()) return this.load(source);
     if (this.controller.busy) {
       this.pendingStart = source;
@@ -205,14 +215,16 @@ export class SlowMotion {
   }
 
   /**
-   * Waits for the script code, then starts. A start that was ended, dropped or replaced meanwhile does nothing; a
-   * failed download goes back to live and says so with Retry, which takes the keyboard and gives it back.
+   * Waits for the script code, then starts. Live is paused and held meanwhile, exactly as while the journey is
+   * recorded: Continue, step and seek wait, so the journey starts where the person asked for it. A start that was
+   * ended, dropped or replaced meanwhile does nothing; a failed download releases live and tells the view.
    */
   private load(source: SlowSource): void {
     const token = this.loading;
     const current = () => token === this.loading && this.state.status === "capturing";
-    // The journey starts where the person asked for it: live waits, paused, for the code (Esc or a failure resumes).
+    this.set({ ...this.state, loading: true });
     this.controller.setPlaying(false);
+    this.controller.hold(true);
     loadSlowScript().then(
       () => {
         if (current()) this.start(source);
@@ -221,10 +233,7 @@ export class SlowMotion {
         if (!current()) return;
         console.error("[diagrams] lazy load failed", error);
         this.end();
-        notify(LOAD_FAILED, {
-          kind: "error",
-          action: { label: "Retry", run: () => this.start(source), testId: "lazy-load-retry", focus: true },
-        });
+        this.env.unavailable?.(source);
       },
     );
   }

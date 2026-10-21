@@ -39,3 +39,13 @@ thread fix ships in the trouble callout's own chunk and runs synchronously from 
 session shows that it is looking ahead with live paused where it was asked, Esc cancels, and a failed download goes
 back to live with a Retry that takes the keyboard and gives it back. A toast's action pressed from the keyboard now
 returns focus to where it came from when the toast goes, unless the action moved it.
+
+## Trim review follow-ups
+
+While slow motion's script downloads, live is held exactly as while the journey is recorded: a note's Continue, Enter,
+step and seek wait, so the journey starts where the person asked for it and nothing in the timeline runs meanwhile.
+Esc and a failed download release it. The bar says "Loading slow motion… · Esc to cancel" in its status slot. A failed
+download's Retry belongs to the live view: it starts through the view's own start, is dismissed and disarmed when live
+closes, takes the keyboard only from the live view that asked (never from a dialog opened since), and when pressed
+while a dialog is open waits for the dialog to close. The planner counts a scaler's decisions only under the replica
+range and Capacity × they were made for, and compares peaks as authored replicas.

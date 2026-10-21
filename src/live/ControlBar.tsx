@@ -99,7 +99,7 @@ export function ControlBar({ state }: { state: LiveState }) {
         </select>
       </label>
 
-      {slowOn ? (
+      {slowOn || slow.loading ? (
         <SlowBar slow={ui.slowmo} />
       ) : (
         <>

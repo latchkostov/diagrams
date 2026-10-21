@@ -315,3 +315,24 @@ it("sizes against a Capacity reduction the live run recorded, as against the sam
   expect(recorded).toMatchObject({ kind: "max", from: 4, verified: expect.anything() });
   expect(recorded!.to).toBe(scripted!.to);
 });
+
+it("sizes from decisions made at the Capacity × in force, not one a recorded change replaced", () => {
+  // Review 20261021-150030: Traffic ×6 / Capacity ×2 for 240 s, then a recorded Traffic ×3 / Capacity ×0.5.
+  // The ×2 decision (27 replicas) must not be read at ×0.5 (an authored maximum of 54); 28 already drains it.
+  const d = plannerFixture();
+  const sim = d.simulations![0];
+  sim.durationMs = 480_000;
+  sim.traffic[0].shape = { kind: "constant", ratePerSec: 115 / 3, durationMs: 480_000 };
+  sim.multipliers = { traffic: 6, capacity: 2 };
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [
+      { time: 240_000, op: { kind: "configuration", patches: {}, multipliers: { traffic: 3, capacity: 0.5 } } },
+    ],
+  };
+  const [plan] = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 1_000_000 }, context);
+  const max = plan.suggestions.find((s) => s.kind === "max");
+  expect(max?.verified).toBeDefined();
+  expect(max!.to).toBeLessThanOrEqual(28);
+});

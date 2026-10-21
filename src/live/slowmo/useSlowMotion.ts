@@ -19,7 +19,8 @@ import { isRecordingActive } from "../record/framing";
 import { followPan, planCamera, type CameraPlan, type FlowBox, type Insets, type View } from "./camera";
 import { SlowPainter, type PaintedLabel } from "./painter";
 import { loadSlowScript, slowScript } from "./scriptChunk";
-import { whenIdle } from "../../lib/lazyLoad";
+import { LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
+import { notify, toast } from "../../interop/ui/toast";
 import { SlowMotion, type SlowSource, type SlowState } from "./session";
 
 type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
@@ -97,9 +98,12 @@ export function useSlowMotion(opts: {
   const pane = useCallback(() => ({ width: store.getState().width, height: store.getState().height }), [store]);
 
   const [session] = useState(() => new SlowMotion(controller));
+  /** What a failed script download does while this view is mounted (see below); nothing once it's gone. */
+  const unavailable = useRef<(source: SlowSource) => void>(() => {});
   // The script builder needs the screen: where the path's nodes are and how long its edges are.
   useLayoutEffect(() => {
     session.configure({
+      unavailable: (source) => unavailable.current(source),
       build: (trace, waiting) => {
         const diagram = controller.currentDiagram;
         const nodes = buildJourney(trace, diagram).nodes;
@@ -160,6 +164,44 @@ export function useSlowMotion(opts: {
     },
     [controller, session, store],
   );
+  // A failed script download: the session is back to live; this view offers Retry and owns it. Retry starts through
+  // `start` (camera, selection), and leaving live dismisses the toast and disarms it.
+  const startRef = useRef(start);
+  useLayoutEffect(() => {
+    startRef.current = start;
+  });
+  useEffect(() => {
+    let alive = true;
+    let toastId: number | undefined;
+    let waiting: number | undefined;
+    const modalOpen = () => !!document.querySelector('[aria-modal="true"]');
+    const retry = (source: SlowSource) => {
+      if (!alive) return;
+      // A dialog opened meanwhile keeps the keyboard and the screen: slow motion starts once it closes.
+      if (modalOpen()) {
+        waiting = requestAnimationFrame(() => retry(source));
+        return;
+      }
+      startRef.current(source);
+    };
+    unavailable.current = (source) => {
+      if (!alive) return;
+      const active = document.activeElement;
+      // Retry takes the keyboard only from the live view that asked for slow motion, never from a dialog since.
+      const owns =
+        !modalOpen() && (!active || active === document.body || !!active.closest('[data-testid="canvas-wrap"]'));
+      toastId = notify(LOAD_FAILED, {
+        kind: "error",
+        action: { label: "Retry", run: () => retry(source), testId: "lazy-load-retry", focus: owns },
+      });
+    };
+    return () => {
+      alive = false;
+      unavailable.current = () => {};
+      if (waiting !== undefined) cancelAnimationFrame(waiting);
+      if (toastId !== undefined) toast.dismiss(toastId);
+    };
+  }, []);
   const end = useCallback(() => {
     const was = session.getState().status;
     session.end();

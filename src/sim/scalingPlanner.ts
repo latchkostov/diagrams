@@ -239,6 +239,8 @@ function observe(
     engine.replicaBounds(w.id) ?? { max: maxOf.get(w.id) ?? replicaRange(w.controller, multiplier).max, multiplier };
   const since = new Map<string, number>(),
     fullSince = new Map<string, number>();
+  /** Each scaler's replica range and Capacity ×, and since when: a decision counts only under the range it saw. */
+  const rangeSince = new Map<string, { key: string; at: number }>();
   const backlogOf = (w: Watched) =>
     ((engine.measure({ node: w.id, field: "backlog" }) ?? 0) +
       w.inputs.reduce(
@@ -279,13 +281,26 @@ function observe(
       o.peakDesired = Math.max(o.peakDesired, f.desired);
       const decision: ScalingDecisionReadout | undefined = f.decision;
       const max = bounds.max;
+      // A replayed Capacity × or policy change starts a new stretch: earlier decisions and fleets were sized for
+      // another range, so neither the steady state nor a decision from before it counts under the new one.
+      const range = `${bounds.max}:${bounds.multiplier}`;
+      const ranged = rangeSince.get(w.id);
+      if (ranged?.key !== range) {
+        if (ranged) fullSince.delete(w.id);
+        rangeSince.set(w.id, { key: range, at: ranged ? now : -Infinity });
+      }
       // Steady state at the maximum: every replica ready, so the metric is per replica of a full fleet.
       // …and the decision's own metric window lies inside that stretch, with the whole maximum fleet ready.
       const full = f.desired >= max && f.ready >= max && !f.starting;
       if (!full) fullSince.delete(w.id);
       else if (!fullSince.has(w.id)) fullSince.set(w.id, now);
       const from = (decision?.at ?? -Infinity) - (decision?.windowMs ?? 0);
-      const steady = since.has(w.id) && fullSince.has(w.id) && from >= since.get(w.id)! && from >= fullSince.get(w.id)!;
+      const steady =
+        since.has(w.id) &&
+        fullSince.has(w.id) &&
+        from >= since.get(w.id)! &&
+        from >= fullSince.get(w.id)! &&
+        from >= rangeSince.get(w.id)!.at;
       if (decision && steady && decision.reason !== "override") {
         // What the scaler wanted beyond its maximum: its own unclamped recommendation, or (rule and step
         // controllers, whose raw is one step) the count that brings the observed metric to its target.
@@ -294,7 +309,8 @@ function observe(
             ? Math.ceil((f.ready * decision.metric) / decision.target)
             : 0;
         const wanted = Math.max(decision.raw, proportional);
-        if (wanted > max && wanted >= o.wanted)
+        // Peaks compare as authored replicas: each at the Capacity × it was wanted under.
+        if (wanted > max && wanted / bounds.multiplier >= o.wanted / (o.wantedMultiplier ?? bounds.multiplier))
           Object.assign(o, {
             maxed: true,
             wanted,
@@ -554,7 +570,13 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
         rejected: after.rejected,
       };
       const before = first.get(s.node)!;
-      if (s.kind === "max" && after.maxed && after.wanted > s.wanted && runs < PLANNER_LIMITS.runs) {
+      const wantedBefore = s.wanted / (before.wantedMultiplier ?? multiplier);
+      if (
+        s.kind === "max" &&
+        after.maxed &&
+        after.wanted / (after.wantedMultiplier ?? multiplier) > wantedBefore &&
+        runs < PLANNER_LIMITS.runs
+      ) {
         // Still at the new maximum wanting more: refine once more from the rerun's own peak.
         refined = true;
         const to = Math.max(s.to + 1, authored(after.wanted, after.wantedMultiplier));
