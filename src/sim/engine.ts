@@ -1255,7 +1255,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           : Math.max(1, Math.round(node.props.replicas * next));
         if (!initialized.has(node)) {
           if (time === 0) {
-            node.fleet = createFleet(desired, c ? controllerSyncMs(c) : undefined, partBudget);
+            node.fleet = createFleet(desired, {
+              concurrency: node.props.concurrency,
+              syncMs: c ? controllerSyncMs(c) : undefined,
+              partBudget,
+            });
             node.fleet.override = f.override;
             resetController(node, node.fleet, c);
           } else reconcileResources(node, desired);
@@ -1563,6 +1567,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.outputs = outgoing.filter((edge) => !edge.sync);
     const requests = outgoing.filter((edge) => edge.sync);
     if (!requests.length) return false;
+    // Capture only admission's fractional carry before local work advances segmentActive.
+    const admissibleActive = execution.admissibleActive(node, work);
     finishThreadWork(node, work);
     const nonblocking = requests.every((e) => !e.policy?.blocking);
     if (nonblocking) retireThread(node, work);
@@ -1633,7 +1639,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           end: call.id,
           call,
           message: branch,
-          admissibleActive: execution.admissibleActive(node, work),
+          admissibleActive,
         },
         edge.poolPendingIndices,
       );
@@ -2556,10 +2562,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       c
         ? replicaRange(c, capacityMultiplier).initial
         : Math.max(1, Math.round(node.props.replicas * capacityMultiplier)),
-      c ? controllerSyncMs(c) : undefined,
-      partBudget,
+      { concurrency: node.props.concurrency, syncMs: c ? controllerSyncMs(c) : undefined, partBudget },
     );
-    node.fleet.concurrency = node.props.concurrency;
     node.fleet.paused = node.status === "paused";
     resetController(node, node.fleet, c);
     if (node.fleet.paused) node.fleet.pausedAt = time;

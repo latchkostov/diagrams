@@ -155,15 +155,23 @@ export interface Fleet {
   changes: { at: number; delta: number }[];
   decision?: ScalingDecision;
   history: FleetPoint[];
-  concurrency?: number;
+  concurrency: number;
   draining: number;
   busyIds: number[];
   rangesDirty: boolean;
   startupHash?: number;
 }
-export function createFleet(count: number, syncMs = 15_000, partBudget = createCpuPartBudget()): Fleet {
+export function createFleet(
+  count: number,
+  {
+    concurrency,
+    syncMs = 15_000,
+    partBudget = createCpuPartBudget(),
+  }: { concurrency: number; syncMs?: number; partBudget?: CpuPartBudget },
+): Fleet {
   count = Number.isFinite(count) ? Math.max(0, Math.min(10_000, Math.round(count))) : 0;
   return {
+    concurrency,
     partBudget,
     inFlight: 0,
     waiting: 0,
@@ -593,7 +601,7 @@ export function metricValue(
   if (m.source.kind === "pods") {
     if (!window.readySamples) return undefined;
     const absolute = window.inFlightPerReady / window.readySamples;
-    return m.target.kind === "averageValue" ? absolute : (absolute / (f.concurrency ?? 1)) * 100;
+    return m.target.kind === "averageValue" ? absolute : (absolute / f.concurrency) * 100;
   }
   const cpu = window.cpu / (window.count * 1000);
   const occupancy = scale > 1 ? window.occupancy / window.count : window.lastOccupancy;

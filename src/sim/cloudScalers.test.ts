@@ -59,7 +59,7 @@ describe("ECS target tracking", () => {
   it("measures CPU against task CPU, not a Kubernetes request", () => {
     const c = ecs((c) => Object.assign(c, { metricPeriodMs: 60_000, alarm: { ...c.alarm, outPeriods: 1 } }));
     c.targetTracking[0].target = 50;
-    const f = createFleet(1, 60_000);
+    const f = createFleet(1, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     cpuSamples(f, 0, 60_000, 600);
     const d = run(f, c, 60_000);
@@ -75,7 +75,7 @@ describe("ECS target tracking", () => {
       ];
     });
     const routed = new Map([["lb", 0]]);
-    const f = createFleet(2, 60_000);
+    const f = createFleet(2, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads(routed));
     const decisions = [1, 2, 3].map((minute) => {
       routed.set("lb", minute * 2400);
@@ -95,7 +95,7 @@ describe("ECS target tracking", () => {
       ];
     });
     const routed = new Map([["lb", 0]]);
-    const f = createFleet(2, 60_000);
+    const f = createFleet(2, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads(routed));
     let total = 0,
       last = 0;
@@ -129,11 +129,11 @@ describe("ECS target tracking", () => {
         alarm: { outPeriods: 1, inPeriods: 1, inMargin: 0.1 },
       }),
     );
-    const f = createFleet(3, 60_000);
+    const f = createFleet(3, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     // No samples: insufficient data is not low load.
     expect(run(f, c, 60_000)).toMatchObject({ desired: 3, reason: "missing" });
-    const zero = createFleet(0, 60_000);
+    const zero = createFleet(0, { concurrency: 1, syncMs: 60_000 });
     resetCloud(zero, c, 0, "worker", quietReads());
     expect(run(zero, c, 60_000)).toMatchObject({ desired: 0, reason: "missing" });
   });
@@ -147,7 +147,7 @@ describe("ECS target tracking", () => {
       ];
     });
     const routed = new Map([["lb", 0]]);
-    const f = createFleet(4, 60_000);
+    const f = createFleet(4, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads(routed));
     cpuSamples(f, 0, 60_000, 50); // 5% CPU wants one task
     routed.set("lb", 4 * 900); // 900 requests per task: inside the ALB target's 10% margin
@@ -203,7 +203,7 @@ describe("ECS step scaling", () => {
       c.stepScaling = [out, scaleIn];
     });
     checkAutoscaling(r, { ...cloudLesson("ecs-step"), controller: c });
-    const f = createFleet(10, 60_000);
+    const f = createFleet(10, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     const desired = [60, 70, 40, 30].map((pct, i) => {
       const at = (i + 1) * 60_000;
@@ -230,7 +230,7 @@ describe("ECS step scaling", () => {
         { ...scaleIn, adjustmentType: "ChangeInCapacity", steps: [{ upper: 0, adjustment: -1 }], cooldownMs: 300_000 },
       ];
     });
-    const f = createFleet(4, 60_000);
+    const f = createFleet(4, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     const at = (minute: number, pct: number) => {
       cpuSamples(f, (minute - 1) * 60_000, minute * 60_000, pct * 10);
@@ -264,7 +264,7 @@ describe("ECS step scaling", () => {
       ];
     });
     const routed = new Map([["lb", 0]]);
-    const f = createFleet(0, 60_000);
+    const f = createFleet(0, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads(routed));
     expect(run(f, c, 60_000, quietReads(routed)).desired).toBe(0);
     routed.set("lb", 5);
@@ -357,7 +357,7 @@ describe("Azure Monitor autoscale (App Service)", () => {
       c.rules[0].threshold = 50;
       c.rules[1].threshold = 30;
     });
-    const f = createFleet(1, 60_000);
+    const f = createFleet(1, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     cpuSamples(f, 0, 60_000, 560);
     expect(run(f, c, 60_000)).toMatchObject({ desired: 2, reason: "rule", policy: 0 });
@@ -376,7 +376,7 @@ describe("Azure Monitor autoscale (App Service)", () => {
         { ...c.rules[1], metric: "memory", threshold: 10 },
       ];
     });
-    const f = createFleet(4, 60_000);
+    const f = createFleet(4, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     cpuSamples(f, 0, 60_000, 800);
     expect(run(f, c, 60_000)).toMatchObject({ desired: 6, policy: 1 });
@@ -389,7 +389,7 @@ describe("Azure Monitor autoscale (App Service)", () => {
       c.rules[0].cooldownMs = 300_000;
       c.rules[1].cooldownMs = 120_000;
     });
-    const f = createFleet(2, 60_000);
+    const f = createFleet(2, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     cpuSamples(f, 0, 60_000, 900);
     expect(run(f, c, 60_000).desired).toBe(3);
@@ -402,7 +402,7 @@ describe("Azure Monitor autoscale (App Service)", () => {
     const c = appService((c) => {
       c.initialReplicas = 3;
     });
-    const f = createFleet(2, 60_000);
+    const f = createFleet(2, { concurrency: 1, syncMs: 60_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     expect(run(f, c, 60_000)).toMatchObject({ desired: 3, reason: "default" });
     expect(run(f, c, 120_000)).toMatchObject({ desired: 3, reason: "missing" });
@@ -417,7 +417,7 @@ describe("Cloud Run", () => {
   };
   it("measures CPU against the instance's CPU limit with a 10% relative tolerance", () => {
     const c = cloudRun((c) => (c.concurrencyWindowsMs = [60_000, 60_000]));
-    const f = createFleet(2, 10_000);
+    const f = createFleet(2, { concurrency: 1, syncMs: 10_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     cpuSamples(f, 0, 60_000, 650); // 65% of 1000m: inside 54–66%
     expect(run(f, c, 60_000)).toMatchObject({ desired: 2, reason: "tolerance" });
@@ -479,7 +479,7 @@ describe("cloud adapters in the engine", () => {
   it("Container Apps keeps its replicas until the 300 s final-zero cooldown expires", () => {
     const c = structuredClone(cloudLesson("aca-http").controller) as AcaController;
     expect(c.cooldownMs).toBe(300_000);
-    const f = createFleet(8, 15_000);
+    const f = createFleet(8, { concurrency: 1, syncMs: 15_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     // The last request arrived at 1 s; no arrivals since.
     f.keda!.lastActive = 1000;
@@ -514,7 +514,7 @@ describe("request metrics count only pushed requests, over their documented wind
     const c = structuredClone(cloudLesson("aca-http").controller) as AcaController;
     Object.assign(c, { minReplicas: 1, initialReplicas: 1, maxReplicas: 50 });
     c.settings.syncMs = 15_000;
-    const f = createFleet(1, 15_000);
+    const f = createFleet(1, { concurrency: 1, syncMs: 15_000 });
     resetCloud(f, c, 0, "worker", quietReads());
     // 300 requests in one second, then nothing: 20 requests/s over the documented 15 s window.
     for (let at = 1000; at <= 15_000; at += 1000)

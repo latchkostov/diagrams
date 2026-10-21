@@ -16,8 +16,7 @@ const busy = (average = false): ScalingMetric => ({
 });
 
 it("busy-thread windows use per-ready-pod counts, Concurrency and metric delay", () => {
-  const f = createFleet(4);
-  f.concurrency = 16;
+  const f = createFleet(4, { concurrency: 16 });
   f.samples.push({ at: 1000, cpu: 0, occupancy: 0, ready: 4, inFlight: 40 });
   expect(metricValue(f, resourceLesson(), busy(), 1000, 10)).toBe(62.5);
   expect(metricValue(f, resourceLesson(), busy(true), 1000, 10)).toBe(10);
@@ -151,8 +150,7 @@ it.each([false, true])("KEDA preserves the busy-thread winner over a broker (fal
   Object.assign(c, { minReplicas: 4, initialReplicas: 4, maxReplicas: 10 });
   c.settings.metrics = [busy()];
   c.fallback = { failureThreshold: 0, replicas: 4, behavior: "static" };
-  const f = createFleet(4);
-  f.concurrency = 16;
+  const f = createFleet(4, { concurrency: 16 });
   f.samples.push({ at: 15000, cpu: 0, occupancy: 0, ready: 4, inFlight: 64 });
   const d = evaluateKeda(f, c, resourceLesson(), 15000, () =>
     fallback ? undefined : { pending: 100000, outstanding: 0, partitions: 4 },
@@ -171,13 +169,17 @@ it.each([false, true])("KEDA preserves the busy-thread winner over a broker (fal
 });
 
 it.each([
-  [1, false],
-  [2, false],
-  [1, true],
-  [2, true],
+  [1, false, 1],
+  [2, false, 1],
+  [1, true, 1],
+  [2, true, 1],
+  [1, false, 2],
+  [2, false, 2],
+  [1, true, 2],
+  [2, true, 2],
 ] as const)(
-  "sampled busy-thread utilization uses fleet Concurrency (scale=%s, reinitialize=%s)",
-  (scale, reinitialize) => {
+  "sampled busy-thread utilization uses fleet Concurrency (scale=%s, reinitialize=%s, capacity=%s)",
+  (scale, reinitialize, capacity) => {
     const d = waitingFixture();
     const a = hpaLesson();
     Object.assign(a.controller, { minReplicas: 4, initialReplicas: 4, maxReplicas: 8 });
@@ -194,17 +196,18 @@ it.each([
     d.nodes[2].props = { latencyMs: 5000, api: { latencyMs: 5000 }, jitter: 0 };
     const e = createEngine({ seed: 17, scale });
     e.load(d);
+    e.setNodePropsBatch({}, capacity);
     if (reinitialize) {
       const resources = { ...resourceLesson(), cpuMsPerMessage: 0 };
       e.setNodeProps("caller", { resources: undefined });
       e.setNodeProps("caller", { resources });
     }
-    e.inject("caller", 40 / scale);
+    e.inject("caller", (40 * capacity) / scale);
     e.step(1000);
     expect(e.snapshot().nodes.caller.fleet!.decision).toMatchObject({
       metric: 61.875,
-      raw: 4,
-      desired: 4,
+      raw: 4 * capacity,
+      desired: 4 * capacity,
       metricKind: "busyThreads",
     });
   },

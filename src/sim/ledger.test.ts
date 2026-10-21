@@ -591,6 +591,29 @@ function sampledPool() {
   return { engine, state: () => state };
 }
 
+it("pool acquisition never carries elapsed local work into fractional release credit", () => {
+  const d = waitingFixture();
+  d.nodes[1].props = { concurrency: 4, latencyMs: 100, jitter: 0 };
+  d.edges[1].props!.caller = { poolConnections: 1 };
+  d.nodes[2].props = { api: { latencyMs: 260 }, jitter: 0 };
+  let state!: LedgerInvariantState;
+  const engine = createEngine({
+    seed: 7,
+    scale: 1.01,
+    verifyLedger(s) {
+      assertLedgerInvariants(s);
+      state = s;
+    },
+  });
+  engine.load(d);
+  engine.inject("source", 1);
+  engine.step(270);
+  engine.inject("source", 1);
+  engine.step(110);
+  const pool = [...state.ledger.reservations.values()].find((r) => r.scope === "pool")!;
+  expect(pool).toMatchObject({ startedAt: 380, startActive: 380 });
+});
+
 it("a reply during pause keeps its logical pool hold and resumes it on the owner's active clock", () => {
   const { engine, state } = sampledPool();
   engine.inject("caller", 3);

@@ -99,7 +99,7 @@ it.each([1, 10])("pause freezes retry CPU and admission backoff at scale %s", (s
   expect(e.frame().nodes.worker.failed).toBe(1);
 });
 it("percentage downscale progresses for small fleets", () => {
-  const f = fleets.createFleet(3),
+  const f = fleets.createFleet(3, { concurrency: 1 }),
     r = resourceLesson(),
     c = hpaLesson().controller;
   c.settings.metrics[0].windowMs = 1000;
@@ -121,7 +121,7 @@ it("percentage downscale progresses for small fleets", () => {
   expect(evaluate(16_000).desired).toBe(1);
 });
 it("delayed metrics exclude recent CPU changes", () => {
-  const f = fleets.createFleet(2),
+  const f = fleets.createFleet(2, { concurrency: 1 }),
     r = resourceLesson(),
     c = hpaLesson().controller;
   c.settings.metrics[0].windowMs = 1000;
@@ -134,7 +134,7 @@ it("delayed metrics exclude recent CPU changes", () => {
   expect(fleets.evaluateHpa(f, c, r, 5000)).toMatchObject({ raw: 6, metric: 200 });
 });
 it("resource windows reuse aggregates across frames and refresh publication and denominators", () => {
-  const f = fleets.createFleet(2),
+  const f = fleets.createFleet(2, { concurrency: 1 }),
     r = resourceLesson();
   for (let time = 1000; time <= 600_000; time += 1000) {
     fleets.chargeCpu(f, undefined, 1000);
@@ -153,7 +153,7 @@ it("resource windows reuse aggregates across frames and refresh publication and 
   expect(fleets.resourceReadout(f, r, 4, 601_000, 10).cpuRequestPct).toBeGreaterThan(a.cpuRequestPct! / 2);
 });
 it("readiness visits due cohorts without rebuilding the full replica index", () => {
-  const f = fleets.createFleet(1),
+  const f = fleets.createFleet(1, { concurrency: 1 }),
     r = resourceLesson();
   r.startup = { delayMs: 600_000, jitterFraction: 0.5 };
   fleets.reconcileFleet(f, 10_000, r, 0, 42, "worker");
@@ -169,7 +169,7 @@ it("readiness visits due cohorts without rebuilding the full replica index", () 
   expect(f.replicaIndexDirty).toBe(false);
 });
 it("bounds aggregate CPU parts during partial jittered startup and recovers on release", () => {
-  const f = fleets.createFleet(1),
+  const f = fleets.createFleet(1, { concurrency: 1 }),
     r = resourceLesson();
   r.startup = { delayMs: 5000, jitterFraction: 0.5 };
   fleets.reconcileFleet(f, 10_000, r, 10, 42, "worker");
@@ -185,7 +185,7 @@ it("bounds aggregate CPU parts during partial jittered startup and recovers on r
   expect(f.partBudget.used).toBe(working.reduce((sum, w) => sum + (w.cpuParts?.length ?? 0), 0));
   expect(f.partBudget.used).toBeLessThanOrEqual(MAX_CPU_PARTS);
   // A drain cannot exceed the same budget through splitting existing active intervals.
-  const splitting = fleets.createFleet(4);
+  const splitting = fleets.createFleet(4, { concurrency: 1 });
   const occupied = [{ cpuParts: sampledParts(splitting, 4, 1000, [])! }];
   splitting.partBudget.used = MAX_CPU_PARTS;
   expect(canDrainSampled(splitting, 2, occupied)).toBe(false);
@@ -214,7 +214,7 @@ it("enabling resources while paused anchors new deadlines to the enable time (fu
 });
 
 it("cached windows follow exact publication boundaries after a pause", () => {
-  const f = fleets.createFleet(1),
+  const f = fleets.createFleet(1, { concurrency: 1 }),
     r = resourceLesson();
   f.samples = [{ at: 1160, cpu: 1000, occupancy: 1, ready: 1 }];
   expect(fleets.resourceReadout(f, r, 1, 1150, 10).cpuRequestPct).toBeUndefined();
@@ -257,7 +257,7 @@ it("CPU-budget-refused HPA shrinks keep actual desired and applied policy histor
 });
 
 it("sampled admission stops reading fragmented ready ranges once eligible capacity is reached", () => {
-  const f = fleets.createFleet(1),
+  const f = fleets.createFleet(1, { concurrency: 1 }),
     r = resourceLesson();
   r.startup = { delayMs: 5000, jitterFraction: 0.5 };
   fleets.reconcileFleet(f, 10000, r, 10, 42, "worker");

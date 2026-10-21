@@ -92,7 +92,7 @@ it("retained retries keep equivalent memory throughout backoff and repeated atte
 });
 
 it("sampled drain preflight and reconciliation visit each attempt once during repeated partial-startup shrinks", () => {
-  const f = fleets.createFleet(1),
+  const f = fleets.createFleet(1, { concurrency: 1 }),
     r = resourceLesson();
   r.startup = { delayMs: 5000, jitterFraction: 0.5 };
   fleets.reconcileFleet(f, 4000, r, 0, 42, "worker");
@@ -144,7 +144,7 @@ it("caches CPU interval keys across ticks and refreshes split boundaries", () =>
 });
 
 it("HPA proposals consume policy history only after successful reconciliation", () => {
-  const f = fleets.createFleet(1),
+  const f = fleets.createFleet(1, { concurrency: 1 }),
     c = hpaLesson().controller,
     r = resourceLesson();
   f.samples = [{ at: 15_000, cpu: 15_000, occupancy: 1, ready: 1 }];
@@ -173,7 +173,7 @@ it("lowering concurrency preserves running work under invariant verification and
 });
 
 it("the ownership oracle accepts old reservations but rejects new acquisitions above lowered concurrency", () => {
-  const f = fleets.createFleet(1);
+  const f = fleets.createFleet(1, { concurrency: 1 });
   f.ranges = [];
   f.active = 4;
   f.busy.set(1, { count: 4, cpu: 0, samples: [] });
@@ -199,7 +199,7 @@ it("the ownership oracle accepts old reservations but rejects new acquisitions a
 });
 
 it("rejects replacement admission above lowered concurrency", () => {
-  const f = fleets.createFleet(1);
+  const f = fleets.createFleet(1, { concurrency: 1 });
   f.ranges = [];
   f.active = 4;
   f.busy.set(1, { count: 4, cpu: 0, samples: [] });
