@@ -1,7 +1,7 @@
 {
   "ar": {
-    "messages": 2552,
-    "fallback": 522,
+    "messages": 2582,
+    "fallback": 549,
     "areas": {
       "admission": "1585747777b2",
       "ai": "ff5a7a5d025f",
@@ -64,12 +64,12 @@
       "threads": "ecfdd9d2d89e",
       "topbar": "4da44658f789",
       "view": "c4fc417ad54a",
-      "viewerForge": "041160894152"
+      "viewerForge": "7a8cd1425442"
     }
   },
   "bg": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "339cd5287f25",
       "ai": "be21a15fe0c2",
@@ -132,12 +132,12 @@
       "threads": "df8f0450e935",
       "topbar": "dbefc69135ec",
       "view": "584e25e11a7c",
-      "viewerForge": "d03e35a5e89f"
+      "viewerForge": "f67aa5bfa510"
     }
   },
   "cs": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "c8683cb1d947",
       "ai": "cdac78f5eabc",
@@ -200,12 +200,12 @@
       "threads": "df8f0450e935",
       "topbar": "997f6b0fa264",
       "view": "0ad0289db97f",
-      "viewerForge": "cd1afd70279b"
+      "viewerForge": "73f8d42e6dd9"
     }
   },
   "da": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "2309322c7e25",
       "ai": "30c366fbcaa3",
@@ -268,12 +268,12 @@
       "threads": "df8f0450e935",
       "topbar": "cabde7ae8cde",
       "view": "81799e312a30",
-      "viewerForge": "826ed223e3b8"
+      "viewerForge": "ea40fdfa5554"
     }
   },
   "de": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "866ad98895eb",
       "ai": "857638035ad7",
@@ -336,12 +336,12 @@
       "threads": "df8f0450e935",
       "topbar": "cd9cc0259bbd",
       "view": "9c266495cfb8",
-      "viewerForge": "c1f4f7ed79a1"
+      "viewerForge": "fd8f27f803cd"
     }
   },
   "el": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "c85e9b1328ba",
       "ai": "c7556c1b9ccf",
@@ -404,11 +404,11 @@
       "threads": "df8f0450e935",
       "topbar": "a2409c158506",
       "view": "9768da1398c2",
-      "viewerForge": "5893e54109e7"
+      "viewerForge": "a1a96863d95f"
     }
   },
   "en-XA": {
-    "messages": 2552,
+    "messages": 2582,
     "fallback": 0,
     "areas": {
       "admission": "0235ad03f4ed",
@@ -472,12 +472,12 @@
       "threads": "a47f55920255",
       "topbar": "b7fddc9b6d21",
       "view": "9a1eebb66b6e",
-      "viewerForge": "e8d15e5f65d6"
+      "viewerForge": "81b7e7a1e334"
     }
   },
   "es": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "8275061ad675",
       "ai": "5f18f254b452",
@@ -540,12 +540,12 @@
       "threads": "df8f0450e935",
       "topbar": "78bdea724ab6",
       "view": "ca61fccea3e0",
-      "viewerForge": "a4c84f6b7b05"
+      "viewerForge": "753616ab737c"
     }
   },
   "et": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "bcda9d352f6d",
       "ai": "d66d3769adc9",
@@ -608,12 +608,12 @@
       "threads": "df8f0450e935",
       "topbar": "9866bed63dd2",
       "view": "1ca5fe8e446d",
-      "viewerForge": "a1224f6df8c9"
+      "viewerForge": "543bad45235f"
     }
   },
   "fi": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "639abadda530",
       "ai": "e9b23cd51b4e",
@@ -676,12 +676,12 @@
       "threads": "df8f0450e935",
       "topbar": "9cf65300cc6c",
       "view": "9731ec8da6eb",
-      "viewerForge": "fa401915efb0"
+      "viewerForge": "f6c10af0766d"
     }
   },
   "fr": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "c0da5634d917",
       "ai": "8372266af473",
@@ -744,12 +744,12 @@
       "threads": "df8f0450e935",
       "topbar": "26c0ce0fa3ab",
       "view": "80a8faf01d71",
-      "viewerForge": "b438662aadbb"
+      "viewerForge": "517003c96dc7"
     }
   },
   "he": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "60a5b99830c3",
       "ai": "1c4de3ee24a5",
@@ -812,12 +812,12 @@
       "threads": "df8f0450e935",
       "topbar": "5a44d80c3c13",
       "view": "cd31b0f75835",
-      "viewerForge": "082c8c12ab65"
+      "viewerForge": "736e7e24bb21"
     }
   },
   "hi": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "81b5998e2d74",
       "ai": "c2134710abdb",
@@ -880,12 +880,12 @@
       "threads": "df8f0450e935",
       "topbar": "34ceed57d926",
       "view": "461573e69e61",
-      "viewerForge": "283fed8e19a5"
+      "viewerForge": "c2a237ad58df"
     }
   },
   "hr": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "250278672ecf",
       "ai": "41b8c5bd02f8",
@@ -948,12 +948,12 @@
       "threads": "df8f0450e935",
       "topbar": "9f7b612472e5",
       "view": "370fba9f2e1d",
-      "viewerForge": "d213de1c4c6b"
+      "viewerForge": "d1bb13f419a9"
     }
   },
   "hu": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "a173caaa787a",
       "ai": "999015b453fc",
@@ -1016,12 +1016,12 @@
       "threads": "df8f0450e935",
       "topbar": "3c7d62fcb42e",
       "view": "720ee6692d5f",
-      "viewerForge": "72707f9882b5"
+      "viewerForge": "0796b38e8c8d"
     }
   },
   "id": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "93080e86188c",
       "ai": "7508253d3643",
@@ -1084,12 +1084,12 @@
       "threads": "df8f0450e935",
       "topbar": "a4296b4e4f78",
       "view": "53c962267399",
-      "viewerForge": "56b5ee9a75c7"
+      "viewerForge": "eeb751943f37"
     }
   },
   "it": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "9016b7c98d05",
       "ai": "b1bdb1b943f2",
@@ -1152,12 +1152,12 @@
       "threads": "df8f0450e935",
       "topbar": "525f8abd5937",
       "view": "f3c5dd66e8a7",
-      "viewerForge": "45f1bcb043f1"
+      "viewerForge": "45ee24bacbbe"
     }
   },
   "ja": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "03ac6ff46fda",
       "ai": "16916e4a6466",
@@ -1220,12 +1220,12 @@
       "threads": "df8f0450e935",
       "topbar": "1f590f5a6ae0",
       "view": "41683011b4a8",
-      "viewerForge": "9defbfeedff4"
+      "viewerForge": "8a6bdda3972e"
     }
   },
   "ko": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "9668a36595b4",
       "ai": "b9713b0ebc36",
@@ -1288,12 +1288,12 @@
       "threads": "df8f0450e935",
       "topbar": "4aa2acdefe38",
       "view": "a524e7670a1d",
-      "viewerForge": "b3ad605f6bec"
+      "viewerForge": "e5629510dc0b"
     }
   },
   "lt": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "d340551a2a22",
       "ai": "a60d18c72aca",
@@ -1356,12 +1356,12 @@
       "threads": "df8f0450e935",
       "topbar": "65d5f1a22203",
       "view": "bd0f81625b77",
-      "viewerForge": "25ee2772db1d"
+      "viewerForge": "8686604568cb"
     }
   },
   "lv": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "78e387261dc3",
       "ai": "7abcc8e0fca5",
@@ -1424,12 +1424,12 @@
       "threads": "df8f0450e935",
       "topbar": "ca074b665a12",
       "view": "26dec6cefd4d",
-      "viewerForge": "6b2a4f226a71"
+      "viewerForge": "026b45427a41"
     }
   },
   "nb": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "4c2373a03104",
       "ai": "1f5a7dd90494",
@@ -1492,12 +1492,12 @@
       "threads": "df8f0450e935",
       "topbar": "d4b7f2bd2ee8",
       "view": "e8ed4c3e2cfe",
-      "viewerForge": "b9316c57e84e"
+      "viewerForge": "0167cc532c04"
     }
   },
   "nl": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "9dca014cc22e",
       "ai": "9c887bebfb5c",
@@ -1560,12 +1560,12 @@
       "threads": "df8f0450e935",
       "topbar": "85d3f9f78bbc",
       "view": "7090c0d9d7ac",
-      "viewerForge": "8bd4ae5f62a7"
+      "viewerForge": "d17949bb210b"
     }
   },
   "pl": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "570713cc3f9c",
       "ai": "0076fec882b3",
@@ -1628,12 +1628,12 @@
       "threads": "df8f0450e935",
       "topbar": "0cab1c9581c8",
       "view": "52245f57ee3c",
-      "viewerForge": "5ba4b5dfcbac"
+      "viewerForge": "0b7ec8e136a4"
     }
   },
   "pt-BR": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "b1b3aa0fdcce",
       "ai": "a599e0c7104c",
@@ -1696,12 +1696,12 @@
       "threads": "df8f0450e935",
       "topbar": "299ad6afe7d8",
       "view": "78c66bf35c24",
-      "viewerForge": "db36e24f4157"
+      "viewerForge": "d38de7b9fa24"
     }
   },
   "pt-PT": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "269f381da119",
       "ai": "da44ea732c3a",
@@ -1764,12 +1764,12 @@
       "threads": "df8f0450e935",
       "topbar": "55cc68c96d9f",
       "view": "91a652688523",
-      "viewerForge": "9002e5199603"
+      "viewerForge": "b549d6fc0af6"
     }
   },
   "ro": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "2fc367bfb234",
       "ai": "690dd0af944f",
@@ -1832,12 +1832,12 @@
       "threads": "df8f0450e935",
       "topbar": "b468dce1cb21",
       "view": "7a5365f6d38a",
-      "viewerForge": "c05cebb3e34a"
+      "viewerForge": "feb1bd678e6f"
     }
   },
   "ru": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "dd2155d35792",
       "ai": "419829673723",
@@ -1900,12 +1900,12 @@
       "threads": "df8f0450e935",
       "topbar": "2902968f8171",
       "view": "25d7e0addfa3",
-      "viewerForge": "3820186fd1e7"
+      "viewerForge": "5c6390dbd8e2"
     }
   },
   "sk": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "de282cafe657",
       "ai": "b584a1750e62",
@@ -1968,12 +1968,12 @@
       "threads": "df8f0450e935",
       "topbar": "430b5d834fe7",
       "view": "0aa61ce55954",
-      "viewerForge": "28710b1c051e"
+      "viewerForge": "d85e2ff6cfbb"
     }
   },
   "sl": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "46736cefd0aa",
       "ai": "844c5fe53eda",
@@ -2036,12 +2036,12 @@
       "threads": "df8f0450e935",
       "topbar": "3950ab3a6255",
       "view": "6fb21d2e1c8e",
-      "viewerForge": "22c2e553cc57"
+      "viewerForge": "2cf3f3d623a7"
     }
   },
   "sr-Latn": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "b1f254245925",
       "ai": "571bcb1e2693",
@@ -2104,12 +2104,12 @@
       "threads": "df8f0450e935",
       "topbar": "0144bfe1aef3",
       "view": "40a3a35f1d53",
-      "viewerForge": "d7c9344ebabd"
+      "viewerForge": "a0ea947a9c05"
     }
   },
   "sv": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "a1faad44500b",
       "ai": "488379e2ee77",
@@ -2172,12 +2172,12 @@
       "threads": "df8f0450e935",
       "topbar": "741650b06efd",
       "view": "b969f3f3b733",
-      "viewerForge": "aff159514ff2"
+      "viewerForge": "3163968bf905"
     }
   },
   "th": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "4c7152546e6f",
       "ai": "25e5a5758e0a",
@@ -2240,12 +2240,12 @@
       "threads": "df8f0450e935",
       "topbar": "616145b83262",
       "view": "24a0b35079e8",
-      "viewerForge": "84fc3c0d7310"
+      "viewerForge": "a9d11f0dab06"
     }
   },
   "tr": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "c9ba84e9fc81",
       "ai": "2c45c177a3eb",
@@ -2308,12 +2308,12 @@
       "threads": "df8f0450e935",
       "topbar": "e36918eef669",
       "view": "581204ffb774",
-      "viewerForge": "c86b534e443d"
+      "viewerForge": "2a63264de00d"
     }
   },
   "uk": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "01c3b2a9ea61",
       "ai": "00c91ebd48c1",
@@ -2376,12 +2376,12 @@
       "threads": "df8f0450e935",
       "topbar": "3df1f4c0094c",
       "view": "85fc18d651c8",
-      "viewerForge": "92073abc2bb6"
+      "viewerForge": "44ae0af8ce33"
     }
   },
   "vi": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "e4040b83feb7",
       "ai": "88456409d7c5",
@@ -2444,12 +2444,12 @@
       "threads": "df8f0450e935",
       "topbar": "33cb7e4144b1",
       "view": "7ee2243cf8b7",
-      "viewerForge": "3b08b61ed8ed"
+      "viewerForge": "8aa94438ff00"
     }
   },
   "zh-CN": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "320934d4f256",
       "ai": "3ef50488a156",
@@ -2512,12 +2512,12 @@
       "threads": "df8f0450e935",
       "topbar": "68882424f948",
       "view": "513660a908ec",
-      "viewerForge": "c5c0b370d983"
+      "viewerForge": "940bd014f0ea"
     }
   },
   "zh-TW": {
-    "messages": 2552,
-    "fallback": 596,
+    "messages": 2582,
+    "fallback": 624,
     "areas": {
       "admission": "b8f5dc48650d",
       "ai": "aa167b14e4aa",
@@ -2580,7 +2580,7 @@
       "threads": "df8f0450e935",
       "topbar": "0c815c0f43a5",
       "view": "d21359af73e2",
-      "viewerForge": "52bcc4c82013"
+      "viewerForge": "635690773515"
     }
   }
 }

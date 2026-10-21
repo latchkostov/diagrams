@@ -4,11 +4,18 @@ import type { ModalOptions } from "@forge/bridge";
 export interface FakeState {
   config?: Record<string, unknown>;
   status?: number;
+  uploadStatus?: number;
+  hostTheme?: "light" | "dark";
+  submitCount?: number;
   fileSize?: number;
   parseCount?: number;
   submitError?: boolean;
   longFilename?: boolean;
+  missingAttachment?: boolean;
   uploaded?: { id: string; title: string; body: string };
+  uploadHistory?: { id: string; title: string; body: string }[];
+  fileReadPending?: boolean;
+  releaseFile?: () => void;
   pageId?: string;
   body?: string;
   calls: { path: string; method: string; filename?: string }[];
@@ -20,7 +27,7 @@ export interface FakeState {
   modalClosed?: boolean;
   closeModal?: () => void;
   documentHeights?: number[];
-  hold?: "context" | "list" | "download";
+  hold?: "context" | "list" | "download" | "upload";
   release?: () => void;
 }
 declare global {
@@ -40,18 +47,29 @@ export const requestConfluence = async (path: string, options?: RequestInit) => 
   const s = state();
   const file = options?.body instanceof FormData ? (options.body.get("file") as File) : undefined;
   s.calls.push({ path, method: options?.method ?? "GET", ...(file ? { filename: file.name } : {}) });
-  if ((s.hold === "list" && !path.includes("/download")) || (s.hold === "download" && path.includes("/download")))
+  if (
+    (s.hold === "list" && !path.includes("/download")) ||
+    (s.hold === "download" && path.includes("/download")) ||
+    (s.hold === "upload" && options?.method === "POST")
+  )
     await new Promise<void>((resolve) => {
       s.release = resolve;
     });
   if (s.status) return new Response("Forbidden", { status: s.status });
   if (options?.method === "POST" && file) {
-    const id = path.endsWith("/7/data") ? "7" : "9";
+    if (s.uploadStatus) return new Response("Forbidden", { status: s.uploadStatus });
+    const id =
+      path.match(/\/(\d+)\/data$/)?.[1] ?? (s.uploadHistory?.length ? String(11 + s.uploadHistory.length) : "9");
     s.uploaded = { id, title: file.name, body: await file.text() };
+    (s.uploadHistory ??= []).push(s.uploaded);
     return Response.json({ results: [{ id: `att${id}`, title: file.name }] });
   }
   const id = path.match(/attachment(?:s)?\/(\d+)/)?.[1] ?? "7";
-  const body = s.uploaded?.id === id ? s.uploaded.body : diagram();
+  const body =
+    s.uploadHistory
+      ?.slice()
+      .reverse()
+      .find((item) => item.id === id)?.body ?? (s.uploaded?.id === id ? s.uploaded.body : diagram());
   if (path.startsWith("/wiki/api/v2/attachments/"))
     return Response.json({
       id,
@@ -62,11 +80,17 @@ export const requestConfluence = async (path: string, options?: RequestInit) => 
   if (path.includes("/download")) return new Response(body, { headers: { "content-type": "application/json" } });
   return Response.json({
     results: [
-      {
-        id: "7",
-        title: s.longFilename ? "a-very-long-attachment-name-".repeat(8) + ".diagram.json" : "orders.diagram.json",
-      },
-      ...(s.uploaded ? [s.uploaded] : []),
+      ...(s.missingAttachment
+        ? []
+        : [
+            {
+              id: "7",
+              title: s.longFilename
+                ? "a-very-long-attachment-name-".repeat(8) + ".diagram.json"
+                : "orders.diagram.json",
+            },
+          ]),
+      ...(s.uploadHistory ?? (s.uploaded ? [s.uploaded] : [])),
       { id: "8", title: "notes.txt" },
       { id: "10", title: "older.livediagram.json" },
       { id: "11", title: "settings.json" },
@@ -87,10 +111,11 @@ export const view = {
         },
   theme: {
     enable: async () => {
-      document.documentElement.dataset.colorMode = "dark";
+      document.documentElement.dataset.colorMode = state().hostTheme ?? "dark";
     },
   },
   submit: async (payload: unknown) => {
+    state().submitCount = (state().submitCount ?? 0) + 1;
     if (state().submitError) throw new Error("Save failed");
     state().submitted = payload;
   },

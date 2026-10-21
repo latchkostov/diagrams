@@ -6,6 +6,7 @@ import {
   downloadDiagram,
   downloadDiagramText,
   uploadDiagram,
+  stageDiagram,
   MAX_FILE_BYTES,
 } from "../../integrations/confluence-forge/src/attachments";
 import { checkManifest, checkBudget } from "../../integrations/confluence-forge/check.mjs";
@@ -149,7 +150,9 @@ describe("Forge attachment transport", () => {
       description: "\u00e9".repeat(Math.floor(remaining / 2)) + "a".repeat(remaining % 2),
     });
     expect(new TextEncoder().encode(atLimit).byteLength).toBe(MAX_FILE_BYTES);
-    const request = vi.fn().mockResolvedValue(Response.json({ id: "9", title: "boundary.livediagram.json" }));
+    const request = vi.fn(async (_path: string, options?: RequestInit) =>
+      Response.json(options?.method === "POST" ? { id: "9", title: "boundary.livediagram.json" } : { results: [] }),
+    );
     await expect(uploadDiagram(request, "42", new File([atLimit], "boundary.livediagram.json"))).resolves.toMatchObject(
       { id: "9" },
     );
@@ -179,9 +182,10 @@ describe("Forge attachment transport", () => {
     expect((body.get("file") as File).name).toBe("orders.livediagram.json");
     expect(body.get("minorEdit")).toBe("false");
     expect(await (body.get("file") as File).text()).toBe(JSON.stringify(textFieldsFixture));
+    request.mockResolvedValueOnce(Response.json({ results: [] }));
     request.mockResolvedValueOnce(Response.json({ results: [{ id: "att9", title: file.name }] }));
     await uploadDiagram(request, "42", file);
-    expect(request.mock.calls[1][0]).toBe("/wiki/rest/api/content/42/child/attachment");
+    expect(request.mock.calls[2][0]).toBe("/wiki/rest/api/content/42/child/attachment");
   });
   it("validates before writing, including size and future formats", async () => {
     const request = vi.fn();
@@ -194,12 +198,14 @@ describe("Forge attachment transport", () => {
     expect(request).not.toHaveBeenCalled();
   });
   it.each(["orders.diagram.json", "orders.livediagram.json"])("accepts and preserves %s on upload", async (name) => {
-    const request = vi.fn().mockResolvedValue(Response.json({ results: [{ id: "7", title: name }] }));
+    const request = vi.fn(async (_path: string, options?: RequestInit) =>
+      Response.json({ results: options?.method === "POST" ? [{ id: "7", title: name }] : [] }),
+    );
     await expect(uploadDiagram(request, "42", new File([JSON.stringify(textFieldsFixture)], name))).resolves.toEqual({
       id: "7",
       title: name,
     });
-    const body = request.mock.calls[0][1].body as FormData;
+    const body = request.mock.calls[1][1]!.body as FormData;
     expect((body.get("file") as File).name).toBe(name);
   });
   it.each(["orders.json", "orders.diagram.json.txt", "orders.livediagram.json.zip"])(
@@ -239,4 +245,38 @@ it("lints the manifest offline, rejecting egress, broad scopes and fixed macro v
 
 it("enforces total raw and gzip resource budgets", () => {
   expect(() => checkBudget(new Map([["large.js", "x".repeat(5_000_001)]]))).toThrow(/raw bytes/);
+});
+
+it("stages native and legacy files without a transport and validates their content immediately", async () => {
+  for (const name of ["orders.diagram.json", "orders.livediagram.json"]) {
+    expect(await stageDiagram(new File([JSON.stringify(textFieldsFixture)], name))).toMatchObject({
+      title: "Fields",
+      private: true,
+    });
+  }
+  for (const text of ["{", "{}", '{"format":"diagrams/v99"}']) {
+    await expect(stageDiagram(new File([text], "bad.diagram.json"))).rejects.toThrow(t("viewerForge.invalidFile"));
+  }
+  const wrong = new File(["{}"], "bad.json");
+  const readWrong = vi.spyOn(wrong, "text");
+  await expect(stageDiagram(wrong)).rejects.toThrow(t("viewerForge.invalidFilename"));
+  expect(readWrong).not.toHaveBeenCalled();
+  const large = new File([" ".repeat(MAX_FILE_BYTES + 1)], "large.diagram.json");
+  const readLarge = vi.spyOn(large, "text");
+  await expect(stageDiagram(large)).rejects.toThrow(t("viewerForge.tooLarge"));
+  expect(readLarge).not.toHaveBeenCalled();
+});
+
+it("resolves a same-name attachment at upload time and adds its version", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ results: [{ id: "7", title: "orders.diagram.json" }] }))
+    .mockResolvedValueOnce(Response.json({ id: "att7", title: "orders.diagram.json" }));
+  await expect(
+    uploadDiagram(request, "42", new File([JSON.stringify(textFieldsFixture)], "orders.diagram.json")),
+  ).resolves.toEqual({ id: "7", title: "orders.diagram.json" });
+  expect(request.mock.calls.map(([path]) => path)).toEqual([
+    "/wiki/api/v2/pages/42/attachments?limit=100",
+    "/wiki/rest/api/content/42/child/attachment/7/data",
+  ]);
 });
