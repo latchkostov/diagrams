@@ -70,7 +70,15 @@ describe("security headers", () => {
   });
 
   it("sends the same headers everywhere, without the opener policy on the sign-in redirect page", () => {
-    for (const path of ["/", "/privacy.html", "/skill/", "/schema/diagram.v1.json", "/llms.txt", "/assets/x.js"]) {
+    for (const path of [
+      "/",
+      "/privacy.html",
+      "/confluence.html",
+      "/skill/",
+      "/schema/diagram.v1.json",
+      "/llms.txt",
+      "/assets/x.js",
+    ]) {
       const h = securityHeadersFor(path);
       expect(h["Referrer-Policy"], path).toBe("strict-origin-when-cross-origin");
       expect(h["X-Content-Type-Options"], path).toBe("nosniff");
@@ -192,6 +200,7 @@ describe("security headers", () => {
       "index.html",
       "public/auth.html",
       "public/privacy.html",
+      "public/confluence.html",
       "public/terms.html",
       "public/skill/index.html",
     ];

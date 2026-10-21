@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Live Diagram for Confluence Cloud: view and play system diagrams from page attachments. Free, with no external data transfers."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Live Diagram for Confluence · Live Diagrams</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --text: #1f2937;
+        --muted: #4b5563;
+        --bg: #ffffff;
+        --line: #e5e7eb;
+        --accent: #2563eb;
+        --tint: #eff6ff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text: #e5e7eb;
+          --muted: #9ca3af;
+          --bg: #0f172a;
+          --line: #1f2937;
+          --accent: #60a5fa;
+          --tint: #172036;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 19px;
+        margin: 36px 0 6px;
+      }
+      h3 {
+        font-size: 16px;
+        margin: 22px 0 4px;
+      }
+      p,
+      li {
+        color: var(--muted);
+      }
+      strong {
+        color: var(--text);
+      }
+      a {
+        color: var(--accent);
+      }
+      code {
+        font-size: 13px;
+      }
+      .callout {
+        margin: 14px 0;
+        padding: 10px 14px;
+        border-left: 3px solid var(--accent);
+        border-radius: 4px;
+        background: var(--tint);
+      }
+      .callout p {
+        margin: 0;
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 data-testid="confluence-title">Live Diagram for Confluence</h1>
+      <p>Show how your system works, right beside the words that describe it.</p>
+      <p>
+        View and play distributed-system diagrams on Confluence Cloud pages. Press Play to watch messages flow, or
+        replay a saved simulation. The diagram is a page attachment, with the permissions and version history your team
+        already uses. The app is free and open source, published by Live Diagrams.
+      </p>
+
+      <h2>Install</h2>
+      <p data-testid="confluence-marketplace-status"><strong>Atlassian Marketplace: coming soon.</strong></p>
+      <p>
+        When the listing is available, a Confluence Cloud site admin can install Live Diagram from Marketplace. It
+        supports Cloud only. No separate Live Diagrams account or subscription is needed.
+      </p>
+
+      <h2>Put a diagram on a page</h2>
+      <ol data-testid="confluence-steps">
+        <li>
+          Make or open your diagram in
+          <a href="./" data-testid="confluence-open-editor">Live Diagrams</a>. Use
+          <strong>File → Export as → Diagram file</strong> to download a <code>.diagram.json</code> file. The older
+          <code>.livediagram.json</code> suffix is also accepted. PNG and Interactive HTML files cannot be used here.
+        </li>
+        <li>
+          Publish the Confluence page first so it can hold attachments. Edit it, type
+          <strong>/Live Diagram</strong>, and insert the macro.
+        </li>
+        <li>
+          Choose a diagram attached to this page, or select a local file and choose
+          <strong>Upload a new attachment</strong>. Files must be valid diagram JSON and no larger than 8 MB.
+        </li>
+        <li>
+          Choose <strong>Free play</strong> or a saved simulation, <strong>Automatic</strong> height or a fixed height,
+          and <strong>Follow Confluence</strong>, Light or Dark. Save the macro and publish the page.
+        </li>
+        <li>
+          The diagram starts still. Press <strong>Play diagram</strong> to start the flow. You can reach it with Tab and
+          press Enter or Space. Use <strong>Maximise</strong> to open a larger view inside Confluence, then close it to
+          return to the page.
+        </li>
+      </ol>
+      <div class="callout">
+        <p>Uploading or replacing a file happens immediately, even if you later cancel macro configuration.</p>
+      </div>
+
+      <h2>Change a diagram</h2>
+      <ol>
+        <li>Download the diagram attachment from Confluence.</li>
+        <li>Open it in Live Diagrams, make your changes, and export the Diagram file again.</li>
+        <li>
+          Edit the macro configuration, keep the existing attachment selected, choose the updated file, and click
+          <strong>Replace selected attachment</strong>. Save and publish.
+        </li>
+      </ol>
+      <p>
+        Replacement keeps the attachment's ID and filename and adds a version to Confluence's history. You can restore
+        an earlier version there. The macro reads the latest version when loaded; reload the page to see a replacement.
+        If you removed the selected saved simulation, choose another one or Free play.
+      </p>
+      <p>The macro is for viewing and playback. Edit diagrams in Live Diagrams, outside Confluence.</p>
+
+      <h2>Permissions and privacy</h2>
+      <p>
+        Every reader uses their own Confluence page and attachment permissions. The app cannot bypass them. Uploading
+        and replacing files also requires the appropriate Confluence editing and attachment permissions. The app asks
+        for attachment read access and file upload/replacement access; reading a page does not upload files.
+      </p>
+      <p>
+        The diagram stays as a Confluence attachment. Macro settings hold only the attachment reference, simulation,
+        height and theme. Viewing and playback run in your browser using Atlassian Forge-hosted resources. There is no
+        separate app storage, analytics, third-party service or external data transfer, and the macro has no outbound
+        link. Data residency follows Confluence for page settings and attachments. Read the
+        <a href="./privacy.html#confluence" data-testid="confluence-privacy">Confluence privacy section</a>.
+      </p>
+
+      <h2>Troubleshooting</h2>
+      <h3>No attachments to choose</h3>
+      <p>
+        Publish the page first. Upload a valid <code>.diagram.json</code> or <code>.livediagram.json</code>
+        file to this page, then reopen configuration. A file attached to another page must be uploaded here.
+      </p>
+      <h3>The file will not load</h3>
+      <p>
+        Check your page and attachment access, and ask your admin whether the app is allowed on this page. Export a
+        fresh Diagram file from Live Diagrams and keep it within 8 MB. Renaming an image to JSON does not turn it into a
+        diagram. If the attachment was deleted, select or upload a replacement.
+      </p>
+      <h3>Play does not show traffic</h3>
+      <p>
+        Choose a saved simulation with traffic, or use Free play with a diagram that has traffic sources. Add sources or
+        simulations in Live Diagrams, then replace the attachment. If a simulation is missing, choose an existing one in
+        macro configuration.
+      </p>
+      <h3>The view is too small, or a copied page will not load</h3>
+      <p>
+        Try Automatic height, a larger fixed height, or Maximise. On a copied or moved page, reopen configuration and
+        reselect the attachment if Confluence changed its reference. PDF and Word exports are not supported by this
+        macro.
+      </p>
+
+      <h2>Support</h2>
+      <p data-testid="confluence-support-guidance">
+        <a
+          href="https://github.com/latchkostov/diagrams/issues/new?template=confluence-app.yml"
+          data-testid="confluence-support"
+          >Report a Confluence app issue on GitHub</a
+        >. Include steps, what you expected, the browser and any error message, with sensitive details removed.
+        <strong>Never attach private or work diagrams.</strong> Use an invented, generic example and check screenshots
+        for site names, account details and confidential content before posting. Support is public, with no guaranteed
+        response time.
+      </p>
+      <p>
+        <a
+          href="https://github.com/latchkostov/diagrams/issues?q=is%3Aissue%20label%3Aconfluence"
+          data-testid="confluence-known-issues"
+          >Browse Confluence issues</a
+        >
+        · <a href="./terms.html" data-testid="confluence-terms">Terms</a>
+      </p>
+    </main>
+  </body>
+</html>

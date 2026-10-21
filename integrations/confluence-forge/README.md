@@ -1,11 +1,11 @@
 # Live Diagram for Confluence Cloud
 
-A private-install Forge spike and v1 groundwork: view and play a page attachment, with no editor,
-backend, outbound link, analytics or external egress. The owner verified attachment download and
-playback on a development site; the broader checklist below remains. Nothing in this checkout needs
-an Atlassian account to build or test.
+A free Forge app: view and play a page attachment, with no editor, backend, outbound link, analytics
+or external egress. The app is registered as **Live Diagram** and has been deployed and installed
+in development. Nothing in this checkout needs an Atlassian account to build or test offline.
+Public documentation: [Live Diagram for Confluence](https://www.livediagrams.dev/confluence.html).
 
-## Owner: register and install on your dev site
+## Development installation
 
 1. Create an Atlassian account and a **Confluence development site** at
    [go.atlassian.com/cloud-dev](https://go.atlassian.com/cloud-dev). Complete the setup wizard and
@@ -23,16 +23,14 @@ an Atlassian account to build or test.
    npm i -g @forge/cli
    cd integrations/confluence-forge
    forge login
-   forge register
    forge deploy --environment development
    forge install --environment development
    ```
 
-   `forge login` prompts for your Atlassian email and token. Name the registered app **Live Diagram**.
-   `forge register` replaces the all-zero `app.id` placeholder in `manifest.yml` with your app's ID.
-   Keep that ID for later deployments; don't register again on each update. In `forge install`,
+   `forge login` prompts for your Atlassian account and token. The registered app is **Live Diagram**.
+   Keep the existing `app.id` in `manifest.yml`; do not register a second app. In `forge install`,
    choose **Confluence** and the dev-site hostname. Accept the attachment read/file upload scopes.
-   Keep sharing disabled: this pilot needs no install link or Marketplace listing.
+   Keep sharing disabled for development; production distribution is a separate step below.
 
 4. Create and **publish** a Confluence page first. In page attachments, upload a valid Diagram file
    named, for example, `orders.diagram.json`. This is the native **Diagram file** export from
@@ -46,6 +44,7 @@ an Atlassian account to build or test.
    Page and attachment permissions apply to every reader. To edit, download the attachment using
    Confluence, edit the file outside this macro, then use **Replace selected attachment** in config.
    Replacement preserves the selected attachment ID and filename and creates another version.
+   Use **Maximise** to open a larger view in a Forge Modal without leaving Confluence.
    Uploads happen immediately, even if you later cancel config; previous versions remain in
    Confluence's attachment history. The macro reads the latest version, rather than pinning one.
 
@@ -70,9 +69,14 @@ The [macro manifest](https://developer.atlassian.com/platform/forge/manifest-ref
 supports `layout: block` (the default), `inline` or `bodied`; it has no `wide` or `full-width` layout value.
 Keep the default block layout. Choose a wider Confluence page/column where available, or use Maximise.
 
-## Manual dev-site checklist (not yet performed)
+## Real-site release checklist
 
-- [ ] `forge register`, `forge lint`, deploy and private installation succeed with the two declared scopes.
+The owner reports that the development installation works. This checklist remains a release check,
+not a claim that every case has been verified. Filename compatibility, Forge Modal maximise and
+readable automatic height shipped in #218; the instructions
+and Marketplace package describe that release.
+
+- [ ] `forge lint`, deploy and installation succeed with the existing app ID and two declared scopes.
 - [ ] On a published page, the config lists `.diagram.json` and older `.livediagram.json` attachments, including later pages
       of results. Empty pages explain how to select/upload; Cancel closes even after an error.
 - [ ] **Critical spike:** `requestConfluence` returns attachment JSON after the REST download redirect.
@@ -145,5 +149,54 @@ covers creating/replacing files without granting page-body edits or attachment d
 `data-color-mode`, with a light fallback where unavailable.
 
 Deferred: resolver fallback until a real-site failure demonstrates need; export previews and `adfExport`;
-editor; Jira; Marketplace and install links; coordination among multiple macros and offscreen playback.
+editor; Jira; approved Marketplace install link; coordination among multiple macros and offscreen playback.
 No PNG fallback is claimed because v1 stores only the Diagram attachment.
+
+## Publishing to the Marketplace
+
+The owner creates the partner profile and submits the listing. The orchestrator runs the production
+deploy. No production deploy or Marketplace submission is performed by preparing these files.
+Follow Atlassian's [Forge listing guide](https://developer.atlassian.com/platform/marketplace/listing-forge-apps/)
+and [distribution guide](https://developer.atlassian.com/platform/forge/distribute-your-apps/).
+
+1. **Owner: create the Marketplace partner profile** with display name **Live Diagrams**. Use the
+   partner description and URLs in [marketplace/listing.md](marketplace/listing.md). Choose **Free**
+   pricing. Support is public GitHub issues, with no personal email in public copy.
+2. **Orchestrator: build and deploy production** after the companion pilot-feedback fixes land and
+   the real-site checklist above passes. From the repository root:
+
+   ```sh
+   fnm use 24
+   pnpm install --frozen-lockfile
+   pnpm --filter @livediagrams/confluence-forge build
+   cd integrations/confluence-forge
+   forge lint
+   forge deploy --environment production
+   ```
+
+   Keep the registered app ID. Do not enable paid licensing or introduce egress. Verify production
+   Runs on Atlassian eligibility with the current Forge CLI before claiming a badge.
+
+3. **Owner: enable distribution in the Developer Console.** Select the registered **Live Diagram**
+   app, open **Distribution**, enable sharing and set Confluence as the supported product. Set:
+   privacy `https://www.livediagrams.dev/privacy.html#confluence`, terms
+   `https://www.livediagrams.dev/terms.html`, support
+   `https://github.com/latchkostov/diagrams/issues/new?template=confluence-app.yml`, and documentation
+   `https://www.livediagrams.dev/confluence.html`. Verify these pages are live after the site change
+   is deployed; a branch push alone does not publish them.
+4. **Owner: create the free listing** from [marketplace/listing.md](marketplace/listing.md), linking
+   the production Forge app to the **Live Diagrams** partner. Copy each field without its heading.
+   Use Confluence Cloud compatibility only. Do not enable a trial or paid licensing.
+5. **Owner: complete Privacy & Security and the Forge security questionnaire** from
+   [marketplace/security-privacy.md](marketplace/security-privacy.md). Confirm the marked legal,
+   scanning, incident-response and organisation-contact answers; do not submit those as verified
+   facts from source code. If Atlassian requires a security email, provide an organisation-managed
+   contact directly in its form, rather than publishing a personal address or inventing a mailbox.
+6. **Owner/orchestrator: upload artwork and screenshots.** Use `marketplace/logo-144.png` and
+   `marketplace/banner-1120.png`. Capture the five shots in
+   [marketplace/screenshots.md](marketplace/screenshots.md), including the three 580 × 330 highlight
+   crops, using only invented generic diagrams. Do not upload the banner in place of a product screenshot.
+7. **Owner: preview and submit** the listing for Atlassian review. Check field lengths, public links,
+   free pricing, screenshots and the production version. Create the public `confluence` issue label
+   if it does not exist, so the issue form can apply it. After approval, replace “coming soon” in
+   `public/confluence.html` with the approved Marketplace install link and verify it on the site.

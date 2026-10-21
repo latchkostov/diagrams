@@ -101,7 +101,7 @@
     <main>
       <h1 data-testid="privacy-title">Privacy policy</h1>
       <p class="updated" data-testid="privacy-effective">
-        Live Diagrams at livediagrams.dev · effective 18 October 2026
+        Live Diagrams at livediagrams.dev · effective 20 October 2026
       </p>
 
       <p>
@@ -113,7 +113,8 @@
       <p>
         Jump to: <a href="#your-diagrams">Your diagrams</a> · <a href="#google-drive">Google Drive</a> ·
         <a href="#onedrive">OneDrive</a> · <a href="#dropbox">Dropbox</a> ·
-        <a href="#self-hosting">Your company's own copy</a> · <a href="#contact">Contact</a>
+        <a href="#self-hosting">Your company's own copy</a> ·
+        <a href="#confluence" data-testid="privacy-confluence-jump">Confluence</a> · <a href="#contact">Contact</a>
       </p>
 
       <h2 id="your-diagrams">Your diagrams</h2>
@@ -239,6 +240,47 @@
           browser profile can open them, so lock your device and avoid shared profiles.
         </li>
       </ul>
+
+      <h2 id="confluence" data-testid="privacy-confluence-title">Live Diagram for Confluence</h2>
+      <div data-testid="privacy-confluence">
+        <p>
+          The free Confluence Cloud app views and plays a diagram stored as a page attachment. It uses the signed-in
+          reader's own permissions through Atlassian's Forge bridge. Configuration lists this page's attachment metadata
+          and reads the selected diagram to offer its simulations. When an editor chooses a local file, the app
+          validates it in the browser and uploads or replaces it in Confluence only on that editor's action.
+        </p>
+        <p>
+          Diagram content stays in browser memory while open and in the Confluence attachment; it is not copied into
+          macro settings. The page stores only the attachment ID, selected simulation, height and theme. There is no
+          independent app database, Forge app storage or persistent browser cache. Attachments and settings follow
+          Confluence's data residency, version history, migration and retention controls. Uninstalling the app does not
+          delete your Confluence attachments or their history; manage or delete them in Confluence.
+        </p>
+        <p>
+          The app's resources are hosted on Atlassian Forge. The macro sends no data outside Atlassian services and your
+          browser: no requests to livediagrams.dev, no outbound links, no analytics and no additional third-party
+          services. Normal Confluence attachment requests still happen. It requests no profile or email APIs and
+          processes no personal data beyond what Confluence provides to render the page and the selected attachment,
+          which may itself contain personal data. The publisher receives no copy and logs no diagram content.
+          Atlassian's own platform operations remain subject to its policies.
+        </p>
+        <p>
+          The scopes are <code>read:attachment:confluence</code>, for listing and reading the page's attachments, and
+          <code>write:confluence-file</code>, for explicitly uploading or replacing a diagram. Both use your Confluence
+          permissions. The macro cannot bypass page restrictions or upload as a different app identity. Playback starts
+          only when you press Play.
+        </p>
+        <p>
+          See <a href="./confluence.html" data-testid="privacy-confluence-docs">setup and troubleshooting</a> or
+          <a
+            href="https://github.com/latchkostov/diagrams/issues/new?template=confluence-app.yml"
+            data-testid="privacy-confluence-support"
+            >ask for support on GitHub</a
+          >. Support issues are public: <strong>never attach private or work diagrams</strong>, and remove personal or
+          confidential details from screenshots. Visiting documentation or GitHub is a separate action outside the
+          macro.
+        </p>
+      </div>
 
       <h2>No analytics, no ads, no tracking</h2>
       <p>
@@ -401,8 +443,8 @@
       </p>
       <p>
         Privacy questions or requests:
-        <a href="mailto:latch.kostov@gmail.com" data-testid="privacy-contact">latch.kostov@gmail.com</a>, or
-        <a href="https://github.com/latchkostov/diagrams/issues">open an issue on GitHub</a>.
+        <a href="https://github.com/latchkostov/diagrams/issues" data-testid="privacy-contact">open an issue on GitHub</a>.
+        Issues are public; never include personal details or private or work diagrams.
       </p>
       <p><a href="./terms.html">Terms of use</a> · <a href="./">← Back to Live Diagrams</a></p>
     </main>

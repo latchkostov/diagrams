@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="548" viewBox="0 0 1120 548" role="img" aria-label="Live Diagram for Confluence by Live Diagrams. Press Play. See messages flow.">
+  <rect width="1120" height="548" fill="#1b2434"/>
+  <g transform="translate(76 78) scale(.44)">
+    <rect width="256" height="256" rx="64" fill="#263148"/>
+    <rect x="37" y="53" width="75" height="54" rx="19" fill="#8f96ff"/>
+    <path d="M104 80h27c17 0 29 13 29 30v10c0 17 12 29 27 29" fill="none" stroke="#8f96ff" stroke-width="16" stroke-linecap="round"/>
+    <rect x="144" y="149" width="75" height="54" rx="19" fill="#e7ebf3"/>
+  </g>
+  <g font-family="Arial, sans-serif">
+    <text x="216" y="130" font-size="30" fill="#c4caff">Live Diagrams</text>
+    <text x="76" y="275" font-size="61" font-weight="700" fill="#f2f4fa">Live Diagram for Confluence</text>
+    <text x="80" y="344" font-size="32" fill="#cbd3e3">Press Play. See messages flow.</text>
+    <text x="80" y="447" font-size="23" fill="#a8b4ca">Free · Page attachments · View and play</text>
+  </g>
+</svg>
