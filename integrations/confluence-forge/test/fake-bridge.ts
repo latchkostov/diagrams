@@ -15,6 +15,13 @@ export interface FakeState {
   uploaded?: { id: string; title: string; body: string };
   uploadHistory?: { id: string; title: string; body: string }[];
   fileReadPending?: boolean;
+  fileReadComplete?: boolean;
+  closeError?: boolean;
+  closePending?: boolean;
+  releaseClose?: () => void;
+  holdClose?: boolean;
+  holdTheme?: boolean;
+  releaseTheme?: () => void;
   releaseFile?: () => void;
   pageId?: string;
   body?: string;
@@ -111,7 +118,12 @@ export const view = {
         },
   theme: {
     enable: async () => {
+      if (state().holdTheme)
+        await new Promise<void>((resolve) => {
+          state().releaseTheme = resolve;
+        });
       document.documentElement.dataset.colorMode = state().hostTheme ?? "dark";
+      document.documentElement.dataset.theme = "dark:dark light:light";
     },
   },
   submit: async (payload: unknown) => {
@@ -120,6 +132,13 @@ export const view = {
     state().submitted = payload;
   },
   close: async () => {
+    state().closePending = true;
+    if (state().holdClose)
+      await new Promise<void>((resolve) => {
+        state().releaseClose = resolve;
+      });
+    state().closePending = false;
+    if (state().closeError) throw new Error("Close failed");
     state().closed = true;
   },
 };

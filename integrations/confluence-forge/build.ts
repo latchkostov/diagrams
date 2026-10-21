@@ -4,6 +4,7 @@ import { build, type Rollup } from "vite";
 import { buildViewerBundle, BUNDLE_CSP } from "../../scripts/viewer-bundle";
 import { i18n } from "../../scripts/i18n-plugin";
 import { checkManifest, checkBudget } from "./check.mjs";
+import { forgeTheme } from "./theme";
 
 /** Offline packaging. The fake bridge can only be built into tests/.output, never deployable resources. */
 export async function buildForge(root: string, fake = false, testWorker?: string): Promise<void> {
@@ -16,7 +17,7 @@ export async function buildForge(root: string, fake = false, testWorker?: string
       : fake
         ? resolve(root, "tests/.output/confluence-forge")
         : resolve(app, "dist");
-  const viewer = await buildViewerBundle(root, { attribution: "hide" });
+  const viewer = await buildViewerBundle(root, { attribution: "hide", plugins: [forgeTheme()] });
   const viewerEntry = (JSON.parse(String(viewer.get("manifest.json"))) as { entry: string }).entry;
   const prepared = new Map<string, string | Uint8Array>();
   for (const surface of ["view", "config"]) {
@@ -39,6 +40,7 @@ export async function buildForge(root: string, fake = false, testWorker?: string
           },
         },
         i18n({ catalogs: false }),
+        forgeTheme(),
       ],
       define: { "process.env.NODE_ENV": '"production"' },
       build: {

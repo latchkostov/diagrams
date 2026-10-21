@@ -3,7 +3,8 @@ import { t } from "../../../src/i18n/core";
 import type { DiagramFile } from "../../../src/model/types";
 import { configForStorage, contentId, DEFAULT_CONFIG } from "./config";
 import { DIAGRAM_FILE_ACCEPT, downloadDiagram, listAttachments, stageDiagram, uploadDiagram } from "./attachments";
-import { element, errorMessage, followTheme } from "./dom";
+import { element, errorMessage, followTheme, requestFocus } from "./dom";
+import { AcceptedSelection, ConfigurationLifecycle } from "./configurationState";
 import { HEIGHT_PRESETS } from "./height";
 import { diagramPreview } from "./preview";
 import "./configure.css";
@@ -41,31 +42,40 @@ async function main() {
   form.append(heading, fields, status, footer);
   form.addEventListener("submit", (event) => event.preventDefault());
   document.body.append(form);
-  let closed = false;
+  const lifecycle = new ConfigurationLifecycle();
+  const initialFocus = requestFocus();
   let phase: "initialising" | "ready" | "submitting" = "initialising";
-  let generation = 0;
   const clearError = () => {
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
     status.textContent = "";
   };
-  const showError = (error: unknown) => {
+  const showError = (
+    error: unknown,
+    focus: (target?: HTMLElement) => void = (target) => {
+      if (document.hasFocus()) target?.focus();
+    },
+  ) => {
     status.setAttribute("role", "alert");
     status.setAttribute("aria-live", "assertive");
     status.textContent = errorMessage(error);
-    status.focus();
+    focus(status);
   };
   const close = async () => {
-    if (phase === "submitting" || closed) return;
-    closed = true;
-    generation++;
+    if (phase === "submitting" || lifecycle.closed || lifecycle.closing) return;
+    const focus = requestFocus();
     try {
-      await view.close();
+      const pending = lifecycle.close(() => view.close());
+      refreshClosing();
+      await pending;
     } catch {
-      closed = false;
-      showError(new Error(t("viewerForge.bridgeError")));
+      showError(new Error(t("viewerForge.bridgeError")), focus);
+    } finally {
+      focus();
+      refreshClosing();
     }
   };
+  let refreshClosing = () => {};
   cancel.addEventListener("click", () => void close());
   let popupOpen = false;
   document.addEventListener("keydown", (event) => {
@@ -82,7 +92,7 @@ async function main() {
   });
   document.addEventListener("contextmenu", (event) => event.preventDefault());
   const acceptsFile = () => {
-    if (closed) return false;
+    if (lifecycle.closed || lifecycle.closing) return false;
     if (phase === "ready") return true;
     showError(new Error(t("viewerForge.waitForFile")));
     return false;
@@ -94,8 +104,9 @@ async function main() {
   });
   content.addEventListener("dragover", (event) => {
     event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = phase === "ready" && !closed ? "copy" : "none";
-    if (phase === "ready" && !closed) content.classList.add("dragging");
+    if (event.dataTransfer)
+      event.dataTransfer.dropEffect = phase === "ready" && !lifecycle.closed && !lifecycle.closing ? "copy" : "none";
+    if (phase === "ready" && !lifecycle.closed && !lifecycle.closing) content.classList.add("dragging");
   });
   content.addEventListener("dragleave", () => content.classList.remove("dragging"));
   content.addEventListener("drop", (event) => {
@@ -107,7 +118,7 @@ async function main() {
   followTheme(DEFAULT_CONFIG, () => view.theme.enable());
   try {
     const context = await view.getContext();
-    if (closed) return;
+    if (lifecycle.closed) return;
     const config = configForStorage(context.extension.config);
     const editing = !!config.attachmentId;
     save.textContent = editing ? t("viewerForge.update") : t("viewerForge.insert");
@@ -117,8 +128,7 @@ async function main() {
     } catch {
       throw new Error(t("viewerForge.pageRequired"));
     }
-    let selection: { file: File; generation: number } | undefined;
-    let uploaded: { generation: number; attachmentId: string } | undefined;
+    let selection: AcceptedSelection | undefined;
     let diagram: DiagramFile | undefined;
     let fileLoading = false;
     let optionsOpen = false;
@@ -126,7 +136,8 @@ async function main() {
     let theme = config.theme;
     let simulation = config.simulation;
     const canSubmit = () =>
-      !closed &&
+      !lifecycle.closed &&
+      !lifecycle.closing &&
       phase === "ready" &&
       !fileLoading &&
       !!diagram &&
@@ -134,6 +145,11 @@ async function main() {
     const refresh = () => {
       save.disabled = !canSubmit();
       reason.textContent = canSubmit() ? "" : t("viewerForge.chooseToContinue");
+    };
+    refreshClosing = () => {
+      cancel.disabled = lifecycle.closing || phase === "submitting";
+      fields.disabled = lifecycle.closing || phase !== "ready";
+      refresh();
     };
     const button = (testid: string, text: string, action: () => void) => {
       const control = element("button", testid, text);
@@ -309,28 +325,29 @@ async function main() {
     };
     const choose = async (chosen?: File) => {
       if (!chosen || !acceptsFile()) return;
-      const chosenGeneration = ++generation;
-      uploaded = undefined;
+      const chosenGeneration = ++lifecycle.generation;
+      const focus = requestFocus();
       fileLoading = true;
       refresh();
       clearError();
       try {
         const next = await stageDiagram(chosen);
-        if (closed || chosenGeneration !== generation) return;
+        if (lifecycle.closed || chosenGeneration !== lifecycle.generation) return;
         diagram = next;
-        selection = { file: chosen, generation: chosenGeneration };
+        selection = new AcceptedSelection(chosen);
         fileLoading = false;
         if (!next.simulations?.some((sim) => sim.id === simulation)) simulation = "";
         render();
-        content.querySelector<HTMLElement>('[data-testid="forge-card"]')?.focus();
+        focus(content.querySelector<HTMLElement>('[data-testid="forge-card"]') ?? undefined);
       } catch (error) {
-        if (!closed && chosenGeneration === generation) {
+        if (!lifecycle.closed && chosenGeneration === lifecycle.generation) {
           fileLoading = false;
           refresh();
-          showError(error);
+          showError(error, focus);
         }
       } finally {
-        if (chosenGeneration === generation) file.value = "";
+        focus();
+        if (chosenGeneration === lifecycle.generation) file.value = "";
       }
     };
     chooseFile = (chosen) => void choose(chosen);
@@ -338,6 +355,7 @@ async function main() {
       event.preventDefault();
       if (!canSubmit()) return;
       const committedSelection = selection;
+      const focus = requestFocus();
       const committedConfig = { simulation, height, theme };
       phase = "submitting";
       fields.disabled = cancel.disabled = true;
@@ -348,7 +366,7 @@ async function main() {
         try {
           let attachmentId = editTarget?.id;
           if (committedSelection) {
-            if (uploaded?.generation !== committedSelection.generation) {
+            if (!committedSelection.attachmentId) {
               // An unresolved edit target must be looked up by ID, never by the replacement's name.
               const replace = editTarget?.title
                 ? { id: editTarget.id, title: editTarget.title }
@@ -357,30 +375,33 @@ async function main() {
                   : undefined;
               if (editTarget && !replace) throw new Error(t("viewerForge.attachmentMissing"));
               const attachment = await uploadDiagram(requestConfluence, page, committedSelection.file, replace);
-              uploaded = { generation: committedSelection.generation, attachmentId: attachment.id };
+              committedSelection.attachmentId = attachment.id;
             }
-            attachmentId = uploaded.attachmentId;
+            attachmentId = committedSelection.attachmentId;
           }
           try {
             await view.submit({
               config: configForStorage({ attachmentId, ...committedConfig }),
             });
           } catch {
-            throw new Error(t("viewerForge.saveError"));
+            throw new Error(
+              committedSelection?.attachmentId ? t("viewerForge.partialSaveError") : t("viewerForge.saveError"),
+            );
           }
-          closed = true; // Forge submit closes the configuration surface.
+          lifecycle.closed = true; // Forge submit closes the configuration surface.
         } catch (error) {
-          showError(error);
+          showError(error, focus);
         } finally {
           phase = "ready";
           fields.disabled = cancel.disabled = false;
           save.textContent = editing ? t("viewerForge.update") : t("viewerForge.insert");
           refresh();
+          focus();
         }
       })();
     });
     render();
-    const initialGeneration = generation;
+    const initialGeneration = lifecycle.generation;
     let loadError: unknown;
     // Resolve once from the saved config. Upload checkpoints never change the edit target.
     const editTarget: Readonly<{ id: string; title?: string }> | undefined = editing
@@ -395,26 +416,29 @@ async function main() {
             return { id: config.attachmentId };
           })
       : undefined;
-    if (closed) return;
+    if (lifecycle.closed) return;
     try {
       if (editTarget && !loadError) {
         const initialDiagram = await downloadDiagram(requestConfluence, page, editTarget.id);
-        if (closed || generation !== initialGeneration) return;
+        if (lifecycle.closed || lifecycle.generation !== initialGeneration) return;
         diagram = initialDiagram;
         optionsOpen = !!simulation && !diagram.simulations?.some((sim) => sim.id === simulation);
       }
     } catch (error) {
       loadError = error;
     }
-    if (closed || generation !== initialGeneration) return;
+    if (lifecycle.closed || lifecycle.generation !== initialGeneration) return;
     phase = "ready";
-    fields.disabled = false;
+    fields.disabled = lifecycle.closing;
     render();
     clearError();
-    if (loadError) showError(loadError);
-    else if (diagram && !canSubmit()) showError(new Error(t("viewerForge.missingSimulation")));
+    if (loadError) showError(loadError, initialFocus);
+    else if (diagram && simulation && !diagram.simulations?.some((sim) => sim.id === simulation))
+      showError(new Error(t("viewerForge.missingSimulation")), initialFocus);
   } catch (error) {
-    if (!closed) showError(error);
+    if (!lifecycle.closed) showError(error, initialFocus);
+  } finally {
+    initialFocus();
   }
 }
 

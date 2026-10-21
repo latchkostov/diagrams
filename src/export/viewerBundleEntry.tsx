@@ -15,6 +15,7 @@ import { BundleApp } from "./viewer/BundleApp";
 
 markWorkerUnsupported();
 const adapter = new ViewerAdapter();
+adapter.connectEscape();
 const root = createRoot(document.getElementById("root")!);
 declare const __VIEWER_ATTRIBUTION__: "show" | "hide";
 root.render(<BundleApp adapter={adapter} attribution={__VIEWER_ATTRIBUTION__} />);

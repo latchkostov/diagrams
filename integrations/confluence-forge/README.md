@@ -40,7 +40,10 @@ Public documentation: [Live Diagram for Confluence](https://www.livediagrams.dev
    Auto size or Small (480 px), Medium (640 px), Large (800 px), and Follow Confluence, Light or Dark.
    Files stay in memory until Insert. A same-name page attachment gets a new version. When editing,
    **Replace file** stages a replacement and **Update** adds a version of the current attachment,
-   keeping its ID and filename. Cancel discards the staged file and settings. Publish the page.
+   keeping its ID and filename. Cancel discards the staged file and settings. If uploading succeeds
+   but saving settings fails, the alert explains that Cancel retains the uploaded version; restore
+   the previous version from the page's attachment history if needed. Retry reuses that upload,
+   including after an invalid replacement is rejected. Publish the page.
 6. The macro opens as a still diagram. Press **Play diagram** (also accessible by Tab and Enter/Space).
    Page and attachment permissions apply to every reader. To edit, download the attachment using
    Confluence, edit the file outside this macro, then use **Replace file**, then **Update** in config.
@@ -62,7 +65,9 @@ macro's `viewportSize` omitted, Forge automatically resizes the iframe to its do
 
 **Maximise diagram** opens the same resource in a Forge `Modal` of size `max`, still until **Play diagram**.
 It passes only the attachment reference and settings, and reads the attachment through the current user's
-bridge again. Inline playback pauses when opening. Press Esc or **Close diagram** to close; focus returns
+bridge again. Inline playback pauses when opening and stays paused until explicitly resumed.
+Esc closes an inner menu, panel or dialog first; with none open it closes Maximise.
+Press **Close diagram** to close directly; focus returns
 to Maximise. This uses the [Custom UI Modal API](https://developer.atlassian.com/platform/forge/apis-reference/ui-api-bridge/modal/),
 which is supported by the pinned bridge 7.2.0, instead of the iframe-blocked browser Fullscreen API.
 

@@ -16,11 +16,26 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : t("viewerForge.bridgeError");
 }
 
+/** Async completion must not pull the reader back from Confluence or another control. */
+export function requestFocus(): (target?: HTMLElement) => void {
+  let moved = false;
+  const cancel = () => {
+    moved = true;
+  };
+  window.addEventListener("blur", cancel);
+  document.addEventListener("focusin", cancel);
+  return (target) => {
+    window.removeEventListener("blur", cancel);
+    document.removeEventListener("focusin", cancel);
+    if (!moved && document.hasFocus()) target?.focus();
+  };
+}
+
 export function followTheme(
   config: MacroConfig,
   enable: () => Promise<void>,
   setTheme: (theme: "light" | "dark") => void = (theme) => {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.viewerTheme = theme;
   },
 ): void {
   const root = document.documentElement;
