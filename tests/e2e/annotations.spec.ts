@@ -105,6 +105,57 @@ async function seed(page: Page, diagram: unknown) {
 }
 
 test.describe("annotations", () => {
+  test("default outlines do not download the extended catalog until a non-default shape is rendered", async ({
+    page,
+  }) => {
+    test.skip(process.env.E2E_TARGET !== "build", "Checks the production chunk boundary");
+    let downloads = 0;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(/\/assets\/extendedGeometry-[^/]+\.js$/, async (route) => {
+      downloads++;
+      await held;
+      await route.continue();
+    });
+    try {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Deferred outline",
+        nodes: [],
+        annotations: [
+          { id: "source", kind: "shape", shape: "rect", text: "Source", x: 0, y: 0, width: 160, height: 90 },
+          { id: "target", kind: "shape", shape: "cylinder", text: "Target", x: 500, y: 0, width: 160, height: 90 },
+        ],
+        edges: [{ id: "connection", from: "source", to: "target" }],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "source").click();
+      await waitForSelectionSettled(page);
+      expect(downloads).toBe(0);
+      await page.getByTestId("inspector-more-shapes-btn").click();
+      await page.getByTestId("shape-picker-search").fill("triangle");
+      await page.getByTestId("context-menu-item-pick-shape:tri").click();
+      await expect.poll(() => downloads).toBe(1);
+      const outline = annotation(page, "source").getByTestId("shape-outline");
+      expect(await outline.evaluate((svg) => svg.firstElementChild?.tagName)).toBe("rect");
+      const dimensions = await outline.evaluate((svg) => [svg.getAttribute("width"), svg.getAttribute("height")]);
+      const handle = page.getByTestId("handle-source-right");
+      const before = (await handle.getAttribute("style")) ?? "";
+      expect(before).not.toBe("");
+      release();
+      await expect.poll(() => outline.evaluate((svg) => svg.firstElementChild?.tagName)).toBe("polygon");
+      expect(await outline.evaluate((svg) => [svg.getAttribute("width"), svg.getAttribute("height")])).toEqual(
+        dimensions,
+      );
+      await expect(handle).not.toHaveAttribute("style", before);
+      expect(downloads).toBe(1);
+    } finally {
+      release();
+    }
+  });
+
   test("every shape handle meets its visible stroke", async ({ page }) => {
     const fixture = annotationShapesFixture();
     fixture.annotations = fixture.annotations

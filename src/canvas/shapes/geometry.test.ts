@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { loadShapeGeometry } from "./geometry";
+import { loadShapeAttachments } from "./attachment";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { shapeGeometry } from "./geometry";
 import { shapeAttachment, shapeHandle, shapeHandles } from "./attachment";
 import { SHAPES_CATALOG } from "./catalog";
@@ -79,4 +81,8 @@ it.each(["hourglass", "comment", "brace-r"] as const)("keeps opposite %s handles
   const left = shapeHandle(shape, 160, 90, "left"),
     right = shapeHandle(shape, 160, 90, "right");
   expect(Math.hypot(left.x - right.x, left.y - right.y)).toBeGreaterThan(14);
+});
+
+beforeAll(async () => {
+  await Promise.all([loadShapeGeometry(), loadShapeAttachments()]);
 });

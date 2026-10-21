@@ -3,7 +3,7 @@ import {
   memo,
   useEffect,
   useLayoutEffect,
-  useMemo,
+  useSyncExternalStore,
   useRef,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
@@ -14,7 +14,6 @@ import {
   ResizeControlVariant,
   useReactFlow,
   useStoreApi,
-  useUpdateNodeInternals,
   type NodeProps,
 } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
@@ -22,8 +21,12 @@ import type { AnnotationKind } from "../../model/types";
 import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLabel, minSize } from "../annotations";
 import { MarkdownView } from "../../components/markdown/lazy";
 import { AnnotationEditor } from "./AnnotationEditor";
+import { geometrySnapshot, subscribeGeometry, isDefaultShape, loadShapeGeometry } from "../shapes/geometry";
+import { LOAD_FAILED } from "../../lib/lazyLoad";
+import { t } from "../../i18n";
+import { notify } from "../../interop/ui/toast";
 import { ShapeOutline } from "./ShapeOutline";
-import { shapeHandles } from "../shapes/attachment";
+import { shapeHandles, loadShapeAttachments } from "../shapes/attachment";
 import { beginShapeResize, endShapeResize, shapeResizeModifier } from "../shapes/resize";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
@@ -53,24 +56,42 @@ function AnnotationNodeImpl({
   const isEditing = editing?.kind === "annotation" && editing.id === id;
   const w = width ?? 0;
   const h = height ?? 0;
-  const updateInternals = useUpdateNodeInternals();
+  const root = useRef<HTMLDivElement>(null);
   const store = useStoreApi<FlowNode>();
-  const outline = useRef({ kind, shape: data.shape, w, h });
+  const geometryReady = useSyncExternalStore(subscribeGeometry, geometrySnapshot, geometrySnapshot);
+  useEffect(() => {
+    if (kind !== "shape") return;
+    const load = () =>
+      void Promise.all([
+        loadShapeAttachments(),
+        ...(isDefaultShape(data.shape ?? "rect") ? [] : [loadShapeGeometry()]),
+      ]).catch(() => {
+        notify(LOAD_FAILED, {
+          kind: "error",
+          action: { label: t("common.retry"), run: load, testId: "lazy-load-retry" },
+        });
+      });
+    load();
+  }, [kind, data.shape]);
+  const outline = useRef({ kind, shape: data.shape, w, h, geometryReady });
   useLayoutEffect(() => {
     const previous = outline.current;
-    outline.current = { kind, shape: data.shape, w, h };
+    outline.current = { kind, shape: data.shape, w, h, geometryReady };
     // ResizeObserver can measure before NodeProps receives the new dimensions. Measure again
     // after the handles render at their new positions; initial mounts still use the observer.
     if (
       kind === "shape" &&
-      (previous.kind !== kind || previous.shape !== data.shape || previous.w !== w || previous.h !== h)
-    )
-      queueShapeMeasurement(store.getState, updateInternals, id);
-  }, [kind, data.shape, w, h, id, store, updateInternals]);
-  const handles = useMemo(
-    () => (isConnectable(kind) ? shapeHandles(data.shape ?? "rect", w, h) : undefined),
-    [kind, data.shape, w, h],
-  );
+      (previous.kind !== kind ||
+        previous.shape !== data.shape ||
+        previous.w !== w ||
+        previous.h !== h ||
+        previous.geometryReady !== geometryReady)
+    ) {
+      const nodeElement = root.current?.parentElement;
+      if (nodeElement instanceof HTMLDivElement) queueShapeMeasurement(store, id, nodeElement);
+    }
+  }, [kind, data.shape, w, h, geometryReady, id, store]);
+  const handles = isConnectable(kind) ? shapeHandles(data.shape ?? "rect", w, h) : undefined;
   const startEdit = (e: ReactMouseEvent) => {
     e.stopPropagation();
     setEditing({ kind: "annotation", id });
@@ -148,6 +169,7 @@ function AnnotationNodeImpl({
 
   return (
     <div
+      ref={root}
       className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${kind === "shape" && isOpenShape(data.shape) ? " ann-shape-open" : ""}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
       style={
         {

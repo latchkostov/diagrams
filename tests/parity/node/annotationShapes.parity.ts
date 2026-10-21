@@ -1,4 +1,5 @@
-import { it } from "vitest";
+import { loadShapeGeometry, loadShapeAttachments } from "../../../src/canvas/shapes/runtime";
+import { beforeAll, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { annotationShapesFixture } from "../../../src/lab/annotationShapesFixture";
@@ -54,4 +55,8 @@ it("pins all annotation outlines and their interchange syntax", () => {
   expectGoldenText("annotation-shapes/mermaid.mmd", mermaid);
   const back = parseMermaid(mermaid);
   expectGolden("annotation-shapes/mermaid-read.json", back);
+});
+
+beforeAll(async () => {
+  await Promise.all([loadShapeGeometry(), loadShapeAttachments()]);
 });

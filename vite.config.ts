@@ -198,10 +198,11 @@ export default defineConfig({
               includeDependenciesRecursively: false,
             },
             // Keep the model-level admission validator in the existing preloaded native chunk.
-            // Headless simulation imports the model directly; browsers need no extra startup request.
+            // Headless simulation and lazy inspectors import the model directly; keep their shared
+            // resource/routing validation in this same request rather than adding another startup chunk.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\]native|model[/\\](?:admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\]native|model[/\\](?:admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // The headless core stays separate in source, but shares the browser's existing runtime request.

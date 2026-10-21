@@ -1,4 +1,6 @@
-import { expect, it, vi } from "vitest";
+import { loadShapeGeometry } from "../shapes/geometry";
+import { loadShapeAttachments } from "../shapes/attachment";
+import { beforeAll, expect, it, vi } from "vitest";
 import type { InternalNode, ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { selectRoutes } from "./useEdgeRoute";
@@ -152,4 +154,8 @@ it("keeps concurrent visible and hidden route subscribers stable on an unchanged
     expect(selectRoutes(s, opts)).toBe(visible);
     expect(selectRoutes(s, { ...opts, hideDependencies: true })).toBe(hidden);
   }
+});
+
+beforeAll(async () => {
+  await Promise.all([loadShapeGeometry(), loadShapeAttachments()]);
 });

@@ -1,7 +1,6 @@
 import { t } from "../i18n";
 import type { DiagramFile } from "../model/types";
-import { LIMITS, parseNative, tooLargeMessage, validateDiagram } from "./native";
-import type { DrawioDocument } from "./drawio/read";
+import { LIMITS, parseNative, tooLargeMessage } from "./native";
 import type { ImportGraph, ImportReport } from "./infra/graph";
 import { looksLikeDrawio, looksLikeMermaid, sniffInfra } from "./sniff";
 import { loadOnce } from "../lib/lazyLoad";
@@ -11,8 +10,8 @@ import { loadOnce } from "../lib/lazyLoad";
 // converters load when a file needs them (or when the File menu opens: preloadFormats), and so do the
 // infrastructure importers (docker-compose, Kubernetes, AsyncAPI, Terraform) with their YAML reader.
 
-const drawioReader = loadOnce(() => import("./drawio/read"));
-const mermaidReader = loadOnce(() => import("./mermaid/read"));
+const drawioReader = loadOnce(() => import("./drawio/import"));
+const mermaidReader = loadOnce(() => import("./mermaid/import"));
 const infraReader = loadOnce(() => import("./infra/pipeline"));
 export const drawioWriter = loadOnce(() => import("./drawio/write"));
 export const mermaidWriter = loadOnce(() => import("./mermaid/write"));
@@ -94,28 +93,6 @@ export type ImportOutcome =
   | { ok: "pages"; format: "drawio"; pages: { name: string; index: number }[]; pick: (index: number) => ImportOutcome }
   | { ok: false; error: string };
 
-/** Converter output goes through the native validator too: one set of rules for everything stored. */
-function validated(format: FormatId, diagram: DiagramFile, warnings: string[]): ImportOutcome {
-  const r = validateDiagram(diagram);
-  return r.ok
-    ? { ok: true, format, diagram: r.diagram, warnings: [...warnings, ...r.warnings] }
-    : { ok: false, error: r.error };
-}
-
-function drawioOutcome(
-  { drawioPageToDiagram }: typeof import("./drawio/read"),
-  doc: DrawioDocument,
-  index: number,
-  fallbackTitle: string,
-): ImportOutcome {
-  const page = doc.pages[index];
-  const title =
-    doc.pages.length > 1 && /^page-\d+$/i.test(page.name) ? `${fallbackTitle} (${page.name})` : fallbackTitle;
-  const { diagram, warnings } = drawioPageToDiagram(page, title);
-  if (!diagram.nodes.length) return { ok: false, error: `The page “${page.name}” has no shapes to import.` };
-  return validated("drawio", diagram, warnings);
-}
-
 /** Parses text in any supported format. Never throws. */
 export async function importText(text: string, fileName = ""): Promise<ImportOutcome> {
   if (!text.trim()) return { ok: false, error: "There's nothing to import: the text is empty." };
@@ -140,16 +117,15 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
           ok: "pages",
           format,
           pages: doc.pages.map((p, index) => ({ name: p.name, index })),
-          pick: (index) => drawioOutcome(reader, doc, index, fallbackTitle),
+          pick: (index) => reader.drawioOutcome(doc, index, fallbackTitle),
         };
       }
-      return drawioOutcome(reader, doc, 0, fallbackTitle);
+      return reader.drawioOutcome(doc, 0, fallbackTitle);
     }
     if (format === "mermaid") {
       const reader = await mermaidReader();
       readerErrors = [reader.MermaidError];
-      const { diagram, warnings } = reader.parseMermaid(text, fallbackTitle);
-      return validated(format, diagram, warnings);
+      return reader.mermaidOutcome(text, fallbackTitle);
     }
     if (format === "compose" || format === "asyncapi" || format === "kubernetes" || format === "terraform" || later) {
       const reader = await infraReader();

@@ -12,6 +12,11 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["extended outline geometry", /[/\\]src[/\\]canvas[/\\]shapes[/\\]extendedGeometry\.ts$/],
+  ["outline attachment sampling", /[/\\]src[/\\]canvas[/\\]shapes[/\\]attachmentGeometry\.ts$/],
+  ["provider and format artwork", /[/\\]src[/\\]interop[/\\]ui[/\\]BrandGlyph\.tsx$/],
+  ["boundary inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]GroupPanel\.tsx$/],
+  ["custom colour picker", /[/\\]src[/\\]components[/\\]ColorPickerModal\.tsx$/],
   ["bulk inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]MultiPanel\.tsx$/],
   ["diagram inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]DiagramPanel\.tsx$/],
   ["extended shape glyphs", /[/\\]src[/\\]components[/\\](?:ShapeIcon\.tsx|shapeIconPaths\.ts)$/],
@@ -94,6 +99,8 @@ const STARTUP_CHUNKS = [
   // shared native/engine lifecycle-budget preflight (A3 folded the former resourceBudget chunk into it); no
   // controller execution at startup.
   "kedaBindings",
+  // Shared by the optional shape engines and menu artwork, while its loader stays preloaded.
+  "lazyLoad",
   "native",
   "preload-helper",
   "react",

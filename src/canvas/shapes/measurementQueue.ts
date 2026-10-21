@@ -1,26 +1,23 @@
-/** One forced handle-measurement batch per canvas frame, independent of shape count. */
-export function createMeasurementQueue(
-  update: (ids: string[]) => void,
-  schedule: (callback: FrameRequestCallback) => number = requestAnimationFrame,
-) {
-  const pending = new Set<string>();
-  let scheduled = false;
-  return (id: string) => {
-    pending.add(id);
-    if (scheduled) return;
-    scheduled = true;
-    schedule(() => {
-      scheduled = false;
-      const ids = [...pending];
-      pending.clear();
-      update(ids);
-    });
-  };
-}
+import type { ReactFlowState } from "@xyflow/react";
 
-const queues = new WeakMap<object, ReturnType<typeof createMeasurementQueue>>();
-export function queueShapeMeasurement(store: object, update: (ids: string[]) => void, id: string) {
-  let queue = queues.get(store);
-  if (!queue) queues.set(store, (queue = createMeasurementQueue(update)));
-  queue(id);
+/** One forced handle-measurement batch per canvas frame, using already-known node elements. */
+const queues = new WeakMap<object, Map<string, HTMLDivElement>>();
+export function queueShapeMeasurement(
+  store: { getState: () => Pick<ReactFlowState, "updateNodeInternals"> },
+  id: string,
+  nodeElement: HTMLDivElement,
+) {
+  let pending = queues.get(store);
+  if (!pending) {
+    pending = new Map();
+    queues.set(store, pending);
+    const batch = pending;
+    requestAnimationFrame(() => {
+      queues.delete(store);
+      store
+        .getState()
+        .updateNodeInternals(new Map([...batch].map(([id, nodeElement]) => [id, { id, nodeElement, force: true }])));
+    });
+  }
+  pending.set(id, nodeElement);
 }
