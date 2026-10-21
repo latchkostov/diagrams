@@ -9,6 +9,11 @@ import { chromium, expect } from "@playwright/test";
 
 const { fetch, AbortSignal } = globalThis;
 // ws belongs to the server workspace, rather than the browser application's dependencies.
+// First paint through a cold container and proxy on a loaded CI runner can exceed Playwright's 5 s
+// default (it flaked four times on 2026-10-20). Only the app-boot waits get this allowance; every
+// assertion is unchanged.
+const BOOT_TIMEOUT = 30_000;
+
 const { WebSocket } = createRequire(new URL("../services/server/package.json", import.meta.url))("ws");
 const { build } = createRequire(new URL("../services/server/package.json", import.meta.url))("esbuild");
 
@@ -103,7 +108,7 @@ async function exerciseBrowserRooms(origin, base) {
     }
     const host = await hostContext.newPage();
     await host.goto(`${origin}${base}a/deep/route?view=canvas&example=kafka-order-pipeline`);
-    await expect(host.getByTestId("node-gateway")).toBeVisible();
+    await expect(host.getByTestId("node-gateway")).toBeVisible({ timeout: BOOT_TIMEOUT });
     await host.getByTestId("file-button").click();
     await host.getByTestId("file-share").click();
     await host.getByTestId("share-option-edit-together").click();
@@ -115,7 +120,7 @@ async function exerciseBrowserRooms(origin, base) {
     await guest.goto(link);
     await guest.getByTestId("room-join-accept").click();
     await host.getByTestId("room-knock-admit").first().click();
-    await expect(guest.getByTestId("node-gateway")).toBeVisible();
+    await expect(guest.getByTestId("node-gateway")).toBeVisible({ timeout: BOOT_TIMEOUT });
     for (const [editor, receiver, label] of [
       [host, guest, "Proxy outward"],
       [guest, host, "Proxy return"],
@@ -289,8 +294,8 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
               const errors = [];
               page.on("pageerror", (error) => errors.push(error.message));
               await page.goto(`${origin}${base}a/deep/route?view=canvas&example=kafka-order-pipeline`);
-              await expect(page.getByTestId("brand")).toHaveText("Live Diagrams");
-              await expect(page.getByTestId("node-gateway")).toBeVisible();
+              await expect(page.getByTestId("brand")).toHaveText("Live Diagrams", { timeout: BOOT_TIMEOUT });
+              await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: BOOT_TIMEOUT });
               await page.getByTestId("file-button").click();
               await expect(page.getByTestId("file-share")).toBeVisible();
               expect(errors).toEqual([]);
