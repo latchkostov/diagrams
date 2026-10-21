@@ -12,6 +12,71 @@ import {
 
 const resources = () => ({ ...resourceLesson(), startup: { delayMs: 0, jitterFraction: 0 } });
 
+function standaloneRetry() {
+  const d = waitingFixture();
+  d.nodes = d.nodes.slice(0, 2);
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  d.nodes[1].props = {
+    replicas: 1,
+    concurrency: 1,
+    latencyMs: 10,
+    jitter: 0,
+    retry: "inplace",
+    retryBackoffMs: 100,
+    resources: { ...resources(), cpuMsPerMessage: 1 },
+  };
+  d.edges = d.edges.slice(0, 1);
+  return d;
+}
+
+it("standalone retry CPU initializes its first wave only after acquiring a thread", () => {
+  const d = standaloneRetry();
+  const e = createEngine({
+    scale: 10,
+    verifyResources: assertResourceInvariants,
+    verifyLedger: assertLedgerInvariants,
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 2);
+  e.step(10);
+  e.setNodeStatus("caller", "down");
+  e.step(10);
+  e.setNodeStatus("caller", "up");
+  e.step(2000);
+  expect(e.snapshot().nodes.caller.processed).toBe(2);
+});
+
+it("standalone retry preserves its admitted CPU cohort across scale edits and an outage", () => {
+  const d = standaloneRetry();
+  d.nodes[1].props!.concurrency = 2;
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    scale: 1,
+    verifyResources: assertResourceInvariants,
+    verifyLedger(s) {
+      state = s;
+      assertLedgerInvariants(s);
+    },
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 2);
+  e.step(10);
+  e.setScale(3);
+  e.step(10);
+  e.setNodeStatus("caller", "down");
+  e.setScale(1);
+  e.step(10);
+  for (const node of d.nodes) e.setNodeStatus(node.id, "down");
+  for (const node of d.nodes) e.setNodeStatus(node.id, "up");
+  e.step(2000);
+  expect(e.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect(state.partBudget.used).toBe(0);
+});
+
 it.each([false, true])("standalone first completion follows scale one (resources=%s)", (withResources) => {
   const d = waitingFixture();
   d.edges = d.edges.filter((edge) => edge.id !== "call");
@@ -402,7 +467,10 @@ it.each([false, true])("enabling resources preserves the sampled standalone slot
   if (!queued) e.inject("caller", 1);
   for (let tick = 0; tick < 1000; tick++) {
     e.step(10);
-    expect(e.snapshot().nodes.caller.inFlight).toBe(1);
+    // CPU finishes its 10,000 ms first wave at the final step; the cohort's
+    // remaining CPU and the original sampled thread hold still belong to the tail.
+    expect(e.snapshot().nodes.caller.inFlight).toBe(tick === 999 ? 0 : 1);
+    expect(e.snapshot().nodes.caller.processed).toBe(tick === 999 ? 1 : 0);
     const threads = [...state.ledger.reservations.values()].filter((r) => r.owner === "caller" && r.scope === "thread");
     expect(threads).toHaveLength(1);
     expect(threads[0].weight).toBe(1);

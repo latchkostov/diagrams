@@ -45,6 +45,12 @@ function preW1LegacyWorker() {
   return diagram;
 }
 
+function cpuBoundStandalone() {
+  const diagram = legacyWorker();
+  Object.assign(diagram.nodes[1].props!.resources!, { cpuMsPerMessage: 100, cpuLimitMilli: 1000 });
+  return diagram;
+}
+
 function managedCall() {
   const diagram = zeroWorkCall();
   diagram.nodes[0].stencil = "generic.queue";
@@ -191,6 +197,21 @@ it.each([1.5, 2, 3, 4])("I1 regression: sub-tick local work at scale %s", (scale
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 
+it.each([10, 1.1, 2.5])("I1 regression: CPU-bound standalone turnover at scale %s", (scale) => {
+  const runs = constantRateRuns(cpuBoundStandalone(), scale);
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+
+it("I1 regression: review CPU-bound standalone repro stays within the scale-one bound", () => {
+  const { baseline, sampled } = constantRateRuns(cpuBoundStandalone(), 10, {
+    ratePerSec: 100,
+    durationMs: 20_000,
+  });
+  expect(realSnapshot(baseline).nodes.caller.processed).toBe(198);
+  expect(realSnapshot(sampled).nodes.caller.processed).toBe(200);
+  expectScaleEquivalent(baseline, sampled, 1);
+});
+
 it.each([2, 4])("I1 regression: Lambda joins ordinary and fleet replies at scale %s", (scale) => {
   const runs = constantRateRuns(managedJoin(), scale);
   expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(scale === 4 ? 498 : 499);
@@ -263,5 +284,6 @@ it.skipIf(process.env.FC_I1_CORPUS !== "1")(
       }
     }
     console.log(`I1 CORPUS: ${passed}/${scenarios.length} passed; failing indices: ${failures.join(", ")}`);
+    expect(passed).toBeGreaterThanOrEqual(13);
   },
 );

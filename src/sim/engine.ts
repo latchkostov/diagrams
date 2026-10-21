@@ -930,11 +930,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       attempt(node, work);
     }
     if (node.status === "down") return;
+    work.serviceMs = work.retryAdmissionAt === undefined ? work.remaining : (work.waitRemaining ?? 0);
     if (!callerReservations(node)) {
       if (!reacquireCapacity(node, work)) throw new Error("Processor admitted without thread capacity");
       return;
     }
-    work.serviceMs = work.retryAdmissionAt === undefined ? work.remaining : (work.waitRemaining ?? 0);
     const retainedThread = ledger.get<Group>(work.thread);
     if (retainedThread) {
       for (const r of [retainedThread, ledger.get(work.requestLease)])
@@ -2107,13 +2107,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (node.props.resources) {
           node.cpuTail.delete(work);
           work.cpuPerRequest = node.props.resources.cpuMsPerMessage;
-          work.cpuBacklog = callerReservations(node) ? (work.cpuRemaining ?? 0) : undefined;
+          work.cpuBacklog = execution.usesLedger(node) ? (work.cpuRemaining ?? 0) : undefined;
           work.cpuRemaining =
-            (callerReservations(node) ? (work.cpuRemaining ?? 0) : 0) +
-            node.props.resources.cpuMsPerMessage * (ledger.get(work.thread)?.represented ?? scale);
-          work.logicalCpuRemaining = callerReservations(node)
-            ? node.props.resources.cpuMsPerMessage * (ledger.get(work.thread)?.weight ?? scale)
-            : undefined;
+            (execution.usesLedger(node) ? (work.cpuRemaining ?? 0) : 0) +
+            node.props.resources.cpuMsPerMessage *
+              (ledger.get(work.thread)?.represented ?? work.recoveryThread?.represented ?? scale);
+          const thread = execution.usesLedger(node) && ledger.get(work.thread);
+          work.logicalCpuRemaining = thread ? node.props.resources.cpuMsPerMessage * thread.weight : undefined;
           work.cpuBackoffUntil = time + node.props.retryBackoffMs;
           const count = work.cpuParts?.reduce((sum, p) => sum + p.last - p.first + 1, 0) ?? 0;
           for (const p of work.cpuParts ?? []) p.cpu = (work.cpuRemaining * (p.last - p.first + 1)) / count;
@@ -2924,7 +2924,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       backlogBefore,
       backlogAfter: logical?.cpuBacklog,
       eligible,
-      weight: logical?.executionWeight,
+      weight: logical?.executionWeight ?? ledger.get(logical?.thread)?.weight,
       cpuMs: logical?.cpuPerRequest,
     });
   }

@@ -276,6 +276,14 @@ export function assertResourceInvariants(state: ResourceState) {
           "running work has no live thread reservation",
         );
         fail(!threads.has(work.thread!), "running work shares a thread reservation");
+        if (node.props.resources && ownsCpu(work)) {
+          fail(work.logicalCpuRemaining !== undefined, "ledger CPU must finish only its first wave before retirement");
+          fail(
+            work.logicalCpuRemaining! <=
+              Math.min((work.cpuPerRequest ?? 0) * reservation!.weight, work.cpuRemaining ?? 0) + 1e-8,
+            "ledger logical CPU exceeds first-wave weight or remaining cohort",
+          );
+        }
         threads.add(work.thread!);
       }
     }

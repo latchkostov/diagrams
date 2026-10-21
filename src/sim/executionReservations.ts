@@ -87,6 +87,13 @@ export function createExecutionReservations<
     );
     if (!thread) return;
     work.thread = thread.id;
+    // Ledger retirement scales the first wave's hold once by represented/weight.
+    // Only that wave blocks logical completion; the remaining CPU belongs to a tail.
+    // Waiting for the whole cohort here would scale its CPU duration twice.
+    const previousWeight = work.executionWeight ?? work.recoveryThread?.weight;
+    if (work.logicalCpuRemaining !== undefined && previousWeight !== undefined)
+      work.logicalCpuRemaining *= thread.weight / previousWeight;
+    if (work.cpuRemaining !== undefined) work.logicalCpuRemaining ??= (work.cpuPerRequest ?? 0) * thread.weight;
     node.threadWeight.work += thread.weight;
     node.threadCount.work++;
     return thread;
@@ -142,10 +149,6 @@ export function createExecutionReservations<
     // unused part of that slot lease; request residence keeps its own weight.
     if (threadCapacity && threadCapacity.weight > thread.weight)
       releaseAdmission(admission, { ...threadCapacity, weight: threadCapacity.weight - thread.weight });
-    // Recovery can resize execution while preserving the per-request fraction already done.
-    // The cohort's total remaining CPU is unchanged; only its current first wave changes.
-    if (work.logicalCpuRemaining !== undefined && work.executionWeight !== undefined)
-      work.logicalCpuRemaining *= thread.weight / work.executionWeight;
     work.executionWeight = thread.weight;
     work.threadLease = undefined;
     if (!request) {
@@ -248,7 +251,7 @@ export function createExecutionReservations<
     // its admitted cohort, so do not retain CPU initialized for the failed attempt.
     work.cpuRemaining = cpuRemaining;
     // Resources can be enabled after this request already acquired its ledger thread.
-    const thread = callerReservations(node) && ledger.get(work.thread);
+    const thread = usesLedger(node) && ledger.get(work.thread);
     if (thread) work.logicalCpuRemaining ??= work.cpuPerRequest * thread.weight;
     const occupancy =
       work.replica === undefined
