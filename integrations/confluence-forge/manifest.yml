@@ -22,6 +22,6 @@ permissions:
     styles:
       - unsafe-inline
 app:
-  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  id: ari:cloud:ecosystem::app/e09c2319-7d1a-4670-9a14-0fb488d8dfed
   runtime:
     name: nodejs24.x
