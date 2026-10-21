@@ -52,11 +52,13 @@ describe("standalone page builds", () => {
     expect(code).toContain(page === "auth" ? "Finishing sign-in" : "Use Live Diagrams with your AI agent");
     expect(code).not.toContain(page === "auth" ? "Use Live Diagrams with your AI agent" : "Finishing sign-in");
     expect(code).not.toContain("react.production");
+    if (page === "skill") expect(code).toContain(en["staticSkill.claudeCommands"]);
   });
 
   it.each([
     ["auth.html", "4c02b08ab1b0d5fdcdb969224f486b2a00b04c73059c217cd2c25f637bc35df7"],
-    ["skill/index.html", "59bcb008ec6ff8f0b5db9acc7cacdc37c9f19ddeee3bf9e30552a04a5ddec13b"],
+    // Reviewed directory coming-soon sentence: 2026-10-20 release fragment.
+    ["skill/index.html", "4e73616d819ac22eca1389c10d36156170d62ff571bd2d2639c65b1e49341b41"],
     // Reviewed Confluence documentation and privacy section: 2026-10-20 release fragment.
     ["privacy.html", "0f7c05ad307d4cdbe63aa70075e1c97699c41fb552085da11c1ad1cce7426571"],
     ["terms.html", "cb89aa1a41a51dff21c05569e5304008c00178b285d956c16e699a3c37842a3b"],

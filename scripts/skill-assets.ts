@@ -25,7 +25,7 @@ export interface SkillFile {
   data: Buffer;
 }
 
-/** Every file in the skill folder, sorted (dotfiles skipped). */
+/** Download only the skill payload, sorted; plugin listing files stay in the git installation. */
 export function readSkill(dir = SKILL_ROOT): SkillFile[] {
   const out: SkillFile[] = [];
   const walk = (rel: string) => {
@@ -36,7 +36,9 @@ export function readSkill(dir = SKILL_ROOT): SkillFile[] {
       else if (e.isFile()) out.push({ name, data: readFileSync(path.join(dir, name)) });
     }
   };
-  walk("");
+  out.push({ name: "SKILL.md", data: readFileSync(path.join(dir, "SKILL.md")) });
+  walk("reference");
+  walk("scripts");
   return out.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
