@@ -1,11 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { shapeGeometry } from "./geometry";
-import { shapeAttachment, shapeHandle } from "./attachment";
+import { shapeAttachment, shapeHandle, shapeHandles } from "./attachment";
 import { SHAPES_CATALOG } from "./catalog";
 import { sidePoint } from "../geometry/ports";
 import { Router } from "../geometry/router";
 
 describe("shared shape attachment geometry", () => {
+  it("reuses handle geometry without rescanning unchanged outlines", () => {
+    const handles = shapeHandles("rounded", 173, 97);
+    const scans = vi.spyOn(Math, "hypot");
+    try {
+      for (let i = 0; i < 1000; i++) {
+        expect(shapeHandles("rounded", 173, 97)).toBe(handles);
+        for (const side of ["left", "right", "top", "bottom"] as const)
+          expect(shapeHandle("rounded", 173, 97, side)).toBe(handles[side]);
+      }
+      expect(scans).not.toHaveBeenCalled();
+      expect(shapeHandles("rounded", 300, 97)).not.toBe(handles);
+      expect(shapeHandles("rounded", 173, 120)).not.toBe(handles);
+      expect(shapeHandles("tri", 173, 97)).not.toBe(handles);
+    } finally {
+      scans.mockRestore();
+    }
+  });
   it.each(["tri", "flip-tri"] as const)("attaches %s to the visible sloped sides", (shape) => {
     expect(shapeAttachment(shape, 160, 90, "left")).toEqual({ x: 40.375, y: 45 });
     expect(shapeAttachment(shape, 160, 90, "right")).toEqual({ x: 119.625, y: 45 });

@@ -96,6 +96,31 @@ const labelLines = (label: string, yamlLabel = false) =>
     .map((l) => l.trim())
     .filter(Boolean);
 
+/** Shared YAML scalar quoting, including doubled apostrophes and double-quoted escapes. */
+class QuoteState {
+  quote: string | undefined;
+  constructor(readonly scalarOnly = false) {}
+  /** Returns the last consumed index, or undefined for syntax outside quotes. */
+  consume(source: string, index: number): number | undefined {
+    const c = source[index];
+    if (this.quote) {
+      if (this.quote === '"' && c === "\\") return index + 1;
+      if (c === this.quote) {
+        if (this.quote === "'" && source[index + 1] === "'") return index + 1;
+        this.quote = undefined;
+      }
+      return index;
+    }
+    if (c !== '"' && c !== "'") return;
+    let previous = index - 1;
+    while (previous >= 0 && /\s/.test(source[previous])) previous--;
+    if ((c === '"' && !this.scalarOnly) || source[previous] === ":") {
+      this.quote = c;
+      return index;
+    }
+  }
+}
+
 /** Splits source into statements: newlines and top-level `;` (not inside quotes or brackets). */
 function statements(src: string): { text: string; line: number }[] {
   const out: { text: string; line: number }[] = [];
@@ -103,14 +128,18 @@ function statements(src: string): { text: string; line: number }[] {
     const line = rawLine.trim();
     if (!line || line.startsWith("%%")) return;
     let depth = 0;
-    let quote = false;
+    const quote = new QuoteState();
     let start = 0;
     for (let j = 0; j < line.length; j++) {
       const c = line[j];
-      if (c === '"') quote = !quote;
-      else if (!quote && "[({".includes(c)) depth++;
-      else if (!quote && "])}".includes(c)) depth = Math.max(0, depth - 1);
-      else if (!quote && depth === 0 && c === ";") {
+      const consumed = quote.consume(line, j);
+      if (consumed !== undefined) {
+        j = consumed;
+        continue;
+      }
+      if ("[({".includes(c)) depth++;
+      else if ("])}".includes(c)) depth = Math.max(0, depth - 1);
+      else if (depth === 0 && c === ";") {
         const s = line.slice(start, j).trim();
         if (s) out.push({ text: s, line: i + 1 });
         start = j + 1;
@@ -157,22 +186,15 @@ class Scanner {
   /** The closing brace belongs to the attributes, never to a quoted label inside them. */
   attributes(): string {
     const start = this.i;
-    let quote: string | undefined;
+    const quote = new QuoteState(true);
     for (; this.i < this.s.length; this.i++) {
       const c = this.s[this.i];
-      if (quote === '"' && c === "\\") {
-        this.i++;
+      const consumed = quote.consume(this.s, this.i);
+      if (consumed !== undefined) {
+        this.i = consumed;
         continue;
       }
-      if (c === quote) {
-        if (quote === "'" && this.s[this.i + 1] === "'") this.i++;
-        else quote = undefined;
-      } else if (!quote && (c === '"' || c === "'")) {
-        let previous = this.i - 1;
-        while (previous >= start && /\s/.test(this.s[previous])) previous--;
-        if (this.s[previous] === ":") quote = c;
-      }
-      if (c === "}" && !quote) return this.s.slice(start, this.i++);
+      if (c === "}") return this.s.slice(start, this.i++);
     }
     return this.fail("Unclosed shape attributes");
   }

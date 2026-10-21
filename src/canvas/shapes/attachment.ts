@@ -158,12 +158,33 @@ export function shapeAttachment(shape: AnnotationShape, w: number, h: number, si
   );
 }
 
-/** Keep opposite handles distinct on pinched or open outlines, while staying on their stroke. */
+const handleCache = new Map<string, Readonly<Record<Side, Point>>>();
+
+/** Cache all four handles across selection and position renders; scan each opposite pair once. */
+export function shapeHandles(shape: AnnotationShape, w: number, h: number): Readonly<Record<Side, Point>> {
+  const key = `${shape}|${w}|${h}`;
+  const cached = handleCache.get(key);
+  if (cached) return cached;
+  const handles = {
+    left: shapeAttachment(shape, w, h, "left"),
+    right: shapeAttachment(shape, w, h, "right"),
+    top: shapeAttachment(shape, w, h, "top"),
+    bottom: shapeAttachment(shape, w, h, "bottom"),
+  };
+  // Keep opposite handles distinct on pinched or open outlines, while staying on their stroke.
+  for (const [a, b, spread] of [
+    ["left", "right", h / 4],
+    ["top", "bottom", w / 4],
+  ] as const) {
+    if (Math.hypot(handles[a].x - handles[b].x, handles[a].y - handles[b].y) >= 14) continue;
+    handles[a] = shapeAttachment(shape, w, h, a, -spread);
+    handles[b] = shapeAttachment(shape, w, h, b, spread);
+  }
+  if (handleCache.size >= 128) handleCache.delete(handleCache.keys().next().value!);
+  handleCache.set(key, handles);
+  return handles;
+}
+
 export function shapeHandle(shape: AnnotationShape, w: number, h: number, side: Side): Point {
-  const opposite = { left: "right", right: "left", top: "bottom", bottom: "top" } as const;
-  const point = shapeAttachment(shape, w, h, side);
-  const other = shapeAttachment(shape, w, h, opposite[side]);
-  if (Math.hypot(point.x - other.x, point.y - other.y) >= 14) return point;
-  const offset = side === "left" ? -h / 4 : side === "right" ? h / 4 : side === "top" ? -w / 4 : w / 4;
-  return shapeAttachment(shape, w, h, side, offset);
+  return shapeHandles(shape, w, h)[side];
 }

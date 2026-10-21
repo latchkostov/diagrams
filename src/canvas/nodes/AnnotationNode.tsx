@@ -3,6 +3,7 @@ import {
   memo,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
@@ -22,7 +23,7 @@ import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLab
 import { MarkdownView } from "../../components/markdown/lazy";
 import { AnnotationEditor } from "./AnnotationEditor";
 import { ShapeOutline } from "./ShapeOutline";
-import { shapeHandle } from "../shapes/attachment";
+import { shapeHandles } from "../shapes/attachment";
 import { beginShapeResize, endShapeResize, shapeResizeModifier } from "../shapes/resize";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
@@ -54,14 +55,22 @@ function AnnotationNodeImpl({
   const h = height ?? 0;
   const updateInternals = useUpdateNodeInternals();
   const store = useStoreApi<FlowNode>();
-  const outline = useRef({ kind, shape: data.shape });
+  const outline = useRef({ kind, shape: data.shape, w, h });
   useLayoutEffect(() => {
     const previous = outline.current;
-    outline.current = { kind, shape: data.shape };
-    // ResizeObserver owns initial and dimension measurements. Only outline changes need forcing.
-    if (kind === "shape" && (previous.kind !== kind || previous.shape !== data.shape))
+    outline.current = { kind, shape: data.shape, w, h };
+    // ResizeObserver can measure before NodeProps receives the new dimensions. Measure again
+    // after the handles render at their new positions; initial mounts still use the observer.
+    if (
+      kind === "shape" &&
+      (previous.kind !== kind || previous.shape !== data.shape || previous.w !== w || previous.h !== h)
+    )
       queueShapeMeasurement(store.getState, updateInternals, id);
-  }, [kind, data.shape, id, store, updateInternals]);
+  }, [kind, data.shape, w, h, id, store, updateInternals]);
+  const handles = useMemo(
+    () => (isConnectable(kind) ? shapeHandles(data.shape ?? "rect", w, h) : undefined),
+    [kind, data.shape, w, h],
+  );
   const startEdit = (e: ReactMouseEvent) => {
     e.stopPropagation();
     setEditing({ kind: "annotation", id });
@@ -164,9 +173,9 @@ function AnnotationNodeImpl({
       ) : (
         <div className={`ann-body${kind === "shape" ? ` ann-body-${data.shape ?? "rect"}` : ""}`}>{text}</div>
       )}
-      {isConnectable(kind) &&
+      {handles &&
         SIDES.map((side) => {
-          const p = shapeHandle(data.shape ?? "rect", w, h, side);
+          const p = handles[side];
           return (
             <Handle
               key={side}

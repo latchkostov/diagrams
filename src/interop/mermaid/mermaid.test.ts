@@ -8,6 +8,26 @@ import { MERMAID_SHAPES } from "./shapes";
 import { parse as parseYaml } from "yaml";
 
 describe("annotation shape syntax", () => {
+  it.each([
+    ["'done}; retry'", "done}; retry"],
+    ["'opening {; brace'", "opening {; brace"],
+    ["'Ada''s }; \"invoice'", "Ada's }; \"invoice"],
+    [String.raw`"escaped \"}; quote"`, 'escaped "}; quote'],
+  ])("quoted labels preserve delimiters and subsequent statements: %s", (scalar, label) => {
+    const { diagram } = parseMermaid(
+      `flowchart LR\na@{ shape: doc, label: ${scalar} } --> b[Next]; b --> c[Last]; c --> a`,
+    );
+    expect(diagram.nodes.map((n) => [n.id, n.label])).toEqual([
+      ["a", label],
+      ["b", "Next"],
+      ["c", "Last"],
+    ]);
+    expect(diagram.edges.map((e) => [e.from, e.to])).toEqual([
+      ["a", "b"],
+      ["b", "c"],
+      ["c", "a"],
+    ]);
+  });
   it.each(["C:\\Users\\Ada", "C:\\temp", "trailing\\", "literal\\n\\t\\u1234", 'slash\\"quote', "tab\tbetween"])(
     "round-trips extended YAML label %s",
     (label) => {

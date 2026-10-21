@@ -2,6 +2,7 @@ import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { annotationShapesFixture } from "../../src/lab/annotationShapesFixture";
+import { pickSides } from "../../src/canvas/edges/routing";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -17,6 +18,7 @@ import {
   waitForCameraIdle,
   waitForStableViewport,
   pauseClock,
+  fitDiagram,
 } from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
@@ -174,6 +176,104 @@ test.describe("annotations", () => {
       ),
     ).toBe(0);
   });
+
+  for (const operation of ["pasted", "resized", "height-resized", "reshaped"] as const)
+    test(`${operation} handles use current connection geometry`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Measured connections",
+        nodes: [],
+        edges: [],
+        annotations: [
+          { id: "source", kind: "shape", shape: "rect", text: "Source", x: 0, y: 0, width: 160, height: 90 },
+          { id: "target", kind: "shape", shape: "rect", text: "Target", x: 600, y: 120, width: 160, height: 90 },
+        ],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "source").click();
+      await waitForSelectionSettled(page);
+      let source = "source";
+      if (operation === "pasted") {
+        await page.keyboard.press(`${MOD}+c`);
+        await page.keyboard.press(`${MOD}+v`);
+        await expect(page.getByTestId(/^annotation-/).filter({ has: page.getByTestId("shape-outline") })).toHaveCount(
+          3,
+        );
+        await expect.poll(async () => (await savedDiagram(page)).annotations?.length).toBe(3);
+        const copy = (await savedDiagram(page)).annotations?.find((a) => a.id !== "source" && a.id !== "target");
+        if (!copy) throw new Error("Missing pasted shape");
+        source = copy.id;
+      } else if (operation === "reshaped") {
+        await page.getByTestId("inspector-more-shapes-btn").click();
+        await page.getByTestId("shape-picker-search").fill("triangle");
+        await page.getByTestId("context-menu-item-pick-shape:tri").click();
+        await expect(annotation(page, source)).toHaveAttribute("data-shape", "tri");
+      } else {
+        const dimension = operation === "resized" ? "width" : "height";
+        const field = page.getByTestId(`inspector-field-${dimension}`);
+        await field.fill("300");
+        await field.press("Enter");
+        await expect
+          .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === source)?.[dimension])
+          .toBe(300);
+      }
+      await waitForSelectionSettled(page);
+      // Clear the resize grips before connecting: a rectangle's border grip shares its handle's position.
+      await page.getByTestId("canvas-wrap").focus();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+      await fitDiagram(page);
+      await waitForStableBox(annotation(page, source));
+      const from = await box(page.getByTestId(`handle-${source}-right`));
+      const to = await box(page.getByTestId("handle-target-left"));
+      const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+      const end = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+      // Read the path in screen coordinates, the same coordinate space as the rendered handles.
+      const endpoints = (locator: Locator) =>
+        locator.evaluate((root) => {
+          const path = root.children[0];
+          if (!(path instanceof SVGPathElement)) throw new Error("Missing connection path");
+          const matrix = path.getScreenCTM();
+          if (!matrix) throw new Error("Missing path transform");
+          const start = path.getPointAtLength(0).matrixTransform(matrix);
+          const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(matrix);
+          return { start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y } };
+        });
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 8 });
+      const preview = page.getByTestId("connection-line");
+      await expect(preview).toBeVisible();
+      await expect
+        .poll(async () => {
+          const point = (await endpoints(preview)).start;
+          return Math.hypot(point.x - start.x, point.y - start.y);
+        })
+        .toBeLessThan(1);
+      await page.mouse.up();
+      await expect.poll(async () => (await savedDiagram(page)).edges).toMatchObject([{ from: source, to: "target" }]);
+      const saved = await savedDiagram(page);
+      const edge = saved.edges[0];
+      // New connections save automatic sides; verify their resolved sides as well as their endpoints.
+      expect(edge.sourceSide).toBeUndefined();
+      expect(edge.targetSide).toBeUndefined();
+      const sourceBox = saved.annotations?.find((a) => a.id === source);
+      const targetBox = saved.annotations?.find((a) => a.id === "target");
+      if (!sourceBox || !targetBox) throw new Error("Missing saved connection endpoint");
+      expect(pickSides(sourceBox, targetBox, edge)).toEqual({ sourceSide: "right", targetSide: "left" });
+      // Selecting the edge can pan the canvas: remeasure both handles with the path each poll.
+      await expect
+        .poll(async () => {
+          const path = await endpoints(page.getByTestId(`edge-${edge.id}`));
+          const a = await box(page.getByTestId(`handle-${source}-right`));
+          const b = await box(page.getByTestId("handle-target-left"));
+          return Math.max(
+            Math.hypot(path.start.x - a.x - a.width / 2, path.start.y - a.y - a.height / 2),
+            Math.hypot(path.end.x - b.x - b.width / 2, path.end.y - b.y - b.height / 2),
+          );
+        })
+        .toBeLessThan(1);
+    });
 
   for (const shape of ["hourglass", "comment", "brace-r"] as const)
     test(`${shape} opposite handles independently start connections`, async ({ page }) => {
