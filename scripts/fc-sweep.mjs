@@ -46,6 +46,7 @@ if (!files.length) {
       .filter(Boolean),
     "src/sim/waits.review.test.ts",
     "src/sim/waits.sampling.test.ts",
+    "src/sim/scaleEquivalence.test.ts",
   );
 }
 const used = new Set(seeds);

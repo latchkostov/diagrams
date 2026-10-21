@@ -118,6 +118,16 @@ it("R4 final: a numbered replica CPU tail expires at grace after paused partial 
   const deadlines = [...node().fleet!.busy.values()].flatMap((b) => (b.drainAt === undefined ? [] : [b.drainAt]));
   expect(deadlines).toHaveLength(1);
   const deadline = deadlines[0];
+  const tail = [...node().cpuTail!].find((work) => work.replica !== undefined)!;
+  expect(tail).toBeDefined();
+  expect(tail.cpuRemaining).toBeGreaterThan(0);
+  const replica = tail.replica!;
+  expect(node().fleet!.busy.get(replica)!.drainAt).toBe(deadline);
+  e.step(deadline - e.metrics().time - STEP);
+  expect(node().cpuTail!.has(tail)).toBe(true);
+  expect(tail.replica).toBe(replica);
+  expect(node().fleet!.busy.get(replica)!.drainAt).toBe(deadline);
+  expect(e.snapshot().nodes.partner.fleet!.draining).toBe(1);
   e.step(deadline - e.metrics().time);
   expect(e.snapshot().nodes.partner.fleet!.draining).toBe(0);
   const cpu = node().fleet!.totalCpu;
@@ -246,8 +256,8 @@ it("R4 final: resource-enable acquisition failure readmits broker continuations 
     maxParticles: 0,
     verifyResources: assertResourceInvariants,
     verifyLedger(s) {
-      ledger = s;
-      assertLedgerInvariants(s);
+      ledger = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(ledger);
     },
   });
   e.load(d);
@@ -261,6 +271,10 @@ it("R4 final: resource-enable acquisition failure readmits broker continuations 
     resources: { ...resourceLesson(), cpuMsPerMessage: 0, startup: { delayMs: 0, jitterFraction: 0 } },
   });
   e.step(STEP);
+  const caller = [...ledger.nodes].find((node) => node.id === "caller") as unknown as {
+    pending: Iterable<{ continuation?: unknown }>;
+  };
+  expect([...caller.pending].some((work) => work.continuation)).toBe(true);
   e.step(10000);
   expect(e.metrics().inSystem).toBe(0);
   expect(ledger.ledger.reservations.size).toBe(0);

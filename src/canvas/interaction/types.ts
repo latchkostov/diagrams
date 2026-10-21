@@ -252,6 +252,8 @@ export type FocusEvent =
   | { type: "input" };
 
 export interface FocusState {
+  /** Surfaces currently owning focus, including independent Live popovers. */
+  openMenus?: readonly MenuFocusKind[];
   /** The canvas's one Tab stop (a node's flow id), when one has been chosen. */
   roving?: string;
   /** The move waiting to run, as data (at most one: a newer move replaces it). */

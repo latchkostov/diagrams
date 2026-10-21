@@ -22,6 +22,7 @@ import {
   cases,
   GATE_LARGE,
   GATE_SMALL,
+  LINEAR_LIMIT,
   measure,
   measureFresh,
   MODE,
@@ -207,18 +208,40 @@ s.gating("the same seed plays the same run", () => {
   s.count("determinism-checksum-delta", Math.abs(a - b), { limit: 0, op: "==", why: "same seed, same counters" });
 });
 
-s.timing("W1 idle step with 10,000 open calls", () => {
+function openCalls(count: number) {
   const d = waitingFixture();
-  d.nodes[1].props = { replicas: 10, concurrency: 1000, latencyMs: 10, jitter: 0 };
+  d.nodes[1].props = { replicas: 10, concurrency: count, latencyMs: 10, jitter: 0 };
   d.nodes[2].props = { ...d.nodes[2].props, status: "paused" };
-  const e = createEngine({ seed: 1, maxParticles: 0 });
+  const e = createEngine({ seed: 1, scale: 10, maxParticles: 0 });
   e.load(d);
-  e.inject("source", 10_000);
+  e.inject("source", count);
   e.step(1000);
+  return { e, d };
+}
+
+s.gating("W1 ledger idle step with 10,000 open calls", () => {
+  const small = openCalls(1_250);
+  const { e, d } = openCalls(10_000);
+  s.count("ledgerOpenCalls", e.snapshot().nodes.caller.threads?.waiting ?? -1, {
+    limit: 10_000,
+    op: "==",
+    why: "all 10,000 sampled calls remain unanswered during the measurement",
+  });
   s.time(
     "engineStep",
     measure(() => e.step(FRAME_MS)),
     workloadInfo("pipeline", 4, d),
     "w1-10000-open-calls",
   );
+  // Same-run 1,250 → 10,000 calls: the standard 8× input / 24× ceiling
+  // tolerates linear work and runner noise but rejects a quadratic scan (~64×).
+  // Millisecond timings above are report-only; the paused callee keeps calls open.
+  s.growth(
+    "ledgerOpenCallsIdleStep",
+    () => small.e.step(FRAME_MS),
+    () => e.step(FRAME_MS),
+    LINEAR_LIMIT,
+    "8× open calls must stay below 24× idle-step work; same-process baseline, no millisecond budget",
+  );
+  s.count("ledgerOpenCallsAfter", e.snapshot().nodes.caller.threads?.waiting ?? -1, { limit: 10_000, op: "==" });
 });

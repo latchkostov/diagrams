@@ -48,9 +48,54 @@ test("capacity callouts download without blocking Live or its heat map", async (
   await expect(page.getByTestId("live-controls")).toBeVisible();
   await expect(page.getByTestId("capacity-label-payments")).toBeVisible();
   await expect(page.getByTestId("bottleneck-callout")).toHaveCount(0);
+  const processed = () => page.getByTestId("node-badge-payments").getAttribute("data-processed").then(Number);
+  const before = await processed();
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await expect.poll(processed).toBeGreaterThan(before);
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
   callout.release();
   await expect(page.getByTestId("bottleneck-callout")).toBeVisible();
   expectNoErrors(consoleErrors);
+});
+
+test("delayed narration keeps keyboard focus in an open presentation menu", async ({ page, consoleErrors }) => {
+  const narration = await gate(page, chunk("NoteCallout", "src/live/NoteCallout.tsx"));
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&sim=payments-outage&speed=8&paused=1`);
+  await page.getByTestId("present-toggle").click();
+  await page.getByTestId("live-play").click();
+  await expect.poll(narration.requested).toBe(true);
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-more-menu").focus();
+  await page.keyboard.press("ArrowDown");
+  const focused = await page.evaluate(() => document.activeElement?.getAttribute("data-testid"));
+  if (!focused) throw new Error("No menu item has keyboard focus");
+  expect(focused).not.toBe("live-more-menu");
+  await expect(page.getByTestId(focused)).toBeFocused();
+  narration.release();
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await expect(page.getByTestId(focused)).toBeFocused();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("live-note-continue").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  expectNoErrors(consoleErrors);
+});
+
+test("a failed narration download offers Retry and preserves Continue", async ({ page }) => {
+  const narration = await gate(page, chunk("NoteCallout", "src/live/NoteCallout.tsx"));
+  narration.fail = true;
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&sim=payments-outage&speed=8`);
+  await expect(page.getByTestId("toast")).toContainText("Part of the app couldn't be downloaded");
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+  await expect(page.getByTestId("live-note")).toHaveCount(0);
+  narration.fail = false;
+  narration.release();
+  await page.getByTestId("lazy-load-retry").click();
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await page.getByTestId("live-note-continue").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
 });
 
 test("a waiting narration keeps its Continue action after its download", async ({ page, consoleErrors }) => {
