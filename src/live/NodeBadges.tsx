@@ -266,7 +266,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
   const h = node.measured?.height ?? node.height ?? 72;
   const broker = BROKERS.has(s.role);
   const heat = heatOf(s.backlog);
-  const problems = s.failed + s.deadLettered + s.dropped;
+  const problems = s.deadLettered + s.dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
   const rejected = s.rejected ?? 0;
@@ -328,7 +328,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       {problems > 0 && s.status !== "down" && (
         <div
           className="lv-alert mono"
-          title={`${problems} failed, dead-lettered or dropped`}
+          title={t("threads.lostCount", { count: problems })}
           data-testid={`node-alert-${node.id}`}
         >
           {formatCount(problems)}

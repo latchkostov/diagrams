@@ -180,7 +180,6 @@ const BY_THEME: Record<string, string[]> = {
   reliability: [
     "blocking-call",
     "slow-payment-provider",
-    "pool-of-40",
     "scale-on-busy-threads",
     "outbox-saga-checkout",
     "zone-outage-drill",

@@ -22,6 +22,8 @@ import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";
 import { useFollowing } from "../watchBridge";
 import { LiveSync } from "./liveSync";
+import { planFixLabel } from "../../planning/scalingPlanText";
+import { useInteraction } from "../../canvas/interaction";
 export function useLiveDiagramChanges({
   session,
   editor,
@@ -82,6 +84,12 @@ export function useLiveFixes({
   const { slowRef } = spotlight;
   const { showEvents, saveSimulation } = commands;
   const { showCapacity, capacity, openCapacity } = capacityInputs;
+  const interaction = useInteraction();
+  const undoFix = useCallback(() => {
+    const hadFocus = !!document.activeElement?.closest("[data-toast]");
+    editor?.undo();
+    interaction?.dispatch({ type: "callout.closed", hadFocus, undo: true });
+  }, [editor, interaction]);
   /** A node added one gap downstream may land past the view's edge: bring it in, clear of an open panel (as addEntry). */
   const revealAdded = useCallback(
     () => camera.dispatch({ type: "live.added", panel: capacityOpen }),
@@ -143,7 +151,36 @@ export function useLiveFixes({
           revealAdded();
         }
       } else if (action.kind === "free-thread") {
-        if (editor) effectiveCallerPolicy(editor, action.edge)?.set({ wait: "non-blocking" });
+        if (editor) {
+          const effective = effectiveCallerPolicy(editor, action.edge);
+          if (effective?.editable) {
+            effective.set({ wait: "non-blocking" });
+            sayThreadFix(undoFix, t("threads.freeAction"), effective.simulation);
+          }
+        }
+      } else if (action.kind === "scale-threads") {
+        if (editor) {
+          const diagram = editor.getDiagram();
+          const st = controller.getState();
+          const saved = diagram.simulations?.find((s) => s.id === st.simulation?.id);
+          if (st.simulation && (!saved || JSON.stringify(st.simulation) !== JSON.stringify(saved))) return;
+          if (saved) {
+            const next = { ...saved, setup: { ...saved.setup, props: { ...saved.setup?.props } } };
+            for (const change of action.changes)
+              next.setup.props[change.node] = { ...next.setup.props[change.node], ...change.props };
+            editor.updateMeta({ simulations: diagram.simulations!.map((s) => (s.id === saved.id ? next : s)) });
+            controller.setBase(next);
+          } else {
+            editor.applyDiagram({
+              ...diagram,
+              nodes: diagram.nodes.map((n) => {
+                const change = action.changes.find((c) => c.node === n.id);
+                return change ? { ...n, props: { ...n.props, ...change.props } } : n;
+              }),
+            });
+          }
+          sayThreadFix(undoFix, planFixLabel(action.plan)!, saved?.title);
+        }
       } else if (action.kind === "add-timeout") {
         if (editor) {
           const effective = effectiveCallerPolicy(editor, action.edge);
@@ -164,7 +201,7 @@ export function useLiveFixes({
               {
                 action: {
                   label: t("shortcuts.undo"),
-                  run: () => editor.undo(),
+                  run: undoFix,
                   testId: "add-timeout-undo",
                   undoes: true,
                 },
@@ -177,7 +214,7 @@ export function useLiveFixes({
     },
     // Session-owned refs and setters are stable; preserve the original dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded],
+    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded, undoFix],
   );
   // Only while editing in live view (never presenting, recording, embedded or in the Lab, heat map or not). With the
   // heat map on, a callout is already there: trouble leads it, unless the plan diagnoses the same lag (troubleLeads).
@@ -207,6 +244,7 @@ export function useLiveFixes({
       (t.action.kind !== "add-consumer" &&
         t.action.kind !== "add-dlq" &&
         t.action.kind !== "free-thread" &&
+        t.action.kind !== "scale-threads" &&
         t.action.kind !== "add-timeout"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
@@ -245,6 +283,12 @@ export function useLiveFixes({
     },
     saveInputs,
   };
+}
+
+function sayThreadFix(undo: () => void, fix: string, simulation?: string): void {
+  notify(simulation ? t("threads.fixedSimulation", { fix, simulation }) : t("threads.fixedDiagram", { fix }), {
+    action: { label: t("shortcuts.undo"), run: undo, testId: "thread-fix-undo", undoes: true },
+  });
 }
 
 /** The toast after Add a consumer, with Undo. */

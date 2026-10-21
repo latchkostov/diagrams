@@ -71,7 +71,6 @@ test("call fields take the first keyboard pass while planning downloads, with st
 
 test("Add a timeout names the saved simulation and edge, exposes the override, and offers Undo", async ({ page }) => {
   const d = structuredClone(payment);
-  Object.assign(d.simulations[0], { setup: { edges: { pay: { caller: { deadlineMs: null } } } } });
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "slow-payment-provider",
     d,
@@ -101,7 +100,7 @@ test("Add a timeout names the saved simulation and edge, exposes the override, a
   await page.clock.runFor(400);
   await expect
     .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.pay.caller?.deadlineMs)
-    .toBeNull();
+    .toBeUndefined();
 });
 
 test("Scale on busy threads keeps selection, focuses the changed target, and supports the unit toggle from the keyboard", async ({
@@ -149,7 +148,7 @@ for (const locale of ["ar", "en-XA"]) {
 }
 
 test("edge Simulation submenu keeps editing within the menu budget and returns focus with Escape", async ({ page }) => {
-  await gotoCanvas(page, "pool-of-40");
+  await gotoCanvas(page, "slow-payment-provider");
   await waitForStableViewport(page);
   await page.getByTestId("edge-pay").click({ button: "right" });
   const menu = page.getByTestId("context-menu");
@@ -172,7 +171,7 @@ test("edge Simulation submenu keeps editing within the menu budget and returns f
 
 test("pool readouts scale in presentation across meeting sizes", async ({ page }, info) => {
   await page.clock.install();
-  await gotoLive(page, "./?view=canvas&example=pool-of-40&live=1&paused=1&sim=pool-40");
+  await gotoLive(page, "./?view=canvas&example=slow-payment-provider&live=1&paused=1&sim=pool-40");
   await pauseClock(page);
   await page.getByTestId("live-play").click();
   await page.clock.runFor(8000);

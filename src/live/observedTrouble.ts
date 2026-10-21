@@ -24,6 +24,11 @@ const SAMPLE_MS = 1_000;
 
 export type TroubleKind = "down" | "dropping" | "threads-exhausted" | "lag";
 export type TroubleAction =
+  | {
+      kind: "scale-threads";
+      changes: { node: string; props: Record<string, unknown> }[];
+      plan: NonNullable<import("../checks/types").Finding["scalingPlan"]>;
+    }
   | { kind: "free-thread"; edge: string }
   | { kind: "add-timeout"; edge: string; deadlineMs: number }
   | { kind: "restore-boundary"; boundary: string; label: string }

@@ -2068,5 +2068,11 @@
   "threads.poolHint": "الحد الأقصى للاستدعاءات قيد التنفيذ. تنتظر الاستدعاءات الإضافية في قائمة انتظار: يحتفظ وضع «يحتفظ بخيط» بالخيط، ويحرره وضع «يحرر الخيط». تظل الاستدعاءات المنتظرة تستهلك الذاكرة.",
   "trouble.waiting": "تنتظر الرسائل في {names} حتى يعود.",
   "trouble.waitingCount": "تنتظر الرسائل في {names} حتى يعود ({count} حتى الآن).",
-  "threads.poolCeiling": "تحد مجموعة الاتصالات الاستدعاءات إلى {rate} طلب/ث."
+  "threads.poolCeiling": "تحد مجموعة الاتصالات الاستدعاءات إلى {rate} طلب/ث.",
+  "threads.lostCount": "{count, plural, zero {لم تُفقد أي رسالة} one {فُقدت رسالة واحدة} two {فُقدت رسالتان} few {فُقدت # رسائل} many {فُقدت # رسالة} other {فُقدت # رسالة}}",
+  "threads.fixedSimulation": "{fix} في «{simulation}» · تم",
+  "threads.fixedDiagram": "{fix} في المخطط · تم",
+  "threads.lossOutcome": "فُقد {count, number}{timeouts, select, all {، انتهت مهلة الجميع بعد {seconds, number} ث} some { · انتهت مهلة {timedOut, number}} other {}}{deadLettered, plural, =0 {} zero {} one { · رسالة واحدة متعذرة التسليم · أُسقط {dropped, number}} two { · رسالتان متعذرتا التسليم · أُسقط {dropped, number}} few { · # رسائل متعذرة التسليم · أُسقط {dropped, number}} many { · # رسالة متعذرة التسليم · أُسقط {dropped, number}} other { · # رسالة متعذرة التسليم · أُسقط {dropped, number}}}",
+  "threads.outcome": "{outcome}{attempts, select, show { · {failed, plural, zero {لا محاولات فاشلة} one {محاولة فاشلة واحدة} two {محاولتان فاشلتان} few {# محاولات فاشلة} many {# محاولة فاشلة} other {# محاولة فاشلة}}} other {}}{late, plural, =0 {} zero {} one { · تم تجاهل رد متأخر واحد} two { · تم تجاهل ردين متأخرين} few { · تم تجاهل # ردود متأخرة} many { · تم تجاهل # ردًا متأخرًا} other { · تم تجاهل # رد متأخر}}",
+  "examples.paymentTimeoutSummary": "مزود بطيء: قارن المهل ومجموعات الاتصالات مع استمرار عمل حالة الطلب"
 }

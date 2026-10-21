@@ -1,7 +1,6 @@
 import { expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import payment from "../examples/slow-payment-provider.json";
-import pool from "../examples/pool-of-40.json";
 import busy from "../examples/scale-on-busy-threads.json";
 import { createSimulationRun } from "../sim/simulation";
 import { simulationEdges } from "../sim/simulationEdges";
@@ -98,7 +97,7 @@ it("names gateway 504 pass-through at both gateway and source and keeps the deli
   }
 });
 
-it.each([payment, pool])("teaches the two routes in each run-end line: $title", (input) => {
+it.each([payment])("teaches the two routes in each run-end line: $title", (input) => {
   const d = input as DiagramFile;
   const c = new LiveController(d);
   try {

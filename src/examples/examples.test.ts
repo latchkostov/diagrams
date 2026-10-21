@@ -98,9 +98,9 @@ describe("recent-feature showcases", () => {
     expect(runs[2].engine.snapshot().nodes.applications.backlog).toBeLessThan(100);
   });
   it("shows forty payment connections while the DB-only order-status route keeps working", () => {
-    const d = diagram("pool-of-40");
-    expect(exampleMetadata["pool-of-40"].shows).toContain("requestsWait");
-    const runs = d.simulations!.map((s) => createSimulationRun(d, s));
+    const d = diagram("slow-payment-provider");
+    expect(exampleMetadata["slow-payment-provider"].shows).toContain("requestsWait");
+    const runs = d.simulations!.slice(2).map((s) => createSimulationRun(d, s));
     for (const run of runs) run.step(8000);
     const free = runs[0].engine.snapshot(),
       held = runs[1].engine.snapshot();

@@ -109,7 +109,6 @@ const publicExamples: PublicExample[] = (
       theme: "reliability",
       summary: msg("examples.paymentTimeoutSummary"),
     },
-    { slug: "pool-of-40", omitShows: ["routing"], theme: "reliability", summary: msg("examples.poolSummary") },
     {
       slug: "scale-on-busy-threads",
       omitShows: ["partitions"],

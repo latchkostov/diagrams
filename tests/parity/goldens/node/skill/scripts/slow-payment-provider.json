@@ -8,7 +8,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "d4ea87a3b3096b99129dd30952ee926c392ca23d8b9326c0cb6a01061b5b448c", "bytes": 4393 },
+    "decoded": { "sha256": "f0fa754d4cc8064a1d27396a884da486cf942c0a8d5203635ad0922eaccac7c3", "bytes": 6655 },
     "sameAsFile": true,
     "warned": false
   },
@@ -28,7 +28,7 @@
           ]
         },
         "title": "A slow payment provider",
-        "description": "At three seconds the payment provider slows tenfold. Compare Checkout running out of threads with a 600 ms timeout: payments fail fast while order status keeps working. Timeouts do not cancel the provider's work.",
+        "description": "At three seconds the payment provider slows tenfold. Compare no timeout, a 600 ms timeout, forty connections with threads freed, and the same pool holding threads. Every run includes order-status requests; timeouts do not cancel provider work.",
         "nodes": [
           {
             "id": "shop",
@@ -225,6 +225,104 @@
                 "when": "end"
               }
             ]
+          },
+          {
+            "id": "pool-40",
+            "title": "Threads freed while waiting for the pool",
+            "description": "Payment calls wait off-thread for one of forty connections. Order status only calls Orders DB and keeps completing during the slowdown. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
+            "seed": 17,
+            "scale": 1,
+            "durationMs": 20000,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "shop",
+                "messageType": "Checkout",
+                "shape": { "kind": "constant", "ratePerSec": 120, "durationMs": 20000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 3000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payment", "factor": 10 } }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "status",
+                "label": "Order status keeps completing",
+                "metric": { "node": "orders", "field": "processed" },
+                "op": ">",
+                "value": 300,
+                "when": "end"
+              },
+              {
+                "id": "expected-shop",
+                "label": "Shop reports payment failures",
+                "metric": { "node": "shop", "field": "dropped" },
+                "op": ">",
+                "value": 0,
+                "when": "eventually"
+              },
+              {
+                "id": "expected-gateway",
+                "label": "API gateway reports payment failures",
+                "metric": { "node": "gateway", "field": "dropped" },
+                "op": ">",
+                "value": 0,
+                "when": "eventually"
+              }
+            ],
+            "setup": { "edges": { "pay": { "caller": { "wait": "non-blocking", "poolConnections": 40 } } } }
+          },
+          {
+            "id": "blocking-pool",
+            "title": "Threads held while waiting for the pool",
+            "description": "The same pool holds waiting threads as well as connections. Order-status work queues behind them. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
+            "seed": 17,
+            "scale": 1,
+            "durationMs": 20000,
+            "traffic": [
+              {
+                "id": "orders",
+                "node": "shop",
+                "messageType": "Checkout",
+                "shape": { "kind": "constant", "ratePerSec": 120, "durationMs": 20000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 3000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payment", "factor": 10 } }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "status",
+                "label": "Order status keeps completing",
+                "metric": { "node": "orders", "field": "processed" },
+                "op": ">",
+                "value": 300,
+                "when": "end"
+              },
+              {
+                "id": "expected-shop",
+                "label": "Shop reports payment failures",
+                "metric": { "node": "shop", "field": "dropped" },
+                "op": ">",
+                "value": 0,
+                "when": "eventually"
+              },
+              {
+                "id": "expected-gateway",
+                "label": "API gateway reports payment failures",
+                "metric": { "node": "gateway", "field": "dropped" },
+                "op": ">",
+                "value": 0,
+                "when": "eventually"
+              }
+            ],
+            "setup": { "edges": { "pay": { "caller": { "wait": "blocking", "poolConnections": 40 } } } }
           }
         ]
       },

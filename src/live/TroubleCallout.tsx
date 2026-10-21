@@ -4,9 +4,11 @@ import { useInteraction } from "../canvas/interaction";
 import { LiveIcon } from "./icons";
 import type { Trouble, TroubleAction } from "./observedTrouble";
 import { useFloatingPlacement } from "./useFloatingPlacement";
+import { planFixLabel } from "../planning/scalingPlanText";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon?: "plus" | "play" }> = {
+  "scale-threads": { label: msg("autoscaling.scaleBusy") },
   "add-timeout": {
     label: msg("threads.addTimeout"),
   },
@@ -86,9 +88,11 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
           {action.icon && <LiveIcon name={action.icon} size={13} />}{" "}
           {trouble.action.kind === "restore-boundary"
             ? t("fault.restoreNamed", { label: trouble.action.label })
-            : trouble.action.kind === "clear-fault"
-              ? t("fault.clearAction")
-              : action.label()}
+            : trouble.action.kind === "scale-threads"
+              ? planFixLabel(trouble.action.plan)
+              : trouble.action.kind === "clear-fault"
+                ? t("fault.clearAction")
+                : action.label()}
         </button>
       )}
       <button

@@ -3,6 +3,10 @@ import type { LiveController } from "./controller";
 import { TroubleWatcher, pickTrouble, type Trouble, type TroubleMemory } from "./observedTrouble";
 import { simulationEdges } from "../sim/simulationEdges";
 import { state as language } from "../i18n";
+import { threadFixOffThread } from "../canvas/checks/runner";
+import type { ThreadFixRequest } from "./threadFixPlan";
+import type { DiagramFile } from "../model/types";
+import type { TroubleAction } from "./observedTrouble";
 
 /**
  * The run's trouble for the callout (src/live/observedTrouble.ts), read on every controller publication: a status
@@ -18,8 +22,15 @@ export class TroubleTracker {
   private picked: Trouble | undefined;
   private listeners = new Set<() => void>();
   private unsubscribe?: () => void;
+  private fixes = new Map<string, TroubleAction | undefined>();
 
-  constructor(private readonly controller: LiveController) {
+  constructor(
+    private readonly controller: LiveController,
+    private readonly verify: (
+      diagram: DiagramFile,
+      request: ThreadFixRequest,
+    ) => Promise<TroubleAction | undefined> = threadFixOffThread,
+  ) {
     this.observe();
   }
 
@@ -54,6 +65,7 @@ export class TroubleTracker {
       this.run = run;
       this.memory = { shown: new Set(), ended: new Set(), dismissed: new Set() };
       this.watcher.reset();
+      this.fixes.clear();
     }
     const observed = this.watcher.observe(
       st.snapshot,
@@ -83,9 +95,22 @@ export class TroubleTracker {
         pending.push(...(incoming.get(node) ?? []));
       }
     }
-    const now = expected.size
+    const relevant = expected.size
       ? observed.filter((trouble) => trouble.kind !== "dropping" || !expected.has(trouble.node))
       : observed;
+    const now = relevant.map((trouble) => {
+      if (trouble.kind !== "threads-exhausted") return trouble;
+      const key = `${run}:${trouble.key}:${JSON.stringify(trouble.action)}`;
+      if (!this.fixes.has(key)) {
+        this.fixes.set(key, undefined);
+        void this.verify(diagram, { simulation: st.running, trouble, time: st.snapshot.time }).then((fix) => {
+          if (this.run !== run) return;
+          this.fixes.set(key, fix);
+          this.observe();
+        });
+      }
+      return { ...trouble, action: this.fixes.get(key) ?? { kind: "events" as const, node: trouble.node } };
+    });
     if (now !== this.troubles) {
       this.troubles = now;
       this.picked = pickTrouble(now, this.memory, this.watcher.warm);

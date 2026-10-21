@@ -8,6 +8,7 @@ export function timeoutOutcome(
   diagram: DiagramFile,
   snapshot: Pick<SimSnapshot, "edges">,
   node: string,
+  losses?: number,
 ): string | undefined {
   const gateway = diagram.nodes.some((n) => n.id === node && stencilRole(n.stencil) === "gateway")
     ? node
@@ -17,6 +18,8 @@ export function timeoutOutcome(
   if (!gateway) return;
   const expired = diagram.edges.find((e) => e.from === gateway && (snapshot.edges[e.id]?.calls?.timedOut ?? 0) > 0);
   if (!expired) return;
+  // A mixed outcome needs the full loss total; a gateway timeout alone cannot describe it.
+  if (losses !== undefined && snapshot.edges[expired.id].calls!.timedOut !== losses) return;
   const caller = expired.props?.caller as { deadlineMs?: number } | undefined;
   if (caller?.deadlineMs == null) return;
   return t("threads.gatewayOutcome", {

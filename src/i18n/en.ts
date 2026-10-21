@@ -2509,6 +2509,13 @@ const en = {
     "{name}: {mode, select, free {freed threads while waiting} busy {scaled on busy threads} other {scaled on CPU}}; reached {peak, number} pods. {broker} ended with {count, number} waiting.",
   "threads.addedTimeoutSimulation": "Added a {ms, number} ms timeout to {from} → {to} in “{simulation}”",
   "threads.addedTimeoutDiagram": "Added a {ms, number} ms timeout to {from} → {to} in the diagram",
+  "threads.lostCount": "{count, plural, one {# message lost} other {# messages lost}}",
+  "threads.fixedSimulation": "{fix} in “{simulation}” · done",
+  "threads.fixedDiagram": "{fix} in the diagram · done",
+  "threads.lossOutcome":
+    "{count, number} lost{timeouts, select, all {, all timed out after {seconds, number} s} some { · {timedOut, number} timed out} other {}}{deadLettered, plural, =0 {} other { · # dead-lettered · {dropped, number} dropped}}",
+  "threads.outcome":
+    "{outcome}{attempts, select, show { · {failed, plural, one {# failed attempt} other {# failed attempts}}} other {}}{late, plural, =0 {} one { · # late reply discarded} other { · # late replies discarded}}",
   "threads.pillHeldTitle": "{count, number} {from} threads held while waiting for {to}",
   "threads.pillFreeTitle":
     "{count, number} calls from {from} to {to} in flight, no thread held · {queued, number} queued for a connection",
@@ -2925,7 +2932,7 @@ const en = {
   "threads.lateCount": "Late replies discarded: {count, number}",
   "threads.timedOutMetric": "timed out",
   "threads.deadlocked": "Deadlocked: every thread waits on a loop. A timeout breaks the wait.",
-  "examples.paymentTimeoutSummary": "A slow provider: compare waiting forever with a 600 ms timeout",
+  "examples.paymentTimeoutSummary": "A slow provider: compare timeouts and pools while order status keeps working",
   "threads.holdAction": "Hold a thread while waiting",
   "threads.simulation": "Simulation",
   "threads.callAdvanced": "Call settings · Advanced",

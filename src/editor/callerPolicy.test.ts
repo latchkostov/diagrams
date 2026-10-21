@@ -187,3 +187,26 @@ it("shares caller-policy edits through base ops and keeps document sync followin
   host.dispose();
   follower.dispose();
 });
+
+it("creates a saved simulation override even when the edge inherited its diagram policy", () => {
+  const diagram = waitingFixture();
+  const simulation: import("../model/types").Simulation = { id: "run", title: "No overrides", traffic: [] };
+  diagram.simulations = [simulation];
+  const controller = new LiveController(diagram);
+  controller.selectSimulation(simulation);
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn<EditorApi["updateMeta"]>((patch) => Object.assign(diagram, patch)),
+    setEdgeProps: vi.fn(),
+  };
+  const effective = effectiveCallerPolicy(editor, "call", { controller, slowmo: { active: false } })!;
+  expect(effective.simulation).toBe("No overrides");
+  effective.set({ deadlineMs: 600 });
+  expect(editor.updateMeta).toHaveBeenCalledTimes(1);
+  expect(editor.setEdgeProps).not.toHaveBeenCalled();
+  expect(diagram.simulations[0].setup?.edges?.call.caller).toEqual({ deadlineMs: 600 });
+  expect(controller.getState().running?.setup?.edges?.call.caller).toEqual({ deadlineMs: 600 });
+  controller.dispose();
+});

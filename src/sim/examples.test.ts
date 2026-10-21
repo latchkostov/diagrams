@@ -8,6 +8,7 @@ import { exampleTestLabel } from "./exampleLabels";
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
 /** Most examples tell two stories; these tell more. */
 const SIMULATIONS: Record<string, number> = {
+  "../examples/slow-payment-provider.json": 4,
   "../examples/scale-on-busy-threads.json": 3,
   "../examples/where-the-time-goes.json": 3,
   "../examples/aws-serverless-orders.json": 3,
@@ -68,7 +69,9 @@ describe("saved example simulations with the real stencil registry", () => {
               (["../examples/blocking-call.json", "../examples/scale-on-busy-threads.json"].includes(path) &&
                 simulation.id === "blocking" &&
                 e.id === "lag") ||
-              (path === "../examples/pool-of-40.json" && simulation.id === "blocking-pool" && e.id === "status") ||
+              (path === "../examples/slow-payment-provider.json" &&
+                simulation.id === "blocking-pool" &&
+                e.id === "status") ||
               (path === "../examples/slow-payment-provider.json" &&
                 simulation.id === "no-timeouts" &&
                 e.id === "gateway-timeouts") ||

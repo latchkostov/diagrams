@@ -27,7 +27,7 @@ export function effectiveCallerPolicy(
     caller,
     diagramCaller: edge.props?.caller as EdgeSimProps["caller"],
     override: override?.caller,
-    simulation: saved && override ? saved.title : undefined,
+    simulation: saved?.title,
     policy: callPolicy(editor.getNode(edge.from)?.stencil ?? "", caller),
     editable,
     set(patch: EdgeSimProps["caller"]) {
@@ -39,7 +39,7 @@ export function effectiveCallerPolicy(
           ...(Object.hasOwn(patch ?? {}, "deadlineMs") && patch?.deadlineMs === undefined ? { deadlineMs: null } : {}),
         }).filter(([, v]) => v !== undefined),
       );
-      if (saved && override) {
+      if (saved) {
         const next = {
           ...saved,
           setup: {

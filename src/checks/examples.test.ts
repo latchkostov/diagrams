@@ -23,7 +23,6 @@ const bySlug = Object.fromEntries(
 
 const EXPECTED: Record<string, string[]> = {
   "scale-on-busy-threads": ["warning capacity:applications", "warning capacity:caller"],
-  "pool-of-40": [],
   "slow-payment-provider": [],
   "blocking-call": ["warning capacity:caller"],
   "where-the-time-goes": [],
@@ -130,18 +129,16 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  * change here is a change to that table.
  */
 const PLANNED: Record<string, string[]> = {
-  "pool-of-40": [
-    "1156 dropped shop in Threads freed while waiting for the pool (expected)",
-    "1156 dropped gateway in Threads freed while waiting for the pool (expected)",
-    "1326 dropped shop in Threads held while waiting for the pool (expected)",
-    "1326 dropped gateway in Threads held while waiting for the pool (expected)",
-  ],
   "slow-payment-provider": [
     "1059 dropped shop in No timeouts (expected)",
     "1059 dropped gateway in No timeouts (expected)",
     "1687 dropped shop in A 600 ms timeout (expected)",
     "1687 dropped gateway in A 600 ms timeout (expected)",
     "1687 dropped checkout in A 600 ms timeout (expected)",
+    "1156 dropped shop in Threads freed while waiting for the pool (expected)",
+    "1156 dropped gateway in Threads freed while waiting for the pool (expected)",
+    "1326 dropped shop in Threads held while waiting for the pool (expected)",
+    "1326 dropped gateway in Threads held while waiting for the pool (expected)",
   ],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],

@@ -137,7 +137,7 @@ for (const disabled of [false, true]) {
     await expect
       .poll(async () => {
         const saved = await savedDiagram(page);
-        return disabled ? saved.simulations?.[0].setup?.edges?.call.caller : saved.edges[1].props?.caller;
+        return saved.simulations?.[0].setup?.edges?.call.caller;
       })
       .toMatchObject({ deadlineMs: 600 });
     await page.getByTestId("undo-button").click();
@@ -145,7 +145,7 @@ for (const disabled of [false, true]) {
     await expect
       .poll(async () => {
         const saved = await savedDiagram(page);
-        return disabled ? saved.simulations?.[0].setup?.edges?.call.caller : saved.edges[1].props?.caller;
+        return saved.simulations?.[0].setup?.edges?.call.caller;
       })
       .toEqual(disabled ? { deadlineMs: null } : undefined);
     if (disabled) expect((await savedDiagram(page)).edges[1].props?.caller).toEqual({ deadlineMs: 600 });
@@ -178,11 +178,11 @@ for (const simulation of ["no-timeouts", "timeout-600"]) {
       await expect(page.getByTestId("call-pill-pay")).toContainText("timed out");
       await expect(page.getByTestId("call-pill-route")).not.toContainText("timed out");
       await page.getByTestId("node-checkout").hover();
-      await expect(page.getByTestId("call-timeouts-checkout")).toContainText("Timed out:");
-      await expect(page.getByTestId("call-late-checkout")).toContainText("Late replies discarded:");
+      await expect(page.getByTestId("node-outcome-checkout")).toContainText("all timed out after 0.6 s");
+      await expect(page.getByTestId("node-outcome-checkout")).toContainText("late replies discarded");
       for (const mode of ["is-compact", "is-summary"]) {
         expect(
-          await page.getByTestId("call-outcomes-checkout").evaluate((element, mode) => {
+          await page.getByTestId("node-outcome-checkout").evaluate((element, mode) => {
             const detail = element.parentElement;
             if (!detail) return false;
             detail.classList.remove("is-compact", "is-summary");
@@ -190,8 +190,8 @@ for (const simulation of ["no-timeouts", "timeout-600"]) {
             return element.checkVisibility();
           }, mode),
         ).toBe(true);
-        await expect(page.getByTestId("call-timeouts-checkout")).toBeVisible();
-        await expect(page.getByTestId("call-late-checkout")).toBeVisible();
+        await expect(page.getByTestId("node-outcome-checkout")).toBeVisible();
+        await expect(page.getByTestId("node-outcome-checkout")).toBeVisible();
       }
     }
   });

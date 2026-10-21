@@ -13,7 +13,7 @@ import { useLive } from "./context";
 import { LatencyReadout } from "./LatencyReadout";
 import { ThreadCeiling } from "./ThreadCeiling";
 import type { BadgeProps } from "./NodeBadges";
-import { timeoutOutcome } from "./timeoutOutcome";
+import { nodeOutcome } from "./nodeOutcome";
 
 const doneLabel: Record<SimRole, string> = {
   source: "Sent",
@@ -54,12 +54,7 @@ export function NodeDetails({
     kind: profileOf(node.data.stencil)?.family === "serverless" ? "execution" : "thread",
   });
   const threadBusy = s.threads ? s.threads.working + s.threads.waiting : 0;
-  const callCounts = diagram.edges
-    .filter((e) => e.from === node.id)
-    .map((e) => live.controller.getState().snapshot.edges[e.id]?.calls);
-  const timedOut = callCounts.reduce((sum, c) => sum + (c?.timedOut ?? 0), 0);
-  const late = callCounts.reduce((sum, c) => sum + (c?.late ?? 0), 0);
-  const gatewayOutcome = timeoutOutcome(effective, live.controller.getState().snapshot, node.id);
+  const outcome = nodeOutcome(effective, live.controller.getState().snapshot, node.id);
   const pools = effective.edges.filter(
     (e) => e.from === node.id && (e.props?.caller as { poolConnections?: number } | undefined)?.poolConnections,
   );
@@ -231,15 +226,11 @@ export function NodeDetails({
         />
       )}
       {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
-      {(!!timedOut || !!late) && (
-        <div className="lv-call-outcomes" data-testid={`call-outcomes-${node.id}`}>
-          {!!timedOut && (
-            <p data-testid={`call-timeouts-${node.id}`}>{t("threads.timeoutCount", { count: timedOut })}</p>
-          )}
-          {!!late && <p data-testid={`call-late-${node.id}`}>{t("threads.lateCount", { count: late })}</p>}
-        </div>
+      {outcome && (
+        <p className="lv-call-outcomes" data-testid={`node-outcome-${node.id}`}>
+          {outcome}
+        </p>
       )}
-      {gatewayOutcome && <p data-testid={`gateway-outcome-${node.id}`}>{gatewayOutcome}</p>}
       {!!s.threads?.inFlight && (
         <p>
           {t("threads.inFlight", { count: s.threads.inFlight })} · {t("threads.memoryHint")}
@@ -284,9 +275,6 @@ export function NodeDetails({
         </p>
       )}
       {cap && cap.level !== "idle" && !unread && <Row label="Capacity" value={cap.text} />}
-      {s.failed > 0 && <Row label="Failed attempts" value={formatCount(s.failed)} bad />}
-      {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}
-      {s.dropped > 0 && <Row label="Dropped" value={formatCount(s.dropped)} bad />}
       {blocked > 0 && <Row label="Blocked by a deny rule" value={formatCount(blocked)} />}
       {rejected > 0 && <Row label={t("admission.rejected")} value={formatCount(rejected)} />}
       {groups && Object.keys(s.lag).length > 1 && (
