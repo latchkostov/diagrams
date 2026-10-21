@@ -96,6 +96,8 @@ const publicExamples: PublicExample[] = (
       summary: "HQ, SD-WAN branches, spine and leaf, a fibre-cut drill",
     },
     { slug: "blocking-call", theme: "reliability", summary: msg("examples.blockingSummary") },
+    { slug: "scale-on-busy-threads", theme: "reliability", summary: msg("examples.busySummary") },
+    { slug: "pool-of-40", theme: "reliability", summary: msg("examples.poolSummary") },
     { slug: "slow-payment-provider", theme: "reliability", summary: msg("examples.paymentTimeoutSummary") },
     {
       slug: "where-the-time-goes",

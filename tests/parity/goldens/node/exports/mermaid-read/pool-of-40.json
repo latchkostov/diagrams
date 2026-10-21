@@ -1,0 +1,21 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "A pool of 40",
+    "direction": "LR",
+    "nodes": [
+      { "id": "shop", "stencil": "generic.service", "label": "Shop", "x": 40, "y": 100 },
+      { "id": "gateway", "stencil": "aws.api-gateway", "label": "API gateway", "sublabel": "5 s timeout", "x": 400, "y": 100 },
+      { "id": "checkout", "stencil": "generic.service", "label": "Checkout", "sublabel": "4 replicas · 25 threads each", "x": 760, "y": 100 },
+      { "id": "payment", "stencil": "generic.service", "label": "Payment provider", "sublabel": "200 ms · slows ×10 at 3 s", "x": 1159, "y": 40 },
+      { "id": "orders", "stencil": "generic.database", "label": "Orders DB", "x": 1159, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-shop-gateway", "from": "shop", "to": "gateway", "kind": "sync" },
+      { "id": "e2-gateway-checkout", "from": "gateway", "to": "checkout", "kind": "sync" },
+      { "id": "e3-checkout-payment", "from": "checkout", "to": "payment", "kind": "sync" },
+      { "id": "e4-checkout-orders", "from": "checkout", "to": "orders", "kind": "sync" }
+    ]
+  }
+}

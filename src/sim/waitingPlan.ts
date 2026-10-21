@@ -34,6 +34,7 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
   const response = new Map<string, number>();
   const failures = new Map<string, number>();
   const replies = new Map<string, { ms: number; count: number; pool: number }>();
+  const pools = new Map<string, number>();
   const queue: string[] = [];
   for (const node of diagram.nodes) remaining.set(node.id, 0);
   for (const edge of topology.edges) {
@@ -70,11 +71,17 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
         ...(reply
           ? { replyMs, replies: reply.count, ...(reply.pool < Infinity ? { poolCeiling: reply.pool } : {}) }
           : {}),
+        ...(pools.has(id) ? { poolCeiling: pools.get(id) } : {}),
       });
     for (const parent of parents.get(id) ?? []) {
       const endpointMs = resolvedTiming(props, 0, parent.endpoint).workMs;
       const outcome = callOutcome(parent.policy, endpointMs + responseMs + replyMs + parent.delay, failAt < Infinity);
       const duration = outcome.responseMs;
+      if (parent.policy.pool)
+        pools.set(
+          parent.node,
+          Math.min(pools.get(parent.node) ?? Infinity, (parent.policy.pool * 1000) / Math.max(10, duration)),
+        );
       if (outcome.failed) failures.set(parent.node, Math.min(failures.get(parent.node) ?? Infinity, duration));
       response.set(parent.node, Math.max(response.get(parent.node) ?? 0, duration));
       if (parent.policy.blocking) callMs.set(parent.node, Math.max(callMs.get(parent.node) ?? 0, duration));

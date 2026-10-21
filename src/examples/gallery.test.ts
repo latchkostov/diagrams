@@ -92,6 +92,7 @@ describe("example gallery", () => {
       "autoscaling-basics",
       "cloud-run-timetable-api",
       "blocking-call",
+      "scale-on-busy-threads",
     ]);
     expect(
       filterExamples(publicItems, "", "routing")
@@ -104,10 +105,13 @@ describe("example gallery", () => {
       "recommendations-feature-store",
       "video-on-demand-pipeline",
       "api-route-table",
+      "pool-of-40",
     ]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
+      "scale-on-busy-threads": ["requestsWait", "partitions", "autoscaling"],
+      "pool-of-40": ["requestsWait", "faultDrills", "routing"],
       "partitions-vs-subscriptions": ["partitions"],
       "shared-worker-pool": ["partitions"],
       "shared-api-quotas": ["rateLimits"],

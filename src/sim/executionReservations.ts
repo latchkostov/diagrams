@@ -354,6 +354,11 @@ export function createExecutionReservations<
   }
 
   return {
+    /** A connection inherits the thread's fractional admission phase. */
+    admissibleActive(node: Node, work: Work) {
+      const thread = ledger.get(work.thread);
+      return node.activeMs - (thread ? (thread.segmentActive ?? thread.startActive) - thread.startActive : 0);
+    },
     usesLedger,
     reacquireCapacity,
     startResources,

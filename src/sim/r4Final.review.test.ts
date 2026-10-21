@@ -232,8 +232,10 @@ it("R4 final: resource-enable acquisition failure readmits broker continuations 
       },
     },
   );
-  const blocking = { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, replyMs: 0 } };
-  d.edges[1].props = { ...blocking, caller: { poolConnections: 1, replyMs: 31 } };
+  // These blocking pools were dormant in R4; preserve its execution-recovery stimulus.
+  // Active blocking pools and their queued continuations are covered in poolsBusyThreads.test.ts.
+  const blocking = { travelMs: 10, networkDelayMs: 10, caller: { replyMs: 0 } };
+  d.edges[1].props = { ...blocking, caller: { replyMs: 31 } };
   d.edges.push(
     {
       id: "side",

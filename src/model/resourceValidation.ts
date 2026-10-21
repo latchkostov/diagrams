@@ -39,6 +39,14 @@ export function createResourceValidator({ fragment = false } = {}) {
         return t("autoscaling.modelRequired");
       try {
         checkAutoscaling(props?.resources, props?.autoscaling);
+        const a = props?.autoscaling as AutoscalingConfig | undefined;
+        if (
+          !revisionAtLeast(candidate.planning?.revision, "p3-w1") &&
+          a?.mode === "on" &&
+          "settings" in a.controller &&
+          a.controller.settings.metrics.some((m) => m.source.kind === "pods")
+        )
+          return t("threads.modelRequired");
         if (!checkBindings(props?.autoscaling, node)) return t("autoscaling.bindingInvalid");
       } catch {
         return t("autoscaling.checkInvalid");

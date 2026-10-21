@@ -1,22 +1,20 @@
 # The diagrams/v1 file format
 
-Planning files additionally support `diagrams/v2` with `planning: { "revision": "p3" }` (or `p1`/`p2` for earlier models) and
-<https://www.livediagrams.dev/schema/diagram.v2.json>. Legacy v1 retains legacy playback and omitted
-defaults. Never upgrade by merely changing the format marker: the app's explicit upgrade pins current
-effective values and previews compatibility. Presets store `preset` / `presetRevision`; unsupported
-revisions are refused. Physical `networkDelayMs`, store `connections` and `querySlots` are distinct
-metadata, not execution controls.
+Planning uses `diagrams/v2` and `planning.revision` (`p1`, `p2`, `p3`, `p3-a1`, `p3-w1`).
+Preserve existing revisions: the app's upgrade pins effective values and previews compatibility.
+Unknown revisions are refused. Files are `<name>.diagram.json`; schemas are at
+`https://www.livediagrams.dev/schema/diagram.v1.json`, `diagram.v2.json` and `stencils.json`.
 
-P2 logs (Kafka, Event Hubs and Kinesis) assign at most one instance per partition or shard in each consumer group.
-Subscription/binding fan-out (SNS, EventBridge, Service Bus Topic, Pub/Sub and exchanges) uses every configured
-instance; never add partitions there. `group` names a subscription or binding on these brokers. Each name gets a
-copy; readers with the same name compete. Queue readers always compete, and `dlq` routes never subscribe.
-`kafka.cluster` is infrastructure (`none`), not a topic hop. Producer size and ingest-unit metadata have no hard
-vendor ingest limits. Existing v1 and p1 documents keep their playback until explicitly upgraded.
+P2 logs (Kafka, Event Hubs, Kinesis) cap each consumer group's active readers by partitions/shards.
+Subscription brokers (SNS, EventBridge, Service Bus Topic, Pub/Sub, exchanges) use all instances:
+each `group` gets a copy and its readers compete. Queue readers always compete; `dlq` never subscribes.
+`kafka.cluster` is infrastructure. Producer sizes and ingest units impose no vendor ingest limits.
+`networkDelayMs` is physical call travel in W1; store `connections`/`querySlots` remain metadata.
 
-A diagram is one JSON file, `<name>.diagram.json`. This page covers what an agent needs. The full JSON Schemas
-are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file) and
-<https://www.livediagrams.dev/schema/stencils.json> (every stencil).
+W1 Request callers execute `poolConnections` in both modes: blocking holds a thread while queued;
+non-blocking frees it. Queued deadlines are never sent. HPA/KEDA metrics accept
+`source: {kind: "pods", metric: "busyThreads"}`: `utilization.percentOfRequest` is percent of
+Concurrency; `averageValue.value` is threads per pod. This is a modelled custom metric; ECS custom metrics remain unsupported.
 
 ## Top level
 
@@ -169,72 +167,34 @@ Edge `props`:
 
 Other keys in `props` are kept, so you can note facts such as `"replicationFactor": 3`.
 
-## A complete example
+## Boundary example
 
-A Kafka order pipeline with a payment service and a dead-letter topic. Run `layout.mjs` and every node gains `x`
-and `y`, and the boundary gains its box.
+Run `layout.mjs` to position this diagram; `web` remains outside `aks`.
 
 ```json
 {
   "format": "diagrams/v1",
-  "title": "Kafka order pipeline",
-  "description": "Checkout publishes orders to Kafka; payments and shipping consume them independently.",
-  "direction": "LR",
-  "groups": [{ "id": "aks", "label": "AKS · order services", "tone": "k8s" }],
+  "title": "Orders",
+  "groups": [{ "id": "aks", "label": "Order services", "tone": "k8s" }],
   "nodes": [
-    { "id": "web", "stencil": "client.browser", "label": "Storefront", "props": { "messageType": "OrderRequest" } },
-    { "id": "orders-api", "stencil": "service.dotnet", "label": "Orders API", "group": "aks" },
-    { "id": "orders", "stencil": "kafka.topic", "label": "Kafka", "sublabel": "orders.created", "group": "aks" },
-    { "id": "payments", "stencil": "service.java", "label": "Payment service", "group": "aks" },
-    { "id": "shipping", "stencil": "service.go", "label": "Shipping service", "group": "aks" },
-    { "id": "stripe", "stencil": "stripe", "label": "Stripe", "sublabel": "Payment intents" },
-    { "id": "dlq", "stencil": "kafka.topic", "label": "Kafka DLQ", "sublabel": "orders.dlq", "group": "aks" }
+    { "id": "web", "stencil": "client.browser", "label": "Storefront" },
+    { "id": "api", "stencil": "service.dotnet", "label": "Orders API", "group": "aks" },
+    { "id": "orders", "stencil": "generic.database", "label": "Orders", "group": "aks" }
   ],
   "edges": [
-    { "id": "e1", "from": "web", "to": "orders-api", "kind": "sync", "label": "POST /orders" },
-    {
-      "id": "e2",
-      "from": "orders-api",
-      "to": "orders",
-      "kind": "async",
-      "label": "OrderPlaced",
-      "props": { "emits": "OrderPlaced" }
-    },
-    { "id": "e3", "from": "orders", "to": "payments", "kind": "async", "props": { "group": "payments" } },
-    { "id": "e4", "from": "orders", "to": "shipping", "kind": "async", "props": { "group": "shipping" } },
-    { "id": "e5", "from": "payments", "to": "stripe", "kind": "sync", "label": "charge" },
-    { "id": "e6", "from": "orders", "to": "dlq", "kind": "async", "label": "after 3 tries", "props": { "dlq": true } }
+    { "id": "call", "from": "web", "to": "api", "kind": "sync" },
+    { "id": "save", "from": "api", "to": "orders", "kind": "sync" }
   ]
 }
 ```
 
 ## Share links
 
-Anyone who has a link can open the diagram, so make one only when the user asked for a link, and never for a private
-diagram ([outputs.md](outputs.md)). `scripts/share-link.mjs` builds the link. Without Node, build it the same way: take the diagram as minified JSON
-(UTF-8), compress it with raw DEFLATE (RFC 1951, no zlib header), encode that as base64url without padding, and
-append it to `https://www.livediagrams.dev/#d=`. In Python:
-
-```python
-import base64, json, zlib
-
-diagram = json.load(open("order-pipeline.diagram.json", encoding="utf-8"))
-text = json.dumps(diagram, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-deflate = zlib.compressobj(9, zlib.DEFLATED, -15)
-payload = base64.urlsafe_b64encode(deflate.compress(text) + deflate.flush()).decode().rstrip("=")
-print("https://www.livediagrams.dev/#d=" + payload)
-```
+Only make public share links when requested, never for a Private diagram. Use
+`node scripts/share-link.mjs <file>`; see [outputs.md](outputs.md) for output choices.
 
 A link with a password (`#e=…`, encrypted in the browser) is made only in the app, with **File > Share… > Link with
 password…**. Don't build one, and never put a password in a link or in the same message as the link.
 
 Chat apps may cut off links longer than about 8,000 characters. For those, hand over the `.diagram.json` file:
 it opens at livediagrams.dev with **File > Open…**.
-
-P3 admission uses `api.quotas` token buckets with explicit real units/windows and per-request costs.
-Node and endpoint budgets apply together; matching `sharedGroup` definitions share one account budget.
-`api.maxInFlight` limits concurrent calls; `sharedConcurrency` shares account concurrency. Functions
-use `maxConcurrency` allocation and fixed/auto slots. Auto explicitly assumes instant scaling.
-Unknown limits stay unknown. Requests can target `endpointId`; missing targets reject. Refusals are
-`rejected`, separate from failed, dropped and blocked. Caller deadlines/retries are preserved contracts
-only; no caller waits, retries or cascades run. See the site's simulation semantics for preset sources.

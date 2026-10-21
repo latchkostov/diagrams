@@ -1,0 +1,26 @@
+{
+  "autoLayout": {
+    "viewport": "translate(9.86706px, 321.548px) scale(0.753323)",
+    "nodes": {
+      "shop": { "kind": "node", "box": "translate(40px, 100px) 220×72", "text": "Shop User" },
+      "gateway": { "kind": "node", "box": "translate(400px, 100px) 220×72", "text": "API gateway 5 s timeout" },
+      "checkout": { "kind": "node", "box": "translate(760px, 100px) 253×72", "text": "Checkout 4 replicas · 25 threads each" },
+      "payment": { "kind": "node", "box": "translate(1159px, 40px) 235×72", "text": "Payment provider 200 ms · slows ×10 at 3 s" },
+      "orders": { "kind": "node", "box": "translate(1159px, 160px) 220×72", "text": "Orders DB Database" }
+    },
+    "edges": { "browse": "M260,136 L400,136", "route": "M620,136 L760,136", "pay": "M1013,129 L1076,129 Q1086,129 1086,119 L1086,86 Q1086,76 1096,76 L1159,76", "save": "M1013,143 L1076,143 Q1086,143 1086,153 L1086,186 Q1086,196 1096,196 L1159,196" },
+    "labels": {}
+  },
+  "tidy": {
+    "viewport": "translate(-87.7105px, 321.548px) scale(0.753323)",
+    "nodes": {
+      "shop": { "kind": "node", "box": "translate(0px, 240px) 220×72", "text": "Shop User" },
+      "gateway": { "kind": "node", "box": "translate(330px, 240px) 220×72", "text": "API gateway 5 s timeout" },
+      "checkout": { "kind": "node", "box": "translate(660px, 240px) 253×72", "text": "Checkout 4 replicas · 25 threads each" },
+      "payment": { "kind": "node", "box": "translate(1020px, 180px) 235×72", "text": "Payment provider 200 ms · slows ×10 at 3 s" },
+      "orders": { "kind": "node", "box": "translate(1020px, 300px) 220×72", "text": "Orders DB Database" }
+    },
+    "edges": { "browse": "M220,276 L330,276", "route": "M550,276 L660,276", "pay": "M913,269 L956.5,269 Q966.5,269 966.5,259 L966.5,226 Q966.5,216 976.5,216 L1020,216", "save": "M913,283 L956.5,283 Q966.5,283 966.5,293 L966.5,326 Q966.5,336 976.5,336 L1020,336" },
+    "labels": {}
+  }
+}

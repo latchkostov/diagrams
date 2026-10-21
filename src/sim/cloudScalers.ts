@@ -158,6 +158,7 @@ export function onDemand(
   f.recommendations.push({ at: now, count: desired });
   return (f.decision = {
     at: now,
+    source: "pods",
     raw: wanted,
     desired,
     reason: wanted > range.max ? "max" : "request",
@@ -192,7 +193,7 @@ export function evaluateCloud(
     );
     if (decision) {
       decision.adapter = "aca";
-      if (decision.broker === node && decision.resource === undefined) {
+      if (decision.broker === node && decision.source === "broker") {
         decision.metricKind = "httpRate";
         decision.windowMs = 15_000;
         decision.broker = undefined;
@@ -222,12 +223,13 @@ function evaluateCloudRun(
     .map((w) => concurrencyPct(f, now, w, concurrency))
     .filter((v): v is number => v !== undefined);
   const metric = values.length ? Math.max(...values) : undefined;
-  let external: { raw: number; missing: boolean; metric?: number; target?: number };
-  if (metric === undefined || !f.ready) external = { raw: 0, missing: f.desired > 0 };
+  let external: { source: "pods"; raw: number; missing: boolean; metric?: number; target?: number };
+  if (metric === undefined || !f.ready) external = { source: "pods", raw: 0, missing: f.desired > 0 };
   else {
     const ratio = metric / c.targetConcurrencyPct;
     const wanted = Math.abs(ratio - 1) <= 0.1 ? f.desired : Math.ceil(f.ready * ratio);
     external = {
+      source: "pods",
       raw: wanted < f.desired ? Math.min(f.desired, wanted + f.starting) : wanted,
       missing: false,
       metric,
@@ -378,6 +380,7 @@ function evaluateAppService(
     if (clamped !== f.desired) s.lastScaleAt = now;
     return (f.decision = {
       at: now,
+      source: policy !== undefined && c.rules[policy].metric === "httpQueue" ? "pods" : "resource",
       raw,
       desired: clamped,
       reason: raw > range.max && clamped === range.max ? "max" : reason,
@@ -580,6 +583,7 @@ function evaluateEcs(
   ): ScalingDecision =>
     (f.decision = {
       at: now,
+      source: by?.kind === "cpu" || by?.kind === "memory" || !by ? "resource" : "pods",
       raw,
       desired: Math.max(range.min, Math.min(range.max, desired)),
       reason: raw > range.max ? "max" : reason,

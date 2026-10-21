@@ -2482,6 +2482,17 @@ const en = {
   "autoscaling.invalidPolicy": "Invalid policy; previous settings retained.",
   "autoscaling.startingBadge": "Ready: {ready, number} · Starting: {starting, number}",
   "autoscaling.drainingBadge": "Ready: {ready, number} · Draining: {draining, number}",
+  "autoscaling.busyName": "Busy threads (modelled custom metric)",
+  "autoscaling.busyTarget": "Busy threads (% of Concurrency)",
+  "autoscaling.busyAverage": "Busy threads per pod",
+  "autoscaling.busyUnit": "Target unit",
+  "autoscaling.noPodMetric": "No pod metric",
+  "autoscaling.ecsBusyUnsupported":
+    "Busy threads is a modelled HPA or KEDA metric. ECS custom metrics are unsupported.",
+  "autoscaling.scaleBusy": "Scale on busy threads",
+  "autoscaling.planBusy":
+    "In “{simulation}”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun confirmed a smaller backlog.",
+  "threads.modelRequired": "Busy-thread scaling needs the Requests that wait model.",
   "autoscaling.cpuName": "CPU",
   "autoscaling.hpaName": "Kubernetes HPA",
   "autoscaling.range": "Replica range · Initial: {initial, number} · Minimum: {min, number} · Maximum: {max, number}",
@@ -2490,7 +2501,7 @@ const en = {
   "autoscaling.cloudReason":
     "{reason, select, alarm {Waiting for the alarm: {periods, number} of {needed, number} periods} step {Step adjustment} rule {Scale rule} flapping {Deferred: scaling in would trigger a scale-out} request {Requests are waiting: adding capacity on demand} default {A metric can't be read: default capacity} cooldown {Waiting for the cooldown} target {Target} tolerance {Within tolerance} missing {No data: keeping capacity} max {Maximum reached} other {Unknown}}",
   "autoscaling.cloudMetric":
-    "{kind, select, cpuRequest {{value}% of the CPU request (target {target}%)} memoryRequest {{value}% of the memory request (target {target}%)} cpuMilli {{value}m CPU per replica (target {target}m)} memoryMiB {{value} MiB memory per replica (target {target} MiB)} backlog {{value} waiting messages (target {target} per worker)} cpu {{value}% of allocated CPU (target {target}%)} memory {{value}% of allocated memory (target {target}%)} concurrency {{value}% of maximum concurrency (target {target}%)} httpRate {{value} HTTP requests/s (target {target} per replica)} albRequestCountPerTarget {{value} requests per task per minute (target {target})} albRequestCount {{value} load balancer requests per minute (threshold {target})} httpQueue {{value} queued requests per instance (threshold {target})} other {{value} (target {target})}}",
+    "{kind, select, cpuRequest {{value}% of the CPU request (target {target}%)} memoryRequest {{value}% of the memory request (target {target}%)} cpuMilli {{value}m CPU per replica (target {target}m)} memoryMiB {{value} MiB memory per replica (target {target} MiB)} backlog {{value} waiting messages (target {target} per worker)} cpu {{value}% of allocated CPU (target {target}%)} memory {{value}% of allocated memory (target {target}%)} busyThreads {{value}% of Concurrency (target {target}%)} busyThreadsPerPod {{value} busy threads per pod (target {target})} concurrency {{value}% of maximum concurrency (target {target}%)} httpRate {{value} HTTP requests/s (target {target} per replica)} albRequestCountPerTarget {{value} requests per task per minute (target {target})} albRequestCount {{value} load balancer requests per minute (threshold {target})} httpQueue {{value} queued requests per instance (threshold {target})} other {{value} (target {target})}}",
   "autoscaling.minCount":
     "{unit, select, tasks {Minimum tasks} instances {Minimum instances} other {Minimum replicas}}",
   "autoscaling.maxCount":
@@ -2866,7 +2877,9 @@ const en = {
   "threads.pool": "Connection pool",
   "threads.uncapped": "No cap",
   "threads.poolHint":
-    "Maximum calls in flight. Extra calls queue without holding a thread. Waiting calls still use memory.",
+    "Maximum calls in flight. Extra calls queue: Holds a thread keeps the thread; Frees the thread releases it. Waiting calls still use memory.",
+  "examples.busySummary": "Compare CPU scaling, busy-thread scaling and freeing threads",
+  "examples.poolSummary": "Forty payment connections: protect order-status work by freeing threads",
   "threads.replyHandling": "Reply handling time",
   "threads.replyHint": "A reply takes a thread again, ahead of new work, and uses 10% of the work's CPU cost.",
   "threads.inFlight":

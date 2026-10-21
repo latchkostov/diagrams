@@ -132,14 +132,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -425,14 +438,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -806,14 +832,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -1436,14 +1475,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -1729,14 +1781,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -2110,14 +2175,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -2683,14 +2761,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -2976,14 +3067,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -3357,14 +3461,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -3987,14 +4104,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -4280,14 +4410,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -4661,14 +4804,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -5230,14 +5386,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -5523,14 +5692,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -5904,14 +6086,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -6534,14 +6729,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -6827,14 +7035,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -7208,14 +7429,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -7937,14 +8171,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -8230,14 +8477,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -8611,14 +8871,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -9241,14 +9514,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -9534,14 +9820,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -9915,14 +10214,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -10600,14 +10912,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -10893,14 +11218,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -11274,14 +11612,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -11904,14 +12255,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -12197,14 +12561,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -12578,14 +12955,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -13146,14 +13536,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -13439,14 +13842,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -13820,14 +14236,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -14450,14 +14879,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -14743,14 +15185,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -15124,14 +15579,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -15688,14 +16156,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -15981,14 +16462,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -16362,14 +16856,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [
@@ -16992,14 +17499,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -17285,14 +17805,27 @@
                                   "required": ["source", "target", "windowMs", "metricDelayMs"],
                                   "properties": {
                                     "source": {
-                                      "type": "object",
-                                      "additionalProperties": false,
-                                      "required": ["kind", "resource"],
-                                      "properties": {
-                                        "kind": { "enum": ["resource"] },
-                                        "resource": { "enum": ["cpu", "memory"] },
-                                        "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                      }
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "resource"],
+                                          "properties": {
+                                            "kind": { "enum": ["resource"] },
+                                            "resource": { "enum": ["cpu", "memory"] },
+                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": ["kind", "metric"],
+                                          "properties": {
+                                            "kind": { "enum": ["pods"] },
+                                            "metric": { "enum": ["busyThreads"] }
+                                          }
+                                        }
+                                      ]
                                     },
                                     "target": {
                                       "anyOf": [
@@ -17666,14 +18199,27 @@
                                       "required": ["source", "target", "windowMs", "metricDelayMs"],
                                       "properties": {
                                         "source": {
-                                          "type": "object",
-                                          "additionalProperties": false,
-                                          "required": ["kind", "resource"],
-                                          "properties": {
-                                            "kind": { "enum": ["resource"] },
-                                            "resource": { "enum": ["cpu", "memory"] },
-                                            "container": { "type": "string", "minLength": 1, "maxLength": 100 }
-                                          }
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "resource"],
+                                              "properties": {
+                                                "kind": { "enum": ["resource"] },
+                                                "resource": { "enum": ["cpu", "memory"] },
+                                                "container": { "type": "string", "minLength": 1, "maxLength": 100 }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "required": ["kind", "metric"],
+                                              "properties": {
+                                                "kind": { "enum": ["pods"] },
+                                                "metric": { "enum": ["busyThreads"] }
+                                              }
+                                            }
+                                          ]
                                         },
                                         "target": {
                                           "anyOf": [

@@ -418,6 +418,8 @@ export interface SimEngine {
   replicaPage(nodeId: string, page?: number): import("./autoscaling").ReplicaRow[];
   /** A resource-enabled node's fleet counts and latest decision, without copying other state. */
   fleet(nodeId: string): import("./autoscaling").FleetReadout | undefined;
+  /** Sampled thread counts without constructing a frame or traversing waiting calls. */
+  threadUsage(nodeId: string): { working: number; waiting: number } | undefined;
   checkpoint(): EngineCheckpoint;
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */

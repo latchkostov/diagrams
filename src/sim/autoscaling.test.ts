@@ -71,7 +71,7 @@ describe("A1 CPU and fleet execution", () => {
     expect(e.snapshot().nodes.worker.fleet!.decision).toMatchObject({ raw: 2, desired: 2 });
   });
   it("uses the published +4/+100% growth policies rather than jumping to target", () => {
-    const f = createFleet(1),
+    const f = createFleet(1, { concurrency: 1 }),
       c = hpaLesson().controller,
       r = resourceLesson();
     c.settings.metrics[0].target = { kind: "utilization", percentOfRequest: 10 };
@@ -82,7 +82,7 @@ describe("A1 CPU and fleet execution", () => {
     expect(evaluateHpa(f, c, r, 15_000)).toMatchObject({ raw: 20, desired: 5, reason: "max" });
   });
   it("retains the rolling maximum for 300 simulated seconds, then shrinks at the first eligible sync", () => {
-    const f = createFleet(4),
+    const f = createFleet(4, { concurrency: 1 }),
       c = hpaLesson().controller,
       r = resourceLesson();
     c.settings.metrics[0].windowMs = 1000;
@@ -96,7 +96,7 @@ describe("A1 CPU and fleet execution", () => {
     expect(evaluateHpa(f, c, r, 330_000).desired).toBe(1);
   });
   it("reports max 10 wanting 14 at 92% CPU and handles missing metrics/tolerance safely", () => {
-    const f = createFleet(10),
+    const f = createFleet(10, { concurrency: 1 }),
       c = hpaLesson().controller,
       r = resourceLesson();
     c.settings.metrics[0].windowMs = 1000;
@@ -169,17 +169,17 @@ describe("A1 CPU and fleet execution", () => {
   it("keeps missing metrics safe without stabilization, while a valid metric can grow", () => {
     const c = hpaLesson().controller,
       r = resourceLesson(),
-      f = createFleet(4);
+      f = createFleet(4, { concurrency: 1 });
     c.settings.down.stabilizationMs = 0;
     expect(evaluateHpa(f, c, r, 15_000)).toMatchObject({ desired: 4, reason: "missing" });
     c.settings.metrics.push({ ...c.settings.metrics[0], windowMs: 1000 });
-    const grow = createFleet(4);
+    const grow = createFleet(4, { concurrency: 1 });
     grow.samples.push({ at: 1000, cpu: 2000, occupancy: 0, ready: 4 });
     expect(evaluateHpa(grow, c, r, 1000).desired).toBeGreaterThan(4);
   });
   it("compacts jittered readiness before sampled CPU allocation", () => {
     const run = (n: number) => {
-      const f = createFleet(1),
+      const f = createFleet(1, { concurrency: 1 }),
         r = resourceLesson();
       r.startup.jitterFraction = 0.5;
       reconcileFleet(f, n, r, 0, 42, "worker");
@@ -191,7 +191,7 @@ describe("A1 CPU and fleet execution", () => {
     expect(run(10_000)).toHaveLength(1);
   });
   it("caches detached immutable history between publications", () => {
-    const f = createFleet(1);
+    const f = createFleet(1, { concurrency: 1 });
     integrateResources(f, 0, 1000, 1000);
     const a = fleets.fleetReadout(f),
       b = fleets.fleetReadout(f);
@@ -203,7 +203,7 @@ describe("A1 CPU and fleet execution", () => {
     expect(a.history).toHaveLength(1);
   });
   it("retains the largest permitted metric window plus delay", () => {
-    const f = createFleet(2),
+    const f = createFleet(2, { concurrency: 1 }),
       c = hpaLesson().controller,
       r = resourceLesson();
     c.settings.metrics[0].windowMs = 1000;
@@ -497,7 +497,7 @@ describe("A1 CPU and fleet execution", () => {
     expect(analyzeCapacity(fixed(500, 100)).nodes.worker.capacity).toBe(2);
   });
   it("starting replicas cannot reverse a shrink recommendation into growth", () => {
-    const f = createFleet(1),
+    const f = createFleet(1, { concurrency: 1 }),
       r = resourceLesson(),
       c = hpaLesson().controller;
     c.settings.metrics[0].windowMs = 1000;
@@ -592,7 +592,7 @@ describe("A1 CPU and fleet execution", () => {
   });
   it("hashes node identity once across jittered startup expansion", () => {
     const r = resourceLesson(),
-      f = createFleet(1),
+      f = createFleet(1, { concurrency: 1 }),
       node = "x".repeat(128);
     r.startup.jitterFraction = 0.5;
     let reads = 0;
@@ -612,7 +612,7 @@ describe("A1 CPU and fleet execution", () => {
     }
   });
   it("sampled admissions do not rescan unchanged protected boundaries", () => {
-    const f = createFleet(8),
+    const f = createFleet(8, { concurrency: 1 }),
       working: Parameters<typeof sampledParts>[3] = [];
     working.push({ cpuParts: sampledParts(f, 3, 100, working) });
     let visits = 0;
@@ -630,7 +630,7 @@ describe("A1 CPU and fleet execution", () => {
     expect(f.ranges).toHaveLength(2);
   });
   it.each([false, true])("pagination expands only the requested identities (previously used: %s)", (used) => {
-    const f = createFleet(10_000),
+    const f = createFleet(10_000, { concurrency: 1 }),
       r = resourceLesson();
     if (used) {
       for (let i = 0; i < 10_000; i++) fleets.acquireReplica(f, 1);
@@ -666,7 +666,7 @@ describe("A1 CPU and fleet execution", () => {
     }
   });
   it("draining readouts do not visit previously used replicas", () => {
-    const f = createFleet(10_000),
+    const f = createFleet(10_000, { concurrency: 1 }),
       r = resourceLesson();
     for (let i = 0; i < 10_000; i++) fleets.acquireReplica(f, 1);
     for (const id of f.busy.keys()) fleets.releaseReplica(f, id, 1);
@@ -749,7 +749,7 @@ describe("round 3 runtime regressions", () => {
     expect(e.effectiveProps("worker-0")).toEqual(configuration);
   });
   it("indexes jittered starting cohorts before paginating, including after readiness and cancellation", () => {
-    const f = createFleet(1),
+    const f = createFleet(1, { concurrency: 1 }),
       r = resourceLesson();
     r.startup.jitterFraction = 0.5;
     reconcileFleet(f, 10_000, r, 0, 42, "worker");
@@ -792,7 +792,7 @@ describe("round 3 runtime regressions", () => {
     check();
   });
   it.each([1, 10])("memory recommendation wins over low CPU at scale %s", (scale) => {
-    const f = createFleet(4),
+    const f = createFleet(4, { concurrency: 1 }),
       c = hpaLesson().controller,
       r = resourceLesson();
     r.baselineMemoryMiB = 128;
@@ -814,7 +814,7 @@ describe("round 3 runtime regressions", () => {
     });
   });
   it("absolute CPU target works without a CPU request", () => {
-    const f = createFleet(4),
+    const f = createFleet(4, { concurrency: 1 }),
       c = hpaLesson().controller,
       r = resourceLesson();
     delete r.cpuRequestMilli;

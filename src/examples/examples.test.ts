@@ -81,6 +81,35 @@ const freePlay = (slug: string) => {
 };
 
 describe("recent-feature showcases", () => {
+  it("shows busy-thread scaling starting within ten seconds and draining on about ten pods", () => {
+    const d = diagram("scale-on-busy-threads");
+    expect(exampleMetadata["scale-on-busy-threads"].shows).toEqual(
+      expect.arrayContaining(["requestsWait", "autoscaling"]),
+    );
+    const runs = d.simulations!.map((s) => createSimulationRun(d, s));
+    for (const run of runs) run.step(10000);
+    expect(runs[0].engine.snapshot().nodes.caller.fleet!.desired).toBe(4);
+    expect(runs[1].engine.snapshot().nodes.caller.fleet!.desired).toBeGreaterThan(4);
+    expect(runs[2].engine.snapshot().nodes.caller.fleet!.desired).toBe(4);
+    for (const run of runs) run.step(30000);
+    const scaled = runs[1].engine.snapshot();
+    expect(scaled.nodes.caller.fleet!.ready).toBe(10);
+    expect(scaled.nodes.applications.backlog).toBeLessThan(100);
+    expect(runs[2].engine.snapshot().nodes.applications.backlog).toBeLessThan(100);
+  });
+  it("shows forty payment connections while the DB-only order-status route keeps working", () => {
+    const d = diagram("pool-of-40");
+    expect(exampleMetadata["pool-of-40"].shows).toContain("requestsWait");
+    const runs = d.simulations!.map((s) => createSimulationRun(d, s));
+    for (const run of runs) run.step(8000);
+    const free = runs[0].engine.snapshot(),
+      held = runs[1].engine.snapshot();
+    expect(free.edges.pay.calls!.inFlight).toBe(40);
+    expect(free.nodes.checkout.threads!.waiting).toBeLessThan(5);
+    expect(free.nodes.orders.processed).toBeGreaterThan(100);
+    expect(held.nodes.checkout.threads!.waiting).toBeGreaterThan(90);
+    expect(free.nodes.orders.processed).toBeGreaterThan(held.nodes.orders.processed);
+  });
   it("shows slow payments saturating threads or failing fast with a timeout", () => {
     const d = diagram("slow-payment-provider");
     expect(exampleMetadata["slow-payment-provider"].shows).toContain("requestsWait");

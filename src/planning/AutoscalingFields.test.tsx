@@ -85,6 +85,23 @@ it.each([{ mode: "off" }, hpaLesson()])("does not copy a diagram to render fixed
   expect(readDiagram).not.toHaveBeenCalled();
 });
 
+it.each([false, true])("gates the busy metric without copying the diagram (W1: %s)", (supportsBusyThreads) => {
+  const readDiagram = vi.fn(() => kedaFixture());
+  const html = renderToStaticMarkup(
+    <AutoscalingFields
+      stencil="service.dotnet"
+      props={{ resources: resourceLesson(), autoscaling: hpaLesson() }}
+      readDiagram={readDiagram}
+      supportsBusyThreads={supportsBusyThreads}
+      set={() => {}}
+    >
+      <span />
+    </AutoscalingFields>,
+  );
+  expect(readDiagram).not.toHaveBeenCalled();
+  expect(html.includes("Busy threads (modelled custom metric)")).toBe(supportsBusyThreads);
+});
+
 it.each([undefined, { mode: "off" }, { mode: "unsupported", provider: "Kubernetes", reason: "Unsupported metric" }])(
   "keeps imported resources and the workload lesson accessible for %s scaling",
   (autoscaling) => {
@@ -157,4 +174,24 @@ it("names each App Service rule's own metric and shows no scale-out target a pol
   const inOnly = render({ ...c, rules: c.rules.filter((rule) => rule.direction === "decrease") });
   expect(inOnly).not.toContain('data-testid="autoscaling-target"');
   expect(inOnly).toContain("Scale in below memory (% of instance)");
+});
+
+it.each([false, true])("Live details label busy-thread targets with their units (per pod: %s)", (average) => {
+  const e = createEngine();
+  e.load(autoscalingFixture());
+  const metrics = realNodeMetrics(e.frame().nodes.worker);
+  metrics.fleet!.decision = {
+    at: 1000,
+    nextAt: 2000,
+    raw: 8,
+    desired: 8,
+    reason: "target",
+    metricKind: average ? "busyThreadsPerPod" : "busyThreads",
+    metric: average ? 10 : 100,
+    target: average ? 5 : 50,
+  };
+  const html = renderToStaticMarkup(<ResourceDetails metrics={metrics} />);
+  expect(html).toContain(average ? "10 busy threads per pod (target 5)" : "100% of Concurrency (target 50%)");
+  expect(html).not.toContain("Memory target");
+  expect(html).not.toContain("Target (MiB)");
 });

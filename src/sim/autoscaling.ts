@@ -6,6 +6,8 @@ import { replicaRange, unmeasured } from "../model/autoscaling";
 import { mulberry32 } from "./rng";
 
 export interface ScalingDecision {
+  /** Ownership of the winning metric; independent of optional display metadata. */
+  source: "resource" | "pods" | "broker";
   at: number;
   raw: number;
   desired: number;
@@ -33,7 +35,15 @@ export interface ScalingDecision {
   /** A3: which cloud adapter decided, its metric and the policy/rule index that acted. */
   adapter?: "ecs" | "aca" | "appService" | "cloudRun";
   metricKind?:
-    "cpu" | "memory" | "albRequestCountPerTarget" | "albRequestCount" | "httpQueue" | "concurrency" | "httpRate";
+    | "cpu"
+    | "memory"
+    | "albRequestCountPerTarget"
+    | "albRequestCount"
+    | "httpQueue"
+    | "concurrency"
+    | "httpRate"
+    | "busyThreads"
+    | "busyThreadsPerPod";
   policy?: number;
   /** Consecutive breaching periods counted so far and the periods the alarm needs. */
   periods?: number;
@@ -50,6 +60,8 @@ export interface ScalingDecision {
   cooldownUntil?: number;
   pollingMs?: number;
 }
+/** Public explanation contract; metric ownership stays inside controller evaluation. */
+export type ScalingDecisionReadout = Omit<ScalingDecision, "source">;
 export interface FleetPoint {
   time: number;
   desired: number;
@@ -58,7 +70,7 @@ export interface FleetPoint {
   draining: number;
 }
 export interface FleetReadout extends Omit<FleetPoint, "time"> {
-  decision?: ScalingDecision;
+  decision?: ScalingDecisionReadout;
   history: readonly FleetPoint[];
 }
 export interface ResourceReadout {
@@ -143,15 +155,23 @@ export interface Fleet {
   changes: { at: number; delta: number }[];
   decision?: ScalingDecision;
   history: FleetPoint[];
-  concurrency?: number;
+  concurrency: number;
   draining: number;
   busyIds: number[];
   rangesDirty: boolean;
   startupHash?: number;
 }
-export function createFleet(count: number, syncMs = 15_000, partBudget = createCpuPartBudget()): Fleet {
+export function createFleet(
+  count: number,
+  {
+    concurrency,
+    syncMs = 15_000,
+    partBudget = createCpuPartBudget(),
+  }: { concurrency: number; syncMs?: number; partBudget?: CpuPartBudget },
+): Fleet {
   count = Number.isFinite(count) ? Math.max(0, Math.min(10_000, Math.round(count))) : 0;
   return {
+    concurrency,
     partBudget,
     inFlight: 0,
     waiting: 0,
@@ -578,6 +598,11 @@ export function metricValue(
   if (end < m.windowMs || !f.ready) return undefined;
   const window = metricWindow(f, end, m.windowMs);
   if (!window.count) return undefined;
+  if (m.source.kind === "pods") {
+    if (!window.readySamples) return undefined;
+    const absolute = window.inFlightPerReady / window.readySamples;
+    return m.target.kind === "averageValue" ? absolute : (absolute / f.concurrency) * 100;
+  }
   const cpu = window.cpu / (window.count * 1000);
   const occupancy = scale > 1 ? window.occupancy / window.count : window.lastOccupancy;
   const absolute =
@@ -596,7 +621,9 @@ export function evaluateHpa(
   now: number,
   multiplier = 1,
   scale = 1,
-  external: { raw: number; missing: boolean; metric?: number; target?: number } | undefined = undefined,
+  external:
+    | { source: ScalingDecision["source"]; raw: number; missing: boolean; metric?: number; target?: number }
+    | undefined = undefined,
   /** Cloud Run's pipeline may idle at zero; HPA and KEDA's generated HPA keep at least one. */
   rangeOverride?: { min: number; max: number },
 ): ScalingDecision {
@@ -676,12 +703,19 @@ export function evaluateHpa(
   f.nextSync = now + c.settings.syncMs;
   return (f.decision = {
     at: now,
+    source: binding?.source.kind ?? external?.source ?? "resource",
     raw,
     desired,
     reason,
     metric,
     target,
-    resource: binding?.source.resource,
+    resource: binding?.source.kind === "resource" ? binding.source.resource : undefined,
+    ...(binding?.source.kind === "pods"
+      ? {
+          metricKind:
+            binding.target.kind === "averageValue" ? ("busyThreadsPerPod" as const) : ("busyThreads" as const),
+        }
+      : {}),
     targetKind: binding?.target.kind,
     windowMs: binding?.windowMs,
     metricDelayMs: binding?.metricDelayMs,
@@ -742,6 +776,10 @@ export function resourceReadout(
       : {}),
   };
 }
+/** Keep controller provenance out of the stable public explanation shape. */
+function decisionReadout({ source: _source, ...decision }: ScalingDecision): ScalingDecisionReadout {
+  return decision;
+}
 const historyCache = new WeakMap<Fleet, { last?: FleetPoint; points: readonly FleetPoint[] }>();
 export function fleetReadout(f: Fleet): FleetReadout {
   let cached = historyCache.get(f);
@@ -755,7 +793,7 @@ export function fleetReadout(f: Fleet): FleetReadout {
     ready: f.ready,
     starting: f.starting,
     draining: drainingCount(f),
-    decision: f.decision && { ...f.decision },
+    decision: f.decision && decisionReadout(f.decision),
     history: cached.points,
   };
 }

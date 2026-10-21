@@ -1,6 +1,7 @@
 import { autoScale } from "../sim/scale";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
 import blockingExample from "../examples/blocking-call.json";
+import busyExample from "../examples/scale-on-busy-threads.json";
 import { planScaling } from "../sim/scalingPlanner";
 import type { DiagramFile } from "../model/types";
 import { expect, it } from "vitest";
@@ -53,6 +54,31 @@ it("computes hold time over a shared diamond and refuses a finite ceiling for lo
 it("does not recommend lowering a CPU target to chase a held-thread bottleneck", () => {
   const plans = planScaling(blockingExample as DiagramFile);
   expect(plans.flatMap((p) => p.suggestions).some((s) => s.node === "caller" && s.kind === "target")).toBe(false);
+});
+
+it("verifies busy-thread scaling for a waiting majority, within the scenario horizon", () => {
+  const plan = planScaling(busyExample as DiagramFile).find((p) => p.simulation === "blocking")!;
+  expect(plan.suggestions).toHaveLength(1);
+  expect(plan.suggestions[0]).toMatchObject({ kind: "busyThreads", verified: { endBacklog: 0 } });
+  expect(plan.suggestions[0].fix?.[0].props).toMatchObject({
+    autoscaling: { controller: { settings: { metrics: [{ source: { kind: "pods", metric: "busyThreads" } }] } } },
+  });
+  // The old twenty-second lesson ends exactly when a first new pod would become ready.
+  expect(planScaling(blockingExample as DiagramFile)[0]).toMatchObject({ runs: 1, suggestions: [] });
+});
+
+it("does not verify scaling that only moves backlog into pool waiting", () => {
+  const d = structuredClone(busyExample) as DiagramFile;
+  const caller = d.nodes.find((n) => n.id === "caller")!;
+  (caller.props!.resources as ReturnType<typeof resourceLesson>).cpuMsPerMessage = 1;
+  d.nodes.find((n) => n.id === "partner")!.props!.jitter = 0;
+  d.edges.find((e) => e.id === "call")!.props!.caller = { wait: "blocking", poolConnections: 1 };
+  d.simulations = [d.simulations![0]];
+  d.simulations[0].scale = 1;
+  d.simulations[0].durationMs = 30000;
+  d.simulations[0].traffic[0].shape = { kind: "constant", ratePerSec: 400, durationMs: 30000 };
+  const plan = planScaling(d)[0];
+  expect(plan.suggestions.filter((s) => s.kind === "busyThreads")).toEqual([]);
 });
 
 it("uses the called endpoint's duration in the hold-time ceiling", () => {

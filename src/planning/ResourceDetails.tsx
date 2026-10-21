@@ -1,3 +1,4 @@
+import { scalingMetricKind } from "../sim/scalingMetric";
 import { useState, type ReactNode } from "react";
 import type { RealNodeMetrics } from "../sim/types";
 import type { ReplicaRow } from "../sim/autoscaling";
@@ -121,12 +122,12 @@ export function ResourceDetails({
               })}
             </p>
           )}
-          {decision.metric !== undefined && decision.adapter && decision.metricKind && (
+          {decision.metric !== undefined && decision.metricKind && (
             <p data-testid="autoscaling-metric">
-              {metricPhrase(decision.metricKind, decision.metric, decision.target)}
+              {metricPhrase(scalingMetricKind(decision), decision.metric, decision.target)}
             </p>
           )}
-          {decision.metric !== undefined && !(decision.adapter && decision.metricKind) && (
+          {decision.metric !== undefined && !decision.metricKind && (
             <p data-testid="autoscaling-metric">
               {t("autoscaling.metric")}: {formatNumber(decision.metric, { maximumFractionDigits: 1 })} ·{" "}
               {decision.broker

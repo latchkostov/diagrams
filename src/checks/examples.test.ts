@@ -22,6 +22,8 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
+  "scale-on-busy-threads": ["warning capacity:applications", "warning capacity:caller"],
+  "pool-of-40": [],
   "slow-payment-provider": [],
   "blocking-call": ["warning capacity:caller"],
   "where-the-time-goes": [],
@@ -94,10 +96,18 @@ describe("checks on the public examples", () => {
           f.id,
         ).toBe(false);
       }
-      expect(
-        runChecks(applied.diagram).findings.map((g) => g.id),
-        f.id,
-      ).not.toContain(f.id);
+      if (f.scalingPlan?.kind === "busyThreads") {
+        // A metric changes future scaling; the initial four-pod capacity estimate still warns.
+        const remaining = runChecks(applied.diagram).findings;
+        expect(remaining.map((g) => g.id)).toEqual(["capacity:caller"]);
+        expect(remaining[0].scalingPlan).toBeUndefined();
+        expect(remaining[0].message).toContain("the diagram's own rates");
+      } else {
+        expect(
+          runChecks(applied.diagram).findings.map((g) => g.id),
+          f.id,
+        ).not.toContain(f.id);
+      }
     }
   });
 });
@@ -122,6 +132,12 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  * change here is a change to that table.
  */
 const PLANNED: Record<string, string[]> = {
+  "pool-of-40": [
+    "1156 dropped shop in A pool of 40 (expected)",
+    "1156 dropped gateway in A pool of 40 (expected)",
+    "1326 dropped shop in Blocking waits still hold threads (expected)",
+    "1326 dropped gateway in Blocking waits still hold threads (expected)",
+  ],
   "slow-payment-provider": [
     "1142 dropped shop in No timeouts (expected)",
     "1142 dropped gateway in No timeouts (expected)",

@@ -69,14 +69,19 @@ export const hpaSettingsSchema = object({
     minItems: 1,
     maxItems: 16,
     items: object({
-      source: object(
-        {
-          kind: { enum: ["resource"] },
-          resource: { enum: ["cpu", "memory"] },
-          container: { type: "string", minLength: 1, maxLength: 100 },
-        },
-        ["kind", "resource"],
-      ),
+      source: {
+        anyOf: [
+          object(
+            {
+              kind: { enum: ["resource"] },
+              resource: { enum: ["cpu", "memory"] },
+              container: { type: "string", minLength: 1, maxLength: 100 },
+            },
+            ["kind", "resource"],
+          ),
+          object({ kind: { enum: ["pods"] }, metric: { enum: ["busyThreads"] } }),
+        ],
+      },
       target: {
         anyOf: [
           object({ kind: { enum: ["utilization"] }, percentOfRequest: positive }),
@@ -401,9 +406,10 @@ export function autoscalingProblem(resources: unknown, autoscaling: unknown): st
   const c = a.controller;
   const metrics = "settings" in c ? c.settings.metrics : [];
   const unmeasured = isUnmeasured(r);
-  if (unmeasured && (metrics.length || cloudResourceMetrics(c).length))
+  if (unmeasured && (metrics.some((m) => m.source.kind === "resource") || cloudResourceMetrics(c).length))
     return "Imported requests and limits do not measure CPU or memory per message. Choose a workload lesson before resource predictions.";
   for (const m of metrics) {
+    if (m.source.kind === "pods") continue;
     if (m.source.container && m.source.container !== r.container)
       return "ContainerResource must name the modelled single container; multi-container accounting is unsupported.";
     if (m.target.kind === "utilization" && !(m.source.resource === "cpu" ? r.cpuRequestMilli : r.memoryRequestMiB))

@@ -1,0 +1,13 @@
+---
+title: A pool of 40
+---
+flowchart LR
+  shop(["Shop"])
+  gateway["API gateway<br/>5 s timeout"]
+  checkout["Checkout<br/>4 replicas · 25 threads each"]
+  payment(["Payment provider<br/>200 ms · slows ×10 at 3 s"])
+  orders[("Orders DB")]
+  shop --> gateway
+  gateway --> checkout
+  checkout --> payment
+  checkout --> orders

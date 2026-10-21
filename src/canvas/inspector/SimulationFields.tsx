@@ -114,6 +114,7 @@ export function NodeSimulation({
           nodeId={node.id}
           stencil={node.data.stencil}
           enabled={revisionAtLeast(meta.planning?.revision, "p3-a1") && role === "processor"}
+          supportsBusyThreads={revisionAtLeast(meta.planning?.revision, "p3-w1")}
           props={props}
           set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
         >
@@ -487,17 +488,26 @@ export function AutoscalingWorkload({
   stencil,
   readDiagram,
   nodeId,
+  supportsBusyThreads,
 }: {
   readDiagram?: () => DiagramFile;
   nodeId: string;
   stencil: string;
   enabled: boolean;
+  supportsBusyThreads?: boolean;
   props: Record<string, unknown>;
   set: (patch: Partial<NodeSimProps>, key?: string) => void;
   children: ReactNode;
 }) {
   return enabled ? (
-    <AutoscalingFields readDiagram={readDiagram} nodeId={nodeId} stencil={stencil} props={props} set={set}>
+    <AutoscalingFields
+      readDiagram={readDiagram}
+      nodeId={nodeId}
+      stencil={stencil}
+      props={props}
+      set={set}
+      supportsBusyThreads={supportsBusyThreads}
+    >
       {children}
     </AutoscalingFields>
   ) : (

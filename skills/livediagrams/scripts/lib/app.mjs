@@ -191,7 +191,7 @@ var o = {
 		minItems: 1,
 		maxItems: 16,
 		items: f({
-			source: f({
+			source: { anyOf: [f({
 				kind: { enum: ["resource"] },
 				resource: { enum: ["cpu", "memory"] },
 				container: {
@@ -199,7 +199,10 @@ var o = {
 					minLength: 1,
 					maxLength: 100
 				}
-			}, ["kind", "resource"]),
+			}, ["kind", "resource"]), f({
+				kind: { enum: ["pods"] },
+				metric: { enum: ["busyThreads"] }
+			})] },
 			target: { anyOf: [f({
 				kind: { enum: ["utilization"] },
 				percentOfRequest: s
@@ -2852,7 +2855,10 @@ function ze({ fragment: e = !1 } = {}) {
 		}, u = /* @__PURE__ */ new Map(), d = !a || r !== s.simulations || i !== s.planning?.revision, f = (e, n) => {
 			if (!t(s.planning?.revision, "p3-a1") && (e?.resources !== void 0 || e?.autoscaling !== void 0)) return E`Resources and HPA require the p3-a1 model. Preview the model upgrade first.`;
 			try {
-				if (se(e?.resources, e?.autoscaling), !l(e?.autoscaling, n)) return E`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
+				se(e?.resources, e?.autoscaling);
+				let r = e?.autoscaling;
+				if (!t(s.planning?.revision, "p3-w1") && r?.mode === "on" && "settings" in r.controller && r.controller.settings.metrics.some((e) => e.source.kind === "pods")) return E`Busy-thread scaling needs the Requests that wait model.`;
+				if (!l(e?.autoscaling, n)) return E`This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.`;
 			} catch {
 				return E`HPA needs valid resource requests and a compatible workload. Review Advanced settings.`;
 			}
@@ -4025,13 +4031,13 @@ function An(e) {
 			let t = H(e.setup) && H(e.setup.props) ? e.setup.props : {};
 			for (let [e, n] of Object.entries(t)) if (Ht(n)) return {
 				ok: !1,
-				error: E(1686, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: e })
+				error: E(1696, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: e })
 			};
 			if (Array.isArray(e.timeline)) for (let t of e.timeline) {
 				let e = H(t) && H(t.action) ? t.action : void 0;
 				if (e?.do === "props" && Ht(e.props)) return {
 					ok: !1,
-					error: E(1686, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof e.node == "string" ? e.node : "(invalid node)" })
+					error: E(1696, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof e.node == "string" ? e.node : "(invalid node)" })
 				};
 			}
 		}
@@ -4096,7 +4102,7 @@ function An(e) {
 		};
 		if (h.add(r), typeof a.label != "string" && (a.label = typeof a.label == "number" ? String(a.label) : ""), a.sublabel !== void 0 && typeof a.sublabel != "string" && delete a.sublabel, a.description !== void 0 && typeof a.description != "string" && delete a.description, a.group !== void 0 && !p.has(a.group) && (i.push(`Node "${t.id}" referred to a missing group and was taken out of it.`), delete a.group), a.props !== void 0 && !H(a.props) && delete a.props, Ht(a.props)) return {
 			ok: !1,
-			error: E(1686, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: t.id })
+			error: E(1696, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: t.id })
 		};
 		let o = a.props === void 0 ? void 0 : en(a.props);
 		if (o) return {
@@ -4166,7 +4172,7 @@ function An(e) {
 		};
 		if (r.label !== void 0 && typeof r.label != "string" && delete r.label, r.kind !== void 0 && r.kind !== "async" && r.kind !== "sync" && delete r.kind, r.sourceSide !== void 0 && !Dn.has(r.sourceSide) && delete r.sourceSide, r.targetSide !== void 0 && !Dn.has(r.targetSide) && delete r.targetSide, r.props !== void 0 && !H(r.props) && delete r.props, Zt(r.props)) return {
 			ok: !1,
-			error: E(1631, (e) => "Connection “" + e.id + "” needs a finite nonnegative networkDelayMs up to " + e.limit.toLocaleString("en") + ".", {
+			error: E(1641, (e) => "Connection “" + e.id + "” needs a finite nonnegative networkDelayMs up to " + e.limit.toLocaleString("en") + ".", {
 				id: t.id,
 				limit: P.timeMs
 			})

@@ -1,0 +1,17 @@
+---
+title: Scale on busy threads
+---
+flowchart LR
+  source(["Applications submitted"])
+  applications["Applications"]
+  caller["Decision service<br/>4 replicas · 16 threads each"]
+  partner(["Partner scoring API"])
+  decisions["Decisions"]
+  store[("Case store")]
+  source -.-> applications
+  applications -.-> caller
+  caller --> partner
+  caller -.-> decisions
+  decisions -.-> store
+  linkStyle 0,1,3,4 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.","nodes":{"source":["source","client.user"],"applications":["applications","generic.topic"],"caller":["caller","generic.service"],"partner":["partner","generic.external-api"],"decisions":["decisions","generic.topic"],"store":["store","generic.database"]},"edges":["submit","consume","call","publish","save"],"relations":{}}

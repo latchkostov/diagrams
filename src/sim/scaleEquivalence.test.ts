@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { beforeAll, expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { assertLedgerInvariants } from "./resourceInvariants";
@@ -6,6 +6,7 @@ import { expectScaleEquivalent } from "../test/scaleEquivalence";
 import { realSnapshot } from "./units";
 import { checkConstantRateEquivalence } from "../test/scaleEquivalence";
 import { resourceLesson } from "../model/autoscaling";
+import type { SimSnapshot } from "./types";
 
 // Sampling accuracy: docs/backlog/2026-10-20-engine-r5-i1-counterexamples.md#legacy-queue-workers
 it.fails("I1 known gap: legacy queue-worker serviceCredit at scale 1.01", () => {
@@ -72,29 +73,35 @@ it.fails("I1 known gap: equal one-slot services with 1 ms local work at scale 2"
   checkConstantRateEquivalence(diagram, 2);
 });
 
-it.each([1.01, 2.5])(
-  "I1: one-slot services with no local work preserve throughput at scale %s (seed 20261018)",
-  (scale) => {
-    const diagram = waitingFixture();
-    diagram.nodes[0].props = { ratePerSec: 100 };
-    diagram.nodes[1].props = { concurrency: 1, replicas: 1, latencyMs: 0, jitter: 0 };
-    diagram.nodes[2].stencil = "generic.service";
-    diagram.nodes[2].props = { concurrency: 1, replicas: 1, latencyMs: 0, jitter: 0 };
-    diagram.edges[1].props = {
-      travelMs: 10,
-      networkDelayMs: 10,
-      caller: { poolConnections: 1, wait: "blocking", replyMs: 0 },
-    };
-    const run = (scale: number) => {
-      const e = createEngine({ seed: 7, scale, maxParticles: 0, verifyLedger: assertLedgerInvariants });
-      e.load(diagram);
-      e.setTraffic(true);
-      e.step(20_000);
-      return e.snapshot();
-    };
-    const baseline = run(1);
-    const sampled = run(scale);
-    expect(realSnapshot(baseline).nodes.caller.processed).toBe(999);
-    expectScaleEquivalent(baseline, sampled, 1);
-  },
-);
+let zeroLocalBaseline: SimSnapshot;
+const zeroLocalSamples = new Map<number, SimSnapshot>();
+beforeAll(() => {
+  const diagram = waitingFixture();
+  diagram.nodes[0].props = { ratePerSec: 100 };
+  diagram.nodes[1].props = { concurrency: 1, replicas: 1, latencyMs: 0, jitter: 0 };
+  diagram.nodes[2].stencil = "generic.service";
+  diagram.nodes[2].props = { concurrency: 1, replicas: 1, latencyMs: 0, jitter: 0 };
+  diagram.edges[1].props = {
+    travelMs: 10,
+    networkDelayMs: 10,
+    caller: { poolConnections: 1, wait: "blocking", replyMs: 0 },
+  };
+  const run = (scale: number) => {
+    const e = createEngine({ seed: 7, scale, maxParticles: 0, verifyLedger: assertLedgerInvariants });
+    e.load(diagram);
+    e.setTraffic(true);
+    e.step(20_000);
+    return e.snapshot();
+  };
+  zeroLocalBaseline = run(1);
+  for (const scale of [1.01, 2.5]) zeroLocalSamples.set(scale, run(scale));
+});
+
+it("I1 zero-local-work pool fixture retains the scale-one reference", () => {
+  expect(realSnapshot(zeroLocalBaseline).nodes.caller.processed).toBe(999);
+});
+for (const scale of [1.01, 2.5]) {
+  it(`I1 regression: zero-work throughput at scale ${scale}`, () => {
+    expectScaleEquivalent(zeroLocalBaseline, zeroLocalSamples.get(scale)!, 1);
+  });
+}

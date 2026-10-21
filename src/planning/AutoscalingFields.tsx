@@ -73,9 +73,11 @@ export function AutoscalingFields({
   stencil,
   readDiagram,
   nodeId = "",
+  supportsBusyThreads = false,
 }: {
   readDiagram?: () => DiagramFile;
   nodeId?: string;
+  supportsBusyThreads?: boolean;
   stencil: string;
   props: Record<string, unknown>;
   set: (patch: Partial<NodeSimProps>, key?: string) => void;
@@ -490,11 +492,17 @@ export function AutoscalingFields({
             label={
               trigger
                 ? t("autoscaling.brokerTarget")
-                : metric!.target.kind === "averageValue"
-                  ? t("autoscaling.absoluteTarget", { unit: metric!.source.resource === "cpu" ? "m" : "MiB" })
-                  : metric!.source.resource === "cpu"
-                    ? t("autoscaling.cpuTarget")
-                    : t("autoscaling.memoryTarget")
+                : metric!.source.kind === "pods"
+                  ? metric!.target.kind === "averageValue"
+                    ? t("autoscaling.busyAverage")
+                    : t("autoscaling.busyTarget")
+                  : metric!.target.kind === "averageValue"
+                    ? t("autoscaling.absoluteTarget", {
+                        unit: metric!.source.kind === "resource" && metric!.source.resource === "cpu" ? "m" : "MiB",
+                      })
+                    : metric!.source.kind === "resource" && metric!.source.resource === "cpu"
+                      ? t("autoscaling.cpuTarget")
+                      : t("autoscaling.memoryTarget")
             }
             value={
               trigger?.target ??
@@ -504,7 +512,7 @@ export function AutoscalingFields({
             change={(value) =>
               value !== undefined &&
               patch((n) => {
-                if (n.kind === "keda") {
+                if (n.kind === "keda" && trigger) {
                   n.triggers[0].target = value;
                   return;
                 }
@@ -557,27 +565,80 @@ export function AutoscalingFields({
           )}
           <details data-testid="autoscaling-advanced">
             <summary data-testid="autoscaling-advanced-toggle">{t("ai.advanced")}</summary>
-            {metric && (
+            {(metric || c.kind === "keda") && (
               <label className="insp-field">
                 <span className="insp-label">{t("autoscaling.metric")}</span>
                 <select
                   className="insp-input"
                   data-testid="autoscaling-metric"
-                  value={metric!.source.resource}
+                  value={metric ? (metric.source.kind === "pods" ? "busyThreads" : metric.source.resource) : "none"}
                   onChange={(e) =>
                     patch((n) => {
+                      if (e.currentTarget.value === "none") {
+                        n.settings.metrics = [];
+                        return;
+                      }
                       n.settings.metrics[0] = {
                         ...n.settings.metrics[0],
-                        source: { kind: "resource", resource: e.currentTarget.value === "memory" ? "memory" : "cpu" },
+                        windowMs: n.settings.metrics[0]?.windowMs ?? 15000,
+                        metricDelayMs: n.settings.metrics[0]?.metricDelayMs ?? 0,
+                        source:
+                          e.currentTarget.value === "busyThreads"
+                            ? { kind: "pods", metric: "busyThreads" }
+                            : { kind: "resource", resource: e.currentTarget.value === "memory" ? "memory" : "cpu" },
                         target: { kind: "utilization", percentOfRequest: 70 },
                       };
                     }, "metric")
                   }
                 >
+                  {c.kind === "keda" && <option value="none">{t("autoscaling.noPodMetric")}</option>}
                   <option value="cpu">{t("autoscaling.cpuName")}</option>
                   <option value="memory">{t("autoscaling.memory")}</option>
+                  {supportsBusyThreads && <option value="busyThreads">{t("autoscaling.busyName")}</option>}
                 </select>
               </label>
+            )}
+            {metric?.source.kind === "pods" && (
+              <>
+                {trigger && (
+                  <NumberField
+                    name="busy-target"
+                    label={
+                      metric.target.kind === "averageValue" ? t("autoscaling.busyAverage") : t("autoscaling.busyTarget")
+                    }
+                    value={metric.target.kind === "averageValue" ? metric.target.value : metric.target.percentOfRequest}
+                    min={0.000001}
+                    change={(value) =>
+                      value !== undefined &&
+                      patch((n) => {
+                        n.settings.metrics[0].target =
+                          metric.target.kind === "averageValue"
+                            ? { kind: "averageValue", value }
+                            : { kind: "utilization", percentOfRequest: value };
+                      }, "busyTarget")
+                    }
+                  />
+                )}
+                <label className="insp-field">
+                  <span className="insp-label">{t("autoscaling.busyUnit")}</span>
+                  <select
+                    className="insp-input"
+                    data-testid="autoscaling-busy-unit"
+                    value={metric.target.kind}
+                    onChange={(e) =>
+                      patch((n) => {
+                        n.settings.metrics[0].target =
+                          e.currentTarget.value === "averageValue"
+                            ? { kind: "averageValue", value: 4 }
+                            : { kind: "utilization", percentOfRequest: 70 };
+                      }, "busyUnit")
+                    }
+                  >
+                    <option value="utilization">{t("autoscaling.busyTarget")}</option>
+                    <option value="averageValue">{t("autoscaling.busyAverage")}</option>
+                  </select>
+                </label>
+              </>
             )}
             {trigger && c.kind === "keda" && (
               <>

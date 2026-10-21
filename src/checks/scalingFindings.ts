@@ -40,6 +40,8 @@ export function planMessage(plan: ScalingPlan, s: PlanSuggestion, names: (id: st
       : "";
   const confirmed = " A rerun with this change confirmed it.";
   switch (s.kind) {
+    case "busyThreads":
+      return `${where}, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric).${confirmed}`;
     case "max":
       return `${where}, ${platform} hits its maximum of ${s.from}${at}.${startup} ${
         s.fix
@@ -112,13 +114,15 @@ export function scalingFindings(ctx: CheckContext): Map<string, Finding> {
           ? {
               fix: {
                 label:
-                  s.kind === "partitions"
-                    ? `Set ${ctx.name(s.broker!)} partitions to ${s.to}`
-                    : s.kind === "min"
-                      ? `Set minimum to ${s.to}`
-                      : s.kind === "target"
-                        ? `Lower target to ${s.to}`
-                        : `Raise maximum to ${s.to}`,
+                  s.kind === "busyThreads"
+                    ? "Scale on busy threads"
+                    : s.kind === "partitions"
+                      ? `Set ${ctx.name(s.broker!)} partitions to ${s.to}`
+                      : s.kind === "min"
+                        ? `Set minimum to ${s.to}`
+                        : s.kind === "target"
+                          ? `Lower target to ${s.to}`
+                          : `Raise maximum to ${s.to}`,
                 ops,
               },
             }

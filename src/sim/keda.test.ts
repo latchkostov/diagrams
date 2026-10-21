@@ -148,7 +148,7 @@ describe("KEDA activation and generated HPA", () => {
   });
   it("calculates lag 95 / 10 = 10, caps Kafka at three partitions, independently per group", () => {
     const c = kedaLesson("kafka", { node: "broker", group: "a" }).controller;
-    const f = createFleet(1);
+    const f = createFleet(1, { concurrency: 1 });
     resetKeda(f, c, 0);
     const read = vi.fn(() => ({ pending: 95, outstanding: 0, partitions: 3 }));
     expect(evaluateKeda(f, c, resourceLesson(), 15_000, read)).toMatchObject({
@@ -175,7 +175,7 @@ describe("KEDA activation and generated HPA", () => {
     c.minReplicas = c.initialReplicas = 1;
     c.triggers[0].activation = 1000;
     c.triggers.push({ ...kedaLesson("aws-sqs-queue").controller.triggers[0], source: { node: "q" } });
-    const f = createFleet(1);
+    const f = createFleet(1, { concurrency: 1 });
     resetKeda(f, c, 0);
     expect(
       evaluateKeda(f, c, resourceLesson(), 15_000, (t) => ({
@@ -188,7 +188,7 @@ describe("KEDA activation and generated HPA", () => {
   it("uses the initial cooldown only until the first actual activity", () => {
     const c = kedaLesson("aws-sqs-queue").controller;
     Object.assign(c, { pollingMs: 1000, initialCooldownMs: 60000, cooldownMs: 1000 });
-    const f = createFleet(1);
+    const f = createFleet(1, { concurrency: 1 });
     resetKeda(f, c, 0);
     expect(evaluateKeda(f, c, resourceLesson(), 1000, () => ({ pending: 0, outstanding: 0 }))).toBeUndefined();
     expect(f.desired).toBe(1);
@@ -202,7 +202,7 @@ describe("KEDA activation and generated HPA", () => {
     const c = kedaLesson("aws-sqs-queue", { node: "failed" }).controller;
     c.triggers.push({ ...c.triggers[0], source: { node: "healthy" } });
     c.fallback = { failureThreshold: 0, replicas: 2, behavior: "static" };
-    const f = createFleet(1);
+    const f = createFleet(1, { concurrency: 1 });
     resetKeda(f, c, 0);
     expect(
       evaluateKeda(f, c, resourceLesson(), 15000, (t) =>
@@ -221,7 +221,7 @@ describe("KEDA activation and generated HPA", () => {
     const c = kedaLesson("aws-sqs-queue", { node: "cached" }).controller;
     c.triggers[0].useCachedMetrics = true;
     c.triggers.push({ ...c.triggers[0], source: { node: "fresh" }, useCachedMetrics: false });
-    const f = createFleet(2);
+    const f = createFleet(2, { concurrency: 1 });
     resetKeda(f, c, 0);
     const read = vi.fn((t: (typeof c.triggers)[number]) => ({
       pending: t.source.node === "cached" ? cached : fresh,
@@ -247,7 +247,7 @@ describe("KEDA activation and generated HPA", () => {
     const c = kedaLesson("aws-sqs-queue", { node: "q" }).controller;
     c.fallback = { failureThreshold: 2, replicas: 4, behavior: "static" };
     c.triggers[0].useCachedMetrics = true;
-    const f = createFleet(2);
+    const f = createFleet(2, { concurrency: 1 });
     resetKeda(f, c, 0);
     const read = vi.fn(() => undefined);
     expect(evaluateKeda(f, c, resourceLesson(), 15_000, read)?.reason).toBe("missing");
@@ -295,7 +295,7 @@ describe("KEDA activation and generated HPA", () => {
   });
   it("keeps trigger reads bounded independently of queue size and only runs due clocks", () => {
     const c = kedaLesson().controller,
-      f = createFleet(0);
+      f = createFleet(0, { concurrency: 1 });
     resetKeda(f, c, 0);
     const read = vi.fn(() => ({ pending: 100_000, outstanding: 0, partitions: 3 }));
     for (let now = 10; now <= 29_990; now += 10) evaluateKeda(f, c, resourceLesson(), now, read);

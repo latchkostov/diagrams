@@ -172,7 +172,8 @@ export class SampledLedger {
 
   releaseDue(ownerId: string, activeMs: number): void {
     const owner = this.state.owners.get(ownerId);
-    if (!owner) return;
+    if (!owner || !owner.heap.length || owner.heap[0].end > activeMs + 1e-9) return;
+    const dueReservations: Reservation[] = [];
     while (owner.heap.length && owner.heap[0].end <= activeMs + 1e-9) {
       const due = popDue(owner.heap, owner.indices);
       const reservation = this.state.reservations.get(due.id)!;
@@ -180,8 +181,12 @@ export class SampledLedger {
       // admissible one phase later, including the exact fractional remainder.
       const freeAt = due.end;
       this.credit(reservation, freeAt);
-      this.release(reservation);
+      dueReservations.push(reservation);
     }
+    // Release residence and connection capacity before a thread callback can
+    // admit its successor. All credits belong to the same admission phase.
+    for (const scope of ["request", "pool", "thread"] as const)
+      for (const reservation of dueReservations) if (reservation.scope === scope) this.release(reservation);
   }
 
   private credit(reservation: Reservation, freeAt: number): void {

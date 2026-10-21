@@ -591,6 +591,29 @@ function sampledPool() {
   return { engine, state: () => state };
 }
 
+it("pool acquisition never carries elapsed local work into fractional release credit", () => {
+  const d = waitingFixture();
+  d.nodes[1].props = { concurrency: 4, latencyMs: 100, jitter: 0 };
+  d.edges[1].props!.caller = { poolConnections: 1 };
+  d.nodes[2].props = { api: { latencyMs: 260 }, jitter: 0 };
+  let state!: LedgerInvariantState;
+  const engine = createEngine({
+    seed: 7,
+    scale: 1.01,
+    verifyLedger(s) {
+      assertLedgerInvariants(s);
+      state = s;
+    },
+  });
+  engine.load(d);
+  engine.inject("source", 1);
+  engine.step(270);
+  engine.inject("source", 1);
+  engine.step(110);
+  const pool = [...state.ledger.reservations.values()].find((r) => r.scope === "pool")!;
+  expect(pool).toMatchObject({ startedAt: 380, startActive: 380 });
+});
+
 it("a reply during pause keeps its logical pool hold and resumes it on the owner's active clock", () => {
   const { engine, state } = sampledPool();
   engine.inject("caller", 3);
@@ -1048,4 +1071,18 @@ it.each([1, 1.01])("paused managed arrivals recover after a shrink (scale=%s, se
   expect(e.snapshot().nodes.caller.processed).toBe(2);
   expect(state.ledger.reservations.size).toBe(0);
   expect([...state.admissionInFlight.values()].every((weight) => Math.abs(weight) < 1e-8)).toBe(true);
+});
+
+it("due request and pool releases precede a thread callback's successor admission", () => {
+  const released: string[] = [];
+  const ledger = new SampledLedger((r) => {
+    released.push(r.scope);
+    if (r.scope === "thread") expect([...ledger.state.reservations.values()]).toHaveLength(0);
+  });
+  for (const scope of ["thread", "request", "pool"] as const) {
+    const r = ledger.reserve({ owner: "caller", scope, startActive: 0 }, 1.01, 1)!;
+    ledger.retire(r, 20, 20, 0);
+  }
+  ledger.releaseDue("caller", 30);
+  expect(released).toEqual(["request", "pool", "thread"]);
 });

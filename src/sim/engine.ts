@@ -1255,7 +1255,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           : Math.max(1, Math.round(node.props.replicas * next));
         if (!initialized.has(node)) {
           if (time === 0) {
-            node.fleet = createFleet(desired, c ? controllerSyncMs(c) : undefined, partBudget);
+            node.fleet = createFleet(desired, {
+              concurrency: node.props.concurrency,
+              syncMs: c ? controllerSyncMs(c) : undefined,
+              partBudget,
+            });
             node.fleet.override = f.override;
             resetController(node, node.fleet, c);
           } else reconcileResources(node, desired);
@@ -1263,6 +1267,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (patches[node.id]?.replicas !== undefined && node.fleet.override)
           node.fleet.decision = {
             at: time,
+            source: "pods",
             raw: patches[node.id].replicas!,
             desired: node.fleet.desired,
             reason: "override",
@@ -1562,6 +1567,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     work.outputs = outgoing.filter((edge) => !edge.sync);
     const requests = outgoing.filter((edge) => edge.sync);
     if (!requests.length) return false;
+    // Capture only admission's fractional carry before local work advances segmentActive.
+    const admissibleActive = execution.admissibleActive(node, work);
     finishThreadWork(node, work);
     const nonblocking = requests.every((e) => !e.policy?.blocking);
     if (nonblocking) retireThread(node, work);
@@ -1627,7 +1634,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       };
       pushDue(
         edge.poolPending,
-        { id: call.id, end: call.id, call, message: branch, admissibleActive: node.activeMs },
+        {
+          id: call.id,
+          end: call.id,
+          call,
+          message: branch,
+          admissibleActive,
+        },
         edge.poolPendingIndices,
       );
       const timing = call.branches.get(edge.id)!;
@@ -2549,8 +2562,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       c
         ? replicaRange(c, capacityMultiplier).initial
         : Math.max(1, Math.round(node.props.replicas * capacityMultiplier)),
-      c ? controllerSyncMs(c) : undefined,
-      partBudget,
+      { concurrency: node.props.concurrency, syncMs: c ? controllerSyncMs(c) : undefined, partBudget },
     );
     node.fleet.paused = node.status === "paused";
     resetController(node, node.fleet, c);
@@ -3126,12 +3138,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             occupancy,
             time,
             STEP,
-            cloud && cloud.kind !== "ecs"
+            (cloud && cloud.kind !== "ecs") || waits()
               ? {
                   inFlight: callerReservations(node)
                     ? node.threadWeight.work + node.threadWeight.wait
                     : residentRequests(node),
-                  waiting: cloud.kind === "appService" ? waitingRequests(node) : 0,
+                  waiting: cloud?.kind === "appService" ? waitingRequests(node) : 0,
                 }
               : undefined,
           );
@@ -3543,6 +3555,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     fleet(nodeId) {
       const n = nodes.get(nodeId);
       return n?.fleet && n.props.resources ? fleetReadout(n.fleet) : undefined;
+    },
+    threadUsage(nodeId) {
+      const node = nodes.get(nodeId);
+      return waits() && node?.waits
+        ? { working: node.threadWeight.work / scale, waiting: node.threadWeight.wait / scale }
+        : undefined;
     },
     replicaPage(nodeId, page) {
       const n = nodes.get(nodeId);

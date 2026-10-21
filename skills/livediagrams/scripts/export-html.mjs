@@ -1,18 +1,12 @@
 #!/usr/bin/env node
 // Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"]
 //                                     [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
-// Writes the diagram as one self-contained interactive HTML file, the same file as the app's
-// File > Export as > Interactive HTML…: read-only pan and zoom, and its simulations play. The file works offline,
-// makes no network requests (a strict Content-Security-Policy says so) and stores nothing in the browser. Only
-// people who have the file can open it. This script makes no network requests either: the viewer, the injection
-// and the icons are bundled in ./lib (`pnpm skill:release`). Before writing, it checks the finished payload with
-// the viewer's own rules, so it never writes a file the viewer would refuse or show with something missing.
-//
-// --password encrypts the file, as the app's Require a password does (the same code and parameters as the app's
-// links with a password): the file opens on a password prompt, and nothing of the diagram is readable without the
-// password, not even its title or file name. The password never goes on the command line, where shell history, the
-// process list and an agent's transcript would keep it. It comes from the LIVEDIAGRAMS_HTML_PASSWORD environment
-// variable or, run in a terminal without it, from a prompt that doesn't echo (asked twice: a typo can't be undone).
+// Exports the app's offline, read-only interactive HTML (pan, zoom and simulations).
+// CSP forbids network requests; nothing is stored in the browser. Anyone with the file can open it.
+// Viewer, injection and icons come from ./lib (pnpm skill:release); its rules validate the payload.
+// --password uses the app's encryption and hides the diagram, title and file name until unlocked.
+// Read the password from LIVEDIAGRAMS_HTML_PASSWORD or a hidden terminal prompt (confirmed twice),
+// never a command argument that shell history, process lists or transcripts could retain.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
