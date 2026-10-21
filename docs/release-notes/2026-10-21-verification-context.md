@@ -49,3 +49,9 @@ download's Retry belongs to the live view: it starts through the view's own star
 closes, takes the keyboard only from the live view that asked (never from a dialog opened since), and when pressed
 while a dialog is open waits for the dialog to close. The planner counts a scaler's decisions only under the replica
 range and Capacity × they were made for, and compares peaks as authored replicas.
+
+## Second trim review follow-ups
+
+A refined maximum keeps the Capacity × its peak was wanted under, so refinement compares like with like when the
+dominant peak moves to another Capacity phase. The slow-motion loading status gives up its width before any live
+control, so More stays in the bar at 320 to 1280 px, in English and the pseudo-locale.

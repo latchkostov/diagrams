@@ -18,7 +18,7 @@ export function SlowBar({ slow }: { slow: SlowMotion }) {
     return s.loading ? (
       // The script code is still downloading: live is held, and Esc gives it back.
       <span
-        className="lv-slowmo-chip"
+        className="lv-slowmo-chip is-loading"
         role="status"
         aria-live="polite"
         data-testid="slowmo-loading"

@@ -444,6 +444,8 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
   /** Replicas playback ran (at Capacity × `m`, the simulation's unless a replayed control changed it) as authored. */
   const authored = (n: number, m = multiplier) => Math.min(10_000, Math.max(1, Math.ceil(n / m)));
   let suggestions: PlanSuggestion[] = [];
+  /** The Capacity × each suggestion's `wanted` was seen under, kept with it through every refinement. */
+  const wantedAt = new Map<string, number>();
   /** More partitions, and the maximum to read them, as one fix. */
   const partitionFix = (w: Watched, a: AutoscalingConfig, broker: string, wanted: number, m?: number) => {
     const partitions = Number(nodes.get(broker)?.props?.partitions ?? 1);
@@ -471,6 +473,7 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
     if (o.maxed && o.metricKind?.startsWith("busyThreads") && o.endBacklog === 0) continue;
     const a = nodes.get(w.id)!.props!.autoscaling as AutoscalingConfig;
     const c = w.controller;
+    wantedAt.set(w.id, o.wantedMultiplier ?? multiplier);
     const common = {
       node: w.id,
       adapter: c.kind,
@@ -570,7 +573,8 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
         rejected: after.rejected,
       };
       const before = first.get(s.node)!;
-      const wantedBefore = s.wanted / (before.wantedMultiplier ?? multiplier);
+      // Peaks compare as authored replicas, each at its own Capacity × (a refined one may come from another phase).
+      const wantedBefore = s.wanted / (wantedAt.get(s.node) ?? multiplier);
       if (
         s.kind === "max" &&
         after.maxed &&
@@ -580,6 +584,7 @@ function planBounded(d: DiagramFile, sim: Simulation, counter: Counter): Scaling
         // Still at the new maximum wanting more: refine once more from the rerun's own peak.
         refined = true;
         const to = Math.max(s.to + 1, authored(after.wanted, after.wantedMultiplier));
+        wantedAt.set(s.node, after.wantedMultiplier ?? multiplier);
         const a = nodes.get(s.node)!.props!.autoscaling as AutoscalingConfig;
         return {
           ...s,

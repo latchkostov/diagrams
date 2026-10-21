@@ -333,6 +333,33 @@ it("sizes from decisions made at the Capacity × in force, not one a recorded ch
   };
   const [plan] = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 1_000_000 }, context);
   const max = plan.suggestions.find((s) => s.kind === "max");
-  expect(max?.verified).toBeDefined();
-  expect(max!.to).toBeLessThanOrEqual(28);
+  // The normalized maximum is applicable and verified: it drains the replay, and it's what the fix writes.
+  expect(max).toMatchObject({ to: 28, verified: { maxed: false, endBacklog: 0 } });
+  expect(max!.fix).toEqual([
+    {
+      node: "worker",
+      props: { autoscaling: expect.objectContaining({ controller: expect.objectContaining({ maxReplicas: 28 }) }) },
+    },
+  ]);
+});
+
+it("keeps each refined peak with the Capacity × it was wanted under", () => {
+  // Review 20261021-153556: Traffic ×1 / Capacity ×0.25, then a recorded Traffic ×10 / Capacity ×1 at 240 s. The
+  // refined peak is wanted at ×1; reading it at the first observation's ×0.25 stopped refinement early at 37.
+  const d = plannerFixture();
+  const sim = d.simulations![0];
+  sim.durationMs = 480_000;
+  sim.traffic[0].shape = { kind: "constant", ratePerSec: 115 / 3, durationMs: 480_000 };
+  sim.multipliers = { traffic: 1, capacity: 0.25 };
+  const context: VerificationContext = {
+    revision: 1,
+    origin: { diagram: d, simulation: sim, initialTraffic: false },
+    controls: [
+      { time: 240_000, op: { kind: "configuration", patches: {}, multipliers: { traffic: 10, capacity: 1 } } },
+    ],
+  };
+  const [plan] = planScaling(d, { ticks: 0, runs: 0 }, { remaining: 1_000_000 }, context);
+  const max = plan.suggestions.find((s) => s.kind === "max");
+  expect(max).toMatchObject({ to: 44, verified: { maxed: false } });
+  expect(max!.fix).toBeDefined();
 });

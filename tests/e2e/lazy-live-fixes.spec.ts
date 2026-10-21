@@ -227,8 +227,17 @@ test("pending script download freezes live controls and says so; Esc gives them 
   await expect(page.getByTestId("live-play")).toBeEnabled();
   await page.getByTestId("live-note-continue").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  // The cancelled start's code arrives later: wait for it to download, run and paint, and slow motion stays off.
+  const downloaded = page.waitForResponse((response) => SCRIPT.test(response.url()));
   script.release();
+  await (await downloaded).finished();
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
   await expect(page.getByTestId("live-canvas")).not.toHaveAttribute("data-slowmo", /./);
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await expect(page.getByTestId("slowmo-loading")).toHaveCount(0);
+  await expect(page.getByTestId("live-play")).toBeEnabled();
 });
 
 test("a slow-motion download failing behind a dialog leaves the dialog the keyboard; Retry waits for it", async ({
@@ -258,3 +267,27 @@ test("a slow-motion download failing behind a dialog leaves the dialog the keybo
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
   expect(await focused(page)).not.toBe("BODY");
 });
+
+for (const locale of ["en", "en-XA"]) {
+  test(`the loading status leaves More in the bar at every width (${locale})`, async ({ page }) => {
+    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const script = await gate(page, SCRIPT);
+    await openKafka(page);
+    await slowMotionFromStorefront(page);
+    const loading = page.getByTestId("slowmo-loading");
+    await expect(loading).toBeVisible();
+    for (const width of [1280, 390, 375, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      const more = await page.getByTestId("live-more").boundingBox();
+      const bar = await page.getByTestId("live-controls").boundingBox();
+      if (!more || !bar) throw new Error(`No bar at ${width} px`);
+      expect(more.x).toBeGreaterThanOrEqual(bar.x);
+      expect(more.x + more.width).toBeLessThanOrEqual(Math.min(bar.x + bar.width, width) + 0.5);
+      // The status stays whole for screen readers, however little of it fits on screen.
+      await expect(loading).toHaveAttribute("role", "status");
+      await expect(loading).toContainText("Esc to cancel");
+    }
+    script.release();
+  });
+}
