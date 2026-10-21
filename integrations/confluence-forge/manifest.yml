@@ -1,0 +1,27 @@
+modules:
+  macro:
+    - key: live-diagram
+      title: Live Diagram
+      description: View and play a diagram stored on this page.
+      resource: diagram-view
+      config:
+        resource: diagram-config
+        title: Live Diagram
+        viewportSize: large
+        openOnInsert: true
+resources:
+  - key: diagram-view
+    path: dist/view
+  - key: diagram-config
+    path: dist/config
+permissions:
+  scopes:
+    - read:attachment:confluence
+    - write:confluence-file
+  content:
+    styles:
+      - unsafe-inline
+app:
+  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  runtime:
+    name: nodejs24.x

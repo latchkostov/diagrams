@@ -11,6 +11,7 @@ import local from "./eslint-rules/no-literal-ui-text.js";
  * local/no-literal-ui-text keeps new hard-coded ones out. Add a file here when its batch converts it.
  */
 const TRANSLATED = [
+  "integrations/confluence-forge/src/{view,configure,attachments,dom}.ts",
   "src/static/*.ts",
   "src/components/ExamplesDialog.tsx",
   "src/components/ColorPickerModal.tsx",
@@ -161,6 +162,7 @@ export default tseslint.config(
       "dist",
       "dist-viewer",
       "services/*/dist/**",
+      "integrations/confluence-forge/dist/**",
       "tests/.output",
       "src/examples/private/**",
       "**/*.gen.cjs",
@@ -172,7 +174,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
-    files: ["src/**/*.{ts,tsx}"],
+    files: ["src/**/*.{ts,tsx}", "integrations/confluence-forge/src/**/*.ts"],
     languageOptions: { globals: globals.browser },
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh, "jsx-a11y": jsxA11y },
     rules: {
@@ -254,6 +256,8 @@ export default tseslint.config(
       "*.config.js",
       "scripts/**/*.ts",
       "services/**/*.ts",
+      "integrations/confluence-forge/*.mjs",
+      "integrations/confluence-forge/build.ts",
       "skills/**/*.mjs",
       "eslint-rules/**/*.js",
     ],

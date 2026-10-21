@@ -1,8 +1,10 @@
 packages:
   - services/*
+  - integrations/confluence-forge
 # Only esbuild's install script was permitted before the pnpm 11/12 migration.
 allowBuilds:
   esbuild: true
+  iframe-resizer: false
 # Commands must use the explicit install's dependencies, never silently install another set.
 verifyDepsBeforeRun: error
 # Requested patches published on 2026-10-14; keep the one-day default for all other packages.

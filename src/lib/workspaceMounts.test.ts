@@ -17,3 +17,14 @@ it("isolates each service's Linux dependencies without copying or rewriting host
     "type=volume,source=modules-test-server,target=/work/services/server/node_modules,volume-nocopy",
   ]);
 });
+
+it("isolates integration packages even without services", () => {
+  const root = mkdtempSync(join(tmpdir(), "ld-integration-mounts-"));
+  onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "integrations", "confluence-forge"), { recursive: true });
+  writeFileSync(join(root, "integrations", "confluence-forge", "package.json"), "{}");
+  expect(workspaceModuleMounts(root, "modules-test")).toEqual([
+    "--mount",
+    "type=volume,source=modules-test-integration-confluence-forge,target=/work/integrations/confluence-forge/node_modules,volume-nocopy",
+  ]);
+});

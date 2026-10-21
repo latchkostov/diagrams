@@ -1,6 +1,7 @@
 import { hostReducer, initialHostState, type HostState } from "../../interop/embed/hostReducer";
 import type { FrameMessage, HostMessage } from "../../interop/embed/hostProtocol";
 import { LiveDriver } from "../../interop/embed/hostLive";
+import type { Theme } from "../../harness/settings";
 
 export type ViewerEvents = {
   loaded: Extract<FrameMessage, { type: "loaded" }>;
@@ -16,6 +17,12 @@ export class ViewerAdapter {
   readonly driver = new LiveDriver(() => {});
 
   getSnapshot = (): HostState => this.state;
+  getTheme = (): Theme | undefined => this.state.options.theme ?? undefined;
+
+  /** Host theme changes update the same settings consumed by the canvas and live renderer. */
+  setTheme(theme: Theme): void {
+    this.command({ type: "setTheme", theme });
+  }
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

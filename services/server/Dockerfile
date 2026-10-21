@@ -4,6 +4,7 @@ WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY services/server/package.json services/server/
+COPY integrations/confluence-forge/package.json integrations/confluence-forge/
 RUN pnpm install --frozen-lockfile
 COPY . .
 

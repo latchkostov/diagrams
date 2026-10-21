@@ -7,12 +7,16 @@ import { FONTS, LATIN, viewerSwaps } from "./interactive-viewer";
 import { deploymentDefines } from "./deployment-env";
 import { i18n } from "./i18n-plugin";
 import { catalog } from "../src/stencils/catalog";
+import type { ViewerAttribution } from "../src/export/viewer/options";
 
 export const BUNDLE_CSP =
   "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'";
 
 /** Same viewer restrictions as Interactive HTML, with external scripts, CSS and fonts for app CSPs. */
-export async function buildViewerBundle(root: string): Promise<Map<string, string | Uint8Array>> {
+export async function buildViewerBundle(
+  root: string,
+  options: { attribution?: ViewerAttribution; plugins?: Plugin[] } = {},
+): Promise<Map<string, string | Uint8Array>> {
   const env = process.env.NODE_ENV;
   process.env.NODE_ENV = "production";
   try {
@@ -25,6 +29,7 @@ export async function buildViewerBundle(root: string): Promise<Map<string, strin
       publicDir: false,
       envPrefix: "LIVE_DIAGRAMS_VIEWER_NEVER_",
       plugins: [
+        ...(options.plugins ?? []),
         {
           name: "viewer-bundle-assets",
           enforce: "pre",
@@ -62,6 +67,7 @@ export async function buildViewerBundle(root: string): Promise<Map<string, strin
         react(),
       ],
       define: {
+        __VIEWER_ATTRIBUTION__: JSON.stringify(options.attribution ?? "show"),
         "process.env.NODE_ENV": JSON.stringify("production"),
         "import.meta.env.DEV": "false",
         "import.meta.env.PROD": "true",

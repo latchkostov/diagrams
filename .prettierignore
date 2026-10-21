@@ -25,3 +25,4 @@ tests/parity/goldens
 tests/bench/baseline
 
 dist-viewer/
+integrations/confluence-forge/dist/

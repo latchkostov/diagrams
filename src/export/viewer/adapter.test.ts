@@ -4,6 +4,20 @@ import { textFieldsFixture } from "../../lab/textFieldsFixture";
 import type { LiveSessionHandle } from "../../live/LiveView";
 
 describe("platform viewer adapter", () => {
+  it("publishes host themes before load and throughout playback without replacing the diagram", () => {
+    const adapter = new ViewerAdapter();
+    const changed = vi.fn();
+    adapter.subscribe(changed);
+    adapter.setTheme("dark");
+    expect(adapter.getTheme()).toBe("dark");
+    adapter.load(textFieldsFixture);
+    const generation = adapter.getSnapshot().generation;
+    adapter.play();
+    adapter.setTheme("light");
+    expect(adapter.getTheme()).toBe("light");
+    expect(adapter.getSnapshot().generation).toBe(generation);
+    expect(changed).toHaveBeenCalledTimes(4);
+  });
   it("validates loads, never autoplays, and keeps the last good diagram on error", () => {
     const adapter = new ViewerAdapter();
     const loaded = vi.fn();

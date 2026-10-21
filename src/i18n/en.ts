@@ -10,6 +10,42 @@
 // stays.
 
 const en = {
+  "viewerForge.play": "Play diagram",
+  "viewerForge.loading": "Loading the page attachment…",
+  "viewerForge.configure": "Edit this macro to choose a .livediagram.json attachment on this page.",
+  "viewerForge.pageRequired": "Publish this page first, then insert Live Diagram and choose an attachment.",
+  "viewerForge.downloadError":
+    "The attachment could not be downloaded ({status}). You may not have permission, or it may have been removed. Ask a page editor to check the attachment and app access.",
+  "viewerForge.bridgeError":
+    "Confluence could not complete the request. Try again, or ask your admin to check app access. The attachment download must be verified on your dev site.",
+  "viewerForge.invalid":
+    "This attachment is not a supported Live Diagrams file. Ask a page editor to upload a valid Diagram file or your admin to update the app.",
+  "viewerForge.tooLarge": "Choose a Diagram file no larger than 8 MB.",
+  "viewerForge.missingSimulation":
+    "The selected simulation is no longer in this attachment. Edit the macro to choose another simulation or Free play.",
+  "viewerForge.attachment": "Page attachment",
+  "viewerForge.choose": "Choose a .livediagram.json attachment…",
+  "viewerForge.upload": "Upload a new attachment",
+  "viewerForge.replace": "Replace selected attachment",
+  "viewerForge.uploadHelp":
+    "Uploads are saved to the page immediately, even if you cancel this configuration. Replacing creates a new attachment version. Restore earlier versions in Confluence’s attachment history.",
+  "viewerForge.file": "Diagram file (.livediagram.json)",
+  "viewerForge.uploaded": "Attachment saved to the page.",
+  "viewerForge.uploadError":
+    "Confluence could not save the attachment ({status}). Check that you can edit this page and add attachments.",
+  "viewerForge.simulation": "Simulation",
+  "viewerForge.freePlay": "Free play",
+  "viewerForge.height": "Height",
+  "viewerForge.autoHeight": "Automatic",
+  "viewerForge.heightPixels": "{height} px",
+  "viewerForge.theme": "Theme",
+  "viewerForge.autoTheme": "Follow Confluence",
+  "viewerForge.light": "Light",
+  "viewerForge.dark": "Dark",
+  "viewerForge.save": "Save",
+  "viewerForge.cancel": "Cancel",
+  "viewerForge.saveError": "Confluence could not save the macro settings. Try again.",
+  "viewerForge.invalidFilename": "Choose a file whose name ends in .livediagram.json.",
   "node.openDocumentation": "Open documentation",
   "latency.heading": "Async latency",
   "latency.p50": "p50 {duration}",

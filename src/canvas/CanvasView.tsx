@@ -110,6 +110,7 @@ import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
 import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
 import { PresenceLayer } from "./PresenceLayer";
+import type { ViewerAttribution } from "../export/viewer/options";
 
 /** A room's cursor is sent at most this often (src/collab/limits.ts, cursorIntervalMs; the canvas doesn't import it). */
 const COLLAB_CURSOR_MS = 67;
@@ -148,6 +149,7 @@ const edgeTypes: EdgeTypes = { flow: FlowEdge };
 const MULTI_SELECT_KEYS = ["Shift", "Control", "Meta"];
 /** Editing: a plain drag on empty canvas draws the selection box, so only the middle button pans. */
 const PAN_MIDDLE = [1];
+const HIDE_ATTRIBUTION = { hideAttribution: true };
 /**
  * React Flow copies a prop that changes identity into its store, and a node handler that does re-renders every node's
  * wrapper: everything handed to <ReactFlow> keeps its identity across the canvas's renders.
@@ -185,6 +187,8 @@ interface Props {
 
 /** What the exported HTML viewer adds to a read-only canvas. */
 export interface CanvasViewerOptions {
+  /** Host platforms can prohibit outbound attribution links. Standalone viewers show them by default. */
+  attribution?: ViewerAttribution;
   /** Live view is offered (the Live toggle), starting as given: a simulation playing, or off. */
   live: NonNullable<LiveViewProps["initial"]>;
   /** The wheel pans and Ctrl+wheel zooms, as in the app (a page of its own, not a frame in someone's page). */
@@ -1120,6 +1124,7 @@ function CanvasInner({
                 colorMode={theme}
                 // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
                 attributionPosition="bottom-right"
+                proOptions={viewer?.attribution === "hide" ? HIDE_ATTRIBUTION : undefined}
                 minZoom={0.15}
                 maxZoom={2.5}
                 snapToGrid={prefs.snap}
