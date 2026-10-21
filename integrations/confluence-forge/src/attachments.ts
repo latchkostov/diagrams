@@ -92,15 +92,28 @@ export async function downloadDiagram(request: ConfluenceRequest, page: string, 
   return readDiagram(await downloadDiagramText(request, page, attachment));
 }
 
+/** Read and validate locally. Choosing a file must never start a bridge request. */
+export async function stageDiagram(file: File) {
+  if (!isDiagramFilename(file.name)) throw new Error(t("viewerForge.invalidFilename"));
+  if (file.size > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
+  const text = await file.text();
+  checkBytes(text);
+  try {
+    return readDiagram(text);
+  } catch {
+    throw new Error(t("viewerForge.invalidFile"));
+  }
+}
+
 export async function uploadDiagram(
   request: ConfluenceRequest,
   page: string,
   file: File,
   replace?: Attachment,
 ): Promise<Attachment> {
-  if (!isDiagramFilename(file.name)) throw new Error(t("viewerForge.invalidFilename"));
-  if (file.size > MAX_FILE_BYTES) throw new Error(t("viewerForge.tooLarge"));
-  readDiagram(await file.text());
+  await stageDiagram(file);
+  // Resolve at commit time, so another macro's same-name attachment gets a version, not a duplicate.
+  replace ??= (await listAttachments(request, page)).find((attachment) => attachment.title === file.name);
   const form = new FormData();
   // Keep the existing filename when replacing by ID, including when the local filename differs.
   form.append("file", file, replace?.title ?? file.name);

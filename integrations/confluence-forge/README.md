@@ -32,28 +32,29 @@ Public documentation: [Live Diagram for Confluence](https://www.livediagrams.dev
    choose **Confluence** and the dev-site hostname. Accept the attachment read/file upload scopes.
    Keep sharing disabled for development; production distribution is a separate step below.
 
-4. Create and **publish** a Confluence page first. In page attachments, upload a valid Diagram file
-   named, for example, `orders.diagram.json`. This is the native **Diagram file** export from
-   Live Diagrams; older `.livediagram.json` files are also accepted. Renaming a PNG or Interactive
-   HTML file won't work.
-5. Edit the page, insert **Live Diagram** from the `/` macro picker, and choose the attachment in its
-   configuration. Alternatively, choose a local `.diagram.json` and **Upload a new attachment**
-   there. Choose **Free play** or a saved simulation, **Automatic** height or a fixed height, and
-   **Follow Confluence**, Light or Dark. Click **Save**, then publish the page.
+4. Create and **publish** a Confluence page first. Save a Diagram file from Live Diagrams
+   (**File ▸ Save diagram file**). Native `.diagram.json` and older `.livediagram.json` files work;
+   renaming a PNG or Interactive HTML file won't work.
+5. Edit the page and insert **Live Diagram** from the `/` macro picker. Choose or drop the file,
+   check its still preview, then click **Insert**. **Options** holds Free play or a saved simulation,
+   Auto size or Small (480 px), Medium (640 px), Large (800 px), and Follow Confluence, Light or Dark.
+   Files stay in memory until Insert. A same-name page attachment gets a new version. When editing,
+   **Replace file** stages a replacement and **Update** adds a version of the current attachment,
+   keeping its ID and filename. Cancel discards the staged file and settings. Publish the page.
 6. The macro opens as a still diagram. Press **Play diagram** (also accessible by Tab and Enter/Space).
    Page and attachment permissions apply to every reader. To edit, download the attachment using
-   Confluence, edit the file outside this macro, then use **Replace selected attachment** in config.
+   Confluence, edit the file outside this macro, then use **Replace file**, then **Update** in config.
    Replacement preserves the selected attachment ID and filename and creates another version.
    Use **Maximise** to open a larger view in a Forge Modal without leaving Confluence.
-   Uploads happen immediately, even if you later cancel config; previous versions remain in
-   Confluence's attachment history. The macro reads the latest version, rather than pinning one.
+   Choosing or replacing a file never uploads it; Insert/Update commits it. Previous versions remain
+   in Confluence's attachment history. The macro reads the latest version, rather than pinning one.
 
 For subsequent updates, rebuild from the repository root and run `forge deploy --environment development`
 inside this directory. After a permission change, run `forge install --upgrade --environment development`.
 An app built here is designed for zero egress and Runs on Atlassian eligibility; the badge is determined
 by Atlassian after registration/deployment, not certified by this offline spike.
 
-**Automatic height** fits the measured diagram to the available column width, including margins and
+**Auto size** fits the measured diagram to the available column width, including margins and
 viewer controls, with a 480 px minimum and 900 px maximum. The minimum keeps a small diagram readable;
 the maximum prevents a tall diagram from taking over a page. Fixed heights are unchanged. With the
 macro's `viewportSize` omitted, Forge automatically resizes the iframe to its document content; bridge
@@ -77,13 +78,14 @@ readable automatic height shipped in #218; the instructions
 and Marketplace package describe that release.
 
 - [ ] `forge lint`, deploy and installation succeed with the existing app ID and two declared scopes.
-- [ ] On a published page, the config lists `.diagram.json` and older `.livediagram.json` attachments, including later pages
-      of results. Empty pages explain how to select/upload; Cancel closes even after an error.
+- [ ] On a published page, choose or drop `.diagram.json` and older `.livediagram.json` files.
+      Preview appears without uploading; Cancel closes without writes, including after an error.
 - [ ] **Critical spike:** `requestConfluence` returns attachment JSON after the REST download redirect.
       Test a normal file and one near the 8 MB limit. No browser `fetch`, external URL permission or
       resolver fallback has been added. If the bridge cannot deliver bytes, retain the honest error
       and capture endpoint/status (no diagram content) for a follow-up Atlassian-hosted resolver.
-- [ ] Upload succeeds; Replace keeps the same attachment ID and creates version 2 with the original
+- [ ] Insert uploads once; a same-name file adds a version. Replace file then Update keeps the same
+      attachment ID and creates version 2 with the original
       filename, even when the local filename differs. Restore version 1 in Confluence attachment history.
 - [ ] A reader with page access can view/play but cannot upload without edit/attachment permission.
       A restricted reader or blocked app gets an honest error. Revoking access then reloading reveals

@@ -1,55 +1,263 @@
+:root {
+  color-scheme: light;
+  --config-surface: var(--ds-surface, #fff);
+  --config-subtle: var(--ds-background-neutral-subtle-hovered, #f1f2f4);
+  --config-text: var(--ds-text, #172b4d);
+  --config-muted: var(--ds-text-subtle, #44546f);
+  --config-line: var(--ds-border, #dcdfe4);
+  --config-brand: var(--ds-background-brand-bold, #0c66e4);
+  --config-selected: var(--ds-background-selected, #e9f2ff);
+  --config-link: var(--ds-link, #0c66e4);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --config-surface: var(--ds-surface, #1d2125);
+  --config-subtle: var(--ds-background-neutral-subtle-hovered, #282e33);
+  --config-text: var(--ds-text, #b6c2cf);
+  --config-muted: var(--ds-text-subtle, #9fadbc);
+  --config-line: var(--ds-border, #454f59);
+  --config-brand: var(--ds-background-brand-bold, #579dff);
+  --config-selected: var(--ds-background-selected, #1c2b41);
+  --config-link: var(--ds-link, #85b8ff);
+}
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
 html,
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px system-ui;
+  background: var(--config-surface);
+  color: var(--config-text);
+  font: var(--ds-font-body, 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
 }
 body {
-  padding: 20px;
+  padding: 24px;
+}
+.forge-config,
+[data-testid="forge-config"] {
+  max-inline-size: 640px;
+  margin-inline: auto;
+}
+h1 {
+  font: var(--ds-font-heading-medium, 600 20px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  margin: 0 0 24px;
 }
 fieldset {
-  min-inline-size: 0;
   border: 0;
+  margin: 0;
   padding: 0;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-label {
   min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
 }
-select,
-input,
-button {
-  box-sizing: border-box;
+button,
+select {
   font: inherit;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  padding: 8px;
-  max-width: 100%;
+  color: inherit;
+  max-inline-size: 100%;
 }
 button {
+  border: 0;
+  border-radius: 3px;
+  padding: 6px 12px;
+  background: transparent;
   cursor: pointer;
-  margin-block: 8px;
+  font-weight: 500;
+  min-block-size: 32px;
+}
+button:hover {
+  background: var(--config-subtle);
+}
+button.primary {
+  background: var(--config-brand);
+  color: var(--ds-text-inverse, #fff);
+}
+:root[data-theme="dark"] button.primary {
+  color: var(--ds-text-inverse, #1d2125);
+}
+button.primary:hover {
+  background: var(--ds-background-brand-bold-hovered, #0055cc);
+  color: var(--ds-text-inverse, #fff);
 }
 button:disabled {
+  color: var(--ds-text-disabled, #8993a4);
+  background: var(--ds-background-disabled, #091e4208);
   cursor: default;
-  opacity: 0.6;
 }
-button:focus-visible,
-select:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+:root[data-theme="dark"] button:disabled {
+  color: var(--ds-text-disabled, #738496);
+  background: var(--ds-background-disabled, #a1bdd914);
+}
+:focus-visible,
+[data-testid="forge-card"]:focus,
+[data-testid="forge-config-status"]:focus {
+  outline: 2px solid var(--ds-border-focused, #388bff);
+  outline-offset: 3px;
 }
 p {
-  line-height: 1.5;
+  margin: 8px 0 0;
   overflow-wrap: anywhere;
+}
+[data-testid="forge-drop"] {
+  border: 2px dashed var(--config-line);
+  border-radius: 6px;
+  padding: 38px 20px;
+  text-align: center;
+}
+.dragging {
+  outline: 2px solid var(--ds-border-focused, #388bff);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+[data-testid="forge-drop-text"],
+[data-testid="forge-file-hint"],
+[data-testid="forge-height-help"],
+[data-testid="forge-no-simulations"] {
+  color: var(--config-muted);
+}
+[data-testid="forge-file-hint"],
+.option-group p {
+  font-size: 12px;
+}
+[data-testid="forge-card"] {
+  border: 1px solid var(--config-line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+[data-testid="forge-preview"] {
+  display: block;
+  inline-size: 100%;
+  block-size: 110px;
+  padding: 10px 16px;
+  background: var(--config-subtle);
+}
+.preview-boundary {
+  fill: none;
+  stroke: var(--config-line);
+  stroke-width: 0.3;
+}
+.preview-edge {
+  stroke: var(--config-muted);
+  stroke-width: 0.35;
+}
+.preview-node {
+  fill: var(--config-surface);
+  stroke: var(--config-line);
+  stroke-width: 0.3;
+}
+.preview-label {
+  fill: var(--config-text);
+}
+[data-testid="forge-card-details"],
+[data-testid="forge-summary-row"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+[data-testid="forge-filename"] {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+}
+[data-testid="forge-change"],
+[data-testid="forge-options"] {
+  color: var(--config-link);
+  flex-shrink: 0;
+}
+[data-testid="forge-summary-row"] {
+  padding: 12px 0;
+  color: var(--config-muted);
+}
+[data-testid="forge-options"]::after {
+  content: " ▸";
+}
+[data-testid="forge-options"][aria-expanded="true"]::after {
+  content: " ▾";
+}
+[data-testid="forge-options-panel"] {
+  padding: 16px;
+  border: 1px solid var(--config-line);
+  border-radius: 6px;
+}
+.option-group + .option-group {
+  margin-block-start: 20px;
+}
+legend {
+  font-weight: 600;
+  margin-block-end: 8px;
+  padding: 0;
+}
+.segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 4px;
+  background: var(--config-subtle);
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}
+.segments button {
+  font-weight: 400;
+  padding-inline: 12px;
+}
+.segments button[aria-pressed="true"] {
+  color: var(--ds-text-selected, var(--config-link));
+  background: var(--config-selected);
+  box-shadow: inset 0 0 0 1px var(--ds-border-selected, var(--config-link));
+}
+label {
+  display: block;
+  margin-block-start: 12px;
+  font-size: 12px;
+  color: var(--config-muted);
+}
+select {
+  display: block;
+  inline-size: 100%;
+  margin-block-start: 4px;
+  border: 1px solid var(--config-line);
+  border-radius: 3px;
+  background: var(--config-surface);
+  padding: 7px 10px;
+}
+[data-testid="forge-config-status"]:empty {
+  display: none;
+}
+[data-testid="forge-config-status"][role="alert"] {
+  color: var(--ds-text-danger, #ae2a19);
+  padding: 8px 0;
+}
+:root[data-theme="dark"] [data-testid="forge-config-status"][role="alert"] {
+  color: var(--ds-text-danger, #ff9c8f);
+}
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-block-start: 1px solid var(--config-line);
+  padding-block-start: 16px;
+  margin-block-start: 24px;
+}
+[data-testid="forge-reason"] {
+  margin-inline-end: auto;
+  color: var(--config-muted);
+  font-size: 12px;
+}
+@media (max-width: 380px) {
+  body {
+    padding: 16px;
+  }
+  [data-testid="forge-card-details"],
+  [data-testid="forge-summary-row"] {
+    flex-wrap: wrap;
+  }
+  [data-testid="forge-reason"] {
+    flex-basis: 100%;
+  }
 }

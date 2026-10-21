@@ -11,7 +11,7 @@ import local from "./eslint-rules/no-literal-ui-text.js";
  * local/no-literal-ui-text keeps new hard-coded ones out. Add a file here when its batch converts it.
  */
 const TRANSLATED = [
-  "integrations/confluence-forge/src/{view,configure,attachments,dom}.ts",
+  "integrations/confluence-forge/src/{view,configure,attachments,dom,preview}.ts",
   "src/static/*.ts",
   "src/components/ExamplesDialog.tsx",
   "src/components/ColorPickerModal.tsx",
