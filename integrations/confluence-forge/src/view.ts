@@ -31,11 +31,7 @@ async function main() {
           header.append(status);
         });
       close.addEventListener("click", dismiss);
-      window.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape" || event.defaultPrevented) return;
-        event.preventDefault();
-        dismiss();
-      });
+      window.liveDiagramsViewer.on("unhandledEscape", dismiss);
       header.append(close);
     }
     const adapter = window.liveDiagramsViewer;
@@ -98,7 +94,7 @@ async function main() {
           resource: "diagram-view",
           size: "max",
           context: { pageId: page, config },
-          closeOnEscape: true,
+          closeOnEscape: false,
           onClose: () => {
             open = false;
             expand.disabled = false;

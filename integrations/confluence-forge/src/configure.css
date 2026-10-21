@@ -81,6 +81,10 @@ button.primary:hover {
   background: var(--ds-background-brand-bold-hovered, #0055cc);
   color: var(--ds-text-inverse, #fff);
 }
+:root[data-theme="dark"] button.primary:not(:disabled):hover {
+  background: var(--ds-background-brand-bold-hovered, #85b8ff);
+  color: var(--ds-text-inverse, #1d2125);
+}
 button:disabled {
   color: var(--ds-text-disabled, #8993a4);
   background: var(--ds-background-disabled, #091e4208);

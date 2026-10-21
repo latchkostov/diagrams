@@ -2,11 +2,13 @@ import { hostReducer, initialHostState, type HostState } from "../../interop/emb
 import type { FrameMessage, HostMessage } from "../../interop/embed/hostProtocol";
 import { LiveDriver } from "../../interop/embed/hostLive";
 import type { Theme } from "../../harness/settings";
+import { onUnhandledEscape } from "./escape";
 
 export type ViewerEvents = {
   loaded: Extract<FrameMessage, { type: "loaded" }>;
   error: Extract<FrameMessage, { type: "error" }>;
   size: { height: number };
+  unhandledEscape: undefined;
 };
 
 /** Memory-only host adapter. Loading never plays; play is an explicit reader/host action. */
@@ -14,7 +16,16 @@ export class ViewerAdapter {
   private state: HostState = initialHostState;
   private listeners = new Set<() => void>();
   private events = new Map<keyof ViewerEvents, Set<(value: never) => void>>();
+  private disconnectEscape?: () => void;
   readonly driver = new LiveDriver(() => {});
+
+  /** Platform modal dismissal comes after the viewer's own menus, panels and dialogs. */
+  connectEscape(): () => void {
+    this.disconnectEscape?.();
+    const disconnect = onUnhandledEscape(() => this.emit("unhandledEscape", undefined));
+    this.disconnectEscape = disconnect;
+    return disconnect;
+  }
 
   getSnapshot = (): HostState => this.state;
   getTheme = (): Theme | undefined => this.state.options.theme ?? undefined;
@@ -59,6 +70,8 @@ export class ViewerAdapter {
   };
 
   dispose(): void {
+    this.disconnectEscape?.();
+    this.disconnectEscape = undefined;
     this.driver.reset();
     this.events.clear();
     this.listeners.clear();

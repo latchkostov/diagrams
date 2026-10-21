@@ -41,7 +41,7 @@ test.beforeAll(() => {
         "Content-Security-Policy": "default-src 'none'; frame-src 'self'; style-src 'unsafe-inline'",
       });
       response.end(
-        '<!doctype html><html><body style="margin:0"><iframe data-testid="forge-frame" src="/fake/view/index.html" style="display:block;width:100%;border:0;height:150px"></iframe></body></html>',
+        `<!doctype html><html><body style="margin:0"><button data-testid="host-control">Page settings</button><iframe data-testid="forge-frame" src="/fake/${request.url?.includes("config") ? "config" : "view"}/index.html" style="display:block;width:100%;border:0;height:150px"></iframe></body></html>`,
       );
       return;
     }
@@ -110,11 +110,11 @@ for (const saved of [false, true]) {
     await pauseClock(page);
     await page.clock.runFor(10_000);
     await expect(page.getByTestId("viewer-bundle")).toHaveAttribute("data-live", "0");
-    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
+    expect(await page.evaluate(() => document.documentElement.dataset.viewerTheme)).toBe("dark");
     await page.evaluate(() => {
       document.documentElement.dataset.colorMode = "light";
     });
-    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.viewerTheme)).toBe("light");
     if (saved)
       expect(await page.getByTestId("viewer-bundle").evaluate((el) => el.getBoundingClientRect().height)).toBe(600);
     await page.getByTestId("forge-play").focus();
@@ -201,7 +201,7 @@ test("deployable resource runs the real bridge SDK under Forge CSP with an offli
   expect(await page.evaluate(() => (window as unknown as { __forgeSdkModal: unknown }).__forgeSdkModal)).toMatchObject({
     resource: "diagram-view",
     size: "max",
-    closeOnEscape: true,
+    closeOnEscape: false,
     context: { pageId: "42", config: { attachmentId: "7", simulation: "", height: 0, theme: "auto" } },
   });
   expect(errors).toEqual([]);
@@ -261,7 +261,7 @@ test("Forge host theme changes update React Flow, live particle colours and capt
       (window as unknown as { forgeGradients: unknown[] }).forgeGradients.length = 0;
       document.documentElement.dataset.colorMode = theme;
     }, theme);
-    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.viewerTheme)).toBe(theme);
     await page.clock.runFor(1200);
     await expect(page.getByTestId("rf__wrapper")).toHaveClass(new RegExp(`(?:^| )${theme}(?: |$)`));
     await expect(page.getByTestId("canvas-wrap")).toHaveCSS(
@@ -288,6 +288,87 @@ test("Forge viewer validates attachment JSON once at the adapter boundary", asyn
   expect(await page.evaluate(() => window.__forgeTest.parseCount)).toBe(1);
 });
 
+test("Forge viewer rejects a removed configured simulation", async ({ page }) => {
+  await setup(page, { config: { attachmentId: "7", simulation: "removed" } });
+  await page.goto(`${origin}/fake/view/index.html`);
+  await expect(page.getByTestId("forge-status")).toHaveAttribute("role", "alert");
+  await expect(page.getByTestId("forge-status")).toContainText("no longer in this attachment");
+  await expect(page.getByTestId("viewer-bundle")).toBeHidden();
+  await expect(page.getByTestId("forge-play")).toHaveCount(0);
+});
+
+test("Forge explicit dark theme survives delayed theming and host attribute writes", async ({ page }) => {
+  await setup(page, { config: { attachmentId: "7", theme: "dark" }, holdTheme: true });
+  await page.goto(`${origin}/fake/view/index.html`);
+  await expect(page.getByTestId("node-a")).toBeVisible();
+  await page.getByTestId("forge-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await page.evaluate(() => window.__forgeTest.releaseTheme?.());
+  for (const mode of ["dark", "light", "dark"] as const) {
+    await page.evaluate((mode) => {
+      document.documentElement.dataset.colorMode = mode;
+      document.documentElement.dataset.theme = "dark:dark light:light";
+    }, mode);
+    await expect(page.getByTestId("rf__wrapper")).toHaveClass(/(?:^| )dark(?: |$)/);
+    await expect(page.getByTestId("canvas-wrap")).toHaveCSS("background-color", "rgb(14, 19, 29)");
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark:dark light:light");
+  }
+  // Forge may rewrite only data-theme, without a data-color-mode mutation.
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = "light:light dark:dark";
+  });
+  await expect(page.getByTestId("canvas-wrap")).toHaveCSS("background-color", "rgb(14, 19, 29)");
+});
+
+test("Forge maximise pauses inline playback until explicitly resumed", async ({ page }) => {
+  await page.clock.install();
+  await setup(page, { config: { attachmentId: "7", simulation: "flow" } });
+  await page.goto(`${origin}/fake/view/index.html`);
+  await page.getByTestId("forge-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await pauseClock(page);
+  await page.getByTestId("forge-maximise").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  const position = await page.getByTestId("live-timeline-input").inputValue();
+  await page.clock.runFor(10_000);
+  await expect(page.getByTestId("live-timeline-input")).toHaveValue(position);
+  await page.evaluate(() => window.__forgeTest.closeModal?.());
+  await expect(page.getByTestId("forge-maximise")).toBeEnabled();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  await page.clock.runFor(10_000);
+  await expect(page.getByTestId("live-timeline-input")).toHaveValue(position);
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await page.clock.runFor(1000);
+  await expect(page.getByTestId("live-timeline-input")).not.toHaveValue(position);
+});
+
+test("Forge maximised viewer closes More and Inputs before the modal", async ({ page }) => {
+  await setup(page, { modal: { pageId: "42", config: { attachmentId: "7" } } });
+  await page.goto(`${origin}/fake/view/index.html`);
+  await page.getByTestId("forge-play").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await page.getByTestId("live-more").click();
+  await expect(page.getByTestId("live-more-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("live-more-menu")).toHaveCount(0);
+  expect(await page.evaluate(() => window.__forgeTest.closed)).toBeUndefined();
+  await page.getByTestId("live-capacity").click();
+  await expect(page.getByTestId("capacity-panel")).toBeVisible();
+  await page.getByTestId("live-more").click();
+  await expect(page.getByTestId("live-more-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("live-more-menu")).toHaveCount(0);
+  await expect(page.getByTestId("capacity-panel")).toBeVisible();
+  expect(await page.evaluate(() => window.__forgeTest.closed)).toBeUndefined();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("capacity-panel")).toHaveCount(0);
+  expect(await page.evaluate(() => window.__forgeTest.closed)).toBeUndefined();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.evaluate(() => window.__forgeTest.closed)).toBe(true);
+});
+
 test("Forge maximise opens the same resource with references only and recovers focus on close", async ({ page }) => {
   await setup(page, { config: { attachmentId: "7", simulation: "flow", height: 600, theme: "light" } });
   await page.goto(`${origin}/fake/view/index.html`);
@@ -298,7 +379,7 @@ test("Forge maximise opens the same resource with references only and recovers f
     .toEqual({
       resource: "diagram-view",
       size: "max",
-      closeOnEscape: true,
+      closeOnEscape: false,
       context: { pageId: "42", config: { attachmentId: "7", simulation: "flow", height: 600, theme: "light" } },
     });
   await expect(page.getByTestId("forge-maximise")).toBeDisabled();
@@ -325,7 +406,7 @@ for (const key of [true, false]) {
     expect(box.height).toBeGreaterThan(900);
     expect(box.y + box.height).toBe(1100);
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(1100);
-    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+    expect(await page.evaluate(() => document.documentElement.dataset.viewerTheme)).toBe("light");
     expect(await page.evaluate(() => window.__forgeTest.calls)).toEqual([
       { path: "/wiki/api/v2/attachments/7", method: "GET" },
       { path: "/wiki/rest/api/content/42/child/attachment/7/download?version=3", method: "GET" },
@@ -431,11 +512,17 @@ async function reopenCommitted(page: import("@playwright/test").Page, label: str
     config: (window.__forgeTest.submitted as { config: Record<string, unknown> }).config,
     uploaded: window.__forgeTest.uploaded,
   }));
-  await page.addInitScript((saved) => {
-    window.__forgeTest = { calls: [], ...saved };
-  }, saved);
-  await page.goto(`${origin}/fake/view/index.html`);
-  await expect(page.getByTestId("node-a")).toContainText(label);
+  const viewer = await page.context().newPage();
+  try {
+    await setup(viewer, saved);
+    await viewer.goto(`${origin}/fake/view/index.html`);
+    await expect(viewer.getByTestId("node-a")).toContainText(label);
+    expect(await viewer.evaluate(() => window.__forgeTest.calls[0].path)).toBe(
+      `/wiki/api/v2/attachments/${saved.config.attachmentId}`,
+    );
+  } finally {
+    await viewer.close();
+  }
 }
 async function dropFile(page: import("@playwright/test").Page, name: string, body = chosenDiagram) {
   const transfer = await page.evaluateHandle(
@@ -776,7 +863,9 @@ for (const newerSelection of [false, true]) {
         await new Promise<void>((resolve) => {
           window.__forgeTest.releaseFile = resolve;
         });
-        return read.call(this);
+        const text = await read.call(this);
+        window.__forgeTest.fileReadComplete = true;
+        return text;
       };
     });
     await page.getByTestId("forge-file").setInputFiles(validFile("slow.diagram.json", committedDiagram("Slow file")));
@@ -790,6 +879,9 @@ for (const newerSelection of [false, true]) {
       await expect(page.getByTestId("forge-preview")).toHaveAccessibleName("Preview of Newest file");
     }
     await page.evaluate(() => window.__forgeTest.releaseFile?.());
+    await expect.poll(() => page.evaluate(() => window.__forgeTest.fileReadComplete)).toBe(true);
+    // File.text completion precedes stageDiagram's continuation. A task boundary flushes its promise chain.
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     const label = newerSelection ? "Newest file" : "Slow file";
     await expect(page.getByTestId("forge-preview")).toHaveAccessibleName(`Preview of ${label}`);
     await expect(page.getByTestId("forge-save")).toBeEnabled();
@@ -862,6 +954,187 @@ test("Forge config save retry does not upload another attachment version", async
   await page.getByTestId("forge-save").click();
   await expect.poll(() => page.evaluate(() => window.__forgeTest.submitted)).toBeTruthy();
   expect((await writes(page)).uploads).toHaveLength(1);
+});
+
+for (const editing of [false, true]) {
+  test(`Forge invalid replacement after failed ${editing ? "Update" : "Insert"} preserves upload checkpoint`, async ({
+    page,
+  }) => {
+    await openConfig(page, editing ? { attachmentId: "7" } : {}, { submitError: true });
+    await chooseFile(page, "retained.diagram.json", committedDiagram("Retained upload"));
+    await page.getByTestId("forge-save").click();
+    await expect(page.getByTestId("forge-config-status")).toContainText("The attachment was saved");
+    await expect(page.getByTestId("forge-config-status")).toContainText("Cancel keeps the uploaded version");
+    await expect(page.getByTestId("forge-config-status")).toContainText("attachment history");
+    await page.getByTestId("forge-file").setInputFiles(validFile("rejected.diagram.json", "{}"));
+    await expect(page.getByTestId("forge-config-status")).toContainText("not a valid Live Diagrams file");
+    await expect(page.getByTestId("forge-preview")).toHaveAccessibleName("Preview of Retained upload");
+    await page.evaluate(() => {
+      window.__forgeTest.submitError = false;
+    });
+    await page.getByTestId("forge-save").click();
+    await expect
+      .poll(() => page.evaluate(() => window.__forgeTest.submitted))
+      .toMatchObject({ config: { attachmentId: editing ? "7" : "9" } });
+    expect((await writes(page)).uploads).toHaveLength(1);
+    expect((await writes(page)).saves).toBe(2);
+    await reopenCommitted(page, "Retained upload");
+  });
+}
+
+for (const hold of ["list", "download", "validation"] as const) {
+  for (const completeDuringClose of [false, true]) {
+    test(`Forge failed Cancel preserves ${hold} ${completeDuringClose ? "completed during close" : "still pending"}`, async ({
+      page,
+    }) => {
+      if (hold === "validation") {
+        await openConfig(page, {}, { closeError: true, holdClose: true });
+        await page.evaluate(() => {
+          const read = File.prototype.text;
+          File.prototype.text = async function () {
+            File.prototype.text = read;
+            await new Promise<void>((resolve) => {
+              window.__forgeTest.releaseFile = resolve;
+            });
+            const text = await read.call(this);
+            window.__forgeTest.fileReadComplete = true;
+            return text;
+          };
+        });
+        await page.getByTestId("forge-file").setInputFiles(validFile());
+        await expect.poll(() => page.evaluate(() => !!window.__forgeTest.releaseFile)).toBe(true);
+      } else {
+        await setup(page, { config: { attachmentId: "7" }, hold, closeError: true, holdClose: true });
+        await page.goto(`${origin}/fake/config/index.html`);
+        await expect.poll(() => page.evaluate(() => !!window.__forgeTest.release)).toBe(true);
+      }
+      await page.getByTestId("forge-cancel").click();
+      await expect.poll(() => page.evaluate(() => window.__forgeTest.closePending)).toBe(true);
+      const releaseRead = () =>
+        page.evaluate(() => {
+          window.__forgeTest.hold = undefined;
+          window.__forgeTest.release?.();
+          window.__forgeTest.releaseFile?.();
+        });
+      if (completeDuringClose) {
+        await releaseRead();
+        await expect(page.getByTestId("forge-preview")).toBeVisible();
+        await expect(page.getByTestId("forge-save")).toBeDisabled();
+      }
+      await page.evaluate(() => window.__forgeTest.releaseClose?.());
+      await expect(page.getByTestId("forge-config-status")).toContainText("could not complete the request");
+      if (!completeDuringClose) await releaseRead();
+      await expect(page.getByTestId("forge-fields")).toBeEnabled();
+      await expect(page.getByTestId("forge-save")).toBeEnabled();
+      await page.getByTestId("forge-save").click();
+      await expect.poll(() => page.evaluate(() => window.__forgeTest.submitted)).toBeTruthy();
+      expect((await writes(page)).uploads).toHaveLength(hold === "validation" ? 1 : 0);
+    });
+  }
+}
+
+for (const saving of [false, true]) {
+  test(`Forge pending ${saving ? "save failure" : "load failure"} does not reclaim parent-frame focus`, async ({
+    page,
+  }) => {
+    await setup(page, {
+      config: saving ? {} : { attachmentId: "7" },
+      ...(saving ? { submitError: true } : { hold: "download" }),
+    });
+    await page.goto(`${origin}/host.html?config`);
+    const frame = page.frameLocator('[data-testid="forge-frame"]');
+    if (saving) {
+      await expect(frame.getByTestId("forge-fields")).toBeEnabled();
+      await frame.getByTestId("forge-choose").focus();
+      await frame.getByTestId("forge-file").setInputFiles(validFile());
+      await expect(frame.getByTestId("forge-card")).toBeFocused();
+      await page.getByTestId("forge-frame").evaluate((iframe: HTMLIFrameElement) => {
+        if (!iframe.contentWindow) throw new Error("Forge iframe has no window");
+        iframe.contentWindow.__forgeTest.hold = "upload";
+      });
+      await frame.getByTestId("forge-save").click();
+      await expect
+        .poll(() =>
+          page
+            .getByTestId("forge-frame")
+            .evaluate((iframe: HTMLIFrameElement) => !!iframe.contentWindow?.__forgeTest.release),
+        )
+        .toBe(true);
+    } else {
+      await expect
+        .poll(() =>
+          page
+            .getByTestId("forge-frame")
+            .evaluate((iframe: HTMLIFrameElement) => !!iframe.contentWindow?.__forgeTest.release),
+        )
+        .toBe(true);
+      await frame.getByTestId("forge-cancel").focus();
+    }
+    await page.getByTestId("host-control").focus();
+    await page.getByTestId("forge-frame").evaluate((iframe: HTMLIFrameElement) => {
+      if (!iframe.contentWindow) throw new Error("Forge iframe has no window");
+      const state = iframe.contentWindow.__forgeTest;
+      if (state.hold === "download") state.status = 403;
+      state.hold = undefined;
+      state.release?.();
+    });
+    await expect(frame.getByTestId("forge-config-status")).toHaveAttribute("role", "alert");
+    await expect(page.getByTestId("host-control")).toBeFocused();
+  });
+}
+
+test("Forge dark primary buttons retain readable hover colours", async ({ page }) => {
+  await openConfig(page, {}, { hostTheme: "dark" });
+  for (const id of ["forge-choose", "forge-save"]) {
+    if (id === "forge-save") await chooseFile(page);
+    await page.getByTestId(id).hover();
+    await expect(page.getByTestId(id)).toHaveCSS("background-color", "rgb(133, 184, 255)");
+    await expect(page.getByTestId(id)).toHaveCSS("color", "rgb(29, 33, 37)");
+  }
+});
+
+test("Forge large thumbnail bounds SVG construction and skips unreadable labels", async ({ page }) => {
+  await openConfig(page);
+  await page.evaluate(() => {
+    const create = document.createElementNS.bind(document);
+    const counts = { shapes: 0, labels: 0 };
+    Object.assign(window, { forgeSvgCounts: counts });
+    document.createElementNS = ((namespace: string | null, tag: string) => {
+      if (namespace === "http://www.w3.org/2000/svg") {
+        counts.shapes++;
+        if (tag === "text") counts.labels++;
+      }
+      return create(namespace, tag);
+    }) as typeof document.createElementNS;
+  });
+  await chooseFile(
+    page,
+    undefined,
+    JSON.stringify({
+      ...textFieldsFixture,
+      groups: [],
+      annotations: [],
+      nodes: Array.from({ length: 5000 }, (_, i) => ({
+        ...textFieldsFixture.nodes[0],
+        id: `n${i}`,
+        group: undefined,
+        x: (i % 8) * 300,
+        y: Math.floor(i / 8) * 200,
+      })),
+      edges: Array.from({ length: 20000 }, (_, i) => ({
+        ...textFieldsFixture.edges[0],
+        id: `e${i}`,
+        from: `n${i % 48}`,
+        to: `n${(i + 1) % 48}`,
+      })),
+    }),
+  );
+  const counts = await page.evaluate(
+    () => (window as unknown as { forgeSvgCounts: { shapes: number; labels: number } }).forgeSvgCounts,
+  );
+  expect(counts.shapes).toBeLessThanOrEqual(1 + 12 + 48 * 3 + 72);
+  expect(counts.labels).toBe(0);
+  await expect(page.getByTestId("forge-preview")).toHaveAttribute("data-nodes", "5000");
 });
 
 for (const hold of ["context", "list", "download"] as const) {
@@ -1010,11 +1283,11 @@ for (const hostTheme of ["light", "dark"] as const) {
   test(`Forge approved states use Confluence ${hostTheme} tokens and screenshots`, async ({ page }, info) => {
     await page.setViewportSize({ width: 688, height: 760 });
     await openConfig(page, {}, { hostTheme });
-    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe(hostTheme);
-    const shot = async (state: string) => {
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.viewerTheme)).toBe(hostTheme);
+    const shot = async (state: string, target = page) => {
       if (info.repeatEachIndex) return;
       mkdirSync("tests/.output/forge-config-shots", { recursive: true });
-      await page
+      await target
         .getByTestId("forge-config")
         .screenshot({ path: `tests/.output/forge-config-shots/${state}-${hostTheme}.png` });
     };
@@ -1033,26 +1306,21 @@ for (const hostTheme of ["light", "dark"] as const) {
       hostTheme === "dark" ? "rgb(182, 194, 207)" : "rgb(23, 43, 77)",
     );
     expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(30, 40, 50)");
-    await page.addInitScript(
-      ({ hostTheme, body }) => {
-        window.__forgeTest = {
-          calls: [],
-          hostTheme,
-          body,
-          config: {
-            attachmentId: "7",
-            simulation: "spike",
-            height: 800,
-            theme: hostTheme === "dark" ? "light" : "dark",
-          },
-        };
+    const editing = await page.context().newPage();
+    await openConfig(
+      editing,
+      {
+        attachmentId: "7",
+        simulation: "spike",
+        height: 800,
+        theme: hostTheme === "dark" ? "light" : "dark",
       },
       { hostTheme, body: chosenDiagram },
     );
-    await page.goto(`${origin}/fake/config/index.html`);
-    await expect(page.getByTestId("forge-save")).toBeEnabled();
-    await expect(page.getByTestId("forge-summary")).toHaveText("Black Friday spike · Large");
-    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe(hostTheme);
-    await shot("editing");
+    await expect(editing.getByTestId("forge-save")).toBeEnabled();
+    await expect(editing.getByTestId("forge-summary")).toHaveText("Black Friday spike · Large");
+    await expect.poll(() => editing.evaluate(() => document.documentElement.dataset.viewerTheme)).toBe(hostTheme);
+    await shot("editing", editing);
+    await editing.close();
   });
 }

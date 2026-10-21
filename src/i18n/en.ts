@@ -81,6 +81,8 @@ const en = {
   "viewerForge.save": "Save",
   "viewerForge.cancel": "Cancel",
   "viewerForge.saveError": "Confluence could not save the macro settings. Try again.",
+  "viewerForge.partialSaveError":
+    "The attachment was saved, but Confluence could not save the macro settings. Try again. Cancel keeps the uploaded version; restore the previous version in this page's attachment history if needed.",
   "viewerForge.invalidFilename": "Choose a .diagram.json file. Older .livediagram.json files are also accepted.",
   "node.openDocumentation": "Open documentation",
   "latency.heading": "Async latency",
