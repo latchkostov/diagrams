@@ -849,6 +849,32 @@ test("Forge rejects an invalid replacement without losing the valid selection", 
   await expect.poll(() => page.evaluate(() => window.__forgeTest.uploaded?.body)).toBe(chosenDiagram);
 });
 
+for (const option of ["forge-height-640", "forge-theme-dark"] as const) {
+  test(`Forge preserves focused option after replacement validation: ${option}`, async ({ page }) => {
+    await openConfig(page, { attachmentId: "7", simulation: "flow" });
+    await page.getByTestId("forge-options").click();
+    await page.evaluate(() => {
+      const read = File.prototype.text;
+      File.prototype.text = async function () {
+        File.prototype.text = read;
+        await new Promise<void>((resolve) => {
+          window.__forgeTest.releaseFile = resolve;
+        });
+        return read.call(this);
+      };
+    });
+    await page.getByTestId("forge-file").setInputFiles(validFile("slow.diagram.json", committedDiagram("Slow file")));
+    await expect.poll(() => page.evaluate(() => !!window.__forgeTest.releaseFile)).toBe(true);
+    await page.getByTestId(option).focus();
+    await expect(page.getByTestId(option)).toBeFocused();
+    await page.evaluate(() => window.__forgeTest.releaseFile?.());
+    await expect(page.getByTestId("forge-filename")).toHaveText("slow.diagram.json");
+    await expect(page.getByTestId(option)).toBeFocused();
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
+  });
+}
+
 for (const newerSelection of [false, true]) {
   test(`Forge pending file validation ${newerSelection ? "cannot overwrite a newer selection" : "cannot be bypassed by simulation options or submission"}`, async ({
     page,
@@ -1093,7 +1119,7 @@ test("Forge dark primary buttons retain readable hover colours", async ({ page }
   }
 });
 
-test("Forge large thumbnail bounds SVG construction and skips unreadable labels", async ({ page }) => {
+test("Forge preview caps nodes, edges and boundaries independently", async ({ page }) => {
   await openConfig(page);
   await page.evaluate(() => {
     const create = document.createElementNS.bind(document);
@@ -1112,7 +1138,14 @@ test("Forge large thumbnail bounds SVG construction and skips unreadable labels"
     undefined,
     JSON.stringify({
       ...textFieldsFixture,
-      groups: [],
+      groups: Array.from({ length: 20 }, (_, i) => ({
+        id: `g${i}`,
+        label: `Boundary ${i}`,
+        x: i * 100,
+        y: 0,
+        width: 100,
+        height: 100,
+      })),
       annotations: [],
       nodes: Array.from({ length: 5000 }, (_, i) => ({
         ...textFieldsFixture.nodes[0],
@@ -1132,8 +1165,11 @@ test("Forge large thumbnail bounds SVG construction and skips unreadable labels"
   const counts = await page.evaluate(
     () => (window as unknown as { forgeSvgCounts: { shapes: number; labels: number } }).forgeSvgCounts,
   );
-  expect(counts.shapes).toBeLessThanOrEqual(1 + 12 + 48 * 3 + 72);
+  expect(counts.shapes).toBe(1 + 12 + 48 * 2 + 72);
   expect(counts.labels).toBe(0);
+  await expect(page.getByTestId("forge-preview-node")).toHaveCount(48);
+  await expect(page.getByTestId("forge-preview-edge")).toHaveCount(72);
+  await expect(page.getByTestId("forge-preview-boundary")).toHaveCount(12);
   await expect(page.getByTestId("forge-preview")).toHaveAttribute("data-nodes", "5000");
 });
 

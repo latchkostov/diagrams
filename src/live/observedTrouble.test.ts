@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { realSnapshot } from "../sim/units";
-import { TroubleWatcher, pickTrouble, troubleLeads, type Trouble } from "./observedTrouble";
+import { TroubleWatcher, pickTrouble, troubleLeads, type Trouble, type WatchedFrame } from "./observedTrouble";
 import { waitingFixture } from "../lab/waitingFixture";
 import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
 import * as admission from "../model/admissionSchema";
@@ -43,6 +43,55 @@ function watch(d: DiagramFile, seconds: number, setup?: (e: ReturnType<typeof cr
 }
 
 describe("trouble seen in playback", () => {
+  it.each(["p3", "p3-w1"] as const)(
+    "keeps per-edge timeout suggestions when sharing target timing at %s",
+    (revision) => {
+      const d = waitingFixture();
+      d.planning = { revision };
+      d.nodes = [
+        ...["first", "second", "third"].map((id) => ({ ...d.nodes[1], id })),
+        { ...d.nodes[2], props: { latencyMs: 2000, api: { latencyMs: 2000 }, jitter: 0 } },
+        { ...d.nodes[2], id: "slower", props: { latencyMs: 8000, api: { latencyMs: 8000 }, jitter: 0 } },
+      ];
+      d.edges = [
+        { id: "near", from: "first", to: "partner", kind: "sync", props: { networkDelayMs: 100 } },
+        { id: "far", from: "second", to: "partner", kind: "sync", props: { networkDelayMs: 500 } },
+        { id: "slow", from: "third", to: "slower", kind: "sync", props: { networkDelayMs: 200 } },
+      ];
+      const fallback = vi.spyOn(defaults, "resolveNodeProps");
+      const watcher = new TroubleWatcher();
+      try {
+        let seen: Trouble[] = [];
+        for (let second = 0; second <= 10; second++) {
+          const frame: WatchedFrame = {
+            time: second * 1000,
+            nodes: Object.fromEntries(
+              d.edges.map((edge) => [
+                edge.from,
+                {
+                  status: "up",
+                  lag: {},
+                  dropped: 0,
+                  backlog: second,
+                  threads: { slots: 4, working: 0, waiting: 4, queued: 0, waitingOn: [[edge.id, 4]] },
+                },
+              ]),
+            ),
+          };
+          seen = watcher.observe(frame, d);
+        }
+        expect(seen.map((trouble) => trouble.action)).toEqual([
+          { kind: "add-timeout", edge: "near", deadlineMs: 10000 },
+          { kind: "add-timeout", edge: "far", deadlineMs: 20000 },
+          { kind: "add-timeout", edge: "slow", deadlineMs: 50000 },
+        ]);
+        for (const target of ["partner", "slower"])
+          expect(fallback.mock.calls.filter(([, node]) => node.id === target)).toHaveLength(1);
+      } finally {
+        fallback.mockRestore();
+      }
+    },
+  );
   it("accepts documentation edges with a shape at either end", () => {
     const d = waitingFixture();
     d.annotations = [

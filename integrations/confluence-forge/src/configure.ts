@@ -160,7 +160,12 @@ async function main() {
     const pickFile = () => {
       if (acceptsFile()) file.click();
     };
-    const render = () => {
+    const render = (preserveFocus = false) => {
+      const active = document.activeElement;
+      const focusedOption =
+        preserveFocus && document.hasFocus() && active instanceof HTMLElement && content.contains(active)
+          ? active.dataset.testid
+          : undefined;
       fitPreview = () => {};
       content.replaceChildren();
       if (!diagram) {
@@ -322,6 +327,7 @@ async function main() {
         fitPreview();
       }
       refresh();
+      if (focusedOption) content.querySelector<HTMLElement>(`[data-testid="${CSS.escape(focusedOption)}"]`)?.focus();
     };
     const choose = async (chosen?: File) => {
       if (!chosen || !acceptsFile()) return;
@@ -337,7 +343,7 @@ async function main() {
         selection = new AcceptedSelection(chosen);
         fileLoading = false;
         if (!next.simulations?.some((sim) => sim.id === simulation)) simulation = "";
-        render();
+        render(focus.hasMoved());
         focus(content.querySelector<HTMLElement>('[data-testid="forge-card"]') ?? undefined);
       } catch (error) {
         if (!lifecycle.closed && chosenGeneration === lifecycle.generation) {
