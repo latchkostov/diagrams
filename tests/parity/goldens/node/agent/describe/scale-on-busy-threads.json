@@ -386,7 +386,7 @@
                   }
                 }
               ],
-              "verified": { "backlog": 832, "startupBacklog": 758, "endBacklog": 0, "maxed": true, "rejected": 0 },
+              "verified": { "backlog": 1158, "startupBacklog": 1158, "endBacklog": 0, "maxed": true, "rejected": 0 },
               "explanation": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it."
             }
           ],
