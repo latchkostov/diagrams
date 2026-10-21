@@ -49,7 +49,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | W3  | room.status                         | Retry pressed                   | its surviving status now (Retry goes)                  |
  * | W4  | room.status                         | any other change                | keep: announced by the status, never a focus move      |
  * | L1  | live.key (Space, Enter, Esc)        | any level (liveKeys.ts)         | keep (Live's levels never move focus themselves)       |
- * | L2  | narration.waiting (presenting)      |                                 | focus the note's Continue now (else the canvas)        |
+ * | L2  | narration.waiting (presenting)      | no menu owns focus              | focus Continue now (else the canvas)                  |
  * | L3  | callout.closed                      | focus was inside it             | the canvas now, if focus was lost                      |
  * | L5  | notice.closed                       | focus is inside a removed notice| its surviving status now, before the notice unmounts   |
  * | L4  | panel.field (a Live panel's field)  |                                 | focus it once the panel lists it, all of it selected   |
@@ -73,7 +73,11 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
   };
   const canvas: FocusTarget = { kind: "canvas" };
   switch (event.type) {
-    case "menu.closed":
+    case "menu.closed": {
+      const openMenus = [...(state.openMenus ?? [])];
+      const index = openMenus.lastIndexOf(event.kind);
+      if (index >= 0) openMenus.splice(index, 1);
+      state = { ...state, openMenus };
       // A peer deleted the target: its invoker went with it, so the canvas takes the keyboard back (M7).
       if (event.reason === "remote" && event.kind !== "live" && event.kind !== "dialog")
         return move({ target: canvas, when: "commit", onlyIfLost: true });
@@ -85,8 +89,9 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       if (event.reason === "escape")
         return move({ target: { kind: "element", handle: event.invoker }, when: "commit", fallback: canvas });
       return move({ target: { kind: "element", handle: event.invoker }, when: "commit", onlyIfLost: true });
+    }
     case "menu.opened":
-      return keep();
+      return keep({ openMenus: [...(state.openMenus ?? []), event.kind] });
     case "selection.changed": {
       const { cause, target } = event;
       if (cause === "keyboard" && target)
@@ -153,6 +158,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         ? move({ target: { kind: "element", handle: event.status }, when: "now", fallback: canvas })
         : keep();
     case "narration.waiting":
+      if (state.openMenus?.length) return keep();
       return move({ target: { kind: "element", handle: event.resume }, when: "now", fallback: canvas });
     case "callout.closed":
       return event.hadFocus ? move({ target: canvas, when: "now", onlyIfLost: true }) : keep();

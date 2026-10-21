@@ -619,3 +619,26 @@ describe("focusPolicy: event sequences (menus × selection × focus × undo)", (
     );
   });
 });
+
+it.each<MenuFocusKind>(["context", "live", "dialog"])(
+  "delayed narration preserves focus while a %s menu is open",
+  (kind) => {
+    const opened: FocusEvent = { type: "menu.opened", kind, via: "keyboard", platform: "other" };
+    const waiting: FocusEvent = { type: "narration.waiting", resume: node };
+    const r = run(state(), [opened, waiting]);
+    expect(r.commands).toEqual([{ type: "keep" }, { type: "keep" }]);
+    const resumed = run(r.state, [closed("escape", { kind }), waiting]);
+    expect(resumed.commands.at(-1)).toMatchObject({ type: "focus", target: { kind: "element", handle: node } });
+  },
+);
+
+it("narration waits for both independently opened Live popovers to close", () => {
+  const opened: FocusEvent = { type: "menu.opened", kind: "live", via: "pointer", platform: "other" };
+  const waiting: FocusEvent = { type: "narration.waiting", resume: node };
+  const r = run(state(), [opened, opened, closed("outside", { kind: "live" }), waiting]);
+  expect(r.commands.at(-1)).toEqual({ type: "keep" });
+  expect(run(r.state, [closed("outside", { kind: "live" }), waiting]).commands.at(-1)).toMatchObject({
+    type: "focus",
+    target: { kind: "element", handle: node },
+  });
+});

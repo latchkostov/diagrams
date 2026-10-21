@@ -16,6 +16,16 @@ pnpm parity sim checks # only parity files whose path contains "sim" or "checks"
 A filtered run skips the stale-golden check. The browser tier needs Docker running (see "Browser tier").
 Without it, `pnpm parity:node` still checks everything that doesn't need a browser.
 
+## Engine R2–R4 golden inventory
+
+The complete changed-golden list across R2–R4 is one file:
+`node/sim/blocking-call/free-play.json` (scale ten). R2 brings logical replies and outputs forward;
+R3 replaces rounded occupancy with exact weighted holds; R4 finishes the first wave after its
+reserved CPU share while tails keep contending. The per-step direction and checkpoint numbers are
+recorded below. `node/sim/corpus-w1-sampling/sampled.json` and `node/waits/w1-sampling/sampled.json`
+never changed. Every pre-W1, scale-one W1 and non-simulation golden stayed unchanged.
+R5 expects no golden changes, including for its zero-local-work correction.
+
 ## Engine attempts R2 (2026-10-19)
 
 Only `node/sim/blocking-call/free-play.json` changes: at scale 10, logical answers and outputs arrive

@@ -3,6 +3,51 @@
 The live view animates messages flowing through any diagram, driven only by the diagram itself:
 each node's stencil `simRole`, edge direction and `kind`, plus optional `props`. API: `src/sim/types.ts`.
 
+## Replicas, real units and sampling
+
+Replicas multiply a service's available parallel slots; they do not multiply an API account's
+shared limit. Live can represent several real requests with one animated dot to keep large runs
+responsive. The dot's first request follows the logical timeline: local work, calls, replies and
+one final outcome. A separate resource ledger keeps capacity occupied for the rest of the requests
+represented by that dot. A reply can therefore arrive while some represented capacity is still busy.
+
+Counts and capacity readouts use real requests. Thread meters can show fractional dots because a
+dot may hold only part of a pool. Shrinking a pool preserves work already admitted, just as scale 1
+does: occupancy may temporarily exceed the new limit, and further admission waits for room.
+Pausing freezes capacity holds. Recovery reacquires capacity through the same allocator as new work,
+so it cannot invent extra threads, connections or shared API slots.
+
+**Known gaps.** Sampling is an approximation, especially with very small pools or work shorter than
+the simulation's 10 ms tick. It can substantially understate throughput for queue workers, managed
+API admission, unequal pools with fractional leftover room, and even equal one-slot services doing
+1 ms of local work. These are tracked in the [sampling accuracy work item](backlog/2026-10-20-engine-r5-i1-counterexamples.md),
+with reproductions and measured differences. Use scale 1 when small capacity boundaries matter.
+The general scale-equivalence bound below is an accuracy target, not a guarantee across all diagrams.
+
+### Technical model
+
+A dot represents `N` requests and reserves weight `w <= N` in real units, limited by available
+capacity and its parent's reservation. Admission requires room for at least `min(1, N)` real units.
+Logical CPU work is `w * cpuMsPerMessage`; remaining cohort CPU stays in tails and competes for the
+same fleet CPU budget after the first wave finishes. Numbered tails retain replica ownership until
+spent or drain grace expires. Logical outcomes are written once; later tail cleanup cannot reverse them.
+
+For logical hold `H`, ordinary blocking turnaround includes `T = H + ADMISSION_LAG_MS`, where
+`ADMISSION_LAG_MS = STEP = 10 ms`. The reservation releases no earlier than retirement, at
+`startActive + T * N / w - ADMISSION_LAG_MS`. Local/admission phases differ: zero-local-work callers
+already start during admission, and resource-backed threads also have a second admission phase;
+these thread holds use zero extra admission lag. Fractional availability carries into the next
+eligible hold within the same owner/scope/edge/admission keys and expires if unused. At scale 1,
+retirement releases immediately and no retained release heap is needed. Existing reservations keep
+both `w` and `N` after a scale or capacity edit; recovery uses `admission.reacquire`.
+
+The I1 accuracy target compares constant-rate runs of at least 20 seconds against scale 1. For each
+processed, failed, timed-out, late, rejected and dropped total, its bound is
+`N * (ceil(S / N) + 1) * (1 + faults) + 0.02 * scaleOneTotal`, where `S` is the smallest pool.
+Latency p50/p95 comparisons apply only when all pools are divisible by `N`. Named regressions cover
+the corrected zero-work case and the four known gaps; I1 is not yet a full generated property.
+Existing generated checks for outcomes, admission, cleanup and determinism retain their coverage.
+
 ## Planning revision p3: managed admission
 
 New diagrams use `diagrams/v2` with `planning: { revision: "p3" }`. Legacy, p1 and p2
