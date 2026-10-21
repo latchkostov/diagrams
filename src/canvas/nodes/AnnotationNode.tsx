@@ -1,10 +1,20 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import { queueShapeMeasurement } from "../shapes/measurementQueue";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useSyncExternalStore,
+  useRef,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import {
   Handle,
   NodeResizeControl,
   ResizeControlVariant,
-  useKeyPress,
   useReactFlow,
+  useStoreApi,
   type NodeProps,
 } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
@@ -12,7 +22,13 @@ import type { AnnotationKind } from "../../model/types";
 import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLabel, minSize } from "../annotations";
 import { MarkdownView } from "../../components/markdown/lazy";
 import { AnnotationEditor } from "./AnnotationEditor";
+import { geometrySnapshot, subscribeGeometry, isDefaultShape, loadShapeGeometry } from "../shapes/geometry";
+import { LOAD_FAILED } from "../../lib/lazyLoad";
+import { t } from "../../i18n";
+import { notify } from "../../interop/ui/toast";
 import { ShapeOutline } from "./ShapeOutline";
+import { shapeHandles, loadShapeAttachments } from "../shapes/attachment";
+import { beginShapeResize, endShapeResize, shapeResizeModifier } from "../shapes/resize";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
@@ -41,6 +57,46 @@ function AnnotationNodeImpl({
   const isEditing = editing?.kind === "annotation" && editing.id === id;
   const w = width ?? 0;
   const h = height ?? 0;
+  const root = useRef<HTMLDivElement>(null);
+  const store = useStoreApi<FlowNode>();
+  const geometryReady = useSyncExternalStore(subscribeGeometry, geometrySnapshot, geometrySnapshot);
+  useEffect(() => {
+    if (kind !== "shape") return;
+    const load = () =>
+      void Promise.all([
+        loadShapeAttachments(),
+        ...(isDefaultShape(data.shape ?? "rect") ? [] : [loadShapeGeometry()]),
+      ]).catch(() => {
+        notify(LOAD_FAILED, {
+          kind: "error",
+          action: { label: t("common.retry"), run: load, testId: "lazy-load-retry" },
+        });
+      });
+    load();
+  }, [kind, data.shape]);
+  const outline = useRef({ kind, shape: data.shape, w, h, geometryReady });
+  useLayoutEffect(() => {
+    const previous = outline.current;
+    outline.current = { kind, shape: data.shape, w, h, geometryReady };
+    // ResizeObserver can measure before NodeProps receives the new dimensions. Measure again
+    // after the handles render at their new positions; initial mounts still use the observer.
+    if (
+      kind === "shape" &&
+      (previous.kind !== kind ||
+        previous.shape !== data.shape ||
+        previous.w !== w ||
+        previous.h !== h ||
+        previous.geometryReady !== geometryReady)
+    ) {
+      const nodeElement = root.current?.parentElement;
+      if (nodeElement instanceof HTMLDivElement) queueShapeMeasurement(store, id, nodeElement);
+    }
+  }, [kind, data.shape, w, h, geometryReady, id, store]);
+  const handles = useMemo(() => {
+    // Geometry publication invalidates the per-node memo, even when its saved dimensions stay the same.
+    void geometryReady;
+    return isConnectable(kind) ? shapeHandles(data.shape ?? "rect", w, h) : undefined;
+  }, [kind, data.shape, w, h, geometryReady]);
   const startEdit = (e: ReactMouseEvent) => {
     e.stopPropagation();
     setEditing({ kind: "annotation", id });
@@ -118,10 +174,12 @@ function AnnotationNodeImpl({
 
   return (
     <div
+      ref={root}
       className={`ann ann-${kind} ann-s-${data.textSize ?? "m"}${kind === "shape" && isOpenShape(data.shape) ? " ann-shape-open" : ""}${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
       style={
         {
           "--ann": resolved.hex,
+          "--ann-height": `${h}px`,
         } as CSSProperties
       }
       data-testid={`annotation-${id}`}
@@ -142,17 +200,21 @@ function AnnotationNodeImpl({
       ) : (
         <div className={`ann-body${kind === "shape" ? ` ann-body-${data.shape ?? "rect"}` : ""}`}>{text}</div>
       )}
-      {isConnectable(kind) &&
-        SIDES.map((side) => (
-          <Handle
-            key={side}
-            id={side}
-            type="source"
-            position={sidePosition[side]}
-            className="dn-handle"
-            data-testid={`handle-${id}-${side}`}
-          />
-        ))}
+      {handles &&
+        SIDES.map((side) => {
+          const p = handles[side];
+          return (
+            <Handle
+              key={side}
+              id={side}
+              type="source"
+              position={sidePosition[side]}
+              className="dn-handle"
+              data-testid={`handle-${id}-${side}`}
+              style={{ left: p.x, top: p.y, right: "auto", bottom: "auto", transform: "translate(-50%, -50%)" }}
+            />
+          );
+        })}
       {selected && !isEditing && <Resizer id={id} kind={kind} />}
     </div>
   );
@@ -164,7 +226,8 @@ const LINES = ["top", "right", "bottom", "left"] as const;
 /** Resize handles on the selection: corner squares (with test ids) and draggable edges. */
 function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
   const m = minSize[kind];
-  const shiftPressed = useKeyPress("Shift");
+  const store = useStoreApi<FlowNode>();
+  useEffect(() => () => endShapeResize(store.getState), [store]);
   return (
     <>
       {LINES.map((p) => (
@@ -185,7 +248,8 @@ function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
         <NodeResizeControl
           key={p}
           position={p}
-          keepAspectRatio={shiftPressed}
+          onResizeStart={(_, size) => beginShapeResize(store.getState, id, p, size)}
+          onResize={(e) => shapeResizeModifier(store.getState, !!e.sourceEvent.shiftKey)}
           minWidth={m.width}
           minHeight={m.height}
           maxWidth={ANNOTATION_LIMITS.maxAnnotationSize}

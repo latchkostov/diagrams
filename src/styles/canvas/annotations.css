@@ -296,11 +296,15 @@
 }
 
 .ann-shape .ann-body-tri {
-  padding: 25% 15% 10% 15%;
+  padding: calc(var(--ann-height) * 0.25) 25% calc(var(--ann-height) * 0.1);
 }
 
 .ann-shape .ann-body-flip-tri {
-  padding: 10% 15% 25% 15%;
+  padding: calc(var(--ann-height) * 0.1) 25% calc(var(--ann-height) * 0.25);
+}
+
+.ann-shape .ann-body-win-pane {
+  padding: calc(var(--ann-height) * 0.2 + 8px) 12px 8px calc(20% + 12px);
 }
 
 .ann-shape .ann-body-hourglass {

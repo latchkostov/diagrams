@@ -5,8 +5,57 @@ import { parseMermaid, looksLikeMermaid } from "./read";
 import { diagramToMermaid } from "./write";
 import { getStencil } from "../../stencils/registry";
 import { MERMAID_SHAPES } from "./shapes";
+import { parse as parseYaml } from "yaml";
 
 describe("annotation shape syntax", () => {
+  it.each([
+    ["'done}; retry'", "done}; retry"],
+    ["'opening {; brace'", "opening {; brace"],
+    ["'Ada''s }; \"invoice'", "Ada's }; \"invoice"],
+    [String.raw`"escaped \"}; quote"`, 'escaped "}; quote'],
+  ])("quoted labels preserve delimiters and subsequent statements: %s", (scalar, label) => {
+    const { diagram } = parseMermaid(
+      `flowchart LR\na@{ shape: doc, label: ${scalar} } --> b[Next]; b --> c[Last]; c --> a`,
+    );
+    expect(diagram.nodes.map((n) => [n.id, n.label])).toEqual([
+      ["a", label],
+      ["b", "Next"],
+      ["c", "Last"],
+    ]);
+    expect(diagram.edges.map((e) => [e.from, e.to])).toEqual([
+      ["a", "b"],
+      ["b", "c"],
+      ["c", "a"],
+    ]);
+  });
+  it.each(["C:\\Users\\Ada", "C:\\temp", "trailing\\", "literal\\n\\t\\u1234", 'slash\\"quote', "tab\tbetween"])(
+    "round-trips extended YAML label %s",
+    (label) => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Escapes",
+        nodes: [],
+        edges: [],
+        annotations: [{ id: "a", kind: "shape", shape: "doc", text: label, x: 0, y: 0, width: 160, height: 90 }],
+      };
+      const exported = diagramToMermaid(d, { metadata: false });
+      const attributes = exported.match(/@\{([^\n]+)\}/)![1];
+      const parsed = parseYaml(`{${attributes}}`) as { label: string };
+      expect(parsed.label.replace(/#quot;/g, '"')).toBe(label);
+      expect(parseMermaid(exported).diagram.nodes[0].label).toBe(label);
+    },
+  );
+  it.each([
+    [String.raw`"\x41"`, "A"],
+    [String.raw`"a\_b"`, "a\u00a0b"],
+    ['"literal\ttab"', "literal\ttab"],
+    ["'Ada''s, {invoice}'", "Ada's, {invoice}"],
+    ["Ada's invoice", "Ada's invoice"],
+  ])("imports external YAML scalar %s and preserves its following connection", (scalar, decoded) => {
+    const result = parseMermaid(`flowchart LR\na@{ shape: doc, label: ${scalar} } --> b[Next]`);
+    expect(result.diagram.nodes.map((n) => n.label)).toEqual([decoded, "Next"]);
+    expect(result.diagram.edges).toMatchObject([{ from: "a", to: "b" }]);
+  });
   for (const [shape, syntax] of Object.entries(MERMAID_SHAPES)) {
     it(`${shape} preserves labels through writer and reader`, () => {
       const label = 'Payload {id}, "invoice"';

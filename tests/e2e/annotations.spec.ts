@@ -2,6 +2,7 @@ import { TEXT_END } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { annotationShapesFixture } from "../../src/lab/annotationShapesFixture";
+import { pickSides } from "../../src/canvas/edges/routing";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -16,6 +17,8 @@ import {
   emptyCanvasPoint,
   waitForCameraIdle,
   waitForStableViewport,
+  pauseClock,
+  fitDiagram,
 } from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
@@ -102,25 +105,571 @@ async function seed(page: Page, diagram: unknown) {
 }
 
 test.describe("annotations", () => {
-  test("shape labels reserve their outline-specific padding", async ({ page }) => {
-    await seed(page, annotationShapesFixture());
+  test("moving more shapes than the shared handle cache retains reuses each node's handles", async ({ page }) => {
+    const count = 129;
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Memoized handles",
+      nodes: [],
+      edges: [],
+      annotations: Array.from({ length: count }, (_, i) => ({
+        id: `memo-${i}`,
+        kind: "shape",
+        shape: i === count - 1 ? "tri" : "ellipse",
+        text: "",
+        x: (i % 13) * 300,
+        y: Math.floor(i / 13) * 160,
+        width: 160 + i,
+        height: 90,
+      })),
+    });
     await gotoCanvas(page, SLUG);
-    for (const [shape, expected] of [
-      ["tri", [60, 36, 24, 36]],
-      ["flip-tri", [24, 36, 60, 36]],
-      ["trap-t", [8, 38.4, 8, 38.4]],
-      ["braces", [8, 38.4, 8, 38.4]],
-      ["comment", [8, 12, 8, 43.2]],
-      ["brace-r", [8, 43.2, 8, 12]],
-    ] as const) {
-      const padding = await page.getByTestId(`annotation-text-outline-${shape}`).evaluate((el) => {
-        if (!el.parentElement) throw new Error("Missing annotation body");
-        const style = getComputedStyle(el.parentElement);
-        return [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].map(parseFloat);
+    // The last outline publishes only after attachment geometry is ready for every node.
+    await expect
+      .poll(() =>
+        annotation(page, `memo-${count - 1}`)
+          .getByTestId("shape-outline")
+          .evaluate((svg) => svg.firstElementChild?.tagName),
+      )
+      .toBe("polygon");
+    await annotation(page, "memo-0").click();
+    await waitForSelectionSettled(page);
+    await page.evaluate(() => {
+      const cos = Math.cos;
+      document.documentElement.dataset.outlineSamples = "0";
+      Math.cos = (value: number) => {
+        document.documentElement.dataset.outlineSamples = String(
+          Number(document.documentElement.dataset.outlineSamples) + 1,
+        );
+        return cos(value);
+      };
+    });
+    await page.keyboard.press(`${MOD}+a`);
+    await waitForSelectionSettled(page);
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(async () => (await savedDiagram(page)).annotations?.[0].x).toBe(10);
+    // Sampling an ellipse's attachment outline calls cos for each segment. Moving and selection
+    // keep the dimensions: even a selection larger than the shared cache must not resample.
+    expect(await page.evaluate(() => Number(document.documentElement.dataset.outlineSamples))).toBeLessThan(
+      Math.min(24, count / 8),
+    );
+  });
+
+  test("default outlines do not download the extended catalog until a non-default shape is rendered", async ({
+    page,
+  }) => {
+    test.skip(process.env.E2E_TARGET !== "build", "Checks the production chunk boundary");
+    let downloads = 0;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(/\/assets\/extendedGeometry-[^/]+\.js$/, async (route) => {
+      downloads++;
+      await held;
+      await route.continue();
+    });
+    try {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Deferred outline",
+        nodes: [],
+        annotations: [
+          { id: "source", kind: "shape", shape: "rect", text: "Source", x: 0, y: 0, width: 160, height: 90 },
+          { id: "target", kind: "shape", shape: "cylinder", text: "Target", x: 500, y: 0, width: 160, height: 90 },
+        ],
+        edges: [{ id: "connection", from: "source", to: "target" }],
       });
-      expected.forEach((value, i) => expect(padding[i], `${shape}, side ${i}`).toBeCloseTo(value, 1));
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "source").click();
+      await waitForSelectionSettled(page);
+      expect(downloads).toBe(0);
+      await page.getByTestId("inspector-more-shapes-btn").click();
+      await page.getByTestId("shape-picker-search").fill("triangle");
+      await page.getByTestId("context-menu-item-pick-shape:tri").click();
+      await expect.poll(() => downloads).toBe(1);
+      const outline = annotation(page, "source").getByTestId("shape-outline");
+      expect(await outline.evaluate((svg) => svg.firstElementChild?.tagName)).toBe("rect");
+      const dimensions = await outline.evaluate((svg) => [svg.getAttribute("width"), svg.getAttribute("height")]);
+      const handle = page.getByTestId("handle-source-right");
+      const before = (await handle.getAttribute("style")) ?? "";
+      expect(before).not.toBe("");
+      const endpoint = (locator: Locator) =>
+        locator.evaluate((root) => {
+          const path = root.children[0];
+          if (!(path instanceof SVGPathElement)) throw new Error("Missing connection path");
+          const matrix = path.getScreenCTM();
+          if (!matrix) throw new Error("Missing path transform");
+          const point = path.getPointAtLength(0).matrixTransform(matrix);
+          return { x: point.x, y: point.y };
+        });
+      const edge = page.getByTestId("edge-connection");
+      const distance = async (locator: Locator) => {
+        const point = await endpoint(locator);
+        const bounds = await box(handle);
+        return Math.hypot(point.x - bounds.x - bounds.width / 2, point.y - bounds.y - bounds.height / 2);
+      };
+      await expect.poll(() => distance(edge)).toBeLessThan(1);
+      const originalPath = await edge.evaluate((el) => el.firstElementChild?.getAttribute("d"));
+      release();
+      await expect.poll(() => outline.evaluate((svg) => svg.firstElementChild?.tagName)).toBe("polygon");
+      expect(await outline.evaluate((svg) => [svg.getAttribute("width"), svg.getAttribute("height")])).toEqual(
+        dimensions,
+      );
+      await expect(handle).not.toHaveAttribute("style", before);
+      await expect.poll(() => edge.evaluate((el) => el.firstElementChild?.getAttribute("d"))).not.toBe(originalPath);
+      await expect.poll(() => distance(edge)).toBeLessThan(1);
+      const from = await box(handle);
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(from.x + from.width / 2 + 80, from.y + from.height / 2 + 40, { steps: 8 });
+      const preview = page.getByTestId("connection-line");
+      await expect(preview).toBeVisible();
+      await expect.poll(() => distance(preview)).toBeLessThan(1);
+      await page.keyboard.press("Escape");
+      await page.mouse.up();
+      expect(downloads).toBe(1);
+    } finally {
+      release();
     }
   });
+
+  test("every shape handle meets its visible stroke", async ({ page }) => {
+    const fixture = annotationShapesFixture();
+    fixture.annotations = fixture.annotations
+      ?.filter((a) => a.id.startsWith("outline-"))
+      .map((a) => ({ ...a, width: a.shape === "delay" ? 40 : 160, height: a.shape === "delay" ? 100 : 90 }));
+    await seed(page, fixture);
+    await gotoCanvas(page, SLUG);
+    const distances = await page.getByTestId(/^annotation-outline-/).evaluateAll((roots) =>
+      roots.flatMap((root) => {
+        const svg = root.querySelector('[data-testid="shape-outline"]');
+        if (!(svg instanceof SVGSVGElement)) throw new Error("Missing outline");
+        const bounds = svg.getBBox();
+        if (
+          bounds.x < 0 ||
+          bounds.y < 0 ||
+          bounds.x + bounds.width > svg.width.baseVal.value ||
+          bounds.y + bounds.height > svg.height.baseVal.value
+        )
+          throw new Error("Outline exceeds its shape bounds");
+        const strokes = Array.from(svg.children).filter(
+          (el): el is SVGGeometryElement => el instanceof SVGGeometryElement && getComputedStyle(el).stroke !== "none",
+        );
+        // The four handles share the same stroke. Keep every sample and the same tolerance,
+        // but make the expensive browser geometry calls once per stroke, rather than per handle.
+        const samples = strokes.flatMap((stroke) => {
+          const length = stroke.getTotalLength();
+          return Array.from({ length: 2049 }, (_, i) => stroke.getPointAtLength((length * i) / 2048));
+        });
+        return Array.from(root.querySelectorAll('[data-testid^="handle-"]')).map((handle) => {
+          if (!(handle instanceof HTMLElement)) throw new Error("Missing handle");
+          const x = parseFloat(handle.style.left),
+            y = parseFloat(handle.style.top);
+          const distance = samples.reduce((nearest, p) => Math.min(nearest, Math.hypot(x - p.x, y - p.y)), Infinity);
+          return { id: handle.getAttribute("data-testid"), distance };
+        });
+      }),
+    );
+    expect(distances).toHaveLength(44 * 4);
+    for (const { id, distance } of distances) expect(distance, id ?? "handle").toBeLessThan(0.5);
+  });
+
+  test("mounting and pasting shapes rely on batched observer measurements", async ({ page }) => {
+    await page.addInitScript(() => {
+      const state = { forcedQueries: 0 };
+      Object.assign(window, { __shapeMeasurements: state });
+      const original = Element.prototype.querySelector;
+      Element.prototype.querySelector = function (selector: string) {
+        // React Flow's explicit updateInternals queries a node by data-id; ResizeObserver does not.
+        if (selector.includes("data-id=")) state.forcedQueries++;
+        return original.call(this, selector);
+      };
+    });
+    await seed(page, annotationShapesFixture());
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "outline-rect").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+c");
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(page.getByTestId(/^annotation-/).filter({ has: page.getByTestId("shape-outline") })).toHaveCount(116);
+    await waitForSelectionSettled(page);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as Window & { __shapeMeasurements?: { forcedQueries: number } }).__shapeMeasurements?.forcedQueries,
+      ),
+    ).toBe(0);
+  });
+
+  for (const operation of ["pasted", "resized", "height-resized", "reshaped"] as const)
+    test(`${operation} handles use current connection geometry`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Measured connections",
+        nodes: [],
+        edges: [],
+        annotations: [
+          { id: "source", kind: "shape", shape: "rect", text: "Source", x: 0, y: 0, width: 160, height: 90 },
+          { id: "target", kind: "shape", shape: "rect", text: "Target", x: 600, y: 120, width: 160, height: 90 },
+        ],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "source").click();
+      await waitForSelectionSettled(page);
+      let source = "source";
+      if (operation === "pasted") {
+        await page.keyboard.press(`${MOD}+c`);
+        await page.keyboard.press(`${MOD}+v`);
+        await expect(page.getByTestId(/^annotation-/).filter({ has: page.getByTestId("shape-outline") })).toHaveCount(
+          3,
+        );
+        await expect.poll(async () => (await savedDiagram(page)).annotations?.length).toBe(3);
+        const copy = (await savedDiagram(page)).annotations?.find((a) => a.id !== "source" && a.id !== "target");
+        if (!copy) throw new Error("Missing pasted shape");
+        source = copy.id;
+      } else if (operation === "reshaped") {
+        await page.getByTestId("inspector-more-shapes-btn").click();
+        await page.getByTestId("shape-picker-search").fill("triangle");
+        await page.getByTestId("context-menu-item-pick-shape:tri").click();
+        await expect(annotation(page, source)).toHaveAttribute("data-shape", "tri");
+      } else {
+        const dimension = operation === "resized" ? "width" : "height";
+        const field = page.getByTestId(`inspector-field-${dimension}`);
+        await field.fill("300");
+        await field.press("Enter");
+        await expect
+          .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id === source)?.[dimension])
+          .toBe(300);
+      }
+      await waitForSelectionSettled(page);
+      // Clear the resize grips before connecting: a rectangle's border grip shares its handle's position.
+      await page.getByTestId("canvas-wrap").focus();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+      await fitDiagram(page);
+      await waitForStableBox(annotation(page, source));
+      const from = await box(page.getByTestId(`handle-${source}-right`));
+      const to = await box(page.getByTestId("handle-target-left"));
+      const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+      const end = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+      // Read the path in screen coordinates, the same coordinate space as the rendered handles.
+      const endpoints = (locator: Locator) =>
+        locator.evaluate((root) => {
+          const path = root.children[0];
+          if (!(path instanceof SVGPathElement)) throw new Error("Missing connection path");
+          const matrix = path.getScreenCTM();
+          if (!matrix) throw new Error("Missing path transform");
+          const start = path.getPointAtLength(0).matrixTransform(matrix);
+          const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(matrix);
+          return { start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y } };
+        });
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 8 });
+      const preview = page.getByTestId("connection-line");
+      await expect(preview).toBeVisible();
+      await expect
+        .poll(async () => {
+          const point = (await endpoints(preview)).start;
+          return Math.hypot(point.x - start.x, point.y - start.y);
+        })
+        .toBeLessThan(1);
+      await page.mouse.up();
+      await expect.poll(async () => (await savedDiagram(page)).edges).toMatchObject([{ from: source, to: "target" }]);
+      const saved = await savedDiagram(page);
+      const edge = saved.edges[0];
+      // New connections save automatic sides; verify their resolved sides as well as their endpoints.
+      expect(edge.sourceSide).toBeUndefined();
+      expect(edge.targetSide).toBeUndefined();
+      const sourceBox = saved.annotations?.find((a) => a.id === source);
+      const targetBox = saved.annotations?.find((a) => a.id === "target");
+      if (!sourceBox || !targetBox) throw new Error("Missing saved connection endpoint");
+      expect(pickSides(sourceBox, targetBox, edge)).toEqual({ sourceSide: "right", targetSide: "left" });
+      // Selecting the edge can pan the canvas: remeasure both handles with the path each poll.
+      await expect
+        .poll(async () => {
+          const path = await endpoints(page.getByTestId(`edge-${edge.id}`));
+          const a = await box(page.getByTestId(`handle-${source}-right`));
+          const b = await box(page.getByTestId("handle-target-left"));
+          return Math.max(
+            Math.hypot(path.start.x - a.x - a.width / 2, path.start.y - a.y - a.height / 2),
+            Math.hypot(path.end.x - b.x - b.width / 2, path.end.y - b.y - b.height / 2),
+          );
+        })
+        .toBeLessThan(1);
+    });
+
+  for (const shape of ["hourglass", "comment", "brace-r"] as const)
+    test(`${shape} opposite handles independently start connections`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Distinct ports",
+        nodes: [],
+        edges: [],
+        annotations: [{ id: "shape", kind: "shape", shape, text: "", x: 0, y: 0, width: 160, height: 90 }],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "shape").click();
+      await waitForSelectionSettled(page);
+      for (const side of ["left", "right"] as const) {
+        const handle = page.getByTestId(`handle-shape-${side}`);
+        await expect(handle).toBeVisible();
+        const hit = await handle.evaluate((element) => {
+          const r = element.getBoundingClientRect();
+          return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.getAttribute("data-testid");
+        });
+        expect(hit).toBe(`handle-shape-${side}`);
+        const r = await box(handle);
+        await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(r.x + (side === "right" ? 70 : -70), r.y, { steps: 4 });
+        await expect(page.getByTestId("connection-line")).toBeVisible();
+        await page.mouse.up();
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("context-menu")).toHaveCount(0);
+      }
+    });
+
+  test("bulk selection adds no per-annotation Shift listeners", async ({ page }) => {
+    await seed(page, annotationShapesFixture());
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "outline-rect").click();
+    await waitForSelectionSettled(page);
+    await page.evaluate(() => {
+      const w = window as Window & { __modifierListeners?: number };
+      w.__modifierListeners = 0;
+      const original = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (type, listener, options) {
+        if ((this === window || this === document) && (type === "keydown" || type === "keyup"))
+          w.__modifierListeners = (w.__modifierListeners ?? 0) + 1;
+        return original.call(this, type, listener, options);
+      };
+    });
+    await page.keyboard.press("ControlOrMeta+a");
+    await expect(page.getByTestId(/^annotation-resize-.*-bottom-right$/)).toHaveCount(58);
+    expect(
+      await page.evaluate(() => (window as Window & { __modifierListeners?: number }).__modifierListeners),
+    ).toBeLessThanOrEqual(4);
+  });
+
+  test("connected preview follows the destination and matches shape creation", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Destination",
+      nodes: [],
+      edges: [],
+      annotations: [{ id: "source", kind: "shape", shape: "tri", text: "Source", x: 0, y: 0, width: 400, height: 240 }],
+    });
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "source").click();
+    await waitForSelectionSettled(page);
+    await page.keyboard.press("Alt+ArrowRight");
+    const outline = page.getByTestId("landing-outline");
+    await expect(outline).toHaveCSS("width", "220px");
+    const menu = page.getByTestId("quick-add");
+    await waitForStableViewport(page);
+    await waitForStableBox(menu);
+    const menuBefore = await box(menu);
+    await page.getByTestId("context-menu-item-quick-add:shapes").hover();
+    await page.getByTestId("context-menu-item-quick-add-shape:cat:basic").hover();
+    await expect(page.getByTestId("context-menu-item-quick-add-shape:hexagon")).toBeVisible();
+    await expect(outline).toHaveCSS("width", "160px");
+    expect((await box(menu)).x).toBeCloseTo(menuBefore.x, 1);
+    const search = page.getByTestId("quick-add-search");
+    await search.focus();
+    await page.keyboard.type("hexagon");
+    await expect(outline).toHaveCSS("width", "160px");
+    const preview = await outline.evaluate((el) => ({
+      transform: el.style.transform,
+      width: parseFloat(el.style.width),
+      height: parseFloat(el.style.height),
+    }));
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect
+      .poll(async () => (await savedDiagram(page)).annotations?.find((a) => a.id !== "source"))
+      .toMatchObject({ width: preview.width, height: preview.height });
+    const added = (await savedDiagram(page)).annotations?.find((a) => a.id !== "source");
+    if (!added) throw new Error("Missing new shape");
+    expect(preview.transform).toBe(`translate(${added.x}px, ${added.y}px)`);
+  });
+  for (const shape of ["tri", "flip-tri"] as const)
+    test(`${shape} labels remain visible after wide, short resizing`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Visible labels",
+        nodes: [],
+        edges: [],
+        annotations: [{ id: "shape", kind: "shape", shape, text: "Invoice", x: 0, y: 0, width: 160, height: 90 }],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "shape").click();
+      await waitForSelectionSettled(page);
+      await page.getByTestId("inspector-field-width").fill("400");
+      await page.getByTestId("inspector-field-width").press("Enter");
+      await waitForStableBox(annotation(page, "shape"));
+      const bounds = await page.getByTestId("annotation-text-shape").evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const text = range.getBoundingClientRect();
+        const shape = el.parentElement?.parentElement;
+        if (!shape) throw new Error("Missing shape");
+        const root = shape.getBoundingClientRect();
+        return {
+          left: (text.left - root.left) / root.width,
+          right: (text.right - root.left) / root.width,
+          top: (text.top - root.top) / root.height,
+          bottom: (text.bottom - root.top) / root.height,
+        };
+      });
+      expect(bounds.top).toBeGreaterThan(0);
+      expect(bounds.bottom).toBeLessThan(1);
+      const narrowest = shape === "tri" ? bounds.top : 1 - bounds.bottom;
+      expect(bounds.left).toBeGreaterThan((1 - narrowest) / 2);
+      expect(bounds.right).toBeLessThan((1 + narrowest) / 2);
+    });
+
+  test("window-pane dividers leave rendered label glyphs clear", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Window",
+      nodes: [],
+      edges: [],
+      annotations: [
+        { id: "shape", kind: "shape", shape: "win-pane", text: "Invoice", x: 0, y: 0, width: 160, height: 90 },
+      ],
+    });
+    await gotoCanvas(page, SLUG);
+    const clear = await annotation(page, "shape").evaluate((root) => {
+      const text = root.querySelector('[data-testid="annotation-text-shape"]');
+      if (!text) throw new Error("Missing label");
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const r = range.getBoundingClientRect();
+      const svg = root.querySelector('[data-testid="shape-outline"]');
+      if (!svg) throw new Error("Missing outline");
+      return Array.from(svg.children)
+        .slice(1)
+        .every((line) => {
+          const b = line.getBoundingClientRect();
+          return b.right < r.left || b.left > r.right || b.bottom < r.top || b.top > r.bottom;
+        });
+    });
+    expect(clear).toBe(true);
+  });
+
+  test("Shift-resizing a new ellipse produces a circle and releasing Shift allows a rectangle", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Square",
+      nodes: [],
+      edges: [],
+      annotations: [
+        { id: "shape", kind: "shape", shape: "ellipse", text: "Circle", x: 0, y: 0, width: 160, height: 90 },
+      ],
+    });
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "shape").click();
+    await waitForSelectionSettled(page);
+    const handle = page.getByTestId("annotation-resize-shape-bottom-right");
+    const drag = async (dx: number, dy: number) => {
+      const r = await box(handle);
+      await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(r.x + dx, r.y + dy, { steps: 8 });
+      await page.mouse.up();
+    };
+    await page.keyboard.down("Shift");
+    await drag(80, 30);
+    await page.keyboard.up("Shift");
+    await expect
+      .poll(async () => {
+        const a = (await savedDiagram(page)).annotations?.[0];
+        if (!a) throw new Error("Missing shape");
+        return a.width - a.height;
+      })
+      .toBe(0);
+    await waitForStableBox(handle);
+    await drag(80, 0);
+    await expect
+      .poll(async () => {
+        const a = (await savedDiagram(page)).annotations?.[0];
+        if (!a) throw new Error("Missing shape");
+        return a.width > a.height;
+      })
+      .toBe(true);
+  });
+
+  test("releasing Shift during a top-right resize restores the opposite corner", async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Anchored resize",
+      nodes: [],
+      edges: [],
+      annotations: [{ id: "shape", kind: "shape", text: "", x: 100, y: 200, width: 160, height: 90 }],
+    });
+    await gotoCanvas(page, SLUG);
+    await annotation(page, "shape").click();
+    await waitForSelectionSettled(page);
+    const handle = page.getByTestId("annotation-resize-shape-top-right");
+    await waitForStableBox(handle);
+    const r = await box(handle);
+    const x = r.x + r.width / 2,
+      y = r.y + r.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.keyboard.down("Shift");
+    await page.mouse.move(x + 60, y, { steps: 8 });
+    await expect
+      .poll(async () => {
+        const b = await box(annotation(page, "shape"));
+        return Math.abs(b.width - b.height);
+      })
+      .toBeLessThan(1);
+    await page.keyboard.up("Shift");
+    await page.mouse.move(x + 100, y, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await savedDiagram(page)).annotations?.[0])
+      .toMatchObject({ x: 100, y: 200, height: 90 });
+    expect((await savedDiagram(page)).annotations?.[0].width).toBeGreaterThan(160);
+  });
+
+  for (const finish of ["Escape", "ControlOrMeta+Enter"])
+    test(`placement buffers annotation newlines and saves with ${finish}`, async ({ page }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Typing",
+        nodes: [{ id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 }],
+        edges: [],
+      });
+      await gotoCanvas(page, SLUG);
+      await page.getByTestId("node-web").click();
+      await waitForSelectionSettled(page);
+      await page.keyboard.press("Alt+ArrowRight");
+      const search = page.getByTestId("quick-add-search");
+      await expect(search).toBeFocused();
+      await page.keyboard.type("hexagon");
+      await page.clock.install();
+      await pauseClock(page);
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+      await page.keyboard.type("alpha");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("beta");
+      await page.keyboard.press(finish);
+      await page.clock.resume();
+      await expect(page.getByTestId("annotation-text-shape-1")).toHaveText("alpha\nbeta");
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+      await expect
+        .poll(() => annotation(page, "shape-1").evaluate((el) => document.activeElement === el.parentElement))
+        .toBe(true);
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("annotation-editor")).toBeFocused();
+      await page.keyboard.press("Escape");
+    });
 
   test("solid shape labels meet WCAG AA across the preset colours in light and dark", async ({ page }) => {
     await seed(page, annotationShapesFixture());

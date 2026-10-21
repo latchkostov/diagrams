@@ -13,8 +13,12 @@ export interface TypeAhead {
 type Key = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey">;
 
 /** The next state for a key, or null when the key isn't for the name (it's left alone). */
-export function typeAheadKey(s: TypeAhead, e: Key): TypeAhead | null {
-  if (s.done || e.ctrlKey || e.metaKey || e.altKey) return null;
+export function typeAheadKey(s: TypeAhead, e: Key, multiline = false): TypeAhead | null {
+  if (s.done) return null;
+  if (multiline && e.key === "Enter")
+    return e.ctrlKey || e.metaKey ? { ...s, done: "enter" } : { text: (s.text ?? "") + "\n" };
+  if (multiline && e.key === "Tab") return { ...s, done: "enter" };
+  if (e.ctrlKey || e.metaKey || e.altKey) return null;
   if (e.key === "Enter") return { ...s, done: "enter" };
   if (e.key === "Escape") return { ...s, done: "escape" };
   // The name starts selected: the first key replaces it, as it would in the editor.
@@ -34,12 +38,12 @@ export const typeAheadActive = () => captures.length > 0;
  * while its card is measured, or for the palette's search while it loads. `stop` ends it and returns what
  * was typed; calling it again returns the same.
  */
-export function captureTypeAhead(): { stop: () => TypeAhead } {
+export function captureTypeAhead(multiline: () => boolean = () => false): { stop: () => TypeAhead } {
   const me = { state: { text: null } as TypeAhead };
   captures.push(me);
   const onKey = (e: KeyboardEvent) => {
     if (captures[captures.length - 1] !== me || e.isComposing) return;
-    const next = typeAheadKey(me.state, e);
+    const next = typeAheadKey(me.state, e, multiline());
     if (!next) return;
     me.state = next;
     e.preventDefault();

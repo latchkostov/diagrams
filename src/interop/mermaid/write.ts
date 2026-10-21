@@ -118,8 +118,9 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
     if (brackets) {
       lines.push(`  ${id}${brackets[0]}"${text}"${brackets[1]}`);
     } else {
-      const label = text.replace(/\{/g, "#123;").replace(/\}/g, "#125;");
-      lines.push(`  ${id}@{ shape: ${syntax.shape}, label: "${label}" }`);
+      // JSON's quoted strings are a YAML-safe subset, including backslashes and control characters.
+      const label = JSON.stringify(text.replace(/\{/g, "#123;").replace(/\}/g, "#125;"));
+      lines.push(`  ${id}@{ shape: ${syntax.shape}, label: ${label} }`);
     }
   }
 

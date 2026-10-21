@@ -8,7 +8,9 @@ export class MemoryBudgetError extends Error {
 }
 
 /** Node/libuv detects cgroup v1/v2 limits; zero means unavailable or unconstrained. */
-export function validateMemoryBudget(config: Pick<ServerConfig, "totalBufferBytes">): void {
-  const limit = process.constrainedMemory();
+export function validateMemoryBudget(
+  config: Pick<ServerConfig, "totalBufferBytes">,
+  limit = process.constrainedMemory(),
+): void {
   if (limit > 0 && config.totalBufferBytes > Math.floor(limit / 4)) throw new MemoryBudgetError();
 }

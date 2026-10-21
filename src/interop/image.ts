@@ -10,6 +10,10 @@ import { MarkdownView, loadMarkdown } from "../components/markdown/lazy";
 
 import { dataUrlToBlob } from "./files";
 import { holdInput } from "../lib/inputHold";
+import type { AnnotationShape } from "../model/types";
+import { whenShapeGeometryReady } from "../canvas/shapes/readiness";
+import { geometrySnapshot } from "../canvas/shapes/runtime";
+import { t } from "../i18n";
 
 export interface ImageOptions {
   /** Pixel ratio for PNG (1 or 2). */
@@ -129,12 +133,26 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   const releaseInput = holdInput(opts.onEscape);
   let slicer: import("./imageClone").Slicer | undefined;
   try {
+    await unlessCancelled(
+      whenShapeGeometryReady({
+        annotations: Array.from(viewport.querySelectorAll<HTMLElement>('[data-kind="shape"][data-shape]'), (el) => ({
+          kind: "shape",
+          shape: el.dataset.shape as AnnotationShape,
+        })),
+      }),
+      opts.signal,
+    );
+    const geometryRevision = geometrySnapshot();
+    const check = () => {
+      opts.check?.();
+      if (geometrySnapshot() !== geometryRevision) throw new Error(t("storageDialog.tryAgain"));
+    };
     // Insert the header before yielding, then finish its Markdown before finding images or measuring it.
     // Loading belongs inside the input hold and cleanup, including cancellation and failed downloads.
     await unlessCancelled(loadMarkdown(), opts.signal);
-    opts.check?.();
+    check();
     if (header) await unlessCancelled(header.ready(), opts.signal);
-    opts.check?.();
+    check();
     const b = header ? unionBounds(content, header.measure()) : content;
     const pad = opts.padding ?? 48;
     const width = Math.ceil(b.width + pad * 2);
@@ -156,7 +174,7 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
     slicer = new Slicer(viewport.getElementsByTagName("*").length, {
       signal: opts.signal,
       onProgress: opts.onProgress,
-      check: opts.check,
+      check,
     });
     slicer.progress(0.02);
     // Edge arrowheads are defined in an <svg><defs> outside the viewport; clone them inside for the shot.

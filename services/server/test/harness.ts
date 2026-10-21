@@ -12,7 +12,12 @@ export { WebSocket, rawBytes };
 export async function startServer(env: Record<string, string> = {}, clock?: Clock) {
   const logs: string[] = [];
   const config = readConfig({ LD_HOST: "127.0.0.1", LD_PORT: "0", LD_STATIC: "off", ...env });
-  const relay = createRelayServer({ config, clock, log: createLog((line) => logs.push(line)) });
+  const relay = createRelayServer({
+    config,
+    clock,
+    memoryLimit: 4 * 1024 ** 3,
+    log: createLog((line) => logs.push(line)),
+  });
   const origin = await relay.listen();
   onTestFinished(() => relay.close());
   return { ...relay, config, origin, url: `${origin.replace("http:", "ws:")}${config.base}collab/v1`, logs };

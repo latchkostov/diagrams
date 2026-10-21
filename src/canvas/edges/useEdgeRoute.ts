@@ -1,7 +1,8 @@
 import { useSettings } from "../../harness/settings";
 import { useDiagram } from "../DiagramContext";
 import { useShowDependencies } from "../dependencyVisibility";
-import { useCallback } from "react";
+import { geometrySnapshot, subscribeGeometry } from "../shapes/geometry";
+import { useSyncExternalStore, useCallback } from "react";
 import { useStore, type InternalNode, type ReactFlowState } from "@xyflow/react";
 import type { EdgeStyle } from "../../harness/edgeStyles";
 import {
@@ -75,6 +76,8 @@ function rectOf(n: InternalNode<FlowNode>): Rect {
 function sameRoutingNode(a: InternalNode<FlowNode>, b: InternalNode<FlowNode>): boolean {
   if (a === b) return true;
   if (a.id !== b.id || a.type !== b.type) return false;
+  if (a.type === "annotation" && (a.data as AnnotationNodeData).shape !== (b.data as AnnotationNodeData).shape)
+    return false;
   if (a.type === "boundary") {
     const x = a.data as GroupNodeData;
     const y = b.data as GroupNodeData;
@@ -123,7 +126,10 @@ export function routeInputFromStore(
     } else
       routeNodes.push({
         id: n.id,
-        rect,
+        rect:
+          n.type === "annotation" && (n.data as AnnotationNodeData).kind === "shape"
+            ? { ...rect, shape: (n.data as AnnotationNodeData).shape ?? "rect" }
+            : rect,
         extra:
           opts.captions && n.type === "diagram"
             ? { x: rect.x + rect.width / 2 - 90, y: rect.y + rect.height + 6, width: 180, height: 34 }
@@ -154,8 +160,12 @@ export function routeInputFromStore(
 }
 
 /** Routes for every edge in the store (memoised per store state). */
-export function selectRoutes(s: ReactFlowState<FlowNode, DiagramFlowEdge>, opts: RouteOptions): Map<string, EdgeRoute> {
-  const optsKey = `${opts.style}|${opts.direction}|${opts.captions ? 1 : 0}|${opts.hideDependencies ? 1 : 0}`;
+export function selectRoutes(
+  s: ReactFlowState<FlowNode, DiagramFlowEdge>,
+  opts: RouteOptions,
+  revision = geometrySnapshot(),
+): Map<string, EdgeRoute> {
+  const optsKey = `${opts.style}|${opts.direction}|${opts.captions ? 1 : 0}|${opts.hideDependencies ? 1 : 0}|${revision}`;
   let byOptions = entries.get(s.nodeLookup);
   if (!byOptions) {
     byOptions = new Map();
@@ -198,23 +208,26 @@ export function lastRoutingMs(s: ReactFlowState<FlowNode, DiagramFlowEdge>): num
 }
 
 export function useEdgeRoute(id: string, opts: RouteOptions): EdgeRoute | undefined {
+  const geometryReady = useSyncExternalStore(subscribeGeometry, geometrySnapshot, geometrySnapshot);
   const { style, direction, captions, hideDependencies } = opts;
   return useStore(
     useCallback(
       (s: ReactFlowState) =>
-        selectRoutes(s as unknown as State, { style, direction, captions, hideDependencies }).get(id),
-      [id, style, direction, captions, hideDependencies],
+        selectRoutes(s as unknown as State, { style, direction, captions, hideDependencies }, geometryReady).get(id),
+      [id, style, direction, captions, hideDependencies, geometryReady],
     ),
   );
 }
 
 /** Every route (for overlays such as the Lab's overlap audit). */
 export function useAllRoutes(opts: RouteOptions): Map<string, EdgeRoute> {
+  const geometryReady = useSyncExternalStore(subscribeGeometry, geometrySnapshot, geometrySnapshot);
   const { style, direction, captions, hideDependencies } = opts;
   return useStore(
     useCallback(
-      (s: ReactFlowState) => selectRoutes(s as unknown as State, { style, direction, captions, hideDependencies }),
-      [style, direction, captions, hideDependencies],
+      (s: ReactFlowState) =>
+        selectRoutes(s as unknown as State, { style, direction, captions, hideDependencies }, geometryReady),
+      [style, direction, captions, hideDependencies, geometryReady],
     ),
   );
 }

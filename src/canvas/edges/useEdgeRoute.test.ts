@@ -1,10 +1,42 @@
-import { expect, it, vi } from "vitest";
+import { loadShapeGeometry } from "../shapes/geometry";
+import { loadShapeAttachments } from "../shapes/attachment";
+import { beforeAll, expect, it, vi } from "vitest";
 import type { InternalNode, ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { selectRoutes } from "./useEdgeRoute";
 import { segmentHitsRect } from "../geometry/rect";
 import { annotationToFlow, nodeToFlow } from "../convert";
 import { Router } from "../geometry/router";
+
+it("changing a measured annotation outline invalidates attachments in the store cache", () => {
+  const internal = (n: FlowNode): InternalNode<FlowNode> => ({
+    ...n,
+    measured: { width: n.width ?? 160, height: n.height ?? 90 },
+    internals: { positionAbsolute: n.position, z: 0, userNode: n },
+  });
+  const annotation = {
+    id: "a",
+    kind: "shape" as const,
+    shape: "rect" as const,
+    text: "Shape",
+    x: 0,
+    y: 0,
+    width: 160,
+    height: 90,
+  };
+  const lookup = new Map<string, InternalNode<FlowNode>>([
+    ["a", internal(annotationToFlow(annotation))],
+    ["b", internal(nodeToFlow({ id: "b", stencil: "service.go", label: "B", x: 400, y: 0 }))],
+  ]);
+  const edges: DiagramFlowEdge[] = [{ id: "e", source: "a", target: "b" }];
+  const state = () => ({ nodeLookup: lookup, edges }) as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const opts = { style: "smoothstep", direction: "LR" } as const;
+  const before = selectRoutes(state(), opts);
+  lookup.set("a", internal(annotationToFlow({ ...annotation, shape: "tri" })));
+  const after = selectRoutes(state(), opts);
+  expect(after).not.toBe(before);
+  expect(after.get("e")!.points[0]).toEqual({ x: 119.625, y: 45 });
+});
 
 it("naming a measured node and refreshing edge aria labels does no routing work until it grows", () => {
   const internal = (id: string, x: number): InternalNode<FlowNode> => {
@@ -122,4 +154,8 @@ it("keeps concurrent visible and hidden route subscribers stable on an unchanged
     expect(selectRoutes(s, opts)).toBe(visible);
     expect(selectRoutes(s, { ...opts, hideDependencies: true })).toBe(hidden);
   }
+});
+
+beforeAll(async () => {
+  await Promise.all([loadShapeGeometry(), loadShapeAttachments()]);
 });

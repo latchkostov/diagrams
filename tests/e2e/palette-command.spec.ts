@@ -114,6 +114,48 @@ test.describe("command palette", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("Add shape supports keyboard selection and Escape restoration", async ({ page, consoleErrors }) => {
+    const invoker = page.getByTestId("fit-view-button");
+    await invoker.focus();
+    await openPalette(page);
+    await page.keyboard.type("> add shape");
+    await page.keyboard.press("Enter");
+    const search = page.getByTestId("shape-picker-search");
+    await expect(search).toBeFocused();
+    await page.keyboard.type("hexagon");
+    await page.keyboard.press("Enter");
+    const shape = page.getByTestId("annotation-shape-1");
+    await expect(shape).toHaveAttribute("data-shape", "hexagon");
+    await expect.poll(() => shape.evaluate((el) => document.activeElement === el.parentElement)).toBe(true);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await invoker.focus();
+    const before = await shape.getAttribute("data-shape");
+    await openPalette(page);
+    await page.keyboard.type("> add shape");
+    await page.keyboard.press("Enter");
+    await expect(search).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("shape-picker")).toHaveCount(0);
+    await expect(invoker).toBeFocused();
+    await expect(shape).toHaveAttribute("data-shape", before ?? "");
+    await expect(page.getByTestId(/^annotation-shape-/)).toHaveCount(1);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("direct shape search moves keyboard focus to the inserted shape", async ({ page }) => {
+    await page.getByTestId("fit-view-button").focus();
+    await openPalette(page);
+    await page.keyboard.type("> hexagon");
+    await page.keyboard.press("Enter");
+    const shape = page.getByTestId("annotation-shape-1");
+    await expect(shape).toHaveAttribute("data-shape", "hexagon");
+    await expect.poll(() => shape.evaluate((el) => document.activeElement === el.parentElement)).toBe(true);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+  });
+
   test("with one node selected, a stencil is added next to it and connected, as one undo step", async ({
     page,
     consoleErrors,

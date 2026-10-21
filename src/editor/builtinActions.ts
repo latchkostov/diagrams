@@ -105,12 +105,13 @@ export function quickAddMenu(
   pick: (s: Stencil) => void,
   recent: readonly string[] = [],
   pickShape?: (s: ShapeDefinition) => void,
+  preview?: (destination: "shape" | "stencil") => void,
 ): MenuNode[] {
   const recents = recent
     .map((id) => stencils.find((s) => s.id === id))
     .filter((s): s is Stencil => !!s)
     .slice(0, QUICK_ADD_RECENT);
-  const stencilsList = stencilMenu("quick-add", (s) => ({ run: () => pick(s) }));
+  const stencilsList = stencilMenu("quick-add", (s) => ({ run: () => pick(s), onPreview: () => preview?.("stencil") }));
   const shapesItem: MenuNode | null = pickShape
     ? {
         type: "item",
@@ -119,8 +120,10 @@ export function quickAddMenu(
           return t("menu.shape");
         },
         icon: "shapes",
+        onPreview: () => preview?.("shape"),
         children: shapeMenu("quick-add-shape", (s) => ({
           run: () => pickShape(s),
+          onPreview: () => preview?.("shape"),
         })),
       }
     : null;
@@ -145,6 +148,7 @@ export function quickAddMenu(
       },
       keywords: `${s.vendor} ${s.id} ${s.category}`,
       run: () => pick(s),
+      onPreview: () => preview?.("stencil"),
     })),
     { type: "separator" },
     ...all,
@@ -367,7 +371,11 @@ export function builtinActions(): Action[] {
         return t("menu.annotate");
       },
       icon: "note",
-      children: (ctx) => annotateMenu((kind, shape) => void ctx.editor.addAnnotation(kind, { at: ctx.point, shape })),
+      children: (ctx) =>
+        annotateMenu((kind, shape) => {
+          const id = ctx.editor.addAnnotation(kind, { at: ctx.point, shape });
+          if (id && kind === "shape") ctx.focusPlaced?.(id);
+        }),
     },
     {
       id: "canvas.paste",
@@ -1161,6 +1169,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "annotation.shape",
+      paletteSearchOnly: true,
       section: "edit",
       targets: ["annotation"],
       get label() {

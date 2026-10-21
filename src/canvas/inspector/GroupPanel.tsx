@@ -1,4 +1,5 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
+import { useInteractionOrLocal } from "../interaction";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
 import { t } from "../../i18n";
@@ -11,6 +12,9 @@ import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 
 export function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFlowNode }) {
+  const { controller } = useInteractionOrLocal();
+  // A focus request made while this panel downloads can now find its field.
+  useLayoutEffect(() => controller.rendered());
   const naming = useNameFields(editor, "group", group.data.groupId, group.id);
   const id = group.data.groupId;
   const isCustomTone = !isPresetGroupTone(group.data.tone) && Boolean(group.data.tone);

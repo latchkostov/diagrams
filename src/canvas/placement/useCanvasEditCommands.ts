@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react";
-import type { Placing } from "../interaction";
+import type { InteractionController, Placing } from "../interaction";
 import { flushSync } from "react-dom";
 import type { EditorApi, NewNode, XYBox } from "../../editor/types";
 import type { useHistory } from "../../editor/useHistory";
@@ -19,7 +19,7 @@ export function useCanvasNaming(
   setNaming: Dispatch<SetStateAction<{ node: string; edge: string } | null>>,
   renameRef: RefObject<(t: RenameTarget) => void>,
   history: ReturnType<typeof useHistory>,
-  controller: Placing,
+  controller: Placing & Pick<InteractionController, "dispatch">,
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
 ) {
   /**
@@ -59,22 +59,25 @@ export function useCanvasNaming(
   const pickNamed = useCallback(
     (make: () => NewNode | null, fallback: string) => {
       // Hold what's typed from now until the label editor can take it.
-      const typing = captureTypeAhead();
+      let annotation = false;
+      const typing = captureTypeAhead(() => annotation);
       controller.placing();
       const made = make();
       if (!made) return void typing.stop();
+      annotation = made.annotation ?? !!editor.getAnnotation(made.id);
       revealSelection(
         () => {
           const typed = typing.stop();
-          if (typed.done === "escape") return endCreation(made.merge);
-          const isAnn = !!editor.getAnnotation(made.id);
-          if (typed.done === "enter") {
+          const isAnn = annotation;
+          if (typed.done === "escape" && !isAnn) return endCreation(made.merge);
+          if (typed.done) {
             if (typed.text !== null) {
-              if (isAnn)
-                editor.updateAnnotation(made.id, { text: typed.text.trim() || fallback }, { merge: made.merge });
+              if (isAnn) editor.updateAnnotation(made.id, { text: typed.text }, { merge: made.merge });
               else editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
             }
-            return endCreation(made.merge);
+            endCreation(made.merge);
+            if (isAnn) controller.dispatch({ type: "naming.done", flowId: made.id });
+            return;
           }
           // In this same task: a key arriving before the field has focus would reach the canvas instead.
           flushSync(() =>

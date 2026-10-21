@@ -4,7 +4,7 @@ import { flatten, MAX_RESULTS, parseQuery, rank, recencyBoost, type Command } fr
 import { stencilScore } from "./sources";
 import { rememberable, withRecentCommand } from "./recent";
 import { ActionRegistry } from "../editor/actions";
-import { annotateMenu } from "../editor/builtinActions";
+import { annotateMenu, builtinActions } from "../editor/builtinActions";
 import type { EditorApi } from "../editor/types";
 import { collectCommands } from "./sources";
 
@@ -26,6 +26,34 @@ const stencilCommands: Command[] = catalog.map((s) => ({
 const ids = (cs: Command[], q: string, recent: string[] = []) => flatten(rank(cs, q, recent)).map((c) => c.id);
 
 describe("palette ranking", () => {
+  it("keeps both shape catalogs collapsed with a shape selected", () => {
+    const registry = new ActionRegistry();
+    registry.register(builtinActions());
+    const editor = {
+      getSelection: () => ({ nodeIds: ["shape"], edgeIds: [], groupIds: [] }),
+      getDiagram: () => ({ nodes: [], edges: [] }),
+      getAnnotation: () => ({ kind: "shape", shape: "tri" }),
+      getNode: () => undefined,
+      prefs: {},
+    } as unknown as EditorApi;
+    const commands = collectCommands({
+      registry,
+      canvas: { editor, live: false, addStencil: () => "", focusNode: () => {}, openPicker: () => {} },
+      live: null,
+      view: "canvas",
+      stencils: [],
+      recentStencils: [],
+      diagrams: [],
+      openDiagram: () => {},
+      sendStencilToCanvas: () => {},
+      runSimulation: () => {},
+    });
+    const browsed = ids(commands, ">");
+    expect(browsed).toContain("action:canvas.add-shape");
+    expect(browsed).toContain("action:annotation.shape");
+    expect(browsed.some((id) => id.startsWith("action:annotation-shape:"))).toBe(false);
+    expect(ids(commands, "> hexagon")).toContain("action:annotation-shape:hexagon");
+  });
   it("browses one shape entry without crowding out core actions, and searches individual shapes", () => {
     const registry = new ActionRegistry();
     registry.register([

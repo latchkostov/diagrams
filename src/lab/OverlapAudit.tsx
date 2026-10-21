@@ -1,3 +1,4 @@
+import { useShapeResize } from "../canvas/shapes/useShapeResize";
 import { projectDependencies, useShowDependencies } from "../canvas/dependencyVisibility";
 import { useContext, useMemo, useRef, useState, type ContextType } from "react";
 import { useCaptionContrast } from "../canvas/useCaptionContrast";
@@ -62,7 +63,8 @@ type Ui = ContextType<typeof DiagramContext>;
 function Stage({ diagram }: { diagram: DiagramFile }) {
   const { theme, edgeStyle, nodeVariant } = useSettings();
   const flow = useMemo(() => toFlow(diagram), [diagram]);
-  const [nodes, , onNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const [nodes, , applyNodesChange] = useNodesState<FlowNode>(flow.nodes);
+  const onNodesChange = useShapeResize(applyNodesChange);
   const wrapper = useRef<HTMLDivElement>(null);
   useCaptionContrast(wrapper, nodes, theme, flow.meta.color);
   const [edges, , onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);

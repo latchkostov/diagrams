@@ -30,6 +30,7 @@ export interface CanvasHost {
   live: boolean;
   /** Selects a node and centres the viewport on it. */
   focusNode(id: string): void;
+  focusPlaced?(id: string): void;
   /**
    * Adds a stencil as one undoable edit: at the viewport centre, or, when exactly one node is
    * selected, next to it (downstream) and connected from it. Returns the new node id.

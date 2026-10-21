@@ -1,8 +1,9 @@
 // Port spreading: when several edges meet the same side of a node, give each its own attachment
 // point along that side, ordered by where the other end sits so the fan doesn't cross itself.
 
-import type { Side } from "../../model/types";
-import { centerOf, type Point, type Rect } from "./rect";
+import type { AnnotationShape, Side } from "../../model/types";
+import { shapeAttachment } from "../shapes/attachment";
+import { centerOf, sideNormal, type Point, type Rect } from "./rect";
 
 export interface PortEnd {
   /** Unique key for this end, e.g. `${edgeId}:s`. */
@@ -25,7 +26,11 @@ export function slotOffset(i: number, n: number, sideLength: number, spacing: nu
   return (i - (n - 1) / 2) * step;
 }
 
-export function sidePoint(r: Rect, side: Side, offset = 0): Point {
+export function sidePoint(r: Rect & { shape?: AnnotationShape }, side: Side, offset = 0): Point {
+  if (r.shape) {
+    const p = shapeAttachment(r.shape, r.width, r.height, side, offset);
+    return { x: r.x + p.x, y: r.y + p.y };
+  }
   const c = centerOf(r);
   switch (side) {
     case "top":
@@ -39,12 +44,31 @@ export function sidePoint(r: Rect, side: Side, offset = 0): Point {
   }
 }
 
+/** A visible endpoint and a search endpoint outside the owning bounding obstacle. */
+export interface RoutedPort {
+  attachment: Point;
+  escape: Point;
+}
+
+export function routedPort(r: Rect & { shape?: AnnotationShape }, side: Side, offset = 0, stub = 16): RoutedPort {
+  const attachment = sidePoint(r, side, offset);
+  const normal = sideNormal[side];
+  const escape = { x: attachment.x + normal.x * stub, y: attachment.y + normal.y * stub };
+  // Preserve existing stubs that already escape, including rectangular outline ports.
+  // Deeply inset strokes must reach beyond the box before the search can turn.
+  if (side === "right" && escape.x <= r.x + r.width) escape.x = r.x + r.width + stub;
+  if (side === "left" && escape.x >= r.x) escape.x = r.x - stub;
+  if (side === "bottom" && escape.y <= r.y + r.height) escape.y = r.y + r.height + stub;
+  if (side === "top" && escape.y >= r.y) escape.y = r.y - stub;
+  return { attachment, escape };
+}
+
 /** Assigns every end a point on its node's side. Ends on the same side are spread `spacing` apart. */
 export function spreadPorts(
   ends: readonly PortEnd[],
   rects: ReadonlyMap<string, Rect>,
   spacing = 14,
-): Map<string, Point> {
+): Map<string, RoutedPort> {
   const groups = new Map<string, PortEnd[]>();
   for (const e of ends) {
     const k = `${e.node}\u0000${e.side}`;
@@ -52,7 +76,7 @@ export function spreadPorts(
     if (g) g.push(e);
     else groups.set(k, [e]);
   }
-  const out = new Map<string, Point>();
+  const out = new Map<string, RoutedPort>();
   for (const list of groups.values()) {
     const { node, side } = list[0];
     const r = rects.get(node);
@@ -70,7 +94,7 @@ export function spreadPorts(
       (a, b) => key(a) - key(b) || (a.order < b.order ? -1 : a.order > b.order ? 1 : a.key < b.key ? -1 : 1),
     );
     const len = vertical ? r.height : r.width;
-    sorted.forEach((e, i) => out.set(e.key, sidePoint(r, side, slotOffset(i, sorted.length, len, spacing))));
+    sorted.forEach((e, i) => out.set(e.key, routedPort(r, side, slotOffset(i, sorted.length, len, spacing))));
   }
   return out;
 }

@@ -454,6 +454,10 @@ function MenuList(p: ListProps) {
   const sub = open ? shown[open.index] : undefined;
   const activeItem = shown[active];
   const activeId = selectable(activeItem) ? `${id}-item-${activeItem.id}` : undefined;
+  const preview = selectable(activeItem) ? activeItem.onPreview : undefined;
+  useLayoutEffect(() => {
+    preview?.();
+  }, [preview]);
 
   return (
     <>

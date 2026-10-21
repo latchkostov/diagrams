@@ -54,9 +54,9 @@ export interface SourceInput {
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
 /** Registry contexts for a selection: the canvas, plus the selected thing (most specific first). */
-export function contextsFor(editor: EditorApi, mode: EditorMode): ActionContext[] {
+export function contextsFor(editor: EditorApi, mode: EditorMode, focusPlaced?: (id: string) => void): ActionContext[] {
   const sel = editor.getSelection();
-  const base = { editor, mode, surface: "palette" as const };
+  const base = { editor, mode, surface: "palette" as const, focusPlaced };
   const canvas: ActionContext = { ...base, target: "canvas", selection: sel };
   const n = sel.nodeIds.length;
   const e = sel.edgeIds.length;
@@ -229,7 +229,10 @@ export function collectCommands(input: SourceInput): Command[] {
       keywords: "presentation presenter meeting slideshow full screen",
       run: input.present,
     });
-  if (onCanvas) out.push(...actionCommands(input.registry, contextsFor(editor!, canvas.live ? "live" : "edit")));
+  if (onCanvas)
+    out.push(
+      ...actionCommands(input.registry, contextsFor(editor!, canvas.live ? "live" : "edit", canvas.focusPlaced)),
+    );
   if (onCanvas && !canvas.live && canvas.openPicker)
     out.push({
       id: "action:canvas.add-shape",
@@ -242,7 +245,12 @@ export function collectCommands(input: SourceInput): Command[] {
           testId: "shape-picker",
           searchable: t("shape.searchShapes"),
           items: () =>
-            shapeMenu("add-shape", (s) => ({ run: () => void editor!.addAnnotation("shape", { shape: s.id }) })),
+            shapeMenu("add-shape", (s) => ({
+              run: () => {
+                const id = editor!.addAnnotation("shape", { shape: s.id });
+                if (id) canvas.focusPlaced?.(id);
+              },
+            })),
         }),
     });
   if (onCanvas && !canvas.live && input.editTogether)

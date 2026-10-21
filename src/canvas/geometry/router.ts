@@ -3,7 +3,7 @@
 // The Router instance caches per-edge routes and only re-runs A* for edges whose ends changed or
 // whose search area changed node or boundary geometry touched; the global passes (ports, nudging, labels) are cheap.
 
-import type { Side } from "../../model/types";
+import type { AnnotationShape, Side } from "../../model/types";
 import { pickSides } from "../edges/routing";
 import { placeLabels, type LabelPlacement } from "./labels";
 import { nudgeRoutes } from "./nudge";
@@ -17,7 +17,7 @@ export type RouteStyle = "smoothstep" | "bezier" | "straight";
 
 export interface RouteNode {
   id: string;
-  rect: Rect;
+  rect: Rect & { shape?: AnnotationShape };
   /** Extra box that belongs to the node but sits outside it (icon captions). Avoided, not attached to. */
   extra?: Rect;
 }
@@ -109,7 +109,8 @@ interface RawEntry {
   region: Rect;
 }
 
-const sameRect = (a: Rect, b: Rect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+const sameRect = (a: Rect & { shape?: AnnotationShape }, b: Rect & { shape?: AnnotationShape }) =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height && a.shape === b.shape;
 
 export class Router {
   private raw = new Map<string, RawEntry>();
@@ -202,8 +203,10 @@ export class Router {
     for (const e of edges) {
       seen.add(e.id);
       const sd = sides.get(e.id)!;
-      const s = ports.get(`${e.id}\u0000s`)!;
-      const t = ports.get(`${e.id}\u0000t`)!;
+      const sourcePort = ports.get(`${e.id}\u0000s`)!;
+      const s = sourcePort.attachment;
+      const targetPort = ports.get(`${e.id}\u0000t`)!;
+      const t = targetPort.attachment;
       if (e.source === e.target) {
         polylines.set(e.id, selfLoop(sd.sourceSide, sd.targetSide, s, t));
         okMap.set(e.id, true);
@@ -221,7 +224,7 @@ export class Router {
         okMap.set(e.id, true);
         continue;
       }
-      const key = `${s.x},${s.y},${sd.sourceSide}|${t.x},${t.y},${sd.targetSide}`;
+      const key = `${s.x},${s.y},${sd.sourceSide},${sourcePort.escape.x},${sourcePort.escape.y}|${t.x},${t.y},${sd.targetSide},${targetPort.escape.x},${targetPort.escape.y}`;
       const cached = this.raw.get(e.id);
       if (cached && cached.key === key && !dirty.some((d) => intersects(d, cached.region))) {
         polylines.set(e.id, cached.points);
@@ -231,6 +234,8 @@ export class Router {
       this.lastRouted++;
       const r = routeOrthogonal({
         source: s,
+        sourceEscape: sourcePort.escape,
+        targetEscape: targetPort.escape,
         sourceDir: sideNormal[sd.sourceSide],
         target: t,
         targetDir: sideNormal[sd.targetSide],

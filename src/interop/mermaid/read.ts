@@ -1,3 +1,4 @@
+import { parse as parseYaml } from "yaml";
 import { MERMAID_BRACKETS, MERMAID_ALIASES, type MermaidShape } from "./shapes";
 import {
   DIAGRAM_FORMAT,
@@ -47,6 +48,7 @@ export interface MermaidImportResult {
 interface PNode {
   id: string;
   label?: string;
+  yamlLabel?: boolean;
   shape?: MermaidShape;
   group?: string;
   order: number;
@@ -86,14 +88,38 @@ function cleanLabel(raw: string): string {
     .replace(/&gt;/g, ">");
 }
 
-const labelLines = (label: string) =>
-  label
+const labelLines = (label: string, yamlLabel = false) =>
+  (yamlLabel ? label : label.replace(/\\n/g, "\n"))
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/\\n/g, "\n")
     .replace(/<[^>]+>/g, "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
+
+/** Shared YAML scalar quoting, including doubled apostrophes and double-quoted escapes. */
+class QuoteState {
+  quote: string | undefined;
+  constructor(readonly scalarOnly = false) {}
+  /** Returns the last consumed index, or undefined for syntax outside quotes. */
+  consume(source: string, index: number): number | undefined {
+    const c = source[index];
+    if (this.quote) {
+      if (this.quote === '"' && c === "\\") return index + 1;
+      if (c === this.quote) {
+        if (this.quote === "'" && source[index + 1] === "'") return index + 1;
+        this.quote = undefined;
+      }
+      return index;
+    }
+    if (c !== '"' && c !== "'") return;
+    let previous = index - 1;
+    while (previous >= 0 && /\s/.test(source[previous])) previous--;
+    if ((c === '"' && !this.scalarOnly) || source[previous] === ":") {
+      this.quote = c;
+      return index;
+    }
+  }
+}
 
 /** Splits source into statements: newlines and top-level `;` (not inside quotes or brackets). */
 function statements(src: string): { text: string; line: number }[] {
@@ -102,14 +128,18 @@ function statements(src: string): { text: string; line: number }[] {
     const line = rawLine.trim();
     if (!line || line.startsWith("%%")) return;
     let depth = 0;
-    let quote = false;
+    const quote = new QuoteState();
     let start = 0;
     for (let j = 0; j < line.length; j++) {
       const c = line[j];
-      if (c === '"') quote = !quote;
-      else if (!quote && "[({".includes(c)) depth++;
-      else if (!quote && "])}".includes(c)) depth = Math.max(0, depth - 1);
-      else if (!quote && depth === 0 && c === ";") {
+      const consumed = quote.consume(line, j);
+      if (consumed !== undefined) {
+        j = consumed;
+        continue;
+      }
+      if ("[({".includes(c)) depth++;
+      else if ("])}".includes(c)) depth = Math.max(0, depth - 1);
+      else if (depth === 0 && c === ";") {
         const s = line.slice(start, j).trim();
         if (s) out.push({ text: s, line: i + 1 });
         start = j + 1;
@@ -156,11 +186,15 @@ class Scanner {
   /** The closing brace belongs to the attributes, never to a quoted label inside them. */
   attributes(): string {
     const start = this.i;
-    let quoted = false;
+    const quote = new QuoteState(true);
     for (; this.i < this.s.length; this.i++) {
       const c = this.s[this.i];
-      if (c === '"') quoted = !quoted;
-      if (c === "}" && !quoted) return this.s.slice(start, this.i++);
+      const consumed = quote.consume(this.s, this.i);
+      if (consumed !== undefined) {
+        this.i = consumed;
+        continue;
+      }
+      if (c === "}") return this.s.slice(start, this.i++);
     }
     return this.fail("Unclosed shape attributes");
   }
@@ -259,9 +293,19 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       sc.i += 2;
       const body = sc.attributes();
       const shape = /shape\s*:\s*([\w-]+)/.exec(body)?.[1];
-      const label = /label\s*:\s*("([^"]*)"|[^,}]+)/.exec(body);
+      const label = /label\s*:\s*("(?:\\.|[^"\\])*"|'(?:''|[^'])*'|[^,}]+)/.exec(body);
       if (shape) n.shape = MERMAID_ALIASES.get(shape);
-      if (label) n.label = cleanLabel(label[2] ?? label[1]);
+      if (label) {
+        n.yamlLabel = true;
+        try {
+          const decoded: unknown =
+            label[1].startsWith('"') || label[1].startsWith("'") ? parseYaml(label[1]) : label[1];
+          if (typeof decoded !== "string") throw new MermaidError("Invalid quoted shape label");
+          n.label = cleanLabel(decoded);
+        } catch {
+          sc.fail("Invalid quoted shape label");
+        }
+      }
     } else {
       for (const {
         brackets: [open, close],
@@ -398,7 +442,7 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
   const outNodes: DiagramNode[] = [...nodes.values()]
     .sort((a, b) => a.order - b.order)
     .map((n) => {
-      const lines = labelLines(n.label ?? n.id);
+      const lines = labelLines(n.label ?? n.id, n.yamlLabel);
       const m = metaNodes[n.id];
       const id = claim(m?.[0] ?? n.id);
       idMap.set(n.id, id);

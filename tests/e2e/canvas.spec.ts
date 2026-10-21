@@ -1,7 +1,7 @@
 import { openExample } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, publicExamples, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLab, publicExamples, expectNoErrors, pauseClock } from "./fixtures";
 import type { DiagramFile } from "../../src/model/types";
 import { exportFixture } from "../../src/lab/exportFixture";
 
@@ -93,14 +93,19 @@ test.describe("canvas", () => {
     await gotoLab(page, "export-contract");
     await page.getByTestId("lab-open-editor").click();
     await expect(page.getByTestId("node-worker")).toBeVisible();
+    await page.clock.install();
     for (const phase of ["first", "imported", "reloaded"]) {
       const [download] = await Promise.all([page.waitForEvent("download"), exportJson(page)]);
       const file = info.outputPath(`${phase}.json`);
-      await download.saveAs(file);
-      expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(normalized(exportFixture));
-      // The download starts before the lazy export notification is ready. Finish that
-      // operation before importing, so its late toast cannot replace the import's.
-      await expect(page.getByTestId("toast")).toContainText("Exported");
+      // Disk persistence belongs to the test harness. It must not consume the UI toast's lifetime.
+      await pauseClock(page);
+      try {
+        await download.saveAs(file);
+        expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(normalized(exportFixture));
+        await expect(page.getByTestId("toast")).toContainText("Exported");
+      } finally {
+        await page.clock.resume();
+      }
       if (phase === "first") {
         const previous = await page.getByTestId("example-picker").getAttribute("data-diagram-slug");
         if (!previous) throw new Error("Expected the exported document's slug");

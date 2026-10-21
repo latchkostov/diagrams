@@ -73,6 +73,7 @@ export function useCanvasHost(
       allowOnDevice,
       documentId,
       openPicker,
+      focusPlaced: (id) => focus?.(id, true),
       focusNode(id) {
         const box = boxOf(id);
         editor.select({ nodeIds: [id] });

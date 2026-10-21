@@ -4,7 +4,7 @@ import { SHAPE_CATEGORY_ORDER, SHAPES_CATALOG, shapeCategoryLabel, type ShapeDef
 
 export function shapeMenu(
   idPrefix: string,
-  pick: (s: ShapeDefinition) => Pick<MenuItem, "run" | "checked">,
+  pick: (s: ShapeDefinition) => Pick<MenuItem, "run" | "checked" | "onPreview">,
 ): MenuNode[] {
   return SHAPE_CATEGORY_ORDER.map((c) => ({
     type: "item" as const,
