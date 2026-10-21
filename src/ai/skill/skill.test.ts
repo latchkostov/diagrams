@@ -1026,11 +1026,11 @@ describe("export-html.mjs", () => {
 });
 
 describe("releasing the viewer", () => {
-  it("keeps the plugin release version in one manifest, outside the downloadable skill", () => {
+  it("keeps the plugin unversioned (commit-tracked) and its manifest outside the downloadable skill", () => {
     const manifest = JSON.parse(readFileSync(path.join(root, ".claude-plugin", "marketplace.json"), "utf8"));
     expect(manifest.plugins[0]).not.toHaveProperty("version");
     const plugin = read(path.join(skill, ".claude-plugin", "plugin.json"));
-    expect(plugin.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(plugin).not.toHaveProperty("version");
     expect(readSkill().every((f) => f.name === "SKILL.md" || /^(reference|scripts)\//.test(f.name))).toBe(true);
   });
 

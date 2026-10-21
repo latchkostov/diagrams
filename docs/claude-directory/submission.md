@@ -22,7 +22,7 @@ In <https://claude.ai/directory/manage>, choose **Submit new → Plugin bundle**
 | Publisher         | Live Diagrams                                                                                                                                                    |
 | Homepage          | `https://www.livediagrams.dev`                                                                                                                                   |
 | Licence           | MIT                                                                                                                                                              |
-| Initial version   | `1.0.0`                                                                                                                                                          |
+| Version           | None: unversioned, tracks the commit                                                                                                                             |
 | Contact email     | **[OWNER TO FILL IN IN THE PORTAL — do not commit an address]**                                                                                                  |
 
 The name and short description come from
@@ -44,11 +44,8 @@ skill would risk drift. Keeping it here preserves the marketplace source and bot
 commands. The download reader includes only `SKILL.md`, `reference/` and `scripts/`, keeping plugin
 metadata, README, licence and icon out of the ZIP and preserving its contents and size.
 
-Use the [README release policy](../../skills/livediagrams/README.md#releases): bump the manifest version
-for each plugin release. The directory detects commits on `master`, while Claude Code caches by the
-manifest version. The marketplace entry stays unversioned. Generators still refresh assets without
-editing versions; their output must be reviewed before releasing. This explicitly replaces the
-previous commit-only plugin policy for this directory package.
+Follow the [README release policy](../../skills/livediagrams/README.md#releases): the plugin is unversioned,
+so the directory and Claude Code track commits on `master`. Don't add a manifest version.
 
 ## Data-handling answers
 

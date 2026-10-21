@@ -11,7 +11,6 @@ const manifest = () =>
     name: string;
     displayName: string;
     description: string;
-    version: string;
     skills: string[];
     icon: string;
   };
@@ -29,7 +28,9 @@ describe("the directory plugin bundle", () => {
       keywords: expect.arrayContaining(["diagrams", "architecture", "simulation"]),
       skills: ["./"],
     });
-    expect(metadata.version).toMatch(/^\d+\.\d+\.\d+$/);
+    // Unversioned on purpose: Claude Code then tracks the git commit, so every commit on master reaches
+    // users (AGENTS.md forbids manual version bumps). A fixed version would pin cached installs.
+    expect(metadata).not.toHaveProperty("version");
     expect(metadata.description.length).toBeGreaterThan(40);
     expect(metadata).not.toHaveProperty("author.email");
     for (const entry of metadata.skills) {

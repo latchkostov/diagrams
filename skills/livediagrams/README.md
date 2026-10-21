@@ -59,17 +59,10 @@ public issue reports.
 
 ## Releases
 
-The directory follows new commits on the tracked `master` branch; recommend GitHub push webhook updates.
-`plugin.json` starts at version `1.0.0`. Bump it for every plugin release that changes instructions,
-scripts, generated viewer/reference assets, or listing metadata: patch for compatible fixes and copy,
-minor for compatible features, major for breaking changes. Unrelated app-only changes need no plugin
-version bump. A fixed manifest version pins Claude Code's cached plugin even if the branch changes,
-so commit the bump with the plugin change before release. Keep the marketplace entry unversioned so
-there is one version source. `pnpm regen`, `pnpm sync` and `pnpm skill:release` refresh assets without
-bumping versions; review their diffs and bump deliberately when releasing changed plugin content.
-
-This directory-release policy supersedes the earlier commit-only plugin update guidance in the
-repository. The download contains only `SKILL.md`, `reference/` and `scripts/`; this README, licence,
+The plugin is deliberately **unversioned**: `plugin.json` and the marketplace entry carry no `version`, so
+Claude Code and the directory track the git commit on `master`, and every merged change reaches users.
+Don't add a version; a fixed one pins cached installs until it is bumped, and the repository forbids
+manual version bumps. Recommend GitHub push webhook updates in the directory. The download contains only `SKILL.md`, `reference/` and `scripts/`; this README, licence,
 manifest and listing icon are plugin packaging, excluded from the skill ZIP.
 
 Licensed under MIT; see [LICENSE](LICENSE).
