@@ -11,17 +11,22 @@ import console from "node:console";
 import { performance } from "node:perf_hooks";
 
 // node scripts/fc-sweep.mjs [--count 100] [--multiplier 5] [--heavy-count 10]
-//   [--heavy-multiplier 20] [--jobs 2] [--seed -2104931721 --seed 607376523] [files...]
+//   [--i1] [--heavy-multiplier 20] [--jobs 2] [--seed -2104931721 --seed 607376523] [files...]
 // Fresh seeds are distinct across both tiers. Explicit seeds are additional runs
 // at the ordinary multiplier; replay one with --count 0 --heavy-count 0 --seed N.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const options = { count: 100, multiplier: 5, "heavy-count": 10, "heavy-multiplier": 20, jobs: 2 };
+let i1 = false;
 const seeds = [];
 const files = [];
 for (let i = 2; i < process.argv.length; i++) {
   const arg = process.argv[i];
   if (!arg.startsWith("--")) {
     files.push(arg);
+    continue;
+  }
+  if (arg === "--i1") {
+    i1 = true;
     continue;
   }
   const key = arg.slice(2);
@@ -76,7 +81,7 @@ try {
       writeFileSync(
         join(report, "results.json"),
         JSON.stringify(
-          { node: process.version, files, runs, results, seconds: (performance.now() - started) / 1000 },
+          { node: process.version, i1, files, runs, results, seconds: (performance.now() - started) / 1000 },
           null,
           2,
         ) + "\n",
@@ -88,11 +93,14 @@ try {
     );
     console.log(`Reports: ${report}`);
     async function worker() {
-      while (!failed && next < runs.length) {
+      while ((i1 || !failed) && next < runs.length) {
         const index = next++;
         const run = runs[index];
         const at = performance.now();
         const env = { ...process.env, FC_SEED: String(run.seed), FC_RUN_MULTIPLIER: String(run.multiplier) };
+        // Normal sweeps never inherit exploration from the parent shell.
+        if (i1) env.FC_I1 = "1";
+        else delete env.FC_I1;
         delete env.FC_PATH;
         let output = "";
         const child = spawn(
