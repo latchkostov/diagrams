@@ -34,16 +34,17 @@ body {
   font: var(--ds-font-body, 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
 }
 body {
-  padding: 24px;
+  padding: 0;
 }
 .forge-config,
 [data-testid="forge-config"] {
   max-inline-size: 640px;
   margin-inline: auto;
+  padding: 20px;
 }
 h1 {
   font: var(--ds-font-heading-medium, 600 20px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
-  margin: 0 0 24px;
+  margin: 0 0 12px;
 }
 fieldset {
   border: 0;
@@ -128,23 +129,23 @@ p {
 [data-testid="forge-preview"] {
   display: block;
   inline-size: 100%;
-  block-size: 110px;
-  padding: 10px 16px;
+  block-size: 140px;
+  padding: 12px;
   background: var(--config-subtle);
 }
 .preview-boundary {
   fill: none;
   stroke: var(--config-line);
-  stroke-width: 0.3;
+  stroke-width: 1.5;
 }
 .preview-edge {
   stroke: var(--config-muted);
-  stroke-width: 0.35;
+  stroke-width: 2;
 }
 .preview-node {
   fill: var(--config-surface);
   stroke: var(--config-line);
-  stroke-width: 0.3;
+  stroke-width: 1.5;
 }
 .preview-label {
   fill: var(--config-text);
@@ -168,7 +169,8 @@ p {
   flex-shrink: 0;
 }
 [data-testid="forge-summary-row"] {
-  padding: 12px 0;
+  padding: 0;
+  margin-block-start: 14px;
   color: var(--config-muted);
 }
 [data-testid="forge-options"]::after {
@@ -178,12 +180,13 @@ p {
   content: " ▾";
 }
 [data-testid="forge-options-panel"] {
+  margin-block-start: 14px;
   padding: 16px;
   border: 1px solid var(--config-line);
   border-radius: 6px;
 }
 .option-group + .option-group {
-  margin-block-start: 20px;
+  margin-block-start: 14px;
 }
 legend {
   font-weight: 600;
@@ -241,8 +244,8 @@ footer {
   flex-wrap: wrap;
   gap: 8px;
   border-block-start: 1px solid var(--config-line);
-  padding-block-start: 16px;
-  margin-block-start: 24px;
+  padding: 20px 20px 0;
+  margin: 14px -20px 0;
 }
 [data-testid="forge-reason"] {
   margin-inline-end: auto;
@@ -250,9 +253,6 @@ footer {
   font-size: 12px;
 }
 @media (max-width: 380px) {
-  body {
-    padding: 16px;
-  }
   [data-testid="forge-card-details"],
   [data-testid="forge-summary-row"] {
     flex-wrap: wrap;

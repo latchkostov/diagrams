@@ -21,6 +21,8 @@ async function main() {
   const fields = element("fieldset", "forge-fields");
   fields.disabled = true;
   const content = element("div", "forge-content");
+  let fitPreview = () => {};
+  new ResizeObserver(() => fitPreview()).observe(content);
   const status = element("p", "forge-config-status", t("viewerForge.loading"));
   status.id = "forge-config-status";
   status.tabIndex = -1;
@@ -119,6 +121,7 @@ async function main() {
     };
     const pickFile = () => file.click();
     const render = () => {
+      fitPreview = () => {};
       content.replaceChildren();
       if (!diagram) {
         const drop = element("div", "forge-drop");
@@ -142,7 +145,9 @@ async function main() {
           element("span", "forge-filename", staged?.name ?? attachment?.title),
           button("forge-change", editing ? t("viewerForge.replaceFile") : t("viewerForge.change"), pickFile),
         );
-        card.append(diagramPreview(diagram), details);
+        const preview = diagramPreview(diagram);
+        card.append(preview.svg, details);
+        fitPreview = preview.fit;
         const summaryRow = element("div", "forge-summary-row");
         const summary = element("span", "forge-summary");
         const options = button("forge-options", t("viewerForge.options"), () => {
@@ -276,6 +281,7 @@ async function main() {
         );
         updateSummary();
         content.append(card, summaryRow, optionsPanel);
+        fitPreview();
       }
       refresh();
     };

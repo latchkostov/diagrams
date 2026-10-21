@@ -456,7 +456,7 @@ test("Forge empty state explains disabled Insert and keyboard Choose stages with
     await expect(page.getByTestId("forge-card")).toBeFocused();
     await expect(page.getByTestId("forge-preview")).toHaveAttribute("data-nodes", "3");
     await expect(page.getByTestId("forge-preview")).toHaveAccessibleName("Preview of Fields");
-    expect(await page.getByTestId("forge-preview").textContent()).toContain("Payments gateway");
+    expect(await page.getByTestId("forge-preview").textContent()).toBe("");
     await expect(page.getByTestId("forge-options-panel")).toBeHidden();
     await expect(page.getByTestId("forge-summary")).toHaveText("Free play · Auto size");
     if (key === "Enter") await page.getByTestId("forge-change").focus();
@@ -696,6 +696,105 @@ for (const width of [320, 160]) {
     expect(box.x + box.width).toBeLessThanOrEqual(width);
   });
 }
+
+for (const direction of ["wide", "tall"] as const) {
+  test(`Forge preview fits and centres a ${direction} diagram without unreadable labels`, async ({ page }) => {
+    await page.setViewportSize({ width: 688, height: 760 });
+    await openConfig(page);
+    await chooseFile(
+      page,
+      undefined,
+      JSON.stringify({
+        ...textFieldsFixture,
+        groups: [],
+        annotations: [],
+        nodes: textFieldsFixture.nodes.slice(0, 2).map((node, i) => ({
+          ...node,
+          label: "Service",
+          group: undefined,
+          x: -300 + (direction === "wide" ? i * 1200 : 0),
+          y: -250 + (direction === "tall" ? i * 1200 : 0),
+        })),
+      }),
+    );
+    const preview = page.getByTestId("forge-preview");
+    for (const width of [688, 320]) {
+      await page.setViewportSize({ width, height: 760 });
+      await expect(preview).toHaveCSS("height", "140px");
+      await expect
+        .poll(() =>
+          preview.evaluate((svg: SVGSVGElement) => {
+            const card = svg.getBoundingClientRect();
+            const box = svg.getBBox();
+            const matrix = svg.getScreenCTM();
+            if (!matrix) throw new Error("Preview has no screen transform");
+            const from = new DOMPoint(box.x, box.y).matrixTransform(matrix);
+            const to = new DOMPoint(box.x + box.width, box.y + box.height).matrixTransform(matrix);
+            return {
+              centred:
+                Math.abs((from.x + to.x) / 2 - (card.x + card.width / 2)) < 1 &&
+                Math.abs((from.y + to.y) / 2 - (card.y + card.height / 2)) < 1,
+              fills: Math.max((to.x - from.x) / card.width, (to.y - from.y) / card.height) >= 0.6,
+              padding:
+                from.x >= card.x + 11 && from.y >= card.y + 11 && to.x <= card.right - 11 && to.y <= card.bottom - 11,
+              aspect: Math.abs((to.x - from.x) / (to.y - from.y) - box.width / box.height) < 0.01,
+            };
+          }),
+        )
+        .toEqual({ centred: true, fills: true, padding: true, aspect: true });
+      expect(await preview.textContent()).toBe("");
+    }
+  });
+}
+
+test("Forge preview enlarges a small diagram up to 1.5x and keeps readable labels", async ({ page }) => {
+  await page.setViewportSize({ width: 688, height: 760 });
+  await openConfig(page);
+  await chooseFile(
+    page,
+    undefined,
+    JSON.stringify({
+      ...textFieldsFixture,
+      groups: [],
+      annotations: [],
+      edges: [],
+      nodes: [{ ...textFieldsFixture.nodes[0], group: undefined, x: -300, y: 250 }],
+    }),
+  );
+  const preview = page.getByTestId("forge-preview");
+  await expect.poll(() => preview.evaluate((svg: SVGSVGElement) => svg.getScreenCTM()?.a)).toBeCloseTo(1.5, 5);
+  expect(await preview.textContent()).toBe("Order service");
+});
+
+test("Forge panel owns its insets and full-width footer separator", async ({ page }) => {
+  await page.setViewportSize({ width: 688, height: 760 });
+  await openConfig(page);
+  const box = async (id: string) => {
+    const bounds = await page.getByTestId(id).boundingBox();
+    if (!bounds) throw new Error(`${id} has no rendered box`);
+    return bounds;
+  };
+  const panel = await box("forge-config");
+  const title = await box("forge-title");
+  const drop = await box("forge-drop");
+  const footer = await box("forge-footer");
+  const save = await box("forge-save");
+  expect(title.x - panel.x).toBe(20);
+  expect(title.y - panel.y).toBe(20);
+  expect(drop.y - title.y - title.height).toBe(12);
+  expect(footer.x).toBe(panel.x);
+  expect(footer.width).toBe(panel.width);
+  expect(footer.y - drop.y - drop.height).toBe(14);
+  expect(panel.x + panel.width - save.x - save.width).toBe(20);
+  expect(panel.y + panel.height - save.y - save.height).toBe(20);
+  await chooseFile(page);
+  await page.getByTestId("forge-options").click();
+  const card = await box("forge-card");
+  const summary = await box("forge-summary-row");
+  const options = await box("forge-options-panel");
+  expect(summary.y - card.y - card.height).toBe(14);
+  expect(options.y - summary.y - summary.height).toBe(14);
+});
 
 for (const hostTheme of ["light", "dark"] as const) {
   test(`Forge approved states use Confluence ${hostTheme} tokens and screenshots`, async ({ page }, info) => {
