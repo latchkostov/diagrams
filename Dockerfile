@@ -5,6 +5,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Workspace packages' manifests too, so the install covers every importer in the lockfile.
 COPY services/server/package.json services/server/
+COPY integrations/confluence-forge/package.json integrations/confluence-forge/
 RUN pnpm install --frozen-lockfile
 COPY . .
 
