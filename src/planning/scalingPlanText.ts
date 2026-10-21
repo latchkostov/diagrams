@@ -2,7 +2,7 @@ import { t } from "../i18n/core";
 import { formatNumber } from "../i18n/number";
 import type { Finding } from "../checks/types";
 import type { PlanSuggestion, ScalingPlan } from "../sim/scalingPlanner";
-import type { ScalingDecision } from "../sim/autoscaling";
+import type { ScalingDecisionReadout } from "../sim/autoscaling";
 
 export const round = (n: number) => (Math.abs(n) >= 10 ? Math.round(n) : Math.round(n * 10) / 10);
 /** Product names stay as they are in every language. */
@@ -122,7 +122,7 @@ const CLOUD_REASONS = [
   "max",
 ];
 /** Why, in words: KEDA's own phases, the A3 adapters' alarms/rules/requests, or the HPA pipeline's reasons. */
-export function reasonText(decision: ScalingDecision): string {
+export function reasonText(decision: ScalingDecisionReadout): string {
   if (KEDA_REASONS.includes(decision.reason) && (!decision.adapter || decision.adapter === "aca"))
     return t("autoscaling.kedaReason", { reason: decision.reason });
   // The adapters’ own reasons; the HPA pipeline Cloud Run and Container Apps share (stabilization, policy,

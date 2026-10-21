@@ -1049,3 +1049,17 @@ it.each([1, 1.01])("paused managed arrivals recover after a shrink (scale=%s, se
   expect(state.ledger.reservations.size).toBe(0);
   expect([...state.admissionInFlight.values()].every((weight) => Math.abs(weight) < 1e-8)).toBe(true);
 });
+
+it("due request and pool releases precede a thread callback's successor admission", () => {
+  const released: string[] = [];
+  const ledger = new SampledLedger((r) => {
+    released.push(r.scope);
+    if (r.scope === "thread") expect([...ledger.state.reservations.values()]).toHaveLength(0);
+  });
+  for (const scope of ["thread", "request", "pool"] as const) {
+    const r = ledger.reserve({ owner: "caller", scope, startActive: 0 }, 1.01, 1)!;
+    ledger.retire(r, 20, 20, 0);
+  }
+  ledger.releaseDue("caller", 30);
+  expect(released).toEqual(["request", "pool", "thread"]);
+});

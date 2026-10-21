@@ -6,6 +6,8 @@ import { replicaRange, unmeasured } from "../model/autoscaling";
 import { mulberry32 } from "./rng";
 
 export interface ScalingDecision {
+  /** Ownership of the winning metric; independent of optional display metadata. */
+  source: "resource" | "pods" | "broker";
   at: number;
   raw: number;
   desired: number;
@@ -58,6 +60,8 @@ export interface ScalingDecision {
   cooldownUntil?: number;
   pollingMs?: number;
 }
+/** Public explanation contract; metric ownership stays inside controller evaluation. */
+export type ScalingDecisionReadout = Omit<ScalingDecision, "source">;
 export interface FleetPoint {
   time: number;
   desired: number;
@@ -66,7 +70,7 @@ export interface FleetPoint {
   draining: number;
 }
 export interface FleetReadout extends Omit<FleetPoint, "time"> {
-  decision?: ScalingDecision;
+  decision?: ScalingDecisionReadout;
   history: readonly FleetPoint[];
 }
 export interface ResourceReadout {
@@ -609,7 +613,9 @@ export function evaluateHpa(
   now: number,
   multiplier = 1,
   scale = 1,
-  external: { raw: number; missing: boolean; metric?: number; target?: number } | undefined = undefined,
+  external:
+    | { source: ScalingDecision["source"]; raw: number; missing: boolean; metric?: number; target?: number }
+    | undefined = undefined,
   /** Cloud Run's pipeline may idle at zero; HPA and KEDA's generated HPA keep at least one. */
   rangeOverride?: { min: number; max: number },
 ): ScalingDecision {
@@ -689,6 +695,7 @@ export function evaluateHpa(
   f.nextSync = now + c.settings.syncMs;
   return (f.decision = {
     at: now,
+    source: binding?.source.kind ?? external?.source ?? "resource",
     raw,
     desired,
     reason,
@@ -761,6 +768,10 @@ export function resourceReadout(
       : {}),
   };
 }
+/** Keep controller provenance out of the stable public explanation shape. */
+function decisionReadout({ source: _source, ...decision }: ScalingDecision): ScalingDecisionReadout {
+  return decision;
+}
 const historyCache = new WeakMap<Fleet, { last?: FleetPoint; points: readonly FleetPoint[] }>();
 export function fleetReadout(f: Fleet): FleetReadout {
   let cached = historyCache.get(f);
@@ -774,7 +785,7 @@ export function fleetReadout(f: Fleet): FleetReadout {
     ready: f.ready,
     starting: f.starting,
     draining: drainingCount(f),
-    decision: f.decision && { ...f.decision },
+    decision: f.decision && decisionReadout(f.decision),
     history: cached.points,
   };
 }

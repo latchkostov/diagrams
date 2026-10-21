@@ -4,6 +4,7 @@ import { cloudLesson, hpaLesson, kedaLesson, resourceLesson, type ScalingMetric 
 import { createResourceValidator } from "../model/resourceValidation";
 import { createEngine } from "./engine";
 import { assertLedgerInvariants } from "./resourceInvariants";
+import { evaluateKeda } from "./keda";
 import { autoscalingProblem } from "../model/autoscalingSchema";
 import { createFleet, metricValue } from "./autoscaling";
 
@@ -143,4 +144,97 @@ it("records held-thread history before the busy metric is selected", () => {
   e.step(2000);
   expect(e.snapshot().nodes.caller.threads!.waiting).toBe(4);
   expect(observed).toBe(100);
+});
+
+it.each([false, true])("KEDA preserves the busy-thread winner over a broker (fallback: %s)", (fallback) => {
+  const c = kedaLesson("kafka", { node: "broker" }).controller;
+  Object.assign(c, { minReplicas: 4, initialReplicas: 4, maxReplicas: 10 });
+  c.settings.metrics = [busy()];
+  c.fallback = { failureThreshold: 0, replicas: 4, behavior: "static" };
+  const f = createFleet(4);
+  f.concurrency = 16;
+  f.samples.push({ at: 15000, cpu: 0, occupancy: 0, ready: 4, inFlight: 64 });
+  const d = evaluateKeda(f, c, resourceLesson(), 15000, () =>
+    fallback ? undefined : { pending: 100000, outstanding: 0, partitions: 4 },
+  );
+  expect(d).toMatchObject({
+    source: "pods",
+    metricKind: "busyThreads",
+    metric: 100,
+    target: 50,
+    raw: 8,
+    desired: 8,
+    reason: "target",
+  });
+  expect(d?.broker).toBeUndefined();
+  expect(d?.group).toBeUndefined();
+});
+
+it.each([
+  [1, false],
+  [2, false],
+  [1, true],
+  [2, true],
+] as const)(
+  "sampled busy-thread utilization uses fleet Concurrency (scale=%s, reinitialize=%s)",
+  (scale, reinitialize) => {
+    const d = waitingFixture();
+    const a = hpaLesson();
+    Object.assign(a.controller, { minReplicas: 4, initialReplicas: 4, maxReplicas: 8 });
+    a.controller.settings.syncMs = 1000;
+    a.controller.settings.metrics = [{ ...busy(), target: { kind: "utilization", percentOfRequest: 70 } }];
+    d.nodes[1].props = {
+      concurrency: 16,
+      replicas: 4,
+      latencyMs: 0,
+      jitter: 0,
+      resources: { ...resourceLesson(), cpuMsPerMessage: 0 },
+      autoscaling: a,
+    };
+    d.nodes[2].props = { latencyMs: 5000, api: { latencyMs: 5000 }, jitter: 0 };
+    const e = createEngine({ seed: 17, scale });
+    e.load(d);
+    if (reinitialize) {
+      const resources = { ...resourceLesson(), cpuMsPerMessage: 0 };
+      e.setNodeProps("caller", { resources: undefined });
+      e.setNodeProps("caller", { resources });
+    }
+    e.inject("caller", 40 / scale);
+    e.step(1000);
+    expect(e.snapshot().nodes.caller.fleet!.decision).toMatchObject({
+      metric: 61.875,
+      raw: 4,
+      desired: 4,
+      metricKind: "busyThreads",
+    });
+  },
+);
+
+it.each([false, true])("busy-thread HPA excludes non-blocking waits (per pod: %s)", (average) => {
+  for (const poolConnections of [undefined, 1]) {
+    const d = waitingFixture();
+    const a = hpaLesson();
+    a.controller.settings.syncMs = 1000;
+    a.controller.settings.metrics = [busy(average)];
+    d.nodes[1].props = {
+      concurrency: 16,
+      replicas: 1,
+      latencyMs: 0,
+      jitter: 0,
+      resources: { ...resourceLesson(), cpuMsPerMessage: 0 },
+      autoscaling: a,
+    };
+    d.nodes[2].props = { latencyMs: 5000, api: { latencyMs: 5000 }, jitter: 0 };
+    d.edges[1].props = { ...d.edges[1].props, caller: { wait: "non-blocking", replyMs: 0, poolConnections } };
+    const e = createEngine({ seed: 17, scale: 1, verifyLedger: assertLedgerInvariants });
+    e.load(d);
+    e.inject("caller", 16);
+    e.step(2000);
+    const s = e.snapshot();
+    expect(s.edges.call.calls!.inFlight).toBe(poolConnections ?? 16);
+    expect(s.nodes.caller.threads!.inFlight).toBeGreaterThan(0);
+    expect(s.nodes.caller.threads).toMatchObject({ working: 0, waiting: 0 });
+    expect(s.nodes.caller.fleet).toMatchObject({ desired: 1, decision: { metric: 0, desired: 1 } });
+    if (poolConnections) expect(s.inSystem).toBeGreaterThan(s.edges.call.calls!.inFlight);
+  }
 });

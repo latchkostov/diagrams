@@ -121,6 +121,7 @@ export function evaluateKeda<T extends ScalerTrigger>(
   const decision = (desired: number, reason: ScalingDecision["reason"]) =>
     (f.decision = {
       at: now,
+      source: "broker" as const,
       raw: desired,
       desired,
       reason,
@@ -147,19 +148,20 @@ export function evaluateKeda<T extends ScalerTrigger>(
   }
   if (!sync || f.desired === 0) return;
   const hpa = evaluateHpa(f, { ...c, kind: "hpa" }, r, now, multiplier, scale, {
+    source: "broker",
     raw,
     missing,
     metric: value,
     target: selected?.target,
   });
   // Preserve the limiting trigger's unbounded arithmetic for Why; history uses its executable recommendation.
-  if (selected && hpa.resource === undefined) {
+  if (selected && hpa.source === "broker") {
     hpa.raw = Math.max(hpa.raw, uncapped);
     hpa.broker = selected.source.node;
     hpa.group = selected.source.group;
     if (raw < uncapped && hpa.reason === "target") hpa.reason = "partitions";
   }
-  if (selectedFallback && hpa.resource === undefined && hpa.reason !== "max" && hpa.reason !== "missing")
+  if (selectedFallback && hpa.source === "broker" && hpa.reason !== "max" && hpa.reason !== "missing")
     hpa.reason = "fallback";
   else if (zeroAllowed && !state.active && hpa.desired === 1 && now < cooldownUntil && hpa.reason === "tolerance")
     hpa.reason = "cooldown";

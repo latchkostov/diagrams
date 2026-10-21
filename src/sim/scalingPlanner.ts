@@ -8,7 +8,8 @@ import { createSimulationRun, estimateTotalMs } from "./simulation";
 import { FaultTimelineError } from "../model/faultRuntime";
 import { resolveMultiplier, resolveScale } from "./units";
 import { resolveNodeProps } from "./defaults";
-import type { ScalingDecision } from "./autoscaling";
+import type { ScalingDecisionReadout } from "./autoscaling";
+import { scalingMetricKind } from "./scalingMetric";
 import { WorkBudgetError } from "./engine";
 import { LifecycleBudgetError, resourceBudgetExceeded } from "../model/resourceBudget";
 import { simulationContent } from "./simulationContent";
@@ -220,17 +221,6 @@ function startWork(d: DiagramFile, sim: Simulation): number {
   return (sent * resolveMultiplier(sim.multipliers?.traffic)) / resolveScale(sim.scale);
 }
 
-/** The metric a decision read, in the planner's vocabulary (the UI translates each kind with its unit). */
-function kindOf(decision: ScalingDecision): string | undefined {
-  return (
-    decision.metricKind ??
-    (decision.resource
-      ? `${decision.resource}${decision.targetKind === "averageValue" ? (decision.resource === "cpu" ? "Milli" : "MiB") : "Request"}`
-      : decision.broker
-        ? "backlog"
-        : undefined)
-  );
-}
 /** The policy with its primary target set to `value`, when `metricKind` is what that target measures. */
 function withTarget(
   a: AutoscalingConfig,
@@ -338,7 +328,7 @@ function observe(
         o.startupDesired = f.desired;
       }
       o.peakDesired = Math.max(o.peakDesired, f.desired);
-      const decision: ScalingDecision | undefined = f.decision;
+      const decision: ScalingDecisionReadout | undefined = f.decision;
       const max = maxOf.get(w.id) ?? replicaRange(w.controller, multiplier).max;
       // Steady state at the maximum: every replica ready, so the metric is per replica of a full fleet.
       // …and the decision's own metric window lies inside that stretch, with the whole maximum fleet ready.
@@ -361,7 +351,7 @@ function observe(
             wanted,
             metric: decision.metric,
             target: decision.target,
-            metricKind: kindOf(decision),
+            metricKind: scalingMetricKind(decision),
           });
       }
       if (decision?.reason === "partitions" && decision.broker) o.partitions = decision.broker;
@@ -382,7 +372,7 @@ function observe(
         o.below = {
           metric: decision.metric,
           target: decision.target,
-          metricKind: kindOf(decision),
+          metricKind: scalingMetricKind(decision),
           waitingMajority: (o.waiting ?? 0) > (o.working ?? 0),
         };
       }

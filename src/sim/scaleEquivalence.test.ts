@@ -93,7 +93,6 @@ beforeAll(() => {
     e.step(20_000);
     return e.snapshot();
   };
-  // A simulation crash cannot satisfy the expected-failure assertion below.
   zeroLocalBaseline = run(1);
   for (const scale of [1.01, 2.5]) zeroLocalSamples.set(scale, run(scale));
 });
@@ -102,12 +101,7 @@ it("I1 zero-local-work pool fixture retains the scale-one reference", () => {
   expect(realSnapshot(zeroLocalBaseline).nodes.caller.processed).toBe(999);
 });
 for (const scale of [1.01, 2.5]) {
-  // docs/backlog/2026-10-21-blocking-pool-sampling.md: the newly executed one-connection gate.
-  const check = scale === 1.01 ? it.fails : it;
-  check(
-    `I1 ${scale === 1.01 ? "known gap: blocking pool" : "regression:"} zero-work throughput at scale ${scale}`,
-    () => {
-      expectScaleEquivalent(zeroLocalBaseline, zeroLocalSamples.get(scale)!, 1);
-    },
-  );
+  it(`I1 regression: zero-work throughput at scale ${scale}`, () => {
+    expectScaleEquivalent(zeroLocalBaseline, zeroLocalSamples.get(scale)!, 1);
+  });
 }

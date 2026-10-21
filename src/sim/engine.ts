@@ -1263,6 +1263,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (patches[node.id]?.replicas !== undefined && node.fleet.override)
           node.fleet.decision = {
             at: time,
+            source: "pods",
             raw: patches[node.id].replicas!,
             desired: node.fleet.desired,
             reason: "override",
@@ -1627,7 +1628,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       };
       pushDue(
         edge.poolPending,
-        { id: call.id, end: call.id, call, message: branch, admissibleActive: node.activeMs },
+        {
+          id: call.id,
+          end: call.id,
+          call,
+          message: branch,
+          admissibleActive: execution.admissibleActive(node, work),
+        },
         edge.poolPendingIndices,
       );
       const timing = call.branches.get(edge.id)!;
@@ -2552,6 +2559,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       c ? controllerSyncMs(c) : undefined,
       partBudget,
     );
+    node.fleet.concurrency = node.props.concurrency;
     node.fleet.paused = node.status === "paused";
     resetController(node, node.fleet, c);
     if (node.fleet.paused) node.fleet.pausedAt = time;
