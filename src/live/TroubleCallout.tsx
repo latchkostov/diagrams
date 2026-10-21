@@ -3,7 +3,7 @@ import { t } from "../i18n";
 import { useInteraction } from "../canvas/interaction";
 import { LiveIcon } from "./icons";
 import type { Trouble, TroubleAction } from "./observedTrouble";
-import { useFloatingPlacement } from "./CapacityLayer";
+import { useFloatingPlacement } from "./useFloatingPlacement";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: string; icon?: "plus" | "play" }> = {

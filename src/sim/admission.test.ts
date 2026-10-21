@@ -1,3 +1,4 @@
+import { sharedConcurrencyKey } from "./admissionPolicy";
 import { describe, expect, it, vi } from "vitest";
 import { createEngine } from "./engine";
 import { createSimulationRun } from "./simulation";
@@ -973,4 +974,144 @@ describe("P3 managed admission", () => {
     d.planning!.sharedQuotas = [q(), q()];
     expect(validateDiagram(d).ok).toBe(false);
   });
+});
+
+it("a full request tolerates floating subtraction residue at admission", () => {
+  const policy = { api: { maxInFlight: 4 }, endpoints: [] };
+  const state = emptyAdmission();
+  configureAdmission(state, [policy]);
+  state.inFlight.set(JSON.stringify(["local", "api", "concurrency", "node"]), 3 + Number.EPSILON * 2);
+  const admitted = attemptAdmission(state, "api", policy, undefined, undefined, 0, 1);
+  expect(admitted).toHaveProperty("leases.request.weight", 1);
+});
+
+it("local reconfiguration never traverses unrelated compiled limits or clears retained excess", () => {
+  const state = emptyAdmission();
+  const policies = Array.from({ length: 24 }, () => ({ api: { maxInFlight: 10 }, endpoints: [] }));
+  admissionModule.reconfigureAdmission(
+    state,
+    policies.map((policy, i) => ({ id: String(i), policy })),
+    undefined,
+    0,
+  );
+  state.retainedExcess.set("unrelated", 3);
+  const visits = policies.slice(1).map((policy) =>
+    vi.spyOn(state.compiled.get(policy)!.values().next().value!.calls, "values").mockImplementation(() => {
+      throw new Error("unrelated compiled policy visited");
+    }),
+  );
+  const clear = vi.spyOn(state.retainedExcess, "clear").mockImplementation(() => {
+    throw new Error("all excess cleared");
+  });
+  try {
+    admissionModule.reconfigureAdmission(
+      state,
+      [{ id: "0", policy: { api: { maxInFlight: 1 }, endpoints: [] } }],
+      undefined,
+      10,
+    );
+    expect(state.retainedExcess.get("unrelated")).toBe(3);
+  } finally {
+    visits.forEach((visit) => visit.mockRestore());
+    clear.mockRestore();
+  }
+});
+
+it("retained excess reconfiguration updates only changed keys", () => {
+  const state = emptyAdmission();
+  const policy = { api: { maxInFlight: 4 }, endpoints: [] };
+  admissionModule.reconfigureAdmission(
+    state,
+    [
+      { id: "a", policy },
+      { id: "b", policy: { ...policy } },
+    ],
+    undefined,
+    0,
+  );
+  const b = state.policies.get("b")!;
+  expect(attemptAdmission(state, "a", policy, undefined, undefined, 0, 4)).toHaveProperty("leases");
+  expect(attemptAdmission(state, "b", b, undefined, undefined, 0, 4)).toHaveProperty("leases");
+  admissionModule.reconfigureAdmission(
+    state,
+    [{ id: "b", policy: { api: { maxInFlight: 1 }, endpoints: [] } }],
+    undefined,
+    0,
+  );
+  const clear = vi.spyOn(state.retainedExcess, "clear").mockImplementation(() => {
+    throw new Error("unrelated retained excess reset");
+  });
+  try {
+    admissionModule.reconfigureAdmission(
+      state,
+      [{ id: "a", policy: { api: { maxInFlight: 1 }, endpoints: [] } }],
+      undefined,
+      0,
+    );
+    expect([...state.retainedExcess.values()]).toEqual([3, 3]);
+  } finally {
+    clear.mockRestore();
+  }
+});
+
+it("shared diagnostic aggregation visits each owner once per configuration batch", () => {
+  const state = emptyAdmission();
+  const visits = vi.spyOn(state.limitOwners, "get");
+  const count = 128;
+  admissionModule.reconfigureAdmission(
+    state,
+    Array.from({ length: count }, (_, i) => ({
+      id: String(i),
+      policy: { api: { sharedConcurrency: "account", maxInFlight: 4 }, endpoints: [] },
+    })),
+    undefined,
+    0,
+  );
+  const shared = state.limitOwners.get(sharedConcurrencyKey("account"))!;
+  let owners = 0;
+  const values = shared.values.bind(shared);
+  vi.spyOn(shared, "values").mockImplementation(function* () {
+    for (const value of values()) {
+      owners++;
+      yield value;
+    }
+    return undefined;
+  });
+  admissionModule.reconfigureAdmission(
+    state,
+    Array.from({ length: count }, (_, i) => ({
+      id: String(i),
+      policy: { api: { sharedConcurrency: "account", maxInFlight: 2 }, endpoints: [] },
+    })),
+    undefined,
+    0,
+  );
+  expect(owners).toBe(count);
+  expect(admissionModule.admissionLimits(state).get(sharedConcurrencyKey("account"))).toBe(2);
+  expect(visits.mock.calls.length).toBeLessThan(count * 8);
+});
+
+it("execution-room waits preserve quota credit", () => {
+  const state = emptyAdmission();
+  const policy = { api: { maxInFlight: 10, quotas: [q(10)] }, endpoints: [], slots: 10 };
+  // Populate the bucket without spending it, then repeat the admission phase at the same clock.
+  expect(attemptAdmission(state, "api", policy, undefined, undefined, 0, 10, 10, [], true, undefined, 0)).toEqual({
+    rejected: "concurrency",
+    waiting: true,
+  });
+  const before = structuredClone({ buckets: state.buckets, inFlight: state.inFlight });
+  for (let attempt = 0; attempt < 20; attempt++) {
+    expect(attemptAdmission(state, "api", policy, undefined, undefined, 0, 10, 10, [], true, undefined, 0)).toEqual({
+      rejected: "concurrency",
+      waiting: true,
+    });
+    expect({ buckets: state.buckets, inFlight: state.inFlight }).toEqual(before);
+  }
+  const admitted = attemptAdmission(state, "api", policy, undefined, undefined, 0, 10, 10, [], true, undefined, 10);
+  if ("rejected" in admitted) throw new Error(admitted.rejected);
+  expect([...state.buckets.values()].map((bucket) => bucket.tokens)).toEqual([0]);
+  expect(admitted.leases.thread.weight).toBe(10);
+  releaseAdmissions(state, admitted.leases);
+  expect([...state.inFlight.values()].every((count) => count === 0)).toBe(true);
+  expect([...state.buckets.values()].map((bucket) => bucket.tokens)).toEqual([0]);
 });

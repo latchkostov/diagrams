@@ -39,6 +39,33 @@ test("a pending custom injection is modal, cancellable and returns focus to its 
   await expect(page.getByTestId("live-hud")).toBeVisible();
 });
 
+test("capacity callouts download without blocking Live or its heat map", async ({ page, consoleErrors }) => {
+  const callout = await gate(page, chunk("BottleneckCallout", "src/live/BottleneckCallout.tsx"));
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&paused=1`);
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("capacity-overlay-toggle").click();
+  await expect.poll(callout.requested).toBe(true);
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await expect(page.getByTestId("capacity-label-payments")).toBeVisible();
+  await expect(page.getByTestId("bottleneck-callout")).toHaveCount(0);
+  callout.release();
+  await expect(page.getByTestId("bottleneck-callout")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("a waiting narration keeps its Continue action after its download", async ({ page, consoleErrors }) => {
+  const narration = await gate(page, chunk("NoteCallout", "src/live/NoteCallout.tsx"));
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&sim=payments-outage&speed=8`);
+  await expect.poll(narration.requested).toBe(true);
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+  await expect(page.getByTestId("live-note")).toHaveCount(0);
+  narration.release();
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await page.getByTestId("live-note-continue").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  expectNoErrors(consoleErrors);
+});
+
 for (const failed of [false, true]) {
   for (const action of ["save", "download"] as const) {
     test(`${action} completes while operation messages are ${failed ? "failed" : "pending"}`, async ({ page }) => {

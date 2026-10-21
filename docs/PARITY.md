@@ -38,6 +38,21 @@ schedule. Logical outcomes still follow the first wave rather than capacity rele
 as do all pre-W1, scale-one W1 and non-simulation goldens. See the
 [release fragment](release-notes/2026-10-19-engine-thread-reservations-r3.md).
 
+## Engine CPU share and callees R4 (2026-10-19)
+
+Only `node/sim/blocking-call/free-play.json` changes, at scale ten with CPU resources.
+A partial reservation finishes after its real CPU share, while the remaining cohort CPU keeps
+competing for the same fleet budget. Where weight is below the represented cohort size, the
+logical wave uses less CPU; autoscaling still sees all unfinished cohort CPU. Direction: the fastest
+traced journey falls from 690 to 680 ms and minimum caller processing from 270 to 260 ms; retained CPU contention changes later
+admissions, so caller completions fall by 3, 11, 19, 22, 18 and 20 dots at the six checkpoints
+(final 1,371 versus 1,391, 1.44% lower). Thread occupancy stays at 6.4 dots / 64 real threads.
+Backlogs, downstream counts, rates, event positions and the seeded latency sample follow that
+schedule; final in-system dots rise from 1,021 to 1,039. No new failures or drops occur. Both sampling
+goldens, every pre-W1 and scale-one W1 golden, and planning, agent, checks, evidence, exports, layout
+and routes remain unchanged.
+See [the release fragment](release-notes/2026-10-19-engine-cpu-callees-r4.md).
+
 ## Resizable Inspector (2026-10-16)
 
 Exactly 19 goldens change intentionally: the three new Inspector messages update

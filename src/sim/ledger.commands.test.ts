@@ -1,4 +1,5 @@
 import fc from "fast-check";
+import { resourceLesson } from "../model/autoscaling";
 import { expect, it } from "vitest";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
@@ -6,7 +7,7 @@ import { drainRetiredLedger } from "../test/ledgerDrain";
 import { createEngine, randomDraws } from "./engine";
 import {
   assertLedgerInvariants,
-  assertAdmissionInvariants,
+  assertResourceInvariants,
   assertOutcomeInvariants,
   type LedgerInvariantState,
 } from "./resourceInvariants";
@@ -37,7 +38,7 @@ function probe(diagram: DiagramFile, scale: number, seed: number): Probe {
       state = { ...s, nodes: [...s.nodes] };
       assertLedgerInvariants(state);
     },
-    verifyResources: assertAdmissionInvariants,
+    verifyResources: assertResourceInvariants,
     verifyOutcomes: assertOutcomeInvariants,
   });
   engine.load(diagram);
@@ -83,6 +84,8 @@ type Action =
   | { kind: "SetStatus"; index: number; status: NodeStatus; tick: boolean }
   | { kind: "Cut/Restore"; index: number; cut: boolean }
   | { kind: "SetProps"; index: number; concurrency: number; maxInFlight?: number }
+  | { kind: "Resources"; index: number; enabled: boolean; cpuMs: number }
+  | { kind: "RecoverAndEnableResources"; index: number; concurrency: number; cpuMs: number }
   | { kind: "SetScale"; scale: number }
   | { kind: "Checkpoint" }
   | { kind: "Restore" };
@@ -94,7 +97,9 @@ class WaitCommand implements fc.Command<Model, Real> {
   }
   run(model: Model, real: Real): void {
     const action = this.action;
-    const tiers = real.diagram.nodes.filter((n) => n.id.startsWith("tier"));
+    const tiers = real.diagram.nodes.filter(
+      (n) => n.id.startsWith("tier") || n.id === "cpu-target" || n.id === "standalone",
+    );
     if (action.kind === "SetScale") model.scale = action.scale;
     if (action.kind === "Checkpoint") model.savedScale = model.scale;
     if (action.kind === "Restore") model.scale = model.savedScale!;
@@ -127,6 +132,28 @@ class WaitCommand implements fc.Command<Model, Real> {
           });
           break;
         }
+        case "Resources":
+          e.setNodeProps(tiers[action.index % tiers.length].id, {
+            resources: action.enabled
+              ? { ...resourceLesson(), cpuMsPerMessage: action.cpuMs, startup: { delayMs: 0, jitterFraction: 0 } }
+              : undefined,
+          });
+          break;
+        case "RecoverAndEnableResources": {
+          const id = tiers[action.index % tiers.length].id;
+          // Timeline actions at the same timestamp run before the next engine tick.
+          e.setNodeStatus(id, "down");
+          e.setNodeStatus(id, "up");
+          e.setNodeProps(id, {
+            concurrency: action.concurrency,
+            resources: {
+              ...resourceLesson(),
+              cpuMsPerMessage: action.cpuMs,
+              startup: { delayMs: 0, jitterFraction: 0 },
+            },
+          });
+          break;
+        }
         case "SetScale":
           e.setScale(action.scale);
           break;
@@ -154,20 +181,32 @@ function commands(scaleOne: boolean) {
     fc.record({ kind: fc.constant("Step" as const), ticks: fc.integer({ min: 1, max: 80 }) }),
     fc.record({
       kind: fc.constant("SetStatus" as const),
-      index: fc.nat(3),
+      index: fc.nat(4),
       status: fc.constantFrom<NodeStatus>("down", "paused", "up"),
       tick: fc.boolean(),
     }),
-    fc.record({ kind: fc.constant("Cut/Restore" as const), index: fc.nat(3), cut: fc.boolean() }),
+    fc.record({ kind: fc.constant("Cut/Restore" as const), index: fc.nat(4), cut: fc.boolean() }),
     fc.record({
       kind: fc.constant("SetProps" as const),
-      index: fc.nat(3),
+      index: fc.nat(4),
       concurrency: fc.integer({ min: 1, max: 8 }),
       maxInFlight: fc.option(fc.integer({ min: 1, max: 8 }), { nil: undefined }),
     }),
     fc.record({
       kind: fc.constant("SetScale" as const),
       scale: scaleOne ? fc.constant(1) : fc.constantFrom(1, 1.01, 1.1, 1.5, 2, 3, 10),
+    }),
+    fc.record({
+      kind: fc.constant("Resources" as const),
+      index: fc.nat(4),
+      enabled: fc.boolean(),
+      cpuMs: fc.integer({ min: 0, max: 100 }),
+    }),
+    fc.record({
+      kind: fc.constant("RecoverAndEnableResources" as const),
+      index: fc.nat(5),
+      concurrency: fc.integer({ min: 1, max: 4 }),
+      cpuMs: fc.integer({ min: 0, max: 100 }),
     }),
     fc.constant({ kind: "Checkpoint" as const }),
     fc.constant({ kind: "Restore" as const }),
@@ -312,7 +351,8 @@ it("generated shared callers recover from down/up during backoff", () => {
         for (const p of real.probes) {
           drain(p);
           const recovered = p.engine.snapshot().nodes.tier0;
-          expect(recovered.processed + recovered.failed).toBeGreaterThan(1);
+          expect(recovered.processed).toBeGreaterThan(0);
+          expect(recovered.failed).toBeGreaterThan(0);
           expect(p.engine.snapshot().nodes.sibling.processed).toBe(1);
         }
         hits++;

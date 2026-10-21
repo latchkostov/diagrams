@@ -85,6 +85,9 @@ export class SampledLedger {
     cap = Infinity,
     admissibleActive = scope.startActive,
   ): Reservation<Group> | undefined {
+    const minimum = Math.min(1, represented);
+    if (room < minimum && room + 1e-9 >= minimum) room = minimum;
+    if (cap < minimum && cap + 1e-9 >= minimum) cap = minimum;
     const weight = Math.min(represented, room, cap);
     // A partial dot needs at least one real request's room. Tiny fractional
     // leftovers must not create leases whose residence is effectively permanent.

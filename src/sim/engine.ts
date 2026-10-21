@@ -1,24 +1,23 @@
+import { createExecutionReservations, type ExecutionWork } from "./executionReservations";
 import { revisionAtLeast } from "../model/revisions";
 import { faultProblem, type Fault } from "../model/faults";
 import { faultTopology, faultActive, faultKey } from "../model/faultRuntime";
-import { clearResourceWork, shiftWorkDeadlines, createCpuPartBudget, type ResourceWork } from "./resourceWork";
+import {
+  shiftWorkDeadlines,
+  createCpuPartBudget,
+  type ResourceWork,
+  type CpuTail,
+  deliveryGroup,
+  ownsCpu,
+  cancelCpu,
+} from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
 import { t } from "../i18n/core";
-import {
-  sampledParts,
-  releaseCpuParts,
-  canDrainSampled,
-  retainSampledDrains,
-  releaseSampledDrains,
-  sampledOwners,
-  type CpuPart,
-} from "./sampledResources";
+import { canDrainSampled, retainSampledDrains, releaseSampledDrains, sampledOwners } from "./sampledResources";
 import {
   createFleet,
-  acquireReplica,
   configureConcurrency,
-  releaseReplica,
   reconcileFleet,
   advanceFleet,
   chargeCpu,
@@ -71,7 +70,6 @@ import {
   emptyAdmission,
   releaseAdmission,
   type AdmissionLease,
-  type AdmissionLeases,
 } from "./admission";
 import {
   chooseAction,
@@ -95,7 +93,6 @@ import {
   attemptQuotas,
   reconfigureQuotas,
   reserveContinuation,
-  reacquire,
   admissionLimits,
   restoreAdmission,
   type QuotaRequirement,
@@ -183,18 +180,11 @@ interface Delivery {
   edge: Edge;
   original: Message;
 }
-interface Work {
-  admissibleActive?: number;
+interface Work extends ExecutionWork<Group> {
   attempt?: Attempt<Message>;
   residentWeight?: number;
-  localThread?: number;
-  thread?: number;
-  requestLease?: number;
-  /** Capacity lost at shutdown; recovery never admits a new attempt. */
-  recoveryCapacity?: AdmissionLeases;
   /** Owns its preceding thread while awaiting the ordinary continuation phase. */
   resumeAtAdmission?: boolean;
-  continuation?: { ok: boolean; cpuMs: number };
   serviceMs?: number;
   waitingCall?: number;
   outputs?: Edge[];
@@ -202,14 +192,6 @@ interface Work {
   workedAt?: number;
   /** In-place backoff advances only with the attempt's clock, including pause/resume. */
   waitRemaining?: number;
-  memorySlots?: number;
-  cpuParts?: CpuPart[];
-  replica?: number;
-  cpuRemaining?: number;
-  cpuBackoffUntil?: number;
-  retryAdmissionAt?: number;
-  lease?: AdmissionLease;
-  threadLease?: AdmissionLease;
   errorRate?: number;
   message: Message;
   via?: Edge;
@@ -269,12 +251,18 @@ interface Node {
   admissionDirty: boolean;
   residentWeight: number;
   residentCount: number;
+  requestWeight: number;
+  requestCount: number;
   heldCalls: number;
   offThreadCalls: number;
   freeFlight: number;
   heldBrokerCalls: number;
   waitingOn: Map<string, number>;
   waits: boolean;
+  callTarget: boolean;
+  cpuTail: Set<CpuTail<Group>>;
+  sampledExecution: boolean;
+  cpuTick?: import("./resourceInvariants").CpuTick;
   incoming: number;
   cursor: number;
   processed: number;
@@ -441,9 +429,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ? node.threadWeight[reservation.phase] - reservation.weight
         : 0;
       if (node.threadTails.delete(reservation.id)) {
-        endResources(node, reservation);
+        endResources(node, reservation as Reservation<Group>);
         if (reservation.phase === "work" && node.status === "up" && !node.fleet) admitPending(node);
       }
+      return;
+    }
+    if (reservation.scope === "request") {
+      const node = nodes.get(reservation.owner)!;
+      node.requestWeight = --node.requestCount ? node.requestWeight - reservation.weight : 0;
       return;
     }
     if (reservation.scope !== "pool") return;
@@ -470,7 +463,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let outcomeChecks = new Map<number, Attempt<Message>>();
   let nextLogical = 1;
   const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
-  const callerReservations = (node: Node) => node.waits && node.role === "processor";
+  const callerReservations = (node: Node) => (node.waits || node.callTarget) && node.role === "processor";
   const threadOccupancy = (node: Node) =>
     callerReservations(node)
       ? (node.threadWeight.work + node.threadWeight.wait) / scale
@@ -484,10 +477,28 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.threadWeight[phase] += reservation.weight;
     node.threadCount[phase]++;
   }
-  const memoryRequests = (node: Node) =>
-    callerReservations(node)
-      ? node.threadWeight.work + node.threadWeight.wait + node.offThreadCalls * scale
-      : residentRequests(node);
+  const executionOccupancy = (node: Node): number =>
+    execution.usesLedger(node)
+      ? node.threadWeight.work + node.threadWeight.wait
+      : node.fleet && scale === 1 && !node.sampledExecution
+        ? node.fleet.active
+        : threadOccupancy(node) * scale;
+  const memoryRequests = (node: Node) => (callerReservations(node) ? node.requestWeight : residentRequests(node));
+
+  const execution = createExecutionReservations<Group, Node>({
+    ledger,
+    admission: () => admission,
+    scale: () => scale,
+    time: () => time,
+    waits,
+    callerReservations,
+    slots,
+    resourceWork,
+    scheduleThreadGrace,
+    immediateHolds: () => opts.ledgerHold === "none",
+  });
+  const { reacquireCapacity, startResources, endResources, retireThread } = execution;
+
   /** Each represented request lives in work, a call, or the continuation queue, never in a tail. */
   function residentRequests(node: Node): number {
     return waits() ? node.residentWeight : (node.working.length + node.heldCalls) * scale;
@@ -812,39 +823,40 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (call.attempt.outcome) settleAttempt(call, call.attempt.outcome.ok);
         else if (call.held && !call.blockingRemaining && call.outstanding.size) detachCallThread(call);
         else if (node.fleet) {
-          const at =
-            call.work.replica === undefined
-              ? Math.min(...(call.work.cpuParts ?? []).map((p) => p.drainAt ?? Infinity))
-              : (node.fleet.busy.get(call.work.replica)?.drainAt ?? Infinity);
+          const at = executionGraceDeadline(node, call.work);
           if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
         }
       }
+    if (status === "up" && execution.usesLedger(node) && !callerReservations(node)) {
+      const retained = node.working;
+      node.working = [];
+      for (const work of retained) {
+        if (reacquireCapacity(node, work)) node.working.push(work);
+        else {
+          work.slotted = false;
+          endResources(node, work);
+          admit(node, work);
+        }
+      }
+    }
     if (status === "up") for (const [id, work] of node.threadTails) scheduleThreadGrace(id, work);
     log("status", node, undefined, status);
   }
 
   /** Owner shutdown invalidates every logical reference alongside ledger ownership. */
   function shutdownOwner(node: Node): void {
-    for (const work of liveWork(node)) {
-      const request = ledger.get(work.requestLease);
-      const thread = ledger.get(work.thread);
-      if (request)
-        work.recoveryCapacity = {
-          request: { weight: request.weight, represented: request.represented, keys: request.keys ?? [] },
-          thread: thread
-            ? { weight: thread.weight, represented: thread.represented, keys: thread.keys ?? [] }
-            : undefined,
-        };
-      work.thread = work.requestLease = work.localThread = undefined;
-      if (work.attempt) work.attempt.res = {};
-    }
-    ledger.releaseOwner(node.id);
+    execution.shutdown(node, liveWork(node));
     // A continuation that lost request admission must rejoin the admission
     // queue. It cannot block resumed work that still owns request capacity and
     // needs to finish before that capacity can be reacquired.
     const resume = node.resume;
     node.resume = new Deque();
-    for (const work of resume) (work.recoveryCapacity ? node.pending : node.resume).push(work);
+    for (const work of resume) {
+      if (work.recoveryCapacity) {
+        wakeDelivery(work);
+        admit(node, work);
+      } else node.resume.push(work);
+    }
     for (const edge of node.outgoing) edge.poolLeases.clear();
   }
 
@@ -890,7 +902,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function slots(node: Node): number {
-    if (node.waits && node.props.admission) {
+    if (callerReservations(node) && node.props.admission) {
       return admissionSlots(node.props.admission, node.activeReplicas);
     }
     if (node.props.admission) return node.props.admission.slots ?? node.props.admission.api.maxInFlight ?? Infinity;
@@ -906,7 +918,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       attempt(node, work);
     }
-    if (node.status === "down" || !node.waits || node.role !== "processor") return;
+    if (node.status === "down") return;
+    if (!callerReservations(node)) {
+      if (!reacquireCapacity(node, work)) throw new Error("Processor admitted without thread capacity");
+      return;
+    }
     work.serviceMs = work.retryAdmissionAt === undefined ? work.remaining : (work.waitRemaining ?? 0);
     const retainedThread = ledger.get<Group>(work.thread);
     if (retainedThread) {
@@ -924,77 +940,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (!reacquireCapacity(node, work)) throw new Error("Caller admitted without thread capacity");
     attempt(node, work).res = { thread: work.thread, request: work.requestLease };
-  }
-
-  /** Capacity only: preserve the attempt's timing, policy and quota transaction. */
-  function reacquireCapacity(node: Node, work: Work): boolean {
-    if (!callerReservations(node) || ledger.get(work.thread)) return true;
-    const recovery = work.recoveryCapacity;
-    const lease = recovery?.thread ?? work.threadLease ?? work.lease;
-    let request = ledger.get(work.requestLease);
-    // Admission can precede execution while paused. A live scale edit must not
-    // resize that already-charged transaction when it enters the ledger.
-    const represented = request?.represented ?? recovery?.request.represented ?? lease?.represented ?? scale;
-    const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
-    let cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
-    let requestCapacity = recovery?.request ?? work.lease;
-    let threadCapacity = recovery?.thread ?? work.threadLease;
-    if (recovery) {
-      const leases = reacquire(admission, {
-        node: node.id,
-        policy: node.props.admission,
-        endpointId: work.via?.endpointId,
-        slots: slots(node),
-        room,
-        request: request ? undefined : requestCapacity,
-        thread: { represented, weight: Math.min(represented, room, cap), keys: threadCapacity?.keys ?? [] },
-      });
-      if (!leases) return false;
-      requestCapacity = leases.request;
-      threadCapacity = leases.thread;
-      cap = leases.thread.weight;
+    if (work.cpuRemaining !== undefined) {
+      const thread = ledger.get(work.thread)!;
+      work.logicalCpuRemaining ??= (work.cpuPerRequest ?? 0) * thread.weight;
     }
-    const thread = ledger.reserve<Group>(
-      {
-        owner: node.id,
-        scope: "thread",
-        startActive: node.activeMs,
-        keys: threadCapacity?.keys,
-      },
-      represented,
-      room,
-      cap,
-      work.admissibleActive ?? node.activeMs,
-    );
-    if (!thread) return false;
-    // A paused arrival may have charged more execution capacity before a live
-    // shrink. Transfer only the granted weight into the ledger and return the
-    // unused part of that slot lease; request residence keeps its own weight.
-    if (threadCapacity && threadCapacity.weight > thread.weight)
-      releaseAdmission(admission, { ...threadCapacity, weight: threadCapacity.weight - thread.weight });
-    work.thread = thread.id;
-    node.threadWeight.work += thread.weight;
-    node.threadCount.work++;
-    work.threadLease = undefined;
-    if (!request) {
-      request = ledger.reserve(
-        {
-          owner: node.id,
-          scope: "request",
-          startActive: node.activeMs,
-          keys: requestCapacity?.keys,
-        },
-        represented,
-        requestCapacity?.weight ?? thread.weight,
-        Infinity,
-        work.admissibleActive ?? node.activeMs,
-      )!;
-      work.requestLease = request.id;
-      work.lease = undefined;
-    }
-    thread.requestWeight = request.weight;
-    work.recoveryCapacity = undefined;
-    return true;
   }
 
   /** The source has been consumed by its queue/phase; invalidate any alternate admission path. */
@@ -1117,9 +1066,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         continue;
       }
       const owners = new Map<Group, Set<number>>();
-      const sampled = new Map<Group, (Work | Reservation<Group>)[]>();
+      const sampled = new Map<Group, ResourceWork[]>();
       for (const work of resourceWork(node)) {
-        const group = "scope" in work ? work.group : work.delivery?.group;
+        const group = deliveryGroup(work);
         if (!group) continue;
         if (work.cpuParts?.length) {
           const owned = sampled.get(group) ?? [];
@@ -1237,11 +1186,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       if ("resources" in patch || "autoscaling" in patch) {
         if (!node.props.resources) {
-          for (const work of nodeWork(node)) {
-            if (node.fleet) releaseCpuParts(node.fleet, work);
-            clearResourceWork(work);
-          }
-          node.fleet = undefined;
+          execution.disableResources(node, nodeWork(node));
         } else if (!node.fleet || time === 0) {
           initializeFleet(node);
           initialized.add(node);
@@ -1256,9 +1201,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               scheduleWork(node, work, work.resumeAtAdmission ? "takeovers" : "working");
             } else {
               work.slotted = false;
-              scheduleWork(node, work, "pending");
+              wakeDelivery(work);
+              admit(node, work);
             }
           }
+          for (const call of node.calls.values()) if (call.held) execution.attachIdleResources(node, call.work);
+          for (const tail of node.threadTails.values()) execution.attachIdleResources(node, tail);
         } else {
           const f = node.fleet,
             a = node.props.autoscaling;
@@ -1427,6 +1375,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function admit(node: Node, work: Work): void {
     const group = work.delivery?.group;
     if (group && !work.held && !hold(group, node, work)) {
+      if (work.resumeAtAdmission) node.takeovers = node.takeovers.filter((entry) => entry !== work);
+      work.resumeAtAdmission = false;
       let queue = group.staged.get(node.id);
       if (!queue) group.staged.set(node.id, (queue = new Deque()));
       queue.push(work);
@@ -1480,7 +1430,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.fleet && work.replica !== undefined && node.fleet.busy.get(work.replica)?.drainAt !== undefined)
       return false;
     if (work.slotted && (!node.fleet || work.replica !== undefined || work.cpuParts?.length)) return true;
-    if (node.waits && threadOccupancy(node) >= slots(node) / scale) return false;
+    if (callerReservations(node) && threadOccupancy(node) >= slots(node) / scale) return false;
     if (
       node.fleet
         ? (scale === 1 ? node.fleet.active : threadOccupancy(node) * scale) >= slots(node)
@@ -1553,41 +1503,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function scheduleThreadGrace(id: number, work: Reservation<Group>): void {
-    const at = Math.min(...(work.cpuParts ?? []).map((p) => p.drainAt ?? Infinity));
+    const at = executionGraceDeadline(nodes.get(work.owner)!, work);
     if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, thread: id });
   }
 
-  /** R3 keeps batch CPU execution unchanged; R4 separates its logical share. */
+  /** The first wave finishes logically; remaining cohort CPU keeps running independently. */
   function finishThreadWork(node: Node, work: Work): void {
     const r = ledger.get<Group>(work.thread);
     if (!r || work.serviceMs === undefined) return;
     const elapsed = node.activeMs - (r.segmentActive ?? r.startActive);
-    const localHold = Math.min(
-      elapsed,
-      Math.ceil((Math.max(work.serviceMs, elapsed * occupancyFraction(r)) - 1e-6) / STEP) * STEP,
-    );
+    const localHold = elapsed;
+    if (ownsCpu(work) && (work.cpuRemaining ?? 0) > 1e-8 && (work.logicalCpuRemaining ?? Infinity) <= 1e-8)
+      node.cpuTail.add(work);
     r.heldMs += Math.max(0, localHold);
     r.segmentActive = node.activeMs;
     work.serviceMs = undefined;
-  }
-
-  /** Retired thread ownership is capacity only; terminal residency has one finalizer. */
-  function retireThread(node: Node, work: Work, immediate = false): void {
-    const r = ledger.get<Group>(work.thread);
-    if (!r) return;
-    work.thread = undefined;
-    r.group = work.delivery?.group;
-    r.cpuParts = work.cpuParts;
-    r.cpuRemaining = work.cpuRemaining;
-    r.replica = work.replica;
-    work.cpuParts = work.cpuRemaining = work.replica = undefined;
-    node.threadTails.set(r.id, r);
-    work.localThread = r.id;
-    if (immediate || opts.ledgerHold === "none") ledger.release(r);
-    // Resource-backed nodes have a second admission phase after logical replies.
-    else
-      ledger.retire(r, node.activeMs - (r.segmentActive ?? r.startActive), node.activeMs, node.fleet ? 0 : undefined);
-    if (node.threadTails.has(r.id)) scheduleThreadGrace(r.id, r);
   }
 
   function retireRequest(work: Work, immediate = false): void {
@@ -1838,48 +1768,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // than its request lease. Retire it as a new logical step on that ownership.
       retireThread(node, work);
       const tail = ledger.get<Group>(work.localThread);
-      if (tail) {
-        work.cpuParts = tail.cpuParts;
-        work.cpuRemaining = tail.cpuRemaining;
-        work.replica = tail.replica;
-        tail.cpuParts = tail.cpuRemaining = tail.replica = undefined;
-        node.threadTails.delete(tail.id);
-        ledger.release(tail);
-        const request = ledger.get<Group>(work.requestLease)!;
-        const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
-        const leases = reacquire(admission, {
-          node: node.id,
-          policy: node.props.admission,
-          endpointId: work.via?.endpointId,
-          slots: slots(node),
-          room,
-          thread: {
-            represented: request.represented,
-            weight: Math.min(request.represented, room, request.weight),
-            keys: tail.keys ?? [],
-          },
-        });
-        const r =
-          leases &&
-          ledger.reserve<Group>(
-            { owner: node.id, scope: "thread", startActive: node.activeMs, keys: leases.thread.keys },
-            request.represented,
-            room,
-            leases.thread.weight,
-          );
-        // Releasing the old reservation may make room. A live shrink can still
-        // leave the node overbooked, so the continuation waits for capacity.
-        if (r) {
-          work.thread = r.id;
-          r.requestWeight = request.weight;
-          node.threadWeight.work += r.weight;
-          node.threadCount.work++;
-          r.heldMs = Math.max(
-            0,
-            ((tail.releaseAt! + (tail.admissionLagMs ?? 0) - node.activeMs) * tail.weight) / tail.represented,
-          );
-        }
-      }
+      if (tail) execution.takeoverThread(node, work, tail);
       if (ledger.get<Group>(work.thread)) threadPhase(node, ledger.get<Group>(work.thread), "work");
       const cpuParts = work.cpuParts;
       const replica = work.replica;
@@ -1891,21 +1780,34 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.slotted = false;
       work.attempt = undefined;
       work.remaining = call.replyMs ?? 0;
+      const pendingCpu = work.cpuRemaining ?? 0;
+      work.cpuBacklog = pendingCpu;
       work.cpuRemaining = undefined;
       work.continuation = { ok, cpuMs: replyCpuMs(node.props.resources?.cpuMsPerMessage ?? 0, call.replies!) };
-      if (work.cpuParts) {
-        const count = work.cpuParts.reduce((sum, p) => sum + p.last - p.first + 1, 0);
-        for (const p of work.cpuParts) p.cpu = (work.continuation.cpuMs * scale * (p.last - p.first + 1)) / count;
-      }
+      work.cpuPerRequest = work.continuation.cpuMs;
+      const continuationCpu = work.continuation.cpuMs * (ledger.get(work.thread)?.represented ?? scale);
+      work.logicalCpuRemaining =
+        node.props.resources && ledger.get(work.thread)
+          ? work.continuation.cpuMs * ledger.get(work.thread)!.weight
+          : undefined;
       if (ledger.get<Group>(work.thread)) {
+        if (work.cpuParts) {
+          const count = work.cpuParts.reduce((sum, p) => sum + p.last - p.first + 1, 0);
+          for (const p of work.cpuParts) p.cpu = ((pendingCpu + continuationCpu) * (p.last - p.first + 1)) / count;
+        }
         // Already owns a thread/replica, even if a live shrink has removed all
         // admission room. Do not strand that ownership in the pending queue.
-        work.cpuRemaining = node.props.resources ? work.continuation.cpuMs * scale : undefined;
+        work.cpuRemaining = node.props.resources ? pendingCpu + continuationCpu : undefined;
         work.slotted = true;
         work.workedAt = time;
         scheduleWork(node, work, "takeovers");
       } else {
+        // Only the completed own-work cohort owns CPU while this continuation queues.
+        // Its new CPU is initialized after the continuation actually gains a thread.
+        work.cpuRemaining = pendingCpu;
+        if (pendingCpu > 1e-8) node.cpuTail.add(work);
         endResources(node, work);
+        work.cpuRemaining = work.cpuBacklog = undefined;
         work.admissibleActive = node.activeMs;
         node.resume.push(work);
       }
@@ -1956,21 +1858,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (reservation) {
           const node = nodes.get(reservation.owner)!;
           const work = node.threadTails.get(reservation.id)!;
-          if (node.status !== "paused" && work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time))
-            ledger.release(reservation);
+          if (node.status !== "paused" && executionGraceDeadline(node, work) <= time)
+            execution.releaseThread(reservation);
         }
         continue;
       }
       if (event.call !== undefined) {
         const call = calls.get(event.call);
         if (event.grace !== undefined) {
-          if (
-            call &&
-            call.node.status !== "paused" &&
-            ((call.work.replica !== undefined &&
-              (call.node.fleet?.busy.get(call.work.replica)?.drainAt ?? Infinity) <= time) ||
-              call.work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time))
-          ) {
+          if (call && call.node.status !== "paused" && executionGraceDeadline(call.node, call.work) <= time) {
             settleAttempt(call, false, true);
           }
           continue;
@@ -2124,7 +2020,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.waitRemaining = node.props.retryBackoffMs;
         if (node.props.resources) {
-          work.cpuRemaining = node.props.resources.cpuMsPerMessage * scale;
+          node.cpuTail.delete(work);
+          work.cpuPerRequest = node.props.resources.cpuMsPerMessage;
+          work.cpuBacklog = callerReservations(node) ? (work.cpuRemaining ?? 0) : undefined;
+          work.cpuRemaining =
+            (callerReservations(node) ? (work.cpuRemaining ?? 0) : 0) +
+            node.props.resources.cpuMsPerMessage * (ledger.get(work.thread)?.represented ?? scale);
+          work.logicalCpuRemaining = callerReservations(node)
+            ? node.props.resources.cpuMsPerMessage * (ledger.get(work.thread)?.weight ?? scale)
+            : undefined;
           work.cpuBackoffUntil = time + node.props.retryBackoffMs;
           const count = work.cpuParts?.reduce((sum, p) => sum + p.last - p.first + 1, 0) ?? 0;
           for (const p of work.cpuParts ?? []) p.cpu = (work.cpuRemaining * (p.last - p.first + 1)) / count;
@@ -2249,15 +2153,26 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       retainedRequest?.represented ?? scale,
       admissionSlots(policy, node.activeReplicas),
       work.route?.quotas,
-      node.waits && node.role === "processor" && scale > 1,
+      (node.waits || node.callTarget) && node.role === "processor" && scale > 1,
       retainedRequest
         ? {
             request: { ...retainedRequest, keys: retainedRequest.keys ?? [] },
             thread: retainedThread ? { ...retainedThread, keys: retainedThread.keys ?? [] } : undefined,
           }
         : undefined,
+      waits() && (node.fleet || execution.usesLedger(node))
+        ? slots(node) -
+            executionOccupancy(node) +
+            (retainedThread?.weight ?? 0) +
+            (!callerReservations(node) && work.replica !== undefined ? 1 : 0)
+        : Infinity,
     );
     if ("rejected" in outcome) {
+      if (outcome.waiting) {
+        endResources(node, work);
+        admit(node, work);
+        return false;
+      }
       retireThread(node, work);
       if (node.table) {
         refuse(node, work, outcome.rejected, quotaReason(outcome.rejected) ? 429 : undefined, work.route?.rule);
@@ -2549,11 +2464,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function* nodeWork(node: Node): IterableIterator<ResourceWork> {
-    yield* node.working;
-    yield* node.takeovers;
-    yield* node.threadTails.values();
-    for (const call of node.calls.values()) if (call.held) yield call.work;
-    yield* queuedWork(node);
+    yield* new Set([...resourceWork(node), ...queuedWork(node)]);
   }
   function* queuedWork(node: Node): IterableIterator<Work> {
     yield* node.resume;
@@ -2613,20 +2524,29 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       broker: (t) => readBrokerMetric(t),
     };
   }
-  function resourceWork(node: Node): (Work | Reservation<Group>)[] {
-    return node.heldCalls || node.threadTails.size || node.takeovers.length
+  function resourceWork(node: Node): CpuTail<Group>[] {
+    return node.heldCalls || node.threadTails.size || node.takeovers.length || node.cpuTail.size
       ? [
-          ...node.working,
-          ...node.takeovers,
-          ...[...node.calls.values()].filter((c) => c.held).map((c) => c.work),
-          ...node.threadTails.values(),
+          ...new Set<CpuTail<Group>>([
+            ...node.working,
+            ...node.takeovers,
+            ...[...node.calls.values()].filter((c) => c.held).map((c) => c.work),
+            ...node.threadTails.values(),
+            ...node.cpuTail,
+          ]),
         ]
       : node.working;
+  }
+  /** Every execution owner uses the same physical termination clock. */
+  function executionGraceDeadline(node: Node, work: ResourceWork): number {
+    let at = work.replica === undefined ? Infinity : (node.fleet?.busy.get(work.replica)?.drainAt ?? Infinity);
+    for (const part of work.cpuParts ?? []) at = Math.min(at, part.drainAt ?? Infinity);
+    return at;
   }
   function reconcileResources(node: Node, desired: number): boolean {
     const f = node.fleet!,
       r = node.props.resources!;
-    const sampled = scale > 1 || node.threadTails.size > 0;
+    const sampled = node.sampledExecution || scale > 1 || node.threadTails.size > 0;
     if (sampled && !canDrainSampled(f, desired, resourceWork(node))) return false;
     const before = sampled ? f.ranges.slice(f.rangeHead).map((c) => ({ ...c })) : [];
     // Live overrides made during a pause start on the same frozen lifecycle clock.
@@ -2634,52 +2554,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     reconcileFleet(f, desired, r, lifecycleTime, seed, node.id);
     if (sampled) retainSampledDrains(f, before, resourceWork(node), lifecycleTime + r.terminationGraceMs);
     for (const call of node.calls.values()) {
-      const at =
-        call.work.replica === undefined
-          ? Math.min(...(call.work.cpuParts ?? []).map((p) => p.drainAt ?? Infinity))
-          : (f.busy.get(call.work.replica)?.drainAt ?? Infinity);
+      const at = executionGraceDeadline(node, call.work);
       if (Number.isFinite(at)) pushDue(logical, { id: nextLogical++, end: at, call: call.id, grace: at });
     }
     for (const [id, work] of node.threadTails) scheduleThreadGrace(id, work);
     return true;
-  }
-  function startResources(node: Node, work: Work): boolean {
-    if (!node.fleet || !node.props.resources) return true;
-    work.cpuRemaining ??= (work.continuation?.cpuMs ?? node.props.resources.cpuMsPerMessage) * scale;
-    if (scale === 1 && work.replica === undefined) {
-      work.replica = acquireReplica(node.fleet, node.props.concurrency);
-      if (work.replica === undefined) return false;
-    }
-    const r = node.props.resources,
-      f = node.fleet;
-    if (scale > 1 && !work.cpuParts) {
-      const eligible = work.delivery?.broker.props.broker?.partitioned
-        ? Math.min(node.activeReplicas, work.delivery.group.allocations.get(node.id) ?? 0)
-        : node.activeReplicas;
-      work.cpuParts = sampledParts(f, eligible, work.cpuRemaining, () => resourceWork(node));
-      if (!work.cpuParts) return false;
-      creditSampledMemory(node, Math.max(0, (work.cpuBackoffUntil ?? time) - time));
-    }
-    const occupancy =
-      work.replica === undefined
-        ? Math.min(scale, node.activeReplicas * node.props.concurrency) / Math.max(1, node.activeReplicas)
-        : (f.busy.get(work.replica)?.count ?? 0);
-    if (r.memoryLimitMiB !== undefined && r.baselineMemoryMiB + occupancy * r.memoryMiBPerMessage > r.memoryLimitMiB)
-      f.unsafe = true;
-    return true;
-  }
-  function creditSampledMemory(node: Node, backoff: number): void {
-    const r = node.props.resources!;
-    const cores = (r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity) / 1000;
-    const residence = Math.max(STEP, node.props.latencyMs, (r.cpuMsPerMessage * node.props.concurrency) / cores);
-    node.fleet!.memoryCredit += scale * (backoff + residence);
-  }
-  function endResources(node: Node, work: ResourceWork): void {
-    if (!node.fleet) return;
-    releaseReplica(node.fleet, work.replica, node.props.concurrency);
-    work.replica = undefined;
-    work.memorySlots = undefined;
-    releaseCpuParts(node.fleet, work);
   }
   function admitPending(node: Node): void {
     node.admissionDirty = true;
@@ -2705,12 +2584,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const work of takeovers) {
           if (!work.resumeAtAdmission) continue;
           const f = node.fleet;
-          const expired =
-            f &&
-            ((work.replica !== undefined && (f.busy.get(work.replica)?.drainAt ?? Infinity) <= time) ||
-              work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
+          const expired = f && executionGraceDeadline(node, work) <= time;
           if (node.status === "down" || expired) {
             work.resumeAtAdmission = false;
+            cancelCpu(work);
             settleWork(node, work, false, false);
             work.slotted = false;
             endResources(node, work);
@@ -2720,13 +2597,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             work.slotted = false;
             endResources(node, work);
             work.admissibleActive = node.activeMs;
-            scheduleWork(node, work, "pending");
+            wakeDelivery(work);
+            admit(node, work);
             continue;
           }
           scheduleWork(node, work, "working");
           startAttempt(node, work);
           work.workedAt = time;
-          if (work.remaining <= 0 && !(work.cpuRemaining ?? 0)) {
+          if (work.remaining <= 0 && !(work.logicalCpuRemaining ?? work.cpuRemaining ?? 0)) {
             finish(node, work);
             if (!work.retained) {
               finished.add(work);
@@ -2742,16 +2620,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       while (
         (node.resume.length || node.pending.length) &&
         (node.status === "down" ||
-          (node.waits
-            ? slots(node) - node.threadWeight.work - node.threadWeight.wait >= Math.min(1, scale)
-            : (node.fleet && scale === 1 ? node.fleet.active : threadOccupancy(node)) <
-              slots(node) / (node.fleet ? scale : 1)))
+          (node.fleet || execution.usesLedger(node)
+            ? waits()
+              ? slots(node) - executionOccupancy(node) + 1e-9 >= Math.min(1, scale)
+              : executionOccupancy(node) < slots(node)
+            : threadOccupancy(node) < slots(node)))
       ) {
         // Brokers without consumers retain their messages until a new diagram is loaded.
         if (isBroker(node) && !node.groups.length) break;
         if (
           node.status === "up" &&
-          ((!node.waits &&
+          ((!callerReservations(node) &&
             !node.props.admission &&
             node.role === "processor" &&
             scale > 1 &&
@@ -2761,7 +2640,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (node.serviceCredit < 1 - 1e-9) break;
           node.serviceCredit -= 1;
         }
-        const queue = node.resume.length ? node.resume : node.pending;
+        // A paused arrival can already own the execution keys a continuation
+        // needs after a shrink. Let that admitted owner run and release them;
+        // prioritizing the unreserved continuation would deadlock both queues.
+        const admittedPending = node.pending.peek()?.threadLease;
+        const resume = node.resume.peek();
+        const queue =
+          resume && !(admittedPending && !resume.threadLease && !ledger.get(resume.thread))
+            ? node.resume
+            : node.pending;
         const next = queue.peek()!;
         const recovering = !!next.recoveryCapacity;
         if (next.continuation && !recovering && node.props.admission && !next.threadLease && node.status === "up") {
@@ -2897,6 +2784,71 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  function spendCpu(
+    node: Node,
+    work: ResourceWork,
+    budgets: Map<number | string, { remaining: number; count: number }> | undefined,
+    tail = false,
+  ): void {
+    const f = node.fleet!;
+    const before = work.cpuRemaining ?? 0;
+    const logical = !tail && "logicalCpuRemaining" in work ? (work as Work) : undefined;
+    const logicalBefore = logical?.logicalCpuRemaining;
+    const backlogBefore = logical?.cpuBacklog ?? 0;
+    const eligible = (work.cpuBackoffUntil ?? 0) <= time;
+    // A partial first wave can occupy only its reserved requests' replica capacity.
+    // Cohort CPU beyond that wave remains available to the tail after completion.
+    const cores = (node.props.resources!.cpuLimitMilli ?? node.props.resources!.availableCpuMilli ?? Infinity) / 1000;
+    const firstWaveBudget = eligible
+      ? Math.min(
+          logicalBefore ?? 0,
+          (logical?.executionWeight ?? ledger.get(logical?.thread)?.weight ?? 0) * cores * STEP,
+        )
+      : 0;
+    const available = firstWaveBudget + backlogBefore;
+    if (logicalBefore !== undefined && available <= 1e-8) return;
+    const fraction = logicalBefore === undefined || !before ? 1 : Math.min(1, available / before);
+    if (work.cpuParts) {
+      for (const p of work.cpuParts)
+        if (p.cpu > 0) {
+          const budget = budgets?.get(p.key);
+          if (!budget) continue;
+          const spent = Math.min(p.cpu * fraction, budget.remaining / budget.count);
+          p.cpu -= spent;
+          budget.remaining -= spent;
+          budget.count--;
+          chargeCpu(f, undefined, spent, p.drainAt === undefined, time);
+        }
+      work.cpuRemaining = work.cpuParts.reduce((sum, p) => sum + p.cpu, 0);
+    } else {
+      const budget = budgets?.get(work.replica ?? 0);
+      if (budget && work.cpuRemaining !== undefined) {
+        const spent = Math.min(work.cpuRemaining * fraction, budget.remaining / budget.count);
+        work.cpuRemaining -= spent;
+        budget.remaining -= spent;
+        budget.count--;
+        chargeCpu(f, work.replica, spent, true, time);
+      }
+    }
+    const spent = before - (work.cpuRemaining ?? 0);
+    if (logicalBefore !== undefined) {
+      const firstWave = Math.min(firstWaveBudget, spent);
+      logical!.logicalCpuRemaining = logicalBefore - firstWave;
+      logical!.cpuBacklog = Math.max(0, backlogBefore - (spent - firstWave));
+    }
+    node.cpuTick?.charges.push({
+      before,
+      after: work.cpuRemaining ?? 0,
+      logicalBefore,
+      logicalAfter: logical?.logicalCpuRemaining,
+      backlogBefore,
+      backlogAfter: logical?.cpuBacklog,
+      eligible,
+      weight: logical?.executionWeight,
+      cpuMs: logical?.cpuPerRequest,
+    });
+  }
+
   function tick(): void {
     time += STEP;
     for (const node of nodes.values()) {
@@ -2920,12 +2872,26 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
     earlyPoolWakes = new Set();
     for (const node of nodes.values()) {
+      node.cpuTick =
+        opts.verifyResources && node.fleet
+          ? {
+              before: node.fleet.totalCpu,
+              capacityMs:
+                node.fleet.ready + node.fleet.draining === 0
+                  ? 0
+                  : ((node.props.resources!.cpuLimitMilli ?? node.props.resources!.availableCpuMilli ?? Infinity) /
+                      1000) *
+                    STEP *
+                    (node.fleet.ready + node.fleet.draining),
+              charges: [],
+            }
+          : undefined;
       releasingEarly = true;
       ledger.releaseDue(node.id, node.activeMs);
       releasingEarly = false;
       // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
       if (
-        !node.waits &&
+        !callerReservations(node) &&
         !node.props.admission &&
         node.role === "processor" &&
         scale > 1 &&
@@ -2953,14 +2919,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           priorOccupancy = 0;
         if (f && r) {
           const milli = r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity;
-          for (const work of node.working) {
+          for (const work of [...node.working, ...node.cpuTail]) {
             // Work admitted under an older, larger concurrency keeps that residence; every attempt alongside it
             // (a sampled dot may round past the new capacity) still owns its memory.
             if (work.memorySlots !== undefined) priorSlots = Math.max(priorSlots, work.memorySlots);
             priorOccupancy += scale;
             if (work.cpuParts && (work.cpuBackoffUntil !== undefined || work.memorySlots !== undefined))
               retained += scale;
-            if (work.resumeAtAdmission || work.cpuRemaining === undefined || (work.cpuBackoffUntil ?? 0) > time)
+            if (
+              ("resumeAtAdmission" in work && work.resumeAtAdmission) ||
+              work.cpuRemaining === undefined ||
+              (!node.cpuTail.has(work) && (work.logicalCpuRemaining ?? Infinity) + (work.cpuBacklog ?? 0) <= 1e-8) ||
+              ((work.cpuBackoffUntil ?? 0) > time && !(work.cpuBacklog ?? 0))
+            )
               continue;
             if (work.cpuParts) {
               for (const p of work.cpuParts)
@@ -2985,7 +2956,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         // original service-time credit runs out. Ordinary sampled work keeps its residence estimate.
         const occupancy =
           f && r
-            ? waits() && node.waits
+            ? callerReservations(node)
               ? memoryRequests(node)
               : scale === 1
                 ? threadOccupancy(node)
@@ -2999,13 +2970,31 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                     ),
                   )
             : 0;
+        for (const tail of node.cpuTail) {
+          if (executionGraceDeadline(node, tail) <= time) {
+            node.cpuTail.delete(tail);
+            const owned = "scope" in tail ? ledger.get((tail as Reservation).id) === tail : "message" in tail;
+            // The logical grace event still needs the expired range identity.
+            if (owned) {
+              cancelCpu(tail);
+            } else endResources(node, tail);
+            continue;
+          }
+          spendCpu(node, tail, cpuBudgets, true);
+          if ((tail.cpuRemaining ?? 0) <= 1e-8) {
+            node.cpuTail.delete(tail);
+            const owned = "scope" in tail ? ledger.get((tail as Reservation).id) === tail : "message" in tail;
+            if (!owned) endResources(node, tail);
+          }
+        }
         let keep = 0;
         for (const work of node.working) {
           if (node.status === "up" && callerReservations(node) && !ledger.get(work.thread)) {
             work.slotted = false;
             endResources(node, work);
             work.admissibleActive = node.activeMs;
-            scheduleWork(node, work, "pending");
+            wakeDelivery(work);
+            admit(node, work);
             continue;
           }
           if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
@@ -3030,40 +3019,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (waits() && !work.attempt && !work.waitRemaining) attempt(node, work);
           work.message.workMs += worked;
           work.workedAt = time;
-          if (f && r && node.status === "up" && (work.cpuBackoffUntil ?? 0) <= time) {
-            if (work.cpuParts) {
-              for (const p of work.cpuParts)
-                if (p.cpu > 0) {
-                  const budget = cpuBudgets?.get(p.key);
-                  if (!budget) continue;
-                  const spent = Math.min(p.cpu, budget.remaining / budget.count);
-                  p.cpu -= spent;
-                  budget.remaining -= spent;
-                  budget.count--;
-                  chargeCpu(f, undefined, spent, p.drainAt === undefined, time);
-                }
-              work.cpuRemaining = work.cpuParts.reduce((sum, p) => sum + p.cpu, 0);
-            }
-            const budget = !work.cpuParts && cpuBudgets?.get(work.replica ?? 0);
-            if (budget && work.cpuRemaining !== undefined) {
-              const spent = Math.min(work.cpuRemaining, budget.remaining / budget.count);
-              work.cpuRemaining -= spent;
-              budget.remaining -= spent;
-              budget.count--;
-              chargeCpu(f, work.replica, spent, true, time);
-            }
+          if (f && r && node.status === "up" && ((work.cpuBackoffUntil ?? 0) <= time || (work.cpuBacklog ?? 0) > 0)) {
+            spendCpu(node, work, cpuBudgets);
           }
-          const graceExpired =
-            f &&
-            ((work.replica !== undefined && (f.busy.get(work.replica)?.drainAt ?? Infinity) <= time) ||
-              work.cpuParts?.some((p) => (p.drainAt ?? Infinity) <= time));
+          const graceExpired = f && executionGraceDeadline(node, work) <= time;
           if (graceExpired) {
             work.retained = false;
             work.slotted = false;
+            cancelCpu(work);
             endResources(node, work);
             settleWork(node, work, false, false);
           } else if (
-            (work.remaining <= 0 && (node.status === "down" || (work.cpuRemaining ?? 0) <= 1e-8)) ||
+            (work.remaining <= 0 &&
+              (node.status === "down" || (work.logicalCpuRemaining ?? work.cpuRemaining ?? 0) <= 1e-8)) ||
             (node.status === "down" && !work.retained)
           ) {
             work.retained = false;
@@ -3166,6 +3134,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     opts.verifyResources?.({
       nodes: [...nodes.values()].map((node) => ({
         ...node,
+        executionLedger: execution.usesLedger(node),
         working: resourceWork(node),
         pending: queuedWork(node),
         queue: node.pending,
@@ -3175,6 +3144,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       scale,
       capacityMultiplier,
       partBudget,
+      ledger: ledger.state,
       admission: {
         inFlight: admission.inFlight,
         limits: admissionLimits(admission),
@@ -3285,10 +3255,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.working.length = 0;
       node.calls.clear();
       node.threadTails.clear();
+      node.cpuTail.clear();
+      node.sampledExecution = false;
       node.threadWeight = { work: 0, wait: 0 };
       node.threadCount = { work: 0, wait: 0 };
       node.residentWeight = 0;
       node.residentCount = 0;
+      node.requestWeight = node.requestCount = 0;
       node.activeMs = 0;
       node.heldCalls = 0;
       node.offThreadCalls = 0;
@@ -3568,6 +3541,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           admissionDirty: false,
           residentWeight: 0,
           residentCount: 0,
+          requestWeight: 0,
+          requestCount: 0,
           heldCalls: 0,
           offThreadCalls: 0,
           freeFlight: 0,
@@ -3577,6 +3552,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           takeovers: [],
           frees: false,
           waits: false,
+          callTarget: false,
+          cpuTail: new Set(),
+          sampledExecution: false,
           incoming: 0,
           cursor: 0,
           processed: 0,
@@ -3625,7 +3603,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           edge.policy = callPolicy(from.stencil, props?.caller as import("./types").EdgeSimProps["caller"]);
           const delay = props?.networkDelayMs;
           edge.networkDelayMs = typeof delay === "number" && Number.isFinite(delay) ? Math.max(0, delay) : 0;
-          if (callEligible(from.role, edge)) from.waits = true;
+          if (callEligible(from.role, edge)) {
+            from.waits = true;
+            if (to.role === "processor") to.callTarget = true;
+          }
         }
         if (props && routes) {
           // A caller's address belongs to a Request out of a source or service; on a router's edges it's dormant.

@@ -1140,8 +1140,11 @@ test("canvas Tab visits annotation links before the next node", async ({ page })
   await annotation(page, "links").click();
   await waitForSelectionSettled(page);
   const wrapper = annotation(page, "links");
-  await wrapper.evaluate((el) => (el.parentElement as HTMLElement).focus());
   const links = wrapper.getByTestId("markdown-link");
+  // Markdown enhances the plain note lazily: Tab can visit its links only after they arrive.
+  await expect(links).toHaveCount(2);
+  await expect(links.first()).toBeVisible();
+  await wrapper.evaluate((el) => (el.parentElement as HTMLElement).focus());
   await page.keyboard.press("Tab");
   await expect(links.nth(0)).toBeFocused();
   await page.keyboard.press("Tab");

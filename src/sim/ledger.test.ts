@@ -8,6 +8,7 @@ import { createEngine, randomDraws } from "./engine";
 import { resourceLesson } from "../model/autoscaling";
 import { realSnapshot } from "./units";
 import {
+  assertResourceInvariants,
   assertAdmissionInvariants,
   assertLedgerInvariants,
   assertOutcomeInvariants,
@@ -73,6 +74,7 @@ it("unadmitted recovered continuations yield to continuations holding request ca
   expect(engine.metrics().inSystem).toBe(0);
   expect(state.ledger.reservations.size).toBe(0);
   expect(state.partBudget.used).toBe(0);
+  expect(engine.snapshot().nodes.caller.processed).toBe(2);
   expect([...state.admissionInFlight.values()].every((weight) => weight === 0)).toBe(true);
 });
 
@@ -194,13 +196,31 @@ it("a paused sampled caller keeps its admitted weight when scale changes before 
   };
   d.nodes = d.nodes.slice(1, 3);
   d.edges = [d.edges[1]];
-  const engine = createEngine({ scale: 2, maxParticles: 0, verifyResources: assertAdmissionInvariants });
+  let state!: LedgerInvariantState;
+  const engine = createEngine({
+    scale: 2,
+    maxParticles: 0,
+    verifyResources: assertAdmissionInvariants,
+    verifyLedger(s) {
+      state = s;
+      assertLedgerInvariants(s);
+    },
+  });
   engine.load(d);
   engine.setNodeStatus("caller", "paused");
   engine.inject("caller", 1);
   engine.setScale(1);
   engine.setNodeStatus("caller", "up");
-  engine.step(3000);
+  engine.step(10);
+  for (const reservation of state.ledger.reservations.values())
+    if (reservation.owner === "caller" && reservation.scope !== "pool")
+      expect(reservation).toMatchObject({ weight: 2, represented: 2 });
+  expect(
+    [...state.ledger.reservations.values()].filter((r) => r.owner === "caller" && r.scope === "thread"),
+  ).toHaveLength(1);
+  engine.step(2990);
+  expect(engine.snapshot().nodes.caller.processed).toBe(1);
+  expect(engine.snapshot().nodes.partner.processed).toBe(1);
   expect(engine.metrics().inSystem).toBe(0);
 });
 
@@ -257,9 +277,18 @@ it("nested non-blocking replies drain retired request residence on its exact rel
   engine.load(d);
   engine.step(10);
   engine.inject("source", 4);
-  engine.step(200_000);
+  for (let tick = 0; tick < 20000 && engine.metrics().inSystem; tick++) engine.step(10);
   expect(engine.metrics().inSystem).toBe(0);
-  expect([...state.ledger.reservations.values()].map((r) => r.releaseAt)).toEqual([202310]);
+  const request = [...state.ledger.reservations.values()]
+    .filter((r) => r.scope === "request")
+    .sort((a, b) => b.releaseAt! - a.releaseAt!)[0];
+  expect(request).toBeDefined();
+  expect(request.releaseAt).toBe(80560);
+  expect(request.releaseAt).toBe(request.startActive + (request.heldMs * request.represented) / request.weight);
+  while (engine.metrics().time + 10 < request.releaseAt!) engine.step(10);
+  expect(state.ledger.reservations.has(request.id)).toBe(true);
+  engine.step(10);
+  expect(state.ledger.reservations.has(request.id)).toBe(false);
   drainRetiredLedger(engine, state);
   expect(state.ledger.reservations.size).toBe(0);
 });
@@ -780,8 +809,8 @@ it("deadline retirement uses the logical deadline hold, including unsuccessful r
   expect(r.releaseAt!).toBeGreaterThanOrEqual(r.retiredActive!);
 });
 
-it("tails without CPU are never visited on idle ticks", () => {
-  const p = callerProbe();
+it.each([false, true])("tails without CPU are never visited on idle ticks (resources=%s)", (resources) => {
+  const p = callerProbe(resources);
   p.engine.inject("source", 1);
   p.engine.step(250);
   const node = [...p.state().nodes].find((n) => n.id === "caller") as unknown as {
@@ -882,4 +911,141 @@ it("a quota-refused retry retains execution keys until its sampled thread hold e
   p.engine.step(3000);
   expect(p.state().ledger.reservations.size).toBe(0);
   expect([...p.state().admissionInFlight.values()].every((w) => w === 0)).toBe(true);
+});
+
+it("one real request still fits after fractional subtraction roundoff", () => {
+  const ledger = new SampledLedger();
+  expect(ledger.reserve(pool(), 10, 1 - Number.EPSILON, 1 - Number.EPSILON)).toMatchObject({ weight: 1 });
+});
+
+it("recovered non-blocking broker continuations reacquire their group slot", () => {
+  // Seed -1827090795: an exclusive continuation loses admission on a zero-tick outage.
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  d.nodes[1].props = {
+    concurrency: 1,
+    latencyMs: 0,
+    jitter: 0,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 21, startup: { delayMs: 0, jitterFraction: 0 } },
+  };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 1, latencyMs: 0, jitter: 0 };
+  d.nodes.push({
+    id: "leaf",
+    stencil: "aws.lambda",
+    label: "Leaf",
+    x: 900,
+    y: 0,
+    props: { concurrency: 1, maxConcurrency: 1, scaling: "fixed", jitter: 0, api: { latencyMs: 10 } },
+  });
+  d.edges[1].props = {
+    travelMs: 10,
+    networkDelayMs: 10,
+    caller: { poolConnections: 1, wait: "non-blocking", replyMs: 0 },
+  };
+  d.edges.push({
+    id: "next",
+    from: "partner",
+    to: "leaf",
+    kind: "sync",
+    props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, replyMs: 0 } },
+  });
+  const e = createEngine({
+    scale: 1,
+    seed: 0,
+    maxParticles: 0,
+    verifyResources: assertResourceInvariants,
+    verifyLedger: assertLedgerInvariants,
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 4);
+  e.step(100);
+  e.inject("source", 1);
+  e.step(10);
+  for (const node of d.nodes) e.setNodeStatus(node.id, "down");
+  for (const node of d.nodes) e.setNodeStatus(node.id, "up");
+  e.step(5000);
+  expect(e.snapshot().nodes.caller.processed).toBe(5);
+  expect(e.metrics().inSystem).toBe(0);
+});
+
+it.each([1, 1.01])("paused managed arrivals recover after a shrink (scale=%s, seed 1139942185)", (scale) => {
+  const d = waitingFixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 3 };
+  d.nodes[1].stencil = "aws.lambda";
+  d.nodes[1].props = {
+    concurrency: 5,
+    replicas: 1,
+    latencyMs: 0,
+    jitter: 0,
+    scaling: "fixed",
+    maxConcurrency: 5,
+    retry: "inplace",
+    retryBackoffMs: 100,
+    api: { latencyMs: 10 },
+  };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 1, replicas: 1, latencyMs: 0, jitter: 0 };
+  d.nodes.push({
+    id: "side",
+    stencil: "generic.external-api",
+    label: "Side",
+    x: 660,
+    y: 0,
+    props: { api: { latencyMs: 20 }, jitter: 0 },
+  });
+  d.edges[1].props = { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "blocking", replyMs: 0 } };
+  d.edges.push({
+    id: "side-call",
+    from: "caller",
+    to: "side",
+    kind: "sync",
+    props: { travelMs: 10, caller: { poolConnections: 1, wait: "non-blocking", replyMs: 0 } },
+  });
+  if (scale === 1) {
+    d.nodes.push({
+      ...d.nodes[2],
+      id: "cpu-target",
+      props: {
+        concurrency: 4,
+        replicas: 1,
+        latencyMs: 0,
+        jitter: 0,
+        resources: { ...resourceLesson(), cpuMsPerMessage: 0, startup: { delayMs: 0, jitterFraction: 0 } },
+      },
+    });
+    d.edges.push({ ...d.edges[1], id: "cpu-call", to: "cpu-target" });
+  }
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    seed: 0,
+    scale: 1,
+    maxParticles: 0,
+    verifyResources: assertResourceInvariants,
+    verifyLedger(s) {
+      state = { ...s, nodes: [...s.nodes] };
+      assertLedgerInvariants(state);
+    },
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 2);
+  e.step(10);
+  e.setNodeStatus("caller", "paused");
+  e.setScale(scale);
+  e.step(10);
+  e.setNodeProps("caller", { concurrency: 1, api: { latencyMs: 10, maxInFlight: undefined } });
+  e.step(10);
+  e.checkpoint();
+  e.step(10);
+  for (const node of d.nodes) e.setNodeStatus(node.id, "down");
+  for (const node of d.nodes) e.setNodeStatus(node.id, "up");
+  e.step(200000);
+  expect(e.metrics().inSystem).toBe(0);
+  expect(e.snapshot().nodes.caller.processed).toBe(2);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect([...state.admissionInFlight.values()].every((weight) => Math.abs(weight) < 1e-8)).toBe(true);
 });

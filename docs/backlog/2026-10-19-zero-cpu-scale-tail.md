@@ -13,3 +13,13 @@ Reproduction: `FC_RUN_MULTIPLIER=5 FC_SEED=20261019` and
 tiers, zero latency/CPU at the first tier, a blocking request, and a pause followed by scale
 1 to 1.01 and more traffic. Repair and pin its CPU ownership in the execution-resource round;
 do not weaken the oracle or alter parity tolerances.
+
+## Resolved in engine R4
+
+Named regressions in `src/sim/cpuTail.test.ts` cover paused scale transitions and zero-CPU
+continuations across a scale edit. The minimized reproduction also fails without a pause:
+scale-one execution removes a replica from sampled ranges, then leaves it in the idle busy
+index. Subsequent sampled admission previously produced an empty parts array. Sampled admission
+now recycles idle scale-one identities and waits when no ready range exists; existing owners
+keep their original identity until release. The full resource oracle now runs on every ledger
+command-model tick. Temporarily disabling that recycling fails the named regression.

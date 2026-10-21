@@ -86,7 +86,8 @@ it.each(["node", "endpoint", "shared"])("recovery resizes to a reduced %s cap wi
   releaseAdmission(state, admitted.leases.thread);
   const smaller: AdmissionPolicy = {
     ...policy,
-    api: { ...policy.api, maxInFlight: scope === "endpoint" ? 4 : 1 },
+    api: { ...policy.api, maxInFlight: scope === "node" ? 1 : 4 },
+    ...(scope === "shared" ? { accountConcurrency: 1 } : {}),
     endpoints: [{ ...policy.endpoints[0], behaviour: { maxInFlight: scope === "endpoint" ? 1 : 4 } }],
   };
   reconfigureAdmission(state, [{ id: "caller", policy: smaller }], undefined, 0);
@@ -197,4 +198,22 @@ it("the oracle permits retained excess but detects a new allocation above the re
   state.admission.inFlight.set(key, 4);
   state.admission.leases.push({ keys: [key], weight: 1 });
   expect(() => assertResourceInvariants(state)).toThrow("capacity exceeded");
+});
+
+it("recovery discards removed admission keys before charging capacity", () => {
+  const state = emptyAdmission();
+  const policy: AdmissionPolicy = { slots: 4, api: { maxInFlight: 4, sharedConcurrency: "account" }, endpoints: [] };
+  reconfigureAdmission(state, [{ id: "caller", policy }], undefined, 0);
+  const admitted = attemptAdmission(state, "caller", policy, undefined, undefined, 0, 4);
+  if ("rejected" in admitted) throw new Error(admitted.rejected);
+  releaseAdmission(state, admitted.leases.request);
+  releaseAdmission(state, admitted.leases.thread);
+  const updated = { ...policy, api: { maxInFlight: 4 } };
+  reconfigureAdmission(state, [{ id: "caller", policy: updated }], undefined, 0);
+  const restored = reacquire(state, { node: "caller", policy: updated, slots: 4, room: 4, ...admitted.leases })!;
+  expect(restored.request!.keys).not.toContain(sharedConcurrencyKey("account"));
+  expect(state.inFlight.get(sharedConcurrencyKey("account"))).toBe(0);
+  releaseAdmission(state, restored.request);
+  releaseAdmission(state, restored.thread);
+  expect([...state.inFlight.values()].every((n) => n === 0)).toBe(true);
 });

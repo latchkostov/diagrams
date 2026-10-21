@@ -176,6 +176,13 @@ for (const scale of [1, 10])
             expect(p.engine.snapshot().inSystem).toBe(0);
             expect(p.engine.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
             expect(p.state().ledger.reservations.size).toBe(0);
+            expect(p.engine.snapshot().nodes.caller).toMatchObject({
+              processed: 6,
+              failed: scale === 1 && concurrency === 1 ? 3 : 4,
+              dropped: 0,
+            });
+            expect(p.engine.snapshot().nodes.caller.rejected ?? 0).toBe(0);
+            expect(p.engine.snapshot().nodes.result).toMatchObject({ processed: 6, failed: 0, dropped: 0 });
           },
         );
 

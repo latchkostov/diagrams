@@ -5,7 +5,8 @@ import { t, useLocale } from "../../i18n";
 import { notify } from "../../interop/ui/toast";
 import { edgeSemanticSignature } from "../../model/relations";
 import type { DiagramFile } from "../../model/types";
-import { BottleneckCallout, CapacityLayer } from "../CapacityLayer";
+import { CapacityLayer } from "../CapacityLayer";
+import { BottleneckCallout } from "../lazyBottleneckCallout";
 import { addConsumer } from "../addConsumer";
 import { capacityView, emptyInputs, freePlaySimulation, type CapacityFix } from "../capacityModel";
 

@@ -8,7 +8,7 @@ import { actionRegistry } from "../editor/actions";
 import { useSettings } from "../harness/settings";
 import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
-import { BottleneckCallout } from "./CapacityLayer";
+import { BottleneckCallout } from "./lazyBottleneckCallout";
 import { lazyComponent } from "../lib/lazyLoad";
 const TroubleCallout = lazyComponent(() => import("./TroubleCallout").then((m) => m.TroubleCallout));
 import { CapacityPanel } from "./lazyCapacityPanel";
@@ -20,7 +20,7 @@ const InjectDialog = lazyComponent(
   (props, status) => <InjectLoading {...props} status={status} />,
 );
 import { NodeBadges } from "./NodeBadges";
-import { NoteCallout } from "./NoteCallout";
+const NoteCallout = lazyComponent(() => import("./NoteCallout").then((m) => m.NoteCallout));
 import { SimPanelFrame } from "./SimPanelFrame";
 import { SimPanel } from "./lazySimPanel";
 const TraceCard = lazyComponent(() => import("./TraceCard").then((m) => m.TraceCard));
@@ -374,7 +374,7 @@ export function LiveSession({
         )}
         <SlowCaption slow={slow.session} />
         {/* Live's narration waits with live while slow motion plays. */}
-        {slow.state.status !== "on" && <NoteCallout state={state} />}
+        {slow.state.status !== "on" && (state.run?.note || state.run?.done) && <NoteCallout state={state} />}
         {events.open && !capturing && <EventLog state={state} />}
         {/* While recording, the indicator (Stop, Esc) stands in for the bar. */}
         {!capturing && <ControlBar state={state} />}
