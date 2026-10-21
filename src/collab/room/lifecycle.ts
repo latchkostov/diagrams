@@ -65,7 +65,12 @@ export interface RoomLibrary {
 }
 
 export interface RoomDeps {
-  transport(keys: RoomKeys, allowed: () => boolean): CollabTransport | Promise<CollabTransport>;
+  transport(
+    keys: RoomKeys,
+    allowed: () => boolean,
+    /** A knock-to-join room's root (its host key): a self-hosted relay admits only its members. */
+    room?: { root?: string },
+  ): CollabTransport | Promise<CollabTransport>;
   recovery?(): RecoveryStore | undefined;
   tab: TabRoomStore;
   library: RoomLibrary;
@@ -427,7 +432,9 @@ export class RoomLifecycle {
           signed = { ...signed, knock: member };
         }
       }
-      transport ??= await this.deps.transport(keys, () => token === this.attempt && allowed());
+      transport ??= await this.deps.transport(keys, () => token === this.attempt && allowed(), {
+        root: o.link.knock ? o.link.hostKey : undefined,
+      });
       if (token !== this.attempt) {
         transport.close();
         return;

@@ -2,6 +2,7 @@ import { realClock, type Clock } from "../clock";
 import { secureRandom, type RandomBytes } from "../random";
 import { COLLAB_LIMITS } from "../limits";
 import { reconnectDelay } from "./backoff";
+import { RelayAdmissionController } from "./relayAdmission";
 import { FrameTooLargeError, type CollabTransport, type TransportHandlers, type Connectivity } from "./types";
 import {
   clientFrame,
@@ -16,6 +17,8 @@ import {
 export interface RelayOptions {
   url: string;
   roomId: string;
+  /** A knock-to-join room's root (its host key): the relay admits only its members (shared Live P6). */
+  root?: string;
   WebSocket?: new (url: string, protocols: string | string[]) => WebSocket;
   clock?: Clock;
   random?: RandomBytes;
@@ -43,6 +46,9 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   let handlers: TransportHandlers | undefined;
   const peers = new Set<string>();
   const queues = new Map<string, Promise<void>>();
+  // A knock-to-join room: the relay's challenge to this socket, and how this page is admitted (./relayAdmission.ts).
+  let challenge: string | undefined;
+  let admission: RelayAdmissionController | undefined;
   let queuedBytes = 0;
   const peerBytes = new Map<string, number>();
   const changed = (next: Connectivity) => {
@@ -61,6 +67,8 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
   function retire() {
     cancelStable?.();
     cancelStable = undefined;
+    admission?.stop();
+    challenge = undefined;
     cancelHello?.();
     cancelHello = undefined;
     const old = socket;
@@ -107,7 +115,8 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
       };
       cancelHello = clock.after(RELAY_LIMITS.helloTimeoutMs, () => disconnect());
       ws.onopen = () => {
-        if (socket === ws) ws.send(JSON.stringify({ t: "hello", v: 1, room: opts.roomId }));
+        if (socket === ws)
+          ws.send(JSON.stringify({ t: "hello", v: 1, room: opts.roomId, ...(opts.root ? { root: opts.root } : {}) }));
       };
       ws.onclose = (e) => disconnect(e.code);
       ws.onerror = () => {}; // The close event schedules a single retry.
@@ -131,6 +140,14 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
             for (const peer of message.peers) peers.add(peer);
             changed("connected");
             for (const peer of peers) handlers?.join(peer);
+            challenge = message.challenge;
+            if (challenge) admission?.start(challenge, self);
+          } else if (message.t === "status") {
+            // Admitted or not: what's forwarded says so; admission itself goes on until the chain's acknowledged.
+          } else if (message.t === "proofAck") {
+            admission?.onProofAck(message.ok);
+          } else if (message.t === "chainAck") {
+            admission?.onChainAck(message);
           } else if (message.t === "join") {
             if (message.peer !== self && !peers.has(message.peer) && peers.size < cap - 1) {
               peers.add(message.peer);
@@ -209,6 +226,28 @@ export function createRelayTransport(opts: RelayOptions): CollabTransport {
         return;
       }
       socket.send(frame);
+    },
+    authorize(next) {
+      admission?.stop();
+      const controller = new RelayAdmissionController(
+        next,
+        (text) => {
+          if (socket && ready && admission === controller) socket.send(text);
+        },
+        clock,
+      );
+      admission = controller;
+      // Coalesced: a chain taking many entries at once is one new target.
+      let queued = false;
+      next.subscribe(() => {
+        if (queued || admission !== controller) return;
+        queued = true;
+        queueMicrotask(() => {
+          queued = false;
+          controller.changed();
+        });
+      });
+      if (socket && ready && challenge) controller.start(challenge, self);
     },
     subscribe(next) {
       handlers = next;

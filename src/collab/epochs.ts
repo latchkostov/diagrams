@@ -175,6 +175,12 @@ export class EpochChain {
     return !!s && (s.host === key || s.cohosts.includes(key));
   }
 
+  /** Whether `key` is in the room now: a member of the newest epoch this chain holds (a relay's admission reads it). */
+  memberNow(key: string): boolean {
+    const deepest = this.deepest();
+    return !!deepest && !!this.rosterOf(deepest)?.state().members.has(key);
+  }
+
   /** A start's roster (once it counts). */
   rosterOf(start: EpochStart): SignedRoster | undefined {
     return this.rosters.get(start.sig);

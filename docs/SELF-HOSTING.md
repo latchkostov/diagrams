@@ -154,6 +154,17 @@ Envelope headers expose channel, random sender ID and counter. Encryption protec
 logs and memory dumps; it cannot protect against a malicious operator who also serves modified JavaScript
 that steals keys. See the [threat model](research/collaboration-threat-model.md#what-each-party-sees).
 
+**Knock-to-join rooms are enforced by the relay.** Every room started now is a knock-to-join room, and the relay
+forwards its content only between its members: someone with just the link reaches the room's lobby (where they knock)
+and nothing else, even with a modified browser, and a member the host removes has their connection closed at once
+(after the room moves to a new key, too). To do that, each browser tells the relay which member it is (a signature
+by its key for this session) and passes on the room's signed list of members (keys and signatures, nothing that
+opens content). So the relay also learns **each session's public key** (random per session, not an account), **the
+room's roster**: who is a member, who hosts, co-hosts, drives and can edit (as keys, so role counts), **its size**,
+and when they change. It still never sees diagram content, presence or Live, or any key that opens them. Who can
+edit and who drives is still enforced by every browser, not the relay. A restart loses nothing: browsers reconnect
+and say who they are again. Older rooms without knock-to-join links are forwarded as before.
+
 ### Build modes
 
 These are build-time settings, never runtime configuration. Set them in your build environment or a local
@@ -231,35 +242,39 @@ All runtime settings read by the server are below. Flags accept only `0` or `1`;
 bytes, counts or milliseconds as named. Invalid values stop startup. Origins include scheme and optional
 port, without a path or trailing slash; `LD_ALLOWED_ORIGINS` is a comma-separated list of exact origins.
 
-| Variable                 | Default                                              | Purpose                                                                                       |
-| ------------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `LD_HOST`                | `0.0.0.0`                                            | HTTP bind address.                                                                            |
-| `LD_PORT`                | `8080`                                               | HTTP port (0–65535; 0 chooses an ephemeral port).                                             |
-| `LD_BASE`                | `/`                                                  | Site/relay directory prefix, with leading and trailing slashes, e.g. `/tools/diagrams/`.      |
-| `LD_ORIGIN`              | unset: `http://<Host>`                               | Expected browser Origin. Set the public HTTPS origin behind a TLS proxy.                      |
-| `LD_ALLOWED_ORIGINS`     | empty                                                | Additional allowed browser origins, for a separately hosted UI. No wildcard.                  |
-| `LD_TRUST_PROXY`         | `0`                                                  | Use the trusted forwarding chain for per-IP quotas; otherwise use the socket address.         |
-| `LD_TRUST_PROXY_HOPS`    | `1`                                                  | Select the Nth address from the right of `X-Forwarded-For` when proxy trust is enabled.       |
-| `LD_LOG_IPS`             | `0`                                                  | Opt in to client IPs in JSON logs.                                                            |
-| `LD_METRICS`             | `0`                                                  | Enable Prometheus `/metrics`; restrict it at the proxy. No per-room labels.                   |
-| `LD_STATIC`              | `on`                                                 | `off` serves only the relay and operational endpoints.                                        |
-| `LD_STATIC_DIR`          | source-relative `../../../dist/`; image: `/app/site` | Static files and generated `headers.json`.                                                    |
-| `LD_DRAIN_TIMEOUT_MS`    | `10000`                                              | Maximum graceful shutdown drain before sockets are terminated.                                |
-| `LD_ROOM_CAP`            | `8`                                                  | Sockets per room, configurable from 1 to 64.                                                  |
-| `LD_MAX_PAYLOAD`         | `1050624` (1 MiB + 2 KiB)                            | WebSocket payload ceiling; allowed range 1049609–1050624 preserves the client frame contract. |
-| `LD_BYTES_PER_WINDOW`    | `67108864` (64 MiB)                                  | Inbound bytes per socket per window.                                                          |
-| `LD_WINDOW_MS`           | `10000`                                              | Inbound byte-budget window.                                                                   |
-| `LD_FRAMES_PER_SECOND`   | `200`                                                | Per-socket inbound frame refill rate.                                                         |
-| `LD_FRAME_BURST`         | `1000`                                               | Per-socket inbound frame burst capacity.                                                      |
-| `LD_SOCKET_BUFFER_BYTES` | `134217728` (128 MiB)                                | Close a socket exceeding its outbound buffer limit (minimum 127).                             |
-| `LD_TOTAL_BUFFER_BYTES`  | `536870912` (512 MiB)                                | Server-wide outbound buffer budget; refuse new joins when exhausted (minimum 127).            |
-| `LD_MAX_ROOMS`           | `1000`                                               | Maximum active rooms. Empty rooms are deleted immediately.                                    |
-| `LD_MAX_SOCKETS`         | `4000`                                               | Maximum total sockets.                                                                        |
-| `LD_SOCKETS_PER_IP`      | `64`                                                 | Maximum sockets per observed client IP; shared NAT addresses share a quota.                   |
-| `LD_HELLO_TIMEOUT_MS`    | `10000`                                              | Deadline for the initial room hello.                                                          |
-| `LD_PING_INTERVAL_MS`    | `25000`                                              | WebSocket ping interval.                                                                      |
-| `LD_MISSED_PONGS`        | `2`                                                  | Missed pong threshold before disconnection.                                                   |
-| `LD_IDLE_TIMEOUT_MS`     | `300000`                                             | Close after five minutes without data; normal presence prevents idle expiry.                  |
+| Variable                 | Default                                              | Purpose                                                                                                |
+| ------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `LD_HOST`                | `0.0.0.0`                                            | HTTP bind address.                                                                                     |
+| `LD_PORT`                | `8080`                                               | HTTP port (0–65535; 0 chooses an ephemeral port).                                                      |
+| `LD_BASE`                | `/`                                                  | Site/relay directory prefix, with leading and trailing slashes, e.g. `/tools/diagrams/`.               |
+| `LD_ORIGIN`              | unset: `http://<Host>`                               | Expected browser Origin. Set the public HTTPS origin behind a TLS proxy.                               |
+| `LD_ALLOWED_ORIGINS`     | empty                                                | Additional allowed browser origins, for a separately hosted UI. No wildcard.                           |
+| `LD_TRUST_PROXY`         | `0`                                                  | Use the trusted forwarding chain for per-IP quotas; otherwise use the socket address.                  |
+| `LD_TRUST_PROXY_HOPS`    | `1`                                                  | Select the Nth address from the right of `X-Forwarded-For` when proxy trust is enabled.                |
+| `LD_LOG_IPS`             | `0`                                                  | Opt in to client IPs in JSON logs.                                                                     |
+| `LD_METRICS`             | `0`                                                  | Enable Prometheus `/metrics`; restrict it at the proxy. No per-room labels.                            |
+| `LD_STATIC`              | `on`                                                 | `off` serves only the relay and operational endpoints.                                                 |
+| `LD_STATIC_DIR`          | source-relative `../../../dist/`; image: `/app/site` | Static files and generated `headers.json`.                                                             |
+| `LD_DRAIN_TIMEOUT_MS`    | `10000`                                              | Maximum graceful shutdown drain before sockets are terminated.                                         |
+| `LD_ROOM_CAP`            | `8`                                                  | Sockets per room, configurable from 1 to 64.                                                           |
+| `LD_MAX_PAYLOAD`         | `1050624` (1 MiB + 2 KiB)                            | WebSocket payload ceiling; allowed range 1049609–1050624 preserves the client frame contract.          |
+| `LD_BYTES_PER_WINDOW`    | `67108864` (64 MiB)                                  | Inbound bytes per socket per window.                                                                   |
+| `LD_WINDOW_MS`           | `10000`                                              | Inbound byte-budget window.                                                                            |
+| `LD_FRAMES_PER_SECOND`   | `200`                                                | Per-socket inbound frame refill rate.                                                                  |
+| `LD_FRAME_BURST`         | `1000`                                               | Per-socket inbound frame burst capacity.                                                               |
+| `LD_SOCKET_BUFFER_BYTES` | `134217728` (128 MiB)                                | Close a socket exceeding its outbound buffer limit (minimum 127).                                      |
+| `LD_TOTAL_BUFFER_BYTES`  | `536870912` (512 MiB)                                | Server-wide outbound buffer budget; refuse new joins when exhausted (minimum 127).                     |
+| `LD_MAX_ROOMS`           | `1000`                                               | Maximum active rooms. Empty rooms are deleted immediately.                                             |
+| `LD_MAX_SOCKETS`         | `4000`                                               | Maximum total sockets.                                                                                 |
+| `LD_SOCKETS_PER_IP`      | `64`                                                 | Maximum sockets per observed client IP; shared NAT addresses share a quota.                            |
+| `LD_HELLO_TIMEOUT_MS`    | `10000`                                              | Deadline for the initial room hello.                                                                   |
+| `LD_PING_INTERVAL_MS`    | `25000`                                              | WebSocket ping interval.                                                                               |
+| `LD_MISSED_PONGS`        | `2`                                                  | Missed pong threshold before disconnection.                                                            |
+| `LD_VERIFY_PER_SOCKET`   | `2048`                                               | Knock-to-join rooms: signature checks one socket's proof and pushes may cause per window.              |
+| `LD_VERIFY_PER_ROOM`     | `8192`                                               | Knock-to-join rooms: signature checks per room per window, all sockets together.                       |
+| `LD_ADMISSION_JOBS`      | `8`                                                  | Proofs and chain pushes waiting per socket (four times this per room); the excess is answered "retry". |
+| `LD_ADMISSION_BYTES`     | `4194304` (4 MiB)                                    | Bytes of proofs and pushes waiting per socket (four times this per room).                              |
+| `LD_IDLE_TIMEOUT_MS`     | `300000`                                             | Close after five minutes without data; normal presence prevents idle expiry.                           |
 
 Trust proxies only with an isolated listener and a fixed trusted chain. nginx appends its observed client IP;
 counting from the right prevents a spoofed caller prefix from bypassing quotas. Caddy discards untrusted

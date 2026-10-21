@@ -97,7 +97,8 @@ test("relay: full room and unreachable server explain why and offer Retry", asyn
     await observe(context);
     await page.clock.install();
     const link = await start(page, fixture.origin);
-    const keys = await deriveRoomKeys(parseRoomValue(new URL(link).hash.slice("#room=".length)));
+    const room = parseRoomValue(new URL(link).hash.slice("#room=".length));
+    const keys = await deriveRoomKeys(room);
     for (let i = 0; i < 7; i++) {
       const socket = new WebSocket(`${fixture.origin.replace("http:", "ws:")}/collab/v1`, RELAY_SUBPROTOCOL, {
         origin: fixture.origin,
@@ -105,7 +106,8 @@ test("relay: full room and unreachable server explain why and offer Retry", asyn
       occupants.push(socket);
       await once(socket, "open");
       const welcome = once(socket, "message");
-      socket.send(JSON.stringify({ t: "hello", v: 1, room: keys.roomId }));
+      // A knock-to-join room names its root: anyone may take a place at the door (P6), the slot still counts.
+      socket.send(JSON.stringify({ t: "hello", v: 1, room: keys.roomId, root: room.hostKey }));
       await welcome;
     }
     await expect.poll(() => fixture.relay.rooms.get(keys.roomId)?.peers.size).toBe(8);
@@ -172,13 +174,14 @@ test("relay: full room with custom capacity", async ({ relayBuild, context, page
   let occupant: WebSocket | undefined;
   try {
     const link = await start(page, fixture.origin);
-    const keys = await deriveRoomKeys(parseRoomValue(new URL(link).hash.slice("#room=".length)));
+    const room = parseRoomValue(new URL(link).hash.slice("#room=".length));
+    const keys = await deriveRoomKeys(room);
     occupant = new WebSocket(`${fixture.origin.replace("http:", "ws:")}/collab/v1`, RELAY_SUBPROTOCOL, {
       origin: fixture.origin,
     });
     await once(occupant, "open");
     const welcome = once(occupant, "message");
-    occupant.send(JSON.stringify({ t: "hello", v: 1, room: keys.roomId }));
+    occupant.send(JSON.stringify({ t: "hello", v: 1, room: keys.roomId, root: room.hostKey }));
     await welcome;
     await expect.poll(() => fixture.relay.rooms.get(keys.roomId)?.peers.size).toBe(2);
     const guest = await context.newPage();
@@ -218,6 +221,97 @@ test("relay: server at capacity does not claim an empty room is full", async ({ 
     await expect(page.getByTestId("room-alert")).not.toContainText("someone leaves");
   } finally {
     occupant?.terminate();
+    await page.goto("about:blank");
+    await fixture.close();
+  }
+});
+
+/** Opens the link in a new page of `context`, as `alias`, and says Join: it knocks. */
+async function knock(context: BrowserContext, link: string, alias: string): Promise<Page> {
+  const guest = await context.newPage();
+  await guest.goto(link);
+  await guest.getByTestId("room-join-alias").fill(alias);
+  await guest.getByTestId("room-join-accept").click();
+  await expect(guest.getByTestId("room-connecting")).toHaveAttribute("data-knocking", "true", {
+    timeout: pageLoadTimeout(),
+  });
+  return guest;
+}
+
+test("relay: knock-to-join enforced by the relay; Remove closes the removed member's socket at once", async ({
+  relayBuild,
+  browser,
+  page,
+}) => {
+  test.slow();
+  const fixture = await relayPreview(relayBuild);
+  const [a, b] = [await browser.newContext(), await browser.newContext()];
+  const outsider: WebSocket[] = [];
+  try {
+    const link = await start(page, fixture.origin);
+    const room = parseRoomValue(new URL(link).hash.slice("#room=".length));
+    const keys = await deriveRoomKeys(room);
+    const card = (alias: string) => page.getByTestId("room-knock-card").filter({ hasText: alias });
+    // Someone with only the link, on a socket of their own: at the door, the relay forwards them the lobby alone.
+    const stranger = new WebSocket(`${fixture.origin.replace("http:", "ws:")}/collab/v1`, RELAY_SUBPROTOCOL, {
+      origin: fixture.origin,
+    });
+    outsider.push(stranger);
+    const binary: number[] = [];
+    stranger.on("message", (data: Buffer, isBinary: boolean) => {
+      if (isBinary) binary.push(data[9 + 3]);
+    });
+    await once(stranger, "open");
+    stranger.send(JSON.stringify({ t: "hello", v: 1, room: keys.roomId, root: room.hostKey }));
+    const stays = await knock(a, link, "Ada");
+    await card("Ada").getByTestId("room-knock-admit").click({ timeout: pageLoadTimeout() });
+    await expect(stays.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    // Bea's page hears the lobby only while it's let through: held back around the removal, her page can't learn of
+    // it and leave on its own first (the relay closing her connection is what's being shown), then let through again.
+    let lobbyHeld = false;
+    await b.routeWebSocket(/collab\/v1$/, (ws) => {
+      const server = ws.connectToServer();
+      ws.onMessage((message) => server.send(message));
+      server.onMessage((message) => {
+        const lobby = typeof message !== "string" && message.length > 12 && message[12] === 4;
+        if (!(lobbyHeld && lobby)) ws.send(message);
+      });
+    });
+    const goes = await knock(b, link, "Bea");
+    await card("Bea").getByTestId("room-knock-admit").click({ timeout: pageLoadTimeout() });
+    await expect(goes.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
+    await expect(page.getByTestId("room-chip")).toHaveAttribute("data-peers", "2", { timeout: pageLoadTimeout() });
+    const members = fixture.relay.rooms.get(keys.roomId)?.guard;
+    await expect.poll(() => members?.members).toBe(3);
+    // Bea's socket, as the relay sees it: closed the moment the room moves on without her.
+    const closed = new Promise<number>((resolve) => {
+      const before = [...fixture.relay.wss.clients];
+      for (const ws of before) ws.once("close", (code: number) => (code === 4010 ? resolve(code) : undefined));
+    });
+    await page.getByTestId("room-chip").click();
+    await page.getByTestId("room-person-row").filter({ hasText: "Bea" }).click();
+    lobbyHeld = true;
+    await page.getByTestId("room-remove").click();
+    expect(await closed).toBe(4010);
+    // Back at the door (her page reconnects), the lobby tells her.
+    lobbyHeld = false;
+    await expect(goes.getByTestId("toast").filter({ hasText: "removed from the room" })).toBeVisible({
+      timeout: pageLoadTimeout(),
+    });
+    await expect(stays.getByTestId("room-chip")).toHaveAttribute("data-epoch", "1", { timeout: pageLoadTimeout() });
+    await stays.getByTestId("node-gateway").click();
+    await waitForStableViewport(stays);
+    await stays.getByTestId("inspector-field-label").fill("After the removal");
+    await stays.getByTestId("inspector-field-label").press("Enter");
+    await expect(page.getByTestId("node-gateway")).toContainText("After the removal", { timeout: pageLoadTimeout() });
+    await expect(goes.getByTestId("node-gateway")).not.toContainText("After the removal");
+    // Everything the stranger got was the lobby.
+    expect(binary.length).toBeGreaterThan(0);
+    expect(new Set(binary)).toEqual(new Set([4]));
+  } finally {
+    for (const socket of outsider) socket.terminate();
+    await a.close();
+    await b.close();
     await page.goto("about:blank");
     await fixture.close();
   }

@@ -29,6 +29,11 @@ export interface ServerConfig {
   pingIntervalMs: number;
   missedPongs: number;
   idleTimeoutMs: number;
+  /** Knock-to-join rooms (P6): signature checks per socket and per room per window, and admission work waiting. */
+  verifiesPerSocket: number;
+  verifiesPerRoom: number;
+  admissionJobs: number;
+  admissionBytes: number;
 }
 
 export function readConfig(env: Record<string, string | undefined> = process.env): ServerConfig {
@@ -82,5 +87,9 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     pingIntervalMs: integer("PING_INTERVAL_MS", RELAY_LIMITS.pingIntervalMs, 1, 2_147_483_647),
     missedPongs: integer("MISSED_PONGS", RELAY_LIMITS.missedPongs),
     idleTimeoutMs: integer("IDLE_TIMEOUT_MS", RELAY_LIMITS.idleTimeoutMs),
+    verifiesPerSocket: integer("VERIFY_PER_SOCKET", 2048),
+    verifiesPerRoom: integer("VERIFY_PER_ROOM", 8192),
+    admissionJobs: integer("ADMISSION_JOBS", 8),
+    admissionBytes: integer("ADMISSION_BYTES", 4 * 1024 * 1024),
   };
 }
