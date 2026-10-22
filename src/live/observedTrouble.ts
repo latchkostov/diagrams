@@ -174,6 +174,8 @@ interface Shape {
   responses: Map<string, number>;
   /** Each connection's network delay (one way), for playback's completion time (affordableTimeout). */
   delays: Map<string, number>;
+  /** Each connection's callee latency jitter, for the same proposal Checks make. */
+  jitters: Map<string, number>;
   sources: Map<string, string>;
   incomingTimeouts: Map<string, string[]>;
   outgoingCalls: Map<string, string[]>;
@@ -252,6 +254,7 @@ function shapeOf(d: DiagramFile): Shape {
     incomingTimeouts,
     outgoingCalls,
     responses: callResponses,
+    jitters: new Map(d.edges.map((e) => [e.id, resolved.get(e.to)?.jitter ?? 0])),
     delays: new Map(
       d.edges.map((e) => [e.id, typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0]),
     ),
@@ -327,7 +330,13 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
           before === undefined || total === undefined || elapsed <= 0
             ? 0
             : (Math.max(0, total - before) * 1000) / elapsed;
-        const deadlineMs = affordableTimeout(d.responses.get(edge) ?? 0, n.threads.slots, rate, d.delays.get(edge));
+        const deadlineMs = affordableTimeout(
+          d.responses.get(edge) ?? 0,
+          n.threads.slots,
+          rate,
+          d.delays.get(edge),
+          d.jitters.get(edge),
+        );
         const timeout = d.deadlines.get(edge) === undefined && stalled && deadlineMs !== undefined;
         const upstream = d.incomingTimeouts
           .get(id)

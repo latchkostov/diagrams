@@ -20,7 +20,12 @@ export interface CheckRequest {
 }
 export type CheckResponse =
   | { id: number; threadFix: TroubleAction | undefined }
-  | { id: number; result: CheckResult; plans?: ScalingPlan[]; requests: Finding[] }
+  | {
+      id: number;
+      result: CheckResult;
+      plans?: ScalingPlan[];
+      /** Absent: none worked out (no enabled rule reads them). */ requests?: Finding[];
+    }
   | { id: number; plans: ScalingPlan[] }
   | { id: number; requestsOnly: Finding[]; plans?: ScalingPlan[] }
   | { id: number; error: string };

@@ -99,6 +99,24 @@ export function onlyRules(result: CheckResult, rules?: readonly CheckRuleId[]): 
 }
 
 /**
+ * Run simulations' reply for `rules`: losses are classified against every check (`full`, with evidence attached), but
+ * the findings are the requested rules' own run (`asked`), so a rule that defers to another (capacity) only defers
+ * when that one was asked for too. Each keeps the evidence the full run attached; evidence-only findings (`dropped`)
+ * come from the full run.
+ */
+export function askedWithEvidence(full: CheckResult, asked: CheckResult, rules?: readonly CheckRuleId[]): CheckResult {
+  if (!rules) return full;
+  const counted = new Map([...full.findings, ...full.ignored].map((f) => [f.id, f]));
+  const ran = new Set(asked.ran);
+  const evidenceOnly = (f: Finding) => rules.includes(f.rule) && !ran.has(f.rule);
+  return {
+    ...asked,
+    findings: [...asked.findings.map((f) => counted.get(f.id) ?? f), ...full.findings.filter(evidenceOnly)],
+    ignored: [...asked.ignored.map((f) => counted.get(f.id) ?? f), ...full.ignored.filter(evidenceOnly)],
+  };
+}
+
+/**
  * The rules a recheck of one rule's finding runs: the rule, and the rules it defers to (capacity leaves a caller to
  * the waiting checks when they run). Rules turned off stay off, so the finding comes out as the full check had it.
  */

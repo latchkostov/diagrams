@@ -131,3 +131,28 @@ cap. Packaging now also tries filtered matching (memory level 7) for each entry 
 stream, as it already did for hash-table sizes: the icon catalog's many similar SVG paths compress about 1.5 kB
 smaller. The archive is 834,096 B with identical names, timestamps, CRCs and decompressed contents; no skill text
 was removed and no budget raised.
+
+## Fifth review round: timeouts verified by playback
+
+- **Timeout fixes are verified by replay.** The shared analytic function only proposes a deadline (now with the
+  callee's maximum latency jitter in its completion bound). Checks offer it, and the callout's Add a timeout
+  considers it, only when a bounded same-seed headless replay of free play (the diagram's own rates, no faults)
+  with the deadline applied times out none of that call's replies (`timeoutKeepsReplies`, src/live/threadFixPlan.ts,
+  with the existing replay contract and work budget). Over budget, or with no calls to judge by, no timeout is
+  offered; the finding stays. New regressions apply every offered fix and play it: default and larger jitter, and
+  nested model-API calls (a 1 ms model calling an 11 ms service). The payment example keeps its 600 ms.
+- **Capacity-only agent checks with simulations** report the requested rules' own findings (capacity keeps its
+  warning unless a waiting check was asked for too), with the evidence the full classification attached.
+- **Request findings are worked out only when an enabled rule reads them**; a skipped computation is never stored as
+  an empty result.
+- **Retry reruns the check that failed** when the Checks card's code arrives, without an edit.
+- The held-store e2e now checks the SVG download completes, with the diagram in it, before releasing the store.
+
+### Output parity
+
+28 goldens differ from the previous head, all already in the 329-file inventory: `node/agent/check`, `node/checks`,
+`node/checks-words` and `node/evidence` for the seven W1 corpus diagrams (`corpus-w1-blocking`, `-gateway`,
+`-held-drain`, `-inflight-cap`, `-join-failure`, `-nonblocking`, `-sampling`). Their diagrams have no free-play
+traffic (traffic comes only from saved simulations), so no replay can confirm a timeout: each `call-timeout` finding
+stays, without its unverified Add a 1000 ms (or 2000 ms) timeout fix, and agent summaries lose the fix hint.
+No other golden changed; the public examples' fixes are unchanged.

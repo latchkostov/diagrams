@@ -1215,9 +1215,11 @@ Busy threads is a modelled custom HPA/KEDA metric, not a built-in Kubernetes met
 
 `call-timeout` is informational (the Checks card's suggestion tier) for outside/model API Requests without
 a deadline. Its value comes from the live callout's `affordableTimeout`, including network delay and the
-caller's thread budget, and must be strictly later than playback's own completion of a normal reply (the request
-lands on the tick after its network delay, the callee's work ends on a tick, the reply takes its delay back): a reply
-landing exactly on the deadline times out. This supersedes the design's 4× response / 1–2–5 / 1 s minimum rule. When no
+caller's thread budget, and proposed only when strictly later than playback's completion of a normal reply (ticks,
+network delay and the callee's maximum latency jitter included). The proposal is offered only when a bounded same-seed
+replay of free play (the diagram's own rates, no faults) with that deadline times out none of the call's replies: every
+downstream stage, tick and jitter as playback has them. Over budget, or with no calls in free play to judge by, no
+timeout is offered (the finding stays). Checks and the callout's Add a timeout ask the same replay. This supersedes the design's 4× response / 1–2–5 / 1 s minimum rule. When no
 normal reply fits that budget, it offers no speculative timeout. Fully blocking deadline-free request
 cycles also explain the risk of deadlock. Names in these findings are bounded at 200 characters, and one
 diagram's request findings at 1,000,000 characters (warnings first, then timeout suggestions in diagram order).

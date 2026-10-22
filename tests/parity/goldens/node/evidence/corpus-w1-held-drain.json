@@ -21,17 +21,7 @@
   "planned": [],
   "counted": 1,
   "findings": [
-    {
-      "id": "call-timeout:call",
-      "rule": "call-timeout",
-      "severity": "suggestion",
-      "target": "call",
-      "elements": ["call", "caller", "partner"],
-      "fix": {
-        "ops": [{ "op": "update", "target": "call", "props": { "caller": { "deadlineMs": 1000 } } }],
-        "needsChoice": false
-      }
-    },
+    { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "target": "call", "elements": ["call", "caller", "partner"] },
     {
       "id": "dropped:caller",
       "rule": "dropped",
@@ -44,22 +34,10 @@
   ],
   "agentReport": {
     "findings": [
-      {
-        "id": "call-timeout:call",
-        "rule": "call-timeout",
-        "severity": "suggestion",
-        "title": "No timeout on the call to Partner scoring API",
-        "message": "If it stalls, every thread waits.",
-        "targets": ["call", "caller", "partner"],
-        "fix": {
-          "label": "Add a 1000 ms timeout",
-          "ops": [{ "op": "update", "target": "call", "props": { "caller": { "deadlineMs": 1000 } } }]
-        }
-      },
+      { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["call", "caller", "partner"] },
       { "id": "dropped:caller", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Decision service are lost", "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["caller"], "evidence": ["2 dropped in “Blocking”"] }
     ],
     "summary": "0 warnings, 2 suggestions.",
-    "simulations": "Played 1 saved simulation (at most 60 s each).",
-    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    "simulations": "Played 1 saved simulation (at most 60 s each)."
   }
 }

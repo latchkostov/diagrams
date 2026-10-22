@@ -1,40 +1,13 @@
 {
   "summary": "0 warnings, 1 suggestion.",
   "findings": {
-    "call-timeout:call": {
-      "title": "No timeout on the call to Partner scoring API",
-      "message": "If it stalls, the call stays in flight indefinitely.",
-      "rationale": "A timeout bounds waiting; downstream work can still finish and reply late.",
-      "fix": { "label": "Add a 1000 ms timeout" },
-      "shownRationale": "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work.",
-      "shownFixLabel": "Add a 1,000 ms timeout"
-    }
+    "call-timeout:call": { "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, the call stays in flight indefinitely.", "rationale": "A timeout bounds waiting; downstream work can still finish and reply late.", "shownRationale": "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work." }
   },
   "agentReport": {
     "findings": [
-      {
-        "id": "call-timeout:call",
-        "rule": "call-timeout",
-        "severity": "suggestion",
-        "title": "No timeout on the call to Partner scoring API",
-        "message": "If it stalls, the call stays in flight indefinitely.",
-        "targets": ["call", "caller", "partner"],
-        "fix": {
-          "label": "Add a 1000 ms timeout",
-          "ops": [
-            {
-              "op": "update",
-              "target": "call",
-              "props": {
-                "caller": { "wait": "non-blocking", "replyMs": 10, "poolConnections": 2, "deadlineMs": 1000 }
-              }
-            }
-          ]
-        }
-      }
+      { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, the call stays in flight indefinitely.", "targets": ["call", "caller", "partner"] }
     ],
-    "summary": "0 warnings, 1 suggestion.",
-    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+    "summary": "0 warnings, 1 suggestion."
   },
   "agentReportWarnings": { "findings": [], "summary": "0 warnings, 1 suggestion." }
 }

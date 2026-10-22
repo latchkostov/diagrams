@@ -3,33 +3,10 @@
     "isError": false,
     "output": {
       "findings": [
-        {
-          "id": "call-timeout:call",
-          "rule": "call-timeout",
-          "severity": "suggestion",
-          "title": "No timeout on the call to Partner scoring API",
-          "message": "If it stalls, every thread waits.",
-          "targets": ["call", "caller", "partner"],
-          "fix": {
-            "label": "Add a 1000 ms timeout",
-            "ops": [{ "op": "update", "target": "call", "props": { "caller": { "deadlineMs": 1000 } } }]
-          }
-        },
-        {
-          "id": "call-timeout:sibling-call",
-          "rule": "call-timeout",
-          "severity": "suggestion",
-          "title": "No timeout on the call to Partner scoring API",
-          "message": "If it stalls, every thread waits.",
-          "targets": ["sibling-call", "caller", "sibling"],
-          "fix": {
-            "label": "Add a 2000 ms timeout",
-            "ops": [{ "op": "update", "target": "sibling-call", "props": { "caller": { "deadlineMs": 2000 } } }]
-          }
-        }
+        { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["call", "caller", "partner"] },
+        { "id": "call-timeout:sibling-call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["sibling-call", "caller", "sibling"] }
       ],
-      "summary": "0 warnings, 2 suggestions.",
-      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+      "summary": "0 warnings, 2 suggestions."
     }
   },
   "warnings": { "isError": false, "output": { "findings": [], "summary": "0 warnings, 2 suggestions." } },
@@ -38,35 +15,12 @@
     "isError": false,
     "output": {
       "findings": [
-        {
-          "id": "call-timeout:call",
-          "rule": "call-timeout",
-          "severity": "suggestion",
-          "title": "No timeout on the call to Partner scoring API",
-          "message": "If it stalls, every thread waits.",
-          "targets": ["call", "caller", "partner"],
-          "fix": {
-            "label": "Add a 1000 ms timeout",
-            "ops": [{ "op": "update", "target": "call", "props": { "caller": { "deadlineMs": 1000 } } }]
-          }
-        },
-        {
-          "id": "call-timeout:sibling-call",
-          "rule": "call-timeout",
-          "severity": "suggestion",
-          "title": "No timeout on the call to Partner scoring API",
-          "message": "If it stalls, every thread waits.",
-          "targets": ["sibling-call", "caller", "sibling"],
-          "fix": {
-            "label": "Add a 2000 ms timeout",
-            "ops": [{ "op": "update", "target": "sibling-call", "props": { "caller": { "deadlineMs": 2000 } } }]
-          }
-        },
+        { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["call", "caller", "partner"] },
+        { "id": "call-timeout:sibling-call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["sibling-call", "caller", "sibling"] },
         { "id": "dropped:caller", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Decision service are lost", "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["caller"], "evidence": ["12 dropped in “Blocking”"] }
       ],
       "summary": "0 warnings, 3 suggestions.",
-      "simulations": "Played 1 saved simulation (at most 60 s each). On purpose, not findings: 12 dropped at partner in “Blocking”.",
-      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+      "simulations": "Played 1 saved simulation (at most 60 s each). On purpose, not findings: 12 dropped at partner in “Blocking”."
     }
   }
 }

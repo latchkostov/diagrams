@@ -6,7 +6,13 @@ import { revisionAtLeast } from "../model/revisions";
 import { callPolicy, callResponseMs } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 import { affordableTimeout } from "../live/affordableTimeout";
-import { confirmedThreadFix, THREAD_FIX_WORK, threadFixWork } from "../live/threadFixPlan";
+import {
+  confirmedThreadFix,
+  freePlaySimulation,
+  THREAD_FIX_WORK,
+  threadFixWork,
+  timeoutKeepsReplies,
+} from "../live/threadFixPlan";
 import type { TroubleAction } from "../live/observedTrouble";
 import { threadCapacity } from "./threadCapacity";
 import { scaleFix } from "./scaleFix";
@@ -17,8 +23,6 @@ import {
   requestCheckResult,
 } from "../lib/requestCheckCache";
 import { profileOf } from "../stencils/profiles";
-import { emptyInputs, freePlayProps, freePlayScale } from "../live/capacityModel";
-import { DEFAULT_SEED } from "../live/storm";
 import { scalingFixLabel } from "./scalingFindings";
 import { resourcePlan } from "../sim/resourcePlanning";
 import { requestResponseMs } from "../sim/timing";
@@ -141,7 +145,11 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
   let suggested = 0;
   let unbuilt = 0;
   let remainingWork = THREAD_FIX_WORK;
+  // Timeouts are verified by replay too, from a budget of their own: neither kind of fix starves the other.
+  const timeoutWork = { work: THREAD_FIX_WORK };
+  // Free play, built once, and only when a replay within budget needs it.
   let simulation: Simulation | undefined;
+  const freePlay = () => (simulation ??= freePlaySimulation(d));
   for (const node of d.nodes) {
     const n = analysis.nodes[node.id],
       p = analysis.resolved[node.id],
@@ -164,12 +172,16 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
         e.endpointId,
         Number(edge.props?.networkDelayMs) || 0,
       );
-      const deadline = affordableTimeout(
+      // The analytic value proposes a deadline; a same-seed replay must show it keeps every normal reply.
+      const proposed = affordableTimeout(
         response,
         n.waits?.slots ?? p.replicas * p.concurrency,
         n.offered,
         Number(edge.props?.networkDelayMs) || 0,
+        analysis.resolved[e.to].jitter,
       );
+      const deadline =
+        proposed !== undefined && timeoutKeepsReplies(d, e.id, proposed, timeoutWork, freePlay) ? proposed : undefined;
       const callee = name(e.to);
       const descriptor: NonNullable<Finding["requestFinding"]> = {
         kind: "timeout",
@@ -237,23 +249,14 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
     if (!edge) continue;
     const input = ctx.edges.get(edge.id);
     const work = threadFixWork(d.nodes.length, d.edges.length);
-    if (work <= remainingWork && !simulation) {
-      const inputs = emptyInputs();
-      simulation = {
-        id: "free-play",
-        title: "Free play",
-        seed: DEFAULT_SEED,
-        scale: freePlayScale(d, inputs),
-        durationMs: 60000,
-        traffic: [],
-        setup: { props: freePlayProps(d, inputs) },
-        multipliers: { capacity: 1 },
-      };
-    }
     const action =
-      work <= remainingWork && simulation
+      work <= remainingWork
         ? confirmedThreadFix({
-            context: { revision: 0, origin: { diagram: d, simulation, initialTraffic: true }, controls: [] },
+            context: {
+              revision: 0,
+              origin: { diagram: d, simulation: freePlay(), initialTraffic: true },
+              controls: [],
+            },
             trouble: {
               key: `threads-exhausted:${node.id}`,
               kind: "threads-exhausted",

@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport } from "./fixtures";
 
 // The request-check store (src/lib/requestCheckCache.ts) is a chunk of its own, loaded with the first check: never
@@ -51,7 +52,14 @@ test("a held request-check store keeps the editor usable, and the checks arrive 
     await page.getByTestId("image-format-svg").click();
     const downloaded = page.waitForEvent("download");
     await page.getByTestId("image-export").click();
-    expect((await downloaded).suggestedFilename()).toMatch(/\.svg$/);
+    const download = await downloaded;
+    expect(download.suggestedFilename()).toMatch(/\.svg$/);
+    // The download completes, with an SVG of this diagram in it, while the store is still held.
+    expect(await download.failure()).toBeNull();
+    const svg = readFileSync(await download.path(), "utf8");
+    expect(svg).toMatch(/^(?:<\?xml[^>]*>\s*)?<svg[\s>]/);
+    expect(svg).toContain("Decision service");
+    expect(store.requested()).toBe(true);
     await page.keyboard.press("Escape");
     store.release();
     await expect(page.getByTestId("checks-count")).toBeVisible();
@@ -82,8 +90,7 @@ test("a failed request-check store download offers Retry by keyboard, and the ch
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("checks-card")).toBeVisible();
   await expect(canvas).toBeFocused();
-  // The background check that failed runs again with the next one (as after an edit), and its warnings show.
-  await page.evaluate(() => (window as unknown as { __checks: { flush(): void } }).__checks.flush());
+  // Retry runs the background check that failed too: its warnings show without an edit.
   await expect(page.getByTestId("checks-summary")).toBeVisible();
   await expect(canvas).toBeFocused();
 });

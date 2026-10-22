@@ -110,16 +110,20 @@ const loadRequestStore = loadOnce(() => import("../../lib/requestCheckCache"));
  * own, loaded with the first check (never at startup or with the canvas): agents and fixes read it later.
  */
 export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckResult> {
-  const { trackRequestChecks } = await loadRequestStore();
-  let completed!: { result: CheckResult; requests: Finding[] };
+  const { trackRequestChecks, requestChecksNeeded } = await loadRequestStore();
+  // With no enabled rule reading request findings, none are worked out, and the store isn't touched: a later read
+  // (a rule turned on, an agent's check) works them out then.
+  if (!requestChecksNeeded(diagram)) return (await computeChecksOffThread(diagram)).result;
+  let completed!: { result: CheckResult; requests?: Finding[] };
   await trackRequestChecks(diagram, async () => {
     completed = await computeChecksOffThread(diagram);
+    if (!completed.requests) throw new Error("The checks returned no request-check result");
     return completed.requests;
   });
   return completed.result;
 }
 
-async function computeChecksOffThread(diagram: DiagramFile): Promise<{ result: CheckResult; requests: Finding[] }> {
+async function computeChecksOffThread(diagram: DiagramFile): Promise<{ result: CheckResult; requests?: Finding[] }> {
   const w = typeof Worker === "function" ? getWorker() : null;
   if (w) {
     const id = ++seq;
@@ -131,7 +135,6 @@ async function computeChecksOffThread(diagram: DiagramFile): Promise<{ result: C
       });
       if ("result" in response) {
         if (response.plans) rememberPlans(diagram, response.plans);
-        if (!response.requests) throw new Error("The checks worker returned no request-check result");
         return { result: response.result, requests: response.requests };
       }
     } catch {

@@ -82,7 +82,7 @@ describe("checks worker", () => {
       const d = waitingFixture();
       d.nodes[0].props!.ratePerSec = 100;
       scope.onmessage!({ data: { id: 1, diagram: d } });
-      expect("result" in posted[0] && posted[0].requests.map((f) => f.id)).toContain("blocked-threads:caller");
+      expect("result" in posted[0] && posted[0].requests?.map((f) => f.id)).toContain("blocked-threads:caller");
       const worker = analyses.mock.calls.length;
       // The same checks on this thread, on content the worker hasn't seen: as many analyses as the worker's (the
       // free-play analysis once, plus the one sizing the replicas option works out), not one more per message.

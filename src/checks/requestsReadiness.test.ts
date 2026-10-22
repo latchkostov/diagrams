@@ -8,6 +8,7 @@ import busy from "../examples/scale-on-busy-threads.json";
 import { agentReport } from "./report";
 import * as timeout from "../live/affordableTimeout";
 import { affordableTimeout, playbackResponseMs } from "../live/affordableTimeout";
+import { timeoutKeepsReplies } from "../live/threadFixPlan";
 import { createSimulationRun } from "../sim/simulation";
 import { applyOps } from "../ai";
 import { buildContext } from "./context";
@@ -290,16 +291,20 @@ describe("pending request checks respect cancellation and document access", () =
 describe("bounded request findings", () => {
   it("timeout fixes read the context's edge index, never a scan of the connections per fix", () => {
     const d = waitingFixture();
-    d.nodes[0].props!.ratePerSec = 1;
-    d.edges = Array.from({ length: 300 }, (_, i) => ({
-      id: `c${i}`,
-      from: "caller",
-      to: "partner",
-      kind: "sync" as const,
-    }));
+    d.nodes[0].props!.ratePerSec = 5;
+    // Every offered timeout is replayed first (within one work budget), so as many calls as that budget verifies.
+    d.edges = [
+      d.edges[0],
+      ...Array.from({ length: 12 }, (_, i) => ({
+        id: `c${i}`,
+        from: "caller",
+        to: "partner",
+        kind: "sync" as const,
+      })),
+    ];
     const scans = vi.spyOn(d.edges, "find");
     const findings = requestFindings(buildContext(d));
-    expect(findings.filter((f) => f.fix)).toHaveLength(300);
+    expect(findings.filter((f) => f.rule === "call-timeout" && f.fix)).toHaveLength(12);
     expect(scans).not.toHaveBeenCalled();
   });
 
@@ -483,6 +488,79 @@ describe("timeouts against playback's ticks", () => {
     return run.engine.measure({ node: "caller", field: "timedOut" });
   };
 
+  it("offered timeouts preserve healthy replies with default jitter", () => {
+    let offered = 0;
+    for (const jitter of [undefined, 0.2, 0.5])
+      for (const threads of [4, 8, 40])
+        for (const latency of [5, 9, 11, 19, 33]) {
+          const d = timed(latency, 0, threads);
+          // Default jitter (0.2) unless set.
+          d.nodes[2].props = {
+            latencyMs: latency,
+            api: { latencyMs: latency },
+            ...(jitter === undefined ? {} : { jitter }),
+          };
+          const finding = runChecks(d, { rules: ["call-timeout"] }).findings[0];
+          if (!finding.fix?.ops) continue;
+          offered++;
+          const fixed = applyOps(d, finding.fix.ops);
+          if (!fixed.ok) throw new Error("The fix didn't apply");
+          expect({ jitter, threads, latency, timedOut: play(fixed.diagram) }).toEqual({
+            jitter,
+            threads,
+            latency,
+            timedOut: 0,
+          });
+        }
+    expect(offered).toBeGreaterThan(10);
+  }, 120_000); // About 45 replays and runs.
+
+  it("offered timeouts preserve nested model-API replies, and the callout agrees", () => {
+    // A model API that does 1 ms of work and calls an 11 ms service: its reply lands after both stages' ticks.
+    let offered = 0;
+    const agreed: [DiagramFile, number][] = [];
+    for (const threads of [8, 16, 40])
+      for (const inner of [11, 1, 19]) {
+        const d = timed(1, 0, threads);
+        d.nodes[2] = { ...d.nodes[2], stencil: "generic.llm", props: { latencyMs: 1, jitter: 0 } };
+        d.nodes.push({
+          id: "inner",
+          stencil: "generic.service",
+          label: "Retrieval",
+          x: 900,
+          y: 180,
+          props: { replicas: 1, concurrency: 400, latencyMs: inner, jitter: 0 },
+        });
+        d.edges.push({ id: "retrieve", from: "partner", to: "inner", kind: "sync" });
+        const finding = runChecks(d, { rules: ["call-timeout"] }).findings.find((f) => f.target === "call");
+        const deadline = finding?.requestFinding?.deadline;
+        // The callout's Add a timeout replays the same free play with the same deadline: the same answer.
+        const proposal = finding?.fix ? deadline : undefined;
+        if (!finding?.fix?.ops || proposal === undefined) continue;
+        offered++;
+        const fixed = applyOps(d, finding.fix.ops);
+        if (!fixed.ok) throw new Error("The fix didn't apply");
+        expect({ threads, inner, timedOut: play(fixed.diagram) }).toEqual({ threads, inner, timedOut: 0 });
+        agreed.push([d, proposal]);
+      }
+    expect(offered).toBeGreaterThan(2);
+    for (const [d, proposal] of agreed) expect(timeoutKeepsReplies(d, "call", proposal, { work: Infinity })).toBe(true);
+    // The review's case: 8 threads, 150 req/s, 1 ms model work calling 11 ms: 40 ms would time out every reply.
+    const d = timed(1, 0, 8);
+    d.nodes[2] = { ...d.nodes[2], stencil: "generic.llm", props: { latencyMs: 1, jitter: 0 } };
+    d.nodes.push({
+      id: "inner",
+      stencil: "generic.service",
+      label: "Retrieval",
+      x: 900,
+      y: 180,
+      props: { replicas: 1, concurrency: 400, latencyMs: 11, jitter: 0 },
+    });
+    d.edges.push({ id: "retrieve", from: "partner", to: "inner", kind: "sync" });
+    expect(timeoutKeepsReplies(d, "call", 40, { work: Infinity })).toBe(false);
+    expect(runChecks(d, { rules: ["call-timeout"] }).findings[0].requestFinding?.deadline).not.toBe(40);
+  }, 120_000);
+
   it("an offered timeout never times out a normal reply, tick-aligned or not", () => {
     // The review's case: 11 ms behind four threads afforded 20 ms, and every reply landed on the deadline.
     expect(runChecks(timed(11, 0, 4), { rules: ["call-timeout"] }).findings[0].fix).toBeUndefined();
@@ -598,5 +676,45 @@ describe("review round 4", () => {
     const shown = presentFinding(finding).fix!.options!.find((o) => o.requestLabel?.kind === "replicas")!;
     expect(shown.label).toContain("Applications");
     expect(shown.short).toBe(shown.label);
+  });
+});
+
+describe("review round 5", () => {
+  it("check_diagram with simulations keeps capacity-only findings", async () => {
+    const d = exhausted();
+    d.simulations = [{ id: "s", title: "S", seed: 1, durationMs: 1000, traffic: [] }];
+    const tool = toolFor(() => d);
+    const plain = JSON.stringify(await tool.run({ rules: ["capacity"] }));
+    const played = JSON.stringify(await tool.run({ rules: ["capacity"], simulations: true }));
+    expect(plain).toContain("capacity:caller");
+    expect(played).toContain("capacity:caller");
+    expect(played).not.toContain("Nothing to check");
+    // Asked together, capacity still defers to the waiting check.
+    const both = JSON.stringify(await tool.run({ rules: ["capacity", "blocked-threads"], simulations: true }));
+    expect(both).toContain("blocked-threads:caller");
+    expect(both).not.toContain("capacity:caller");
+  });
+
+  it("request findings are worked out only when an enabled rule reads them", async () => {
+    const d = exhausted();
+    d.checks = { off: ["capacity", "blocked-threads", "scaling-blind", "call-timeout"] };
+    const headless = await import("../sim/headless");
+    const replays = vi.spyOn(headless, "createHeadlessRun");
+    const { executeChecks } = await import("./execute");
+    const run = executeChecks(d);
+    expect(run.requests).toBeUndefined();
+    expect(replays).not.toHaveBeenCalled();
+    // Without a worker: nothing goes in the shared store, so turning a rule on later works them out then.
+    vi.stubGlobal("Worker", undefined);
+    registerRequestChecks(async () => {
+      throw new Error("not this way");
+    });
+    const { runChecksOffThread } = await import("../canvas/checks/runner");
+    await runChecksOffThread(d);
+    expect(requestCheckResult(d)).toBeUndefined();
+    expect(replays).not.toHaveBeenCalled();
+    d.checks = { off: ["capacity", "scaling-blind", "call-timeout"] };
+    expect(executeChecks(d).requests?.map((f) => f.id)).toContain("blocked-threads:caller");
+    expect(replays).toHaveBeenCalled();
   });
 });
