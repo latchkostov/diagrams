@@ -12,9 +12,3 @@ Packing every dot onto one replica overshoots in the other direction:
 The right placement lies between the two and needs its own design. Any change moves most sampled resource goldens.
 
 The `blocking-call` free play is the measured case where whole-request tails must keep their fair share ahead of first waves. Release notes: [sampling CPU tails](../release-notes/2026-10-21-sampling-cpu-tails.md).
-
-## I7 counterexample at scale 4 (pre-existing)
-
-`I7: spaced logical outcomes are independent of ledger holds` in `src/sim/attempt.test.ts` fails on master 6082bfe552a409d218f57f655b61e33d944e6c17 and on sampling PR 6 alike. Replay it with `FC_SEED=1235471473 FC_PATH="99:2:5:4:4:0:0:0:0:3:0:1:2:2:2:0:0:0:0:0:0:0:0:0:0:1:1"`. The scenario is a resource-backed one-slot caller (51 ms CPU) with a one-connection blocking call and a one-connection non-blocking side call, at scale 4.
-
-CI's fixed seed 20261018 does not reach it. A random-seed local run with `FC_RUN_MULTIPLIER=5` found it on the third try.

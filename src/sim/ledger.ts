@@ -32,8 +32,9 @@ export function reserveCallerOccupancy(
   return { weight: allocationWeight(represented, available, retained?.weight ?? Infinity), represented };
 }
 
-export function occupancyFraction(reservation: CallerOccupancy): number {
-  return reservation.weight / reservation.represented;
+/** Dots a lease occupies: its share of its cohort, a partial dot's cohort counting `units` dots. */
+export function occupancyFraction(reservation: CallerOccupancy & { units?: number }): number {
+  return (reservation.weight / reservation.represented) * (reservation.units ?? 1);
 }
 
 export type ReservationScope = "thread" | "request" | "pool";
@@ -45,6 +46,8 @@ export interface Reservation<Group = unknown> extends ResourceWork {
   keys?: string[];
   weight: number;
   represented: number;
+  /** Dots a partial dot's cohort counts as (unitsOf); undefined is a whole dot. */
+  units?: number;
   phase: "work" | "wait";
   readonly startActive: number;
   /** Logical dispatch time for pool holds; independent of the owner's paused clock. */
@@ -96,7 +99,7 @@ export class SampledLedger {
 
   reserve<Group = unknown>(
     scope: Pick<Reservation, "owner" | "scope" | "startActive"> &
-      Partial<Pick<Reservation, "edge" | "keys" | "phase" | "startedAt">>,
+      Partial<Pick<Reservation, "edge" | "keys" | "phase" | "startedAt" | "units">>,
     represented: number,
     room: number,
     cap = Infinity,

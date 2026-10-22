@@ -51,6 +51,22 @@ it.each([0.5, 1.01, 1.1, 1.3, 1.5, 2, 2.5, 10])("allocation never grants below m
   }
 });
 
+it.each([0.5, 1.01, 1.1, 1.3, 1.5, 2, 2.5, 10])(
+  "packing preserves admission with room a roundoff below every integer, N=%s",
+  (represented) => {
+    // The decimal sweep above never lands just below an integer, where packing divides
+    // a room like 2 - ε into shares a rounding error below one request.
+    const minimum = Math.min(1, represented);
+    for (let integer = 2; integer <= 10; integer++)
+      for (const room of [integer - Number.EPSILON * integer, integer - 1e-12]) {
+        const reservation = new SampledLedger().reserve(pool(), represented, room);
+        expect(reservation?.weight, `room ${room}`).toBeGreaterThanOrEqual(minimum);
+        expect(reservation!.weight).toBeLessThanOrEqual(Math.min(represented, room));
+        expect(allocationWeight(represented, room)).toBe(reservation!.weight);
+      }
+  },
+);
+
 it("unadmitted recovered continuations yield to continuations holding request capacity", () => {
   // Seed 1475036957: send two off-thread calls, take their CPU-backed callee
   // down, add a one-request cap, then take the graph down/up. A recovered

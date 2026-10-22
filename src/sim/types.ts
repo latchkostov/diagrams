@@ -13,6 +13,8 @@ export interface LossProvenance {
   reason: string;
   fault?: import("../model/faults").Fault;
   intentional?: "down" | "fails";
+  /** Sampled dots this loss counts in `dropped`: 1 for a whole dot, a partial dot's share of one. */
+  dots: number;
 }
 
 /** Why a particle is travelling along an edge. Drives its colour / style in the UI. */
@@ -481,6 +483,8 @@ export interface EngineOptions {
   verifyOutcomes?: (state: import("./resourceInvariants").OutcomeInvariantState) => void;
   /** Test-only I7 probe: release sampled holds at logical completion. */
   ledgerHold?: "none";
+  /** Test-only partial dots: every injected message carries this many real requests. */
+  injectRepresented?: number;
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */

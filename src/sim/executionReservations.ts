@@ -5,11 +5,12 @@ import { acquireReplica, releaseReplica, type Fleet } from "./autoscaling";
 import type { ResolvedProps } from "./defaults";
 import { SampledLedger, type Reservation } from "./ledger";
 import { clearResourceWork, deliveryGroup, yieldsToFirstWaves, type CpuTail, type ResourceWork } from "./resourceWork";
-import { sampledParts, releaseCpuParts } from "./sampledResources";
+import { sampledParts, releaseCpuParts, shareCpuParts } from "./sampledResources";
 import { STEP } from "./timing";
+import { representedOf } from "./units";
 
 export interface ExecutionWork<Group> extends ResourceWork {
-  message?: { width?: number };
+  message?: { width?: number; represented?: number };
   attempt?: { res: { thread?: number; request?: number } };
   slotted?: boolean;
   thread?: number;
@@ -71,8 +72,8 @@ export function createExecutionReservations<
   type Work = ExecutionWork<Group>;
   const { ledger, callerReservations, slots, resourceWork, scheduleThreadGrace } = context;
   const usesLedger = (node: Node) => context.waits() && node.role === "processor";
-  /** Real requests this work executes for, fixed once its thread, admission or CPU is
-   * sized. A live scale edit never resizes that cohort, even before a thread holds it. */
+  /** Real requests this work executes for: its message's represented size, fixed once its
+   * thread, admission or CPU is sized. A live scale edit never resizes that cohort. */
   const cohort = (work: Work): number =>
     ledger.get(work.thread)?.represented ??
     ledger.get(work.requestLease)?.represented ??
@@ -81,7 +82,7 @@ export function createExecutionReservations<
     work.lease?.represented ??
     work.threadLease?.represented ??
     work.cohort ??
-    context.scale();
+    representedOf(work.message, context.scale());
 
   function reserveThread(
     node: Node,
@@ -196,17 +197,31 @@ export function createExecutionReservations<
     return true;
   }
 
-  /** A continuation can exchange its own tail, but never invent an uncharged lease while waiting. */
+  /**
+   * A continuation can exchange its own tail, but never invent an uncharged lease while waiting. It keeps
+   * the tail's physical ownership: the same replica ranges and drain deadlines, so termination grace still
+   * applies. CPU the tail has not run stays a tail on those ranges, as when its hold has expired, so whether
+   * a hold survived to the reply never decides how CPU is shared (I7); the continuation's CPU goes on its own
+   * share of them. Only past the CPU part budget does that CPU become continuation backlog instead.
+   */
   function takeoverThread(node: Node, work: Work, tail: Reservation<Group>): void {
-    node.cpuTail.delete(tail);
-    work.cpuParts = tail.cpuParts;
-    work.cpuRemaining = tail.cpuRemaining;
-    work.replica = tail.replica;
-    // This CPU becomes continuation backlog and participates in the first-wave loop.
-    work.cpuOwed = work.fractionalTail = undefined;
-    tail.cpuOwed = tail.fractionalTail = undefined;
-    tail.cpuParts = tail.cpuRemaining = tail.replica = undefined;
     node.threadTails.delete(tail.id);
+    const shared =
+      node.cpuTail.has(tail) && (tail.cpuRemaining ?? 0) > 1e-8 && node.fleet && tail.cpuParts
+        ? shareCpuParts(node.fleet, tail.cpuParts)
+        : undefined;
+    if (shared) {
+      endResources(node, tail);
+      work.cpuParts = shared;
+    } else {
+      node.cpuTail.delete(tail);
+      work.cpuParts = tail.cpuParts;
+      work.cpuRemaining = tail.cpuRemaining;
+      work.replica = tail.replica;
+      work.cpuOwed = work.fractionalTail = undefined;
+      tail.cpuOwed = tail.fractionalTail = undefined;
+      tail.cpuParts = tail.cpuRemaining = tail.replica = undefined;
+    }
     releaseThread(tail);
     const request = ledger.get<Group>(work.requestLease)!;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
@@ -266,7 +281,7 @@ export function createExecutionReservations<
         : node.activeReplicas;
       work.cpuParts = sampledParts(f, eligible, cpuRemaining, () => resourceWork(node));
       if (!work.cpuParts) return false;
-      creditSampledMemory(node, Math.max(0, (work.cpuBackoffUntil ?? time) - time));
+      creditSampledMemory(node, Math.max(0, (work.cpuBackoffUntil ?? time) - time), representedOf(work.message, scale));
     }
     // Failed acquisition has no execution owner yet. A later scale edit may change
     // its admitted cohort, so do not retain CPU initialized for the failed attempt.
@@ -278,7 +293,8 @@ export function createExecutionReservations<
     if (thread) work.logicalCpuRemaining ??= work.cpuPerRequest * thread.weight;
     const occupancy =
       work.replica === undefined
-        ? Math.min(scale, node.activeReplicas * node.props.concurrency) / Math.max(1, node.activeReplicas)
+        ? Math.min(representedOf(work.message, scale), node.activeReplicas * node.props.concurrency) /
+          Math.max(1, node.activeReplicas)
         : (f.busy.get(work.replica)?.count ?? 0);
     if (r.memoryLimitMiB !== undefined && r.baselineMemoryMiB + occupancy * r.memoryMiBPerMessage > r.memoryLimitMiB)
       f.unsafe = true;
@@ -292,12 +308,11 @@ export function createExecutionReservations<
     return startResources(node, work);
   }
 
-  function creditSampledMemory(node: Node, backoff: number): void {
-    const scale = context.scale();
+  function creditSampledMemory(node: Node, backoff: number, represented: number): void {
     const r = node.props.resources!;
     const cores = (r.cpuLimitMilli ?? r.availableCpuMilli ?? Infinity) / 1000;
     const residence = Math.max(STEP, node.props.latencyMs, (r.cpuMsPerMessage * node.props.concurrency) / cores);
-    node.fleet!.memoryCredit += scale * (backoff + residence);
+    node.fleet!.memoryCredit += represented * (backoff + residence);
   }
   function shutdown(node: Node, works: Iterable<Work>): void {
     for (const work of works) {

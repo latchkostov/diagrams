@@ -16,6 +16,10 @@ export function releaseCpuParts(f: Fleet, work: SampledWork) {
   work.cpuParts = undefined;
   f.rangesDirty = true;
 }
+/** A second owner on the same ranges and drain deadlines, with no CPU yet; undefined past the part budget. */
+export function shareCpuParts(f: Fleet, parts: CpuPart[]): CpuPart[] | undefined {
+  return reserve(f, parts.length) ? parts.map((p) => ({ ...p, cpu: 0 })) : undefined;
+}
 /** A scale-down can split only the still-ready piece of each occupied interval. */
 export function canDrainSampled(f: Fleet, desired: number, working: SampledWork[]): boolean {
   let remove = Math.max(0, f.ready - desired),

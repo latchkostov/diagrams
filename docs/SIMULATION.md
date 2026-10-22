@@ -36,6 +36,17 @@ fair share of each tick ahead of first waves. A tail that forms with less than o
 the cohort's fractional part: it yields to first waves, takes what they leave, and the fair share it
 missed is owed and charged first next tick. Numbered tails retain replica ownership until
 spent or drain grace expires. Logical outcomes are written once; later tail cleanup cannot reverse them.
+A continuation that takes over its own retained thread keeps that thread's replica ranges and drain
+deadlines, but CPU its cohort has not run stays a tail, as it does once the hold has expired; the
+continuation's own CPU runs on its share of those ranges. So whether a hold outlived the reply never
+changes how CPU is shared (I7).
+
+A partial dot is part of a dot split at one instant, and carries its own represented size `r`; a whole
+dot carries `N`. This is the one represented size: admission, the `min(1, r)` room gate, threads, pools,
+CPU, residence, quotas and ceilings are sized from it, and every counter adds `r / N` dots, so a split's
+parts sum to their dot. Reports round counters to 1e-9 dots. Width only caps the weight a cohort is
+granted; it never changes `r`. Queue depths, lag and in-system counts still count messages, and latency
+samples are unweighted. Nothing splits a dot yet: the engine plumbing comes first.
 
 For logical hold `H`, ordinary blocking turnaround includes `T = H + ADMISSION_LAG_MS`, where
 `ADMISSION_LAG_MS = STEP = 10 ms`. The reservation releases no earlier than retirement, at

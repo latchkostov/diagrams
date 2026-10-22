@@ -149,6 +149,50 @@ it("owed tail CPU survives checkpoint and restore", () => {
   expect([...state.nodes].find((node) => node.id === "partner")!.fleet!.totalCpu).toBe(cpu);
 });
 
+it("checkpoint preserves repayment under continuing contention", () => {
+  // Drained runs hide a lost debt: a fractional tail finishes next tick either way. Here four
+  // slots keep first waves on the core in the ticks after a debt forms, so arrivals continue
+  // and every tick's owed CPU and first-wave progress must replay after restore. Dropping
+  // cpuOwed from checkpoints fails this; it passed the drained test above.
+  let state!: ResourceState;
+  const e = createEngine({
+    seed: 7,
+    scale: 1.1,
+    maxParticles: 0,
+    verifyResources(s) {
+      state = s;
+      assertResourceInvariants(s);
+    },
+  });
+  e.load(contentionFixture(4));
+  const partner = () => [...state.nodes].find((node) => node.id === "partner")!;
+  const owed = () => [...(partner().cpuTail ?? [])].reduce((sum, tail) => sum + (tail.cpuOwed ?? 0), 0);
+  const arrivals = cohortArrivals(1.1, 200);
+  let tick = 0;
+  do {
+    if (arrivals[tick]) e.inject("source", arrivals[tick]);
+    e.step(10);
+    tick++;
+  } while (owed() <= 0 && tick < arrivals.length - 300);
+  expect(owed()).toBeGreaterThan(0);
+  const checkpoint = e.checkpoint();
+  const replay = () => {
+    const trace: number[][] = [];
+    for (let i = tick; i < tick + 300; i++) {
+      if (arrivals[i]) e.inject("source", arrivals[i]);
+      e.step(10);
+      const firstWaves = partner().working.reduce((sum, work) => sum + (work.logicalCpuRemaining ?? 0), 0);
+      trace.push([owed(), firstWaves].map((x) => Math.round(x * 1e9) / 1e9));
+    }
+    return { trace, snapshot: e.snapshot() };
+  };
+  const expected = replay();
+  // Debts keep forming through the window.
+  expect(expected.trace.filter(([debt]) => debt > 0).length).toBeGreaterThan(1);
+  e.restore(checkpoint);
+  expect(replay()).toEqual(expected);
+});
+
 it.each([1.1, 2.5, 10])("saturated CPU stays within I1 at scale %s", (scale) => {
   const d = contentionFixture(16);
   d.nodes = [d.nodes[0], { ...d.nodes[2], id: "caller" }];

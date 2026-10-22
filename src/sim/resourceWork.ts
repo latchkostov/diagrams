@@ -104,8 +104,10 @@ export function chargeTails(
   for (const tail of tails) {
     got.set(tail, 0);
     const fraction = entitled ? 1 : Math.min(1, tail.cpuOwed! / tail.cpuRemaining!);
+    // A key first waves exhausted can charge nothing: skip it before grouping and sorting.
+    // The tail keeps its `got` entry, so it still accrues what it was entitled to.
     for (const part of cpuEntries(tail))
-      if (part.cpu * fraction > 1e-12 && budgets.has(part.key)) {
+      if (part.cpu * fraction > 1e-12 && (budgets.get(part.key)?.remaining ?? 0) > 0) {
         if (!byKey.has(part.key)) byKey.set(part.key, []);
         byKey.get(part.key)!.push({ tail, part, cap: part.cpu * fraction });
       }

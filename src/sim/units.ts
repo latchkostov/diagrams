@@ -1,10 +1,51 @@
-import type { NodeSimState, RealNodeMetrics, RealSimFrame, RealSimSnapshot, SimFrame, SimSnapshot } from "./types";
+import type {
+  EdgeSimState,
+  NodeSimState,
+  RealNodeMetrics,
+  RealSimFrame,
+  RealSimSnapshot,
+  RouteCounts,
+  SimFrame,
+  SimSnapshot,
+} from "./types";
 export function resolveScale(value: number | undefined): number {
   return value !== undefined && Number.isFinite(value) && value >= 1 ? value : 1;
 }
 export function resolveMultiplier(value: number | undefined, fallback = 1): number {
   return value !== undefined && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
+/**
+ * A dot carries `scale` real requests; a partial dot (split from one at a single instant) carries its own
+ * `represented`. That is the one represented size: every admission, thread, pool and CPU sizing starts
+ * from representedOf, and a counter adds unitsOf dots, so a split's parts always sum to its dot.
+ */
+export const representedOf = (m: { represented?: number } | undefined, scale: number): number =>
+  m?.represented ?? scale;
+export const unitsOf = (m: { represented?: number } | undefined, scale: number): number =>
+  m?.represented === undefined ? 1 : m.represented / scale;
+/** Partial dots leave roundoff in native counters; reports keep 1e-9 dots (and never -0). */
+export const roundDots = (n: number): number => (Number.isInteger(n) ? n : Math.round(n * 1e9) / 1e9 || 0);
+/**
+ * Per-frame copies: fixed-shape counters field by field, dictionaries in one loop. Keys are user-authored
+ * (route ids), so the copy is a null-prototype dictionary like the engine's own: "__proto__" stays a count.
+ */
+export function roundCounts(counts: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = Object.create(null);
+  for (const key in counts) if (Object.hasOwn(counts, key)) out[key] = roundDots(counts[key]);
+  return out;
+}
+export const roundCalls = (c: NonNullable<EdgeSimState["calls"]>): NonNullable<EdgeSimState["calls"]> => ({
+  inFlight: roundDots(c.inFlight),
+  held: roundDots(c.held),
+  timedOut: roundDots(c.timedOut),
+  failed: roundDots(c.failed),
+  late: roundDots(c.late),
+});
+export const roundRoute = (c: RouteCounts): RouteCounts => ({
+  sent: roundDots(c.sent),
+  rejected: roundDots(c.rejected),
+  completed: roundDots(c.completed),
+});
 /** Counters, rates, queue depth and lag have the same sampling weight. */
 export function toRealUnits(value: number, scale = 1): number {
   return value * resolveScale(scale);

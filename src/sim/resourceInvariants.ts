@@ -3,7 +3,7 @@ import type { AutoscalingConfig, ComputeResources } from "../model/autoscaling";
 import { MAX_CPU_PARTS, ownsCpu, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";
 import type { ResourceWork } from "./resourceWork";
-import type { LedgerState, Reservation } from "./ledger";
+import { occupancyFraction, type LedgerState, type Reservation } from "./ledger";
 import { STEP } from "./timing";
 
 export interface LedgerInvariantState {
@@ -17,6 +17,7 @@ export interface LedgerInvariantState {
   }>;
   edges: Iterable<{
     id: string;
+    calls?: { inFlight: number };
     poolUsed: number;
     poolLeases: ReadonlyMap<number, number>;
     poolPending: readonly {
@@ -48,6 +49,7 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
   const clocks = new Map(nodeList.map((node) => [node.id, node.activeMs]));
   const threads = new Map<string, Record<"work" | "wait", number>>();
   const pools = new Map<string, number>();
+  const sent = new Map<string, number>();
   const requests = new Map<string, number>();
   for (const [id, reservation] of ledger.reservations) {
     const owner = ledger.owners.get(reservation.owner);
@@ -76,6 +78,7 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
     if (reservation.scope === "pool") {
       check(reservation.edge !== undefined, "pool has no edge");
       pools.set(reservation.edge!, (pools.get(reservation.edge!) ?? 0) + reservation.weight);
+      sent.set(reservation.edge!, (sent.get(reservation.edge!) ?? 0) + occupancyFraction(reservation));
     }
   }
   for (const node of nodeList) {
@@ -115,6 +118,12 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
   }
   for (const edge of edges) {
     check(Math.abs(edge.poolUsed - (pools.get(edge.id) ?? 0)) < 1e-8, "pool occupancy disagrees");
+    // Calls in flight are dots: a lease's share of its cohort, a partial dot's counted at its own size.
+    if (edge.calls)
+      check(
+        Math.abs(edge.calls.inFlight - (sent.get(edge.id) ?? 0)) < 1e-8,
+        "calls in flight disagree with pool leases",
+      );
     // Width never increases along a path: a branch is no wider than its caller's
     // incoming cohort, nor than the caller thread a blocking call still holds.
     for (const { message, call } of edge.poolPending) {

@@ -162,7 +162,7 @@ function* play(
     onLoss: (loss) => {
       if (!loss.intentional) return;
       const counts = lost.get(loss.node) ?? { down: 0, fails: 0 };
-      counts[loss.intentional]++;
+      counts[loss.intentional] += loss.dots;
       lost.set(loss.node, counts);
     },
   });
