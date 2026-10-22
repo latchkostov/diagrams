@@ -46,6 +46,8 @@ leaving 0.9; the minimum-one-real-request gate refused another cohort. This occu
 retained thread hold and is independent of the zero-work admission-lag correction.
 Diagnostic parent: seed `20261018`, path `3:0:1:1:1:1:1:0:0:0:0:0:0:0:0:1`.
 Preserve the small-reservation guards when investigating fragmentation.
+At scale 10 the same fixture improves from 580 to 1,000 against 995 in sampling PR 5:
+the one connection now holds the caller thread until it turns the cohort over (below).
 
 ## Sub-tick local work
 
@@ -66,7 +68,11 @@ accuracy investigations open; PR 2 now resolves the sub-tick gap through tick-ph
 
 All are in `src/sim/scaleEquivalence.test.ts` with the unchanged I1 bound and exact siblings:
 
-- CPU callee (2 slots, 24 ms CPU) behind one connection, caller 2 slots, scale 2: 399 versus 286.
+- CPU callee (2 slots, 24 ms CPU) behind one connection, caller 2 slots: resolved in sampling PR 5.
+  A finite pool narrows the cohort's width, so the callee's first wave runs at the connection's
+  grant instead of min(N, slots); a caller thread wider than its pool lease is not admissible
+  before that lease's exact turnover. Ordinary I1 regressions pass at 1.1, 1.5, 2, 2.5, 5 and 10
+  (scale 2: 400 versus 399, previously 286; scale 10: 400 versus 397, previously 180).
 - Same CPU fixture without a connection pool, scale 1.1: 570 versus 664.4 after PR 4 packing
   (previously 366.3); closer to the reference but still outside I1, pending the CPU-tail PR.
 - Lambda joining ordinary and fleet replies: resolved in PR 2; ordinary I1 guards pass at scales 2 and 4.
@@ -81,4 +87,4 @@ Generated I1 is opt-in exploration (`FC_I1=1`, `scripts/fc-sweep.mjs --i1`), nev
 The fixed corpus is separately replayable with `FC_I1_CORPUS=1 pnpm exec vitest run
 src/sim/scaleEquivalence.test.ts -t "fixed 40-sample" --silent=false`; its 40 samples use seed
 20261018: **13/31 pass** at scale > 1 on PR 1, matching the approved design. Each later sampling PR
-records the pass count without lowering this floor.
+records the pass count without lowering this floor: 16/31 after PR 4 and PR 5 (the test's floor is 16).

@@ -136,6 +136,12 @@ export const SOURCE_RATE_CAP = 10_000;
 export const SOURCE_VOLUME_CAP = 200_000;
 
 interface Message {
+  /** Real requests of this cohort that can occupy capacity at once downstream: the
+   * narrowest held caller thread or finite-pool grant on its path (undefined: no limit).
+   * Width never increases along a path. cohort(work) remains the one represented size
+   * that counters, CPU and holds use; width only caps the weight granted to that cohort,
+   * which then runs in represented/weight waves. */
+  width?: number;
   callMs?: number;
   returnCall?: number;
   callDepth?: number;
@@ -1643,6 +1649,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       const branch = {
         ...addressed(copy(node, message), edge.requestRoute ?? message.request),
+        // A held caller thread was granted within its incoming width, so it narrows it.
+        width: ledger.get(work.thread)?.weight ?? message.width,
         returnCall: call.id,
         callDepth: depth,
       };
@@ -1688,6 +1696,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         gone(edge.from, next.message, "end", "call already failed");
         continue;
       }
+      // Only a finite pool narrows the cohort; an unbounded pool ignores width.
+      const finite = Number.isFinite(edge.policy?.pool);
       const reservation = ledger.reserve(
         {
           scope: "pool",
@@ -1699,11 +1709,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         },
         scale,
         (edge.policy?.pool ?? Infinity) - edge.poolUsed,
-        Infinity,
+        finite ? (next.message.width ?? Infinity) : Infinity,
         next.admissibleActive,
       );
       if (!reservation) break;
       const { call, message } = popDue(edge.poolPending, edge.poolPendingIndices);
+      if (finite) message.width = reservation.weight;
       edge.poolUsed += reservation.weight;
       edge.poolLeases.set(call.id, reservation.id);
       const branch = call.branches.get(edge.id)!;
@@ -1735,6 +1746,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!lease) return;
     if (opts.ledgerHold === "none") ledger.release(lease);
     else ledger.retire(lease, holdMs, edge.from.activeMs);
+    // A pool narrower than the blocking caller's thread turns the cohort over in more
+    // waves than the thread's own stretch: the thread is not admissible before that
+    // exact turnover. A pool at least as wide never needs this: its hold is nested in
+    // the thread's and stretched by no more, so it always turns over first.
+    const thread = edge.policy?.blocking ? ledger.get(calls.get(callId)?.work.thread) : undefined;
+    if (thread && lease.turnoverAt !== undefined && lease.weight < thread.weight - 1e-9)
+      thread.notBefore = Math.max(thread.notBefore ?? -Infinity, lease.turnoverAt);
     edge.poolLeases.delete(callId);
   }
 
