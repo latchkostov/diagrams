@@ -16,7 +16,7 @@ A part is one more message. In five representative runs parts were 13% to 60% of
 
 ## Accuracy comparison
 
-Measured with `src/test/scaleEquivalence.ts`: seed 7, 100 real requests/s, 20 seconds; master 4877f5dce3595a83af56043f726fb1f929fedd87. C / R means real caller completions / rejections. Managed admission at 10 moves away until sampling 8a: a throttled Lambda now receives parts of three requests instead of dots of ten, and stretch admits them. 8a's throttle split takes it to 398 / 1,592, scale 1 exactly. The fixed 40-sample I1 corpus passes 16/31, the same indices as master.
+Measured with `src/test/scaleEquivalence.ts`: seed 7, 100 real requests/s, 20 seconds; master 4877f5dce3595a83af56043f726fb1f929fedd87. C / R means real caller completions / rejections. Managed admission at 10 moves away until sampling 8a: a throttled Lambda now receives parts of three requests instead of dots of ten, and stretch admits them. 8a's throttle split takes it to 398 / 1,592, scale 1 exactly. The fixed 40-sample I1 corpus passes 17/31: index 8 now passes, and every index master passes still does.
 
 | Fixture                         | Scale | Same-arrivals scale 1 C / R |     Master C / R |     Branch C / R | Direction |
 | ------------------------------- | ----: | --------------------------: | ---------------: | ---------------: | --------- |
