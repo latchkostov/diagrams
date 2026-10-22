@@ -84,6 +84,9 @@ test("Add a timeout names the saved simulation and edge, exposes the override, a
   await page.getByTestId("live-play").click();
   await expect(page.getByTestId("trouble-callout")).toHaveAttribute("data-kind", "threads-exhausted");
   await expect(page.getByTestId("trouble-detail")).toContainText("gave up after 5 s (504)");
+  // The callout offers Events until the checks worker's same-seed replay confirms the fix (real time, not the page's
+  // clock): press the confirmed Add a timeout, never the Events it replaces.
+  await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-timeout");
   await page.getByTestId("trouble-action").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast")).toContainText(

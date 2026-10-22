@@ -108,3 +108,18 @@ the Checks card, agents and fixes, which already load lazily). `bundle/startup/g
 177,000 B) and `bundle/canvasFirstView/gzip` 382,345 B (budget 383,000 B); no budget was raised. A held store
 keeps focus, cursor, styles and export working, and checks arrive after it; a failed download offers Retry from
 the Checks card and keeps focus in the canvas (`tests/e2e/request-checks-chunk.spec.ts`).
+
+## Callout verification timing
+
+CI's "Add a timeout names the saved simulation…" test pressed the trouble callout's button while it still offered
+Events: the trace shows `data-action="events"` ("Show events") at the key press and the confirmed
+`add-timeout` only afterwards. The callout offers Events until the checks worker's same-seed replay confirms a fix
+(#225's design). That replay runs in real time while the test drives the page's mocked clock. The replay's cost is
+unchanged by this PR (about 220 ms in Node on f2e5074e and here). The test left about 1.2 s between the callout
+and its key press; under load, the worker's start-up plus the replay used it up.
+
+- Live view now starts the checks worker when it starts watching a diagram whose callouts can verify a fix
+  (revision p3-w1), so the worker's download and start-up are no longer between a callout and its confirmed fix.
+- The test waits for the confirmed `add-timeout` action before pressing it; every assertion after it is unchanged.
+  Under load (all `requests-wait*` specs, three times, production build) it passes 147/147; without the wait it
+  failed twice in the same run, with Events pressed.

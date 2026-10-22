@@ -22,6 +22,14 @@ function failAll(message: string) {
   pending.clear();
 }
 
+/**
+ * Starts the checks worker ahead of its first request (fetching and evaluating its script takes a while on a slow
+ * machine): live view does when its callouts may need a verified fix. A no-op where there are no workers.
+ */
+export function warmChecksWorker(): void {
+  if (typeof Worker === "function") getWorker();
+}
+
 function getWorker(): Worker | null {
   if (worker !== undefined) return worker;
   try {
