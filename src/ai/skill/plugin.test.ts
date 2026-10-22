@@ -23,6 +23,11 @@ describe("the directory plugin bundle", () => {
       displayName: "Live Diagrams",
       author: { name: "Live Diagrams", url: "https://github.com/latchkostov/diagrams" },
       homepage: "https://www.livediagrams.dev",
+      // Listing links the directory reads from the manifest.
+      documentationUrl: "https://github.com/latchkostov/diagrams/tree/master/skills/livediagrams#readme",
+      supportUrl: "https://github.com/latchkostov/diagrams/issues",
+      privacyPolicyUrl: "https://www.livediagrams.dev/privacy.html",
+      termsOfServiceUrl: "https://www.livediagrams.dev/terms.html",
       repository: "https://github.com/latchkostov/diagrams",
       license: "MIT",
       keywords: expect.arrayContaining(["diagrams", "architecture", "simulation"]),
