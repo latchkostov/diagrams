@@ -122,6 +122,8 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
   const name = (id: string) => findingName(ctx.name(id));
   const warnings: Finding[] = [];
   const suggestions: Finding[] = [];
+  // Timeout suggestions past the whole budget can't be reported (warnings go first): none is built.
+  let suggested = 0;
   let remainingWork = THREAD_FIX_WORK;
   let simulation: Simulation | undefined;
   // Scenario sizing, read once per diagram (each read keys the whole diagram).
@@ -134,6 +136,7 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
     // The calls playback makes: not dead-letter routes, deny rules or connections that forward no share.
     const calls = ctx.requests(node.id).filter((e) => activeCall(ctx.role(node.id), e));
     for (const e of calls) {
+      if (suggested > REQUEST_FINDINGS_BUDGET) break;
       const target = ctx.nodes.get(e.to);
       if (!target || !["external-api", "model-api"].includes(profileOf(target.stencil)?.family ?? "")) continue;
       const edge = ctx.edges.get(e.id)!;
@@ -166,7 +169,7 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
         deadline !== undefined
           ? threadCheckFix(d, { kind: "add-timeout", edge: e.id, deadlineMs: deadline }, edge)
           : undefined;
-      suggestions.push({
+      const suggestion: Finding = {
         id: `call-timeout:${e.id}`,
         rule: "call-timeout",
         severity: "suggestion",
@@ -179,7 +182,9 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
         rationale: "A timeout bounds waiting; downstream work can still finish and reply late.",
         requestFinding: descriptor,
         ...(fix ? { fix } : {}),
-      });
+      };
+      suggested += JSON.stringify(suggestion).length + 1;
+      suggestions.push(suggestion);
     }
     if (
       n.role !== "processor" ||
