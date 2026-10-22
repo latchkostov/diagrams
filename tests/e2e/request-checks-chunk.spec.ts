@@ -73,24 +73,17 @@ test("a failed request-check store download offers Retry by keyboard, and the ch
   const retry = page.getByTestId("lazy-load-retry");
   await expect(retry).toBeVisible();
   await expect(page.getByTestId("checks-card")).toHaveCount(0);
-  // Back online: Retry by keyboard opens the card; focus stays with the canvas the toast belongs to, never the page.
+  // Back online: from the canvas, the keyboard reaches Retry; it opens the card and gives focus back to the canvas.
   store.fail = false;
   store.release();
+  const canvas = page.getByTestId("canvas-wrap");
+  await canvas.focus();
   await retry.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("checks-card")).toBeVisible();
-  const kept = () =>
-    page.evaluate(() => {
-      const active = document.activeElement;
-      return (
-        !!active &&
-        active !== document.body &&
-        !!document.querySelector('[data-testid="canvas-view"]')?.contains(active)
-      );
-    });
-  await expect.poll(kept).toBe(true);
+  await expect(canvas).toBeFocused();
   // The background check that failed runs again with the next one (as after an edit), and its warnings show.
   await page.evaluate(() => (window as unknown as { __checks: { flush(): void } }).__checks.flush());
   await expect(page.getByTestId("checks-summary")).toBeVisible();
-  expect(await kept()).toBe(true);
+  await expect(canvas).toBeFocused();
 });
