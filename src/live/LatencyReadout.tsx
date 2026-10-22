@@ -19,6 +19,7 @@ export function LatencyReadout({
 }) {
   const total = latency.waitMs + latency.workMs + (latency.callMs ?? 0) + (compact ? 0 : latency.travelMs);
   const share = (ms: number) => formatPercent(total > 0 ? ms / total : 0);
+  const count = sampleCount(latency);
   return (
     <div className="lv-latency" data-testid={`node-latency-detail-${id}`}>
       <strong>{latency.callMs === undefined ? t("latency.heading") : t("threads.latency")}</strong>
@@ -47,12 +48,13 @@ export function LatencyReadout({
       </div>
       <small data-testid={`node-latency-scope-${id}`}>
         {latency.sinceFault
-          ? t("latency.faultScope", {
-              count: sampleCount(latency),
-              change: faultWindowLabel(latency.sinceFault.fault, diagram),
-            })
+          ? count === "few"
+            ? t("latency.faultScopeFew", { change: faultWindowLabel(latency.sinceFault.fault, diagram) })
+            : t("latency.faultScope", { count, change: faultWindowLabel(latency.sinceFault.fault, diagram) })
           : compact
-            ? t("latency.finishedScope", { count: sampleCount(latency) })
+            ? count === "few"
+              ? t("latency.finishedScopeFew")
+              : t("latency.finishedScope", { count })
             : t("latency.scope")}
       </small>
     </div>

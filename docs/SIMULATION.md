@@ -246,8 +246,9 @@ accept parallel work; no ineffective new controls are shown.
   waiting at the consumer, or in work) against `units` slots, enough to keep every slot busy plus a prefetch of
   one. For a processor `units` is `activeReplicas × concurrency` real requests at any scale, counted with `unitsOf`, so
   at a sampling scale a dot larger than the room is delivered in parts (each, and the rest left queued, at least one
-  real request) and the backlog stays at the broker, as at scale 1. Competing consumers share a dot in equal parts
-  capped by their windows, as scale 1 alternates a burst's members. Stores and gateways serve a dot as one message,
+  real request) and the backlog stays at the broker, as at scale 1. Competing consumers share a dot: the next ones in
+  round-robin order (at most one per real request) take equal parts capped by their windows, as scale 1 alternates
+  a burst's members, and parallel routes to one consumer share its window. Stores and gateways serve a dot as one message,
   so their window counts dots. A non-processor target with
   no service time (a broker, a sink) is never the limit, so a topic → queue hop builds no lag; a 0 ms processor is
   paced as one tick (10 ms), so a burst can't pull a whole backlog onto the edge. A broker-fed

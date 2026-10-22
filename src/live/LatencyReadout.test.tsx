@@ -57,3 +57,17 @@ it("counts finished messages whole when samples weigh partial dots", () => {
   );
   expect(renderToStaticMarkup(<LatencyReadout id="sink" latency={latency} />)).toContain("203 sampled messages");
 });
+
+it("never counts positive weighted samples as zero finished messages", () => {
+  // A finished part of a dot weighs its share: 0.3 of a sample reads as less than one, not as zero.
+  const recorder = createLatencyRecorder();
+  recordLatency(recorder, "Order", 0, 100, 10, undefined, undefined, 0.3);
+  const latency = latencyMetrics(recorder);
+  const compact = renderToStaticMarkup(<LatencyReadout id="sink" compact latency={latency} />);
+  expect(compact).toContain("From less than one finished message since restart.");
+  expect(compact).not.toContain("From 0 ");
+  expect(renderToStaticMarkup(<LatencyReadout id="sink" latency={latency} />)).toContain(
+    "from less than one sampled message",
+  );
+  expect(latency.p50).toBeLessThan(200);
+});

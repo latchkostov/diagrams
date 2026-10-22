@@ -476,3 +476,41 @@ it("counter copies keep route ids named like prototype members", () => {
     for (const key of Object.keys(source)) expect(Object.hasOwn(copy, key), key).toBe(true);
   }
 });
+
+it("backlog counts queued continuations by their dots, as frames and measure() both report (review of #237)", () => {
+  // A one-thread caller whose non-blocking replies queue continuations behind new work. Every queued request,
+  // pending or resuming, adds its represented share: frames and measure() read the same backlog.
+  const d = waitingFixture();
+  d.nodes[1].props = { concurrency: 1, replicas: 1, latencyMs: 10, jitter: 0 };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 4, replicas: 1, latencyMs: 100, jitter: 0 };
+  d.edges[1].props = { travelMs: 10, caller: { wait: "non-blocking", replyMs: 100 } };
+  let queued = 0,
+    resumed = 0;
+  const e = createEngine({
+    seed: 7,
+    scale: 10,
+    injectRepresented: 3,
+    maxParticles: 0,
+    verifyResources(s) {
+      assertResourceInvariants(s);
+      for (const node of s.nodes as Iterable<Record<string, unknown>>) {
+        if (node.id !== "caller") continue;
+        queued = 0;
+        type Queued = Iterable<{ message?: { represented?: number } }>;
+        // The raw queues (the generators the hook also passes are consumed by the invariants).
+        for (const work of [...(node.queue as Queued), ...(node.resume as Queued)])
+          queued += (work.message?.represented ?? 10) / 10;
+        resumed = Math.max(resumed, (node.resume as { length: number }).length);
+      }
+    },
+  });
+  e.load(d);
+  for (let tick = 0; tick < 200; tick++) {
+    e.inject("caller", 1);
+    e.step(10);
+    expect(e.measure({ node: "caller", field: "backlog" })).toBeCloseTo(queued, 9);
+    expect(e.frame().nodes.caller.backlog).toBeCloseTo(queued, 9);
+  }
+  expect(resumed).toBeGreaterThan(0);
+});

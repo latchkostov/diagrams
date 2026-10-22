@@ -30,6 +30,8 @@ export function latencyBucket(latency: number): number {
 }
 
 interface Histogram {
+  /** A sample weighed a fraction of a dot (a broker's part): percentiles rank by weight, not by whole samples. */
+  fractional?: true;
   callMs?: number;
   buckets: number[];
   samples: number;
@@ -82,6 +84,7 @@ export function recordLatency(
   const latency = wait + work;
   const bucket = latencyBucket(latency);
   const add = (h: Histogram) => {
+    if (!Number.isInteger(weight)) h.fractional = true;
     h.buckets[bucket] += weight;
     h.samples += weight;
     h.max = Math.max(h.max, latency);
@@ -110,12 +113,14 @@ function summary(h: Histogram): LatencySummary {
   const cached = summaries.get(h);
   if (cached?.samples === h.samples) return cached.value;
   const at = (q: number) => {
-    // Weighted samples can be fractional: the rank never exceeds what was recorded.
-    const rank = Math.min(h.samples, Math.ceil(h.samples * q));
+    // Whole samples keep nearest rank. Fractional weights rank by weight: the q-th share of the recorded weight, so
+    // 0.9 of a dot at 10 ms and 0.1 at 1 s give p50 = 10 ms (a whole-sample rank would read the slowest).
+    const rank = h.fractional ? h.samples * q : Math.ceil(h.samples * q);
     let count = 0;
     for (let i = 0; i < LATENCY_BUCKETS; i++) {
       count += h.buckets[i];
-      if (count + 1e-9 >= rank) return i === LATENCY_BUCKETS - 1 ? h.max : Math.min(h.max, BOUNDS[i]);
+      if (h.fractional ? count + 1e-9 >= rank : count >= rank)
+        return i === LATENCY_BUCKETS - 1 ? h.max : Math.min(h.max, BOUNDS[i]);
     }
     return h.max;
   };

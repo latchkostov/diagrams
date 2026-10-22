@@ -214,6 +214,8 @@ export interface ResourceState {
     };
     working: readonly Work[];
     workQueues?: { working: Iterable<Work>; pending: Iterable<Work>; takeovers: Iterable<Work> };
+    /** Dots of the working set, cached so occupancy reads are constant-time. */
+    workingUnits?: number;
     threadTails?: ReadonlyMap<number, Reservation<unknown>>;
     threadWeight?: Record<"work" | "wait", number>;
     pending: Iterable<Work>;
@@ -275,6 +277,12 @@ export function assertResourceInvariants(state: ResourceState) {
     const queued = [...node.pending];
     const all = [...node.working, ...queued];
     const fail = (ok: boolean, message: string) => check(ok, `${node.id} @${state.time}: ${message}`);
+    if (node.workQueues && node.workingUnits !== undefined) {
+      let dots = 0;
+      for (const work of node.workQueues.working)
+        dots += work.message?.represented === undefined ? 1 : work.message.represented / state.scale;
+      fail(Math.abs(node.workingUnits - dots) <= 1e-9, `cached working units ${node.workingUnits} != ${dots}`);
+    }
     if (node.workQueues) {
       const seen = new Set<Work>();
       const takeovers = new Set(node.workQueues.takeovers);

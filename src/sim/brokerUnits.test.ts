@@ -93,6 +93,29 @@ it.each([4, 10])("competing consumers keep their scale-one shares with a window 
   checkConstantRateEquivalence(throttled(), scale);
 });
 
+// Review of #237: choosing recipients by room starved a consumer whenever a dot was smaller than the number of
+// consumers with room (scale 2: 999 / 997 / 0 against 666 / 665 / 664). Recipients come in round-robin order, so every
+// consumer takes its turn: each keeps its scale-one share within a dot.
+it.each([2, 2.5])("small dots rotate across all eligible consumers (scale %s)", (scale) => {
+  const runs = constantRateRuns(throttled(), scale);
+  for (const id of ["small", "a", "b"]) {
+    const [x, y] = [runs.baseline, runs.sampled].map((s) => realSnapshot(s).nodes[id].processed);
+    expect(Math.abs(y - x), `${id}: ${y} against ${x}`).toBeLessThanOrEqual(scale);
+  }
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+
+it("a dot of two rotates among three consumers instead of starving the widest", () => {
+  // One scale-2 dot every 200 ms to fifteen-, one- and one-slot consumers: the widest used to finish nothing.
+  const runs = constantRateRuns(queue([worker("wide", 15, 10), worker("one", 1, 10), worker("two", 1, 10)]), 2, {
+    ratePerSec: 10,
+  });
+  for (const id of ["wide", "one", "two"]) {
+    const [x, y] = [runs.baseline, runs.sampled].map((s) => realSnapshot(s).nodes[id].processed);
+    expect(Math.abs(y - x), `${id}: ${y} against ${x}`).toBeLessThanOrEqual(2);
+  }
+});
+
 // Black Friday's notification queue: a slow and a fast consumer. Scale 1 alternates a burst's members between them;
 // whole dots alternated too, but split ones gave 2,145 / 1,955 where scale 1 gives 2,050 / 2,050.
 const unequal = () => queue([worker("slow", 2, 80), worker("fast", 2, 40)]);
@@ -102,6 +125,23 @@ it.each([2.5, 10])("a slow and a fast consumer keep their scale-one shares (scal
   for (const id of ["slow", "fast"])
     expect(Math.abs(share(runs.sampled, id) - share(runs.baseline, id)), id).toBeLessThanOrEqual(scale);
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+
+// Review of #237: parallel routes to one consumer share its window (each route used to spend the whole of it).
+it.each([1, 2, 10])("%s parallel routes to one consumer share its prefetch window", (routes) => {
+  // One 100 ms slot on 10 ms connections: a window of three real requests, so seven of the ten stay queued.
+  const d = queue([worker("worker", 1, 100)]);
+  d.edges = Array.from({ length: routes }, (_, i) => ({
+    id: `route-${i}`,
+    from: "source",
+    to: "worker",
+    props: { travelMs: 10 },
+  }));
+  const e = engine(10);
+  e.load(d);
+  e.inject("source", 1);
+  e.step(10);
+  expect(realSnapshot(e.snapshot()).nodes.source.backlog).toBeCloseTo(7, 9);
 });
 
 it("partial deliveries checkpoint and restore", () => {
