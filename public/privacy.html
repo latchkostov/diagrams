@@ -101,7 +101,7 @@
     <main>
       <h1 data-testid="privacy-title">Privacy policy</h1>
       <p class="updated" data-testid="privacy-effective">
-        Live Diagrams at livediagrams.dev · effective 20 October 2026
+        Live Diagrams at livediagrams.dev · effective 22 October 2026
       </p>
 
       <p>
@@ -114,7 +114,8 @@
         Jump to: <a href="#your-diagrams">Your diagrams</a> · <a href="#google-drive">Google Drive</a> ·
         <a href="#onedrive">OneDrive</a> · <a href="#dropbox">Dropbox</a> ·
         <a href="#self-hosting">Your company's own copy</a> ·
-        <a href="#confluence" data-testid="privacy-confluence-jump">Confluence</a> · <a href="#contact">Contact</a>
+        <a href="#confluence" data-testid="privacy-confluence-jump">Confluence</a> ·
+        <a href="#claude-skill" data-testid="privacy-skill-jump">Claude skill</a> · <a href="#contact">Contact</a>
       </p>
 
       <h2 id="your-diagrams">Your diagrams</h2>
@@ -280,6 +281,38 @@
           confidential details from screenshots. Visiting documentation or GitHub is a separate action outside the
           macro.
         </p>
+      </div>
+
+      <h2 id="claude-skill" data-testid="privacy-skill-title">Live Diagrams skill for Claude</h2>
+      <div data-testid="privacy-skill">
+        <p>
+          The Live Diagrams skill (also listed as a plugin in Claude's directory) helps Claude draw diagrams for you. Its
+          scripts run on your own machine, with Node.js, only when Claude runs them for a request of yours: they read
+          the diagram files you give them and write the files you ask for, such as a diagram file or an Interactive HTML
+          file. They make no network requests, collect nothing about you, and have no account, telemetry or server of
+          their own. The publisher receives nothing and keeps nothing.
+        </p>
+        <ul>
+          <li>
+            <strong>Interactive HTML</strong> made by the skill is built locally and behaves exactly like the one made
+            in the app (above): it makes no network requests when opened.
+          </li>
+          <li>
+            <strong>A password-protected HTML file</strong> uses a password you type when asked, or one you set in the
+            <code>LIVEDIAGRAMS_HTML_PASSWORD</code> environment variable. It is used only to encrypt that file on your
+            machine; it is never stored, logged or sent anywhere.
+          </li>
+          <li>
+            <strong>Share links</strong> are only printed for you, and only when you ask for one; making one sends
+            nothing anywhere. They work like the share links above, so anyone with the link can read the diagram. The
+            skill refuses to make a link for a private diagram.
+          </li>
+          <li>
+            Claude itself sees the diagrams and requests in your conversation under Anthropic's own terms and privacy
+            policy, as with anything else you share with it. Never put secrets, credentials or personal data in a
+            diagram.
+          </li>
+        </ul>
       </div>
 
       <h2>No analytics, no ads, no tracking</h2>
