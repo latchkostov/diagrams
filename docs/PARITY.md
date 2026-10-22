@@ -65,8 +65,7 @@ See [the release fragment](release-notes/2026-10-19-engine-cpu-callees-r4.md).
 
 ## Sampling 8a-pre: brokers deliver in real units (2026-10-22)
 
-61 Node-tier goldens change: 37 simulation goldens at scale 2 to 100, 23 derived from those simulations, and the
-English catalog (`i18n/catalogs.json`, four new latency strings).
+60 Node-tier goldens change: 37 simulation goldens at scale 2 to 100 and 23 derived from those simulations.
 No scale-one golden changes. A broker's prefetch window now counts real requests (`unitsOf`), as at scale 1, and
 hands out a dot that doesn't fit in parts; competing consumers share a dot, as scale 1 alternates a burst's members.
 Latency samples weigh their dots. See [the release fragment](release-notes/2026-10-22-sampling-broker-units.md).
@@ -138,7 +137,6 @@ Derived goldens follow the simulations they replay:
 | `evidence/` aks-app-config-key-vault, aws-serverless-orders, black-friday-commerce, cqrs-event-sourcing, event-driven-data-platform, gcp-streaming-analytics, notification-fanout, rag-assistant, webhook-ingestion | their saved simulations                        | played time to idle (e.g. 21,790 → 21,770 ms) and evidence rows                                                                                                                                             | follows its simulations                              |
 | `latency/where-the-time-goes/billing-spike.json`, `slow-billing-drill.json`                                                                                                                                         | Billing spike, slow-billing drill              | latency summaries: a sample weighs its dots, so a dot delivered in parts adds up to one sample; percentiles over fractional weights rank by weight, whole samples keep nearest rank (e.g. p95 406 → 363 ms) | follows its simulations (percentile I1 deferred, Q8) |
 | `trace/` black-friday-commerce poison-deploy dead letter, event-driven-data-platform load spike, recommendations-feature-store sunday picks, webhook-ingestion bulk sync                                            | their simulations                              | traced journeys: a traced dot may travel in parts                                                                                                                                                           | follows its simulations                              |
-| `i18n/catalogs.json`                                                                                                                                                                                                | none                                           | four English strings for a weighted sample count under one ("less than one finished message")                                                                                                               | not a simulation output                              |
 | `waits/w1-busy-threads/blocking.json`, `busy-threads.json`                                                                                                                                                          | busy-threads blocking, busy-threads            | checkpoint gauges: fractional queues (backlog 3 → 3.5, queued 33 → 32.5) and in-system counts                                                                                                               | follows its simulations (blocking: named gap)        |
 
 ## Resizable Inspector (2026-10-16)
