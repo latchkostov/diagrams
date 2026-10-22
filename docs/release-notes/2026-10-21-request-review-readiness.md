@@ -156,3 +156,15 @@ was removed and no budget raised.
 traffic (traffic comes only from saved simulations), so no replay can confirm a timeout: each `call-timeout` finding
 stays, without its unverified Add a 1000 ms (or 2000 ms) timeout fix, and agent summaries lose the fix hint.
 No other golden changed; the public examples' fixes are unchanged.
+
+## Sixth review round: conservative timeout replays
+
+A replay certified a timeout too easily: it ended after 10 s whatever the deadline, and counted requests that reached
+the callee rather than completed replies. Now traffic stops after 10 s and the replay runs on for the deadline (plus
+two ticks), so every call issued could reply or reach its deadline. It certifies the timeout only if, by then, the
+caller has nothing left to do, no call on that connection is pending, at least one reply completed, and none timed out
+or failed. Anything else is inconclusive: no fix, the finding stays, and the callout falls back to its next confirmed
+fix or Show events. Checks and the callout share the rule. Regressions (each failed on 159c61f9): a 40 s deadline
+behind a one-connection pool, replies outliving the window (10 s and 9.5 s inner services), no completed reply (a 19 s
+inner service) and a caller still issuing calls when traffic stops. The payment example keeps its 600 ms. No golden
+changed.

@@ -8,7 +8,10 @@ import busy from "../examples/scale-on-busy-threads.json";
 import { agentReport } from "./report";
 import * as timeout from "../live/affordableTimeout";
 import { affordableTimeout, playbackResponseMs } from "../live/affordableTimeout";
-import { timeoutKeepsReplies } from "../live/threadFixPlan";
+import { freePlaySimulation, timeoutKeepsReplies } from "../live/threadFixPlan";
+import { advanceHeadless, createHeadlessRun } from "../sim/headless";
+import { realSnapshot } from "../sim/units";
+import payment from "../examples/slow-payment-provider.json";
 import { createSimulationRun } from "../sim/simulation";
 import { applyOps } from "../ai";
 import { buildContext } from "./context";
@@ -716,5 +719,85 @@ describe("review round 5", () => {
     d.checks = { off: ["capacity", "scaling-blind", "call-timeout"] };
     expect(executeChecks(d).requests?.map((f) => f.id)).toContain("blocked-threads:caller");
     expect(replays).toHaveBeenCalled();
+  });
+});
+
+describe("timeout verification is conservative", () => {
+  /** Free play of `d` (its own rates, the default seed) for `ms`: that call's timeouts. */
+  function freePlayTimeouts(d: DiagramFile, edge: string, ms: number): number {
+    const sim = { ...freePlaySimulation(d), durationMs: ms };
+    const run = createHeadlessRun(
+      d,
+      sim,
+      { remaining: 10_000_000 },
+      {
+        revision: 0,
+        origin: { diagram: d, simulation: sim, initialTraffic: true },
+        controls: [],
+      },
+    );
+    advanceHeadless(run, ms);
+    return realSnapshot(run.engine.snapshot()).edges[edge]?.calls?.timedOut ?? 0;
+  }
+  /** Any timeout Checks offer on `call` keeps every normal reply over `ms` of free play. */
+  function offeredIsSafe(d: DiagramFile, ms: number) {
+    const finding = runChecks(d, { rules: ["call-timeout"] }).findings.find((f) => f.target === "call");
+    expect(finding).toBeDefined();
+    if (!finding?.fix?.ops) return;
+    const fixed = applyOps(d, finding.fix.ops);
+    if (!fixed.ok) throw new Error("The fix didn't apply");
+    expect({
+      deadline: finding.requestFinding?.deadline,
+      timedOut: freePlayTimeouts(fixed.diagram, "call", ms),
+    }).toEqual({
+      deadline: finding.requestFinding?.deadline,
+      timedOut: 0,
+    });
+  }
+  /** A model API doing 1 ms of work before calling `inner` (latency, threads, jitter). */
+  function nested(rate: number, threads: number, inner: { latencyMs: number; concurrency: number; jitter: number }) {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = rate;
+    d.nodes[1].props = { replicas: 1, concurrency: threads, latencyMs: 0, jitter: 0 };
+    d.nodes[2] = { ...d.nodes[2], stencil: "generic.llm", props: { latencyMs: 1, jitter: 0 } };
+    d.nodes.push({
+      id: "inner",
+      stencil: "generic.service",
+      label: "Inner",
+      x: 900,
+      y: 180,
+      props: { replicas: 1, ...inner },
+    });
+    d.edges.push({ id: "inner-call", from: "partner", to: "inner", kind: "sync" });
+    return d;
+  }
+
+  it("withholds timeouts the replay ends too early to test", () => {
+    // 1,000 caller slots behind one pooled connection to a healthy 1 s API: a 40 s deadline can't expire in 10 s.
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 20;
+    d.nodes[1].props = { replicas: 1, concurrency: 1000, latencyMs: 0, jitter: 0 };
+    d.nodes[2].props = { latencyMs: 1000, api: { latencyMs: 1000 }, jitter: 0 };
+    d.edges[1].props = { caller: { poolConnections: 1 } };
+    offeredIsSafe(d, 60_000);
+  }, 60_000);
+
+  it("withholds timeouts when replies outlive the verification window", () => {
+    offeredIsSafe(nested(10, 200, { latencyMs: 1000, concurrency: 1, jitter: 0 }), 20_000);
+    offeredIsSafe(nested(1, 16, { latencyMs: 9500, concurrency: 100, jitter: 0.5 }), 30_000);
+  }, 60_000);
+
+  it("withholds timeouts when no reply completed in the replay", () => {
+    offeredIsSafe(nested(1, 24, { latencyMs: 19_000, concurrency: 100, jitter: 0.5 }), 60_000);
+    // Calls still being issued when the replay ends: a slow caller's last work calls out after it.
+    const late = nested(150, 8, { latencyMs: 11, concurrency: 100, jitter: 0 });
+    late.nodes[1].props = { ...late.nodes[1].props, latencyMs: 9980 };
+    offeredIsSafe(late, 20_000);
+  }, 60_000);
+
+  it("the payment example keeps its replay-confirmed 600 ms", () => {
+    const d = payment as DiagramFile;
+    const finding = runChecks(d, { rules: ["call-timeout"] }).findings.find((f) => f.id === "call-timeout:pay");
+    expect(finding?.fix?.ops).toEqual([{ op: "update", target: "pay", props: { caller: { deadlineMs: 600 } } }]);
   });
 });

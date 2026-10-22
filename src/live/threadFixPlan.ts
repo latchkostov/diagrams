@@ -6,6 +6,7 @@ import { realSnapshot } from "../sim/units";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
 import { planDescriptor } from "../planning/scalingPlanText";
 import type { DiagramFile } from "../model/types";
+import { STEP } from "../sim/timing";
 import { emptyInputs, freePlayProps, freePlayScale } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
 
@@ -28,20 +29,23 @@ export function freePlaySimulation(d: DiagramFile): Simulation {
   };
 }
 
-/** How long a timeout's replay plays free play: thousands of calls at most rates, latency jitter included. */
+/** How long a timeout's replay issues free-play traffic: thousands of calls at most rates, jitter included. */
 export const TIMEOUT_REPLAY_MS = 10_000;
 
 /**
- * Whether a timeout of `deadlineMs` on the call `edge` lets every normal reply through: a bounded same-seed headless
- * replay of free play (the diagram's own rates, no faults) with the deadline applied times out none of that
- * connection's calls, and completes some (no calls is no evidence). The analytic value only proposes the deadline;
- * playback's own timing (ticks, jitter, every downstream stage) decides. Over `budget` (work, as threadFixWork counts
- * it, taken from it when spent), refused or inconclusive: false, so no timeout is offered. Checks and the live
+ * Whether a timeout of `deadlineMs` on the call `edge` lets every normal reply through, by a bounded same-seed headless
+ * replay of free play (the diagram's own rates, no faults) with the deadline applied. Conservative: traffic stops after
+ * TIMEOUT_REPLAY_MS and the replay runs on for the deadline, so every call issued had the chance to reply or reach its
+ * deadline. It certifies the timeout only if, by then, the caller has nothing left to do and no call on that connection
+ * is pending, at least one reply completed, and none timed out or failed. Anything else (calls still pending, no
+ * completed reply, over `budget`, refused) is inconclusive: false, so no timeout is offered. The analytic value only
+ * proposes the deadline; playback's own timing (ticks, jitter, every downstream stage) decides. Checks and the live
  * callout's Add a timeout both ask this, with the same inputs, so they agree.
  */
 export function timeoutKeepsReplies(
   d: DiagramFile,
-  edge: string,
+  /** The connection, or its id (then looked up: callers with many connections pass the connection). */
+  call: string | { id: string; from: string },
   deadlineMs: number,
   budget: { work: number },
   /** Free play already built for `d` (freePlaySimulation), else built here once the budget allows. */
@@ -49,13 +53,18 @@ export function timeoutKeepsReplies(
   /** A message budget to share (the callout's verification shares one across all its replays). */
   messages: { remaining: number } = { remaining: THREAD_FIX_LIMITS.messages },
 ): boolean {
-  const work = threadFixWork(d.nodes.length, d.edges.length, TIMEOUT_REPLAY_MS);
+  const edge = typeof call === "string" ? call : call.id;
+  const caller = typeof call === "string" ? d.edges.find((e) => e.id === call)?.from : call.from;
+  if (!caller) return false;
+  // Calls issued until traffic stops reply or reach their deadline by then (two ticks for the last to land).
+  const horizon = TIMEOUT_REPLAY_MS + deadlineMs + 2 * STEP;
+  const work = threadFixWork(d.nodes.length, d.edges.length, horizon);
   if (work > budget.work) return false;
   budget.work -= work;
   const base = freePlay ? freePlay() : freePlaySimulation(d);
   const sim: Simulation = {
     ...base,
-    durationMs: TIMEOUT_REPLAY_MS,
+    durationMs: horizon,
     setup: { ...base.setup, edges: { [edge]: { caller: { deadlineMs } } } },
   };
   if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return false;
@@ -66,8 +75,16 @@ export function timeoutKeepsReplies(
       controls: [],
     });
     advanceHeadless(run, TIMEOUT_REPLAY_MS);
-    const state = realSnapshot(run.engine.snapshot()).edges?.[edge];
-    return !!state && state.delivered > 0 && (state.calls?.timedOut ?? 0) === 0;
+    run.engine.setTraffic(false);
+    advanceHeadless(run, horizon);
+    const calls = realSnapshot(run.engine.snapshot()).edges?.[edge];
+    const settled =
+      !!calls?.calls &&
+      calls.calls.inFlight === 0 &&
+      calls.calls.held === 0 &&
+      run.engine.measure({ node: caller, field: "backlog" }) === 0 &&
+      run.engine.measure({ node: caller, field: "inFlight" }) === 0;
+    return settled && calls.delivered > 0 && calls.calls!.timedOut === 0 && calls.calls!.failed === 0;
   } catch {
     // A refused or over-budget replay is no evidence for a timeout.
     return false;
@@ -122,7 +139,14 @@ export function confirmedThreadFix(request: ThreadFixRequest): TroubleAction | u
     // A timeout must first keep every normal reply (free play, the deadline applied), exactly as Checks require.
     if (
       trouble.action.kind === "add-timeout" &&
-      timeoutKeepsReplies(d, edge, trouble.action.deadlineMs, { work: THREAD_FIX_WORK }, undefined, messages)
+      timeoutKeepsReplies(
+        d,
+        { id: edge, from: trouble.node },
+        trouble.action.deadlineMs,
+        { work: THREAD_FIX_WORK },
+        undefined,
+        messages,
+      )
     )
       candidates.push(trouble.action);
     candidates.push({ kind: "free-thread", edge });

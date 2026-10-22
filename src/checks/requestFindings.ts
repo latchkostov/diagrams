@@ -181,7 +181,7 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
         analysis.resolved[e.to].jitter,
       );
       const deadline =
-        proposed !== undefined && timeoutKeepsReplies(d, e.id, proposed, timeoutWork, freePlay) ? proposed : undefined;
+        proposed !== undefined && timeoutKeepsReplies(d, e, proposed, timeoutWork, freePlay) ? proposed : undefined;
       const callee = name(e.to);
       const descriptor: NonNullable<Finding["requestFinding"]> = {
         kind: "timeout",
