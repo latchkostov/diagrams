@@ -9,6 +9,7 @@ import { sampledParts, releaseCpuParts } from "./sampledResources";
 import { STEP } from "./timing";
 
 export interface ExecutionWork<Group> extends ResourceWork {
+  message?: { width?: number };
   attempt?: { res: { thread?: number; request?: number } };
   slotted?: boolean;
   thread?: number;
@@ -128,7 +129,7 @@ export function createExecutionReservations<
         work,
         cohort(work),
         slots(node) - node.threadWeight.work - node.threadWeight.wait,
-        retained?.weight ?? Infinity,
+        Math.min(retained?.weight ?? Infinity, work.message?.width ?? Infinity),
       );
       if (!thread) return false;
       thread.requestWeight = thread.weight;
@@ -141,7 +142,11 @@ export function createExecutionReservations<
     // resize that already-charged transaction when it enters the ledger.
     const represented = cohort(work);
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
-    let cap = Math.min(lease?.weight ?? Infinity, request?.weight ?? recovery?.request.weight ?? Infinity);
+    let cap = Math.min(
+      lease?.weight ?? Infinity,
+      request?.weight ?? recovery?.request.weight ?? Infinity,
+      work.message?.width ?? Infinity,
+    );
     let requestCapacity = recovery?.request ?? work.lease;
     let threadCapacity = recovery?.thread ?? work.threadLease;
     if (recovery) {
@@ -210,7 +215,7 @@ export function createExecutionReservations<
       room,
       thread: {
         represented: request.represented,
-        weight: Math.min(request.represented, room, request.weight),
+        weight: Math.min(request.represented, room, request.weight, work.message?.width ?? Infinity),
         keys: tail.keys ?? [],
       },
     });

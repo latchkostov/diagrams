@@ -136,7 +136,8 @@ function slowCallee() {
   return diagram;
 }
 
-// Master 61957d3, same arrivals: guard every required caller completion/rejection row.
+// Same arrivals: guard every required caller completion/rejection row at its best value so far
+// (master 61957d3; CPU-with-pool and fragmentation rows ratcheted in sampling PR 5).
 const accuracyFixtures = {
   managedZeroWork,
   cpuBoundStandalone,
@@ -162,11 +163,11 @@ const accuracyMaster = {
     [10, 200, 0],
   ],
   cpuPool: [
-    [1.01, 336.33, 0],
-    [1.1, 366.3, 0],
-    [2, 286, 0],
-    [2.5, 285, 0],
-    [10, 180, 0],
+    [1.01, 398.95, 0],
+    [1.1, 399.3, 0],
+    [2, 400, 0],
+    [2.5, 400, 0],
+    [10, 400, 0],
   ],
   legacyWorker: [
     [1.01, 1996.77, 0],
@@ -190,11 +191,11 @@ const accuracyMaster = {
     [10, 500, 1490],
   ],
   fragmentation: [
-    [1.01, 806.99, 0],
-    [1.1, 878.9000000000001, 0],
+    [1.01, 998.89, 0],
+    [1.1, 998.8000000000001, 0],
     [2, 1000, 0],
     [2.5, 1000, 0],
-    [10, 580, 0],
+    [10, 1000, 0],
   ],
 };
 for (const [fixture, rows] of Object.entries(accuracyMaster)) {
@@ -220,7 +221,6 @@ for (const [fixture, rows] of Object.entries(accuracyMaster)) {
 const gaps = [
   { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 396 },
   { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 200 },
-  { name: "CPU contention with a pool", fixture: () => cpuContention(true), scale: 2, baseline: 399, dots: 143 },
   { name: "CPU contention without a pool", fixture: () => cpuContention(false), scale: 1.1, baseline: 570, dots: 604 },
   { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
@@ -295,6 +295,20 @@ it.each([
 
 it.each([1.1, 1.3, 1.5])("I1 regression: fractional capacity fragmentation at scale %s", (scale) => {
   checkConstantRateEquivalence(fragmentation(), scale);
+});
+
+// Width: the callee runs the cohort's first wave at the connection's grant, not min(N, slots).
+// Turnover guard: the two-slot caller is not admissible before its one connection turns the
+// cohort over; at 2.5 that floor must not also wait out the caller's own admission lag.
+it.each([1.1, 1.5, 2, 2.5, 5, 10])("I1 regression: CPU contention with a pool at scale %s", (scale) => {
+  checkConstantRateEquivalence(cpuContention(true), scale);
+});
+
+it("I1 regression: fragmentation behind a narrower pool at scale 10", () => {
+  const runs = constantRateRuns(fragmentation(), 10);
+  expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(995);
+  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(1000);
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 
 it.each([1.5, 2, 3, 4])("I1 regression: sub-tick local work at scale %s", (scale) => {
@@ -413,6 +427,6 @@ it.skipIf(process.env.FC_I1_CORPUS !== "1")(
       }
     }
     console.log(`I1 CORPUS: ${passed}/${scenarios.length} passed; failing indices: ${failures.join(", ")}`);
-    expect(passed).toBeGreaterThanOrEqual(13);
+    expect(passed).toBeGreaterThanOrEqual(16);
   },
 );

@@ -19,6 +19,8 @@ const pool = (owner = "caller", startActive = 0) => ({ owner, scope: "pool" as c
 
 it.each([
   [1.1, 2, Infinity, 1],
+  [1.1, 2 - Number.EPSILON, Infinity, 1],
+  [2.5, 3 - 2 * Number.EPSILON, Infinity, (3 - 2 * Number.EPSILON) / 2],
   [1.3, 2, Infinity, 1],
   [1.5, 2, Infinity, 1],
   [2.5, 3, Infinity, 1.5],
@@ -367,6 +369,22 @@ it.each([1, 2, 7, 10])("thread holds represent sequential scale-1 turnovers (wei
   ledger.retire(r, 260, 280);
   expect(r.releaseAt).toBe(20 + ((260 + ADMISSION_LAG_MS) * 10) / weight - ADMISSION_LAG_MS);
   expect(ledger.state.reservations.has(r.id)).toBe(weight < 10);
+});
+
+it("a narrower pool's turnover bounds a thread's admissible end without stacking its lag", () => {
+  const ledger = new SampledLedger();
+  const reserve = () => ledger.reserve({ owner: "caller", scope: "thread", phase: "wait", startActive: 20 }, 10, 2)!;
+  // Own admissible end: 20 + (40 + lag) * 10 / 2 = 270.
+  const bound = reserve();
+  bound.notBefore = 400;
+  ledger.retire(bound, 40, 60, ADMISSION_LAG_MS);
+  expect(bound.releaseAt! + ADMISSION_LAG_MS).toBe(400);
+  expect(bound.turnoverAt).toBe(400);
+  const free = reserve();
+  free.notBefore = 100;
+  ledger.retire(free, 40, 60, ADMISSION_LAG_MS);
+  expect(free.releaseAt! + ADMISSION_LAG_MS).toBe(270);
+  expect(ledger.state.owners.get("caller")!.heap.map((due) => due.end)).toEqual([270, 400]);
 });
 
 it("fractional credits transfer capacity once, merge, and obey attempt eligibility", () => {
