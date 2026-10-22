@@ -36,9 +36,10 @@ fair share of each tick ahead of first waves. A tail that forms with less than o
 the cohort's fractional part: it yields to first waves, takes what they leave, and the fair share it
 missed is owed and charged first next tick. Numbered tails retain replica ownership until
 spent or drain grace expires. Logical outcomes are written once; later tail cleanup cannot reverse them.
-A continuation that takes over its own retained thread takes only that thread's capacity: CPU its
-cohort has not run stays a tail, as it does once the hold has expired, and the continuation's own CPU
-starts when it is admitted. So whether a hold outlived the reply never changes a logical outcome (I7).
+A continuation that takes over its own retained thread keeps that thread's replica ranges and drain
+deadlines, but CPU its cohort has not run stays a tail, as it does once the hold has expired; the
+continuation's own CPU runs on its share of those ranges. So whether a hold outlived the reply never
+changes how CPU is shared (I7).
 
 A partial dot is part of a dot split at one instant, and carries its own represented size `r`; a whole
 dot carries `N`. This is the one represented size: admission, the `min(1, r)` room gate, threads, pools,

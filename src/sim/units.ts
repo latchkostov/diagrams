@@ -1,4 +1,13 @@
-import type { NodeSimState, RealNodeMetrics, RealSimFrame, RealSimSnapshot, SimFrame, SimSnapshot } from "./types";
+import type {
+  EdgeSimState,
+  NodeSimState,
+  RealNodeMetrics,
+  RealSimFrame,
+  RealSimSnapshot,
+  RouteCounts,
+  SimFrame,
+  SimSnapshot,
+} from "./types";
 export function resolveScale(value: number | undefined): number {
   return value !== undefined && Number.isFinite(value) && value >= 1 ? value : 1;
 }
@@ -16,8 +25,24 @@ export const unitsOf = (m: { represented?: number } | undefined, scale: number):
   m?.represented === undefined ? 1 : m.represented / scale;
 /** Partial dots leave roundoff in native counters; reports keep 1e-9 dots (and never -0). */
 export const roundDots = (n: number): number => (Number.isInteger(n) ? n : Math.round(n * 1e9) / 1e9 || 0);
-export const roundCounts = <T extends object>(counts: T): T =>
-  Object.fromEntries(Object.entries(counts).map(([key, n]) => [key, roundDots(n)])) as T;
+/** Per-frame copies: fixed-shape counters field by field, dictionaries in one loop. */
+export function roundCounts(counts: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const key in counts) out[key] = roundDots(counts[key]);
+  return out;
+}
+export const roundCalls = (c: NonNullable<EdgeSimState["calls"]>): NonNullable<EdgeSimState["calls"]> => ({
+  inFlight: roundDots(c.inFlight),
+  held: roundDots(c.held),
+  timedOut: roundDots(c.timedOut),
+  failed: roundDots(c.failed),
+  late: roundDots(c.late),
+});
+export const roundRoute = (c: RouteCounts): RouteCounts => ({
+  sent: roundDots(c.sent),
+  rejected: roundDots(c.rejected),
+  completed: roundDots(c.completed),
+});
 /** Counters, rates, queue depth and lag have the same sampling weight. */
 export function toRealUnits(value: number, scale = 1): number {
   return value * resolveScale(scale);

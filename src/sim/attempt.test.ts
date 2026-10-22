@@ -470,44 +470,50 @@ it("I7: spaced logical outcomes are independent of ledger holds", () => {
   );
 });
 
-it.each(["mixed", "non-blocking"])(
+/** I7's seed 1235471473: a one-slot CPU caller with a non-blocking side call, and in "mixed" a blocking call too. */
+function continuationFixture(mode: "mixed" | "non-blocking", replyMs = 0) {
+  const d = waitingFixture();
+  d.nodes[1].props = {
+    concurrency: 1,
+    latencyMs: 0,
+    jitter: 0,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 51, startup: { delayMs: 0, jitterFraction: 0 } },
+  };
+  d.nodes[2] = { ...d.nodes[2], id: "side", props: { api: { latencyMs: 20 }, jitter: 0 } };
+  d.nodes.push({ ...d.nodes[1], id: "callee", props: { concurrency: 1, latencyMs: 0, jitter: 0 } });
+  const [input, , output] = d.edges;
+  d.edges = [
+    input,
+    ...(mode === "mixed"
+      ? [
+          {
+            id: "call",
+            from: "caller",
+            to: "callee",
+            kind: "sync" as const,
+            props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "blocking" as const } },
+          },
+        ]
+      : []),
+    {
+      id: "side-call",
+      from: "caller",
+      to: "side",
+      kind: "sync",
+      props: { travelMs: 10, caller: { poolConnections: 1, wait: "non-blocking", replyMs } },
+    },
+    output,
+  ];
+  return d;
+}
+
+it.each(["mixed", "non-blocking"] as const)(
   "I7 regression (seed 1235471473): a %s continuation's CPU does not depend on taking over its retained thread",
   (mode) => {
     // A one-slot caller at scale 4 runs one request's 51 ms and leaves the cohort's other
     // three as a whole-request tail. With holds, the reply took over the retained thread and
     // merged that tail behind its own first wave; without them it shared the core fairly.
-    const d = waitingFixture();
-    d.nodes[1].props = {
-      concurrency: 1,
-      latencyMs: 0,
-      jitter: 0,
-      resources: { ...resourceLesson(), cpuMsPerMessage: 51, startup: { delayMs: 0, jitterFraction: 0 } },
-    };
-    d.nodes[2] = { ...d.nodes[2], id: "side", props: { api: { latencyMs: 20 }, jitter: 0 } };
-    d.nodes.push({ ...d.nodes[1], id: "callee", props: { concurrency: 1, latencyMs: 0, jitter: 0 } });
-    const [input, , output] = d.edges;
-    d.edges = [
-      input,
-      ...(mode === "mixed"
-        ? [
-            {
-              id: "call",
-              from: "caller",
-              to: "callee",
-              kind: "sync" as const,
-              props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "blocking" as const } },
-            },
-          ]
-        : []),
-      {
-        id: "side-call",
-        from: "caller",
-        to: "side",
-        kind: "sync",
-        props: { travelMs: 10, caller: { poolConnections: 1, wait: "non-blocking" } },
-      },
-      output,
-    ];
+    const d = continuationFixture(mode);
     const run = (ledgerHold?: EngineOptions["ledgerHold"]) => {
       const settled: number[] = [];
       const e = createEngine({
@@ -530,6 +536,35 @@ it.each(["mixed", "non-blocking"])(
     // The join, then the continuation's 5.1 ms of reply CPU at half of one core.
     expect(run("none")).toEqual(mode === "mixed" ? [100, 120] : [90, 110]);
     expect(run()).toEqual(run("none"));
+  },
+);
+
+it.each(["mixed", "non-blocking"] as const)(
+  "a taken-over %s continuation keeps its draining replica's grace",
+  (mode) => {
+    // Review of #233: splitting the tail's CPU from the takeover dropped the retained parts and
+    // their drain deadline, so the continuation took CPU on the ready replica and escaped grace.
+    const d = continuationFixture(mode, 200);
+    Object.assign(d.nodes[1].props!, { replicas: 2 });
+    Object.assign(d.nodes[1].props!.resources!, { terminationGraceMs: 100 });
+    const outcomes: { ok: boolean; at: number }[] = [];
+    const e = createEngine({
+      seed: 19,
+      scale: 10,
+      maxParticles: 0,
+      verifyResources: assertResourceInvariants,
+      verifyLedger: assertLedgerInvariants,
+      verifyOutcomes(s) {
+        assertOutcomeInvariants(s);
+        for (const a of s.attempts) if (a.node === "caller" && a.outcome) outcomes[a.id] = a.outcome;
+      },
+    });
+    e.load(d);
+    e.inject("caller", 1);
+    e.step(40);
+    e.setNodeProps("caller", { replicas: 1 });
+    e.step(1000);
+    expect(outcomes.filter(Boolean).at(-1)).toMatchObject({ ok: false, at: 140 });
   },
 );
 

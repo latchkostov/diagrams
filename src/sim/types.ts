@@ -13,6 +13,8 @@ export interface LossProvenance {
   reason: string;
   fault?: import("../model/faults").Fault;
   intentional?: "down" | "fails";
+  /** Sampled dots this loss counts in `dropped`: 1 for a whole dot, a partial dot's share of one. */
+  dots: number;
 }
 
 /** Why a particle is travelling along an edge. Drives its colour / style in the UI. */

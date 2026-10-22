@@ -65,7 +65,16 @@ import {
   deadLetterRoutes,
   type CompiledTopology,
 } from "./topology";
-import { resolveScale, resolveMultiplier, representedOf, unitsOf, roundDots, roundCounts } from "./units";
+import {
+  resolveScale,
+  resolveMultiplier,
+  representedOf,
+  unitsOf,
+  roundDots,
+  roundCounts,
+  roundCalls,
+  roundRoute,
+} from "./units";
 import {
   attemptAdmission,
   admissionSlots,
@@ -327,6 +336,8 @@ interface Call extends LogicalCall {
   work: Work;
   outstanding: Set<string>;
   held: boolean;
+  /** Dots each held blocking branch added to its edge's held gauge, released as charged across scale edits. */
+  heldDots?: number;
   brokerHeld?: boolean;
 }
 interface Logical {
@@ -765,6 +776,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         connection: via?.id,
         reason,
         fault,
+        dots: units,
         intentional:
           reason === "link cut" || reason === "node down"
             ? "down"
@@ -1668,7 +1680,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (call.held) threadPhase(node, ledger.get<Group>(work.thread), "wait");
     for (const edge of requests) {
       if (call.held && edge.policy?.blocking) {
-        edge.calls.held += dotsOf(message);
+        edge.calls.held += call.heldDots ??= dotsOf(message);
         node.waitingOn.set(
           edge.id,
           (node.waitingOn.get(edge.id) ?? 0) + (ledger.get<Group>(work.thread)?.weight ?? sizeOf(message)),
@@ -1810,7 +1822,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function releaseCallEdge(call: Call, edge: Edge): void {
     if (!call.held || !edge.policy?.blocking) return;
     const message = call.work.message;
-    edge.calls.held -= dotsOf(message);
+    edge.calls.held -= call.heldDots ?? 1;
     const count =
       (call.node.waitingOn.get(edge.id) ?? 0) - (ledger.get<Group>(call.work.thread)?.weight ?? sizeOf(message));
     if (count) call.node.waitingOn.set(edge.id, count);
@@ -1908,22 +1920,33 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.remaining = call.replyMs ?? 0;
       const pendingCpu = work.cpuRemaining ?? 0;
       work.cpuOwed = work.fractionalTail = undefined;
+      work.cpuBacklog = pendingCpu;
+      work.cpuRemaining = undefined;
       work.continuation = { ok, cpuMs: replyCpuMs(node.props.resources?.cpuMsPerMessage ?? 0, call.replies!) };
       work.cpuPerRequest = work.continuation.cpuMs;
+      const continuationCpu = work.continuation.cpuMs * execution.cohort(work);
       const thread = ledger.get<Group>(work.thread);
       work.logicalCpuRemaining = node.props.resources && thread ? work.continuation.cpuMs * thread.weight : undefined;
-      // Only the completed own-work cohort owns CPU until this continuation is admitted, on a
-      // taken-over thread or a new one alike; its new CPU is initialized at that admission (I7).
-      if (pendingCpu > 1e-8) node.cpuTail.add(work);
-      endResources(node, work);
-      work.cpuRemaining = work.cpuBacklog = undefined;
       if (thread) {
-        // Already owns a thread, even if a live shrink has removed all
+        // On the taken-over tail's ranges (takeoverThread). Backlog is the tail's unfinished CPU
+        // only past the CPU part budget; otherwise that stays a tail of its own (I7).
+        if (work.cpuParts) {
+          const count = work.cpuParts.reduce((sum, p) => sum + p.last - p.first + 1, 0);
+          for (const p of work.cpuParts) p.cpu = ((pendingCpu + continuationCpu) * (p.last - p.first + 1)) / count;
+        }
+        // Already owns a thread/replica, even if a live shrink has removed all
         // admission room. Do not strand that ownership in the pending queue.
+        work.cpuRemaining = node.props.resources ? pendingCpu + continuationCpu : undefined;
         work.slotted = true;
         work.workedAt = time;
         scheduleWork(node, work, "takeovers");
       } else {
+        // Only the completed own-work cohort owns CPU while this continuation queues.
+        // Its new CPU is initialized after the continuation actually gains a thread.
+        work.cpuRemaining = pendingCpu;
+        if (pendingCpu > 1e-8) node.cpuTail.add(work);
+        endResources(node, work);
+        work.cpuRemaining = work.cpuBacklog = undefined;
         work.admissibleActive = node.activeMs;
         node.resume.push(work);
       }
@@ -2746,11 +2769,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             work.admissibleActive = node.activeMs;
             wakeDelivery(work);
             admit(node, work);
-            continue;
-          }
-          // Its CPU starts here, as a resumed continuation's does: on its own thread, or it waits.
-          if (!startResources(node, work)) {
-            node.takeovers.push(work);
             continue;
           }
           scheduleWork(node, work, "working");
@@ -3705,7 +3723,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node) return undefined;
       if (metric.field === "inFlight")
         return callerReservations(node) ? threadOccupancy(node) : node.working.length + node.heldCalls;
-      if (metric.field === "timedOut") return node.outgoing.reduce((sum, edge) => sum + edge.calls.timedOut, 0);
+      // Counters read as reports do, to 1e-9 dots, so a partial dot's exact total meets an expectation.
+      if (metric.field === "timedOut")
+        return roundDots(node.outgoing.reduce((sum, edge) => sum + edge.calls.timedOut, 0));
       if (metric.field === "backlog") {
         let backlog = node.pending.length + node.resume.length + node.staged;
         for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);
@@ -3721,7 +3741,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const group of node.groups) lag = Math.max(lag, group.pending.length);
         return lag;
       }
-      return node[metric.field];
+      return metric.field === "throughput" ? node.throughput : roundDots(node[metric.field]);
     },
     load(diagram: DiagramFile): void {
       if (resourceBudgetExceeded(diagram)) throw new Error(t("autoscaling.budget", { limit: MAX_LIFECYCLE_REPLICAS }));
@@ -3967,7 +3987,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const counts: Record<string, RouteCounts> = Object.create(null);
         for (const id of routes.keys()) {
           const c = routeCounts.get(id);
-          counts[id] = c ? roundCounts(c) : { sent: 0, rejected: 0, completed: 0 };
+          counts[id] = c ? roundRoute(c) : { sent: 0, rejected: 0, completed: 0 };
         }
         frame.routes = counts;
       }
@@ -3998,7 +4018,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           id: edge.id,
           delivered: roundDots(edge.delivered),
           active: edge.active,
-          ...(waits() && edge.sync ? { calls: roundCounts(edge.calls) } : {}),
+          ...(waits() && edge.sync ? { calls: roundCalls(edge.calls) } : {}),
         };
       const recent: SimEvent[] = [];
       for (let i = 0; i < events.length; i++) recent.push({ ...events[(eventHead + i) % events.length] });

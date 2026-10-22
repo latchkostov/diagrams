@@ -5,7 +5,7 @@ import { acquireReplica, releaseReplica, type Fleet } from "./autoscaling";
 import type { ResolvedProps } from "./defaults";
 import { SampledLedger, type Reservation } from "./ledger";
 import { clearResourceWork, deliveryGroup, yieldsToFirstWaves, type CpuTail, type ResourceWork } from "./resourceWork";
-import { sampledParts, releaseCpuParts } from "./sampledResources";
+import { sampledParts, releaseCpuParts, shareCpuParts } from "./sampledResources";
 import { STEP } from "./timing";
 import { representedOf } from "./units";
 
@@ -198,13 +198,30 @@ export function createExecutionReservations<
   }
 
   /**
-   * A continuation can exchange its own tail's capacity, but never invent an uncharged lease while waiting.
-   * Capacity only: CPU the tail has not run stays a tail, as when its hold has expired, so whether a hold
-   * survived to the reply never decides how CPU is shared (I7). The continuation's CPU starts at admission.
+   * A continuation can exchange its own tail, but never invent an uncharged lease while waiting. It keeps
+   * the tail's physical ownership: the same replica ranges and drain deadlines, so termination grace still
+   * applies. CPU the tail has not run stays a tail on those ranges, as when its hold has expired, so whether
+   * a hold survived to the reply never decides how CPU is shared (I7); the continuation's CPU goes on its own
+   * share of them. Only past the CPU part budget does that CPU become continuation backlog instead.
    */
   function takeoverThread(node: Node, work: Work, tail: Reservation<Group>): void {
     node.threadTails.delete(tail.id);
-    endResources(node, tail);
+    const shared =
+      node.cpuTail.has(tail) && (tail.cpuRemaining ?? 0) > 1e-8 && node.fleet && tail.cpuParts
+        ? shareCpuParts(node.fleet, tail.cpuParts)
+        : undefined;
+    if (shared) {
+      endResources(node, tail);
+      work.cpuParts = shared;
+    } else {
+      node.cpuTail.delete(tail);
+      work.cpuParts = tail.cpuParts;
+      work.cpuRemaining = tail.cpuRemaining;
+      work.replica = tail.replica;
+      work.cpuOwed = work.fractionalTail = undefined;
+      tail.cpuOwed = tail.fractionalTail = undefined;
+      tail.cpuParts = tail.cpuRemaining = tail.replica = undefined;
+    }
     releaseThread(tail);
     const request = ledger.get<Group>(work.requestLease)!;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
