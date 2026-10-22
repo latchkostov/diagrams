@@ -8,12 +8,13 @@ import { syncCycle } from "./rules/syncCycle";
 import { syncChain } from "./rules/syncChain";
 import { sharedDatabase } from "./rules/sharedDatabase";
 import { entryGateway } from "./rules/entryGateway";
-import { capacity } from "./rules/capacity";
+import { capacity, WAIT_RULES } from "./rules/capacity";
 import { singlePoint } from "./rules/singlePoint";
 import { secretIdentity } from "./rules/secretIdentity";
 import { schemaRegistry } from "./rules/schemaRegistry";
 import { dropped } from "./rules/dropped";
-import { blockedThreads, scalingBlind, callTimeout } from "./requestFindings";
+import { blockedThreads, scalingBlind, callTimeout, provideRequestFindings } from "./requestFindings";
+import type { CheckContext } from "./context";
 
 /**
  * Every rule, in CHECK_RULES order (the order findings list them). `dropped` is raised only by Run simulations
@@ -41,6 +42,10 @@ export interface RunOptions {
   local?: boolean;
   /** Only these rules (default: all). Rules turned off in the diagram stay off. */
   rules?: readonly CheckRuleId[];
+  /** This diagram's request findings, already awaited (awaitRequestChecks): read instead of the shared cache. */
+  requests?: Finding[];
+  /** A context already built for this diagram (the worker's): its capacity analysis is worked out once. */
+  context?: CheckContext;
 }
 
 /**
@@ -48,15 +53,18 @@ export interface RunOptions {
  * same order. Honours the file's `checks`: turned-off rules don't run, ignored findings are set apart.
  * Scenario sizing is the exception in the editor: there it comes only from the checks worker
  * (src/lib/scenarioPlanner.ts), so a diagram the worker hasn't planned yet has no sizing finding until it has.
- * Request findings must already be ready in the editor (awaitRequestChecks); a miss or failure throws.
+ * Request findings must already be ready in the editor: pass the awaited ones (`requests`); a cache miss or failure
+ * throws rather than report a clean result. `requestChecksNeeded` says whether a run reads them.
  */
 export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckResult {
   const off = (diagram.checks?.off ?? []).filter(isCheckRule);
   const ran = RULES.filter((r) => !r.onDemand && !off.includes(r.id) && (!opts.rules || opts.rules.includes(r.id))).map(
     (r) => r.id,
   );
-  const ctx = buildContext(diagram);
-  ctx.local = opts.local;
+  const ctx = opts.context ?? buildContext(diagram);
+  if (opts.local) ctx.local = true;
+  if (opts.requests) provideRequestFindings(ctx, opts.requests);
+  ctx.ran = new Set(ran);
   const all = RULES.filter((r) => ran.includes(r.id)).flatMap((r) => r.detect(ctx));
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
   all.sort(findingOrder(ctx.rank));
@@ -66,6 +74,14 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
     off: CHECK_RULES.filter((id) => off.includes(id)),
     ran,
   };
+}
+
+/**
+ * The rules a recheck of one rule's finding runs: the rule, and the rules it defers to (capacity leaves a caller to
+ * the waiting checks when they run). Rules turned off stay off, so the finding comes out as the full check had it.
+ */
+export function recheckRules(rule: CheckRuleId): CheckRuleId[] {
+  return rule === "capacity" ? ["capacity", ...WAIT_RULES] : [rule];
 }
 
 /** Warnings first, then rule order, then reading order (`rank`), then id: the order every list of findings uses. */

@@ -6,7 +6,8 @@ the same findings store as worker fixes.
 
 After an alternative removes multiple warnings, focus returns to a surviving finding after the refreshed
 rows render, or to Close when none remain. Inspector findings retain their existing persistent body
-fallback, since their entire findings group can disappear. Moving focus intentionally into the scaling
+fallback, since their entire findings group can disappear: an applied edit clears the selection, so focus goes to
+the inspector's body, which stays. Moving focus intentionally into the scaling
 inspector keeps that focus.
 
 ## Decisions

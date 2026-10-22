@@ -1,4 +1,5 @@
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
+import type { CheckRuleId } from "../model/checks";
 import { stencilRole } from "../stencils/roles";
 import {
   brokerRole,
@@ -18,7 +19,10 @@ import { estimateCardSize } from "../canvas/nodes/size";
  * share the simulation's model, so a check and the live view never disagree.
  */
 export interface CheckContext {
+  /** Worker-unavailable fallback (and the worker itself): request checks may replay simulations on this thread. */
   local?: boolean;
+  /** The rules this run checks, set by runChecks; rules that defer to another read it (unset: every rule). */
+  ran?: ReadonlySet<CheckRuleId>;
   diagram: DiagramFile;
   nodes: ReadonlyMap<string, DiagramNode>;
   edges: ReadonlyMap<string, DiagramEdge>;

@@ -54,7 +54,15 @@
       "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
     }
   },
-  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
+  "oneRule": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "capacity:caller", "rule": "capacity", "severity": "warning", "title": "Decision service can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["caller"] }
+      ],
+      "summary": "1 warning, 0 suggestions."
+    }
+  },
   "simulations": {
     "isError": false,
     "output": {

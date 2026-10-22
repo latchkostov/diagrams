@@ -1198,7 +1198,11 @@ freed callers queue without a thread. `caller.deadlineMs` includes pool wait. A 
 is never dispatched; a dispatched call can finish downstream and return a late reply after its timeout.
 
 Checks use the diagram's configured rates, not the intentional overload in saved drills. `blocked-threads`
-replaces the generic capacity warning when waits dominate. Its primary action is exactly #225's
+replaces the generic capacity warning for the caller when waits dominate, and only when it (or `scaling-blind`)
+runs in the same check: a capacity-only check keeps its own warning. The capacity check then reports the
+busiest other service, never a broker that only stands in for the diagnosed caller's backlog. Only the calls
+playback makes count: dead-letter routes, deny rules and connections with `share: 0` are never the blocking
+cause or a timeout finding. Its primary action is exactly #225's
 `confirmedThreadFix`: the cheapest fix its bounded same-seed replay confirms. There is no second ranking.
 Other actions are option chips. Add replicas uses the existing sizing helper; for an autoscaled service
 it offers a fixed fleet (turning off its scaler in the same undo step). `scaling-blind` only offers a
@@ -1210,7 +1214,12 @@ Busy threads is a modelled custom HPA/KEDA metric, not a built-in Kubernetes met
 a deadline. Its value comes from the live callout's `affordableTimeout`, including network delay and the
 caller's thread budget. This supersedes the design's 4× response / 1–2–5 / 1 s minimum rule. When no
 normal reply fits that budget, it offers no speculative timeout. Fully blocking deadline-free request
-cycles also explain the risk of deadlock.
+cycles also explain the risk of deadlock. Names in these findings are bounded at 200 characters, and one
+diagram's request findings at 1,000,000 characters (warnings first, then timeout suggestions in diagram order).
+
+The request checks replay simulations, so in the editor they run in the checks worker. Agents and fixes wait
+for the result for the exact content (pending is never a clean result) and read what they awaited; a failure
+is reported, and the next call tries again. Run simulations needs only the no-reader check, so it never waits.
 
 Expectation metrics `threadsBusy` and `threadsWaiting` measure real threads, just like the meter;
 `timedOut` measures outgoing calls that exceeded a deadline. For example:

@@ -42,18 +42,22 @@ const MAX_EVIDENCE = 3;
 /**
  * After a fix from a row that had focus: the row goes with the next check, so focus moves on first, to the next
  * finding's head (else the one before), else the scope's fallback (the card's Close; in the inspector, its body),
- * never to the page.
+ * never to the page. `scope` and `fallbackScope` are where the row was before the fix: applying it can already have
+ * taken the row (and, when the selection goes, the inspector's whole list) out of the page.
  */
-function focusNeighbour(row: HTMLElement) {
-  const scope = row.closest<HTMLElement>("[data-check-scope]");
-  if (!scope) return;
-  const heads = [...scope.querySelectorAll<HTMLElement>("[data-check-head]")].filter((h) => !row.contains(h));
-  const after = heads.find((h) => row.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING);
+function focusNeighbour(row: HTMLElement, scope: HTMLElement | null, fallbackScope: HTMLElement | null) {
+  const list = scope?.isConnected ? scope : null;
+  const heads = list
+    ? [...list.querySelectorAll<HTMLElement>("[data-check-head]")].filter((h) => !row.contains(h))
+    : [];
+  const after = row.isConnected
+    ? heads.find((h) => row.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING)
+    : heads[0];
   const target =
     after ??
     heads[heads.length - 1] ??
-    scope.querySelector<HTMLElement>("[data-check-fallback]") ??
-    row.closest<HTMLElement>("[data-check-fallback-scope]");
+    list?.querySelector<HTMLElement>("[data-check-fallback]") ??
+    (fallbackScope?.isConnected ? fallbackScope : null);
   if (!target) return;
   if (target.tabIndex < 0 && !target.hasAttribute("tabindex")) target.tabIndex = -1;
   target.focus();
@@ -83,11 +87,19 @@ export function FindingRow({
   const fixIt = async (option?: string) => {
     const row = self.current;
     const focused = !!row && row.contains(document.activeElement);
+    const scope = row?.closest<HTMLElement>("[data-check-scope]") ?? null;
+    const fallbackScope = row?.closest<HTMLElement>("[data-check-fallback-scope]") ?? null;
     if (!(await applyFix(host.editor, f, option))) return;
     host.applied?.();
+    // Scale on busy threads (the fix, or its option) focuses the target it changed.
     const keepsTarget =
-      option === undefined && (f.scalingPlan?.kind === "busyThreads" || f.fix?.planLabel?.kind === "busyThreads");
-    if (focused && row && !keepsTarget) focusNeighbour(row);
+      option === undefined
+        ? f.scalingPlan?.kind === "busyThreads" || f.fix?.planLabel?.kind === "busyThreads"
+        : finding.fix?.options?.find((o) => o.label === option)?.requestLabel?.kind === "scale";
+    // Only focus the fix's own change left behind: in this row, or the page because the row has already gone.
+    const active = document.activeElement;
+    const lost = !active || active === document.body || !!row?.contains(active);
+    if (focused && row && lost && !keepsTarget) focusNeighbour(row, scope, fallbackScope);
   };
   const t = (part: string) => `${testPrefix}-${part}-${f.id}`;
   // Names only for the chips drawn, from the check's one index: a loop of 1,500 services costs five lookups.

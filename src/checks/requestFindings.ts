@@ -1,3 +1,4 @@
+import type { DiagramEdge } from "../model/types";
 import type { DiagramOp } from "../ai";
 import type { CheckContext } from "./context";
 import type { CheckFix, CheckRule, Finding } from "./types";
@@ -9,7 +10,7 @@ import { confirmedThreadFix, THREAD_FIX_WORK, threadFixWork } from "../live/thre
 import type { TroubleAction } from "../live/observedTrouble";
 import { threadCapacity } from "./threadCapacity";
 import { scaleFix } from "./scaleFix";
-import { scenarioPlans } from "../sim/scalingPlanner";
+import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
 import {
   hasRequestCheckProvider,
   rememberedRequestChecks,
@@ -22,12 +23,37 @@ import { DEFAULT_SEED } from "../live/storm";
 import { scalingFixLabel } from "./scalingFindings";
 import { resourcePlan } from "../sim/resourcePlanning";
 import { requestResponseMs } from "../sim/timing";
+import { activeCall } from "../sim/topology";
 import type { Simulation } from "../model/types";
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
+/**
+ * Names repeated in findings are bounded: a call's finding repeats its callee's name, so one long imported label
+ * would otherwise be copied once per connection into the worker's reply, the cache and the Checks card. The file
+ * format's own label limit; never cut inside a character. The diagram keeps its labels.
+ */
+export const FINDING_NAME_MAX = 200;
+export function findingName(name: string): string {
+  if (name.length <= FINDING_NAME_MAX) return name;
+  // Characters, not UTF-16 units: a prefix twice the limit holds more than the limit's characters if any are cut.
+  const chars = Array.from(name.slice(0, 2 * FINDING_NAME_MAX + 2));
+  return chars.length <= FINDING_NAME_MAX ? name : `${chars.slice(0, FINDING_NAME_MAX - 1).join("")}…`;
+}
+
+/**
+ * At most this many characters of request findings (as JSON) per diagram, so a diagram with thousands of calls can't
+ * build a reply too big to send or show. Warnings come first; past the budget, later timeout suggestions (in diagram
+ * order) are left out. Normal diagrams use a small fraction of it.
+ */
+export const REQUEST_FINDINGS_BUDGET = 1_000_000;
+
 /** Exact edit values from #225's selector, never another ranking or timeout formula. */
-export function threadCheckFix(d: CheckContext["diagram"], action: TroubleAction | undefined): CheckFix | undefined {
+export function threadCheckFix(
+  d: CheckContext["diagram"],
+  action: TroubleAction | undefined,
+  edge?: DiagramEdge,
+): CheckFix | undefined {
   if (!action) return;
   if (action.kind === "scale-threads")
     return {
@@ -36,7 +62,8 @@ export function threadCheckFix(d: CheckContext["diagram"], action: TroubleAction
       ops: action.changes.map((c) => ({ op: "update", target: c.node, props: c.props })),
     };
   if (action.kind !== "free-thread" && action.kind !== "add-timeout") return;
-  const edge = d.edges.find((e) => e.id === action.edge);
+  // Callers with the edge at hand pass it: a diagram's worth of timeout fixes stays linear.
+  const input = edge?.id === action.edge ? edge : d.edges.find((e) => e.id === action.edge);
   return {
     label: action.kind === "free-thread" ? "Free the thread while waiting" : `Add a ${action.deadlineMs} ms timeout`,
     requestLabel: action.kind === "free-thread" ? { kind: "free" } : { kind: "timeout", value: action.deadlineMs },
@@ -46,7 +73,7 @@ export function threadCheckFix(d: CheckContext["diagram"], action: TroubleAction
         target: action.edge,
         props: {
           caller: {
-            ...(edge?.props?.caller as object | undefined),
+            ...(input?.props?.caller as object | undefined),
             ...(action.kind === "free-thread" ? { wait: "non-blocking" } : { deadlineMs: action.deadlineMs }),
           },
         },
@@ -55,29 +82,59 @@ export function threadCheckFix(d: CheckContext["diagram"], action: TroubleAction
   };
 }
 
-/** Capacity Checks concern the diagram's rates; saved drills deliberately overload services.
- * Replays run in the Checks worker. Main-thread readers use its exact cached findings. */
+/** One context's request findings: given by a caller that awaited them, or worked out once. */
+const known = new WeakMap<CheckContext, Finding[]>();
+
+/** Request findings already awaited (awaitRequestChecks) for this context's diagram: runChecks reads these. */
+export function provideRequestFindings(ctx: CheckContext, findings: Finding[]): void {
+  known.set(ctx, findings);
+}
+
+/**
+ * Capacity Checks concern the diagram's rates; saved drills deliberately overload services.
+ * Replays run in the Checks worker. Main-thread readers use its exact findings: given (awaited first), else cached;
+ * with a worker registered and neither, this throws rather than report a clean result.
+ */
 export function requestFindings(ctx: CheckContext): Finding[] {
   if (!revisionAtLeast(ctx.diagram.planning?.revision, "p3-w1")) return [];
+  const given = known.get(ctx);
+  if (given) return given;
   const remembered = rememberedRequestChecks(ctx.diagram);
-  if (remembered) return remembered;
+  if (remembered) {
+    known.set(ctx, remembered);
+    return remembered;
+  }
   if (!ctx.local && hasRequestCheckProvider()) {
     const result = requestCheckResult(ctx.diagram);
     throw result?.status === "failed"
       ? result.error
       : new Error("Request checks are pending. Await request checks before reading findings.");
   }
+  const findings = computeRequestFindings(ctx);
+  known.set(ctx, findings);
+  rememberRequestChecks(ctx.diagram, findings);
+  return findings;
+}
+
+function computeRequestFindings(ctx: CheckContext): Finding[] {
   const d = ctx.diagram;
   const analysis = ctx.capacity();
-  const findings: Finding[] = [];
+  const name = (id: string) => findingName(ctx.name(id));
+  const warnings: Finding[] = [];
+  const suggestions: Finding[] = [];
   let remainingWork = THREAD_FIX_WORK;
   let simulation: Simulation | undefined;
+  // Scenario sizing, read once per diagram (each read keys the whole diagram).
+  let plans: ScalingPlan[] | undefined | null = null;
+  const scenario = () => (plans === null ? (plans = scenarioPlans(d)) : plans);
   for (const node of d.nodes) {
     const n = analysis.nodes[node.id],
       p = analysis.resolved[node.id],
       w = n.waits;
-    for (const e of ctx.requests(node.id)) {
-      const target = ctx.nodes.get(e.to)!;
+    // The calls playback makes: not dead-letter routes, deny rules or connections that forward no share.
+    const calls = ctx.requests(node.id).filter((e) => activeCall(ctx.role(node.id), e));
+    for (const e of calls) {
+      const target = ctx.nodes.get(e.to);
       if (!target || !["external-api", "model-api"].includes(profileOf(target.stencil)?.family ?? "")) continue;
       const edge = ctx.edges.get(e.id)!;
       const policy = callPolicy(node.stencil, edge.props?.caller as EdgeSimProps["caller"]);
@@ -89,10 +146,11 @@ export function requestFindings(ctx: CheckContext): Finding[] {
         Number(edge.props?.networkDelayMs) || 0,
       );
       const deadline = affordableTimeout(response, n.waits?.slots ?? p.replicas * p.concurrency, n.offered);
+      const callee = name(e.to);
       const descriptor: NonNullable<Finding["requestFinding"]> = {
         kind: "timeout",
-        name: ctx.name(node.id),
-        callee: ctx.name(e.to),
+        name: name(node.id),
+        callee,
         hold: 0,
         waiting: 0,
         rate: n.offered,
@@ -103,19 +161,18 @@ export function requestFindings(ctx: CheckContext): Finding[] {
         deadline,
         blocking: policy.blocking,
       };
-      const action: TroubleAction =
-        deadline === undefined
-          ? { kind: "free-thread", edge: e.id }
-          : { kind: "add-timeout", edge: e.id, deadlineMs: deadline };
       // A non-blocking call still needs a deadline; freeing it again would change nothing.
-      const fix = deadline !== undefined ? threadCheckFix(d, action) : undefined;
-      findings.push({
+      const fix =
+        deadline !== undefined
+          ? threadCheckFix(d, { kind: "add-timeout", edge: e.id, deadlineMs: deadline }, edge)
+          : undefined;
+      suggestions.push({
         id: `call-timeout:${e.id}`,
         rule: "call-timeout",
         severity: "suggestion",
         target: e.id,
         elements: [e.id, node.id, e.to],
-        title: `No timeout on the call to ${ctx.name(e.to)}`,
+        title: `No timeout on the call to ${callee}`,
         message: policy.blocking
           ? "If it stalls, every thread waits."
           : "If it stalls, the call stays in flight indefinitely.",
@@ -136,7 +193,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
     if (threadCapacity(ctx).nodes[node.id].utilization < 1) continue;
     // Diagnose the call that sets the hold ceiling, independent of connection order.
     let longest = -1;
-    const edge = ctx.requests(node.id).reduce<ReturnType<CheckContext["requests"]>[number] | undefined>((found, e) => {
+    const edge = calls.reduce<(typeof calls)[number] | undefined>((found, e) => {
       const input = ctx.edges.get(e.id)!;
       const policy = callPolicy(node.stencil, input.props?.caller as EdgeSimProps["caller"]);
       if (!policy.blocking) return found;
@@ -152,6 +209,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
       return e;
     }, undefined);
     if (!edge) continue;
+    const input = ctx.edges.get(edge.id);
     const work = threadFixWork(d.nodes.length, d.edges.length);
     if (work <= remainingWork && !simulation) {
       const inputs = emptyInputs();
@@ -183,11 +241,11 @@ export function requestFindings(ctx: CheckContext): Finding[] {
           })
         : undefined;
     if (work <= remainingWork) remainingWork -= work;
-    const fix = threadCheckFix(d, action);
+    const fix = threadCheckFix(d, action, input);
     if (fix) {
       const options: NonNullable<CheckFix["options"]> = [];
       if (action?.kind === "scale-threads") {
-        const free = threadCheckFix(d, { kind: "free-thread", edge: edge.id })!;
+        const free = threadCheckFix(d, { kind: "free-thread", edge: edge.id }, input)!;
         options.push({ ...free, short: free.label, ops: free.ops! });
       }
       const scale = scaleFix(ctx, n, p.autoscaling?.mode === "on");
@@ -203,7 +261,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
         });
       }
       if (action?.kind !== "scale-threads") {
-        const suggestion = (scenarioPlans(d) ?? [])
+        const suggestion = (scenario() ?? [])
           .flatMap((p) => p.suggestions)
           .find((s) => s.node === node.id && s.kind === "busyThreads" && s.fix && s.verified);
         if (suggestion?.fix)
@@ -218,8 +276,8 @@ export function requestFindings(ctx: CheckContext): Finding[] {
     }
     const descriptor: NonNullable<Finding["requestFinding"]> = {
       kind: "blocked",
-      name: ctx.name(node.id),
-      callee: ctx.name(edge.to),
+      name: name(node.id),
+      callee: name(edge.to),
       hold: round(w.threadHoldMs),
       waiting: round(w.callMs),
       rate: round(n.offered),
@@ -228,7 +286,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
       replicas: n.activeReplicas,
       concurrency: p.concurrency,
     };
-    findings.push({
+    warnings.push({
       id: `blocked-threads:${node.id}`,
       rule: "blocked-threads",
       severity: "warning",
@@ -254,7 +312,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
           : cpuRule?.target.kind === "averageValue" && p.resources?.cpuRequestMilli
             ? (cpuRule.target.value / p.resources.cpuRequestMilli) * 100
             : undefined;
-      findings.push({
+      warnings.push({
         id: `scaling-blind:${node.id}`,
         rule: "scaling-blind",
         severity: "warning",
@@ -272,11 +330,22 @@ export function requestFindings(ctx: CheckContext): Finding[] {
           cpu: cpu === undefined ? undefined : Math.round(cpu),
           target: target === undefined ? undefined : Math.round(target),
         },
-        fix: threadCheckFix(d, action),
+        fix: threadCheckFix(d, action, input),
       });
     }
   }
-  rememberRequestChecks(d, findings);
+  // The budget, in a fixed order: every warning that fits, then timeout suggestions in diagram order.
+  const findings: Finding[] = [];
+  let room = REQUEST_FINDINGS_BUDGET;
+  for (const f of [...warnings, ...suggestions]) {
+    const size = JSON.stringify(f).length + 1;
+    if (size > room) {
+      if (f.severity === "warning") continue;
+      break;
+    }
+    room -= size;
+    findings.push(f);
+  }
   return findings;
 }
 

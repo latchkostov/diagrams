@@ -4,6 +4,7 @@ import type { CheckRequest, CheckResponse } from "../../checks/worker";
 import type { ScalingPlan } from "../../sim/scalingPlanner";
 import { rememberPlans } from "../../lib/scenarioPlanner";
 import { trackRequestChecks } from "../../lib/requestCheckCache";
+import { revisionAtLeast } from "../../model/revisions";
 import type { ThreadFixRequest } from "../../live/threadFixPlan";
 import type { TroubleAction } from "../../live/observedTrouble";
 
@@ -109,9 +110,14 @@ async function computeChecksOffThread(diagram: DiagramFile): Promise<{ result: C
     import("../../checks/requestFindings"),
     import("../../checks/context"),
   ]);
-  if (!diagram.checks?.off?.includes("capacity")) rememberPlans(diagram, planScaling(diagram));
-  const requests = requestFindings({ ...buildContext(diagram), local: true });
-  return { result: runChecks(diagram, { local: true }), requests };
+  // Request findings read scenario sizing whatever is turned off, as in the worker: the same findings either way.
+  if (!diagram.checks?.off?.includes("capacity") || revisionAtLeast(diagram.planning?.revision, "p3-w1"))
+    rememberPlans(diagram, planScaling(diagram));
+  // One context, as in the worker: one capacity analysis for the request findings and the checks.
+  const context = buildContext(diagram);
+  context.local = true;
+  const requests = requestFindings(context);
+  return { result: runChecks(diagram, { context, requests }), requests };
 }
 
 /** Scenario sizing for live playback: the checks worker's planner (memoized with the capacity check's). */

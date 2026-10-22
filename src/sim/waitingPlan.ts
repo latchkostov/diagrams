@@ -1,7 +1,7 @@
 import { revisionAtLeast } from "../model/revisions";
 import type { DiagramFile } from "../model/types";
 import type { ResolvedProps } from "./defaults";
-import { callEligible, compileTopology } from "./topology";
+import { activeCall, compileTopology } from "./topology";
 import { stencilRole } from "../stencils/roles";
 import { resolvedTiming } from "./timing";
 import { callOutcome, callPolicy, type CallPolicy } from "./callPolicy";
@@ -38,7 +38,7 @@ export function waitingPlan(diagram: DiagramFile, resolved: Record<string, Resol
   const queue: string[] = [];
   for (const node of diagram.nodes) remaining.set(node.id, 0);
   for (const edge of topology.edges) {
-    if (!callEligible(roles.get(edge.from)!, edge) || edge.deny || edge.share === 0) continue;
+    if (!activeCall(roles.get(edge.from)!, edge)) continue;
     remaining.set(edge.from, (remaining.get(edge.from) ?? 0) + 1);
     const list = parents.get(edge.to) ?? [];
     list.push({

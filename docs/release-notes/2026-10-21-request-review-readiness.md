@@ -31,3 +31,34 @@ separator and asset 404s caused by overlapping build outputs; the corrected stab
 The initial Linux load pass also exhausted one test's overall timeout after its correct timeout toast;
 the same diagnosis, persistence and Undo assertions now run after the first complete 11-second window
 instead of 15 seconds of virtual replay. No assertion or test timeout was relaxed.
+
+## Second review round
+
+- **Capacity defers only where it's replaced.** A caller diagnosed by `blocked-threads` or `scaling-blind` is
+  left out before the capacity check picks the busiest service, so another overloaded service keeps its
+  warning. A broker that only feeds the diagnosed caller isn't reported in its place: its capacity is what that
+  caller drains. When neither waiting check runs (a capacity-only check, or both turned off), capacity keeps
+  its own warning and never waits for request checks. A fix's recheck runs the same rules the card did.
+- **Readers pass what they awaited.** `check_diagram` and fixes hand the awaited request findings to
+  `runChecks`, so a background recheck or a full cache can't turn a ready result back into "pending". A
+  recheck of content that is already ready keeps it ready; an older attempt never overwrites a newer one; a
+  failure goes to that attempt's callers and the next call starts again. Agent replies check privacy and the
+  open document before reporting a failure, in words that say nothing about the diagram.
+- **Run simulations never waits.** Playing simulations needs only the no-reader check, so the main-thread
+  fallback runs whether request checks are missing, pending or failed.
+- **Bounded output.** Names in request findings are cut at 200 characters (never inside a character); one
+  diagram's request findings stay within 1,000,000 characters, warnings first. The diagram keeps its labels.
+- **Only real calls.** Dead-letter routes, deny rules and `share: 0` connections are neither the blocking cause
+  nor timeout findings (the waiting plan's own test, now one shared function).
+- **One analysis.** The worker and the no-worker fallback build one context for request findings and the other
+  checks; timeout fixes read the context's edge index.
+- **Focus.** Applying an edit clears the selection, and the inspector's findings with it: focus now goes to
+  the inspector's body instead of the page. Results that later remove the focused finding restore focus in
+  the inspector as they do in the card.
+
+### Output parity
+
+Three goldens differ from the previous head, all already in the 329-file inventory:
+`node/agent/check/{blocking-call,scale-on-busy-threads,corpus-w1-busy-threads}.json`. Their `oneRule` case
+(`rules: ["dead-letter", "capacity"]`) runs capacity without the waiting checks, so it reports capacity's
+own findings again; that section is now identical to master's. No other golden changed.

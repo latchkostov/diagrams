@@ -8,6 +8,7 @@ import { FindingRow, type RowHost, type RowState } from "./FindingRow";
 import { SimulationsBar, type SimulationsHost } from "./SimulationsBar";
 import { presentRule } from "../presentation";
 import { useLocale } from "../../i18n";
+import { useFallbackOnUnmount, useSurvivingCheckFocus } from "./survivingFocus";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -83,25 +84,6 @@ function useMaxHeight(card: RefObject<HTMLElement | null>, top: number): number 
 /** Rows drawn per group before "Show more": a diagram with hundreds of findings stays light to draw. */
 const PAGE = 40;
 
-/** A fix can remove several rows at once. Restore focus only after the new rows exist. */
-function useSurvivingCheckFocus(scope: RefObject<HTMLElement | null>) {
-  const focused = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const remember = (e: FocusEvent) => {
-      focused.current = e.target instanceof HTMLElement && scope.current?.contains(e.target) ? e.target : null;
-    };
-    document.addEventListener("focusin", remember);
-    return () => document.removeEventListener("focusin", remember);
-  }, [scope]);
-  useLayoutEffect(() => {
-    if (!focused.current || focused.current.isConnected || document.activeElement !== document.body) return;
-    const target =
-      scope.current?.querySelector<HTMLElement>("[data-check-head]") ??
-      scope.current?.querySelector<HTMLElement>("[data-check-fallback]");
-    target?.focus();
-  });
-}
-
 export function ChecksCard(p: ChecksCardProps) {
   useLocale();
   const onMount = useRef(p.onMount);
@@ -109,7 +91,8 @@ export function ChecksCard(p: ChecksCardProps) {
   const [foot, setFoot] = useState<"ignored" | "off" | "about" | null>(null);
   const [shown, setShown] = useState(PAGE);
   const self = useRef<HTMLElement>(null);
-  useSurvivingCheckFocus(self);
+  // A fix can remove several rows at once: focus goes on to a surviving row once the new rows exist.
+  useSurvivingCheckFocus((el) => (self.current?.contains(el) ? self.current : null));
   const maxHeight = useMaxHeight(self, p.top);
   // Closing with focus inside the card (Esc, ✕, a fix that ended it) hands focus back, never to the page.
   const returnFocus = useRef(p.returnFocus);
@@ -316,8 +299,16 @@ export function InspectorFindings({
   host: RowHost & { open(): void };
   state: RowState;
 }) {
+  const self = useRef<HTMLDivElement>(null);
+  // A new result can remove the focused finding and the one focus moved on to: focus goes to a survivor, or, when
+  // the whole group goes, to the inspector's body (which stays), never the page.
+  useSurvivingCheckFocus((el) =>
+    self.current?.contains(el) ? self.current.closest<HTMLElement>("[data-check-fallback-scope]") : null,
+  );
+  useFallbackOnUnmount(self);
   return (
     <div
+      ref={self}
       className="insp-findings"
       role="list"
       aria-label="Checks"

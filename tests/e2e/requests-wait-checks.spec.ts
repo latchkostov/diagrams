@@ -96,6 +96,43 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await expect(page.getByTestId("autoscaling-target")).toBeFocused();
   });
 
+  test(`an inspector alternative that removes two findings keeps keyboard focus in ${locale}`, async ({ page }) => {
+    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
+    // One of Your diagrams, so the fix edits it in place (an example's first edit opens a copy, unselected).
+    await gotoCanvas(page, "aks-app-config-key-vault");
+    await page.getByTestId("import-input").setInputFiles({
+      name: "busy.diagram.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(busy)),
+    });
+    await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+    // The first check (in the worker, verification replays included) has finished.
+    await expect(page.getByTestId("checks-count")).toBeVisible();
+    await page.getByTestId("node-caller").dblclick();
+    const free = page.getByTestId("inspector-check-fix-option-0-blocked-threads:caller");
+    await expect(free).toBeEnabled();
+    await expect(page.getByTestId("inspector-check-row-scaling-blind:caller")).toBeVisible();
+    await free.focus();
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "call")?.props?.caller)
+      .toMatchObject({ wait: "non-blocking" });
+    await expect(page.getByTestId("inspector-check-row-blocked-threads:caller")).toHaveCount(0);
+    await expect(page.getByTestId("inspector-check-row-scaling-blind:caller")).toHaveCount(0);
+    // Applying an edit drops the selection, and the inspector's findings with it: focus stays in the inspector, never
+    // the page, and the keyboard carries on from there.
+    await expect(page.getByTestId("inspector-body")).toBeFocused();
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(
+        () => !!document.querySelector('[data-testid="inspector"]')?.contains(document.activeElement),
+      ),
+    ).toBe(true);
+    await page.getByTestId("check-fix-undo").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("inspector-check-row-blocked-threads:caller")).toBeVisible();
+  });
+
   test(`the payment timeout Check applies 600 ms in one keyboard undo step in ${locale}`, async ({ page }) => {
     await page.addInitScript(
       ({ key, d, locale }) => {

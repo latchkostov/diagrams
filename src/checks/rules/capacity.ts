@@ -17,6 +17,8 @@ import type { Finding, CheckRule } from "../types";
 // are live view's own (src/sim/capacityPlanning.ts).
 
 const DEFAULT_RATE = 2;
+/** The checks that replace this one's warning for a caller whose threads wait (src/checks/requestFindings.ts). */
+export const WAIT_RULES = ["blocked-threads", "scaling-blind"] as const;
 
 export const capacity: CheckRule = {
   id: "capacity",
@@ -25,8 +27,12 @@ export const capacity: CheckRule = {
     "A service or broker over 100% at the diagram's own rates has a backlog that only grows. " +
     "Uses Show capacity's analysis at free-play rates (each source's rate), and reports the busiest service or broker.",
   detect(ctx) {
-    const waits = requestFindings(ctx);
-    const waitTargets = new Set(waits.filter((f) => f.rule !== "call-timeout").map((f) => f.target));
+    // A caller the waiting checks diagnose gets their finding instead of this one, but only when they run in this
+    // check (a capacity-only check, or one with them turned off, keeps the capacity warning).
+    const replacing: readonly string[] = WAIT_RULES.filter((id) => !ctx.ran || ctx.ran.has(id));
+    const waitTargets = new Set(
+      replacing.length ? requestFindings(ctx).flatMap((f) => (replacing.includes(f.rule) ? [f.target] : [])) : [],
+    );
     const analysis = threadCapacity(ctx);
     const bindings = bindingValidator(ctx.diagram.nodes, ctx.diagram.edges);
     // Scenario sizing from saved simulations outranks configured steady-state arithmetic for the same node.
@@ -110,6 +116,11 @@ export const capacity: CheckRule = {
       .filter(
         (n) =>
           !resourceTargets.has(n.id) &&
+          // Before choosing the busiest: a diagnosed caller never hides another service's warning. Nor does a broker
+          // it reads from stand in for it: a broker's capacity is what its consumers drain, so that backlog is the
+          // caller's, already reported with its fix.
+          !waitTargets.has(n.id) &&
+          !(isBroker(ctx, n.id) && ctx.routes(n.id).some((e) => !e.deny && waitTargets.has(e.to))) &&
           n.offered > 0 &&
           n.utilization >= 1 &&
           (n.role === "processor" || !!n.device || !!n.managed || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),
@@ -121,7 +132,7 @@ export const capacity: CheckRule = {
           order.get(a.id)! - order.get(b.id)!,
       );
     const top = candidates[0];
-    if (!top || waitTargets.has(top.id)) return resourceFindings;
+    if (!top) return resourceFindings;
     const sources = ctx.diagram.nodes.filter((n) => ctx.role(n.id) === "source");
     const unset = sources.filter((n) => typeof n.props?.ratePerSec !== "number");
     const rates = unset.length

@@ -69,3 +69,33 @@ it("native import preserves simulations with both thread expectation metrics", (
   expect(imported.ok).toBe(true);
   if (imported.ok) expect(imported.diagram.simulations).toEqual(d.simulations);
 });
+
+it("thread expectations compare real counts at scale 10", () => {
+  const d = waitingFixture();
+  const metric = (field: "threadsBusy" | "threadsWaiting") => ({ node: "caller", field });
+  const run = createSimulationRun(d, {
+    id: "threads",
+    title: "Threads",
+    scale: 10,
+    seed: 1,
+    durationMs: 1000,
+    traffic: [{ id: "burst", node: "source", shape: { kind: "burst", count: 400 } }],
+    expectations: [
+      { id: "busy", label: "Busy", metric: metric("threadsBusy"), op: "==", value: 4, when: "eventually" },
+      { id: "waiting", label: "Waiting", metric: metric("threadsWaiting"), op: "==", value: 4, when: "eventually" },
+      { id: "below", label: "Below four", metric: metric("threadsBusy"), op: "<", value: 4, when: "always" },
+    ],
+  });
+  let saturated = false;
+  for (let i = 0; i < 100; i++) {
+    run.step(10);
+    const t = realSnapshot(run.engine.snapshot()).nodes.caller.threads!;
+    const [busy, waiting] = run.state().expectations;
+    // The saved expectation reads what the meter shows, in real threads, not the sampled 0.4.
+    expect(busy.value).toBeCloseTo(t.working + t.waiting);
+    expect(waiting.value).toBeCloseTo(t.waiting);
+    saturated ||= t.working + t.waiting === 4;
+  }
+  expect(saturated).toBe(true);
+  expect(run.state().expectations.map((e) => e.status)).toEqual(["pass", "pass", "fail"]);
+});

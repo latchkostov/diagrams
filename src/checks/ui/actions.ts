@@ -2,8 +2,8 @@ import { applyOps } from "../../ai/ops";
 import type { EditorApi } from "../../editor/types";
 import type { CheckIgnore, DiagramChecks } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
-import { runChecks } from "../run";
-import { awaitRequestChecks } from "../../lib/requestCheckCache";
+import { recheckRules, runChecks } from "../run";
+import { awaitRequestChecks, requestChecksNeeded } from "../../lib/requestCheckCache";
 import { simulationContent } from "../../sim/simulationContent";
 import type { CheckRuleId, Finding } from "../types";
 import { presentFinding } from "../presentation";
@@ -24,10 +24,13 @@ let seq = 0;
 export async function applyFix(editor: EditorApi, finding: Finding, option?: string): Promise<boolean> {
   if (!finding.fix?.ops) return false;
   let current = editor.getDiagram();
-  if (["capacity", "blocked-threads", "scaling-blind", "call-timeout"].includes(finding.rule)) {
+  // Its rule, and the rules it defers to: the finding is worked out as the card's full check worked it out.
+  const rules = recheckRules(finding.rule);
+  let requests: Finding[] | undefined;
+  if (requestChecksNeeded(current, rules)) {
     const content = simulationContent(current);
     try {
-      await awaitRequestChecks(current);
+      requests = await awaitRequestChecks(current);
     } catch (error) {
       notify(`Couldn't apply the fix: ${error instanceof Error ? error.message : "the diagram changed"}`, {
         kind: "error",
@@ -37,7 +40,7 @@ export async function applyFix(editor: EditorApi, finding: Finding, option?: str
     current = editor.getDiagram();
     if (simulationContent(current) !== content) return false;
   }
-  const fresh = runChecks(current, { rules: [finding.rule] }).findings.find((f) => f.id === finding.id);
+  const fresh = runChecks(current, { rules, requests }).findings.find((f) => f.id === finding.id);
   // One of the fix's other options, by its words (the same option worked out now).
   const chosen = option === undefined ? undefined : fresh?.fix?.options?.find((o) => o.label === option);
   const ops = option === undefined ? fresh?.fix?.ops : chosen?.ops;

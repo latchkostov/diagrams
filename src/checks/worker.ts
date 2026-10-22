@@ -38,8 +38,11 @@ scope.onmessage = (e) => {
     else {
       // The capacity check's plans go back with its result (memoized: no second run), for main-thread readers.
       // A diagram with capacity turned off plans nothing.
-      const requests = requestFindings(buildContext(diagram));
-      const result = runChecks(diagram);
+      // Request findings (every one, for the shared cache) and the checks share one context: one capacity analysis.
+      const context = buildContext(diagram);
+      context.local = true;
+      const requests = requestFindings(context);
+      const result = runChecks(diagram, { context, requests });
       scope.postMessage({
         id,
         result,
