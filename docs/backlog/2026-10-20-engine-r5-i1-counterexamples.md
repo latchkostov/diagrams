@@ -89,4 +89,5 @@ Generated I1 is opt-in exploration (`FC_I1=1`, `scripts/fc-sweep.mjs --i1`), nev
 The fixed corpus is separately replayable with `FC_I1_CORPUS=1 pnpm exec vitest run
 src/sim/scaleEquivalence.test.ts -t "fixed 40-sample" --silent=false`; its 40 samples use seed
 20261018: **13/31 pass** at scale > 1 on PR 1, matching the approved design. Each later sampling PR
-records the pass count without lowering this floor: 16/31 after PR 4, PR 5 and PR 6 (the test's floor is 16).
+records the pass count without lowering this floor: 16/31 after PR 4, PR 5 and PR 6 (the test's floor is 16), and 16/31 after 8a-pre (brokers deliver in real
+units; the same indices as master).

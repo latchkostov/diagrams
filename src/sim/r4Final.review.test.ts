@@ -1,3 +1,4 @@
+import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { resourceLesson } from "../model/autoscaling";
@@ -56,6 +57,8 @@ it("R4 final: retry backlog cannot lend its fleet CPU rate to the new first wave
   };
   d.nodes[2].props = { api: { latencyMs: 10, errorRate: 1 }, jitter: 0 };
   d.edges[1].props = { networkDelayMs: 10, caller: { poolConnections: 1 } };
+  // One cohort at the worker (one admission slot): its window must hold the whole dot, not deliver it in parts.
+  d.edges[0].props = { travelMs: wholeDotTravelMs(10, 1, 0) };
   let competing = false;
   let cpu = 0;
   const e = createEngine({

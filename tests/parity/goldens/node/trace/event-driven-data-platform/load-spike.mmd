@@ -1,5 +1,5 @@
 ---
-title: "CheckoutRequest #1 · 7.03 s end to end · 1 copy"
+title: "CheckoutRequest #1 · 7.20 s end to end · 1 copy"
 ---
 sequenceDiagram
   participant storefront as Storefront
@@ -25,9 +25,9 @@ sequenceDiagram
   dbt->>marts: CustomerSegmentRow (+4.40 s)<br/>MERGE models
   marts-->>dbt: reply (+4.61 s)
   marts-)reverse_etl: CustomerSegmentRow (+4.61 s)<br/>Changed segments
-  Note over storefront,segment_cache: ⏱ 1.21 s at Reverse ETL: processing
-  reverse_etl-)segments_topic: CustomerSegmentChanged (+6.12 s)<br/>Segment changes
-  segments_topic-)personalization: CustomerSegmentChanged (+6.42 s)<br/>group: personalization
-  segments_topic-)marketing: CustomerSegmentChanged (+6.42 s)<br/>group: marketing-sync
-  personalization->>segment_cache: CustomerSegmentChanged (+6.82 s)<br/>SET segments
-  segment_cache-->>personalization: reply (+7.03 s)
+  Note over storefront,segment_cache: ⏱ 1.36 s at Reverse ETL: processing
+  reverse_etl-)segments_topic: CustomerSegmentChanged (+6.27 s)<br/>Segment changes
+  segments_topic-)personalization: CustomerSegmentChanged (+6.57 s)<br/>group: personalization
+  segments_topic-)marketing: CustomerSegmentChanged (+6.57 s)<br/>group: marketing-sync
+  personalization->>segment_cache: CustomerSegmentChanged (+6.99 s)<br/>SET segments
+  segment_cache-->>personalization: reply (+7.20 s)

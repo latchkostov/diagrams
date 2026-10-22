@@ -335,9 +335,9 @@
               "node": "caller",
               "adapter": "hpa",
               "wanted": 0,
-              "backlog": 6324,
+              "backlog": 6320,
               "startupBacklog": 0,
-              "endBacklog": 3952,
+              "endBacklog": 3936,
               "kind": "busyThreads",
               "from": 70,
               "to": 70,
@@ -387,7 +387,7 @@
                   }
                 }
               ],
-              "verified": { "backlog": 1158, "startupBacklog": 1158, "endBacklog": 0, "maxed": true, "rejected": 0 },
+              "verified": { "backlog": 1146, "startupBacklog": 1146, "endBacklog": 0, "maxed": true, "rejected": 0 },
               "explanation": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it."
             }
           ],

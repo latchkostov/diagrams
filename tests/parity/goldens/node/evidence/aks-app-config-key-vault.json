@@ -2,7 +2,7 @@
   "evidence": {
     "played": [
       { "id": "lunch-rush", "title": "Lunch rush", "playedMs": 12870, "capped": false },
-      { "id": "flash-sale", "title": "Flash sale", "playedMs": 12830, "capped": false }
+      { "id": "flash-sale", "title": "Flash sale", "playedMs": 12880, "capped": false }
     ],
     "unplayed": [],
     "tooBig": [],

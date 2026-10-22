@@ -17,12 +17,12 @@
         "source": { "processed": 400, "throughput": 40.39815253084028, "replicas": [1, 1, 0] },
         "uploads": {
           "processed": 399,
-          "backlog": 261,
+          "backlog": 262,
           "throughput": 39.79914400525013,
-          "lag": { "thumbnails": 261 },
+          "lag": { "thumbnails": 262 },
           "replicas": [1, 1, 0]
         },
-        "worker": { "processed": 132, "backlog": 1, "inFlight": 4, "throughput": 16.3946594032246, "replicas": [2, 2, 0] }
+        "worker": { "processed": 132, "inFlight": 4, "throughput": 16.3946594032246, "replicas": [2, 2, 0] }
       }
     },
     {
@@ -32,12 +32,12 @@
         "source": { "processed": 800, "throughput": 40.39998660412771, "replicas": [1, 1, 0] },
         "uploads": {
           "processed": 799,
-          "backlog": 501,
+          "backlog": 502,
           "throughput": 39.800996511280545,
-          "lag": { "thumbnails": 501 },
+          "lag": { "thumbnails": 502 },
           "replicas": [1, 1, 0]
         },
-        "worker": { "processed": 292, "backlog": 1, "inFlight": 4, "throughput": 16.40442305337355, "replicas": [2, 2, 0] }
+        "worker": { "processed": 292, "inFlight": 4, "throughput": 16.40442305337355, "replicas": [2, 2, 0] }
       }
     },
     {
@@ -47,12 +47,12 @@
         "source": { "processed": 1200, "throughput": 40.39998668739452, "replicas": [1, 1, 0] },
         "uploads": {
           "processed": 1199,
-          "backlog": 741,
+          "backlog": 742,
           "throughput": 39.80099659538419,
-          "lag": { "thumbnails": 741 },
+          "lag": { "thumbnails": 742 },
           "replicas": [1, 1, 0]
         },
-        "worker": { "processed": 452, "backlog": 1, "inFlight": 4, "throughput": 16.40442349664258, "replicas": [2, 2, 0] }
+        "worker": { "processed": 452, "inFlight": 4, "throughput": 16.40442349664258, "replicas": [2, 2, 0] }
       }
     },
     {
@@ -62,12 +62,12 @@
         "source": { "processed": 1600, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
         "uploads": {
           "processed": 1599,
-          "backlog": 981,
+          "backlog": 982,
           "throughput": 39.80099659538794,
-          "lag": { "thumbnails": 981 },
+          "lag": { "thumbnails": 982 },
           "replicas": [1, 1, 0]
         },
-        "worker": { "processed": 612, "backlog": 1, "inFlight": 4, "throughput": 16.404423496662716, "replicas": [2, 2, 0] }
+        "worker": { "processed": 612, "inFlight": 4, "throughput": 16.404423496662716, "replicas": [2, 2, 0] }
       }
     },
     {
@@ -77,12 +77,12 @@
         "source": { "processed": 2000, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
         "uploads": {
           "processed": 1999,
-          "backlog": 1221,
+          "backlog": 1222,
           "throughput": 39.80099659538794,
-          "lag": { "thumbnails": 1221 },
+          "lag": { "thumbnails": 1222 },
           "replicas": [1, 1, 0]
         },
-        "worker": { "processed": 772, "backlog": 1, "inFlight": 4, "throughput": 16.404423496662716, "replicas": [2, 2, 0] }
+        "worker": { "processed": 772, "inFlight": 4, "throughput": 16.404423496662716, "replicas": [2, 2, 0] }
       }
     },
     {
@@ -92,12 +92,12 @@
         "source": { "processed": 2400, "throughput": 40.399986687398226, "replicas": [1, 1, 0] },
         "uploads": {
           "processed": 2399,
-          "backlog": 1461,
+          "backlog": 1462,
           "throughput": 39.80099659538794,
-          "lag": { "thumbnails": 1461 },
+          "lag": { "thumbnails": 1462 },
           "replicas": [1, 1, 0]
         },
-        "worker": { "processed": 932, "backlog": 1, "inFlight": 4, "throughput": 16.404423496662716, "replicas": [2, 2, 0] }
+        "worker": { "processed": 932, "inFlight": 4, "throughput": 16.404423496662716, "replicas": [2, 2, 0] }
       }
     }
   ],
@@ -108,84 +108,84 @@
       "source": { "processed": 4800, "throughput": 80.79997337479645, "replicas": [1, 1, 0] },
       "uploads": {
         "processed": 4798,
-        "backlog": 2922,
+        "backlog": 2924,
         "throughput": 79.60199319077589,
-        "lag": { "thumbnails": 2922 },
+        "lag": { "thumbnails": 2924 },
         "replicas": [1, 1, 0]
       },
-      "worker": { "processed": 1864, "backlog": 2, "inFlight": 8, "throughput": 32.80884699332543, "replicas": [2, 2, 0] }
+      "worker": { "processed": 1864, "inFlight": 8, "throughput": 32.80884699332543, "replicas": [2, 2, 0] }
     },
-    "edges": { "publish": 2399, "consume": 937 }
+    "edges": { "publish": 2399, "consume": 936 }
   },
   "events": {
-    "total": 9067,
-    "byKind": { "process": 5731, "deliver": 3336 },
+    "total": 9066,
+    "byKind": { "process": 5731, "deliver": 3335 },
     "byNode": {
       "source": { "process": 2400 },
       "uploads": { "deliver": 2399, "process": 2399 },
-      "worker": { "deliver": 937, "process": 932 }
+      "worker": { "deliver": 936, "process": 932 }
     },
     "perSecond": [
-      "ad076054d391",
-      "795e9e0171c7",
-      "71b1c05c04f7",
-      "2e33036b4b26",
-      "f6b2c56c49ff",
-      "9e3f42fe279c",
-      "1347135fdd91",
-      "283bb6e450cf",
-      "dcd3599190d5",
-      "5a50d85a1b56",
-      "cfa7e05a3467",
-      "99b02595c4e0",
-      "40fff37e772a",
-      "8b633cef8a2d",
-      "88f0279148db",
-      "9ffc97ee1d93",
-      "e16e5c8bf2a8",
-      "dc74fe005db7",
-      "32a742679653",
-      "09f40165bffb",
-      "e78ef89f2d44",
-      "b8e92620d864",
-      "02c377e824e8",
-      "c8da5f23f798",
-      "1ebdc70c1855",
-      "f9e568d32646",
-      "f77cecefa29e",
-      "cc7eab9b7650",
-      "5e286d691095",
-      "f133656862f7",
-      "a00c8d9cc1a7",
-      "b864665f4c41",
-      "f8261fb8822c",
-      "29244007adc1",
-      "28ce856cece6",
-      "c034f38e41d6",
-      "afb01d6f11fa",
-      "c79bc772050d",
-      "85e8dd248a70",
-      "1225f36ffa77",
-      "dc55a7596b98",
-      "0bd60636c4f8",
-      "fd296545da69",
-      "d17d8fad06c4",
-      "a4c20b20ed6f",
-      "8e82feca984a",
-      "5fd6c7386804",
-      "45219ef2c444",
-      "7de16ba9480b",
-      "01597642fa72",
-      "3df82307447b",
-      "5be5eeb50b64",
-      "e33482ded73b",
-      "3fab5a83da8a",
-      "692db331b0d9",
-      "ef1cf3f922eb",
-      "5a5899147b6e",
-      "e42c4d5db09e",
-      "d3f83fed5a4a",
-      "22faf77c72fb",
+      "7c474643af40",
+      "2ddf73e82aba",
+      "1eaf3c788e78",
+      "b878d75d2259",
+      "42db596af9ab",
+      "9a2486395313",
+      "8f3ce6b186f8",
+      "0d66cc0fd549",
+      "7c56baa7549f",
+      "23f97faa58cc",
+      "c41faa658ee3",
+      "108a7abc1b82",
+      "48b575aa0872",
+      "ca5f35ce5e88",
+      "4afe827f65ed",
+      "6efd74fcb2ed",
+      "0a4bc2f6a2fe",
+      "235d4534d602",
+      "d96e19dedff3",
+      "9bc1ca16be9f",
+      "35a462e18c50",
+      "12c7ffdf79a0",
+      "841ed5ee1aa5",
+      "728d1bffdd4d",
+      "39d8fb4c3663",
+      "9550c044f39c",
+      "a6feafa82f8d",
+      "415018006712",
+      "e442ae9c83bb",
+      "2cf0445f8464",
+      "06c3b77dd5eb",
+      "205e1237e4e3",
+      "3d709011394c",
+      "a1ddfe2d345f",
+      "74b8129c84db",
+      "b42314ade904",
+      "4e55309e8fd6",
+      "e6bc6e90a420",
+      "d67fdf64c76f",
+      "b4d31bb22963",
+      "dcf7862cb352",
+      "2d36cb9fd905",
+      "3663b81cbb9d",
+      "ce1b4ef7c993",
+      "94bfb7e60ff6",
+      "e56a8612a99e",
+      "ce7b4a9bedd9",
+      "c8849d9305b9",
+      "e30e53151389",
+      "d7be286fd62d",
+      "d1babfee1d51",
+      "9b524392952b",
+      "90364b71b61d",
+      "104f3a80c32e",
+      "5283b6c7aa87",
+      "aaf5d6277f0d",
+      "feb3d555193a",
+      "4774c6a3a54e",
+      "24571130fbf3",
+      "fd4c51abb959",
       "844171889785"
     ]
   },
@@ -193,7 +193,7 @@
   "latency": {
     "journeys": { "done": 58, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
     "endToEndMs": { "count": 58, "min": 350, "mean": 2556.551724137931, "p50": 2870, "p90": 3730, "max": 3920 },
-    "waitMs": { "worker": { "count": 58, "min": 80, "mean": 171.0344827586207, "p50": 120, "p90": 240, "max": 380 } },
+    "waitMs": { "worker": { "count": 58, "min": 50, "mean": 85.6896551724138, "p50": 60, "p90": 120, "max": 280 } },
     "processMs": { "worker": { "count": 58, "min": 250, "mean": 250, "p50": 250, "p90": 250, "max": 250 } }
   }
 }

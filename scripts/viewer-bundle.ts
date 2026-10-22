@@ -74,6 +74,8 @@ export async function buildViewerBundle(
         "import.meta.env.MODE": JSON.stringify("production"),
         "import.meta.env.VITE_E2E": JSON.stringify(""),
         __BUILD_SHA__: JSON.stringify(""),
+        // Test-only engine oracles fold out (vite.config.ts).
+        __TEST_ORACLES__: "false",
         ...deploymentDefines({}),
       },
       build: {

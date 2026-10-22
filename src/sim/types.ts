@@ -485,6 +485,9 @@ export interface EngineOptions {
   ledgerHold?: "none";
   /** Test-only partial dots: every injected message carries this many real requests. */
   injectRepresented?: number;
+  /** Test-only I1 oracle (Vitest only; folded out of shipped builds): run at scale 1 with the arrival instants of the scale `setScale` names. Every dot a source
+   *  or injection emits arrives as floor-cumulative real requests of that scale (docs/SIMULATION.md, same arrivals). */
+  sameArrivals?: true;
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */

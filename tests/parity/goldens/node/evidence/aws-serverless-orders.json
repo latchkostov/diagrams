@@ -1,7 +1,7 @@
 {
   "evidence": {
     "played": [
-      { "id": "flash-sale", "title": "Flash sale: 300 orders/s", "playedMs": 21790, "capped": false },
+      { "id": "flash-sale", "title": "Flash sale: 300 orders/s", "playedMs": 21770, "capped": false },
       { "id": "three-pl-outage", "title": "3PL outage and DLQ redrive", "playedMs": 13430, "capped": false },
       { "id": "throttle", "title": "Fulfillment Lambda is throttled", "playedMs": 13390, "capped": false }
     ],

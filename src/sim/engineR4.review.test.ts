@@ -87,6 +87,10 @@ it("standalone retry preserves admitted CPU cost across scale edits and outage",
 function cpuBoundRetry() {
   const d = standaloneRetry();
   Object.assign(d.nodes[1].props!.resources!, { cpuMsPerMessage: 100, cpuLimitMilli: 1000 });
+  // These cases follow one cohort of ten (or twenty) at the worker. A broker delivers what its consumer's prefetch
+  // window holds in real requests (1 slot + travel / service + 1): a 100 ms connection holds twelve, so the dot
+  // arrives whole, 100 ms after it is sent.
+  d.edges[0].props = { ...d.edges[0].props, travelMs: 100 };
   return d;
 }
 
@@ -138,7 +142,7 @@ it.each([10, 1, 20])(
     // The delivery is on its way; it arrives while the worker is down and its
     // in-place retry keeps the slot without a thread.
     e.setNodeStatus("caller", "down");
-    e.step(30);
+    e.step(120);
     expect(e.snapshot().nodes.caller).toMatchObject({ processed: 0, failed: 1 });
     expect(executedCpu(e)).toBe(0);
     // Its CPU was sized for ten requests; a scale edit before recovery must not resize them.
@@ -165,7 +169,7 @@ it("an outage cancels the CPU its ended attempt had not run; the retry charges i
   e.load(cpuBoundRetry());
   e.step(10);
   e.inject("source", 1);
-  for (let tick = 0; tick < 10 && !executedCpu(e); tick++) e.step(10);
+  for (let tick = 0; tick < 20 && !executedCpu(e); tick++) e.step(10);
   const ran = executedCpu(e);
   expect(ran).toBeGreaterThan(0);
   expect(ran).toBeLessThan(100);

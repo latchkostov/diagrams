@@ -176,9 +176,12 @@ for (const scale of [1, 10])
             expect(p.engine.snapshot().inSystem).toBe(0);
             expect(p.engine.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
             expect(p.state().ledger.reservations.size).toBe(0);
+            // At scale 10 the broker prefetches each consumer's window in real requests, as scale 1 does, so the outage
+            // fails only what had been delivered: 5 real requests with one slot, 8 with four. Whole dots used to put
+            // all four dots (forty requests) in front of the outage at once.
             expect(p.engine.snapshot().nodes.caller).toMatchObject({
               processed: 6,
-              failed: scale === 1 && concurrency === 1 ? 3 : 4,
+              failed: scale === 1 ? (concurrency === 1 ? 3 : 4) : concurrency === 1 ? 0.5 : 0.8,
               dropped: 0,
             });
             expect(p.engine.snapshot().nodes.caller.rejected ?? 0).toBe(0);

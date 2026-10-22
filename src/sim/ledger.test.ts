@@ -1,3 +1,4 @@
+import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it, vi } from "vitest";
 import { ADMISSION_LAG_MS, allocationWeight, reserveCallerOccupancy, SampledLedger } from "./ledger";
 import { countingReads, GROWTH_FACTOR } from "../test/complexity";
@@ -333,7 +334,9 @@ it("nested non-blocking replies drain retired request residence on its exact rel
     .filter((r) => r.scope === "request")
     .sort((a, b) => b.releaseAt! - a.releaseAt!)[0];
   expect(request).toBeDefined();
-  expect(request.releaseAt).toBe(80560);
+  // The broker delivers each dot to tier0 in parts its one-slot window holds (as scale 1 prefetches three real
+  // requests), so the last cohort is smaller and its stretched hold ends sooner than whole dots' 80,560.
+  expect(request.releaseAt).toBe(28450);
   expect(request.releaseAt).toBe(request.startActive + (request.heldMs * request.represented) / request.weight);
   while (engine.metrics().time + 10 < request.releaseAt!) engine.step(10);
   expect(state.ledger.reservations.has(request.id)).toBe(true);
@@ -922,9 +925,12 @@ it("in-place retry keeps reservation ids and accumulates the previous logical ho
   p.d.nodes[0].props = { maxDeliveryCount: 2 };
   Object.assign(p.d.nodes[1].props!, { retry: "inplace", retryBackoffMs: 0 });
   p.d.nodes[2].props = { api: { latencyMs: 100, errorRate: 1 }, jitter: 0 };
+  // One cohort at the caller: its window must hold the whole dot (a broker otherwise delivers it in parts).
+  const travel = wholeDotTravelMs(10, 2, 100);
+  p.d.edges[0].props = { travelMs: travel };
   p.engine.load(p.d);
   p.engine.inject("source", 1);
-  p.engine.step(20);
+  p.engine.step(travel + 10);
   const leases = [...p.state().ledger.reservations.values()];
   const ids = leases.map((r) => r.id);
   p.engine.step(230);
@@ -986,9 +992,12 @@ it("a quota-refused retry retains execution keys until its sampled thread hold e
       quotas: [{ id: "attempts", unit: "requests", amount: 10, windowMs: 60_000, algorithm: "token-bucket" }],
     },
   });
+  // One cohort at the caller: its window must hold the whole dot (a broker otherwise delivers it in parts).
+  const travel = wholeDotTravelMs(10, 2, 100);
+  p.d.edges[0].props = { travelMs: travel };
   p.engine.load(p.d);
   p.engine.inject("source", 1);
-  p.engine.step(130);
+  p.engine.step(travel + 120);
   expect(p.engine.snapshot().nodes.caller).toMatchObject({ failed: 1, rejected: 1 });
   const thread = [...p.state().ledger.reservations.values()].find((r) => r.scope === "thread")!;
   expect(thread.keys).toHaveLength(1);

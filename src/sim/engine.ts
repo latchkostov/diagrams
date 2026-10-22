@@ -145,6 +145,10 @@ const EVENT_CAP = 200;
 /** A headless run created more messages than its shared budget (EngineOptions.messageBudget). */
 export class WorkBudgetError extends Error {}
 
+declare const __TEST_ORACLES__: boolean | undefined;
+/** Test-only engine options (EngineOptions.sameArrivals) fold out of shipped builds (vite.config.ts). */
+const TEST_ORACLES = typeof __TEST_ORACLES__ === "boolean" && __TEST_ORACLES__;
+
 export const SOURCE_RATE_CAP = 10_000;
 export const SOURCE_VOLUME_CAP = 200_000;
 
@@ -186,6 +190,9 @@ interface Group {
   name: string;
   edges: Edge[];
   pending: Deque<Message>;
+  /** Dots queued in pending (unitsOf): a partial dot counts its share. */
+  pendingUnits: number;
+  /** Dots delivered and not yet acknowledged (unitsOf); offThread, activeByNode and offByNode likewise. */
   active: number;
   cursor: number;
   allocations: Map<string, number>;
@@ -201,6 +208,8 @@ interface Group {
   limit: number;
 }
 interface Delivery {
+  /** Dots this delivery holds in its group's counters: the delivered (possibly partial) dot. */
+  units: number;
   offThread?: boolean;
   broker: Node;
   group: Group;
@@ -208,6 +217,8 @@ interface Delivery {
   original: Message;
 }
 interface Work extends ExecutionWork<Group> {
+  /** Dots this work added to its node's pending or staged units while queued there. */
+  queuedUnits?: number;
   failureCode?: number;
   timeoutOrigin?: string;
   attempt?: Attempt<Message>;
@@ -294,6 +305,10 @@ interface Node {
   sampledExecution: boolean;
   cpuTick?: import("./resourceInvariants").CpuTick;
   incoming: number;
+  /** Dots (unitsOf) of incoming, pending and staged: a broker's prefetch window counts real requests. */
+  incomingUnits: number;
+  pendingUnits: number;
+  stagedUnits: number;
   cursor: number;
   processed: number;
   failed: number;
@@ -508,11 +523,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   /** A message's represented size and the dots its counters add (units.ts). */
   const sizeOf = (m?: { represented?: number }) => representedOf(m, scale);
   const dotsOf = (m?: { represented?: number }) => unitsOf(m, scale);
+  /** Sums of fractional dots return to exactly zero once their last part leaves. */
+  const settled = (n: number) => (Math.abs(n) <= 1e-9 ? 0 : n);
   const callerReservations = (node: Node) => (node.waits || node.callTarget) && node.role === "processor";
+  /** Dots in work, a partial dot counting its share (unitsOf). */
+  const workingDots = (node: Node) => {
+    let dots = node.heldCalls;
+    for (const work of node.working) dots += dotsOf(work.message);
+    return dots;
+  };
   const threadOccupancy = (node: Node) =>
-    callerReservations(node)
-      ? (node.threadWeight.work + node.threadWeight.wait) / scale
-      : node.working.length + node.heldCalls;
+    callerReservations(node) ? (node.threadWeight.work + node.threadWeight.wait) / scale : workingDots(node);
   function threadPhase(node: Node, reservation: Reservation | undefined, phase: "work" | "wait"): void {
     if (!reservation || reservation.phase === phase) return;
     node.threadWeight[reservation.phase] = --node.threadCount[reservation.phase]
@@ -555,7 +576,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   /** Each represented request lives in work, a call, or the continuation queue, never in a tail. */
   function residentRequests(node: Node): number {
-    return waits() ? node.residentWeight : (node.working.length + node.heldCalls) * scale;
+    return waits() ? node.residentWeight : workingDots(node) * scale;
   }
   /** Terminal request cleanup is independent of any retained thread/lease capacity. */
   function finishResident(node: Node, work: Work): void {
@@ -578,6 +599,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let speed = 1;
   let traffic = false;
   let scale = resolveScale(opts.scale);
+  /** Same-arrivals oracle (opts.sameArrivals): the scale whose arrival instants this scale-1 run replays. */
+  let cohort = 1;
+  let cohortDots = new Map<Node, number>();
   let capacityMultiplier = 1;
   let nextMessage = 1;
   let nextParticle = 1;
@@ -679,6 +703,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         message.travelMs,
         latencyBudget,
         message.callMs,
+        dotsOf(message),
       );
     }
   }
@@ -832,6 +857,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       edge.active++;
       edge.to.incoming++;
+      edge.to.incomingUnits += dotsOf(message);
       keepEcho(trip);
       scheduleLogical({
         id: nextLogical++,
@@ -1014,7 +1040,35 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function scheduleWork(node: Node, work: Work, destination: "working" | "pending" | "takeovers"): void {
     if (work.resumeAtAdmission) node.takeovers = node.takeovers.filter((entry) => entry !== work);
     work.resumeAtAdmission = destination === "takeovers";
-    node[destination].push(work);
+    if (destination === "pending") enqueue(node, work);
+    else node[destination].push(work);
+  }
+
+  /** A message that was on its way to the node has arrived there. */
+  function arrived(node: Node, message: Message): void {
+    node.incomingUnits = --node.incoming ? node.incomingUnits - dotsOf(message) : 0;
+  }
+
+  function enqueue(node: Node, work: Work): void {
+    node.pendingUnits += work.queuedUnits = dotsOf(work.message);
+    node.pending.push(work);
+  }
+
+  function dequeue(node: Node, queue: Deque<Work>): Work {
+    const work = queue.shift()!;
+    if (queue === node.pending)
+      node.pendingUnits = node.pending.length ? node.pendingUnits - (work.queuedUnits ?? 0) : 0;
+    work.queuedUnits = undefined;
+    return work;
+  }
+
+  /** A delivery waits at the node for one of its group's slots there. */
+  function stage(group: Group, node: Node, work: Work): void {
+    let queue = group.staged.get(node.id);
+    if (!queue) group.staged.set(node.id, (queue = new Deque()));
+    queue.push(work);
+    node.staged++;
+    node.stagedUnits += work.queuedUnits = dotsOf(work.message);
   }
 
   /** Invisible decoration owns counts only, never messages or their connected graph. */
@@ -1063,10 +1117,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const group = metricGroups.get(broker.id)?.get(trigger.source.group ?? "queue");
     if (!group)
       return broker.role === "queue" && !broker.groups.length
-        ? { pending: broker.pending.length * scale, outstanding: 0 }
+        ? { pending: broker.pendingUnits * scale, outstanding: 0 }
         : undefined;
     return {
-      pending: group.pending.length * scale,
+      pending: group.pendingUnits * scale,
       outstanding: group.active * scale,
       ...(trigger.type === "kafka" ? { partitions: broker.props.partitions } : {}),
     };
@@ -1087,12 +1141,29 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // on arrival whatever latency they have saved, so they never limit a delivery.
     const works = hasServiceTime(target.role);
     if (units === Infinity || !works || (!processor && !(target.props.latencyMs > 0))) return Infinity;
-    // A sampled dot costs `scale` messages of a processor's service budget (see tick): it works on units ÷ scale dots
-    // at a time, so only that many (and what's on the way to them) are held for it. The rest is lag at the broker.
-    // A 0 ms service is paced as one tick, so a burst can't pull a whole backlog onto the edge at once.
-    const busy = processor ? units / scale : units;
+    // Real requests, as at scale 1: a processor works on its slots' real requests at a time, so only that many (and
+    // what's on the way to them) are held for it, whatever the dot size; the rest is lag at the broker, and a dot
+    // larger than the room is delivered in part. A store or gateway serves a sampled dot as one message, so its
+    // window is in dots. A 0 ms service is paced as one tick, so a burst can't pull a whole backlog onto the edge.
     const service = processor ? Math.max(STEP, target.props.latencyMs) : target.props.latencyMs;
-    return Math.ceil(busy) + Math.ceil((busy * Math.max(STEP, travelMs)) / service) + 1;
+    const window = Math.ceil(units) + Math.ceil((units * Math.max(STEP, travelMs)) / service) + 1;
+    return processor ? window : window * scale;
+  }
+
+  /**
+   * Real requests of a dot of `size` to deliver into `room` (0: none). A dot that overshoots the room by less than
+   * one real request goes whole, as scale 1 delivers a message whenever the window has room; a larger one is split
+   * at the room, but never into a part, or a queued remainder, of less than one real request.
+   */
+  function deliverable(size: number, room: number): number {
+    if (room <= 1e-9) return 0;
+    if (size - room < 1 - 1e-9) return size;
+    return size < 2 ? 0 : Math.min(size - 1, Math.max(1, room));
+  }
+
+  /** Real requests outstanding against a target's prefetch window: in work, on the way, queued or staged there. */
+  function outstandingAt(target: Node): number {
+    return (threadOccupancy(target) + target.incomingUnits + target.pendingUnits + target.stagedUnits) * scale;
   }
 
   /** The longest travel time to each consumer over a group's routes, deny rules aside: indexed once per load. */
@@ -1376,7 +1447,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const visible = drawn < maxParticles;
     if (visible) drawn++;
     edge.active++;
-    if (kind === "message" || kind === "dlq") edge.to.incoming++;
+    if (kind === "message" || kind === "dlq") {
+      edge.to.incoming++;
+      edge.to.incomingUnits += dotsOf(message);
+    }
     const end = time + Math.max(STEP, edge.travelMs) + delay;
     const trip: Trip = { id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible };
     if (code) trip.code = code;
@@ -1408,10 +1482,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function acknowledge(node: Node, work: Work): void {
     finishResident(node, work);
     endAdmission(work);
-    if (work.delivery) {
-      work.delivery.group.active--;
-      work.delivery.group.activeByNode[work.delivery.edge.to.id]--;
-    }
+    if (work.delivery) settleDelivery(work.delivery);
     release(work);
   }
 
@@ -1446,10 +1517,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (group && !work.held && !hold(group, node, work)) {
       if (work.resumeAtAdmission) node.takeovers = node.takeovers.filter((entry) => entry !== work);
       work.resumeAtAdmission = false;
-      let queue = group.staged.get(node.id);
-      if (!queue) group.staged.set(node.id, (queue = new Deque()));
-      queue.push(work);
-      node.staged++;
+      stage(group, node, work);
       return;
     }
     scheduleWork(node, work, "pending");
@@ -1481,8 +1549,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function unstage(group: Group, node: Node): void {
     const waiting = group.staged.get(node.id);
     while (waiting?.length && hold(group, node, waiting.peek()!)) {
-      node.staged--;
-      node.pending.push(waiting.shift()!);
+      const work = waiting.shift()!;
+      node.stagedUnits = --node.staged ? node.stagedUnits - (work.queuedUnits ?? 0) : 0;
+      enqueue(node, work);
     }
   }
 
@@ -1807,16 +1876,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const d = work.delivery;
     if (!d || d.offThread) return;
     d.offThread = true;
-    d.group.offThread++;
-    d.group.offByNode.set(d.edge.to.id, (d.group.offByNode.get(d.edge.to.id) ?? 0) + 1);
+    d.group.offThread += d.units;
+    d.group.offByNode.set(d.edge.to.id, (d.group.offByNode.get(d.edge.to.id) ?? 0) + d.units);
   }
 
   function wakeDelivery(work: Work): void {
     const d = work.delivery;
     if (!d?.offThread) return;
     d.offThread = false;
-    d.group.offThread--;
-    d.group.offByNode.set(d.edge.to.id, (d.group.offByNode.get(d.edge.to.id) ?? 1) - 1);
+    d.group.offThread = settled(d.group.offThread - d.units);
+    d.group.offByNode.set(d.edge.to.id, settled((d.group.offByNode.get(d.edge.to.id) ?? d.units) - d.units));
+  }
+
+  /** A delivery left its consumer (acknowledged, or on its way back): its dots leave the group's counters. */
+  function settleDelivery(d: Delivery): void {
+    d.group.active = settled(d.group.active - d.units);
+    d.group.activeByNode[d.edge.to.id] = settled((d.group.activeByNode[d.edge.to.id] ?? d.units) - d.units);
   }
 
   function releaseCallEdge(call: Call, edge: Edge): void {
@@ -1899,6 +1974,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         0,
         latencyBudget,
         a.outcome!.at - call.startedAt,
+        dotsOf(work.message),
       );
     }
     if (node.role === "processor" && (call.replies ?? 0) > 0 && node.status !== "down" && !releaseNow) {
@@ -2055,7 +2131,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (event.timeout) decide(call.attempt, false, 504, call.branches.get(edge!.id)!.expiresAt);
         if (!event.ok || !call.outstanding.size) settleAttempt(call, !!event.ok);
       } else if (edge && event.message) {
-        edge.to.incoming--;
+        arrived(edge.to, event.message);
         if (cut(edge)) {
           cutPush(edge, event.message);
           continue;
@@ -2134,7 +2210,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     processed(node, message);
     if (!node.groups.length) {
       // A queue without a consumer (including a DLQ queue) retains its backlog.
-      node.pending.push({ message, remaining: 0 });
+      enqueue(node, { message, remaining: 0 });
       message.family.parked++;
       if (message.family.trace) {
         step(message, "park", node.id);
@@ -2148,7 +2224,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     const copies = fanOut(node, message, accepting.length);
-    accepting.forEach((group, i) => group.pending.push(copies[i]));
+    accepting.forEach((group, i) => {
+      group.pending.push(copies[i]);
+      group.pendingUnits += dotsOf(copies[i]);
+    });
   }
 
   function retryFor(node: Node, work: Work, allowRetry = true): RetryDisposition {
@@ -2399,10 +2478,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.props.admission) {
       const group = work.delivery?.group;
       if (group && !work.held && !hold(group, node, work)) {
-        let queue = group.staged.get(node.id);
-        if (!queue) group.staged.set(node.id, (queue = new Deque()));
-        queue.push(work);
-        node.staged++;
+        stage(group, node, work);
         return;
       }
       if (!reserveAdmission(node, work)) return;
@@ -2524,6 +2600,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function emit(node: Node, type: string, injected: boolean, route?: CompiledRoute): void {
+    if (!TEST_ORACLES || cohort === 1) return emitOne(node, type, injected, route);
+    const dots = (cohortDots.get(node) ?? 0) + 1;
+    cohortDots.set(node, dots);
+    const real = Math.floor(dots * cohort + 1e-9) - Math.floor((dots - 1) * cohort + 1e-9);
+    for (let i = 0; i < real; i++) emitOne(node, type, injected, route);
+  }
+
+  function emitOne(node: Node, type: string, injected: boolean, route?: CompiledRoute): void {
     spend();
     const id = nextMessage++;
     const message: Message = {
@@ -2548,8 +2632,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function returned(trip: Trip): void {
     const { broker, group } = trip.delivery!;
-    group.active--;
-    group.activeByNode[trip.edge.to.id]--;
+    settleDelivery(trip.delivery!);
     trip.message = {
       ...trip.delivery!.original,
       attempts: trip.message.attempts,
@@ -2566,54 +2649,109 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         lineage.deadLettered(trip.message, broker.id, trip.message.attempts);
         deliver(broker.dlq, trip.message, "dlq");
       } else drop(broker, trip.message, "delivery limit; no DLQ edge");
-    } else group.pending.push(trip.message);
+    } else {
+      group.pending.push(trip.message);
+      group.pendingUnits += dotsOf(trip.message);
+    }
   }
 
+  /** Real requests `edge`'s consumer can still take from `group` (its prefetch window, and a partition's). */
+  function deliveryRoom(broker: Node, group: Group, edge: Edge): number {
+    const target = edge.to;
+    const room = Math.min(
+      group.limit - (group.active - group.offThread) * scale,
+      outstanding(slots(target), target, edge.travelMs) - outstandingAt(target),
+    );
+    if (!broker.props.broker?.partitioned) return room;
+    const units =
+      (group.allocations.get(target.id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1);
+    return Math.min(
+      room,
+      outstanding(units, target, edge.travelMs) -
+        ((group.activeByNode[target.id] ?? 0) - (group.offByNode.get(target.id) ?? 0)) * scale,
+    );
+  }
+
+  /**
+   * Round-robin in real requests. Scale 1 hands a burst's members to the consumers with room one at a time, so a dot
+   * is shared out among them: equal parts in round-robin order, each capped by its consumer's prefetch window, what
+   * one can't take going to the others, and what none has room for staying at the front of the queue. Each part, and
+   * a remainder left queued, keeps at least one real request (see deliverable). A dot of less than two real requests
+   * can't be shared and goes whole to the next consumer with room, as every dot does at scale 1.
+   */
   function pull(node: Node): void {
     if (node.status !== "up") return;
     for (const group of node.groups) {
       if (!group.pending.length) continue;
+      const count = group.edges.length;
+      const eligible = (edge: Edge, message: Message) =>
+        !cut(edge) && accepts(edge, message) && (edge.deny || edge.to.status === "up");
       // A deny rule delivers nothing and reserves no slot: it's ready even when the group's consumers are full.
       while (group.pending.length) {
-        const free = group.active - group.offThread < group.limit;
         const message = group.pending.peek()!;
-        let ready: Edge | undefined;
-        for (let offset = 0; offset < group.edges.length; offset++) {
-          const index = (group.cursor + offset) % group.edges.length;
+        const size = sizeOf(message);
+        // Consumers in round-robin order, with the real requests each can take now.
+        const open: { index: number; edge: Edge; room: number; part: number }[] = [];
+        for (let offset = 0; offset < count; offset++) {
+          const index = (group.cursor + offset) % count;
           const edge = group.edges[index];
-          const target = edge.to;
-          if (
-            !cut(edge) &&
-            accepts(edge, message) &&
-            (edge.deny ||
-              (free &&
-                target.status === "up" &&
-                threadOccupancy(target) + target.incoming + target.pending.length + target.staged <
-                  outstanding(slots(target), target, edge.travelMs) &&
-                (!node.props.broker?.partitioned ||
-                  (group.activeByNode[target.id] ?? 0) - (group.offByNode.get(target.id) ?? 0) <
-                    outstanding(
-                      (group.allocations.get(target.id) ?? 0) *
-                        (target.role === "processor" ? target.props.concurrency : 1),
-                      target,
-                      edge.travelMs,
-                    ))))
-          ) {
-            ready = edge;
-            group.cursor = (index + 1) % group.edges.length;
-            break;
+          if (!eligible(edge, message)) continue;
+          const room = edge.deny ? Infinity : deliveryRoom(node, group, edge);
+          if (size < 2 ? !deliverable(size, room) : room <= 1e-9) continue;
+          open.push({ index, edge, room, part: 0 });
+          if (size < 2) break;
+        }
+        if (!open.length) break;
+        let total = deliverable(
+          size,
+          open.reduce((sum, o) => sum + o.room, 0),
+        );
+        if (!total) break;
+        if (size < 2 || open.length === 1) open.length = 1;
+        if (open.length === 1) open[0].part = total;
+        else {
+          // Fill equal parts, smallest room first, so what one consumer can't take goes to the others.
+          const byRoom = [...open].sort((a, b) => a.room - b.room || 0);
+          let left = total,
+            shares = Math.min(byRoom.length, Math.floor(total + 1e-9));
+          for (const o of byRoom) {
+            if (!shares) break;
+            const part = Math.min(o.room, left / shares);
+            shares--;
+            if (part + 1e-9 < 1) continue;
+            o.part = part;
+            left -= part;
           }
+          // A sliver no window has room for rides with the largest part rather than stay queued alone.
+          const largest = open.reduce((a, b) => (b.part > a.part ? b : a));
+          if (left > 1e-9 && (left < 1 - 1e-9 || size - (total - left) < 1 - 1e-9)) {
+            largest.part += left;
+            left = 0;
+          }
+          total -= left;
         }
-        if (!ready) break;
-        if (ready.deny) {
-          group.pending.shift();
-          deliver(ready, message, "message");
-          continue;
+        if (total >= size - 1e-9) group.pending.shift();
+        let last = -1;
+        for (const o of open) {
+          if (!(o.part > 0)) continue;
+          const whole = o.part >= sizeOf(message) - 1e-9;
+          const delivered = whole
+            ? message
+            : { ...copy(node, message), attempts: message.attempts, represented: o.part };
+          if (!whole) message.represented = sizeOf(message) - o.part;
+          group.pendingUnits = settled(group.pendingUnits - dotsOf(delivered));
+          last = o.index;
+          if (o.edge.deny) {
+            deliver(o.edge, delivered, "message");
+            continue;
+          }
+          const units = dotsOf(delivered);
+          group.active += units;
+          group.activeByNode[o.edge.to.id] = (group.activeByNode[o.edge.to.id] ?? 0) + units;
+          travel(o.edge, delivered, "message", { broker: node, group, edge: o.edge, original: delivered, units });
         }
-        group.active++;
-        group.activeByNode[ready.to.id] = (group.activeByNode[ready.to.id] ?? 0) + 1;
-        group.pending.shift();
-        travel(ready, message, "message", { broker: node, group, edge: ready, original: message });
+        group.cursor = (last + 1) % count;
+        if (total < size - 1e-9) break;
       }
     }
   }
@@ -2839,7 +2977,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           endResources(node, next);
           break;
         }
-        const work = queue.shift()!;
+        const work = dequeue(node, queue);
         if (work.continuation) wakeDelivery(work);
         if (
           !work.continuation &&
@@ -2895,7 +3033,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           emitMix(node, node.mix);
           continue;
         }
-        node.trafficCredit += (node.props.ratePerSec * STEP) / (1000 * scale);
+        node.trafficCredit += (node.props.ratePerSec * STEP) / (1000 * scale * cohort);
         const count = Math.min(SOURCE_VOLUME_CAP - sourceEmitted, Math.floor(node.trafficCredit + 1e-10));
         node.trafficCredit -= count;
         sourceEmitted += count;
@@ -2918,7 +3056,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (trip.kind === "retry") returned(trip);
       else if (trip.kind !== "reply") {
         trip.edge.delivered += dotsOf(trip.message);
-        trip.edge.to.incoming--;
+        arrived(trip.edge.to, trip.message);
         if (cut(trip.edge)) {
           if (trip.delivery) returned(trip);
           else cutPush(trip.edge, trip.message);
@@ -2944,7 +3082,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function emitMix(node: Node, mix: CompiledMix): void {
     for (let i = 0; i < mix.routes.length; i++) {
       const rate = mix.mode === "shares" ? node.props.ratePerSec * mix.values[i] : mix.values[i];
-      node.mixCredit[i] += (rate * STEP) / (1000 * scale);
+      node.mixCredit[i] += (rate * STEP) / (1000 * scale * cohort);
       const count = Math.min(SOURCE_VOLUME_CAP - sourceEmitted, Math.floor(node.mixCredit[i] + 1e-10));
       node.mixCredit[i] -= count;
       sourceEmitted += count;
@@ -3427,6 +3565,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function reset(): void {
+    cohortDots = new Map();
     ledger.state = { reservations: new Map(), owners: new Map(), nextReservation: 1 };
     partBudget = createCpuPartBudget();
     admission = emptyAdmission();
@@ -3478,6 +3617,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.resume.clear();
       node.takeovers = [];
       node.staged = 0;
+      node.pendingUnits = node.stagedUnits = 0;
       node.working.length = 0;
       node.calls.clear();
       node.threadTails.clear();
@@ -3495,7 +3635,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.freeFlight = 0;
       node.heldBrokerCalls = 0;
       node.waitingOn.clear();
-      node.incoming = 0;
+      node.incoming = node.incomingUnits = 0;
       node.cursor = 0;
       node.processed = 0;
       node.failed = 0;
@@ -3513,6 +3653,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.serviceCredit = 0;
       for (const group of node.groups) {
         group.pending.clear();
+        group.pendingUnits = 0;
         group.active = 0;
         group.offThread = 0;
         group.offByNode.clear();
@@ -3721,8 +3862,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if ("system" in metric) return inSystem;
       const node = nodes.get(metric.node);
       if (!node) return undefined;
-      if (metric.field === "inFlight")
-        return callerReservations(node) ? threadOccupancy(node) : node.working.length + node.heldCalls;
+      if (metric.field === "inFlight") return threadOccupancy(node);
       // Counters read as reports do, to 1e-9 dots, so a partial dot's exact total meets an expectation.
       if (metric.field === "timedOut")
         return roundDots(node.outgoing.reduce((sum, edge) => sum + edge.calls.timedOut, 0));
@@ -3730,19 +3870,19 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (metric.field === "threadsBusy")
         return waits() && node.waits ? (node.threadWeight.work + node.threadWeight.wait) / scale : 0;
       if (metric.field === "backlog") {
-        let backlog = node.pending.length + node.resume.length + node.staged;
-        for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);
-        return backlog;
+        let backlog = node.pendingUnits + node.resume.length + node.stagedUnits;
+        for (const group of node.groups) backlog = Math.max(backlog, group.pendingUnits);
+        return roundDots(backlog);
       }
       if (metric.field === "lag") {
         if (metric.group !== undefined)
-          return (
-            node.groups.find((group) => group.name === metric.group)?.pending.length ??
-            (node.role === "queue" && metric.group === "queue" && !node.groups.length ? node.pending.length : 0)
+          return roundDots(
+            node.groups.find((group) => group.name === metric.group)?.pendingUnits ??
+              (node.role === "queue" && metric.group === "queue" && !node.groups.length ? node.pendingUnits : 0),
           );
-        let lag = node.role === "queue" && !node.groups.length ? node.pending.length : 0;
-        for (const group of node.groups) lag = Math.max(lag, group.pending.length);
-        return lag;
+        let lag = node.role === "queue" && !node.groups.length ? node.pendingUnits : 0;
+        for (const group of node.groups) lag = Math.max(lag, group.pendingUnits);
+        return roundDots(lag);
       }
       return metric.field === "throughput" ? node.throughput : roundDots(node[metric.field]);
     },
@@ -3777,6 +3917,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           groups: [],
           pending: new Deque(),
           staged: 0,
+          pendingUnits: 0,
+          stagedUnits: 0,
+          incomingUnits: 0,
           working: [],
           calls: new Map(),
           activeMs: 0,
@@ -3889,6 +4032,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           members: group.members,
           limit: 0,
           pending: new Deque(),
+          pendingUnits: 0,
           active: 0,
           cursor: 0,
           allocations: new Map(),
@@ -3932,10 +4076,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);
-        let backlog = node.pending.length + node.resume.length + node.staged;
+        let backlog = roundDots(node.pendingUnits + node.resume.length + node.stagedUnits);
         for (const group of node.groups) {
-          lag[group.name] = group.pending.length;
-          backlog = Math.max(backlog, group.pending.length);
+          lag[group.name] = roundDots(group.pendingUnits);
+          backlog = Math.max(backlog, lag[group.name]);
         }
         if (node.role === "queue" && !node.groups.length) lag.queue = backlog;
         nodeStates[node.id] = {
@@ -3947,7 +4091,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           status: node.status,
           backlog,
           lag,
-          inFlight: callerReservations(node) ? threadOccupancy(node) : node.working.length + node.heldCalls,
+          inFlight: threadOccupancy(node),
           ...(node.waits && node.role === "processor"
             ? {
                 threads: {
@@ -4128,6 +4272,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             ? "volume"
             : undefined,
     setScale(value): void {
+      if (TEST_ORACLES && opts.sameArrivals) {
+        cohort = resolveScale(value);
+        return;
+      }
       const next = resolveScale(value);
       if (next === scale) return;
       scale = next;

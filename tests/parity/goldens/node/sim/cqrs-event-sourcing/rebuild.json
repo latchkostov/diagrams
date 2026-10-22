@@ -1,6 +1,6 @@
 {
   "run": {
-    "time": 13180,
+    "time": 13220,
     "totalMs": 20000,
     "done": true,
     "scale": 5,
@@ -45,59 +45,59 @@
     },
     {
       "atMs": 10000,
-      "inSystem": 37,
+      "inSystem": 36,
       "nodes": {
         "app": { "processed": 280, "throughput": 27.16887822915508, "replicas": [1, 1, 0] },
         "gateway": { "processed": 273, "inFlight": 1, "throughput": 27.755481412157177, "replicas": [1, 1, 0] },
-        "command-handler": { "processed": 76, "throughput": 8.241510326441446, "replicas": [1, 1, 0] },
+        "command-handler": { "processed": 76, "throughput": 8.260137612394841, "replicas": [1, 1, 0] },
         "event-store": {
           "processed": 74,
-          "throughput": 7.851181387378445,
+          "throughput": 7.864747019275352,
           "lag": { "integration": 0, "balances": 0, "statements": 0 },
           "replicas": [1, 1, 0]
         },
-        "publisher": { "processed": 71, "inFlight": 1, "throughput": 7.689472640119939, "replicas": [1, 1, 0] },
+        "publisher": { "processed": 71, "inFlight": 1, "throughput": 7.70223717241644, "replicas": [1, 1, 0] },
         "integration-topic": {
           "processed": 69,
-          "throughput": 8.085008718337571,
+          "throughput": 8.091513863494074,
           "lag": { "fraud": 0 },
           "replicas": [1, 1, 0]
         },
-        "query-api": { "processed": 191, "throughput": 20.09979460084246, "replicas": [1, 1, 0] },
-        "balances-db": { "processed": 257, "throughput": 28.595016478728947, "replicas": [1, 1, 0] },
-        "statements": { "processed": 468, "inFlight": 1, "throughput": 78.14741150734851, "replicas": [1, 1, 0] },
-        "balance-proj": { "processed": 71, "inFlight": 1, "throughput": 7.621531966692054, "replicas": [1, 1, 0] },
-        "statement-proj": { "processed": 471, "inFlight": 1, "throughput": 65.91856644070774, "replicas": [1, 1, 0] },
-        "fraud": { "processed": 66, "throughput": 8.012202268831969, "replicas": [1, 1, 0] }
+        "query-api": { "processed": 191, "throughput": 20.10467763824616, "replicas": [1, 1, 0] },
+        "balances-db": { "processed": 257, "throughput": 28.58984373720374, "replicas": [1, 1, 0] },
+        "statements": { "processed": 469, "throughput": 79.33071458913588, "replicas": [1, 1, 0] },
+        "balance-proj": { "processed": 71, "inFlight": 1, "throughput": 7.632193801927037, "replicas": [1, 1, 0] },
+        "statement-proj": { "processed": 471, "inFlight": 1, "throughput": 66.0724065821319, "replicas": [1, 1, 0] },
+        "fraud": { "processed": 66, "throughput": 7.995778320650653, "replicas": [1, 1, 0] }
       }
     }
   ],
   "final": {
-    "atMs": 13180,
+    "atMs": 13220,
     "inSystem": 0,
     "real": {
-      "app": { "processed": 1400, "throughput": 6.067120782606441, "replicas": [1, 1, 0] },
-      "gateway": { "processed": 1400, "throughput": 7.41039805796639, "replicas": [1, 1, 0] },
-      "command-handler": { "processed": 400, "throughput": 2.8270155519422833, "replicas": [1, 1, 0] },
+      "app": { "processed": 1400, "throughput": 5.829225573989848, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 1400, "throughput": 7.119832194008993, "replicas": [1, 1, 0] },
+      "command-handler": { "processed": 400, "throughput": 2.725736226868684, "replicas": [1, 1, 0] },
       "event-store": {
         "processed": 400,
-        "throughput": 3.4529245925039964,
+        "throughput": 3.329221745514503,
         "lag": { "integration": 0, "balances": 0, "statements": 0 },
         "replicas": [1, 1, 0]
       },
-      "publisher": { "processed": 400, "throughput": 4.91940078683266, "replicas": [1, 1, 0] },
+      "publisher": { "processed": 400, "throughput": 4.753257089426325, "replicas": [1, 1, 0] },
       "integration-topic": {
         "processed": 400,
-        "throughput": 6.640496480102377,
+        "throughput": 6.416225946835192,
         "lag": { "fraud": 0 },
         "replicas": [1, 1, 0]
       },
-      "query-api": { "processed": 1000, "throughput": 6.549825948962446, "replicas": [1, 1, 0] },
-      "balances-db": { "processed": 1400, "throughput": 14.100425767593116, "replicas": [1, 1, 0] },
-      "statements": { "processed": 2400, "throughput": 21.10223616099226, "replicas": [1, 1, 0] },
-      "balance-proj": { "processed": 400, "throughput": 4.879757039720642, "replicas": [1, 1, 0] },
-      "statement-proj": { "processed": 2400, "throughput": 17.10514018684275, "replicas": [1, 1, 0] },
-      "fraud": { "processed": 400, "throughput": 9.576958132278774, "replicas": [1, 1, 0] }
+      "query-api": { "processed": 1000, "throughput": 6.298768619737515, "replicas": [1, 1, 0] },
+      "balances-db": { "processed": 1400, "throughput": 13.567329010093054, "replicas": [1, 1, 0] },
+      "statements": { "processed": 2400, "throughput": 20.38136196173566, "replicas": [1, 1, 0] },
+      "balance-proj": { "processed": 400, "throughput": 4.698694535738212, "replicas": [1, 1, 0] },
+      "statement-proj": { "processed": 2400, "throughput": 16.520810917598972, "replicas": [1, 1, 0] },
+      "fraud": { "processed": 400, "throughput": 9.23772645410126, "replicas": [1, 1, 0] }
     },
     "edges": {
       "app-to-gateway": 280,
@@ -116,8 +116,8 @@
     }
   },
   "events": {
-    "total": 4962,
-    "byKind": { "inject": 680, "process": 2480, "deliver": 1800, "status": 2 },
+    "total": 5094,
+    "byKind": { "inject": 680, "process": 2546, "deliver": 1866, "status": 2 },
     "byNode": {
       "app": { "inject": 280, "process": 280 },
       "gateway": { "deliver": 280, "process": 280 },
@@ -127,8 +127,8 @@
       "event-store": { "deliver": 80, "process": 80 },
       "publisher": { "deliver": 80, "process": 80 },
       "balance-proj": { "deliver": 80, "process": 80 },
-      "statement-proj": { "deliver": 80, "process": 480, "status": 2, "inject": 400 },
-      "statements": { "deliver": 480, "process": 480 },
+      "statement-proj": { "deliver": 113, "process": 513, "status": 2, "inject": 400 },
+      "statements": { "deliver": 513, "process": 513 },
       "integration-topic": { "deliver": 80, "process": 80 },
       "fraud": { "deliver": 80, "process": 80 }
     },
@@ -141,10 +141,10 @@
       "b08cfb305d88",
       "d288c66bad40",
       "e5e6fa3b54ad",
-      "90a5e4e1213b",
-      "781f6d948f38",
-      "f2e2cb960442",
-      "5660f6597db5",
+      "2b11f926d53e",
+      "ceed9681f795",
+      "b50460e09f0e",
+      "c22fc1151113",
       "-",
       "-"
     ]
@@ -155,29 +155,29 @@
     { "atMs": 4000, "text": "Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.", "focus": ["statement-proj", "statements"] }
   ],
   "latency": {
-    "journeys": { "done": 379, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
-    "endToEndMs": { "count": 379, "min": 380, "mean": 1403.2717678100264, "p50": 650, "p90": 3730, "max": 5860 },
+    "journeys": { "done": 378, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 378, "min": 380, "mean": 1393.148148148148, "p50": 650, "p90": 3710, "max": 5630 },
     "waitMs": {
-      "gateway": { "count": 254, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "command-handler": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "publisher": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "gateway": { "count": 253, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "command-handler": { "count": 67, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "publisher": { "count": 67, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "query-api": { "count": 186, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "balances-db": { "count": 254, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "statements": { "count": 193, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "balance-proj": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "statement-proj": { "count": 193, "min": 0, "mean": 947.6683937823834, "p50": 600, "p90": 2940, "max": 4480 },
-      "fraud": { "count": 68, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+      "balances-db": { "count": 253, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statements": { "count": 221, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "balance-proj": { "count": 67, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "statement-proj": { "count": 221, "min": 0, "mean": 825.2488687782806, "p50": 450, "p90": 2900, "max": 4480 },
+      "fraud": { "count": 67, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
     },
     "processMs": {
-      "gateway": { "count": 254, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
-      "command-handler": { "count": 68, "min": 50, "mean": 62.64705882352941, "p50": 60, "p90": 70, "max": 80 },
-      "publisher": { "count": 68, "min": 50, "mean": 55, "p50": 60, "p90": 60, "max": 60 },
-      "query-api": { "count": 186, "min": 20, "mean": 25.053763440860216, "p50": 30, "p90": 30, "max": 30 },
-      "balances-db": { "count": 254, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
-      "statements": { "count": 193, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
-      "balance-proj": { "count": 68, "min": 40, "mean": 45.44117647058823, "p50": 50, "p90": 50, "max": 50 },
-      "statement-proj": { "count": 193, "min": 70, "mean": 84.4041450777202, "p50": 80, "p90": 100, "max": 100 },
-      "fraud": { "count": 68, "min": 50, "mean": 65, "p50": 70, "p90": 80, "max": 80 }
+      "gateway": { "count": 253, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "command-handler": { "count": 67, "min": 50, "mean": 63.28358208955224, "p50": 60, "p90": 70, "max": 80 },
+      "publisher": { "count": 67, "min": 50, "mean": 55.52238805970149, "p50": 60, "p90": 60, "max": 60 },
+      "query-api": { "count": 186, "min": 20, "mean": 25.161290322580644, "p50": 30, "p90": 30, "max": 30 },
+      "balances-db": { "count": 253, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "statements": { "count": 221, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "balance-proj": { "count": 67, "min": 40, "mean": 45.223880597014926, "p50": 50, "p90": 50, "max": 50 },
+      "statement-proj": { "count": 221, "min": 70, "mean": 85.02262443438914, "p50": 80, "p90": 100, "max": 100 },
+      "fraud": { "count": 67, "min": 50, "mean": 64.32835820895522, "p50": 70, "p90": 70, "max": 80 }
     }
   }
 }

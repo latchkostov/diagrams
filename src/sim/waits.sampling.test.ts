@@ -1,3 +1,4 @@
+import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { hpaLesson, resourceLesson } from "../model/autoscaling";
@@ -77,6 +78,8 @@ it.each(["reply", "local"])("sampled managed retries preserve endpoint residence
   });
   d.edges[0].kind = "sync";
   d.edges[0].props!.endpointId = "one";
+  // One cohort at the caller: its window must hold the whole dot (a broker otherwise delivers it in parts).
+  d.edges[0].props!.travelMs = wholeDotTravelMs(10, 1, 10);
   if (failure === "reply") d.nodes[2].props!.api = { latencyMs: 250, errorRate: 1 };
   const e = createEngine({ scale: 10, maxParticles: 0 });
   e.load(d);

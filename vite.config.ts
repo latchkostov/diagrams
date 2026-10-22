@@ -176,6 +176,8 @@ export default defineConfig({
     __BUILD_SHA__: JSON.stringify(BUILD_SHA),
     // The simulation engine's version (src/sim/version.ts): shared Live follows only the same engine.
     __ENGINE_VERSION__: JSON.stringify(engineVersion(fileURLToPath(new URL(".", import.meta.url)))),
+    // Test-only engine oracles (EngineOptions.sameArrivals) run under Vitest and fold out of every shipped build.
+    __TEST_ORACLES__: JSON.stringify(!!process.env.VITEST),
   },
   build: {
     // Icons are many small SVGs; serving them as cached files keeps them out of the main JS chunk.

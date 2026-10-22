@@ -1,5 +1,5 @@
 ---
-title: "ScoreMember #1 · 4.31 s end to end · 2 copies"
+title: "ScoreMember #1 · 4.36 s end to end · 2 copies"
 ---
 sequenceDiagram
   participant picks_schedule as Picks schedule
@@ -19,6 +19,6 @@ sequenceDiagram
   picks_db-->>batch_scorer: reply (+3.73 s)
   feature_server-->>batch_scorer: reply (+3.74 s)
   feature_server->>online_store: PicksReady (+3.74 s)
-  picks_mailer->>esp: PicksReady (+3.88 s)<br/>Send
+  picks_mailer->>esp: PicksReady (+3.87 s)<br/>Send
   online_store-->>feature_server: reply (+3.95 s)
-  esp-->>picks_mailer: reply (+4.31 s)
+  esp-->>picks_mailer: reply (+4.36 s)

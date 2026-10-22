@@ -157,7 +157,7 @@ export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
 }
 
 interface Work extends ResourceWork {
-  message?: { width?: number };
+  message?: { width?: number; represented?: number };
   thread?: number;
   executionWeight?: number;
   workSegment?: boolean;
@@ -536,7 +536,8 @@ export function assertResourceInvariants(state: ResourceState) {
         node.props.admission?.slots ?? Infinity,
         node.props.admission?.api.maxInFlight ?? Infinity,
       );
-      const weight = (work: Work) => work.weight ?? work.executionWeight ?? state.scale;
+      // A partial dot (a broker part or a split) holds its own represented size, as the engine sizes it.
+      const weight = (work: Work) => work.weight ?? work.executionWeight ?? work.message?.represented ?? state.scale;
       const retained = new Map(
         node.working
           .filter((w) => w.cpuParts?.length && (w.cpuBackoffUntil !== undefined || (w.memorySlots ?? 0) > capacity))

@@ -138,7 +138,8 @@ function slowCallee() {
 
 // Same arrivals: guard every required caller completion/rejection row at its best value so far
 // (master 61957d3; CPU-with-pool and fragmentation rows ratcheted in sampling PR 5; CPU without a pool
-// and CPU-bound standalone at 1.01 in sampling PR 6).
+// and CPU-bound standalone at 1.01 in sampling PR 6; CPU-bound standalone at 2 and 10, legacy worker at 10 and
+// Lambda join at 10 in sampling 8a-pre, as queues deliver in real requests).
 const accuracyFixtures = {
   managedZeroWork,
   cpuBoundStandalone,
@@ -160,9 +161,9 @@ const accuracyMaster = {
   cpuBoundStandalone: [
     [1.01, 189.88, 0],
     [1.1, 199.10000000000002, 0],
-    [2, 200, 0],
+    [2, 199, 0],
     [2.5, 200, 0],
-    [10, 200, 0],
+    [10, 198, 0],
   ],
   cpuPool: [
     [1.01, 398.95, 0],
@@ -183,7 +184,7 @@ const accuracyMaster = {
     [1.1, 1996.5000000000002, 0],
     [2, 1998, 0],
     [2.5, 1997.5, 0],
-    [10, 1990, 0],
+    [10, 1989, 0],
   ],
   subTick: [
     [1.01, 498.94, 0],
@@ -197,7 +198,7 @@ const accuracyMaster = {
     [1.1, 399.3, 1598.3000000000002],
     [2, 500, 1498],
     [2.5, 500, 1497.5],
-    [10, 500, 1490],
+    [10, 465, 1525],
   ],
   fragmentation: [
     [1.01, 998.89, 0],
@@ -372,14 +373,16 @@ it("I1 regression: review CPU-bound standalone repro stays within the scale-one 
     durationMs: 20_000,
   });
   expect(realSnapshot(baseline).nodes.caller.processed).toBe(198);
-  expect(realSnapshot(sampled).nodes.caller.processed).toBe(200);
+  // Sampling 8a-pre: the queue prefetches the worker's window in real requests, as scale 1 does (200 before).
+  expect(realSnapshot(sampled).nodes.caller.processed).toBe(198);
   expectScaleEquivalent(baseline, sampled, 1);
 });
 
 it.each([2, 4])("I1 regression: Lambda joins ordinary and fleet replies at scale %s", (scale) => {
   const runs = constantRateRuns(managedJoin(), scale);
   expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(scale === 4 ? 498 : 499);
-  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(500);
+  // Sampling 8a-pre: at scale 4 the queue delivers in real requests (500 before).
+  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(scale === 4 ? 499 : 500);
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 

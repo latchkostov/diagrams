@@ -278,6 +278,8 @@ async function buildTemplate(root: string, plugins: PluginOption[]): Promise<{ h
       "import.meta.env.PROD": "true",
       "import.meta.env.MODE": JSON.stringify("production"),
       "import.meta.env.VITE_E2E": JSON.stringify(""),
+      // Test-only engine oracles fold out (vite.config.ts).
+      __TEST_ORACLES__: "false",
       __BUILD_SHA__: JSON.stringify(""),
       // The public site's switches (src/lib/deployment.ts): the viewer has no links or AI of its own anyway.
       ...deploymentDefines({}),

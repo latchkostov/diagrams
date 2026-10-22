@@ -1,3 +1,4 @@
+import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { resourceLesson } from "../model/autoscaling";
@@ -43,6 +44,8 @@ it.each([1, 10])("quota-refused in-place retries release resident weight (scale 
       quotas: [{ id: "attempt", unit: "tokens", amount: 1, windowMs: 60_000, algorithm: "token-bucket" }],
     },
   };
+  // One cohort at the worker: its window must hold the whole dot (a broker otherwise delivers it in parts).
+  d.edges[0].props = { travelMs: wholeDotTravelMs(scale, 1, 10) };
   let resident: number | undefined;
   let pressure: number | undefined;
   const e = createEngine({
@@ -230,12 +233,15 @@ it("non-blocking thread tails retain draining Kafka partition ownership", () => 
   p.d.nodes[1].props!.replicas = 2;
   p.d.nodes[1].props!.concurrency = 1;
   p.d.nodes.push({ ...p.d.nodes[1], id: "other", props: { replicas: 2, concurrency: 1, latencyMs: 0 } });
-  p.d.edges[0].props = { travelMs: 10, group: "workers" };
+  // One cohort at the caller: its partitions' window must hold the whole dot (otherwise delivered in parts).
+  const travel = wholeDotTravelMs(10, 2, 100);
+  p.d.edges[0].props = { travelMs: travel, group: "workers" };
   p.d.edges.push({ ...p.d.edges[0], id: "other-input", to: "other" });
   p.e.load(p.d);
   p.e.inject("source", 1);
-  p.e.step(200);
-  expect(p.e.snapshot().edges.call.delivered).toBe(1);
+  p.e.step(travel + 190);
+  // The group's two consumers share the dot, as scale 1 alternates a burst's members between them.
+  expect(p.e.snapshot().edges.call.delivered).toBe(0.5);
   p.e.setNodeProps("caller", { replicas: 1 });
   const assigned = () => {
     const broker = [...p.state().nodes].find((n) => n.id === "source") as unknown as {
