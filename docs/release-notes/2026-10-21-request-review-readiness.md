@@ -99,3 +99,12 @@ No golden changed in this round.
   of their own), and plan scenarios only when a blocked caller's fix reads them.
 
 No golden changed.
+
+## Startup budget
+
+The request-check store no longer ships at startup or with the canvas: startup registers only the provider
+(`src/lib/requestCheckProvider.ts`), and the store is a chunk of its own, loaded with the first check (and by
+the Checks card, agents and fixes, which already load lazily). `bundle/startup/gzip` is 176,496 B (budget
+177,000 B) and `bundle/canvasFirstView/gzip` 382,345 B (budget 383,000 B); no budget was raised. A held store
+keeps focus, cursor, styles and export working, and checks arrive after it; a failed download offers Retry from
+the Checks card and keeps focus in the canvas (`tests/e2e/request-checks-chunk.spec.ts`).

@@ -3,7 +3,7 @@ import type { CheckResult, Finding } from "../../checks/types";
 import type { CheckRequest, CheckResponse } from "../../checks/worker";
 import type { ScalingPlan } from "../../sim/scalingPlanner";
 import { rememberPlans } from "../../lib/scenarioPlanner";
-import { trackRequestChecks } from "../../lib/requestCheckCache";
+import { loadOnce } from "../../lib/lazyLoad";
 import type { ThreadFixRequest } from "../../live/threadFixPlan";
 import type { TroubleAction } from "../../live/observedTrouble";
 
@@ -94,8 +94,15 @@ export async function threadFixOffThread(threadFix: ThreadFixRequest): Promise<T
   }
 }
 
-/** The checks for `diagram`. Rejects only if the engine itself can't load. */
+/** A failed download is forgotten, so the next check downloads it again. */
+const loadRequestStore = loadOnce(() => import("../../lib/requestCheckCache"));
+
+/**
+ * The checks for `diagram`. Rejects only if the engine itself can't load. The request-check store is a chunk of its
+ * own, loaded with the first check (never at startup or with the canvas): agents and fixes read it later.
+ */
 export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckResult> {
+  const { trackRequestChecks } = await loadRequestStore();
   let completed!: { result: CheckResult; requests: Finding[] };
   await trackRequestChecks(diagram, async () => {
     completed = await computeChecksOffThread(diagram);

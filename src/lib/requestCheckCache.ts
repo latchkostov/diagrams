@@ -3,6 +3,7 @@ import type { Finding } from "../checks/types";
 import type { CheckRuleId } from "../model/checks";
 import { revisionAtLeast } from "../model/revisions";
 import { simulationContent } from "../sim/simulationContent";
+import { registerRequestChecks, requestCheckGeneration, requestCheckProvider } from "./requestCheckProvider";
 
 export type RequestCheckResult =
   | { status: "pending"; done: Promise<Finding[]> }
@@ -26,25 +27,30 @@ export function requestChecksNeeded(d: DiagramFile, rules?: readonly string[]): 
   return REQUEST_RULES.some((id) => (!rules || rules.includes(id)) && !off.includes(id));
 }
 
-let provider: ((d: DiagramFile) => Promise<Finding[]>) | undefined;
 // One complete result store for workers, local fallback, synchronous rechecks and agents.
-const cache = new Map<string, RequestCheckResult>();
+const rawCache = new Map<string, RequestCheckResult>();
 /** The newest attempt started for each content still working: only it settles that content's entry. */
 const latest = new Map<string, number>();
 let attempts = 0;
-export function registerRequestChecks(fn: typeof provider): void {
-  provider = fn;
-  cache.clear();
-  latest.clear();
+let seen = requestCheckGeneration();
+/** The store, emptied when another provider was registered since it was last read. */
+function entries() {
+  if (seen !== requestCheckGeneration()) {
+    seen = requestCheckGeneration();
+    rawCache.clear();
+    latest.clear();
+  }
+  return rawCache;
 }
-export const hasRequestCheckProvider = () => !!provider;
+export { registerRequestChecks };
+export const hasRequestCheckProvider = () => !!requestCheckProvider();
 export function requestCheckResult(d: DiagramFile): RequestCheckResult | undefined {
-  return cache.get(simulationContent(d));
+  return entries().get(simulationContent(d));
 }
 function store(key: string, result: RequestCheckResult) {
-  cache.delete(key);
-  if (cache.size >= 8) cache.delete(cache.keys().next().value!);
-  cache.set(key, result);
+  entries().delete(key);
+  if (entries().size >= 8) entries().delete(entries().keys().next().value!);
+  entries().set(key, result);
 }
 export function rememberRequestChecks(d: DiagramFile, findings: Finding[]): void {
   store(simulationContent(d), { status: "ready", findings: findings.filter((f) => !!f.requestFinding || !!f.omitted) });
@@ -63,6 +69,7 @@ export function awaitRequestChecks(d: DiagramFile): Promise<Finding[]> {
   if (known?.status === "ready") return Promise.resolve(known.findings);
   if (known?.status === "pending") return known.done;
   return trackRequestChecks(d, async () => {
+    const provider = requestCheckProvider();
     if (provider) return provider(d);
     const [{ requestFindings }, { buildContext }] = await Promise.all([
       import("../checks/requestFindings"),
@@ -81,7 +88,7 @@ export function awaitRequestChecks(d: DiagramFile): Promise<Finding[]> {
  */
 export function trackRequestChecks(d: DiagramFile, compute: () => Promise<Finding[]>): Promise<Finding[]> {
   const key = simulationContent(d);
-  const known = cache.get(key);
+  const known = entries().get(key);
   const mine = ++attempts;
   latest.set(key, mine);
   let pending: RequestCheckResult | undefined;
@@ -94,14 +101,14 @@ export function trackRequestChecks(d: DiagramFile, compute: () => Promise<Findin
     .then(compute)
     .then(
       (findings) => {
-        const current = cache.get(key);
+        const current = entries().get(key);
         // The newest attempt publishes; an older one only fills a gap (nothing there, or a newer failure).
         if (settle() || !current || current.status === "failed") rememberRequestChecks(d, findings);
         return findings;
       },
       (cause: unknown) => {
         const error = cause instanceof Error ? cause : new Error(String(cause));
-        if (settle() && pending && cache.get(key) === pending) store(key, { status: "failed", error });
+        if (settle() && pending && entries().get(key) === pending) store(key, { status: "failed", error });
         throw error;
       },
     );

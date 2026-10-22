@@ -17,7 +17,7 @@ import { startStorageLifecycle } from "./lib/storage";
 import { startI18n } from "./i18n/start";
 import { preloadCanvasView } from "./canvas/loadCanvasView";
 import { registerScenarioPlanner } from "./lib/scenarioPlanner";
-import { registerRequestChecks } from "./lib/requestCheckCache";
+import { registerRequestChecks } from "./lib/requestCheckProvider";
 import { redirectRetiredExample } from "./examples/retired";
 import { adoptRetiredExampleEdits } from "./lib/diagramIO";
 
