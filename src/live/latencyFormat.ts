@@ -8,8 +8,11 @@ export function latencyLabel(latency: LatencySummary) {
   return t("latency.p95", { duration: latencyDuration(latency.p95) });
 }
 
+/** Finished messages a readout counts, whole: a sample weighs its dots, so a dot delivered in parts adds up to one. */
+export const sampleCount = (latency: Pick<LatencySummary, "samples">) => Math.round(latency.samples);
+
 export function latencySampling(latency: LatencySummary & Pick<Partial<LatencyMetrics>, "sinceFault">) {
   return latency.sinceFault
-    ? t("latency.samplingSinceFault", { count: latency.samples })
-    : t("latency.sampling", { count: latency.samples });
+    ? t("latency.samplingSinceFault", { count: sampleCount(latency) })
+    : t("latency.sampling", { count: sampleCount(latency) });
 }

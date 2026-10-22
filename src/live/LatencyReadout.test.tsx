@@ -45,3 +45,15 @@ it("excludes animation time only from the compact breakdown denominator", () => 
     "Waiting 0% · work 10% · travel 90%",
   );
 });
+
+it("counts finished messages whole when samples weigh partial dots", () => {
+  // A dot a broker delivers in parts adds up to one sample: 202.65 dots of samples read as 203 finished messages.
+  const recorder = createLatencyRecorder();
+  recordLatency(recorder, "Order", 0, 100, 10, undefined, undefined, 202.65);
+  const latency = latencyMetrics(recorder);
+  expect(latency.samples).toBe(202.65);
+  expect(renderToStaticMarkup(<LatencyReadout id="sink" compact latency={latency} />)).toContain(
+    "From 203 finished messages since restart.",
+  );
+  expect(renderToStaticMarkup(<LatencyReadout id="sink" latency={latency} />)).toContain("203 sampled messages");
+});

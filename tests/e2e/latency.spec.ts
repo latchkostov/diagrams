@@ -168,7 +168,8 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   await expect(detail).toContainText(/From \d+ finished messages since restart/);
   await expect(detail).toContainText("Animation time not counted");
   await expect(page.getByTestId("node-latency-percentiles-billing")).toContainText(/p50 .*p95 3\.9 s.*p99 /);
-  await expect(page.getByTestId("node-latency-breakdown-billing")).toHaveText("Waiting 79% · work 21%");
+  // Sampling 8a-pre: 79.56% waiting, as the same-arrivals scale-one run (79.55%); whole-dot prefetch read 78.72%.
+  await expect(page.getByTestId("node-latency-breakdown-billing")).toHaveText("Waiting 80% · work 20%");
   const before = await detail.textContent();
   if (before === null) throw new Error("Missing latency detail");
   await seek(350);

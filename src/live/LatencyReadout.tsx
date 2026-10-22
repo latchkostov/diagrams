@@ -3,7 +3,7 @@ import { faultWindowLabel } from "../model/faultWords";
 import { t } from "../i18n";
 import { formatPercent } from "../i18n/format";
 import type { LatencyMetrics } from "../sim/types";
-import { latencyDuration, latencyLabel, latencySampling } from "./latencyFormat";
+import { latencyDuration, latencyLabel, latencySampling, sampleCount } from "./latencyFormat";
 
 /** The same sampled paths supply all percentiles and the breakdown. */
 export function LatencyReadout({
@@ -48,11 +48,11 @@ export function LatencyReadout({
       <small data-testid={`node-latency-scope-${id}`}>
         {latency.sinceFault
           ? t("latency.faultScope", {
-              count: latency.samples,
+              count: sampleCount(latency),
               change: faultWindowLabel(latency.sinceFault.fault, diagram),
             })
           : compact
-            ? t("latency.finishedScope", { count: latency.samples })
+            ? t("latency.finishedScope", { count: sampleCount(latency) })
             : t("latency.scope")}
       </small>
     </div>
