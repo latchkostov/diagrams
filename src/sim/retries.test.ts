@@ -117,6 +117,28 @@ it("a timed-out attempt continues, and its late reply cannot settle its retry", 
   expect(e.snapshot().nodes.caller.failed).toBe(1);
 });
 
+it("a queued timeout leaves the full pool before its retry enters backoff", () => {
+  const d = retryFixture({ ...naiveRetry, backoffMs: 1000 }, "non-blocking");
+  d.nodes[1].props!.concurrency = 100;
+  d.nodes[2].props = { concurrency: 100, latencyMs: 500, jitter: 0 };
+  d.edges[1].props!.caller = {
+    wait: "non-blocking",
+    deadlineMs: 100,
+    poolConnections: 1,
+    retry: { ...naiveRetry, backoffMs: 1000 },
+  };
+  const e = createEngine({ seed: 1, scale: 10, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 4);
+  e.step(130);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ backingOff: 4, retried: 4, ambiguous: 1 });
+  expect(e.queuedCalls("call")).toBe(0);
+  e.step(20000);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ backingOff: 0, held: 0 });
+  expect(e.queuedCalls("call")).toBe(0);
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
 it("each retry queues for the pool under a fresh deadline; queued timeouts are not ambiguous", () => {
   const d = retryFixture({ ...naiveRetry, backoffMs: 10 }, "non-blocking");
   d.nodes[2].props = { concurrency: 100, latencyMs: 500, jitter: 0 };

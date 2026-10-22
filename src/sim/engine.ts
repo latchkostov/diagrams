@@ -1877,6 +1877,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     const delay = backoffDelay(policy, branch.attempt!, u);
     if (event.timeout && branch.state === "sent") edge.calls.ambiguous! += dotsOf(message);
+    // A deadline can expire while the pool is full. Remove that queued attempt
+    // before resetting its deadline for a retry; otherwise it can dispatch again.
+    cancelPending(edge, call.id);
     branch.state = "backoff";
     if (!(call.backingOff ?? 0)) call.backoffAt = time;
     call.backingOff = (call.backingOff ?? 0) + 1;

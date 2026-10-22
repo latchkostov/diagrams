@@ -1,6 +1,6 @@
 ## Unreproduced failures under Linux browser load
 
-The resilience feature's final full gate at `e1cb658645b49169e22d19878d500f081d88d0fa`
+A full gate of the resilience feature at `e1cb658645b49169e22d19878d500f081d88d0fa`
 passed all unit tests and parity, but two existing browser tests failed with 12 workers and
 12 container CPUs. Neither failure is established as pre-existing or as a feature regression.
 

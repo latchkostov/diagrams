@@ -4,6 +4,8 @@ New diagrams use `p3-w2`. Request connections can execute saved retry policies, 
 
 A W2 diagram without an executable retry policy retains W1's failure replies byte for byte, verified on every tick of a processing failure. Parallel branches count overlapping backoff once in response latency.
 
+A timeout removes its expired attempt from the pool queue before scheduling backoff. A retry's fresh deadline cannot revive that old queued attempt or dispatch it alongside the new attempt.
+
 The Inspector adds Retries beside the timeout, with details and pool settings behind disclosures. The existing call pill shows amplification; the Calls hover, latency breakdown, trace, slow motion and event log explain attempts and backoff. Planning includes expected retry load, backoff residence and one shared budget per connection. A pool is free during backoff.
 
 **A retry storm** keeps the 60-second run and faults at 1–2 and 3–8 seconds. Payments has 48 threads (4 × 12), 80 ms work, 600 attempts/s healthy capacity and 50% configured utilization at 300 checkouts/s. Measurements at scale 1 across seeds 1, 7, 17, 42 and 99:
@@ -23,3 +25,5 @@ Six existing shared golden files intentionally change: `node/agent/tools.json` a
 The skill's generated Node bundles have whitespace removed without additional compression transforms or name mangling, retaining the 835,000-byte ZIP budget. No bundle budget or plugin version changes.
 
 There are 211 new parity records. The additional geometry unit snapshot is solely the new retry-storm drawing; no existing route snapshot changes. Browser neighbour tests retain their original handle-hit assertion and explicitly wait for lazy attachment geometry before using the ports.
+
+The new `node/waits/w2-pool-deadline/blocking.json` record excludes expired pool-queued attempts: `inSystem` is lower by one at 300/400 ms and two at 500/600 ms than the initial W2 recording. Call counters are unchanged. A sampled-cohort regression fails with three stale queued entries when the cancellation fix is removed; the full shrunk property seed also passes after the fix.
