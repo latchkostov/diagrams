@@ -2004,7 +2004,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // A cancelled backoff leaves its failed attempt as the branch's last; a paused caller keeps the call.
     if (branch.state === "backoff") branch.state = "failed";
     // Released as charged: a partial dot's dots change with a live scale edit.
-    edge.calls.backingOff! -= branch.backoffDots ?? 0;
+    edge.calls.backingOff = settled(edge.calls.backingOff! - (branch.backoffDots ?? 0));
     branch.backoffDots = undefined;
     if (--call.backingOff! === 0) {
       const elapsed = time - call.backoffAt!;
@@ -2173,7 +2173,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function releaseCallEdge(call: Call, edge: Edge): void {
     if (!call.held || !edge.policy?.blocking) return;
     const message = call.work.message;
-    edge.calls.held -= call.heldDots ?? 1;
+    edge.calls.held = settled(edge.calls.held - (call.heldDots ?? 1));
     const count =
       (call.node.waitingOn.get(edge.id) ?? 0) - (ledger.get<Group>(call.work.thread)?.weight ?? sizeOf(message));
     if (count) call.node.waitingOn.set(edge.id, count);

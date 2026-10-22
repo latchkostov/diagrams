@@ -416,8 +416,8 @@ it.each([
   { name: "more than a dot", fast: 1.5, slow: 0.7, p50: "fast", p95: "slow" },
 ])("weighted percentiles preserve unequal split-dot distributions ($name)", ({ fast, slow, p50, p95 }) => {
   const recorder = createLatencyRecorder();
-  recordLatency(recorder, "Order", 0, 100, 0, undefined, undefined, fast);
-  recordLatency(recorder, "Order", 0, 1000, 0, undefined, undefined, slow);
+  recordLatency(recorder, "Order", 0, 100, 0, undefined, undefined, undefined, fast);
+  recordLatency(recorder, "Order", 0, 1000, 0, undefined, undefined, undefined, slow);
   const bucket = (ms: number) => (ms < 200 ? "fast" : "slow");
   for (const summary of [latencyMetrics(recorder), latencyMetrics(recorder).byType.Order]) {
     expect(summary.samples).toBeCloseTo(fast + slow, 9);
