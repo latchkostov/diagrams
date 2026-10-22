@@ -1,3 +1,6 @@
+import { revisionAtLeast } from "../../model/revisions";
+import { RetryFields } from "./RetryFields";
+import { Disclosure } from "./Disclosure";
 import { Dropdown } from "../../components/Dropdown";
 import { Field } from "./fields";
 import { SimInput } from "./SimulationFields";
@@ -33,15 +36,19 @@ export function CallWaitFields({
     if (!override || !Object.hasOwn(override, key)) return null;
     const base = diagramCaller?.[key];
     const value =
-      key === "wait"
-        ? callPolicy(stencil, diagramCaller).blocking
-          ? t("threads.holds")
-          : t("threads.frees")
-        : base == null
-          ? key === "deadlineMs"
-            ? t("threads.noTimeout")
-            : t("threads.uncapped")
-          : String(base);
+      key === "retry"
+        ? base && typeof base === "object" && "maxAttempts" in base && Number(base.maxAttempts) > 1
+          ? t("resilience.attempts", { count: Number(base.maxAttempts) })
+          : t("resilience.off")
+        : key === "wait"
+          ? callPolicy(stencil, diagramCaller).blocking
+            ? t("threads.holds")
+            : t("threads.frees")
+          : base == null
+            ? key === "deadlineMs"
+              ? t("threads.noTimeout")
+              : t("threads.uncapped")
+            : String(base);
     return (
       <p className="insp-note" data-testid={`call-override-${key}`}>
         {t("threads.simulationOverride", { value })}
@@ -87,39 +94,64 @@ export function CallWaitFields({
         }}
       />
       {origin("deadlineMs")}
-      <SimInput
-        visibleHint
-        name="poolConnections"
-        field={{
-          label: t("threads.pool"),
-          kind: "number",
-          min: 1,
-          max: 10000,
-          placeholder: t("threads.uncapped"),
-          hint: t("threads.poolHint"),
-        }}
-        value={caller?.poolConnections}
-        onChange={(v) => set({ poolConnections: typeof v === "number" ? Math.round(v) : undefined })}
-      />
-      {origin("poolConnections")}
-      {!policy.blocking && stencilRole(stencil) === "processor" && (
-        <SimInput
-          visibleHint
-          name="replyMs"
-          field={{
-            label: t("threads.replyHandling"),
-            kind: "number",
-            unit: "ms",
-            min: 0,
-            max: SIM_LIMITS.timeMs,
-            placeholder: "10",
-            hint: t("threads.replyHint"),
-          }}
-          value={caller?.replyMs}
-          onChange={(v) => set({ replyMs: typeof v === "number" ? v : undefined })}
+      {revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2") && (
+        <RetryFields
+          retry={caller.retry}
+          method={
+            editor
+              .getDiagram()
+              .planning?.requestRoutes?.find((r) => r.id === editor.getEdge(edgeId)?.props?.requestRouteId)?.address
+              .method
+          }
+          set={(retry) => set({ retry })}
         />
       )}
-      {origin("replyMs")}
+      {origin("retry")}
+      <CallAdvanced enabled={revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2")}>
+        <SimInput
+          visibleHint
+          name="poolConnections"
+          field={{
+            label: t("threads.pool"),
+            kind: "number",
+            min: 1,
+            max: 10000,
+            placeholder: t("threads.uncapped"),
+            hint: t("threads.poolHint"),
+          }}
+          value={caller?.poolConnections}
+          onChange={(v) => set({ poolConnections: typeof v === "number" ? Math.round(v) : undefined })}
+        />
+        {origin("poolConnections")}
+        {!policy.blocking && stencilRole(stencil) === "processor" && (
+          <SimInput
+            visibleHint
+            name="replyMs"
+            field={{
+              label: t("threads.replyHandling"),
+              kind: "number",
+              unit: "ms",
+              min: 0,
+              max: SIM_LIMITS.timeMs,
+              placeholder: "10",
+              hint: t("threads.replyHint"),
+            }}
+            value={caller?.replyMs}
+            onChange={(v) => set({ replyMs: typeof v === "number" ? v : undefined })}
+          />
+        )}
+        {origin("replyMs")}
+      </CallAdvanced>
     </>
+  );
+}
+
+function CallAdvanced({ enabled, children }: { enabled: boolean; children: import("react").ReactNode }) {
+  return enabled ? (
+    <Disclosure id="call-advanced" title={t("resilience.advanced")}>
+      {children}
+    </Disclosure>
+  ) : (
+    <>{children}</>
   );
 }

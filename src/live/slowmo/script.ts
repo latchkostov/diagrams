@@ -13,6 +13,8 @@ import { routeWords } from "../../trace/routeWords";
 
 import { PACING } from "./pacing";
 export { PACING };
+// The painter rides in the script's chunk: nothing has a frame for it to draw before the script arrives.
+export { SlowPainter } from "./painter";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -573,6 +575,17 @@ export function buildScript(input: ScriptInput): SlowScript {
         break;
       }
       case "retry":
+        if (s.backoffMs !== undefined)
+          atNode(tr, "wait", PACING.append, r, r + s.backoffMs, {
+            tone: "warn",
+            rowKey: rowOf.get(i),
+            caption: t("resilience.retryBeat", {
+              attempt: s.attempt ?? 2,
+              max: s.maxAttempts ?? 3,
+              backoff: s.backoffMs,
+              reason: s.reason === "timed out" ? t("resilience.timeout") : (s.reason ?? ""),
+            }),
+          });
         break;
       case "send": {
         if (s.via === "reply") {

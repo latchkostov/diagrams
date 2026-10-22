@@ -1,0 +1,132 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-w2"
+  },
+  "title": "Retry broker-dlq",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "generic.queue",
+      "label": "Applications",
+      "x": 0,
+      "y": 0,
+      "props": {
+        "maxDeliveryCount": 2
+      }
+    },
+    {
+      "id": "caller",
+      "stencil": "generic.service",
+      "label": "Decision service",
+      "x": 330,
+      "y": 0,
+      "props": {
+        "replicas": 1,
+        "concurrency": 100,
+        "latencyMs": 10,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 100
+      }
+    },
+    {
+      "id": "partner",
+      "stencil": "generic.service",
+      "label": "Partner scoring API",
+      "x": 660,
+      "y": 0,
+      "props": {
+        "concurrency": 100,
+        "latencyMs": 30,
+        "jitter": 0,
+        "failureRate": 1
+      }
+    },
+    {
+      "id": "result",
+      "stencil": "generic.database",
+      "label": "Case store",
+      "x": 660,
+      "y": 220,
+      "props": {
+        "latencyMs": 0
+      }
+    },
+    {
+      "id": "dlq",
+      "stencil": "generic.queue",
+      "label": "Dead letters",
+      "x": 0,
+      "y": 300
+    }
+  ],
+  "edges": [
+    {
+      "id": "input",
+      "from": "source",
+      "to": "caller",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "call",
+      "from": "caller",
+      "to": "partner",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10,
+        "caller": {
+          "wait": "blocking",
+          "deadlineMs": 200,
+          "retry": {
+            "maxAttempts": 3,
+            "backoffMs": 100,
+            "strategy": "fixed",
+            "retryOn": ["timeout", "transient", "throttled"]
+          }
+        }
+      }
+    },
+    {
+      "id": "output",
+      "from": "caller",
+      "to": "result",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "dlq-flow",
+      "from": "source",
+      "to": "dlq",
+      "props": {
+        "dlq": true,
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "blocking",
+      "title": "Blocking",
+      "durationMs": 5000,
+      "scale": 1,
+      "seed": 17,
+      "traffic": [
+        {
+          "node": "source",
+          "shape": {
+            "kind": "burst",
+            "count": 12,
+            "spreadMs": 100
+          },
+          "id": "applications-0",
+          "label": "Applications",
+          "messageType": "ApplicationSubmitted"
+        }
+      ]
+    }
+  ]
+}

@@ -88,7 +88,7 @@ const NODE_PROP_NOTES: Record<string, string> = {
 const EDGE_PROP_NOTES: Record<string, string> = {
   endpointId: "Request target endpoint id inside the target API node; dangling references reject rather than fall back",
   caller:
-    "reserved deadlineMs, retry policy and poolConnections contract; no caller waits, retries, deadlines or cascades execute in P3",
+    "p3-w1: wait, deadlineMs per attempt, replyMs and poolConnections; p3-w2 executes retry: maxAttempts (includes first, capped at 10), backoffMs, strategy, maxBackoffMs, jitter 0..1, retryOn, idempotent, budget {percent, minPerSec?}. A blocking caller holds its thread through backoff. Budget: ten-second whole-dot allowance max(minPerSec*10, percent/100*requests); absent minPerSec defaults to 10. Earlier revisions keep saved retries dormant.",
 
   networkDelayMs:
     "physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs",
@@ -263,11 +263,19 @@ export const bundleApp = (root: string) =>
     "The app's own validator and layout (src/ai/skill/app.ts), bundled so the skill runs on plain Node.",
   ]);
 
+/** One space of indent, and an array of only strings, numbers, booleans or nulls on one line. JSON strings
+ * never hold a raw newline, so every newline inside such an array is layout. */
+export const specJson = (value: unknown): string =>
+  JSON.stringify(value, null, 1).replace(
+    /\[\n[^[\]{}]*?\n *\]/g,
+    (list) => `[${list.slice(1, -1).trim().split(/,\n */).join(",")}]`,
+  ) + "\n";
+
 /** Every generated file, by path under skills/livediagrams/. */
 export async function generateSkillFiles(root: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {
-    // Parsed by the scripts, not read: one space of indent stays legible and costs less of the download budget.
-    "scripts/lib/spec.json": JSON.stringify(spec(), null, 1) + "\n",
+    // Parsed by the scripts, not read: this layout stays legible and costs less of the download budget.
+    "scripts/lib/spec.json": specJson(spec()),
     "scripts/lib/app.mjs": await bundleApp(root),
     // The HTML export's injection. Its template and icons are released, not generated here (scripts/skill-viewer.ts).
     [INJECT]: await injectModule(root),

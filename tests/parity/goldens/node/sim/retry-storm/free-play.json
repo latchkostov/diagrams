@@ -1,0 +1,172 @@
+{
+  "run": { "time": 60000, "scale": 5, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shop": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [4, 4, 0] },
+        "payments": { "replicas": [4, 4, 0] },
+        "orders": { "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 613,
+      "nodes": {
+        "shop": { "processed": 592, "throughput": 59.59692154130192, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 592, "backlog": 1, "inFlight": 2, "throughput": 59.59692154130192, "replicas": [4, 4, 0] },
+        "payments": { "processed": 594, "backlog": 1, "inFlight": 4, "throughput": 60.39695609727539, "replicas": [4, 4, 0] },
+        "orders": { "processed": 586, "backlog": 586, "throughput": 59.596596376875844, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 1213,
+      "nodes": {
+        "shop": { "processed": 1192, "throughput": 59.60001317223551, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 1192, "backlog": 1, "inFlight": 2, "throughput": 59.60001317223551, "replicas": [4, 4, 0] },
+        "payments": { "processed": 1194, "backlog": 1, "inFlight": 4, "throughput": 60.39998650981486, "replicas": [4, 4, 0] },
+        "orders": { "processed": 1186, "backlog": 1186, "throughput": 59.60001315747307, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 1813,
+      "nodes": {
+        "shop": { "processed": 1792, "throughput": 59.60001331259534, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 1792, "backlog": 1, "inFlight": 2, "throughput": 59.60001331259534, "replicas": [4, 4, 0] },
+        "payments": { "processed": 1794, "backlog": 1, "inFlight": 4, "throughput": 60.39998664739537, "replicas": [4, 4, 0] },
+        "orders": { "processed": 1786, "backlog": 1786, "throughput": 59.60001331259467, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2413,
+      "nodes": {
+        "shop": { "processed": 2392, "throughput": 59.60001331260176, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 2392, "backlog": 1, "inFlight": 2, "throughput": 59.60001331260176, "replicas": [4, 4, 0] },
+        "payments": { "processed": 2394, "backlog": 1, "inFlight": 4, "throughput": 60.39998664740167, "replicas": [4, 4, 0] },
+        "orders": { "processed": 2386, "backlog": 2386, "throughput": 59.60001331260176, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 3013,
+      "nodes": {
+        "shop": { "processed": 2992, "throughput": 59.60001331260176, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 2992, "backlog": 1, "inFlight": 2, "throughput": 59.60001331260176, "replicas": [4, 4, 0] },
+        "payments": { "processed": 2994, "backlog": 1, "inFlight": 4, "throughput": 60.39998664740167, "replicas": [4, 4, 0] },
+        "orders": { "processed": 2986, "backlog": 2986, "throughput": 59.60001331260176, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 3613,
+      "nodes": {
+        "shop": { "processed": 3592, "throughput": 59.60001331260176, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 3592, "backlog": 1, "inFlight": 2, "throughput": 59.60001331260176, "replicas": [4, 4, 0] },
+        "payments": { "processed": 3594, "backlog": 1, "inFlight": 4, "throughput": 60.39998664740167, "replicas": [4, 4, 0] },
+        "orders": { "processed": 3586, "backlog": 3586, "throughput": 59.60001331260176, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 3613,
+    "real": {
+      "shop": { "processed": 17960, "throughput": 298.0000665630088, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 17960, "backlog": 5, "inFlight": 10, "throughput": 298.0000665630088, "replicas": [4, 4, 0] },
+      "payments": { "processed": 17970, "backlog": 5, "inFlight": 20, "throughput": 301.99993323700835, "replicas": [4, 4, 0] },
+      "orders": { "processed": 17930, "backlog": 17930, "throughput": 298.0000665630088, "noConsumer": true, "replicas": [1, 1, 0] }
+    },
+    "edges": { "checkouts": 3600, "pay": 3599, "orders-flow": 3586 }
+  },
+  "events": {
+    "total": 25149,
+    "byKind": { "deliver": 10785, "process": 14364 },
+    "byNode": {
+      "checkout": { "deliver": 3600, "process": 3592 },
+      "payments": { "deliver": 3599, "process": 3594 },
+      "shop": { "process": 3592 },
+      "orders": { "deliver": 3586, "process": 3586 }
+    },
+    "perSecond": [
+      "4f5d6b22c7e5",
+      "756e6a91d4a4",
+      "6b7c1978281d",
+      "6d33b4cd0d03",
+      "fb23330a0ca3",
+      "662760c96bf3",
+      "31947fb53be0",
+      "127e328a6b33",
+      "8f61085d8cab",
+      "f8b355711312",
+      "c1042b0f3913",
+      "1a88aa573a4b",
+      "9a0631691f07",
+      "5b5f971d2542",
+      "7025aec07839",
+      "43c7668029bc",
+      "73b29937f973",
+      "d54b17621486",
+      "a0b9e2cd6813",
+      "7be7a5970286",
+      "e5b7394dd7c5",
+      "60b2e33dd235",
+      "c33d6da66aaa",
+      "fd355e809786",
+      "fa88b4cd45ef",
+      "e67fb471f7e4",
+      "61192eb4b607",
+      "614cac7a4447",
+      "9aa2529b05d2",
+      "40773105e370",
+      "97518dc9912b",
+      "c44986a6c952",
+      "5f184e757114",
+      "55ef4b692f8d",
+      "dbb3bd90e34c",
+      "f3b447389556",
+      "de65e350330d",
+      "6045aed7830d",
+      "28420beea986",
+      "b9bae3fac7f7",
+      "2ea846997082",
+      "e9a7046a3b91",
+      "d6a4307d04f9",
+      "b0d5057e3dd6",
+      "f3953dff8069",
+      "d6c4e55bbcdf",
+      "4c10b62c79ee",
+      "8317a4e8cd16",
+      "101eb7c20e38",
+      "1fce645649be",
+      "495d64f879b1",
+      "ff821a77645e",
+      "c96aba5b11d1",
+      "a00545390aaa",
+      "1851232f0e68",
+      "d69fe16739f8",
+      "1c9f573055b4",
+      "b6ee2016c101",
+      "81235d02a25f",
+      "ded672bfe870",
+      "03e96c1c7dfd"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 3586, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 3586, "min": 220, "mean": 220, "p50": 220, "p90": 220, "max": 220 },
+    "waitMs": {
+      "checkout": { "count": 7172, "min": 0, "mean": 55, "p50": 110, "p90": 110, "max": 110 },
+      "payments": { "count": 3586, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "checkout": { "count": 3586, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payments": { "count": 3586, "min": 80, "mean": 80, "p50": 80, "p90": 80, "max": 80 }
+    }
+  }
+}

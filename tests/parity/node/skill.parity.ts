@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import type { DiagramFile } from "../../../src/model/types";
 import { publicSchemaFiles } from "../../../src/ai/webmcp/publicSchemas";
-import { allDiagrams, examples } from "../lib/corpus";
+import { allDiagrams, examples, resilienceShowcases } from "../lib/corpus";
 import { expectGolden, expectGoldenText, ROOT } from "../lib/golden";
 import { fingerprint } from "../lib/hash";
 import { stencilsDoc } from "../../../scripts/skill-gen";
@@ -39,16 +39,26 @@ const originals = examples.filter((e) => ORIGINAL_EXAMPLES.includes(e.slug));
 it("retains every original aggregate input", () => {
   expect(originals.map((e) => e.slug)).toEqual(ORIGINAL_EXAMPLES);
 });
-const exampleFile = (slug: string) => join(ROOT, "src/examples", `${slug}.json`);
+const exampleFile = (slug: string) =>
+  slug === "slow-payment-provider"
+    ? join(ROOT, "tests/parity/fixtures/slow-payment-provider-w1.json")
+    : join(ROOT, "src/examples", `${slug === "w2-slow-payment-provider" ? "slow-payment-provider" : slug}.json`);
 const diagramFile = (slug: string) =>
-  slug.startsWith("corpus-")
-    ? join(ROOT, "tests/parity/corpus", `${slug.slice("corpus-".length)}.diagram.json`)
-    : exampleFile(slug);
+  slug === "w2-slow-payment-provider"
+    ? exampleFile(slug)
+    : slug.startsWith("corpus-")
+      ? join(ROOT, "tests/parity/corpus", `${slug.slice("corpus-".length)}.diagram.json`)
+      : exampleFile(slug);
 
 /** Runs one of the skill's scripts; paths in its output are made relative to the repository. */
 function script(name: string, args: string[], temporary?: string) {
   const r = spawnSync(process.execPath, [join(SKILL, "scripts", name), ...args], { cwd: ROOT, encoding: "utf8" });
-  const clean = (s: string) => normalizeScriptOutput(s, ROOT, temporary);
+  // The frozen cohort retains its original display path; W2 uses a new record.
+  const clean = (s: string) =>
+    normalizeScriptOutput(s, ROOT, temporary).replaceAll(
+      "tests/parity/fixtures/slow-payment-provider-w1.json",
+      "src/examples/slow-payment-provider.json",
+    );
   return { status: r.status, stdout: clean(r.stdout), stderr: clean(r.stderr) };
 }
 
@@ -113,7 +123,7 @@ it("validate.mjs", () => {
 });
 
 describe("validate.mjs added public examples", () => {
-  for (const { slug } of examples.filter((d) => !ORIGINAL_EXAMPLES.includes(d.slug)))
+  for (const { slug } of [...examples, ...resilienceShowcases].filter((d) => !ORIGINAL_EXAMPLES.includes(d.slug)))
     it(slug, () => {
       const r = script("validate.mjs", [exampleFile(slug)]);
       expectGoldenText(`skill/validate/${slug}.txt`, `exit ${r.status}\n${r.stdout}${r.stderr}`);
@@ -121,7 +131,7 @@ describe("validate.mjs added public examples", () => {
 });
 
 describe("layout.mjs, share-link.mjs and export-html.mjs", () => {
-  for (const { slug } of examples)
+  for (const { slug } of [...examples, ...resilienceShowcases])
     it(slug, () => {
       const dir = mkdtempSync(join(tmpdir(), "parity-skill-"));
       try {

@@ -144,7 +144,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    # Some runners spend ~8 minutes on the parallel builds and browser setup before tests start; 15 left no headroom.
+    timeout-minutes: 22
     strategy:
       fail-fast: false
       matrix:

@@ -1,0 +1,21 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "blocked-threads",
+    "scaling-blind",
+    "call-timeout",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [],
+  "ignored": [],
+  "fixes": {}
+}

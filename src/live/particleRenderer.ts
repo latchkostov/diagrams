@@ -478,7 +478,7 @@ export class ParticleRenderer {
       // A refused reply (404, 429) takes the failure tint and a cross; a route keeps its marker otherwise.
       const color = p.code
         ? this.opts.tokens.fail
-        : p.kind === "retry"
+        : p.kind === "retry" || (p.callAttempt ?? 1) > 1
           ? this.opts.tokens.retry
           : p.kind === "dlq"
             ? this.opts.tokens.dlq
@@ -774,7 +774,14 @@ export class ParticleRenderer {
       if (s) {
         s.progress = p.progress;
         s.frame = frame;
-      } else this.seen.set(p.id, { edgeId: p.edgeId, kind: p.kind, color: p.color, progress: p.progress, frame });
+      } else
+        this.seen.set(p.id, {
+          edgeId: p.edgeId,
+          kind: p.kind,
+          color: (p.callAttempt ?? 1) > 1 ? this.opts.tokens.retry : p.color,
+          progress: p.progress,
+          frame,
+        });
     }
     for (const [id, s] of this.seen) {
       if (s.frame === frame) continue;

@@ -1145,3 +1145,13 @@ PR. Six existing shared records intentionally change: `node/agent/tools.json` an
 the new example's ranking; `node/skill/validate.txt` adds corpus validation; and
 `node/i18n/catalogs.json` gains ten English messages, their fingerprints and fallback counts.
 See [the release fragment](release-notes/2026-10-20-request-deadlines-ledger.md).
+
+## Resilience PR 1: retries (2026-10-22)
+
+Six shared fingerprints intentionally change: `node/agent/tools.json` (retry caps, budget, metrics and W2 revision), `node/skill/public-schemas.json` (the same public contracts), `node/i18n/catalogs.json` (retry and gallery English messages, counts and fallbacks), `node/skill/files.json` (the generated spec and retry/revision guidance), `node/skill/current-stencils.json` (showcase usage), and `node/skill/validate.txt` (eight new W2 corpus validations). Checks rule lists do not change in PR 1.
+
+Every existing diagram-output record stays frozen. `tests/parity/fixtures/slow-payment-provider-w1.json` preserves the released input, byte for byte; the full upgraded public example is additionally recorded under `w2-slow-payment-provider`. Skill script display paths retain the old cohort identity. This is explicit input versioning, not a re-recording of changed behavior. The ordinary browser tier continues rendering the current public example.
+
+Added records cover `retry-storm`, the upgraded payment showcase and eight frozen `w2-*` diagrams: fixed, exponential, jitter, budget, blocking backoff, pool/deadline, broker/DLQ and scales 1/2/10. The waits tier records branch counters and ownership through each run. W2-noop separately compares every W1 corpus input's free play, saved simulations, planning and global draw count after relabeling W2. The generated viewer and whitespace-compacted installed scripts change implementation bytes only.
+
+Five-seed sizing bands and every intended golden category are explained in [the release fragment](release-notes/2026-10-22-resilience-retries.md).

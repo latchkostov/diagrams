@@ -1,0 +1,11 @@
+{
+  "viewport": "translate(40px, 91.7113px) scale(1.05155)",
+  "nodes": {
+    "shop": { "kind": "node", "box": "translate(0px, 160px) 220×72", "text": "Shop User" },
+    "checkout": { "kind": "node", "box": "translate(340px, 160px) 220×72", "text": "Checkout Service" },
+    "payments": { "kind": "node", "box": "translate(710px, 160px) 260×72", "text": "Payments 48 threads · 80 ms · 600 attempts/s" },
+    "orders": { "kind": "node", "box": "translate(710px, 400px) 220×72", "text": "Orders Topic" }
+  },
+  "edges": { "checkouts": "M220,196 L340,196", "pay": "M560,189 L631.5,189 Q635,189 635,192.5 L635,192.5 Q635,196 638.5,196 L710,196", "orders-flow": "M560,203 L625,203 Q635,203 635,213 L635,426 Q635,436 645,436 L710,436" },
+  "labels": {}
+}

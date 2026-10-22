@@ -32,3 +32,7 @@ deploy/self-host/aws/assets-response-headers-policy.json linguist-generated=true
 deploy/self-host/aws/auth-response-headers-policy.json linguist-generated=true
 skills/livediagrams/reference/format.md linguist-generated=true
 skills/livediagrams/reference/simulation.md linguist-generated=true
+
+# Keep UX review screenshots in the repository but out of source archives (GitHub tarballs and zips), so archive
+# downloads such as the Claude plugin directory's validator stay under its size limits.
+docs/screenshots/** export-ignore

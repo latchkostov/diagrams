@@ -13,7 +13,7 @@
 import * as nodeFs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { build } from "vite";
+import { build, minifySync } from "vite";
 import { catalog } from "../src/stencils/catalog";
 import { FALLBACK_ICON } from "../src/export/inject";
 import { i18n } from "./i18n-plugin";
@@ -44,7 +44,16 @@ export async function bundleModule(root: string, entry: string, header: string[]
   const outputs = (Array.isArray(out) ? out : [out]) as { output: { type: string; code?: string }[] }[];
   const chunk = outputs[0].output.find((o) => o.type === "chunk");
   if (!chunk?.code) throw new Error(`skill: bundling ${entry} produced no code.`);
-  return `${header.map((line) => `// ${line}`).join("\n")}\n${chunk.code.replace(/\r\n/g, "\n")}`;
+  // Vite preserves whitespace for ES library output. These installed scripts run
+  // directly in Node, so compact that whitespace without another optimization
+  // or identifier-mangling pass; keep the skill within its download budget.
+  const compact = minifySync(path.basename(entry), chunk.code, {
+    compress: false,
+    mangle: false,
+    codegen: { removeWhitespace: true },
+  });
+  if (compact.errors.length) throw new Error(`skill: compacting ${entry} failed: ${compact.errors.join(", ")}`);
+  return `${header.map((line) => `// ${line}`).join("\n")}\n${compact.code}\n`;
 }
 
 /** scripts/lib/inject.mjs. */

@@ -1,0 +1,373 @@
+{
+  "autoScale": { "freePlay": 1, "blocking": 2 },
+  "brokerAssignments": { "brokers": {}, "consumers": { "caller": { "count": 1 } } },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": null,
+      "suggestion": "Add entry traffic to analyze capacity.",
+      "converged": true,
+      "iterations": 1,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": [333.3333333333333, 0, 0, 1, 1, 0], "caller": [333.3333333333333, 0, 0, 1, 1, 0], "partner": [3333.3333333333335, 0, 0, 1, 1, 0], "result": ["Infinity", 0, 0, 1, 1, 0], "dlq": [0, 0, 0, 1, 1, 0] },
+      "connections": {},
+      "offeredTypes": {}
+    },
+    "explanations": {
+      "caller": {
+        "waits": { "workMs": 10, "callMs": 290, "threadHoldMs": 300, "memoryResidenceMs": 300, "slots": 100, "ceiling": 333.3333333333333 },
+        "id": "caller",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 333.3333333333333,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 100,
+        "seconds": 0.3,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "partner": {
+        "id": "partner",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 3333.3333333333335,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 100,
+        "seconds": 0.03,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "minimumReplicas": 1,
+        "changes": null,
+        "converged": true
+      },
+      "dlq": {
+        "id": "dlq",
+        "role": "queue",
+        "status": "up",
+        "reason": "no-reader",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 0,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [],
+        "target": 0.5,
+        "changes": null,
+        "addConsumer": "dlq",
+        "fixId": "no-reader:dlq",
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "caller": [
+        { "kind": "consumes", "edge": "input", "peer": "source", "retry": "requeue", "retryBackoffMs": 100 },
+        { "kind": "calls", "edge": "call", "peer": "partner" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "source": {
+        "profile": { "family": "queue", "revision": "p3-w2", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 2,
+        "partitions": 3,
+        "messageType": "Applications",
+        "healthChecks": false
+      },
+      "caller": {
+        "profile": { "family": "service", "revision": "p3-w2", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 10,
+        "concurrency": 100,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 100,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Decision service",
+        "healthChecks": false
+      },
+      "partner": {
+        "profile": { "family": "service", "revision": "p3-w2", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 30,
+        "concurrency": 100,
+        "replicas": 1,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 1,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Partner scoring API",
+        "healthChecks": false
+      },
+      "result": {
+        "profile": { "family": "sql", "revision": "p3-w2", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Case store",
+        "healthChecks": false
+      },
+      "dlq": {
+        "profile": { "family": "queue", "revision": "p3-w2", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Dead letters",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "blocking": {
+      "configured": "(same as edit)",
+      "simulation": "blocking",
+      "analysis": {
+        "bottleneck": "caller",
+        "suggestion": "Decision service: 36% utilized",
+        "converged": true,
+        "iterations": 3,
+        "nodes [capacity, offered, utilization, replicas, active, idle]": { "source": [333.3333333333333, 120, 0.36000000000000004, 1, 1, 0], "caller": [333.3333333333333, 120, 0.36000000000000004, 1, 1, 0], "partner": [3333.3333333333335, 360, 0.108, 1, 1, 0], "result": ["Infinity", 120, 0, 1, 1, 0], "dlq": [0, 0, 0, 1, 1, 0] },
+        "connections": { "input": 120, "call": 360, "output": 120 },
+        "offeredTypes": { "source": ["ApplicationSubmitted"], "caller": ["ApplicationSubmitted"], "partner": ["ApplicationSubmitted"], "result": ["ApplicationSubmitted"] }
+      },
+      "explanations": {
+        "caller": {
+          "waits": { "workMs": 10, "callMs": 290, "threadHoldMs": 300, "memoryResidenceMs": 300, "slots": 100, "ceiling": 333.3333333333333 },
+          "id": "caller",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 333.3333333333333,
+          "offered": 120,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 100,
+          "seconds": 0.3,
+          "utilization": 0.36000000000000004,
+          "growth": 0,
+          "contributors": [{ "edge": "input", "node": "source", "label": "Applications", "rate": 120 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "partner": {
+          "id": "partner",
+          "role": "processor",
+          "status": "up",
+          "reason": "throughput",
+          "evidence": "configured",
+          "unit": "req/s",
+          "capacity": 3333.3333333333335,
+          "offered": 360,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": 100,
+          "seconds": 0.03,
+          "utilization": 0.108,
+          "growth": 0,
+          "contributors": [{ "edge": "call", "node": "caller", "label": "Decision service", "rate": 360 }],
+          "target": 0.5,
+          "minimumReplicas": 1,
+          "changes": null,
+          "converged": true
+        },
+        "dlq": {
+          "id": "dlq",
+          "role": "queue",
+          "status": "up",
+          "reason": "no-reader",
+          "evidence": "configured",
+          "unit": "msg/s",
+          "capacity": 0,
+          "offered": 0,
+          "replicas": 1,
+          "baseReplicas": 1,
+          "omittedContributors": 0,
+          "activeReplicas": 1,
+          "assignments": [],
+          "slots": "Infinity",
+          "seconds": 0,
+          "utilization": 0,
+          "growth": 0,
+          "contributors": [],
+          "target": 0.5,
+          "changes": null,
+          "addConsumer": "dlq",
+          "fixId": "no-reader:dlq",
+          "converged": true
+        }
+      },
+      "capabilities": "(same as edit)",
+      "sizing": "(same as edit)",
+      "redundancy": "(same as edit)",
+      "resolved": "(same as edit)"
+    }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", ""],
+            "caller": ["idle", ""],
+            "partner": ["idle", ""],
+            "result": ["idle", "", { "modeled": false }],
+            "dlq": ["idle", "", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", ""],
+            "caller": ["idle", ""],
+            "partner": ["idle", ""],
+            "result": ["idle", "", { "modeled": false }],
+            "dlq": ["idle", "", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", ""],
+            "caller": ["idle", ""],
+            "partner": ["idle", ""],
+            "result": ["idle", "", { "modeled": false }],
+            "dlq": ["idle", "", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "idle",
+          "top": null,
+          "headline": "No traffic to analyze",
+          "detail": "Set a rate on an entry point to see where it backs up.",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "source": ["idle", ""],
+            "caller": ["idle", ""],
+            "partner": ["idle", ""],
+            "result": ["idle", "", { "modeled": false }],
+            "dlq": ["idle", "", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "blocking": {
+      "tone": "ok",
+      "top": "caller",
+      "headline": "Healthy: every service has headroom",
+      "detail": "Busiest: Decision service at 36% · 120/s of 333/s",
+      "fix": null,
+      "addConsumer": null,
+      "converged": true,
+      "nodes": {
+        "source": ["ok", "36% · 120/s of 333/s"],
+        "caller": ["ok", "36% · 120/s of 333/s"],
+        "partner": ["ok", "11% · 360/s of 3.3k/s"],
+        "result": ["idle", "120/s · no limit", { "modeled": false }],
+        "dlq": ["idle", "", { "noReader": true }]
+      }
+    }
+  }
+}

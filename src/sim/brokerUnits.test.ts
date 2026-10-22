@@ -6,6 +6,8 @@ import { assertLedgerInvariants, assertOutcomeInvariants, assertResourceInvarian
 import type { ResourceState } from "./resourceInvariants";
 import { realSnapshot } from "./units";
 import { resourceLesson } from "../model/autoscaling";
+import { resilienceFixture } from "../lab/resilienceFixture";
+import type { EdgeSimProps, SimSnapshot } from "./types";
 
 const role = (id: string, stencil: string, props: Record<string, unknown> = {}) => ({
   id,
@@ -443,4 +445,37 @@ it("a part larger than a node's slots still resumes after a scale change to 1", 
   e.step(20_000);
   expect(e.metrics().inSystem).toBe(0);
   expect(e.snapshot().nodes.tier0.processed).toBe(5);
+});
+
+// Merge of #236 (retries): a retry is a new attempt from a copy of the caller's message, so a broker's part keeps its
+// real size through its retries, and the retry counters, the working-unit cache and the invariants follow it. A queue
+// feeds a four-slot caller whose partner always fails; the caller retries twice, then the queue redelivers.
+function retriedParts(scale: number, backoff: "jitter" | "fixed", seed = 7) {
+  const d = resilienceFixture();
+  d.nodes[0] = { ...d.nodes[0], stencil: "generic.queue", props: { maxDeliveryCount: 3 } };
+  d.nodes[1].props = { ...d.nodes[1].props, concurrency: 4 };
+  const retry = (d.edges[1].props!.caller as EdgeSimProps["caller"])!.retry!;
+  if (backoff === "fixed") Object.assign(retry, { strategy: "fixed", jitter: 0 });
+  return constantRateRuns(d, scale, { durationMs: 15_000, seed });
+}
+const attempts = (s: SimSnapshot) => realSnapshot(s).edges.call.calls!.attempts!;
+it.each([
+  [2, "jitter"],
+  [2, "fixed"],
+  [10, "fixed"],
+] as const)("retries of a broker's parts keep their real size (scale %s, %s backoff)", (scale, backoff) => {
+  const runs = retriedParts(scale, backoff);
+  expect(realSnapshot(runs.sampled).edges.call.calls!.retried).toBeGreaterThan(0);
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+// Named gap (docs/backlog/2026-10-22-sampling-retries-saturated-caller.md): with jittered backoff at scale 10, the
+// saturated four-slot caller finishes about 2% fewer attempts than scale 1 (8,622 against 8,835, seed 7; 2% low on
+// every seed tried), just outside I1. Master, which hands the caller whole dots on stretched grants, reads 8,870.
+it.fails("retries of a broker's parts keep scale 1's attempts with jittered backoff (scale 10, known gap)", () => {
+  const runs = retriedParts(10, "jitter");
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
+it("retries of a broker's parts with jittered backoff at scale 10 (pin of the known gap)", () => {
+  const runs = retriedParts(10, "jitter");
+  expect([attempts(runs.baseline), attempts(runs.sampled)]).toEqual([8835, 8622]);
 });

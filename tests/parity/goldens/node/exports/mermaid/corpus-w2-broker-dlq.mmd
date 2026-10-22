@@ -1,0 +1,15 @@
+---
+title: Retry broker-dlq
+---
+flowchart LR
+  source["Applications"]
+  caller["Decision service"]
+  partner["Partner scoring API"]
+  result[("Case store")]
+  dlq["Dead letters"]
+  source -.-> caller
+  caller --> partner
+  caller -.-> result
+  source -.-> dlq
+  linkStyle 0,2,3 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"source":["source","generic.queue"],"caller":["caller","generic.service"],"partner":["partner","generic.service"],"result":["result","generic.database"],"dlq":["dlq","generic.queue"]},"edges":["input","call","output","dlq-flow"],"relations":{}}

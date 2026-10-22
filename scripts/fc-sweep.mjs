@@ -52,6 +52,7 @@ if (!files.length) {
     "src/sim/waits.review.test.ts",
     "src/sim/waits.sampling.test.ts",
     "src/sim/scaleEquivalence.test.ts",
+    "src/sim/resilience.invariants.test.ts",
   );
 }
 const used = new Set(seeds);

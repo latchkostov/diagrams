@@ -35,6 +35,9 @@ export function roundCounts(counts: Record<string, number>): Record<string, numb
   return out;
 }
 export const roundCalls = (c: NonNullable<EdgeSimState["calls"]>): NonNullable<EdgeSimState["calls"]> => ({
+  ...(c.requests === undefined
+    ? {}
+    : Object.fromEntries(Object.entries(c).map(([key, value]) => [key, roundDots(value)]))),
   inFlight: roundDots(c.inFlight),
   held: roundDots(c.held),
   timedOut: roundDots(c.timedOut),

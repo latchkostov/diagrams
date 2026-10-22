@@ -453,7 +453,7 @@ export const diagramV2Schema = {
         {
           additionalProperties: true,
           properties: {
-            planning: { additionalProperties: true, properties: { revision: { enum: ["p3-a1", "p3-w1"] } } },
+            planning: { additionalProperties: true, properties: { revision: { enum: ["p3-a1", "p3-w1", "p3-w2"] } } },
           },
         },
         {

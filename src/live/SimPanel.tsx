@@ -65,6 +65,24 @@ const FIELDS: { value: MetricField; label: string }[] = [
   { value: "inFlight", label: "in flight" },
   { value: "failed", label: "failed" },
   {
+    value: "retried",
+    get label() {
+      return translate("resilience.retriedMetric");
+    },
+  },
+  {
+    value: "amplification",
+    get label() {
+      return translate("resilience.amplificationMetric");
+    },
+  },
+  {
+    value: "goodput",
+    get label() {
+      return translate("resilience.goodputMetric");
+    },
+  },
+  {
     value: "timedOut",
     get label() {
       return translate("threads.timedOutMetric");

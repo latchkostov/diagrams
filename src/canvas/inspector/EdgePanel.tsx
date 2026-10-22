@@ -7,7 +7,6 @@ import { t } from "../../i18n";
 import { brokerSpec } from "../../model/brokers";
 import { relationNote, relationOf, isDependency } from "../../model/relations";
 import { EdgeRouteFields } from "../../planning/lazy";
-import { CallWaitFields } from "./CallWaitFields";
 import { groupLabel } from "../../stencils/brokerVocabulary";
 import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
@@ -19,7 +18,7 @@ import { SettingsEditor } from "./SettingsEditor";
 import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type EditorApi } from "../../editor/types";
 import { relationLabel } from "../../i18n/chrome";
 import { inferRelation } from "../../stencils/relations";
@@ -27,6 +26,20 @@ import { revisionAtLeast } from "../../model/revisions";
 import { routingEnabled } from "../../model/requestRouting";
 
 const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
+/**
+ * A Request's wait, timeout, pool and retry fields: their own chunk, asked for as its inspector opens. While they
+ * download, a polite status says so (as slow motion's does); a failed download offers Retry in a toast.
+ */
+const CallWaitFields = lazyComponent(
+  () => import("./CallWaitFields").then((m) => m.CallWaitFields),
+  (_, { failed }) =>
+    failed ? null : (
+      <p className="insp-note" role="status" aria-live="polite" data-testid="call-fields-loading">
+        {t("common.loading")}
+      </p>
+    ),
+  true,
+);
 
 export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
@@ -47,6 +60,10 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
   const grouped = flow && fields.group && props.dlq !== true;
   const deadLetters = flow && fields.dlq;
   const requestWait = flow && data.kind === "sync" && revisionAtLeast(meta.planning?.revision, "p3-w1");
+  // On intent: by the time the Simulation section opens, its fields are usually here.
+  useEffect(() => {
+    if (requestWait) CallWaitFields.preload();
+  }, [requestWait]);
   const routeCaller =
     data.kind === "sync" && (sourceRole === "source" || sourceRole === "processor" || sourceRole === "none");
   return (

@@ -1,0 +1,57 @@
+{
+  "run": {
+    "time": 5000,
+    "totalMs": 5000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Applications" },
+      { "atMs": 100, "kind": "traffic", "label": "Applications ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1, "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 5000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 12, "throughput": 0.08504483045402972, "replicas": [1, 1, 0] },
+      "caller": { "failed": 12, "dropped": 12, "replicas": [1, 1, 0] },
+      "partner": { "processed": 33, "throughput": 0.5262648259651206, "replicas": [1, 1, 0] },
+      "result": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 12, "call": 33, "output": 0 }
+  },
+  "events": {
+    "total": 150,
+    "byKind": { "inject": 12, "process": 45, "deliver": 45, "retry": 24, "fail": 12, "drop": 12 },
+    "byNode": {
+      "source": { "inject": 12, "process": 12 },
+      "caller": { "deliver": 12, "retry": 24, "fail": 12, "drop": 12 },
+      "partner": { "deliver": 33, "process": 33 }
+    },
+    "perSecond": ["e91aa8b8758e", "c5b50104d3e8", "-", "-", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 12, "retried": 12, "deadLettered": 0, "dropped": 12, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 12, "min": 530, "mean": 962.5, "p50": 1010, "p90": 1010, "max": 1010 },
+    "waitMs": {
+      "caller": { "count": 24, "min": 0, "mean": 255, "p50": 510, "p90": 510, "max": 510 },
+      "partner": { "count": 33, "min": 0, "mean": 0.30303030303030304, "p50": 0, "p90": 0, "max": 10 }
+    },
+    "processMs": { "partner": { "count": 33, "min": 500, "mean": 500, "p50": 500, "p90": 500, "max": 500 } }
+  }
+}

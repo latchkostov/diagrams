@@ -1,0 +1,24 @@
+{
+  "autoLayout": {
+    "viewport": "translate(-1.63265px, 282.449px) scale(1.04082)",
+    "nodes": {
+      "shop": { "kind": "node", "box": "translate(40px, 100px) 220×72", "text": "Shop User" },
+      "checkout": { "kind": "node", "box": "translate(400px, 100px) 220×72", "text": "Checkout Service" },
+      "payments": { "kind": "node", "box": "translate(760px, 40px) 260×72", "text": "Payments 48 threads · 80 ms · 600 attempts/s" },
+      "orders": { "kind": "node", "box": "translate(760px, 160px) 220×72", "text": "Orders Topic" }
+    },
+    "edges": { "checkouts": "M260,136 L400,136", "pay": "M620,129 L680,129 Q690,129 690,119 L690,86 Q690,76 700,76 L760,76", "orders-flow": "M620,143 L680,143 Q690,143 690,153 L690,186 Q690,196 700,196 L760,196" },
+    "labels": {}
+  },
+  "tidy": {
+    "viewport": "translate(-119.796px, 282.449px) scale(1.04082)",
+    "nodes": {
+      "shop": { "kind": "node", "box": "translate(0px, 220px) 220×72", "text": "Shop User" },
+      "checkout": { "kind": "node", "box": "translate(360px, 220px) 220×72", "text": "Checkout Service" },
+      "payments": { "kind": "node", "box": "translate(710px, 160px) 260×72", "text": "Payments 48 threads · 80 ms · 600 attempts/s" },
+      "orders": { "kind": "node", "box": "translate(710px, 280px) 220×72", "text": "Orders Topic" }
+    },
+    "edges": { "checkouts": "M220,256 L360,256", "pay": "M580,249 L635,249 Q645,249 645,239 L645,206 Q645,196 655,196 L710,196", "orders-flow": "M580,263 L635,263 Q645,263 645,273 L645,306 Q645,316 655,316 L710,316" },
+    "labels": {}
+  }
+}

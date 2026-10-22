@@ -33,6 +33,7 @@ interface Histogram {
   /** A sample weighed a fraction of a dot (a broker's part): percentiles rank by weight, not by whole samples. */
   fractional?: true;
   callMs?: number;
+  backoffMs?: number;
   buckets: number[];
   samples: number;
   max: number;
@@ -78,6 +79,7 @@ export function recordLatency(
   travel: number,
   budget?: LatencyBudget,
   callMs?: number,
+  backoffMs?: number,
   /** Dots the measured message carries (unitsOf): a dot delivered in parts adds up to one sample. */
   weight = 1,
 ) {
@@ -89,7 +91,8 @@ export function recordLatency(
     h.samples += weight;
     h.max = Math.max(h.max, latency);
     h.waitMs += Math.max(0, wait - (callMs ?? 0)) * weight;
-    if (callMs !== undefined) h.callMs = (h.callMs ?? 0) + callMs * weight;
+    if (callMs !== undefined) h.callMs = (h.callMs ?? 0) + Math.max(0, callMs - (backoffMs ?? 0)) * weight;
+    if (backoffMs !== undefined) h.backoffMs = (h.backoffMs ?? 0) + backoffMs * weight;
     h.workMs += work * weight;
     h.travelMs += travel * weight;
   };
@@ -133,6 +136,7 @@ function summary(h: Histogram): LatencySummary {
     workMs: h.workMs,
     travelMs: h.travelMs,
     ...(h.callMs === undefined ? {} : { callMs: h.callMs }),
+    ...(h.backoffMs === undefined ? {} : { backoffMs: h.backoffMs }),
   });
   summaries.set(h, { samples: h.samples, value });
   return value;

@@ -1347,6 +1347,16 @@
                     "properties": {
                       "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
                       "backoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "maxBackoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "budget": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["percent"],
+                        "properties": {
+                          "percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                          "minPerSec": { "type": "number", "minimum": 0, "maximum": 10000 }
+                        }
+                      },
                       "strategy": { "enum": ["fixed", "exponential"] },
                       "jitter": { "type": "number", "minimum": 0, "maximum": 1 },
                       "retryOn": {
@@ -3976,6 +3986,16 @@
                     "properties": {
                       "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
                       "backoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "maxBackoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "budget": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["percent"],
+                        "properties": {
+                          "percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                          "minPerSec": { "type": "number", "minimum": 0, "maximum": 10000 }
+                        }
+                      },
                       "strategy": { "enum": ["fixed", "exponential"] },
                       "jitter": { "type": "number", "minimum": 0, "maximum": 1 },
                       "retryOn": {
@@ -6601,6 +6621,16 @@
                     "properties": {
                       "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
                       "backoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "maxBackoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "budget": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["percent"],
+                        "properties": {
+                          "percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                          "minPerSec": { "type": "number", "minimum": 0, "maximum": 10000 }
+                        }
+                      },
                       "strategy": { "enum": ["fixed", "exponential"] },
                       "jitter": { "type": "number", "minimum": 0, "maximum": 1 },
                       "retryOn": {
@@ -9386,6 +9416,16 @@
                     "properties": {
                       "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
                       "backoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "maxBackoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "budget": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["percent"],
+                        "properties": {
+                          "percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                          "minPerSec": { "type": "number", "minimum": 0, "maximum": 10000 }
+                        }
+                      },
                       "strategy": { "enum": ["fixed", "exponential"] },
                       "jitter": { "type": "number", "minimum": 0, "maximum": 1 },
                       "retryOn": {
@@ -10799,7 +10839,7 @@
               "properties": {
                 "label": { "type": "string" },
                 "node": { "$ref": "#/$defs/Ref", "description": "Omit with metric 'inSystem'." },
-                "metric": { "type": "string", "enum": ["processed", "backlog", "inFlight", "failed", "timedOut", "threadsBusy", "threadsWaiting", "deadLettered", "dropped", "blocked", "rejected", "throughput", "lag", "inSystem"] },
+                "metric": { "type": "string", "enum": ["processed", "backlog", "inFlight", "failed", "timedOut", "retried", "amplification", "goodput", "threadsBusy", "threadsWaiting", "deadLettered", "dropped", "blocked", "rejected", "throughput", "lag", "inSystem"] },
                 "op": { "type": "string", "enum": ["<", "<=", "==", ">=", ">"] },
                 "value": { "type": "number" },
                 "when": { "type": "string", "enum": ["always", "eventually", "end"], "default": "end" }
@@ -12127,6 +12167,16 @@
                     "properties": {
                       "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
                       "backoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "maxBackoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "budget": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["percent"],
+                        "properties": {
+                          "percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                          "minPerSec": { "type": "number", "minimum": 0, "maximum": 10000 }
+                        }
+                      },
                       "strategy": { "enum": ["fixed", "exponential"] },
                       "jitter": { "type": "number", "minimum": 0, "maximum": 1 },
                       "retryOn": {
@@ -14751,6 +14801,16 @@
                     "properties": {
                       "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
                       "backoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "maxBackoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "budget": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["percent"],
+                        "properties": {
+                          "percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                          "minPerSec": { "type": "number", "minimum": 0, "maximum": 10000 }
+                        }
+                      },
                       "strategy": { "enum": ["fixed", "exponential"] },
                       "jitter": { "type": "number", "minimum": 0, "maximum": 1 },
                       "retryOn": {
@@ -17371,6 +17431,16 @@
                     "properties": {
                       "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 1000 },
                       "backoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "maxBackoffMs": { "type": "number", "minimum": 0, "maximum": 600000 },
+                      "budget": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["percent"],
+                        "properties": {
+                          "percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                          "minPerSec": { "type": "number", "minimum": 0, "maximum": 10000 }
+                        }
+                      },
                       "strategy": { "enum": ["fixed", "exponential"] },
                       "jitter": { "type": "number", "minimum": 0, "maximum": 1 },
                       "retryOn": {

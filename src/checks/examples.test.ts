@@ -22,6 +22,7 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
+  "retry-storm": ["warning no-reader:orders"],
   "scale-on-busy-threads": [
     "warning blocked-threads:caller",
     "warning scaling-blind:caller",
@@ -139,6 +140,11 @@ it("P3 precision gate adds no findings to the same materialized P2 public exampl
  * change here is a change to that table.
  */
 const PLANNED: Record<string, string[]> = {
+  "retry-storm": [
+    "21 dropped payments in Three quick retries (fails)",
+    "30 dropped payments in Jittered backoff (fails)",
+    "30 dropped payments in A retry budget (fails)",
+  ],
   "slow-payment-provider": [
     "1059 dropped shop in No timeouts (expected)",
     "1059 dropped gateway in No timeouts (expected)",
@@ -149,6 +155,9 @@ const PLANNED: Record<string, string[]> = {
     "1156 dropped gateway in Threads freed while waiting for the pool (expected)",
     "1326 dropped shop in Threads held while waiting for the pool (expected)",
     "1326 dropped gateway in Threads held while waiting for the pool (expected)",
+    "1359 dropped shop in Three retries hold threads (expected)",
+    "1359 dropped gateway in Three retries hold threads (expected)",
+    "791 dropped checkout in Three retries hold threads (expected)",
   ],
   // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
   "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
@@ -176,7 +185,14 @@ describe("simulation evidence on the public examples", () => {
     expect(ev.tooBig).toEqual([]);
     const shown = withEvidence(runChecks(d), ev, d.checks);
     // No count on any finding, and no `dropped`: the same findings as the checks' own.
-    if (slug === "zone-outage-drill") {
+    if (slug === "retry-storm") {
+      expect(shown.result.findings.map((f) => f.id)).toEqual(["no-reader:orders", "dropped:shop", "dropped:checkout"]);
+      for (const finding of shown.result.findings) {
+        expect(finding.evidence).toHaveLength(3);
+        expect(finding.evidence!.every((e) => e.count > 0)).toBe(true);
+      }
+      expect(shown.counted).toBe(3);
+    } else if (slug === "zone-outage-drill") {
       expect(shown.result.findings.map((f) => f.id)).toEqual(["dropped:api-b"]);
       expect(shown.result.findings[0].evidence).toEqual([
         { simulation: "Zone outage: no health checks", what: "dropped", count: 26 },

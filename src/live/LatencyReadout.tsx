@@ -17,7 +17,12 @@ export function LatencyReadout({
   compact?: boolean;
   diagram?: DiagramFile;
 }) {
-  const total = latency.waitMs + latency.workMs + (latency.callMs ?? 0) + (compact ? 0 : latency.travelMs);
+  const total =
+    latency.waitMs +
+    latency.workMs +
+    (latency.callMs ?? 0) +
+    (latency.backoffMs ?? 0) +
+    (compact ? 0 : latency.travelMs);
   const share = (ms: number) => formatPercent(total > 0 ? ms / total : 0);
   const count = sampleCount(latency);
   const change = latency.sinceFault && faultWindowLabel(latency.sinceFault.fault, diagram);
@@ -32,20 +37,28 @@ export function LatencyReadout({
       {!compact && !latency.sinceFault && <small>{latencySampling(latency)}</small>}
       {latency.typesLimited && <small data-testid={`node-latency-limited-${id}`}>{t("latency.typesLimited")}</small>}
       <div data-testid={`node-latency-breakdown-${id}`}>
-        {latency.callMs !== undefined
-          ? t("threads.latencyBreakdown", {
+        {latency.backoffMs !== undefined
+          ? t("resilience.latencyBreakdown", {
               queued: share(latency.waitMs),
-              calls: share(latency.callMs),
+              calls: share(latency.callMs ?? 0),
+              backoff: share(latency.backoffMs),
               work: share(latency.workMs),
               travel: share(compact ? 0 : latency.travelMs),
             })
-          : compact
-            ? t("latency.compactBreakdown", { wait: share(latency.waitMs), work: share(latency.workMs) })
-            : t("latency.breakdown", {
-                wait: share(latency.waitMs),
+          : latency.callMs !== undefined
+            ? t("threads.latencyBreakdown", {
+                queued: share(latency.waitMs),
+                calls: share(latency.callMs),
                 work: share(latency.workMs),
-                travel: share(latency.travelMs),
-              })}
+                travel: share(compact ? 0 : latency.travelMs),
+              })
+            : compact
+              ? t("latency.compactBreakdown", { wait: share(latency.waitMs), work: share(latency.workMs) })
+              : t("latency.breakdown", {
+                  wait: share(latency.waitMs),
+                  work: share(latency.workMs),
+                  travel: share(latency.travelMs),
+                })}
       </div>
       <small data-testid={`node-latency-scope-${id}`}>
         {change !== undefined

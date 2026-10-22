@@ -37,11 +37,13 @@ export const LOAD_FAILED = "Part of the app couldn't be downloaded. Check your c
  * A component whose code loads on first render, or earlier with `preload()`. Once loaded it renders in the
  * same frame as whatever shows it. Until then it renders `placeholder` (a dialog passes a modal frame that
  * Esc and Close dismiss), never blanking the view around it. A failed download is recoverable where it is:
- * the placeholder offers Retry, or, without one, a toast does; unmounting and mounting again retries too.
+ * the placeholder offers Retry, or, without one (or with `toast`: a placeholder that only says it's loading), a toast
+ * does; unmounting and mounting again retries too.
  */
 export function lazyComponent<P extends object>(
   load: () => Promise<ComponentType<P>>,
   placeholder?: Placeholder<P>,
+  toast = !placeholder,
 ): LazyComponent<P> {
   let loaded: ComponentType<P> | undefined;
   const get = loadOnce(() =>
@@ -72,9 +74,9 @@ export function lazyComponent<P extends object>(
       };
     }, [component, failed, attempt]);
     const retry = useCallback(() => setState((s) => ({ failed: false, attempt: s.attempt + 1 })), []);
-    // Without a placeholder of its own, the failure is reported (with Retry) in a toast.
+    // Without a placeholder that offers Retry, the failure is reported (with Retry) in a toast.
     useEffect(() => {
-      if (failed && !placeholder)
+      if (failed && toast)
         notify(LOAD_FAILED, { kind: "error", action: { label: "Retry", run: retry, testId: "lazy-load-retry" } });
     }, [failed, retry]);
     if (component) {

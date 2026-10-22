@@ -38,7 +38,7 @@ export interface Stencil {
 export const DIAGRAM_FORMAT = "diagrams/v1" as const;
 /** Immutable model revision. Absent means legacy playback, including omitted defaults. */
 export interface PlanningModel {
-  revision: "p1" | "p2" | "p3" | "p3-a1" | "p3-w1";
+  revision: "p1" | "p2" | "p3" | "p3-a1" | "p3-w1" | "p3-w2";
   sharedQuotas?: import("./admission").Quota[];
   sharedAllocations?: import("./admission").SharedAllocation[];
   /**
@@ -261,6 +261,9 @@ export const METRIC_FIELDS = [
   "inFlight",
   "failed",
   "timedOut",
+  "retried",
+  "amplification",
+  "goodput",
   "threadsBusy",
   "threadsWaiting",
   "deadLettered",

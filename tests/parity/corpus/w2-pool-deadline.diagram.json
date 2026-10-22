@@ -1,0 +1,115 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-w2"
+  },
+  "title": "Retry pool-deadline",
+  "nodes": [
+    {
+      "id": "source",
+      "stencil": "client.user",
+      "label": "Applications",
+      "x": 0,
+      "y": 0,
+      "props": {
+        "ratePerSec": 0
+      }
+    },
+    {
+      "id": "caller",
+      "stencil": "generic.service",
+      "label": "Decision service",
+      "x": 330,
+      "y": 0,
+      "props": {
+        "replicas": 1,
+        "concurrency": 100,
+        "latencyMs": 10,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "partner",
+      "stencil": "generic.service",
+      "label": "Partner scoring API",
+      "x": 660,
+      "y": 0,
+      "props": {
+        "concurrency": 100,
+        "latencyMs": 500,
+        "jitter": 0,
+        "failureRate": 0
+      }
+    },
+    {
+      "id": "result",
+      "stencil": "generic.database",
+      "label": "Case store",
+      "x": 660,
+      "y": 220,
+      "props": {
+        "latencyMs": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input",
+      "from": "source",
+      "to": "caller",
+      "props": {
+        "travelMs": 10
+      }
+    },
+    {
+      "id": "call",
+      "from": "caller",
+      "to": "partner",
+      "kind": "sync",
+      "props": {
+        "travelMs": 10,
+        "caller": {
+          "wait": "non-blocking",
+          "deadlineMs": 100,
+          "retry": {
+            "maxAttempts": 3,
+            "backoffMs": 100,
+            "strategy": "fixed",
+            "retryOn": ["timeout", "transient", "throttled"]
+          },
+          "poolConnections": 1
+        }
+      }
+    },
+    {
+      "id": "output",
+      "from": "caller",
+      "to": "result",
+      "props": {
+        "travelMs": 10
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "blocking",
+      "title": "Blocking",
+      "durationMs": 5000,
+      "scale": 1,
+      "seed": 17,
+      "traffic": [
+        {
+          "node": "source",
+          "shape": {
+            "kind": "burst",
+            "count": 12,
+            "spreadMs": 100
+          },
+          "id": "applications-0",
+          "label": "Applications",
+          "messageType": "ApplicationSubmitted"
+        }
+      ]
+    }
+  ]
+}
