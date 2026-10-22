@@ -482,9 +482,9 @@ export interface EngineOptions {
   verifyLedger?: (state: import("./resourceInvariants").LedgerInvariantState) => void;
   /** Per-step write-once attempt diagnostic; excluded from ordinary playback. */
   verifyOutcomes?: (state: import("./resourceInvariants").OutcomeInvariantState) => void;
-  /** Test-only I7 probe: release sampled holds at logical completion. */
+  /** Test-only I7 probe: release sampled holds at logical completion (Vitest only; folded out of shipped builds). */
   ledgerHold?: "none";
-  /** Test-only partial dots: every injected message carries this many real requests. */
+  /** Test-only partial dots: every injected message carries this many real requests (Vitest only; folded out). */
   injectRepresented?: number;
   /** Test-only I1 oracle (Vitest only; folded out of shipped builds): run at scale 1 with the arrival instants of the scale `setScale` names. Every dot a source
    *  or injection emits arrives as floor-cumulative real requests of that scale (docs/SIMULATION.md, same arrivals). */

@@ -217,7 +217,7 @@ interface Delivery {
   original: Message;
 }
 interface Work extends ExecutionWork<Group> {
-  /** Dots this work added to its node's pending or staged units while queued there. */
+  /** Dots this work added to its node's pending, continuation or staged units when it last queued there (set on entry). */
   queuedUnits?: number;
   failureCode?: number;
   timeoutOrigin?: string;
@@ -561,15 +561,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         group.pendingUnits = dots;
         for (const [id, queue] of group.staged) nodes.get(id)!.stagedUnits += requeue(queue);
       }
-    for (const [node, message] of onTheWay()) node.incomingUnits += dotsOf(message);
+    onTheWay((node, message) => (node.incomingUnits += dotsOf(message)));
   }
   /** Messages on the way to a node, as arrived will count them off: a trip's, or a logical arrival's (an echo). */
-  function* onTheWay(): IterableIterator<[Node, Message]> {
+  function onTheWay(visit: (node: Node, message: Message) => void): void {
     for (const trip of trips)
-      if (!trip.echo && (trip.kind === "message" || trip.kind === "dlq")) yield [trip.edge.to, trip.message];
-    for (const event of logical)
-      if (event.thread === undefined && event.call === undefined && event.edge && event.message)
-        yield [event.edge.to, event.message];
+      if (!trip.echo && (trip.kind === "message" || trip.kind === "dlq")) visit(trip.edge.to, trip.message);
+    // Only an echo's arrival carries a message (calls and thread graces don't).
+    for (const event of logical) if (event.message) visit(event.edge!.to, event.message);
   }
   const threadOccupancy = (node: Node) =>
     callerReservations(node) ? (node.threadWeight.work + node.threadWeight.wait) / scale : workingDots(node);
@@ -609,7 +608,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     slots,
     resourceWork,
     scheduleThreadGrace,
-    immediateHolds: () => opts.ledgerHold === "none",
+    immediateHolds: () => TEST_ORACLES && opts.ledgerHold === "none",
   });
   const { reacquireCapacity, startResources, endResources, retireThread } = execution;
 
@@ -989,7 +988,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.resume = new Deque();
     node.resumeUnits = 0;
     for (const work of resume) {
-      work.queuedUnits = undefined;
       if (work.recoveryCapacity) {
         wakeDelivery(work);
         admit(node, work);
@@ -1103,11 +1101,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function dequeue(node: Node, queue: Deque<Work>): Work {
     const work = queue.shift()!;
-    if (queue === node.pending)
-      node.pendingUnits = node.pending.length ? node.pendingUnits - (work.queuedUnits ?? 0) : 0;
-    else if (queue === node.resume)
-      node.resumeUnits = node.resume.length ? node.resumeUnits - (work.queuedUnits ?? 0) : 0;
-    work.queuedUnits = undefined;
+    if (queue === node.pending) node.pendingUnits = node.pending.length ? node.pendingUnits - work.queuedUnits! : 0;
+    else if (queue === node.resume) node.resumeUnits = node.resume.length ? node.resumeUnits - work.queuedUnits! : 0;
     return work;
   }
 
@@ -1614,7 +1609,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const waiting = group.staged.get(node.id);
     while (waiting?.length && hold(group, node, waiting.peek()!)) {
       const work = waiting.shift()!;
-      node.stagedUnits = --node.staged ? node.stagedUnits - (work.queuedUnits ?? 0) : 0;
+      node.stagedUnits = --node.staged ? node.stagedUnits - work.queuedUnits! : 0;
       enqueue(node, work);
     }
   }
@@ -1730,7 +1725,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!r) return;
     work.requestLease = undefined;
     const node = nodes.get(r.owner)!;
-    if (immediate || node.status === "down" || opts.ledgerHold === "none") ledger.release(r);
+    if (immediate || node.status === "down" || (TEST_ORACLES && opts.ledgerHold === "none")) ledger.release(r);
     else ledger.retire(r, node.activeMs - (r.segmentActive ?? r.startActive), node.activeMs);
   }
 
@@ -1918,7 +1913,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function retirePool(edge: Edge, callId: number, holdMs: number): void {
     const lease = ledger.get(edge.poolLeases.get(callId));
     if (!lease) return;
-    if (opts.ledgerHold === "none") ledger.release(lease);
+    if (TEST_ORACLES && opts.ledgerHold === "none") ledger.release(lease);
     else ledger.retire(lease, holdMs, edge.from.activeMs);
     // A pool narrower than the blocking caller's thread turns the cohort over in more
     // waves than the thread's own stretch: the thread is not admissible before that
@@ -2683,7 +2678,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       travelMs: 0,
       family: { root: id, alive: 1, parked: 0, bornAt: time },
     };
-    if (injected && opts.injectRepresented) message.represented = opts.injectRepresented;
+    if (TEST_ORACLES && injected && opts.injectRepresented) message.represented = opts.injectRepresented;
     if (route) {
       message.request = route;
       countRoute(route).sent += dotsOf(message);
@@ -3602,11 +3597,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (TEST_ORACLES && opts.verifyResources) {
       const arriving = new Map<Node, Message[]>();
-      for (const [node, message] of onTheWay()) {
+      onTheWay((node, message) => {
         const list = arriving.get(node);
         if (list) list.push(message);
         else arriving.set(node, [message]);
-      }
+      });
       opts.verifyResources({
         nodes: [...nodes.values()].map((node) => ({
           ...node,
@@ -3711,7 +3706,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     calls.clear();
     nextCall = 1;
     nextAttempt = 1;
-    outcomeChecks.clear();
+    if (TEST_ORACLES) outcomeChecks.clear();
     nextLogical = 1;
     drawnTrips.clear();
     sourceEmitted = 0;
@@ -3841,7 +3836,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         logicalIndices,
         ledger: ledger.state,
         calls,
-        outcomeChecks,
+        // Only the outcome oracle fills it (Vitest only).
+        ...(TEST_ORACLES && { outcomeChecks }),
         injections,
         events,
         admission: {
@@ -3911,7 +3907,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         logicalIndices = copy.logicalIndices;
         ledger.state = copy.ledger;
         calls = copy.calls;
-        outcomeChecks = copy.outcomeChecks;
+        if (TEST_ORACLES) outcomeChecks = copy.outcomeChecks!;
         drawnTrips = copy.drawnTrips;
         injections.splice(0, injections.length, ...copy.injections);
         events.splice(0, events.length, ...copy.events);

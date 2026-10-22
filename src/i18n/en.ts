@@ -90,7 +90,6 @@ const en = {
   "latency.p95": "p95 {duration}",
   "latency.p99": "p99 {duration}",
   "latency.sampling": "from {count, plural, one {# sampled message} other {# sampled messages}} · since restart",
-  "latency.samplingFew": "from less than one sampled message · since restart",
   "latency.typesLimited": "Recording limit reached: additional message types are included in the aggregate only.",
   "latency.breakdown": "Waiting {wait} · work {work} · travel {travel}",
   "latency.scope":
@@ -2862,10 +2861,8 @@ const en = {
   "fault.unnamedTarget": "the system",
   "latency.samplingSinceFault":
     "from {count, plural, one {# sampled message} other {# sampled messages}} · since the last fault change",
-  "latency.samplingSinceFaultFew": "from less than one sampled message · since the last fault change",
   "latency.faultScope":
     "From {count, plural, one {# finished message} other {# finished messages}} since {change}. Animation time not counted.",
-  "latency.faultScopeFew": "From less than one finished message since {change}. Animation time not counted.",
   "latency.windowDown": "{label} went down",
   "latency.windowRestored": "{label} was restored",
   "latency.windowCut": "{label} was cut",
@@ -2875,7 +2872,6 @@ const en = {
   "latency.compactBreakdown": "Waiting {wait} · work {work}",
   "latency.finishedScope":
     "From {count, plural, one {# finished message} other {# finished messages}} since restart. Animation time not counted.",
-  "latency.finishedScopeFew": "From less than one finished message since restart. Animation time not counted.",
   "liveMenu.faultHint":
     "Right-click any node to inject messages, add a fault or trace one. Click a moving message to trace it.",
   "fault.menu": "Fault",
