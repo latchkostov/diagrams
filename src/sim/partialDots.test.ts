@@ -5,7 +5,7 @@ import { createSimulationRun } from "./simulation";
 import { assertLedgerInvariants, assertOutcomeInvariants, assertResourceInvariants } from "./resourceInvariants";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
-import { realSnapshot, roundDots } from "./units";
+import { realSnapshot, roundCounts, roundDots } from "./units";
 import type { DiagramFile, SimRole } from "../model/types";
 import type { RouteTable } from "../model/requestRouting";
 import { routingFixture } from "../lab/routingFixture";
@@ -428,4 +428,51 @@ it("partial dots in flight checkpoint and restore", () => {
   e.restore(checkpoint);
   e.step(3000);
   expect(e.snapshot()).toEqual(finished);
+});
+
+it("counter copies keep route ids named like prototype members", () => {
+  // Route ids are user-authored. Copying a counter dictionary into a plain object let
+  // "__proto__" hit the inherited setter and drop its count (review of #233).
+  const ids = ["__proto__", "constructor", "hasOwnProperty"];
+  const d = routingFixture();
+  d.planning!.requestRoutes!.push(
+    ...ids.map((id, i) => ({
+      id,
+      address: { method: "GET" as const, path: `/nothing/${i}` },
+      appearance: { paletteSlot: i, marker: "circle" as const },
+    })),
+  );
+  for (const injectRepresented of [undefined, 4]) {
+    const e = createEngine({ seed: 7, scale: 10, injectRepresented, maxParticles: 0 });
+    e.load(d);
+    for (let tick = 0; tick < 30; tick++) {
+      e.inject("app", 1, { routeId: ids[tick % 3] });
+      e.step(10);
+    }
+    e.step(1000);
+    const dot = injectRepresented === undefined ? 1 : 0.4;
+    for (const view of [e.frame().nodes.kong, e.snapshot().nodes.kong]) {
+      const rejections = view.routeRejections!;
+      // Every refusal (no rule matches) is counted under its own route id, as an own property.
+      for (const id of ids) {
+        expect(Object.hasOwn(rejections, id), id).toBe(true);
+        expect(rejections[id]).toBeCloseTo(10 * dot, 9);
+      }
+      expect(Object.keys(rejections).sort()).toEqual([...ids].sort());
+      expect(view.rejected).toBeCloseTo(30 * dot, 9);
+      expect(Object.hasOwn(view.rejectionReasons!, "route-not-found")).toBe(true);
+    }
+    const real = realSnapshot(e.snapshot()).nodes.kong.routeRejections!;
+    for (const id of ids) expect(real[id]).toBeCloseTo(10 * dot * 10, 9);
+    const routes = e.frame().routes!;
+    for (const id of ids) expect(Object.hasOwn(routes, id) && routes[id].rejected).toBeCloseTo(10 * dot, 9);
+  }
+  // The rounding path itself, on both kinds of dictionary.
+  for (const source of [
+    JSON.parse('{"__proto__":0.30000000000000004,"constructor":1}'),
+    Object.assign(Object.create(null), { __proto__: 0.1, toString: 2 }),
+  ]) {
+    const copy = roundCounts(source);
+    for (const key of Object.keys(source)) expect(Object.hasOwn(copy, key), key).toBe(true);
+  }
 });

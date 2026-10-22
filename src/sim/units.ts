@@ -25,10 +25,13 @@ export const unitsOf = (m: { represented?: number } | undefined, scale: number):
   m?.represented === undefined ? 1 : m.represented / scale;
 /** Partial dots leave roundoff in native counters; reports keep 1e-9 dots (and never -0). */
 export const roundDots = (n: number): number => (Number.isInteger(n) ? n : Math.round(n * 1e9) / 1e9 || 0);
-/** Per-frame copies: fixed-shape counters field by field, dictionaries in one loop. */
+/**
+ * Per-frame copies: fixed-shape counters field by field, dictionaries in one loop. Keys are user-authored
+ * (route ids), so the copy is a null-prototype dictionary like the engine's own: "__proto__" stays a count.
+ */
 export function roundCounts(counts: Record<string, number>): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const key in counts) out[key] = roundDots(counts[key]);
+  const out: Record<string, number> = Object.create(null);
+  for (const key in counts) if (Object.hasOwn(counts, key)) out[key] = roundDots(counts[key]);
   return out;
 }
 export const roundCalls = (c: NonNullable<EdgeSimState["calls"]>): NonNullable<EdgeSimState["calls"]> => ({
