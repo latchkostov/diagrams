@@ -10,6 +10,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { constants, crc32, deflateRawSync } from "node:zlib";
+import { deflateAsync } from "@gfx/zopfli";
 
 const { Z_FILTERED } = constants;
 import type { ServerResponse } from "node:http";
@@ -57,7 +58,7 @@ export function withFresh(files: SkillFile[], fresh: Readonly<Record<string, str
  * A deterministic zip (fixed timestamps, sorted entries, DEFLATE), so the same skill always gives the
  * same bytes. Entries sit in a top-level `livediagrams/` folder, as Claude's skill upload expects.
  */
-export function zipSkill(files: SkillFile[], folder = SKILL_NAME): Buffer {
+export async function zipSkill(files: SkillFile[], folder = SKILL_NAME): Promise<Buffer> {
   const DOS_TIME = 0; // 00:00:00
   const DOS_DATE = ((2026 - 1980) << 9) | (1 << 5) | 1; // 2026-01-01
   const locals: Buffer[] = [];
@@ -72,6 +73,10 @@ export function zipSkill(files: SkillFile[], folder = SKILL_NAME): Buffer {
       const candidate = deflateRawSync(f.data, { level: 9, ...options });
       if (candidate.length < body.length) body = candidate;
     }
+    // Zopfli searches for a smaller standard DEFLATE stream without changing the payload or requiring a new
+    // unzip format. Five iterations recover useful headroom for engine growth; keep zlib when it wins an entry.
+    const optimized = Buffer.from(await deflateAsync(f.data, { numiterations: 5 }));
+    if (optimized.length < body.length) body = optimized;
     const crc = crc32(f.data);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
@@ -134,7 +139,7 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
     async generateBundle() {
       const files = await current();
       for (const f of files) this.emitFile({ type: "asset", fileName: `skill/${f.name}`, source: f.data });
-      this.emitFile({ type: "asset", fileName: SKILL_ZIP, source: zipSkill(files) });
+      this.emitFile({ type: "asset", fileName: SKILL_ZIP, source: await zipSkill(files) });
     },
     configureServer(server) {
       // Cached between requests, and dropped on any change in the project (a skill file, an icon, or the viewer's
@@ -148,7 +153,7 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
       const released = new Set<string>(Object.values(RELEASED).map((name) => `/skill/${name}`));
       const viewerFiles = () =>
         (withViewer ??= current().then(
-          (files) => ({ files, zip: zipSkill(files) }),
+          async (files) => ({ files, zip: await zipSkill(files) }),
           (error: unknown) => {
             withViewer = undefined;
             throw error;
