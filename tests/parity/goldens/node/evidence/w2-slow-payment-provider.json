@@ -1,0 +1,75 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "no-timeouts", "title": "No timeouts", "playedMs": 20000, "capped": false },
+      { "id": "timeout-600", "title": "A 600 ms timeout", "playedMs": 20000, "capped": false },
+      { "id": "pool-40", "title": "Threads freed while waiting for the pool", "playedMs": 20000, "capped": false },
+      { "id": "blocking-pool", "title": "Threads held while waiting for the pool", "playedMs": 20000, "capped": false },
+      { "id": "three-retries-hold-threads", "title": "Three retries hold threads", "playedMs": 20000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      { "simulation": "No timeouts", "node": "shop", "broker": false, "what": "dropped", "count": 1059, "expects": "some" },
+      { "simulation": "No timeouts", "node": "gateway", "broker": false, "what": "dropped", "count": 1059, "expects": "some" },
+      { "simulation": "A 600 ms timeout", "node": "shop", "broker": false, "what": "dropped", "count": 1687, "expects": "some" },
+      { "simulation": "A 600 ms timeout", "node": "gateway", "broker": false, "what": "dropped", "count": 1687, "expects": "some" },
+      { "simulation": "A 600 ms timeout", "node": "checkout", "broker": false, "what": "dropped", "count": 1687, "expects": "some" },
+      { "simulation": "Threads freed while waiting for the pool", "node": "shop", "broker": false, "what": "dropped", "count": 1156, "expects": "some" },
+      { "simulation": "Threads freed while waiting for the pool", "node": "gateway", "broker": false, "what": "dropped", "count": 1156, "expects": "some" },
+      { "simulation": "Threads held while waiting for the pool", "node": "shop", "broker": false, "what": "dropped", "count": 1326, "expects": "some" },
+      { "simulation": "Threads held while waiting for the pool", "node": "gateway", "broker": false, "what": "dropped", "count": 1326, "expects": "some" },
+      { "simulation": "Three retries hold threads", "node": "shop", "broker": false, "what": "dropped", "count": 1359, "expects": "some" },
+      { "simulation": "Three retries hold threads", "node": "gateway", "broker": false, "what": "dropped", "count": 1359, "expects": "some" },
+      { "simulation": "Three retries hold threads", "node": "checkout", "broker": false, "what": "dropped", "count": 791, "expects": "some" }
+    ],
+    "dropped": []
+  },
+  "planned": [
+    { "node": "shop", "simulation": "No timeouts", "what": "dropped", "count": 1059, "why": "expected" },
+    { "node": "gateway", "simulation": "No timeouts", "what": "dropped", "count": 1059, "why": "expected" },
+    { "node": "shop", "simulation": "A 600 ms timeout", "what": "dropped", "count": 1687, "why": "expected" },
+    { "node": "gateway", "simulation": "A 600 ms timeout", "what": "dropped", "count": 1687, "why": "expected" },
+    { "node": "checkout", "simulation": "A 600 ms timeout", "what": "dropped", "count": 1687, "why": "expected" },
+    { "node": "shop", "simulation": "Threads freed while waiting for the pool", "what": "dropped", "count": 1156, "why": "expected" },
+    { "node": "gateway", "simulation": "Threads freed while waiting for the pool", "what": "dropped", "count": 1156, "why": "expected" },
+    { "node": "shop", "simulation": "Threads held while waiting for the pool", "what": "dropped", "count": 1326, "why": "expected" },
+    { "node": "gateway", "simulation": "Threads held while waiting for the pool", "what": "dropped", "count": 1326, "why": "expected" },
+    { "node": "shop", "simulation": "Three retries hold threads", "what": "dropped", "count": 1359, "why": "expected" },
+    { "node": "gateway", "simulation": "Three retries hold threads", "what": "dropped", "count": 1359, "why": "expected" },
+    { "node": "checkout", "simulation": "Three retries hold threads", "what": "dropped", "count": 791, "why": "expected" }
+  ],
+  "counted": 0,
+  "findings": [
+    {
+      "id": "call-timeout:pay",
+      "rule": "call-timeout",
+      "severity": "suggestion",
+      "target": "pay",
+      "elements": ["pay", "checkout", "payment"],
+      "fix": {
+        "ops": [{ "op": "update", "target": "pay", "props": { "caller": { "deadlineMs": 600 } } }],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "call-timeout:pay",
+        "rule": "call-timeout",
+        "severity": "suggestion",
+        "title": "No timeout on the call to Payment provider",
+        "message": "If it stalls, every thread waits.",
+        "targets": ["pay", "checkout", "payment"],
+        "fix": {
+          "label": "Add a 600 ms timeout",
+          "ops": [{ "op": "update", "target": "pay", "props": { "caller": { "deadlineMs": 600 } } }]
+        }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 5 saved simulations (at most 60 s each). On purpose, not findings: 1059 dropped at shop in “No timeouts”; 1059 dropped at gateway in “No timeouts”; 1687 dropped at shop in “A 600 ms timeout”; 1687 dropped at gateway in “A 600 ms timeout”; 1687 dropped at checkout in “A 600 ms timeout”; 1156 …",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
+}

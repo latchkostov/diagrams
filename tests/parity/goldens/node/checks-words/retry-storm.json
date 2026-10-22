@@ -1,0 +1,39 @@
+{
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "no-reader:orders": {
+      "title": "Nobody reads Orders",
+      "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
+      "rationale": "No readers. Add a reader.",
+      "fix": { "label": "Add a consumer…", "choice": "Pick what reads Orders, then add it and connect orders to it." }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:orders",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Orders",
+        "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["orders", "checkout"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "no-reader:orders",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Orders",
+        "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["orders", "checkout"],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
+      }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
+}

@@ -1,3 +1,4 @@
+import { CallsReadout } from "./CallsReadout";
 import { useEffect, useLayoutEffect, useMemo, type CSSProperties } from "react";
 import { useStore } from "@xyflow/react";
 import { waitingDetails } from "./waitingDetails";
@@ -225,6 +226,7 @@ export function NodeDetails({
           noun={threadNoun}
         />
       )}
+      <CallsReadout diagram={effective} node={node.id} snapshot={live.controller.getState().snapshot} />
       {s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}
       {outcome && (
         <p className="lv-call-outcomes" data-testid={`node-outcome-${node.id}`}>

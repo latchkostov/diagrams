@@ -1,0 +1,64 @@
+{
+  "evidence": {
+    "played": [{ "id": "blocking", "title": "Blocking", "playedMs": 5000, "capped": false }],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      { "simulation": "Blocking", "node": "partner", "broker": false, "what": "dropped", "count": 72 },
+      { "simulation": "Blocking", "node": "dlq", "broker": true, "what": "unread", "count": 12 }
+    ],
+    "dropped": [
+      {
+        "id": "dropped:partner",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "partner",
+        "elements": ["partner"],
+        "title": "Failed requests to Partner scoring API are lost",
+        "message": "Partner scoring API fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      }
+    ]
+  },
+  "planned": [],
+  "counted": 2,
+  "findings": [
+    {
+      "id": "no-reader:dlq",
+      "rule": "no-reader",
+      "severity": "suggestion",
+      "target": "dlq",
+      "elements": ["dlq", "source"],
+      "fix": { "ops": null, "needsChoice": true },
+      "evidence": [{ "simulation": "Blocking", "what": "unread", "count": 12 }],
+      "evidenceText": ["12 left unread in “Blocking”"]
+    },
+    {
+      "id": "dropped:partner",
+      "rule": "dropped",
+      "severity": "suggestion",
+      "target": "partner",
+      "elements": ["partner"],
+      "evidence": [{ "simulation": "Blocking", "what": "dropped", "count": 72 }],
+      "evidenceText": ["72 dropped in “Blocking”"]
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:dlq",
+        "rule": "no-reader",
+        "severity": "suggestion",
+        "title": "Dead letters pile up in Dead letters",
+        "message": "Nothing in the diagram reads or alerts on Dead letters: failed messages stay there until someone looks.",
+        "targets": ["dlq", "source"],
+        "evidence": ["12 left unread in “Blocking”"],
+        "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads Dead letters, then add it and connect dlq to it." }
+      },
+      { "id": "dropped:partner", "rule": "dropped", "severity": "suggestion", "title": "Failed requests to Partner scoring API are lost", "message": "Partner scoring API fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["partner"], "evidence": ["72 dropped in “Blocking”"] }
+    ],
+    "summary": "0 warnings, 2 suggestions.",
+    "simulations": "Played 1 saved simulation (at most 60 s each)."
+  }
+}

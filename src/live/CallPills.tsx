@@ -7,6 +7,13 @@ import { t, useLocale } from "../i18n";
 export { ThreadMeter } from "./ThreadMeter";
 
 export interface ActiveCall {
+  windowRequests?: number;
+  windowAttempts?: number;
+  windowRetried?: number;
+  attempts?: number;
+  retried?: number;
+  failed?: number;
+  budgetDenied?: number;
   id: string;
   held: number;
   inFlight: number;
@@ -65,23 +72,44 @@ export const CallPills = memo(
         ),
       ]);
     }, [nodes, routes, style, direction, captions, hideDependencies, readoutScale, presenting]);
-    const labels = calls.map(({ id, held, inFlight, timedOut, queued = 0, pool, from = "", to = "" }) => ({
-      id,
-      timedOut,
-      title: held
-        ? t("threads.pillHeldTitle", { count: held, from, to })
-        : t("threads.pillFreeTitle", { count: inFlight, queued, from, to }),
-      text:
-        pool && (held || inFlight || queued) && held
-          ? t("threads.pillPoolHeld", { count: inFlight, queued, timedOut: timedOut ?? 0 })
-          : pool && (inFlight || queued)
-            ? t("threads.pillPoolFree", { count: inFlight, pool, queued, timedOut: timedOut ?? 0 })
-            : timedOut
-              ? t("threads.pillTimeout", { count: timedOut })
-              : held
-                ? t("threads.pillHeld", { count: held })
-                : t("threads.pillFlight", { count: inFlight }),
-    }));
+    const labels = calls.map(({ id, held, inFlight, timedOut, queued = 0, pool, from = "", to = "", ...retry }) => {
+      const amplification = (retry.windowRequests ?? 0) > 0 ? (retry.windowAttempts ?? 0) / retry.windowRequests! : 1;
+      const showRetry = amplification >= 1.2 && (retry.windowRetried ?? 0) >= 10;
+      const label = {
+        id,
+        timedOut,
+        title: held
+          ? t("threads.pillHeldTitle", { count: held, from, to })
+          : t("threads.pillFreeTitle", { count: inFlight, queued, from, to }),
+        text:
+          pool && (held || inFlight || queued) && held
+            ? t("threads.pillPoolHeld", { count: inFlight, queued, timedOut: timedOut ?? 0 })
+            : pool && (inFlight || queued)
+              ? t("threads.pillPoolFree", { count: inFlight, pool, queued, timedOut: timedOut ?? 0 })
+              : timedOut
+                ? t("threads.pillTimeout", { count: timedOut })
+                : held
+                  ? t("threads.pillHeld", { count: held })
+                  : t("threads.pillFlight", { count: inFlight }),
+      };
+      return showRetry
+        ? {
+            ...label,
+            text: t("resilience.pill", {
+              calls: label.text,
+              ratio: amplification.toFixed(1),
+              budget: retry.budgetDenied ? t("resilience.budgetUsed") : "",
+            }),
+            title: t("resilience.pillTitle", {
+              from,
+              attempts: ((retry.windowAttempts ?? 0) / 10).toFixed(1),
+              requests: ((retry.windowRequests ?? 0) / 10).toFixed(1),
+              retried: retry.retried ?? 0,
+              percent: Math.round((100 * (retry.failed ?? 0)) / Math.max(1, retry.attempts ?? 0)),
+            }),
+          }
+        : label;
+    });
     // Count changes of the same text dimensions reuse the entire placement pass.
     const dimensions = JSON.stringify(
       labels.map(({ id, text }) => ({ id, width: (text.length * 7 + 16) * readoutScale, height: 20 * readoutScale })),
@@ -119,6 +147,13 @@ export const CallPills = memo(
     a.calls.length === b.calls.length &&
     a.calls.every(
       (c, i) =>
+        c.windowRequests === b.calls[i].windowRequests &&
+        c.windowAttempts === b.calls[i].windowAttempts &&
+        c.windowRetried === b.calls[i].windowRetried &&
+        c.budgetDenied === b.calls[i].budgetDenied &&
+        c.retried === b.calls[i].retried &&
+        c.failed === b.calls[i].failed &&
+        c.attempts === b.calls[i].attempts &&
         c.id === b.calls[i].id &&
         c.held === b.calls[i].held &&
         c.inFlight === b.calls[i].inFlight &&

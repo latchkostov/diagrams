@@ -1,0 +1,13 @@
+---
+title: Retry sampling
+---
+flowchart LR
+  source(["Applications"])
+  caller["Decision service"]
+  partner["Partner scoring API"]
+  result[("Case store")]
+  source -.-> caller
+  caller --> partner
+  caller -.-> result
+  linkStyle 0,2 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"source":["source","client.user"],"caller":["caller","generic.service"],"partner":["partner","generic.service"],"result":["result","generic.database"]},"edges":["input","call","output"],"relations":{}}

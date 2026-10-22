@@ -112,12 +112,13 @@ describe("example gallery", () => {
       filterExamples(publicItems, "", "requestsWait")
         .flatMap((s) => s.items)
         .map((e) => e.slug),
-    ).toEqual(["blocking-call", "slow-payment-provider", "scale-on-busy-threads"]);
+    ).toEqual(["blocking-call", "retry-storm", "slow-payment-provider", "scale-on-busy-threads"]);
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
       "scale-on-busy-threads": ["requestsWait", "autoscaling"],
-      "slow-payment-provider": ["requestsWait", "faultDrills"],
+      "slow-payment-provider": ["requestsWait", "resilience", "faultDrills"],
+      "retry-storm": ["requestsWait", "resilience", "faultDrills"],
       "partitions-vs-subscriptions": ["partitions"],
       "shared-worker-pool": ["partitions"],
       "shared-api-quotas": ["rateLimits"],

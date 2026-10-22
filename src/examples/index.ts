@@ -104,6 +104,11 @@ const publicExamples: PublicExample[] = (
       summary: msg("examples.blockingSummary"),
     },
     {
+      slug: "retry-storm",
+      theme: "reliability",
+      summary: msg("examples.retryStormSummary"),
+    },
+    {
       slug: "slow-payment-provider",
       omitShows: ["routing"],
       theme: "reliability",

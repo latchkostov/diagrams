@@ -88,7 +88,7 @@ const NODE_PROP_NOTES: Record<string, string> = {
 const EDGE_PROP_NOTES: Record<string, string> = {
   endpointId: "Request target endpoint id inside the target API node; dangling references reject rather than fall back",
   caller:
-    "reserved deadlineMs, retry policy and poolConnections contract; no caller waits, retries, deadlines or cascades execute in P3",
+    "p3-w1: wait, deadlineMs per attempt, replyMs and poolConnections; p3-w2 executes retry: maxAttempts (includes first, capped at 10), backoffMs, strategy, maxBackoffMs, jitter 0..1, retryOn, idempotent, budget {percent, minPerSec?}. A blocking caller holds its thread through backoff. Budget: ten-second whole-dot allowance max(minPerSec*10, percent/100*requests); absent minPerSec defaults to 10. Earlier revisions keep saved retries dormant.",
 
   networkDelayMs:
     "physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs",

@@ -1,7 +1,14 @@
 import { revisionAtLeast } from "../model/revisions";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { EditorApi } from "../editor/types";
-import { upgradePlanning, upgradeAutoscaling, upgradeWaits, legacyExport } from "./migration";
+import {
+  upgradePlanning,
+  upgradeAutoscaling,
+  upgradeWaits,
+  upgradeResilience,
+  resilienceUpgradeCalls,
+  legacyExport,
+} from "./migration";
 import { analyzeCapacity } from "../sim/capacity";
 import { planningSimulation } from "../sim/capacityPlanning";
 import { explanationSimulation } from "./explanation";
@@ -24,29 +31,67 @@ export function PlanningUpgrade({
 }) {
   useLocale();
   const previewButton = useRef<HTMLButtonElement>(null);
-  const [preview, setPreview] = useState<"a1" | "waits" | "legacy" | null>(initialPreview ? "a1" : null);
+  const [preview, setPreview] = useState<"a1" | "waits" | "retries" | "legacy" | null>(initialPreview ? "a1" : null);
   const upgradeButton = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
     if (initialPreview && (takePreviewFocus?.() ?? true)) upgradeButton.current?.focus();
   }, [initialPreview, takePreviewFocus]);
+  const resilience = preview === "retries";
   const a1 = preview === "a1";
   const waits = preview === "waits";
   const d = preview ? editor.getDiagram() : undefined;
+  const retryCalls = d && resilience ? resilienceUpgradeCalls(d) : [];
   const next =
-    d && waits
-      ? upgradeWaits(d)
-      : d && a1
-        ? upgradeAutoscaling(d)
-        : d && !revisionAtLeast(d.planning?.revision, "p3")
-          ? upgradePlanning(d)
-          : undefined;
+    d && resilience
+      ? upgradeResilience(d)
+      : d && waits
+        ? upgradeWaits(d)
+        : d && a1
+          ? upgradeAutoscaling(d)
+          : d && !revisionAtLeast(d.planning?.revision, "p3")
+            ? upgradePlanning(d)
+            : undefined;
   const before = d && next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
   const after = next ? analyzeCapacity(next, planningSimulation(next, explanationSimulation(next))) : undefined;
   const legacy = preview === "legacy" && d?.planning ? legacyExport(d) : undefined;
   const capacity = (value: number) => (Number.isFinite(value) ? formatRate(value) : t("admission.unknownShort"));
   const upgradeContent = d && next && before && after && (
     <div data-testid="planning-upgrade-preview">
-      <p>{waits ? t("threads.upgradeHint") : a1 ? t("autoscaling.upgradeHint") : t("admission.model")}</p>
+      <p>
+        {resilience
+          ? t("resilience.upgradeHint")
+          : waits
+            ? t("threads.upgradeHint")
+            : a1
+              ? t("autoscaling.upgradeHint")
+              : t("admission.model")}
+      </p>
+      {resilience && (
+        <>
+          <ul data-testid="retry-upgrade-calls">
+            {retryCalls.map((call, index) => (
+              <li key={index}>
+                {call.simulation
+                  ? t("resilience.upgradeSimulationCall", { ...call, simulation: call.simulation })
+                  : t("resilience.upgradeCall", call)}
+              </li>
+            ))}
+          </ul>
+          {!retryCalls.length && <p>{t("resilience.upgradeNone")}</p>}
+          <p>{t("resilience.upgradeOther")}</p>
+          <button
+            className="btn"
+            data-testid="retry-upgrade-keep-off"
+            onClick={() => {
+              editor.applyDiagram(upgradeResilience(editor.getDiagram(), true));
+              setPreview(null);
+              previewButton.current?.focus();
+            }}
+          >
+            {t("resilience.keepOff")}
+          </button>
+        </>
+      )}
       <ul>
         {(waits ? d.nodes.filter((n) => after.nodes[n.id].waits) : d.nodes).map((n) => (
           <li key={n.id}>
@@ -63,11 +108,13 @@ export function PlanningUpgrade({
         data-testid="planning-upgrade"
         onClick={() => {
           editor.applyDiagram(
-            waits
-              ? upgradeWaits(editor.getDiagram())
-              : a1
-                ? upgradeAutoscaling(editor.getDiagram())
-                : upgradePlanning(editor.getDiagram()),
+            resilience
+              ? upgradeResilience(editor.getDiagram())
+              : waits
+                ? upgradeWaits(editor.getDiagram())
+                : a1
+                  ? upgradeAutoscaling(editor.getDiagram())
+                  : upgradePlanning(editor.getDiagram()),
           );
           setPreview(null);
           previewButton.current?.focus();
@@ -81,19 +128,21 @@ export function PlanningUpgrade({
     <section className="insp-section" data-testid="planning-model">
       <h3 className="insp-section-title">{t("planning.model")}</h3>
       <p className="insp-note">
-        {planning?.revision === "p3-w1"
-          ? t("threads.model")
-          : planning?.revision === "p3-a1"
-            ? t("autoscaling.model")
-            : planning?.revision === "p3"
-              ? t("admission.model")
-              : planning?.revision === "p2"
-                ? t("broker.current")
-                : planning
-                  ? t("planning.current")
-                  : t("planning.legacy")}
+        {planning?.revision === "p3-w2"
+          ? t("resilience.model")
+          : planning?.revision === "p3-w1"
+            ? t("threads.model")
+            : planning?.revision === "p3-a1"
+              ? t("autoscaling.model")
+              : planning?.revision === "p3"
+                ? t("admission.model")
+                : planning?.revision === "p2"
+                  ? t("broker.current")
+                  : planning
+                    ? t("planning.current")
+                    : t("planning.legacy")}
       </p>
-      {planning?.revision !== "p3-w1" && (
+      {!revisionAtLeast(planning?.revision, "p3-w1") && (
         <button
           className="link-btn"
           data-testid="waits-upgrade-preview"
@@ -107,6 +156,19 @@ export function PlanningUpgrade({
       <div id="planning-waits-content" hidden={!waits}>
         {waits && upgradeContent}
       </div>
+      {!revisionAtLeast(planning?.revision, "p3-w2") && (
+        <>
+          <button
+            className="link-btn"
+            data-testid="retry-upgrade-preview"
+            aria-expanded={resilience}
+            onClick={() => setPreview(resilience ? null : "retries")}
+          >
+            {t("resilience.upgrade")}
+          </button>
+          {resilience && upgradeContent}
+        </>
+      )}
       {!revisionAtLeast(planning?.revision, "p3-a1") && (
         <button
           className="link-btn"
@@ -140,7 +202,8 @@ export function PlanningUpgrade({
         {preview === "legacy" && upgradeContent}
         {legacy && (
           <div data-testid="planning-legacy-preview">
-            {d?.planning?.revision === "p3-w1" && <p>{t("threads.exportLoss")}</p>}
+            {revisionAtLeast(d?.planning?.revision, "p3-w2") && <p>{t("resilience.exportLoss")}</p>}
+            {revisionAtLeast(d?.planning?.revision, "p3-w1") && <p>{t("threads.exportLoss")}</p>}
             <p>
               {d?.planning?.revision === "p3"
                 ? t("broker.exportLoss")

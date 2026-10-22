@@ -11,6 +11,8 @@ export interface Attempt<Message = unknown> {
 }
 
 export interface LogicalCall {
+  backingOff?: number;
+  backoffAt?: number;
   startedAt: number;
   blockingRemaining: number;
   depth: number;
@@ -18,7 +20,9 @@ export interface LogicalCall {
 }
 
 export interface LogicalBranch {
-  state: "queued" | "sent" | "replied" | "failed" | "timedOut";
+  state: "queued" | "sent" | "replied" | "failed" | "timedOut" | "backoff";
+  attempt?: number;
+  retryEvent?: number;
   expiresAt: number;
   deadlineEvent?: number;
   pool?: number;

@@ -22,7 +22,7 @@ export function expectScaleEquivalent(baseline: SimSnapshot, sampled: SimSnapsho
     for (const key of ["processed", "failed", "rejected", "dropped"] as const)
       compare(node[key] ?? 0, b.nodes[id][key] ?? 0, `${id}.${key}`);
   for (const [id, edge] of Object.entries(a.edges))
-    for (const key of ["timedOut", "late"] as const)
+    for (const key of ["timedOut", "late", "retried", "shortCircuited", "succeeded"] as const)
       compare(edge.calls?.[key] ?? 0, b.edges[id].calls?.[key] ?? 0, `${id}.${key}`);
 }
 

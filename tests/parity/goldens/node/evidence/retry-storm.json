@@ -1,0 +1,165 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "three-quick-retries", "title": "Three quick retries", "playedMs": 60000, "capped": false },
+      { "id": "jittered-backoff", "title": "Jittered backoff", "playedMs": 60000, "capped": false },
+      { "id": "retry-budget", "title": "A retry budget", "playedMs": 60000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      { "simulation": "Three quick retries", "node": "shop", "broker": false, "what": "dropped", "count": 16821 },
+      { "simulation": "Three quick retries", "node": "checkout", "broker": false, "what": "dropped", "count": 16821 },
+      {
+        "simulation": "Three quick retries",
+        "node": "payments",
+        "broker": false,
+        "what": "dropped",
+        "count": 21,
+        "onPurpose": { "count": 21, "why": "fails" }
+      },
+      { "simulation": "Three quick retries", "node": "orders", "broker": true, "what": "unread", "count": 894 },
+      { "simulation": "Jittered backoff", "node": "shop", "broker": false, "what": "dropped", "count": 16775 },
+      { "simulation": "Jittered backoff", "node": "checkout", "broker": false, "what": "dropped", "count": 16775 },
+      {
+        "simulation": "Jittered backoff",
+        "node": "payments",
+        "broker": false,
+        "what": "dropped",
+        "count": 30,
+        "onPurpose": { "count": 30, "why": "fails" }
+      },
+      { "simulation": "Jittered backoff", "node": "orders", "broker": true, "what": "unread", "count": 894 },
+      { "simulation": "A retry budget", "node": "shop", "broker": false, "what": "dropped", "count": 9738 },
+      { "simulation": "A retry budget", "node": "checkout", "broker": false, "what": "dropped", "count": 9738 },
+      {
+        "simulation": "A retry budget",
+        "node": "payments",
+        "broker": false,
+        "what": "dropped",
+        "count": 30,
+        "onPurpose": { "count": 30, "why": "fails" }
+      },
+      { "simulation": "A retry budget", "node": "orders", "broker": true, "what": "unread", "count": 8193 }
+    ],
+    "dropped": [
+      {
+        "id": "dropped:shop",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "shop",
+        "elements": ["shop"],
+        "title": "Failed messages to Shop are lost",
+        "message": "Shop fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      },
+      {
+        "id": "dropped:checkout",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "checkout",
+        "elements": ["checkout"],
+        "title": "Failed requests to Checkout are lost",
+        "message": "Checkout fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      }
+    ]
+  },
+  "planned": [
+    { "node": "payments", "simulation": "Three quick retries", "what": "dropped", "count": 21, "why": "fails" },
+    { "node": "payments", "simulation": "Jittered backoff", "what": "dropped", "count": 30, "why": "fails" },
+    { "node": "payments", "simulation": "A retry budget", "what": "dropped", "count": 30, "why": "fails" }
+  ],
+  "counted": 3,
+  "findings": [
+    {
+      "id": "no-reader:orders",
+      "rule": "no-reader",
+      "severity": "warning",
+      "target": "orders",
+      "elements": ["orders", "checkout"],
+      "brokerRationale": "no-reader",
+      "fix": { "ops": null, "needsChoice": true },
+      "evidence": [
+        { "simulation": "Three quick retries", "what": "unread", "count": 894 },
+        { "simulation": "Jittered backoff", "what": "unread", "count": 894 },
+        { "simulation": "A retry budget", "what": "unread", "count": 8193 }
+      ],
+      "evidenceText": [
+        "894 left unread in “Three quick retries”",
+        "894 left unread in “Jittered backoff”",
+        "8,193 left unread in “A retry budget”"
+      ]
+    },
+    {
+      "id": "dropped:shop",
+      "rule": "dropped",
+      "severity": "suggestion",
+      "target": "shop",
+      "elements": ["shop"],
+      "evidence": [
+        { "simulation": "Three quick retries", "what": "dropped", "count": 16821 },
+        { "simulation": "Jittered backoff", "what": "dropped", "count": 16775 },
+        { "simulation": "A retry budget", "what": "dropped", "count": 9738 }
+      ],
+      "evidenceText": [
+        "16,821 dropped in “Three quick retries”",
+        "16,775 dropped in “Jittered backoff”",
+        "9,738 dropped in “A retry budget”"
+      ]
+    },
+    {
+      "id": "dropped:checkout",
+      "rule": "dropped",
+      "severity": "suggestion",
+      "target": "checkout",
+      "elements": ["checkout"],
+      "evidence": [
+        { "simulation": "Three quick retries", "what": "dropped", "count": 16821 },
+        { "simulation": "Jittered backoff", "what": "dropped", "count": 16775 },
+        { "simulation": "A retry budget", "what": "dropped", "count": 9738 }
+      ],
+      "evidenceText": [
+        "16,821 dropped in “Three quick retries”",
+        "16,775 dropped in “Jittered backoff”",
+        "9,738 dropped in “A retry budget”"
+      ]
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "no-reader:orders",
+        "rule": "no-reader",
+        "severity": "warning",
+        "title": "Nobody reads Orders",
+        "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
+        "targets": ["orders", "checkout"],
+        "evidence": [
+          "894 left unread in “Three quick retries”",
+          "894 left unread in “Jittered backoff”",
+          "8,193 left unread in “A retry budget”"
+        ],
+        "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
+      },
+      {
+        "id": "dropped:shop",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "title": "Failed messages to Shop are lost",
+        "message": "Shop fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "targets": ["shop"],
+        "evidence": [
+          "16,821 dropped in “Three quick retries”",
+          "16,775 dropped in “Jittered backoff”",
+          "9,738 dropped in “A retry budget”"
+        ]
+      }
+    ],
+    "summary": "1 warning, 2 suggestions.",
+    "simulations": "Played 3 saved simulations (at most 60 s each). On purpose, not findings: 21 dropped at payments in “Three quick retries”; 30 dropped at payments in “Jittered backoff”; 30 dropped at payments in “A retry budget”.",
+    "more": "1 more finding omitted; call check_diagram with rules to see them."
+  }
+}

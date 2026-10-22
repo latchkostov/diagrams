@@ -573,6 +573,17 @@ export function buildScript(input: ScriptInput): SlowScript {
         break;
       }
       case "retry":
+        if (s.backoffMs !== undefined)
+          atNode(tr, "wait", PACING.append, r, r + s.backoffMs, {
+            tone: "warn",
+            rowKey: rowOf.get(i),
+            caption: t("resilience.retryBeat", {
+              attempt: s.attempt ?? 2,
+              max: s.maxAttempts ?? 3,
+              backoff: s.backoffMs,
+              reason: s.reason === "timed out" ? t("resilience.timeout") : (s.reason ?? ""),
+            }),
+          });
         break;
       case "send": {
         if (s.via === "reply") {

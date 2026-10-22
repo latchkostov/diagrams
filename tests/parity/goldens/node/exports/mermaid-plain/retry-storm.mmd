@@ -1,0 +1,12 @@
+---
+title: A retry storm
+---
+flowchart LR
+  shop(["Shop"])
+  checkout["Checkout"]
+  payments["Payments<br/>48 threads · 80 ms · 600 attempts/s"]
+  orders["Orders"]
+  shop --> checkout
+  checkout --> payments
+  checkout -.-> orders
+  linkStyle 2 stroke-dasharray: 6 4

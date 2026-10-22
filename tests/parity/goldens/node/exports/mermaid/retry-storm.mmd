@@ -1,0 +1,13 @@
+---
+title: A retry storm
+---
+flowchart LR
+  shop(["Shop"])
+  checkout["Checkout"]
+  payments["Payments<br/>48 threads · 80 ms · 600 attempts/s"]
+  orders["Orders"]
+  shop --> checkout
+  checkout --> payments
+  checkout -.-> orders
+  linkStyle 2 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"description":"Payments has 48 threads: 600 attempts/s at 80 ms, 50% busy with 300 checkouts/s. A five-second slowdown triggers a retry storm. Jitter stays stuck; a 20% retry budget recovers around 38 seconds in this 60-second run.","nodes":{"shop":["shop","client.user"],"checkout":["checkout","generic.service"],"payments":["payments","generic.service"],"orders":["orders","generic.topic"]},"edges":["checkouts","pay","orders-flow"],"relations":{}}

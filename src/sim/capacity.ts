@@ -1,3 +1,4 @@
+import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
 import { waitingPlan, type WaitCapacity } from "./waitingPlan";
 import { simulationEdges } from "./simulationEdges";
@@ -257,7 +258,8 @@ export function analyzeCapacity(
       ...(routes && role === "source" ? { mix: compileMix(raw.trafficMix, routes) } : {}),
     });
   }
-  const waiting = waitingPlan(diagram, Object.fromEntries([...entries].map(([id, e]) => [id, e.props])));
+  const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
+  let waiting = waitingPlan(diagram, waitProps);
   for (const [id, wait] of waiting.nodes)
     if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
   for (const entry of entries.values()) {
@@ -273,10 +275,14 @@ export function analyzeCapacity(
       };
   }
   const compiled = compileTopology(diagram);
-  const iterationCap = iterationBound(
+  const baseIterationCap = iterationBound(
     entries.keys(),
     compiled.edges.filter((edge) => !edge.deny && !edge.dlq),
   );
+  // A budget's per-second floor depends on aggregate logical demand on the
+  // connection, shared by every traffic class. Allow its next-pass feedback.
+  const hasRetryBudget = [...waiting.amplification.values()].some((r) => r.policy.budget);
+  const iterationCap = hasRetryBudget ? Math.min(256, baseIterationCap * 2) : baseIterationCap;
   const outgoing = compiled.outgoing;
   // Request routing on connections, compiled as playback compiles it: a caller's address on its Request, a filter.
   const callerRoute = new Map<string, CompiledRoute>();
@@ -448,8 +454,15 @@ export function analyzeCapacity(
   const external: Rates = new Map();
   let capped = false;
   let connections: Record<string, number> = Object.create(null);
+  let retryRequests: Record<string, number> = Object.create(null);
+  let priorRetryRequests: Record<string, number> = Object.create(null);
   function add(rates: Rates, id: string, type: string, value: number, edge?: CompiledEdge): void {
     if (!(value > 0)) return;
+    const retry = edge && waiting.amplification.get(edge.id);
+    if (retry) {
+      retryRequests[edge!.id] = (retryRequests[edge!.id] ?? 0) + value;
+      value *= expectedRetries(retry.policy, retry.probability, priorRetryRequests[edge!.id] ?? Infinity).attempts;
+    }
     const types = rates.get(id) ?? new Map<string, number>();
     const sum = (types.get(type) ?? 0) + value;
     if (sum > RATE_CAP) capped = true;
@@ -610,6 +623,7 @@ export function analyzeCapacity(
     iterations = 0;
   for (; iterations < iterationCap; iterations++) {
     connections = Object.create(null);
+    retryRequests = Object.create(null);
     demand.clear();
     routed.clear();
     arrivals.clear();
@@ -628,6 +642,14 @@ export function analyzeCapacity(
         error = Math.max(error, Math.abs((next.get(id)?.get(type) ?? 0) - (rates.get(id)?.get(type) ?? 0)));
     }
     rates = next;
+    if (hasRetryBudget) {
+      for (const id of new Set([...Object.keys(priorRetryRequests), ...Object.keys(retryRequests)]))
+        error = Math.max(error, Math.abs((retryRequests[id] ?? 0) - (priorRetryRequests[id] ?? 0)));
+      priorRetryRequests = retryRequests;
+      waiting = waitingPlan(diagram, waitProps, retryRequests);
+      for (const [id, wait] of waiting.nodes)
+        if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
+    }
     if (error < 1e-7 && !capped) {
       converged = true;
       iterations++;

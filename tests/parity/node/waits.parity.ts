@@ -3,7 +3,7 @@ import { createSimulationRun } from "../../../src/sim/simulation";
 import { corpus } from "../lib/corpus";
 import { expectGolden } from "../lib/golden";
 
-for (const { slug, diagram } of corpus.filter((entry) => entry.slug.startsWith("w1-"))) {
+for (const { slug, diagram } of corpus.filter((entry) => /^w[12]-/.test(entry.slug))) {
   for (const simulation of diagram.simulations ?? []) {
     it(`${slug}: ${simulation.id} held slots and logical replies`, () => {
       const run = createSimulationRun(diagram, simulation);

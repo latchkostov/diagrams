@@ -113,6 +113,9 @@
    "inFlight",
    "failed",
    "timedOut",
+   "retried",
+   "amplification",
+   "goodput",
    "threadsBusy",
    "threadsWaiting",
    "deadLettered",
@@ -3165,6 +3168,30 @@
        "type": "number",
        "minimum": 0,
        "maximum": 600000
+      },
+      "maxBackoffMs": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 600000
+      },
+      "budget": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "percent"
+       ],
+       "properties": {
+        "percent": {
+         "type": "number",
+         "minimum": 1,
+         "maximum": 100
+        },
+        "minPerSec": {
+         "type": "number",
+         "minimum": 0,
+         "maximum": 10000
+        }
+       }
       },
       "strategy": {
        "enum": [

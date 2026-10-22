@@ -113,7 +113,18 @@ import {
 import { QUOTA_UNITS } from "../model/admission";
 import { occupancyFraction } from "./ledger";
 import { callPolicy, replyCpuMs, type CallPolicy } from "./callPolicy";
-import { retryDisposition, type RetryDisposition } from "./retryPolicy";
+import {
+  retryDisposition,
+  backoffDelay,
+  classifyOutcome,
+  createRetryWindow,
+  recordRetryWindow,
+  retryWindow,
+  type RetryWindow,
+  type RetryDisposition,
+} from "./retryPolicy";
+import { retryBudgetPermits } from "./admission";
+import type { RetryPolicy } from "../model/admission";
 import { STEP } from "./timing";
 
 import type {
@@ -164,6 +175,8 @@ interface Message {
    * represented/weight waves. */
   width?: number;
   callMs?: number;
+  backoffMs?: number;
+  callAttempt?: number;
   returnCall?: number;
   callDepth?: number;
   visualAt?: number;
@@ -341,6 +354,9 @@ interface Call extends LogicalCall {
   brokerHeld?: boolean;
 }
 interface Logical {
+  backoffMs?: number;
+  retry?: boolean;
+  callAttempt?: number;
   /** The settling message's represented size, for weighted call counters. */
   represented?: number;
   timeoutOrigin?: string;
@@ -363,7 +379,8 @@ interface Edge {
   poolPendingIndices: Map<number, number>;
   poolLeases: Map<number, number>;
   networkDelayMs: number;
-  calls: { inFlight: number; held: number; timedOut: number; failed: number; late: number };
+  calls: NonNullable<import("./types").EdgeSimState["calls"]>;
+  retry?: { policy: RetryPolicy; stream?: number; window: RetryWindow };
   cut?: boolean;
   endpointId?: string;
   id: string;
@@ -446,6 +463,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   };
   const nodes = new Map<string, Node>();
   let planning: DiagramFile["planning"];
+  let hasRetryPolicy = false;
   /** Request routing: the document's compiled routes (absent: routing is off and every setting dormant). */
   let routes: Map<string, CompiledRoute> | undefined;
   let routeCounts = new Map<string, RouteCounts>();
@@ -504,7 +522,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   // playback has no history map and drained checkpoints retain no attempt history.
   let outcomeChecks = new Map<number, Attempt<Message>>();
   let nextLogical = 1;
+  let budgetDecisions: import("./resilienceInvariants").ResilienceState["budgetDecisions"][number][] = [];
   const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
+  const retries = () => revisionAtLeast(planning?.revision, "p3-w2");
   /** A message's represented size and the dots its counters add (units.ts). */
   const sizeOf = (m?: { represented?: number }) => representedOf(m, scale);
   const dotsOf = (m?: { represented?: number }) => unitsOf(m, scale);
@@ -679,6 +699,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         message.travelMs,
         latencyBudget,
         message.callMs,
+        message.backoffMs,
       );
     }
   }
@@ -808,7 +829,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     delivery?: Delivery,
     extra?: Partial<TraceStep>,
   ): void {
-    if (waits() && !edge.sync) message = { ...message, returnCall: undefined, callDepth: undefined };
+    if (waits() && !edge.sync)
+      message = { ...message, returnCall: undefined, callDepth: undefined, callAttempt: undefined };
     if (edge.deny) {
       block(message, edge, extra);
       if (waits() && message.returnCall !== undefined)
@@ -817,6 +839,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           end: time,
           edge,
           call: message.returnCall,
+          callAttempt: message.callAttempt,
           ok: false,
           represented: message.represented,
         });
@@ -1519,6 +1542,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           end: time + edge.networkDelayMs,
           edge,
           call: work.message.returnCall,
+          callAttempt: work.message.callAttempt,
+          backoffMs: work.message.backoffMs,
           ok,
           code,
           timeoutOrigin: work.timeoutOrigin,
@@ -1645,7 +1670,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work,
       outstanding: new Set(requests.map((e) => e.id)),
       branches: new Map(
-        requests.map((e) => [e.id, { state: "queued", expiresAt: time + (e.policy?.deadlineMs ?? Infinity) }]),
+        requests.map((e) => [
+          e.id,
+          { state: "queued", expiresAt: time + (e.policy?.deadlineMs ?? Infinity), ...(e.retry ? { attempt: 1 } : {}) },
+        ]),
       ),
       blockingRemaining: requests.filter((e) => e.policy?.blocking).length,
       held: node.role === "processor" && !nonblocking,
@@ -1692,7 +1720,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         width: ledger.get(work.thread)?.weight ?? message.width,
         returnCall: call.id,
         callDepth: depth,
+        ...(edge.retry ? { callAttempt: 1 } : {}),
       };
+      if (edge.retry) {
+        retryCount(edge, "requests", branch);
+        retryCount(edge, "attempts", branch);
+      }
       pushDue(
         edge.poolPending,
         {
@@ -1716,6 +1749,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ok: false,
           code: 504,
           represented: branch.represented,
+          callAttempt: branch.callAttempt,
         });
       }
       dispatchCalls(edge);
@@ -1772,6 +1806,141 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         work.route ? { rule: work.route.rule, weight: work.route.weight } : undefined,
       );
     }
+  }
+
+  function emptyRetryCounts() {
+    return {
+      requests: 0,
+      attempts: 0,
+      retried: 0,
+      succeeded: 0,
+      budgetDenied: 0,
+      shortCircuited: 0,
+      ambiguous: 0,
+      backingOff: 0,
+    };
+  }
+
+  function retryCount(edge: Edge, field: "requests" | "attempts" | "retried" | "succeeded", message: Message): void {
+    edge.calls[field] = (edge.calls[field] ?? 0) + dotsOf(message);
+    recordRetryWindow(edge.retry!.window, time, field, sizeOf(message));
+  }
+
+  function retryWindowView(edge: Edge) {
+    const w = retryWindow(edge.retry!.window, time);
+    return {
+      windowRequests: w.requests / scale,
+      windowAttempts: w.attempts / scale,
+      windowRetried: w.retried / scale,
+      windowSucceeded: w.succeeded / scale,
+    };
+  }
+
+  function cancelRetry(call: Call, edge: Edge): void {
+    const branch = call.branches.get(edge.id)!;
+    if (branch.retryEvent === undefined) return;
+    removeDue(logical, branch.retryEvent, logicalIndices);
+    branch.retryEvent = undefined;
+    edge.calls.backingOff! -= dotsOf(call.work.message);
+    if (--call.backingOff! === 0) {
+      const elapsed = time - call.backoffAt!;
+      call.work.message.backoffMs = (call.work.message.backoffMs ?? 0) + elapsed;
+      call.backoffAt = undefined;
+    }
+  }
+
+  function maybeRetry(call: Call, edge: Edge, event: Logical): boolean {
+    const retry = edge.retry;
+    if (!retry || call.attempt.outcome || call.node.status === "down") return false;
+    const branch = call.branches.get(edge.id)!;
+    const policy = retry.policy;
+    const kind = classifyOutcome(event);
+    if (!kind || !policy.retryOn.includes(kind) || branch.attempt! >= Math.min(policy.maxAttempts, 10)) return false;
+    const message = call.work.message;
+    const w = retryWindow(retry.window, time);
+    if (!retryBudgetPermits(policy.budget, w.requests, w.retried, sizeOf(message))) {
+      edge.calls.budgetDenied! += dotsOf(message);
+      return false;
+    }
+    if (opts.verifyResilience && policy.budget)
+      budgetDecisions.push({
+        requests: w.requests,
+        retried: w.retried,
+        units: sizeOf(message),
+        budget: policy.budget,
+      });
+    let u = 0;
+    if (policy.jitter) {
+      const draw = drawStream(retry.stream ?? streamSeed(seed, edge.id, "retry"));
+      retry.stream = draw.state;
+      u = draw.value;
+    }
+    const delay = backoffDelay(policy, branch.attempt!, u);
+    if (event.timeout && branch.state === "sent") edge.calls.ambiguous! += dotsOf(message);
+    branch.state = "backoff";
+    if (!(call.backingOff ?? 0)) call.backoffAt = time;
+    call.backingOff = (call.backingOff ?? 0) + 1;
+    branch.retryEvent = nextLogical++;
+    retryCount(edge, "retried", message);
+    // A logical attempt includes its scheduled backoff and pool wait, even if a
+    // sibling subsequently cancels it. Wire dispatch is tracked by inFlight.
+    retryCount(edge, "attempts", message);
+    edge.calls.backingOff! += dotsOf(message);
+    scheduleLogical({ id: branch.retryEvent, end: time + delay, edge, call: call.id, retry: true });
+    const reason = event.timeout ? "timed out" : String(event.code);
+    log(
+      "retry",
+      call.node,
+      message,
+      `${edge.to.label}: attempt ${branch.attempt! + 1}/${Math.min(policy.maxAttempts, 10)} after ${delay} ms, ${reason}`,
+    );
+    if (message.family.trace)
+      step(message, "retry", call.node.id, {
+        edge: edge.id,
+        attempt: branch.attempt! + 1,
+        reason,
+        backoffMs: delay,
+        maxAttempts: Math.min(policy.maxAttempts, 10),
+      });
+    return true;
+  }
+
+  function retryCall(call: Call, edge: Edge): void {
+    const timing = call.branches.get(edge.id)!;
+    cancelRetry(call, edge);
+    timing.attempt!++;
+    timing.state = "queued";
+    timing.expiresAt = time + (edge.policy?.deadlineMs ?? Infinity);
+    const message = {
+      ...addressed(
+        copy(call.node, call.work.outputMessage ?? call.work.message),
+        edge.requestRoute ?? call.work.message.request,
+      ),
+      width: ledger.get(call.work.thread)?.weight ?? call.work.message.width,
+      returnCall: call.id,
+      callDepth: call.depth,
+      callAttempt: timing.attempt,
+    };
+    pushDue(
+      edge.poolPending,
+      { id: call.id, end: call.id, call, message, admissibleActive: edge.from.activeMs },
+      edge.poolPendingIndices,
+    );
+    if (Number.isFinite(timing.expiresAt)) {
+      timing.deadlineEvent = nextLogical++;
+      scheduleLogical({
+        id: timing.deadlineEvent,
+        end: timing.expiresAt,
+        edge,
+        call: call.id,
+        timeout: true,
+        ok: false,
+        code: 504,
+        represented: message.represented,
+        callAttempt: timing.attempt,
+      });
+    }
+    dispatchCalls(edge);
   }
 
   function cancelDeadline(call: Call, edge: Edge): void {
@@ -1869,6 +2038,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const id of call.branches.keys()) {
       const edge = faultEdges.get(id)!;
       cancelDeadline(call, edge);
+      cancelRetry(call, edge);
       cancelPending(edge, call.id);
       if (!a.outcome!.ok && hasDeadline) retirePool(edge, call.id, a.outcome!.at - call.startedAt);
     }
@@ -1899,6 +2069,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         0,
         latencyBudget,
         a.outcome!.at - call.startedAt,
+        work.message.backoffMs,
       );
     }
     if (node.role === "processor" && (call.replies ?? 0) > 0 && node.status !== "down" && !releaseNow) {
@@ -2013,6 +2184,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
           continue;
         }
+        if (event.retry) {
+          if (call && !call.attempt.outcome) retryCall(call, edge!);
+          continue;
+        }
+        // A late reply belongs to its old attempt, never to the current pool
+        // lease or deadline. Attempt identity is separate from broker delivery.
+        if (edge?.retry && call && event.callAttempt !== call.branches.get(edge.id)!.attempt) {
+          edge.calls.late += dotsOf(event);
+          continue;
+        }
+        if (edge?.retry && call?.branches.get(edge.id)?.state === "backoff") {
+          edge.calls.late += dotsOf(event);
+          continue;
+        }
         if (event.timeout && (!call || call.attempt.outcome || !call.outstanding.has(edge!.id))) continue;
         if (
           !event.timeout &&
@@ -2033,17 +2218,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ledger.releaseDue(edge.from.id, edge.from.activeMs);
           dispatchCalls(edge);
         }
-        if (!call || call.attempt.outcome || !call.outstanding.delete(edge!.id)) {
+        if (!call || call.attempt.outcome || !call.outstanding.has(edge!.id)) {
           edge!.calls.late += dotsOf(event);
           continue;
         }
         cancelDeadline(call, edge!);
+        if (event.backoffMs !== undefined)
+          call.work.message.backoffMs = Math.max(call.work.message.backoffMs ?? 0, event.backoffMs);
         if (event.timeout) edge!.calls.timedOut += dotsOf(event);
         if (!event.ok) {
           edge!.calls.failed += dotsOf(event);
+          if (maybeRetry(call, edge!, event)) continue;
           call.work.failureCode = event.code;
           call.work.timeoutOrigin = event.timeout ? edge!.id : event.timeoutOrigin;
         }
+        call.outstanding.delete(edge!.id);
+        if (event.ok && edge!.retry) retryCount(edge!, "succeeded", call.work.message);
         releaseCallEdge(call, edge!);
         call.branches.get(edge!.id)!.state = event.timeout ? "timedOut" : event.ok ? "replied" : "failed";
         if (edge!.policy?.blocking) call.blockingRemaining--;
@@ -2162,6 +2352,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function fail(node: Node, work: Work, retry: RetryDisposition): void {
+    if (retries() && hasRetryPolicy) work.failureCode ??= node.status === "down" ? 503 : 500;
     if (retry !== "inplace") finishResident(node, work);
     // A queued retained attempt can fail again while down. Retention belongs only to this attempt.
     work.retained = false;
@@ -2295,7 +2486,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       forward(
         node,
         output && output !== work.message
-          ? { ...output, workMs: work.message.workMs, callMs: work.message.callMs }
+          ? {
+              ...output,
+              workMs: work.message.workMs,
+              callMs: work.message.callMs,
+              ...(work.message.backoffMs === undefined ? {} : { backoffMs: work.message.backoffMs }),
+            }
           : work.message,
         work.route,
         work.outputs,
@@ -3382,6 +3578,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ],
       },
     });
+    opts.verifyResilience?.({ time, inSystem, edges, calls: calls.values(), logical, budgetDecisions });
+    budgetDecisions = [];
     opts.verifyLedger?.({
       time,
       ledger: ledger.state,
@@ -3524,7 +3722,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     assignReplicas(new Set(nodes.keys()));
     for (const edge of edges) {
-      edge.calls = { inFlight: 0, held: 0, timedOut: 0, failed: 0, late: 0 };
+      edge.calls = { inFlight: 0, held: 0, timedOut: 0, failed: 0, late: 0, ...(edge.retry ? emptyRetryCounts() : {}) };
+      if (edge.retry) {
+        edge.retry.window = createRetryWindow();
+        edge.retry.stream = undefined;
+        if (edge.retry.policy.maxAttempts > 10)
+          log("status", edge.from, undefined, "Retries capped at 10 attempts per call");
+      }
       edge.poolUsed = 0;
       edge.poolPending = [];
       edge.poolPendingIndices.clear();
@@ -3726,6 +3930,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // Counters read as reports do, to 1e-9 dots, so a partial dot's exact total meets an expectation.
       if (metric.field === "timedOut")
         return roundDots(node.outgoing.reduce((sum, edge) => sum + edge.calls.timedOut, 0));
+      if (metric.field === "retried")
+        return roundDots(node.outgoing.reduce((sum, edge) => sum + (edge.calls.retried ?? 0), 0));
+      if (metric.field === "amplification") {
+        let requests = 0,
+          attempts = 0;
+        for (const edge of node.outgoing)
+          if (edge.retry) {
+            const w = retryWindow(edge.retry.window, time);
+            requests += w.requests;
+            attempts += w.attempts;
+          }
+        return requests ? attempts / requests : 1;
+      }
+      if (metric.field === "goodput") return node.throughput;
       if (metric.field === "threadsWaiting") return waits() && node.waits ? node.threadWeight.wait / scale : 0;
       if (metric.field === "threadsBusy")
         return waits() && node.waits ? (node.threadWeight.work + node.threadWeight.wait) / scale : 0;
@@ -3752,6 +3970,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       faults = new Map();
       faultEdges.clear();
       planning = diagram.planning;
+      hasRetryPolicy = false;
       configuration = undefined;
       topology++;
       nodes.clear();
@@ -3855,6 +4074,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             if (to.role === "processor") to.callTarget = true;
           }
         }
+        const retry = (props?.caller as import("./types").EdgeSimProps["caller"])?.retry;
+        if (retries() && callEligible(from.role, edge) && retry) {
+          hasRetryPolicy = true;
+          edge.retry = { policy: structuredClone(retry), window: createRetryWindow() };
+          Object.assign(edge.calls, emptyRetryCounts());
+        }
         if (props && routes) {
           // A caller's address belongs to a Request out of a source or service; on a router's edges it's dormant.
           const caller = from.role === "source" || from.role === "processor" || from.role === "none";
@@ -3923,6 +4148,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             messageId: trip.message.id,
             rootId: trip.message.family.root,
             kind: trip.kind,
+            ...((trip.message.callAttempt ?? 1) > 1 && trip.kind === "message"
+              ? { callAttempt: trip.message.callAttempt }
+              : {}),
             progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
             type: trip.message.type,
             color: trip.message.request?.color ?? trip.message.color,
@@ -4021,7 +4249,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           id: edge.id,
           delivered: roundDots(edge.delivered),
           active: edge.active,
-          ...(waits() && edge.sync ? { calls: roundCalls(edge.calls) } : {}),
+          ...(waits() && edge.sync
+            ? { calls: roundCalls({ ...edge.calls, ...(edge.retry ? retryWindowView(edge) : {}) }) }
+            : {}),
         };
       const recent: SimEvent[] = [];
       for (let i = 0; i < events.length; i++) recent.push({ ...events[(eventHead + i) % events.length] });

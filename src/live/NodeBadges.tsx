@@ -89,7 +89,7 @@ export function NodeBadges({
     const calls = state.snapshot.edges[e.id]?.calls;
     if (!calls) return [];
     const queued = ui.controller.queuedCalls(e.id);
-    if (!(calls.held || calls.inFlight || calls.timedOut || queued)) return [];
+    if (!(calls.held || calls.inFlight || calls.timedOut || (calls.windowRetried ?? 0) >= 10 || queued)) return [];
     const override = state.running?.setup?.edges?.[e.id]?.caller;
     const policy = callPolicy("", { ...(e.props?.caller as EdgeSimProps["caller"]), ...override });
     return [

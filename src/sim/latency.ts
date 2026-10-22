@@ -30,6 +30,7 @@ export function latencyBucket(latency: number): number {
 
 interface Histogram {
   callMs?: number;
+  backoffMs?: number;
   buckets: number[];
   samples: number;
   max: number;
@@ -75,6 +76,7 @@ export function recordLatency(
   travel: number,
   budget?: LatencyBudget,
   callMs?: number,
+  backoffMs?: number,
 ) {
   const latency = wait + work;
   const bucket = latencyBucket(latency);
@@ -83,7 +85,8 @@ export function recordLatency(
     h.samples++;
     h.max = Math.max(h.max, latency);
     h.waitMs += Math.max(0, wait - (callMs ?? 0));
-    if (callMs !== undefined) h.callMs = (h.callMs ?? 0) + callMs;
+    if (callMs !== undefined) h.callMs = (h.callMs ?? 0) + Math.max(0, callMs - (backoffMs ?? 0));
+    if (backoffMs !== undefined) h.backoffMs = (h.backoffMs ?? 0) + backoffMs;
     h.workMs += work;
     h.travelMs += travel;
   };
@@ -124,6 +127,7 @@ function summary(h: Histogram): LatencySummary {
     workMs: h.workMs,
     travelMs: h.travelMs,
     ...(h.callMs === undefined ? {} : { callMs: h.callMs }),
+    ...(h.backoffMs === undefined ? {} : { backoffMs: h.backoffMs }),
   });
   summaries.set(h, value);
   return value;

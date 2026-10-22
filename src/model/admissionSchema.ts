@@ -59,6 +59,16 @@ const retry: JsonSchema = {
   properties: {
     maxAttempts: { type: "integer", minimum: 1, maximum: 1000 },
     backoffMs: time,
+    maxBackoffMs: time,
+    budget: {
+      type: "object",
+      additionalProperties: false,
+      required: ["percent"],
+      properties: {
+        percent: { type: "number", minimum: 1, maximum: 100 },
+        minPerSec: { type: "number", minimum: 0, maximum: 10000 },
+      },
+    },
     strategy: { enum: ["fixed", "exponential"] },
     jitter: { type: "number", minimum: 0, maximum: 1 },
     retryOn: { type: "array", maxItems: 3, uniqueItems: true, items: { enum: ["throttled", "transient", "timeout"] } },
@@ -81,7 +91,7 @@ export const planningSchema: JsonSchema = {
   required: ["revision"],
   additionalProperties: false,
   properties: {
-    revision: { enum: ["p1", "p2", "p3", "p3-a1", "p3-w1"] },
+    revision: { enum: ["p1", "p2", "p3", "p3-a1", "p3-w1", "p3-w2"] },
     requestRoutes: requestRoutesSchema,
     sharedQuotas: { type: "array", maxItems: 128, items: quotaSchema },
     sharedAllocations: { type: "array", maxItems: 128, items: allocationSchema },

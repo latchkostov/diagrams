@@ -1,0 +1,304 @@
+{
+  "autoScale": { "freePlay": 5, "three-quick-retries": 5, "jittered-backoff": 5, "retry-budget": 5 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "orders",
+      "suggestion": "Orders: resume the node or add a ready consumer.",
+      "converged": true,
+      "iterations": 3,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "shop": ["Infinity", 300, 0, 1, 1, 0], "checkout": [26666.666666666668, 300, 0.01125, 4, 4, 0], "payments": [600, 300, 0.5, 4, 4, 0], "orders": [0, 300, "Infinity", 1, 1, 0] },
+      "connections": { "checkouts": 300, "pay": 300, "orders-flow": 300 },
+      "offeredTypes": { "shop": ["Shop"], "checkout": ["Shop"], "payments": ["Shop"], "orders": ["Shop"] }
+    },
+    "explanations": {
+      "checkout": {
+        "waits": { "workMs": 5, "callMs": 10, "threadHoldMs": 15, "memoryResidenceMs": 95, "replyMs": 10, "replies": 1, "slots": 400, "ceiling": 26666.666666666668 },
+        "id": "checkout",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 26666.666666666668,
+        "offered": 300,
+        "replicas": 4,
+        "baseReplicas": 4,
+        "omittedContributors": 0,
+        "activeReplicas": 4,
+        "assignments": [],
+        "slots": 100,
+        "seconds": 0.015,
+        "utilization": 0.01125,
+        "growth": 0,
+        "contributors": [{ "edge": "checkouts", "node": "shop", "label": "Shop", "rate": 300 }],
+        "target": 0.5,
+        "minimumReplicas": 4,
+        "changes": null,
+        "converged": true,
+        "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 300, "rejected": 0, "throttled": 0 }]
+      },
+      "payments": {
+        "id": "payments",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 600,
+        "offered": 300,
+        "replicas": 4,
+        "baseReplicas": 4,
+        "omittedContributors": 0,
+        "activeReplicas": 4,
+        "assignments": [],
+        "slots": 12,
+        "seconds": 0.08,
+        "utilization": 0.5,
+        "growth": 0,
+        "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout", "rate": 300 }],
+        "target": 0.5,
+        "minimumReplicas": 4,
+        "changes": null,
+        "converged": true,
+        "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 300, "rejected": 0, "throttled": 0 }]
+      },
+      "orders": {
+        "id": "orders",
+        "role": "topic",
+        "status": "up",
+        "reason": "no-reader",
+        "evidence": "configured",
+        "unit": "msg/s",
+        "capacity": 0,
+        "offered": 300,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": "Infinity",
+        "growth": 300,
+        "contributors": [{ "edge": "orders-flow", "node": "checkout", "label": "Checkout", "rate": 300 }],
+        "target": 0.5,
+        "changes": null,
+        "addConsumer": "orders",
+        "fixId": "no-reader:orders",
+        "converged": true,
+        "routes": [{ "route": "checkout", "address": "POST /checkout", "offered": 300, "rejected": 0, "throttled": 0 }]
+      }
+    },
+    "capabilities": {
+      "shop": [{ "kind": "calls", "edge": "checkouts", "peer": "checkout" }],
+      "checkout": [
+        { "kind": "calls", "edge": "pay", "peer": "payments" },
+        { "kind": "publishes", "edge": "orders-flow", "peer": "orders" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": { "orders": { "replicas": 2, "enough": true } },
+    "resolved": {
+      "shop": {
+        "profile": { "family": "client", "revision": "p3-w2", "evidence": [], "units": "real" },
+        "ratePerSec": 300,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Shop",
+        "healthChecks": false
+      },
+      "checkout": {
+        "profile": { "family": "service", "revision": "p3-w2", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 5,
+        "concurrency": 100,
+        "replicas": 4,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "payments": {
+        "profile": { "family": "service", "revision": "p3-w2", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 80,
+        "concurrency": 12,
+        "replicas": 4,
+        "jitter": 0,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Payments",
+        "healthChecks": false
+      },
+      "orders": {
+        "broker": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },
+        "profile": { "family": "pubsub", "revision": "p3-w2", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Orders",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {
+    "three-quick-retries": { "configured": "(same as edit)", "simulation": "three-quick-retries", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "jittered-backoff": { "configured": "(same as edit)", "simulation": "jittered-backoff", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "retry-budget": { "configured": "(same as edit)", "simulation": "retry-budget", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
+  },
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "warn",
+          "top": "orders",
+          "headline": "Nobody reads Orders",
+          "detail": "No readers. Add a reader.",
+          "fix": null,
+          "addConsumer": "orders",
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "300/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "1% · 300/s of 27k/s"],
+            "payments": ["ok", "50% · 300/s of 600/s"],
+            "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "warn",
+          "top": "orders",
+          "headline": "Nobody reads Orders",
+          "detail": "No readers. Add a reader.",
+          "fix": {
+            "changes": [{ "nodeId": "payments", "key": "replicas", "from": 4, "to": 19, "label": "Payments" }],
+            "label": "Payments 4 → 19 replicas"
+          },
+          "addConsumer": "orders",
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "1.5k/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "6% · 1.5k/s of 27k/s"],
+            "payments": ["over", "250% · 1.5k/s of 600/s"],
+            "orders": ["warn", "Nobody reads this yet · 1.5k/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "warn",
+          "top": "orders",
+          "headline": "Nobody reads Orders",
+          "detail": "No readers. Add a reader.",
+          "fix": {
+            "changes": [{ "nodeId": "payments", "key": "replicas", "from": 4, "to": 8, "label": "Payments" }],
+            "label": "Payments 4 → 8 replicas"
+          },
+          "addConsumer": "orders",
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "300/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "2% · 300/s of 13k/s"],
+            "payments": ["hot", "100% · 300/s of 300/s"],
+            "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "warn",
+          "top": "orders",
+          "headline": "Nobody reads Orders",
+          "detail": "No readers. Add a reader.",
+          "fix": null,
+          "addConsumer": "orders",
+          "converged": true,
+          "nodes": {
+            "shop": ["idle", "300/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "1% · 300/s of 27k/s"],
+            "payments": ["ok", "50% · 300/s of 600/s"],
+            "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    },
+    "three-quick-retries": {
+      "tone": "warn",
+      "top": "orders",
+      "headline": "Nobody reads Orders",
+      "detail": "No readers. Add a reader.",
+      "fix": null,
+      "addConsumer": "orders",
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "300/s · no limit", { "modeled": false }],
+        "checkout": ["ok", "1% · 300/s of 27k/s"],
+        "payments": ["ok", "50% · 300/s of 600/s"],
+        "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+      }
+    },
+    "jittered-backoff": {
+      "tone": "warn",
+      "top": "orders",
+      "headline": "Nobody reads Orders",
+      "detail": "No readers. Add a reader.",
+      "fix": null,
+      "addConsumer": "orders",
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "300/s · no limit", { "modeled": false }],
+        "checkout": ["ok", "1% · 300/s of 27k/s"],
+        "payments": ["ok", "50% · 300/s of 600/s"],
+        "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+      }
+    },
+    "retry-budget": {
+      "tone": "warn",
+      "top": "orders",
+      "headline": "Nobody reads Orders",
+      "detail": "No readers. Add a reader.",
+      "fix": null,
+      "addConsumer": "orders",
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "300/s · no limit", { "modeled": false }],
+        "checkout": ["ok", "1% · 300/s of 27k/s"],
+        "payments": ["ok", "50% · 300/s of 600/s"],
+        "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+      }
+    }
+  }
+}

@@ -402,32 +402,53 @@ test.describe("annotations", () => {
 
   for (const shape of ["hourglass", "comment", "brace-r"] as const)
     test(`${shape} opposite handles independently start connections`, async ({ page }) => {
-      await seed(page, {
-        format: "diagrams/v1",
-        title: "Distinct ports",
-        nodes: [],
-        edges: [],
-        annotations: [{ id: "shape", kind: "shape", shape, text: "", x: 0, y: 0, width: 160, height: 90 }],
-      });
-      await gotoCanvas(page, SLUG);
-      await annotation(page, "shape").click();
-      await waitForSelectionSettled(page);
-      for (const side of ["left", "right"] as const) {
-        const handle = page.getByTestId(`handle-shape-${side}`);
-        await expect(handle).toBeVisible();
-        const hit = await handle.evaluate((element) => {
-          const r = element.getBoundingClientRect();
-          return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.getAttribute("data-testid");
+      const held = Promise.withResolvers<undefined>();
+      await page.route(
+        /\/(?:assets\/attachmentGeometry-[^/]+\.js|src\/canvas\/shapes\/attachmentGeometry\.ts)(?:\?|$)/,
+        async (route) => {
+          await held.promise;
+          await route.continue();
+        },
+      );
+      try {
+        await seed(page, {
+          format: "diagrams/v1",
+          title: "Distinct ports",
+          nodes: [],
+          edges: [],
+          annotations: [{ id: "shape", kind: "shape", shape, text: "", x: 0, y: 0, width: 160, height: 90 }],
         });
-        expect(hit).toBe(`handle-shape-${side}`);
-        const r = await box(handle);
-        await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(r.x + (side === "right" ? 70 : -70), r.y, { steps: 4 });
-        await expect(page.getByTestId("connection-line")).toBeVisible();
-        await page.mouse.up();
-        await page.keyboard.press("Escape");
-        await expect(page.getByTestId("context-menu")).toHaveCount(0);
+        await gotoCanvas(page, SLUG);
+        await annotation(page, "shape").click();
+        await waitForSelectionSettled(page);
+        for (const side of ["left", "right"] as const) {
+          const handle = page.getByTestId(`handle-shape-${side}`);
+          await expect(handle).toBeVisible();
+          // Selection and camera readiness do not mean the lazy attachment
+          // geometry has arrived. Keep the exact hit assertion, waiting for the
+          // real ports to replace their rectangular placeholders. Holding that
+          // download until the first probe makes the old immediate read fail.
+          await expect
+            .poll(async () => {
+              const hit = await handle.evaluate((element) => {
+                const r = element.getBoundingClientRect();
+                return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.getAttribute("data-testid");
+              });
+              held.resolve(undefined);
+              return hit;
+            })
+            .toBe(`handle-shape-${side}`);
+          const r = await box(handle);
+          await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+          await page.mouse.down();
+          await page.mouse.move(r.x + (side === "right" ? 70 : -70), r.y, { steps: 4 });
+          await expect(page.getByTestId("connection-line")).toBeVisible();
+          await page.mouse.up();
+          await page.keyboard.press("Escape");
+          await expect(page.getByTestId("context-menu")).toHaveCount(0);
+        }
+      } finally {
+        held.resolve(undefined);
       }
     });
 

@@ -1,0 +1,952 @@
+[
+  {
+    "time": 100,
+    "inSystem": 21,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 1, "waiting": 0, "waitingOn": [], "queued": 0, "inFlight": 1 },
+        "processed": 0,
+        "failed": 0,
+        "backlog": 0,
+        "inFlight": 1
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 1 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 1, "held": 0, "timedOut": 0, "failed": 0, "late": 0, "requests": 9, "attempts": 9, "retried": 0, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 0, "backingOff": 0, "windowRequests": 9, "windowAttempts": 9, "windowRetried": 0, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 200,
+    "inSystem": 24,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0, "inFlight": 1 },
+        "processed": 0,
+        "failed": 0,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 10 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 1, "held": 0, "timedOut": 9, "failed": 9, "late": 0, "requests": 12, "attempts": 21, "retried": 9, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 9, "backingOff": 9, "windowRequests": 12, "windowAttempts": 21, "windowRetried": 9, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 300,
+    "inSystem": 33,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0, "inFlight": 1 },
+        "processed": 0,
+        "failed": 0,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 12 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 1, "held": 0, "timedOut": 12, "failed": 12, "late": 0, "requests": 12, "attempts": 24, "retried": 12, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 11, "backingOff": 3, "windowRequests": 12, "windowAttempts": 24, "windowRetried": 12, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 400,
+    "inSystem": 36,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0, "inFlight": 1 },
+        "processed": 0,
+        "failed": 0,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 21 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 1, "held": 0, "timedOut": 21, "failed": 21, "late": 0, "requests": 12, "attempts": 33, "retried": 21, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 20, "backingOff": 9, "windowRequests": 12, "windowAttempts": 33, "windowRetried": 21, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 500,
+    "inSystem": 45,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0, "inFlight": 1 },
+        "processed": 0,
+        "failed": 0,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 23 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 1, "held": 0, "timedOut": 24, "failed": 24, "late": 0, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 3, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 600,
+    "inSystem": 39,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 1, "waiting": 0, "waitingOn": [], "queued": 0, "inFlight": 1 },
+        "processed": 0,
+        "failed": 8,
+        "backlog": 0,
+        "inFlight": 1
+      },
+      "partner": { "processed": 1, "failed": 0, "backlog": 0, "inFlight": 31 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 1, "held": 0, "timedOut": 33, "failed": 33, "late": 1, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 700,
+    "inSystem": 23,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 10, "failed": 0, "backlog": 0, "inFlight": 23 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 10, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 800,
+    "inSystem": 21,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 21 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 12, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 900,
+    "inSystem": 12,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 21, "failed": 0, "backlog": 0, "inFlight": 12 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 21, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1000,
+    "inSystem": 10,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 23, "failed": 0, "backlog": 0, "inFlight": 10 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 23, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1100,
+    "inSystem": 1,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 32, "failed": 0, "backlog": 0, "inFlight": 1 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 32, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1200,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1300,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1400,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1500,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1600,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1700,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1800,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 1900,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2000,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2100,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2200,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2300,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2400,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2500,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2600,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2700,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2800,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 2900,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3000,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3100,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3200,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3300,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3400,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3500,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3600,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3700,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3800,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 3900,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4000,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4100,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4200,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4300,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4400,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4500,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4600,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4700,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4800,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 4900,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  },
+  {
+    "time": 5000,
+    "inSystem": 0,
+    "nodes": {
+      "source": { "processed": 12, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "caller": {
+        "threads": { "slots": 100, "working": 0, "waiting": 0, "waitingOn": [], "queued": 0 },
+        "processed": 0,
+        "failed": 12,
+        "backlog": 0,
+        "inFlight": 0
+      },
+      "partner": { "processed": 33, "failed": 0, "backlog": 0, "inFlight": 0 },
+      "result": { "processed": 0, "failed": 0, "backlog": 0, "inFlight": 0 }
+    },
+    "calls": {
+      "call": { "inFlight": 0, "held": 0, "timedOut": 36, "failed": 36, "late": 33, "requests": 12, "attempts": 36, "retried": 24, "succeeded": 0, "budgetDenied": 0, "shortCircuited": 0, "ambiguous": 22, "backingOff": 0, "windowRequests": 12, "windowAttempts": 36, "windowRetried": 24, "windowSucceeded": 0 }
+    }
+  }
+]
