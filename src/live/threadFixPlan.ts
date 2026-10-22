@@ -7,6 +7,8 @@ import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext
 import { planDescriptor } from "../planning/scalingPlanText";
 
 export const THREAD_FIX_LIMITS = { messages: 100_000, startWork: 1_000_000 };
+export const THREAD_FIX_WORK = 2_000_000;
+export const threadFixWork = (nodes: number, edges: number, horizon = 60000) => (horizon / 10) * (nodes + edges) * 7;
 
 export interface ThreadFixRequest {
   /** The live run as it played (LiveController.verificationContext): every replay starts here. */
@@ -27,7 +29,7 @@ export function confirmedThreadFix(request: ThreadFixRequest): TroubleAction | u
   const horizon = Math.min(60000, estimateTotalMs(resolved));
   if (request.time > horizon) return;
   const sim = { ...resolved, durationMs: horizon };
-  if ((horizon / 10) * (d.nodes.length + d.edges.length) * 7 > 2_000_000) return;
+  if (threadFixWork(d.nodes.length, d.edges.length, horizon) > THREAD_FIX_WORK) return;
   const messages = { remaining: THREAD_FIX_LIMITS.messages };
   if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return;
   const measure = (candidate: Simulation) => {

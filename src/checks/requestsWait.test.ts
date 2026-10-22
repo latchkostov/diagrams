@@ -17,7 +17,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import type { FlowNode, DiagramFlowEdge } from "../canvas/types";
 import { profileOf } from "../stencils/profiles";
 import { registerScenarioPlanner } from "../lib/scenarioPlanner";
-import { rememberRequestChecks } from "../lib/requestCheckCache";
+import { rememberRequestChecks, registerRequestChecks } from "../lib/requestCheckCache";
 import * as verification from "../live/threadFixPlan";
 import { presentFinding } from "./presentation";
 
@@ -106,6 +106,7 @@ it("main-thread rechecks reuse the worker's exact findings and never verify a si
   const d = busy as DiagramFile;
   const expected = runChecks(d);
   registerScenarioPlanner(async () => []);
+  registerRequestChecks(async () => []);
   const replay = vi.spyOn(verification, "confirmedThreadFix");
   try {
     rememberRequestChecks(d, [...expected.findings, ...expected.ignored]);
@@ -113,11 +114,12 @@ it("main-thread rechecks reuse the worker's exact findings and never verify a si
     expect(replay).not.toHaveBeenCalled();
     const edited = structuredClone(d);
     edited.edges.find((e) => e.id === "call")!.props!.caller = { wait: "non-blocking" };
-    expect(find(edited, "blocked-threads")).toEqual([]);
+    expect(() => find(edited, "blocked-threads")).toThrow("pending");
     expect(replay).not.toHaveBeenCalled();
   } finally {
     replay.mockRestore();
     registerScenarioPlanner(undefined);
+    registerRequestChecks(undefined);
   }
 });
 

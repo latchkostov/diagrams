@@ -3,6 +3,8 @@ import type { EditorApi } from "../../editor/types";
 import type { CheckIgnore, DiagramChecks } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
 import { runChecks } from "../run";
+import { awaitRequestChecks } from "../../lib/requestCheckCache";
+import { simulationContent } from "../../sim/simulationContent";
 import type { CheckRuleId, Finding } from "../types";
 import { presentFinding } from "../presentation";
 import { t } from "../../i18n/core";
@@ -19,9 +21,22 @@ let seq = 0;
  * (a second click adds no second queue), and the fix applied is the one worked out now (a capacity fix sizes from
  * today's replicas, not the ones the cached check saw). `option` picks one of the fix's other options by its label.
  */
-export function applyFix(editor: EditorApi, finding: Finding, option?: string): boolean {
+export async function applyFix(editor: EditorApi, finding: Finding, option?: string): Promise<boolean> {
   if (!finding.fix?.ops) return false;
-  const current = editor.getDiagram();
+  let current = editor.getDiagram();
+  if (["capacity", "blocked-threads", "scaling-blind", "call-timeout"].includes(finding.rule)) {
+    const content = simulationContent(current);
+    try {
+      await awaitRequestChecks(current);
+    } catch (error) {
+      notify(`Couldn't apply the fix: ${error instanceof Error ? error.message : "the diagram changed"}`, {
+        kind: "error",
+      });
+      return false;
+    }
+    current = editor.getDiagram();
+    if (simulationContent(current) !== content) return false;
+  }
   const fresh = runChecks(current, { rules: [finding.rule] }).findings.find((f) => f.id === finding.id);
   // One of the fix's other options, by its words (the same option worked out now).
   const chosen = option === undefined ? undefined : fresh?.fix?.options?.find((o) => o.label === option);

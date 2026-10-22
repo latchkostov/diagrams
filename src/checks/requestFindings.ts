@@ -5,31 +5,26 @@ import { revisionAtLeast } from "../model/revisions";
 import { callPolicy, callResponseMs } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 import { affordableTimeout } from "../live/affordableTimeout";
-import { confirmedThreadFix } from "../live/threadFixPlan";
+import { confirmedThreadFix, THREAD_FIX_WORK, threadFixWork } from "../live/threadFixPlan";
 import type { TroubleAction } from "../live/observedTrouble";
 import { threadCapacity } from "./threadCapacity";
 import { scaleFix } from "./scaleFix";
 import { scenarioPlans } from "../sim/scalingPlanner";
-import { offThreadPlans } from "../lib/scenarioPlanner";
-import { rememberedRequestChecks } from "../lib/requestCheckCache";
+import {
+  hasRequestCheckProvider,
+  rememberedRequestChecks,
+  rememberRequestChecks,
+  requestCheckResult,
+} from "../lib/requestCheckCache";
 import { profileOf } from "../stencils/profiles";
 import { emptyInputs, freePlayProps, freePlayScale } from "../live/capacityModel";
 import { DEFAULT_SEED } from "../live/storm";
-import { simulationContent } from "../sim/simulationContent";
 import { scalingFixLabel } from "./scalingFindings";
 import { resourcePlan } from "../sim/resourcePlanning";
-import { resolvedTiming } from "../sim/timing";
+import { requestResponseMs } from "../sim/timing";
+import type { Simulation } from "../model/types";
 
-const cache = new WeakMap<CheckContext, Finding[]>();
-const contentCache = new Map<string, Finding[]>();
 const round = (n: number) => Math.round(n * 1000) / 1000;
-const FIX_WORK = 2_000_000;
-
-/** All verified findings, including rules the diagram turned off. The worker sends
- * this complete cache so main-thread rechecks share its capacity suppression. */
-export function checkedRequests(d: CheckContext["diagram"]): Finding[] | undefined {
-  return contentCache.get(simulationContent(d));
-}
 
 /** Exact edit values from #225's selector, never another ranking or timeout formula. */
 export function threadCheckFix(d: CheckContext["diagram"], action: TroubleAction | undefined): CheckFix | undefined {
@@ -64,19 +59,19 @@ export function threadCheckFix(d: CheckContext["diagram"], action: TroubleAction
  * Replays run in the Checks worker. Main-thread readers use its exact cached findings. */
 export function requestFindings(ctx: CheckContext): Finding[] {
   if (!revisionAtLeast(ctx.diagram.planning?.revision, "p3-w1")) return [];
-  if (!ctx.local && offThreadPlans(ctx.diagram)) return rememberedRequestChecks(ctx.diagram) ?? [];
-  const known = cache.get(ctx);
-  if (known) return known;
-  const d = ctx.diagram,
-    key = simulationContent(d);
-  const remembered = contentCache.get(key);
+  const remembered = rememberedRequestChecks(ctx.diagram);
   if (remembered) return remembered;
+  if (!ctx.local && hasRequestCheckProvider()) {
+    const result = requestCheckResult(ctx.diagram);
+    throw result?.status === "failed"
+      ? result.error
+      : new Error("Request checks are pending. Await request checks before reading findings.");
+  }
+  const d = ctx.diagram;
   const analysis = ctx.capacity();
   const findings: Finding[] = [];
-  let remainingWork = FIX_WORK;
-  cache.set(ctx, findings);
-  if (contentCache.size >= 8) contentCache.delete(contentCache.keys().next().value!);
-  contentCache.set(key, findings);
+  let remainingWork = THREAD_FIX_WORK;
+  let simulation: Simulation | undefined;
   for (const node of d.nodes) {
     const n = analysis.nodes[node.id],
       p = analysis.resolved[node.id],
@@ -87,12 +82,13 @@ export function requestFindings(ctx: CheckContext): Finding[] {
       const edge = ctx.edges.get(e.id)!;
       const policy = callPolicy(node.stencil, edge.props?.caller as EdgeSimProps["caller"]);
       if (policy.deadlineMs !== undefined) continue;
-      const response = analysis.nodes[e.to].waits?.memoryResidenceMs ?? resolvedTiming(analysis.resolved[e.to]).workMs;
-      const deadline = affordableTimeout(
-        response + 2 * (Number(edge.props?.networkDelayMs) || 0),
-        n.waits?.slots ?? p.replicas * p.concurrency,
-        n.offered,
+      const response = requestResponseMs(
+        analysis.resolved[e.to],
+        analysis.nodes[e.to].waits,
+        e.endpointId,
+        Number(edge.props?.networkDelayMs) || 0,
       );
+      const deadline = affordableTimeout(response, n.waits?.slots ?? p.replicas * p.concurrency, n.offered);
       const descriptor: NonNullable<Finding["requestFinding"]> = {
         kind: "timeout",
         name: ctx.name(node.id),
@@ -144,29 +140,34 @@ export function requestFindings(ctx: CheckContext): Finding[] {
       const input = ctx.edges.get(e.id)!;
       const policy = callPolicy(node.stencil, input.props?.caller as EdgeSimProps["caller"]);
       if (!policy.blocking) return found;
-      const response =
-        analysis.nodes[e.to].waits?.memoryResidenceMs ??
-        resolvedTiming(analysis.resolved[e.to], 0, e.endpointId).workMs;
-      const hold = callResponseMs(policy, response + 2 * (Number(input.props?.networkDelayMs) || 0));
+      const response = requestResponseMs(
+        analysis.resolved[e.to],
+        analysis.nodes[e.to].waits,
+        e.endpointId,
+        Number(input.props?.networkDelayMs) || 0,
+      );
+      const hold = callResponseMs(policy, response);
       if (hold <= longest) return found;
       longest = hold;
       return e;
     }, undefined);
     if (!edge) continue;
-    const inputs = emptyInputs();
-    const simulation = {
-      id: "free-play",
-      title: "Free play",
-      seed: DEFAULT_SEED,
-      scale: freePlayScale(d, inputs),
-      durationMs: 60000,
-      traffic: [],
-      setup: { props: freePlayProps(d, inputs) },
-      multipliers: { capacity: 1 },
-    };
-    const work = (simulation.durationMs / 10) * (d.nodes.length + d.edges.length) * 7;
+    const work = threadFixWork(d.nodes.length, d.edges.length);
+    if (work <= remainingWork && !simulation) {
+      const inputs = emptyInputs();
+      simulation = {
+        id: "free-play",
+        title: "Free play",
+        seed: DEFAULT_SEED,
+        scale: freePlayScale(d, inputs),
+        durationMs: 60000,
+        traffic: [],
+        setup: { props: freePlayProps(d, inputs) },
+        multipliers: { capacity: 1 },
+      };
+    }
     const action =
-      work <= remainingWork
+      work <= remainingWork && simulation
         ? confirmedThreadFix({
             context: { revision: 0, origin: { diagram: d, simulation, initialTraffic: true }, controls: [] },
             trouble: {
@@ -181,7 +182,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
             time: 15000,
           })
         : undefined;
-    remainingWork -= work;
+    if (work <= remainingWork) remainingWork -= work;
     const fix = threadCheckFix(d, action);
     if (fix) {
       const options: NonNullable<CheckFix["options"]> = [];
@@ -275,6 +276,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
       });
     }
   }
+  rememberRequestChecks(d, findings);
   return findings;
 }
 

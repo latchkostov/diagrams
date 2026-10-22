@@ -3,6 +3,58 @@ import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "j
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import { waitingFixture } from "../../src/lab/waitingFixture";
 
+test("worker fallback keeps the displayed timeout actionable", async ({ page }) => {
+  await page.addInitScript(
+    ({ key, d }) => {
+      Object.defineProperty(window, "Worker", { value: undefined });
+      localStorage.setItem(key, JSON.stringify(d));
+    },
+    { key: STORAGE_KEYS.autosavePrefix + "slow-payment-provider", d: payment },
+  );
+  await gotoCanvas(page, "slow-payment-provider");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill("Check diagram");
+  await page.getByTestId("command-input").press("Enter");
+  const fix = page.getByTestId("check-fix-call-timeout:pay");
+  await expect(fix).toBeEnabled();
+  await fix.click();
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "pay")?.props?.caller)
+    .toMatchObject({ deadlineMs: 600 });
+  await page.getByTestId("check-fix-undo").click();
+  await expect(fix).toBeEnabled();
+});
+
+test("the timeout Check leaves a slow selected endpoint time to reply", async ({ page }) => {
+  const d = waitingFixture();
+  d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 1 };
+  d.nodes[1].props = { ...d.nodes[1].props, concurrency: 10 };
+  d.nodes[2].props = {
+    latencyMs: 200,
+    api: { latencyMs: 250 },
+    endpoints: [{ id: "slow", method: "GET", path: "/slow", behaviour: { latencyMs: 2000 } }],
+  };
+  d.edges[1].props = { endpointId: "slow", networkDelayMs: 25 };
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await gotoCanvas(page, "blocking-call");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill("Check diagram");
+  await page.getByTestId("command-input").press("Enter");
+  const fix = page.getByTestId("check-fix-call-timeout:call");
+  await expect(fix).toContainText("8,000 ms");
+  await fix.click();
+  await expect
+    .poll(
+      async () =>
+        ((await savedDiagram(page)).edges.find((e) => e.id === "call")?.props?.caller as { deadlineMs?: number })
+          ?.deadlineMs,
+    )
+    .toBe(8000);
+});
+
 for (const locale of ["en", "ar", "en-XA"]) {
   test(`Checks expose the verified primary fix and keyboard option chips in ${locale}`, async ({ page }) => {
     await page.addInitScript(
@@ -31,6 +83,10 @@ for (const locale of ["en", "ar", "en-XA"]) {
       .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "call")?.props?.caller)
       .toMatchObject({ wait: "non-blocking" });
     await expect(page.getByTestId("check-row-blocked-threads:caller")).toHaveCount(0);
+    await expect(page.getByTestId("check-row-scaling-blind:caller")).toHaveCount(0);
+    await expect(page.getByTestId("check-select-call-timeout:call")).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByTestId("check-select-call-timeout:call")).toBeFocused();
     await page.getByTestId("check-fix-undo").focus();
     await page.keyboard.press("Enter");
     await expect(primary).toBeEnabled();

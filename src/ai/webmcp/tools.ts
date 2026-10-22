@@ -24,6 +24,7 @@ import { EDIT_TOOLS } from "./toolList";
 import { choicesFrom, type StencilChoice } from "../ui/apply";
 import { turnId } from "../ui/thread";
 import { scenarioPlanner } from "../../lib/scenarioPlanner";
+import { awaitRequestChecks } from "../../lib/requestCheckCache";
 
 export type ToolName = keyof typeof toolSchemas;
 
@@ -165,6 +166,21 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
       const diagram = needEditor(host).getDiagram();
       const playing = simulations && !!diagram.simulations?.length;
+      const stillChecking = sameDocument(host);
+      // Capacity suppresses duplicate waiting warnings, so it consumes request checks too.
+      const requestRules = ["capacity", "blocked-threads", "scaling-blind", "call-timeout"] as const;
+      if (requestRules.some((id) => (!rules || playing || rules.includes(id)) && !diagram.checks?.off?.includes(id))) {
+        if (signal?.aborted) throw new Error(CANCELLED);
+        const checks = awaitRequestChecks(diagram);
+        await new Promise<void>((resolve, reject) => {
+          if (signal?.aborted) return reject(new Error(CANCELLED));
+          const abort = () => reject(new Error(CANCELLED));
+          signal?.addEventListener("abort", abort, { once: true });
+          void checks.then(() => resolve(), reject).finally(() => signal?.removeEventListener("abort", abort));
+        });
+        if (signal?.aborted) throw new Error(CANCELLED);
+        stillChecking();
+      }
       // With simulations every check runs (their counts are classified against all of them).
       await sizingReady(host, diagram, capacityRuns(diagram, playing ? undefined : rules), signal);
       if (!playing) return agentReport(runChecks(diagram, rules ? { rules } : {}), include);

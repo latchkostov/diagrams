@@ -51,6 +51,27 @@ export const syncCycle: CheckRule = {
     // Adjacency built once: every edge is mapped and walked once.
     const targets = new Map([...out].map(([id, edges]) => [id, edges.map((e) => e.to)]));
     const none: readonly string[] = [];
+    const blocking = new Map(
+      [...out].map(([id, edges]) => [
+        id,
+        edges
+          .filter((e) => {
+            const policy = callPolicy(
+              ctx.nodes.get(id)!.stencil,
+              ctx.edges.get(e.id)?.props?.caller as EdgeSimProps["caller"],
+            );
+            return policy.blocking && policy.deadlineMs === undefined;
+          })
+          .map((e) => e.to),
+      ]),
+    );
+    const deadlocked = new Set(
+      revisionAtLeast(ctx.diagram.planning?.revision, "p3-w1")
+        ? stronglyConnected(ids, (id) => blocking.get(id) ?? none)
+            .filter((c) => c.length > 1 || blocking.get(c[0])?.includes(c[0]))
+            .flat()
+        : [],
+    );
     for (const found of stronglyConnected(ids, (id) => targets.get(id) ?? none)) {
       // Diagram order, so the finding reads the same however the search met them.
       const component = found.sort((a, b) => diagramOrder.get(a)! - diagramOrder.get(b)!);
@@ -70,15 +91,7 @@ export const syncCycle: CheckRule = {
       const names = [ctx.name(first), ...loop.map((e) => ctx.name(e.to))].join(" → ");
       const more = component.length > loop.length ? ` (${component.length} services are on loops like this one)` : "";
       const edge = edgeName(ctx, closing);
-      const deadlock =
-        revisionAtLeast(ctx.diagram.planning?.revision, "p3-w1") &&
-        inside.every((e) => {
-          const policy = callPolicy(
-            ctx.nodes.get(e.from)!.stencil,
-            ctx.edges.get(e.id)?.props?.caller as EdgeSimProps["caller"],
-          );
-          return policy.blocking && policy.deadlineMs === undefined;
-        });
+      const deadlock = component.some((id) => deadlocked.has(id));
       findings.push({
         ...(deadlock ? { threadDeadlock: true as const } : {}),
         id: `sync-cycle:${target}`,

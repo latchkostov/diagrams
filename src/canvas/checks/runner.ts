@@ -1,9 +1,9 @@
 import type { DiagramFile } from "../../model/types";
-import type { CheckResult } from "../../checks/types";
+import type { CheckResult, Finding } from "../../checks/types";
 import type { CheckRequest, CheckResponse } from "../../checks/worker";
 import type { ScalingPlan } from "../../sim/scalingPlanner";
 import { rememberPlans } from "../../lib/scenarioPlanner";
-import { rememberRequestChecks } from "../../lib/requestCheckCache";
+import { trackRequestChecks } from "../../lib/requestCheckCache";
 import type { ThreadFixRequest } from "../../live/threadFixPlan";
 import type { TroubleAction } from "../../live/observedTrouble";
 
@@ -48,6 +48,11 @@ function getWorker(): Worker | null {
 
 const loadEngine = () => import("../../checks/run");
 
+/** Provider for awaitRequestChecks: the same transport and fallback as background checks. */
+export async function requestChecksOffThread(diagram: DiagramFile): Promise<Finding[]> {
+  return (await computeChecksOffThread(diagram)).requests;
+}
+
 /**
  * No speculative callout fixes, and no reruns on the UI thread. The caller keeps at most one in flight
  * (src/live/useObservedTrouble.ts); a failed worker resolves to no fix.
@@ -70,6 +75,15 @@ export async function threadFixOffThread(threadFix: ThreadFixRequest): Promise<T
 
 /** The checks for `diagram`. Rejects only if the engine itself can't load. */
 export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckResult> {
+  let completed!: { result: CheckResult; requests: Finding[] };
+  await trackRequestChecks(diagram, async () => {
+    completed = await computeChecksOffThread(diagram);
+    return completed.requests;
+  });
+  return completed.result;
+}
+
+async function computeChecksOffThread(diagram: DiagramFile): Promise<{ result: CheckResult; requests: Finding[] }> {
   const w = typeof Worker === "function" ? getWorker() : null;
   if (w) {
     const id = ++seq;
@@ -81,17 +95,23 @@ export async function runChecksOffThread(diagram: DiagramFile): Promise<CheckRes
       });
       if ("result" in response) {
         if (response.plans) rememberPlans(diagram, response.plans);
-        if (response.requests) rememberRequestChecks(diagram, response.requests);
-        return response.result;
+        if (!response.requests) throw new Error("The checks worker returned no request-check result");
+        return { result: response.result, requests: response.requests };
       }
     } catch {
       // Fall through: the worker failed; the main thread runs this one.
     }
   }
   // No worker (an old browser, a blocked script): this thread does all the checking, scenario sizing included.
-  const [{ runChecks }, { planScaling }] = await Promise.all([loadEngine(), import("../../sim/scalingPlanner")]);
+  const [{ runChecks }, { planScaling }, { requestFindings }, { buildContext }] = await Promise.all([
+    loadEngine(),
+    import("../../sim/scalingPlanner"),
+    import("../../checks/requestFindings"),
+    import("../../checks/context"),
+  ]);
   if (!diagram.checks?.off?.includes("capacity")) rememberPlans(diagram, planScaling(diagram));
-  return runChecks(diagram, { local: true });
+  const requests = requestFindings({ ...buildContext(diagram), local: true });
+  return { result: runChecks(diagram, { local: true }), requests };
 }
 
 /** Scenario sizing for live playback: the checks worker's planner (memoized with the capacity check's). */

@@ -83,6 +83,25 @@ function useMaxHeight(card: RefObject<HTMLElement | null>, top: number): number 
 /** Rows drawn per group before "Show more": a diagram with hundreds of findings stays light to draw. */
 const PAGE = 40;
 
+/** A fix can remove several rows at once. Restore focus only after the new rows exist. */
+function useSurvivingCheckFocus(scope: RefObject<HTMLElement | null>) {
+  const focused = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const remember = (e: FocusEvent) => {
+      focused.current = e.target instanceof HTMLElement && scope.current?.contains(e.target) ? e.target : null;
+    };
+    document.addEventListener("focusin", remember);
+    return () => document.removeEventListener("focusin", remember);
+  }, [scope]);
+  useLayoutEffect(() => {
+    if (!focused.current || focused.current.isConnected || document.activeElement !== document.body) return;
+    const target =
+      scope.current?.querySelector<HTMLElement>("[data-check-head]") ??
+      scope.current?.querySelector<HTMLElement>("[data-check-fallback]");
+    target?.focus();
+  });
+}
+
 export function ChecksCard(p: ChecksCardProps) {
   useLocale();
   const onMount = useRef(p.onMount);
@@ -90,6 +109,7 @@ export function ChecksCard(p: ChecksCardProps) {
   const [foot, setFoot] = useState<"ignored" | "off" | "about" | null>(null);
   const [shown, setShown] = useState(PAGE);
   const self = useRef<HTMLElement>(null);
+  useSurvivingCheckFocus(self);
   const maxHeight = useMaxHeight(self, p.top);
   // Closing with focus inside the card (Esc, ✕, a fix that ended it) hands focus back, never to the page.
   const returnFocus = useRef(p.returnFocus);

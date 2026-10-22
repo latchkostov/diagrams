@@ -80,10 +80,10 @@ export function FindingRow({
   const more = useRef<HTMLButtonElement>(null);
   const self = useRef<HTMLDivElement>(null);
   /** Applies the fix (or one of its options); focus inside the row moves on before the row goes. */
-  const fixIt = (option?: string) => {
+  const fixIt = async (option?: string) => {
     const row = self.current;
     const focused = !!row && row.contains(document.activeElement);
-    if (!applyFix(host.editor, f, option)) return;
+    if (!(await applyFix(host.editor, f, option))) return;
     host.applied?.();
     const keepsTarget =
       option === undefined && (f.scalingPlan?.kind === "busyThreads" || f.fix?.planLabel?.kind === "busyThreads");
