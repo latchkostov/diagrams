@@ -137,11 +137,13 @@ function slowCallee() {
 }
 
 // Same arrivals: guard every required caller completion/rejection row at its best value so far
-// (master 61957d3; CPU-with-pool and fragmentation rows ratcheted in sampling PR 5).
+// (master 61957d3; CPU-with-pool and fragmentation rows ratcheted in sampling PR 5; CPU without a pool
+// and CPU-bound standalone at 1.01 in sampling PR 6).
 const accuracyFixtures = {
   managedZeroWork,
   cpuBoundStandalone,
   cpuPool: () => cpuContention(true),
+  cpuNoPool: () => cpuContention(false),
   legacyWorker,
   subTick,
   managedJoin,
@@ -156,7 +158,7 @@ const accuracyMaster = {
     [10, 1000, 1000],
   ],
   cpuBoundStandalone: [
-    [1.01, 182.81, 0],
+    [1.01, 189.88, 0],
     [1.1, 199.10000000000002, 0],
     [2, 200, 0],
     [2.5, 200, 0],
@@ -168,6 +170,13 @@ const accuracyMaster = {
     [2, 400, 0],
     [2.5, 400, 0],
     [10, 400, 0],
+  ],
+  cpuNoPool: [
+    [1.01, 569.64, 0],
+    [1.1, 569.8000000000001, 0],
+    [2, 498, 0],
+    [2.5, 497.5, 0],
+    [10, 500, 0],
   ],
   legacyWorker: [
     [1.01, 1996.77, 0],
@@ -203,6 +212,15 @@ for (const [fixture, rows] of Object.entries(accuracyMaster)) {
     const runs = constantRateRuns(accuracyFixtures[fixture as keyof typeof accuracyFixtures](), scale);
     const baseline = realSnapshot(runs.baseline).nodes.caller;
     const sampled = realSnapshot(runs.sampled).nodes.caller;
+    if (process.env.FC_ACCURACY === "1")
+      console.log(
+        JSON.stringify({
+          fixture,
+          scale,
+          baseline: [baseline.processed, baseline.rejected ?? 0],
+          sampled: [sampled.processed, sampled.rejected ?? 0],
+        }),
+      );
     for (const [key, previous] of [
       ["processed", completed],
       ["rejected", rejected],
@@ -221,7 +239,6 @@ for (const [fixture, rows] of Object.entries(accuracyMaster)) {
 const gaps = [
   { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 396 },
   { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 200 },
-  { name: "CPU contention without a pool", fixture: () => cpuContention(false), scale: 1.1, baseline: 570, dots: 604 },
   { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
 // Preserve the historical serviceCredit snapshot: only W1 moves onto ledger pacing.
@@ -239,7 +256,16 @@ const fragmentationPin = {
   baseline: 999,
   dots: 908,
 };
-for (const gap of [legacyPin, fragmentationPin, ...gaps]) {
+// Closed by sampling PR 6: a fractional CPU tail yields to the next first wave, then is repaid.
+const cpuTailPin = {
+  name: "CPU contention without a pool",
+  fixture: () => cpuContention(false),
+  scale: 1.1,
+  baseline: 570,
+  dots: 518,
+};
+const closed = [fragmentationPin, cpuTailPin];
+for (const gap of [legacyPin, ...closed, ...gaps]) {
   describe(`${gap.name} at scale ${gap.scale}`, () => {
     let runs: ReturnType<typeof constantRateRuns>;
     beforeAll(() => {
@@ -271,7 +297,7 @@ for (const gap of [legacyPin, fragmentationPin, ...gaps]) {
       };
       expect({ baseline: outcomes(runs.baseline), sampled: outcomes(runs.sampled) }).toMatchSnapshot();
     });
-    if (gap === fragmentationPin)
+    if (closed.includes(gap))
       it("I1 regression: preserves real outcomes at the same arrival instants", () => {
         expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
       });
@@ -281,6 +307,21 @@ for (const gap of [legacyPin, fragmentationPin, ...gaps]) {
       });
   });
 }
+
+// Fractional scales reach the same-arrivals reference; whole-dot scales keep their 498-500.
+it.each([1.1, 1.5, 2, 3, 4, 5, 10])("I1 regression: CPU tails yield without a pool at scale %s", (scale) => {
+  const runs = constantRateRuns(cpuContention(false), scale);
+  const completed = realSnapshot(runs.sampled).nodes.caller.processed;
+  if (scale === 1.1 || scale === 1.5) {
+    expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(570);
+    expect(completed).toBeCloseTo(scale === 1.1 ? 569.8 : 570);
+    expect(Math.abs(completed - 570)).toBeLessThanOrEqual(14.7);
+  } else {
+    expect(completed).toBeGreaterThanOrEqual(498);
+    expect(completed).toBeLessThanOrEqual(500);
+  }
+  expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+});
 
 it.each([
   { scale: 1.01, baseline: 1997, dots: 1977 },

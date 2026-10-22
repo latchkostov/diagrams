@@ -163,6 +163,7 @@ interface Work extends ResourceWork {
 export interface CpuTick {
   before: number;
   capacityMs: number;
+  tailDebts?: { before: number; after: number; exhausted: boolean }[];
   charges: {
     before: number;
     after: number;
@@ -335,6 +336,8 @@ export function assertResourceInvariants(state: ResourceState) {
     fail(!!f, "enabled resources have no fleet");
     if (!f) continue;
     if (node.cpuTick) {
+      for (const debt of node.cpuTick.tailDebts ?? [])
+        fail(debt.after <= debt.before + 1e-9 || debt.exhausted, "owed CPU grew without an exhausted budget");
       let logical = 0,
         tails = 0;
       for (const charge of node.cpuTick.charges) {
@@ -498,6 +501,14 @@ export function assertResourceInvariants(state: ResourceState) {
         if (previousAttempts && previousAttempts.get(work) !== work.replica) acquired.add(work.replica);
       }
       fail((work.cpuRemaining ?? 0) >= -1e-8 && Number.isFinite(work.cpuRemaining ?? 0), "invalid CPU remaining");
+      fail(
+        Number.isFinite(work.cpuOwed ?? 0) &&
+          (work.cpuOwed ?? 0) >= 0 &&
+          (work.cpuOwed ?? 0) <= (work.cpuRemaining ?? 0) + 1e-8,
+        "invalid owed tail CPU",
+      );
+      fail(!(work.cpuOwed ?? 0) || !!node.cpuTail?.has(work), "first-wave work carries owed CPU");
+      fail(!(work.cpuOwed ?? 0) || work.fractionalTail === true, "a whole-request tail owes CPU");
       parts += work.cpuParts?.length ?? 0;
       for (const p of work.cpuParts ?? [])
         fail(p.first <= p.last && p.cpu >= -1e-8 && Number.isFinite(p.cpu), "invalid sampled CPU part");
