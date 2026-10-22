@@ -10,11 +10,10 @@ import {
   deliveryGroup,
   ownsCpu,
   cancelCpu,
-  countCpuEntries,
-  repayTails,
+  chargeTails,
   tailEntitlements,
-  yieldTails,
   yieldsToFirstWaves,
+  type CpuBudgets,
 } from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
@@ -3042,7 +3041,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.status !== "paused" && !held(node)) {
         const f = node.fleet,
           r = node.props.resources;
-        const cpuBudgets = f && r ? new Map<number | string, { remaining: number; count: number }>() : undefined;
+        const cpuBudgets: CpuBudgets | undefined = f && r ? new Map() : undefined;
         let retained = 0,
           priorSlots = 0,
           priorOccupancy = 0;
@@ -3062,6 +3061,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               ((work.cpuBackoffUntil ?? 0) > time && !(work.cpuBacklog ?? 0))
             )
               continue;
+            const first = node.cpuTail.has(work) ? 0 : 1;
             if (work.cpuParts) {
               for (const p of work.cpuParts)
                 if (p.cpu > 0) {
@@ -3069,14 +3069,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                     budget = cpuBudgets?.get(key) ?? {
                       remaining: (milli / 1000) * STEP * (p.last - p.first + 1),
                       count: 0,
+                      first: 0,
                     };
                   budget.count++;
+                  budget.first! += first;
                   cpuBudgets?.set(key, budget);
                 }
             } else {
               const id = work.replica ?? 0;
-              const budget = cpuBudgets?.get(id) ?? { remaining: (milli / 1000) * STEP, count: 0 };
+              const budget = cpuBudgets?.get(id) ?? { remaining: (milli / 1000) * STEP, count: 0, first: 0 };
               budget.count++;
+              budget.first! += first;
               cpuBudgets?.set(id, budget);
             }
           }
@@ -3131,19 +3134,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
         }
         if (shares) {
-          repayTails(yielding, cpuBudgets!, chargeTailCpu);
-          // First waves divide what is left among themselves (the entries the loop above counts).
-          countCpuEntries(
-            node.working.filter(
-              (work) =>
-                work.cpuRemaining !== undefined &&
-                !node.cpuTail.has(work) &&
-                !work.resumeAtAdmission &&
-                (work.logicalCpuRemaining ?? Infinity) + (work.cpuBacklog ?? 0) > 1e-8 &&
-                ((work.cpuBackoffUntil ?? 0) <= time || (work.cpuBacklog ?? 0) > 0),
-            ),
-            cpuBudgets!,
-          );
+          chargeTails(yielding, cpuBudgets!, chargeTailCpu);
+          // First waves divide what is left among themselves.
+          for (const budget of cpuBudgets!.values()) budget.count = budget.first!;
         }
         let keep = 0;
         for (const work of node.working) {
@@ -3208,20 +3201,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             ? [...node.cpuTail].filter((tail) => (tailsBefore?.has(tail) ? !!shares?.has(tail) : yieldsCpu(tail)))
             : [];
         if (tailsAfter.length) {
-          const prior = node.cpuTick && new Map(tailsAfter.map((tail) => [tail, tail.cpuOwed ?? 0]));
-          yieldTails(tailsAfter, cpuBudgets!, shares ?? new Map(), chargeTailCpu, (tail) => {
+          if (node.cpuTick)
+            node.cpuTick.tails = { budgets: cpuBudgets!, owed: new Map(tailsAfter.map((t) => [t, t.cpuOwed ?? 0])) };
+          chargeTails(tailsAfter, cpuBudgets!, chargeTailCpu, shares ?? new Map(), (tail) => {
             node.cpuTail.delete(tail);
             const owned = "scope" in tail ? ledger.get((tail as Reservation).id) === tail : "message" in tail;
             if (!owned) endResources(node, tail);
           });
-          if (node.cpuTick && prior)
-            node.cpuTick.tailDebts = tailsAfter.map((tail) => ({
-              before: prior.get(tail) ?? 0,
-              after: tail.cpuOwed ?? 0,
-              exhausted: (tail.cpuParts ?? [{ key: tail.replica ?? 0 }]).some(
-                (part) => (cpuBudgets!.get(part.key)?.remaining ?? Infinity) <= 1e-9,
-              ),
-            }));
         }
         if (f && r) {
           if ((scale > 1 && !waits()) || f.sampledDrains.length) releaseSampledDrains(f, resourceWork(node));

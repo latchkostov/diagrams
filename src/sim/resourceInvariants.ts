@@ -163,7 +163,8 @@ interface Work extends ResourceWork {
 export interface CpuTick {
   before: number;
   capacityMs: number;
-  tailDebts?: { before: number; after: number; exhausted: boolean }[];
+  /** Yielding tails' owed CPU before they share the leftover, and the tick's budgets after. */
+  tails?: { budgets: ReadonlyMap<number | string, { remaining: number }>; owed: ReadonlyMap<ResourceWork, number> };
   charges: {
     before: number;
     after: number;
@@ -336,8 +337,14 @@ export function assertResourceInvariants(state: ResourceState) {
     fail(!!f, "enabled resources have no fleet");
     if (!f) continue;
     if (node.cpuTick) {
-      for (const debt of node.cpuTick.tailDebts ?? [])
-        fail(debt.after <= debt.before + 1e-9 || debt.exhausted, "owed CPU grew without an exhausted budget");
+      for (const [tail, before] of node.cpuTick.tails?.owed ?? [])
+        fail(
+          (tail.cpuOwed ?? 0) <= before + 1e-9 ||
+            (tail.cpuParts ?? [{ key: tail.replica ?? 0 }]).some(
+              (part) => (node.cpuTick!.tails!.budgets.get(part.key)?.remaining ?? Infinity) <= 1e-9,
+            ),
+          "owed CPU grew without an exhausted budget",
+        );
       let logical = 0,
         tails = 0;
       for (const charge of node.cpuTick.charges) {

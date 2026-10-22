@@ -64,102 +64,70 @@ export function yieldsToFirstWaves(work: ResourceWork, requestCpuMs: number): bo
   return (work.fractionalTail ??= (work.cpuRemaining ?? 0) < (work.cpuPerRequest ?? requestCpuMs) - 1e-9);
 }
 
-export type CpuBudgets = Map<number | string, { remaining: number; count: number }>;
+/** Per key: the tick's remaining CPU, every entry the node counted, and how many of them are first waves. */
+export type CpuBudgets = Map<number | string, { remaining: number; count: number; first?: number }>;
 export type TailCharge = (work: ResourceWork, spent: number, replica: number | undefined, active: boolean) => void;
 
 type CpuEntry = { key: number | string; cpu: number; drainAt?: number };
-function cpuEntries(work: ResourceWork): CpuEntry[] {
-  return work.cpuParts ?? [{ key: work.replica ?? 0, cpu: work.cpuRemaining ?? 0 }];
-}
-
-/** Every phase shares the remaining budget, but divides it only among that phase's entries. */
-export function countCpuEntries(works: Iterable<ResourceWork>, budgets: CpuBudgets): void {
-  for (const budget of budgets.values()) budget.count = 0;
-  for (const work of works)
-    for (const part of cpuEntries(work))
-      if (!work.cpuParts || part.cpu > 0) {
-        const budget = budgets.get(part.key);
-        if (budget) budget.count++;
-      }
-}
+const cpuEntries = (work: ResourceWork): CpuEntry[] =>
+  work.cpuParts ?? [{ key: work.replica ?? 0, cpu: work.cpuRemaining ?? 0 }];
 
 /** A tail's fair share of the whole tick: per key, the full budget over every entry the node counted. */
-export function tailEntitlements(tails: Iterable<ResourceWork>, budgets: CpuBudgets): Map<ResourceWork, number> {
-  const out = new Map<ResourceWork, number>();
-  for (const tail of tails) {
-    let share = 0;
-    for (const part of cpuEntries(tail)) {
-      const budget = budgets.get(part.key);
-      if (budget?.count && part.cpu > 0) share += Math.min(part.cpu, budget.remaining / budget.count);
-    }
-    out.set(tail, share);
-  }
-  return out;
+export function tailEntitlements(tails: ResourceWork[], budgets: CpuBudgets): Map<ResourceWork, number> {
+  return new Map(
+    tails.map((tail) => [
+      tail,
+      cpuEntries(tail).reduce((sum, part) => {
+        const budget = budgets.get(part.key);
+        return sum + (budget?.count && part.cpu > 0 ? Math.min(part.cpu, budget.remaining / budget.count) : 0);
+      }, 0),
+    ]),
+  );
 }
 
 /**
- * Max-min fair (water-filling) per key: each tail part takes at most `cap(work, cpu)`, and what one part
- * leaves goes to the others, so a key stops short of its budget only when every part on it is satisfied.
+ * Charges yielding tails, max-min fair (water-filling) per key, so a key stops short of its budget only when
+ * every tail part on it is satisfied. Without `entitled` this is the repayment, before first waves: each tail
+ * takes at most its owed share of what it has left. With it, tails share what first waves left, and whatever
+ * a tail was entitled to this tick and did not get stays owed (never more than its unfinished CPU).
  */
-function shareAmong(
-  tails: Iterable<ResourceWork>,
+export function chargeTails(
+  tails: ResourceWork[],
   budgets: CpuBudgets,
-  cap: (work: ResourceWork, cpu: number) => number,
   charge: TailCharge,
-): Map<ResourceWork, number> {
-  const byKey = new Map<number | string, { work: ResourceWork; part: CpuEntry; cap: number }[]>();
+  entitled?: ReadonlyMap<ResourceWork, number>,
+  finish?: (tail: ResourceWork) => void,
+): void {
+  if (!entitled) tails = tails.filter((tail) => (tail.cpuOwed ?? 0) > 1e-9 && (tail.cpuRemaining ?? 0) > 1e-12);
+  const byKey = new Map<number | string, { tail: ResourceWork; part: CpuEntry; cap: number }[]>();
   const got = new Map<ResourceWork, number>();
-  for (const work of tails) {
-    got.set(work, 0);
-    for (const part of cpuEntries(work)) {
-      const limit = Math.min(part.cpu, cap(work, part.cpu));
-      if (!(limit > 1e-12) || !budgets.has(part.key)) continue;
-      let list = byKey.get(part.key);
-      if (!list) byKey.set(part.key, (list = []));
-      list.push({ work, part, cap: limit });
-    }
+  for (const tail of tails) {
+    got.set(tail, 0);
+    const fraction = entitled ? 1 : Math.min(1, tail.cpuOwed! / tail.cpuRemaining!);
+    for (const part of cpuEntries(tail))
+      if (part.cpu * fraction > 1e-12 && budgets.has(part.key)) {
+        if (!byKey.has(part.key)) byKey.set(part.key, []);
+        byKey.get(part.key)!.push({ tail, part, cap: part.cpu * fraction });
+      }
   }
   for (const [key, list] of byKey) {
     const budget = budgets.get(key)!;
     // Stable: equal caps keep tail order, so the schedule stays deterministic.
     list.sort((a, b) => a.cap - b.cap);
-    let left = list.length;
-    for (const { work, part, cap } of list) {
-      const spent = Math.max(0, Math.min(cap, budget.remaining / left--));
-      if (!(spent > 0)) continue;
+    list.forEach(({ tail, part, cap }, i) => {
+      const spent = Math.max(0, Math.min(cap, budget.remaining / (list.length - i)));
+      if (!(spent > 0)) return;
       part.cpu -= spent;
       budget.remaining -= spent;
-      got.set(work, got.get(work)! + spent);
-      charge(work, spent, work.cpuParts ? undefined : work.replica, part.drainAt === undefined);
-    }
+      got.set(tail, got.get(tail)! + spent);
+      charge(tail, spent, tail.cpuParts ? undefined : tail.replica, part.drainAt === undefined);
+    });
   }
-  for (const [work, spent] of got) work.cpuRemaining = Math.max(0, (work.cpuRemaining ?? 0) - spent);
-  return got;
-}
-
-/** Repay: owed tail CPU runs before first waves, each tail at most its owed share of what it has left. */
-export function repayTails(tails: Iterable<ResourceWork>, budgets: CpuBudgets, charge: TailCharge): void {
-  const owed = [...tails].filter((tail) => (tail.cpuOwed ?? 0) > 1e-9 && (tail.cpuRemaining ?? 0) > 1e-12);
-  const got = shareAmong(owed, budgets, (work, cpu) => cpu * Math.min(1, work.cpuOwed! / work.cpuRemaining!), charge);
-  for (const [tail, spent] of got) tail.cpuOwed = Math.min(tail.cpuRemaining ?? 0, Math.max(0, tail.cpuOwed! - spent));
-}
-
-/**
- * Yield: after first waves, tails share what is left. Whatever a tail was entitled to this tick and did not get
- * stays owed (never more than its unfinished CPU) and is repaid first next tick.
- */
-export function yieldTails(
-  tails: Iterable<ResourceWork>,
-  budgets: CpuBudgets,
-  entitlements: ReadonlyMap<ResourceWork, number>,
-  charge: TailCharge,
-  finish: (tail: ResourceWork) => void,
-): void {
-  const got = shareAmong(tails, budgets, (_work, cpu) => cpu, charge);
   for (const [tail, spent] of got) {
-    const owed = (tail.cpuOwed ?? 0) + (entitlements.get(tail) ?? 0) - spent;
-    tail.cpuOwed = Math.min(tail.cpuRemaining ?? 0, Math.max(0, owed));
-    if ((tail.cpuRemaining ?? 0) <= 1e-8) {
+    tail.cpuRemaining = Math.max(0, (tail.cpuRemaining ?? 0) - spent);
+    const owed = (tail.cpuOwed ?? 0) + (entitled ? (entitled.get(tail) ?? 0) : 0) - spent;
+    tail.cpuOwed = Math.min(tail.cpuRemaining, Math.max(0, owed));
+    if (finish && tail.cpuRemaining <= 1e-8) {
       tail.cpuOwed = 0;
       finish(tail);
     }
