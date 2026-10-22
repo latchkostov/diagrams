@@ -22,9 +22,9 @@ exports[`CPU contention without a pool at scale 1.1 > pins every node outcome an
       "output": "timedOut=0, late=0",
     },
     "nodes": {
-      "caller": "processed=664.4000000000001, failed=0, rejected=0, dropped=0",
-      "partner": "processed=664.4000000000001, failed=0, rejected=0, dropped=0",
-      "result": "processed=663.3000000000001, failed=0, rejected=0, dropped=0",
+      "caller": "processed=569.8000000000001, failed=0, rejected=0, dropped=0",
+      "partner": "processed=569.8000000000001, failed=0, rejected=0, dropped=0",
+      "result": "processed=569.8000000000001, failed=0, rejected=0, dropped=0",
       "source": "processed=1999.8000000000002, failed=0, rejected=0, dropped=0",
     },
   },

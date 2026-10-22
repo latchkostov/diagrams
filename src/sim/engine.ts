@@ -10,6 +10,10 @@ import {
   deliveryGroup,
   ownsCpu,
   cancelCpu,
+  chargeTails,
+  tailEntitlements,
+  yieldsToFirstWaves,
+  type CpuBudgets,
 } from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
@@ -1876,6 +1880,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.attempt = undefined;
       work.remaining = call.replyMs ?? 0;
       const pendingCpu = work.cpuRemaining ?? 0;
+      work.cpuOwed = work.fractionalTail = undefined;
       work.cpuBacklog = pendingCpu;
       work.cpuRemaining = undefined;
       work.continuation = { ok, cpuMs: replyCpuMs(node.props.resources?.cpuMsPerMessage ?? 0, call.replies!) };
@@ -2136,6 +2141,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         work.waitRemaining = node.props.retryBackoffMs;
         if (node.props.resources) {
           node.cpuTail.delete(work);
+          work.cpuOwed = work.fractionalTail = undefined;
           work.cpuPerRequest = node.props.resources.cpuMsPerMessage;
           // The failed cohort's unfinished CPU stays owed, unless an outage ended the
           // attempt: shutdown cancels CPU that has not run, here as for a retained backlog.
@@ -3035,7 +3041,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.status !== "paused" && !held(node)) {
         const f = node.fleet,
           r = node.props.resources;
-        const cpuBudgets = f && r ? new Map<number | string, { remaining: number; count: number }>() : undefined;
+        const cpuBudgets: CpuBudgets | undefined = f && r ? new Map() : undefined;
         let retained = 0,
           priorSlots = 0,
           priorOccupancy = 0;
@@ -3055,6 +3061,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               ((work.cpuBackoffUntil ?? 0) > time && !(work.cpuBacklog ?? 0))
             )
               continue;
+            const first = node.cpuTail.has(work) ? 0 : 1;
             if (work.cpuParts) {
               for (const p of work.cpuParts)
                 if (p.cpu > 0) {
@@ -3062,14 +3069,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                     budget = cpuBudgets?.get(key) ?? {
                       remaining: (milli / 1000) * STEP * (p.last - p.first + 1),
                       count: 0,
+                      first: 0,
                     };
                   budget.count++;
+                  budget.first! += first;
                   cpuBudgets?.set(key, budget);
                 }
             } else {
               const id = work.replica ?? 0;
-              const budget = cpuBudgets?.get(id) ?? { remaining: (milli / 1000) * STEP, count: 0 };
+              const budget = cpuBudgets?.get(id) ?? { remaining: (milli / 1000) * STEP, count: 0, first: 0 };
               budget.count++;
+              budget.first! += first;
               cpuBudgets?.set(id, budget);
             }
           }
@@ -3102,12 +3112,31 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             } else endResources(node, tail);
             continue;
           }
+        }
+        // CPU tails (docs/SIMULATION.md, technical model): a tail of whole requests keeps its fair share ahead of first waves.
+        // A fractional tail yields: it repays what it is owed, first waves divide the rest of the tick, and
+        // it shares what they leave, owing its fair share of the tick for whatever it did not get.
+        const chargeTailCpu = (_work: ResourceWork, spent: number, replica: number | undefined, active: boolean) => {
+          chargeCpu(f!, replica, spent, active, time);
+          node.cpuTick?.charges.push({ before: spent, after: 0, backlogBefore: 0, eligible: true });
+        };
+        const yieldsCpu = (tail: ResourceWork) => yieldsToFirstWaves(tail, r?.cpuMsPerMessage ?? 0);
+        const tailsBefore = cpuBudgets && node.cpuTail.size ? new Set(node.cpuTail) : undefined;
+        const yielding = tailsBefore ? [...tailsBefore].filter(yieldsCpu) : [];
+        const shares = yielding.length ? tailEntitlements(yielding, cpuBudgets!) : undefined;
+        for (const tail of node.cpuTail) {
+          if (shares?.has(tail)) continue;
           spendCpu(node, tail, cpuBudgets, true);
           if ((tail.cpuRemaining ?? 0) <= 1e-8) {
             node.cpuTail.delete(tail);
             const owned = "scope" in tail ? ledger.get((tail as Reservation).id) === tail : "message" in tail;
             if (!owned) endResources(node, tail);
           }
+        }
+        if (shares) {
+          chargeTails(yielding, cpuBudgets!, chargeTailCpu);
+          // First waves divide what is left among themselves.
+          for (const budget of cpuBudgets!.values()) budget.count = budget.first!;
         }
         let keep = 0;
         for (const work of node.working) {
@@ -3166,6 +3195,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           } else node.working[keep++] = work;
         }
         node.working.length = keep;
+        // Yielding tails, including fractional tails that formed in this tick's loop.
+        const tailsAfter =
+          cpuBudgets && node.cpuTail.size
+            ? [...node.cpuTail].filter((tail) => (tailsBefore?.has(tail) ? !!shares?.has(tail) : yieldsCpu(tail)))
+            : [];
+        if (tailsAfter.length) {
+          if (node.cpuTick)
+            node.cpuTick.tails = { budgets: cpuBudgets!, owed: new Map(tailsAfter.map((t) => [t, t.cpuOwed ?? 0])) };
+          chargeTails(tailsAfter, cpuBudgets!, chargeTailCpu, shares ?? new Map(), (tail) => {
+            node.cpuTail.delete(tail);
+            const owned = "scope" in tail ? ledger.get((tail as Reservation).id) === tail : "message" in tail;
+            if (!owned) endResources(node, tail);
+          });
+        }
         if (f && r) {
           if ((scale > 1 && !waits()) || f.sampledDrains.length) releaseSampledDrains(f, resourceWork(node));
           if (f.assignmentChanged) {

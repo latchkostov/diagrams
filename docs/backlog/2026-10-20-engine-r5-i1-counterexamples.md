@@ -73,8 +73,10 @@ All are in `src/sim/scaleEquivalence.test.ts` with the unchanged I1 bound and ex
   grant instead of min(N, slots); a caller thread wider than its pool lease is not admissible
   before that lease's exact turnover. Ordinary I1 regressions pass at 1.1, 1.5, 2, 2.5, 5 and 10
   (scale 2: 400 versus 399, previously 286; scale 10: 400 versus 397, previously 180).
-- Same CPU fixture without a connection pool, scale 1.1: 570 versus 664.4 after PR 4 packing
-  (previously 366.3); closer to the reference but still outside I1, pending the CPU-tail PR.
+- Same CPU fixture without a connection pool: resolved in sampling PR 6. A tail that forms with
+  less than one request's CPU yields to the next first wave and repays what it is owed, so the
+  next wave no longer finishes a tick late each cycle. Scale 1.1: 569.8 versus 570 (previously
+  664.4); 1.5: 570.0 (664.5). Whole-dot scales keep 498 to 500.
 - Lambda joining ordinary and fleet replies: resolved in PR 2; ordinary I1 guards pass at scales 2 and 4.
 - Slow 1-slot callee (30 ms), caller 4 slots, no pool or CPU, scale 10: 662 versus 570.
 
@@ -87,4 +89,4 @@ Generated I1 is opt-in exploration (`FC_I1=1`, `scripts/fc-sweep.mjs --i1`), nev
 The fixed corpus is separately replayable with `FC_I1_CORPUS=1 pnpm exec vitest run
 src/sim/scaleEquivalence.test.ts -t "fixed 40-sample" --silent=false`; its 40 samples use seed
 20261018: **13/31 pass** at scale > 1 on PR 1, matching the approved design. Each later sampling PR
-records the pass count without lowering this floor: 16/31 after PR 4 and PR 5 (the test's floor is 16).
+records the pass count without lowering this floor: 16/31 after PR 4, PR 5 and PR 6 (the test's floor is 16).

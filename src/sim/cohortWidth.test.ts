@@ -98,6 +98,28 @@ it("unbounded pools take no width-capped lease", () => {
   }
 });
 
+it("a finite pool wider than its caller does not impose a turnover floor", () => {
+  const retire = vi.spyOn(SampledLedger.prototype, "retire");
+  run(8);
+  // Eight connections behind a two-slot caller: each pool lease is as wide as the thread it serves.
+  const pairs: [Reservation, Reservation][] = [];
+  let pool: Reservation | undefined;
+  for (const [reservation] of retire.mock.calls) {
+    if (reservation.owner !== "caller") continue;
+    if (reservation.scope === "pool") pool = reservation;
+    else if (reservation.scope === "thread" && pool) {
+      pairs.push([pool, reservation]);
+      pool = undefined;
+    }
+  }
+  expect(pairs.length).toBeGreaterThan(1);
+  for (const [lease, thread] of pairs) {
+    expect(lease.weight).toBeGreaterThanOrEqual(thread.weight);
+    expect(lease.turnoverAt).toBeDefined();
+    expect(thread.notBefore).toBeUndefined();
+  }
+});
+
 it("the ledger oracle rejects a branch wider than its caller's cohort or held thread", () => {
   const state = (width: number, callerWidth?: number): LedgerInvariantState => {
     const ledger = new SampledLedger();
