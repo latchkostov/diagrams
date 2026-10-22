@@ -5,6 +5,7 @@ import { waitingFixture } from "../lab/waitingFixture";
 import type { RetryPolicy } from "../model/admission";
 import { createEngine, randomDraws } from "./engine";
 import { backoffDelay, createRetryWindow, recordRetryWindow, retryWindow } from "./retryPolicy";
+import * as retryPolicyModule from "./retryPolicy";
 import { retryBudgetPermits } from "./admission";
 import { realSnapshot } from "./units";
 import { analyzeCapacity } from "./capacity";
@@ -140,6 +141,64 @@ it("a gateway's downstream 504 retries as transient, rather than as the outer ca
   e.step(1000);
   expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 3, retried: 2, timedOut: 0, failed: 3 });
   expect(e.snapshot().edges.downstream.calls).toMatchObject({ timedOut: 3 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it.each([
+  { retryOn: ["timeout"], attempts: 3 },
+  { retryOn: ["transient"], attempts: 1 },
+] as const)("own deadline retries only under timeout policy ($retryOn)", ({ retryOn, attempts }) => {
+  for (const wait of ["blocking", "non-blocking"] as const) {
+    const policy = { ...naiveRetry, backoffMs: 10, retryOn: [...retryOn] };
+    const d = retryFixture(policy, wait);
+    d.nodes[2].props = { concurrency: 100, latencyMs: 300, jitter: 0, failureRate: 0 };
+    d.edges[1].props!.caller = { wait, deadlineMs: 100, retry: policy };
+    const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+    e.load(d);
+    e.inject("source", 1);
+    e.step(3000);
+    expect(e.snapshot().edges.call.calls).toMatchObject({ attempts, retried: attempts - 1, timedOut: attempts });
+    expect(e.snapshot().inSystem).toBe(0);
+  }
+});
+
+it.each([
+  { retryOn: ["timeout"], attempts: 6 },
+  { retryOn: ["transient", "throttled"], attempts: 2 },
+] as const)(
+  "a deadline that expires in the pool queue is the attempt's own timeout ($retryOn)",
+  ({ retryOn, attempts }) => {
+    const policy = { ...naiveRetry, backoffMs: 10, retryOn: [...retryOn] };
+    const d = retryFixture(policy, "non-blocking");
+    d.nodes[2].props = { concurrency: 100, latencyMs: 500, jitter: 0, failureRate: 0 };
+    d.edges[1].props!.caller = { wait: "non-blocking", deadlineMs: 100, poolConnections: 1, retry: policy };
+    const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+    e.load(d);
+    e.inject("source", 2);
+    e.step(3000);
+    expect(e.snapshot().edges.call.calls).toMatchObject({ requests: 2, attempts, timedOut: attempts });
+    expect(e.snapshot().inSystem).toBe(0);
+  },
+);
+
+it("propagated 504 does not retry under timeout-only policy", () => {
+  const d = retryFixture({ ...naiveRetry, retryOn: ["timeout"] });
+  d.nodes[2].stencil = "nginx";
+  d.nodes[2].props = { jitter: 0, latencyMs: 0 };
+  d.nodes[3].props = { jitter: 0, latencyMs: 100 };
+  d.edges.push({
+    id: "downstream",
+    from: "partner",
+    to: "result",
+    kind: "sync",
+    props: { travelMs: 0, caller: { deadlineMs: 20, wait: "blocking" } },
+  });
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1000);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 1, retried: 0, timedOut: 0, failed: 1 });
+  expect(e.snapshot().edges.downstream.calls).toMatchObject({ timedOut: 1 });
   expect(e.snapshot().inSystem).toBe(0);
 });
 
@@ -560,3 +619,42 @@ it("parallel branches count overlapping backoff once in response latency", () =>
   e.step(1000);
   expect(e.snapshot().nodes.source.latency!.backoffMs).toBe(100);
 });
+
+it("a partial dot's backoff is released as charged across a live scale edit", () => {
+  const e = createEngine({ seed: 7, scale: 10, injectRepresented: 4, verifyResilience: assertResilienceInvariants });
+  e.load(retryFixture({ ...naiveRetry, backoffMs: 1000 }));
+  e.inject("source", 1);
+  e.step(80);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ retried: 0.4, backingOff: 0.4 });
+  e.setScale(5);
+  e.step(5000);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ backingOff: 0, held: 0 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it.each(["p3-w1", "p3-w2"] as const)(
+  "%s runs without retry policies classify no outcomes, on calls, failures and continuations",
+  (revision) => {
+    const classify = vi.spyOn(retryPolicyModule, "classifyOutcome");
+    try {
+      const d = retryFixture();
+      d.planning!.revision = revision;
+      d.edges[1].props = { caller: { wait: "non-blocking", deadlineMs: 200, replyMs: 20 }, travelMs: 10 };
+      d.nodes[2].props = { replicas: 1, concurrency: 100, latencyMs: 30, jitter: 0, failureRate: 0.5 };
+      const e = createEngine({ seed: 7 });
+      e.load(d);
+      e.inject("source", 20);
+      e.step(3000);
+      expect(e.snapshot().nodes.partner.failed).toBeGreaterThan(0);
+      expect(e.snapshot().nodes.caller.processed).toBeGreaterThan(0);
+      expect(classify).not.toHaveBeenCalled();
+      // With an executable policy, the same run classifies each settled attempt.
+      e.load(retryFixture());
+      e.inject("source", 1);
+      e.step(3000);
+      expect(classify).toHaveBeenCalled();
+    } finally {
+      classify.mockRestore();
+    }
+  },
+);

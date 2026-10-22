@@ -4,168 +4,35 @@
  "site": "https://www.livediagrams.dev",
  "shareWarnLength": 8000,
  "enums": {
-  "direction": [
-   "LR",
-   "TB"
-  ],
-  "tone": [
-   "azure",
-   "aws",
-   "gcp",
-   "k8s",
-   "onprem",
-   "neutral"
-  ],
-  "side": [
-   "top",
-   "right",
-   "bottom",
-   "left"
-  ],
-  "edgeKind": [
-   "async",
-   "sync"
-  ],
-  "relation": [
-   "flow",
-   "config",
-   "secret",
-   "identity",
-   "telemetry",
-   "deploy",
-   "depends"
-  ],
-  "annotationKind": [
-   "text",
-   "note",
-   "zone",
-   "shape"
-  ],
-  "annotationShape": [
-   "rect",
-   "rounded",
-   "ellipse",
-   "diamond",
-   "cylinder",
-   "stadium",
-   "subroutine",
-   "dbl-circ",
-   "hexagon",
-   "lean-r",
-   "lean-l",
-   "trap-b",
-   "trap-t",
-   "sl-rect",
-   "notch-rect",
-   "lin-rect",
-   "div-rect",
-   "tag-rect",
-   "processes",
-   "delay",
-   "notch-pent",
-   "hourglass",
-   "fork",
-   "datastore",
-   "das",
-   "lin-cyl",
-   "bow-rect",
-   "flag",
-   "win-pane",
-   "doc",
-   "docs",
-   "lin-doc",
-   "tag-doc",
-   "bolt",
-   "comment",
-   "brace-r",
-   "braces",
-   "curv-trap",
-   "asym",
-   "f-circ",
-   "framed-circle",
-   "cross-circ",
-   "tri",
-   "flip-tri"
-  ],
-  "annotationColor": [
-   "white",
-   "neutral",
-   "yellow",
-   "green",
-   "blue",
-   "purple",
-   "red"
-  ],
-  "textSize": [
-   "s",
-   "m",
-   "l",
-   "xl"
-  ],
-  "status": [
-   "up",
-   "paused",
-   "down"
-  ],
-  "metric": [
-   "processed",
-   "backlog",
-   "inFlight",
-   "failed",
-   "timedOut",
-   "retried",
-   "amplification",
-   "goodput",
-   "threadsBusy",
-   "threadsWaiting",
-   "deadLettered",
-   "dropped",
-   "blocked",
-   "rejected",
-   "throughput",
-   "lag"
-  ],
-  "op": [
-   "<",
-   "<=",
-   "==",
-   ">=",
-   ">"
-  ],
-  "when": [
-   "always",
-   "eventually",
-   "end",
-   "at"
-  ]
+  "direction": ["LR","TB"],
+  "tone": ["azure","aws","gcp","k8s","onprem","neutral"],
+  "side": ["top","right","bottom","left"],
+  "edgeKind": ["async","sync"],
+  "relation": ["flow","config","secret","identity","telemetry","deploy","depends"],
+  "annotationKind": ["text","note","zone","shape"],
+  "annotationShape": ["rect","rounded","ellipse","diamond","cylinder","stadium","subroutine","dbl-circ","hexagon","lean-r","lean-l","trap-b","trap-t","sl-rect","notch-rect","lin-rect","div-rect","tag-rect","processes","delay","notch-pent","hourglass","fork","datastore","das","lin-cyl","bow-rect","flag","win-pane","doc","docs","lin-doc","tag-doc","bolt","comment","brace-r","braces","curv-trap","asym","f-circ","framed-circle","cross-circ","tri","flip-tri"],
+  "annotationColor": ["white","neutral","yellow","green","blue","purple","red"],
+  "textSize": ["s","m","l","xl"],
+  "status": ["up","paused","down"],
+  "metric": ["processed","backlog","inFlight","failed","timedOut","retried","amplification","goodput","threadsBusy","threadsWaiting","deadLettered","dropped","blocked","rejected","throughput","lag"],
+  "op": ["<","<=","==",">=",">"],
+  "when": ["always","eventually","end","at"]
  },
  "nodeProps": {
   "resources": {
    "type": "object",
    "additionalProperties": false,
-   "required": [
-    "preset",
-    "presetRevision",
-    "cpuMsPerMessage",
-    "baselineMemoryMiB",
-    "memoryMiBPerMessage",
-    "startup",
-    "terminationGraceMs"
-   ],
+   "required": ["preset","presetRevision","cpuMsPerMessage","baselineMemoryMiB","memoryMiBPerMessage","startup","terminationGraceMs"],
    "properties": {
     "preset": {
      "type": "string",
      "maxLength": 100
     },
     "presetRevision": {
-     "enum": [
-      "1"
-     ]
+     "enum": ["1"]
     },
     "modelRevision": {
-     "enum": [
-      "a2"
-     ]
+     "enum": ["a2"]
     },
     "container": {
      "type": "string",
@@ -215,10 +82,7 @@
     "startup": {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "delayMs",
-      "jitterFraction"
-     ],
+     "required": ["delayMs","jitterFraction"],
      "properties": {
       "delayMs": {
        "type": "integer",
@@ -241,10 +105,7 @@
      "type": "array",
      "maxItems": 2,
      "items": {
-      "enum": [
-       "cpu",
-       "memory"
-      ]
+      "enum": ["cpu","memory"]
      }
     }
    }
@@ -254,52 +115,28 @@
     {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "mode",
-      "modelRevision",
-      "preset",
-      "presetRevision",
-      "controller"
-     ],
+     "required": ["mode","modelRevision","preset","presetRevision","controller"],
      "properties": {
       "mode": {
-       "enum": [
-        "on"
-       ]
+       "enum": ["on"]
       },
       "modelRevision": {
-       "enum": [
-        "a2"
-       ]
+       "enum": ["a2"]
       },
       "preset": {
        "type": "string",
        "maxLength": 100
       },
       "presetRevision": {
-       "enum": [
-        "1"
-       ]
+       "enum": ["1"]
       },
       "controller": {
        "type": "object",
        "additionalProperties": false,
-       "required": [
-        "kind",
-        "minReplicas",
-        "maxReplicas",
-        "initialReplicas",
-        "pollingMs",
-        "cooldownMs",
-        "initialCooldownMs",
-        "settings",
-        "triggers"
-       ],
+       "required": ["kind","minReplicas","maxReplicas","initialReplicas","pollingMs","cooldownMs","initialCooldownMs","settings","triggers"],
        "properties": {
         "kind": {
-         "enum": [
-          "keda"
-         ]
+         "enum": ["keda"]
         },
         "minReplicas": {
          "type": "integer",
@@ -332,22 +169,12 @@
          "maximum": 600000
         },
         "idleReplicas": {
-         "enum": [
-          0
-         ]
+         "enum": [0]
         },
         "settings": {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "syncMs",
-          "tolerance",
-          "initialReadinessDelayMs",
-          "cpuInitializationPeriodMs",
-          "metrics",
-          "up",
-          "down"
-         ],
+         "required": ["syncMs","tolerance","initialReadinessDelayMs","cpuInitializationPeriodMs","metrics","up","down"],
          "properties": {
           "syncMs": {
            "type": "integer",
@@ -376,33 +203,20 @@
            "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "source",
-             "target",
-             "windowMs",
-             "metricDelayMs"
-            ],
+            "required": ["source","target","windowMs","metricDelayMs"],
             "properties": {
              "source": {
               "anyOf": [
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "resource"
-                ],
+                "required": ["kind","resource"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "resource"
-                  ]
+                  "enum": ["resource"]
                  },
                  "resource": {
-                  "enum": [
-                   "cpu",
-                   "memory"
-                  ]
+                  "enum": ["cpu","memory"]
                  },
                  "container": {
                   "type": "string",
@@ -414,20 +228,13 @@
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "metric"
-                ],
+                "required": ["kind","metric"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "pods"
-                  ]
+                  "enum": ["pods"]
                  },
                  "metric": {
-                  "enum": [
-                   "busyThreads"
-                  ]
+                  "enum": ["busyThreads"]
                  }
                 }
                }
@@ -438,15 +245,10 @@
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "percentOfRequest"
-                ],
+                "required": ["kind","percentOfRequest"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "utilization"
-                  ]
+                  "enum": ["utilization"]
                  },
                  "percentOfRequest": {
                   "type": "number",
@@ -458,15 +260,10 @@
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "value"
-                ],
+                "required": ["kind","value"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "averageValue"
-                  ]
+                  "enum": ["averageValue"]
                  },
                  "value": {
                   "type": "number",
@@ -493,11 +290,7 @@
           "up": {
            "type": "object",
            "additionalProperties": false,
-           "required": [
-            "stabilizationMs",
-            "selectPolicy",
-            "policies"
-           ],
+           "required": ["stabilizationMs","selectPolicy","policies"],
            "properties": {
             "stabilizationMs": {
              "type": "integer",
@@ -505,11 +298,7 @@
              "maximum": 600000
             },
             "selectPolicy": {
-             "enum": [
-              "Max",
-              "Min",
-              "Disabled"
-             ]
+             "enum": ["Max","Min","Disabled"]
             },
             "policies": {
              "type": "array",
@@ -518,17 +307,10 @@
              "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "type",
-               "value",
-               "periodMs"
-              ],
+              "required": ["type","value","periodMs"],
               "properties": {
                "type": {
-                "enum": [
-                 "Pods",
-                 "Percent"
-                ]
+                "enum": ["Pods","Percent"]
                },
                "value": {
                 "type": "integer",
@@ -548,11 +330,7 @@
           "down": {
            "type": "object",
            "additionalProperties": false,
-           "required": [
-            "stabilizationMs",
-            "selectPolicy",
-            "policies"
-           ],
+           "required": ["stabilizationMs","selectPolicy","policies"],
            "properties": {
             "stabilizationMs": {
              "type": "integer",
@@ -560,11 +338,7 @@
              "maximum": 600000
             },
             "selectPolicy": {
-             "enum": [
-              "Max",
-              "Min",
-              "Disabled"
-             ]
+             "enum": ["Max","Min","Disabled"]
             },
             "policies": {
              "type": "array",
@@ -573,17 +347,10 @@
              "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "type",
-               "value",
-               "periodMs"
-              ],
+              "required": ["type","value","periodMs"],
               "properties": {
                "type": {
-                "enum": [
-                 "Pods",
-                 "Percent"
-                ]
+                "enum": ["Pods","Percent"]
                },
                "value": {
                 "type": "integer",
@@ -611,21 +378,12 @@
            {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "source",
-             "target",
-             "activation",
-             "useCachedMetrics",
-             "type",
-             "allowIdleConsumers"
-            ],
+            "required": ["source","target","activation","useCachedMetrics","type","allowIdleConsumers"],
             "properties": {
              "source": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "node"
-              ],
+              "required": ["node"],
               "properties": {
                "node": {
                 "type": "string",
@@ -653,9 +411,7 @@
               "type": "boolean"
              },
              "type": {
-              "enum": [
-               "kafka"
-              ]
+              "enum": ["kafka"]
              },
              "allowIdleConsumers": {
               "type": "boolean"
@@ -665,20 +421,12 @@
            {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "source",
-             "target",
-             "activation",
-             "useCachedMetrics",
-             "type"
-            ],
+            "required": ["source","target","activation","useCachedMetrics","type"],
             "properties": {
              "source": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "node"
-              ],
+              "required": ["node"],
               "properties": {
                "node": {
                 "type": "string",
@@ -706,31 +454,19 @@
               "type": "boolean"
              },
              "type": {
-              "enum": [
-               "azure-servicebus"
-              ]
+              "enum": ["azure-servicebus"]
              }
             }
            },
            {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "source",
-             "target",
-             "activation",
-             "useCachedMetrics",
-             "type",
-             "scaleOnInFlight",
-             "scaleOnDelayed"
-            ],
+            "required": ["source","target","activation","useCachedMetrics","type","scaleOnInFlight","scaleOnDelayed"],
             "properties": {
              "source": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "node"
-              ],
+              "required": ["node"],
               "properties": {
                "node": {
                 "type": "string",
@@ -758,39 +494,25 @@
               "type": "boolean"
              },
              "type": {
-              "enum": [
-               "aws-sqs-queue"
-              ]
+              "enum": ["aws-sqs-queue"]
              },
              "scaleOnInFlight": {
               "type": "boolean"
              },
              "scaleOnDelayed": {
-              "enum": [
-               false
-              ]
+              "enum": [false]
              }
             }
            },
            {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "source",
-             "target",
-             "activation",
-             "useCachedMetrics",
-             "type",
-             "protocol",
-             "excludeUnacknowledged"
-            ],
+            "required": ["source","target","activation","useCachedMetrics","type","protocol","excludeUnacknowledged"],
             "properties": {
              "source": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "node"
-              ],
+              "required": ["node"],
               "properties": {
                "node": {
                 "type": "string",
@@ -818,15 +540,10 @@
               "type": "boolean"
              },
              "type": {
-              "enum": [
-               "rabbitmq"
-              ]
+              "enum": ["rabbitmq"]
              },
              "protocol": {
-              "enum": [
-               "http",
-               "amqp"
-              ]
+              "enum": ["http","amqp"]
              },
              "excludeUnacknowledged": {
               "type": "boolean"
@@ -839,11 +556,7 @@
         "fallback": {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "failureThreshold",
-          "replicas",
-          "behavior"
-         ],
+         "required": ["failureThreshold","replicas","behavior"],
          "properties": {
           "failureThreshold": {
            "type": "integer",
@@ -856,12 +569,7 @@
            "maximum": 10000
           },
           "behavior": {
-           "enum": [
-            "static",
-            "currentReplicas",
-            "currentReplicasIfHigher",
-            "currentReplicasIfLower"
-           ]
+           "enum": ["static","currentReplicas","currentReplicasIfHigher","currentReplicasIfLower"]
           }
          }
         }
@@ -872,30 +580,20 @@
     {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "mode"
-     ],
+     "required": ["mode"],
      "properties": {
       "mode": {
-       "enum": [
-        "off"
-       ]
+       "enum": ["off"]
       }
      }
     },
     {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "mode",
-      "provider",
-      "reason"
-     ],
+     "required": ["mode","provider","reason"],
      "properties": {
       "mode": {
-       "enum": [
-        "unsupported"
-       ]
+       "enum": ["unsupported"]
       },
       "provider": {
        "type": "string",
@@ -911,16 +609,10 @@
        "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-         "kind"
-        ],
+        "required": ["kind"],
         "properties": {
          "kind": {
-          "enum": [
-           "HPA",
-           "ScaledObject",
-           "ScaledJob"
-          ]
+          "enum": ["HPA","ScaledObject","ScaledJob"]
          },
          "minReplicas": {
           "type": "integer",
@@ -945,49 +637,28 @@
     {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "mode",
-      "modelRevision",
-      "preset",
-      "presetRevision",
-      "controller"
-     ],
+     "required": ["mode","modelRevision","preset","presetRevision","controller"],
      "properties": {
       "mode": {
-       "enum": [
-        "on"
-       ]
+       "enum": ["on"]
       },
       "modelRevision": {
-       "enum": [
-        "a1",
-        "a2"
-       ]
+       "enum": ["a1","a2"]
       },
       "preset": {
        "type": "string",
        "maxLength": 100
       },
       "presetRevision": {
-       "enum": [
-        "1"
-       ]
+       "enum": ["1"]
       },
       "controller": {
        "type": "object",
        "additionalProperties": false,
-       "required": [
-        "kind",
-        "minReplicas",
-        "maxReplicas",
-        "initialReplicas",
-        "settings"
-       ],
+       "required": ["kind","minReplicas","maxReplicas","initialReplicas","settings"],
        "properties": {
         "kind": {
-         "enum": [
-          "hpa"
-         ]
+         "enum": ["hpa"]
         },
         "minReplicas": {
          "type": "integer",
@@ -1007,15 +678,7 @@
         "settings": {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "syncMs",
-          "tolerance",
-          "initialReadinessDelayMs",
-          "cpuInitializationPeriodMs",
-          "metrics",
-          "up",
-          "down"
-         ],
+         "required": ["syncMs","tolerance","initialReadinessDelayMs","cpuInitializationPeriodMs","metrics","up","down"],
          "properties": {
           "syncMs": {
            "type": "integer",
@@ -1044,33 +707,20 @@
            "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "source",
-             "target",
-             "windowMs",
-             "metricDelayMs"
-            ],
+            "required": ["source","target","windowMs","metricDelayMs"],
             "properties": {
              "source": {
               "anyOf": [
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "resource"
-                ],
+                "required": ["kind","resource"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "resource"
-                  ]
+                  "enum": ["resource"]
                  },
                  "resource": {
-                  "enum": [
-                   "cpu",
-                   "memory"
-                  ]
+                  "enum": ["cpu","memory"]
                  },
                  "container": {
                   "type": "string",
@@ -1082,20 +732,13 @@
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "metric"
-                ],
+                "required": ["kind","metric"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "pods"
-                  ]
+                  "enum": ["pods"]
                  },
                  "metric": {
-                  "enum": [
-                   "busyThreads"
-                  ]
+                  "enum": ["busyThreads"]
                  }
                 }
                }
@@ -1106,15 +749,10 @@
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "percentOfRequest"
-                ],
+                "required": ["kind","percentOfRequest"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "utilization"
-                  ]
+                  "enum": ["utilization"]
                  },
                  "percentOfRequest": {
                   "type": "number",
@@ -1126,15 +764,10 @@
                {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "kind",
-                 "value"
-                ],
+                "required": ["kind","value"],
                 "properties": {
                  "kind": {
-                  "enum": [
-                   "averageValue"
-                  ]
+                  "enum": ["averageValue"]
                  },
                  "value": {
                   "type": "number",
@@ -1161,11 +794,7 @@
           "up": {
            "type": "object",
            "additionalProperties": false,
-           "required": [
-            "stabilizationMs",
-            "selectPolicy",
-            "policies"
-           ],
+           "required": ["stabilizationMs","selectPolicy","policies"],
            "properties": {
             "stabilizationMs": {
              "type": "integer",
@@ -1173,11 +802,7 @@
              "maximum": 600000
             },
             "selectPolicy": {
-             "enum": [
-              "Max",
-              "Min",
-              "Disabled"
-             ]
+             "enum": ["Max","Min","Disabled"]
             },
             "policies": {
              "type": "array",
@@ -1186,17 +811,10 @@
              "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "type",
-               "value",
-               "periodMs"
-              ],
+              "required": ["type","value","periodMs"],
               "properties": {
                "type": {
-                "enum": [
-                 "Pods",
-                 "Percent"
-                ]
+                "enum": ["Pods","Percent"]
                },
                "value": {
                 "type": "integer",
@@ -1216,11 +834,7 @@
           "down": {
            "type": "object",
            "additionalProperties": false,
-           "required": [
-            "stabilizationMs",
-            "selectPolicy",
-            "policies"
-           ],
+           "required": ["stabilizationMs","selectPolicy","policies"],
            "properties": {
             "stabilizationMs": {
              "type": "integer",
@@ -1228,11 +842,7 @@
              "maximum": 600000
             },
             "selectPolicy": {
-             "enum": [
-              "Max",
-              "Min",
-              "Disabled"
-             ]
+             "enum": ["Max","Min","Disabled"]
             },
             "policies": {
              "type": "array",
@@ -1241,17 +851,10 @@
              "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "type",
-               "value",
-               "periodMs"
-              ],
+              "required": ["type","value","periodMs"],
               "properties": {
                "type": {
-                "enum": [
-                 "Pods",
-                 "Percent"
-                ]
+                "enum": ["Pods","Percent"]
                },
                "value": {
                 "type": "integer",
@@ -1277,53 +880,30 @@
     {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "mode",
-      "modelRevision",
-      "preset",
-      "presetRevision",
-      "controller"
-     ],
+     "required": ["mode","modelRevision","preset","presetRevision","controller"],
      "properties": {
       "mode": {
-       "enum": [
-        "on"
-       ]
+       "enum": ["on"]
       },
       "modelRevision": {
-       "enum": [
-        "a3"
-       ]
+       "enum": ["a3"]
       },
       "preset": {
        "type": "string",
        "maxLength": 100
       },
       "presetRevision": {
-       "enum": [
-        "1"
-       ]
+       "enum": ["1"]
       },
       "controller": {
        "anyOf": [
         {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "kind",
-          "minReplicas",
-          "maxReplicas",
-          "initialReplicas",
-          "metricPeriodMs",
-          "alarm",
-          "targetTracking",
-          "stepScaling"
-         ],
+         "required": ["kind","minReplicas","maxReplicas","initialReplicas","metricPeriodMs","alarm","targetTracking","stepScaling"],
          "properties": {
           "kind": {
-           "enum": [
-            "ecs"
-           ]
+           "enum": ["ecs"]
           },
           "minReplicas": {
            "type": "integer",
@@ -1348,11 +928,7 @@
           "alarm": {
            "type": "object",
            "additionalProperties": false,
-           "required": [
-            "outPeriods",
-            "inPeriods",
-            "inMargin"
-           ],
+           "required": ["outPeriods","inPeriods","inMargin"],
            "properties": {
             "outPeriods": {
              "type": "integer",
@@ -1378,20 +954,10 @@
            "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "metric",
-             "target",
-             "scaleOutCooldownMs",
-             "scaleInCooldownMs",
-             "disableScaleIn"
-            ],
+            "required": ["metric","target","scaleOutCooldownMs","scaleInCooldownMs","disableScaleIn"],
             "properties": {
              "metric": {
-              "enum": [
-               "cpu",
-               "memory",
-               "albRequestCountPerTarget"
-              ]
+              "enum": ["cpu","memory","albRequestCountPerTarget"]
              },
              "target": {
               "type": "number",
@@ -1401,9 +967,7 @@
              "source": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "node"
-              ],
+              "required": ["node"],
               "properties": {
                "node": {
                 "type": "string",
@@ -1435,30 +999,15 @@
            "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "metric",
-             "operator",
-             "threshold",
-             "evaluationPeriods",
-             "adjustmentType",
-             "steps",
-             "cooldownMs"
-            ],
+            "required": ["metric","operator","threshold","evaluationPeriods","adjustmentType","steps","cooldownMs"],
             "properties": {
              "metric": {
-              "enum": [
-               "cpu",
-               "memory",
-               "albRequestCountPerTarget",
-               "albRequestCount"
-              ]
+              "enum": ["cpu","memory","albRequestCountPerTarget","albRequestCount"]
              },
              "source": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "node"
-              ],
+              "required": ["node"],
               "properties": {
                "node": {
                 "type": "string",
@@ -1468,12 +1017,7 @@
               }
              },
              "operator": {
-              "enum": [
-               "GreaterThanOrEqualToThreshold",
-               "GreaterThanThreshold",
-               "LessThanThreshold",
-               "LessThanOrEqualToThreshold"
-              ]
+              "enum": ["GreaterThanOrEqualToThreshold","GreaterThanThreshold","LessThanThreshold","LessThanOrEqualToThreshold"]
              },
              "threshold": {
               "type": "number",
@@ -1486,11 +1030,7 @@
               "maximum": 60
              },
              "adjustmentType": {
-              "enum": [
-               "ChangeInCapacity",
-               "PercentChangeInCapacity",
-               "ExactCapacity"
-              ]
+              "enum": ["ChangeInCapacity","PercentChangeInCapacity","ExactCapacity"]
              },
              "steps": {
               "type": "array",
@@ -1499,9 +1039,7 @@
               "items": {
                "type": "object",
                "additionalProperties": false,
-               "required": [
-                "adjustment"
-               ],
+               "required": ["adjustment"],
                "properties": {
                 "lower": {
                  "type": "number",
@@ -1539,21 +1077,10 @@
         {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "kind",
-          "minReplicas",
-          "maxReplicas",
-          "initialReplicas",
-          "pollingMs",
-          "cooldownMs",
-          "triggers",
-          "settings"
-         ],
+         "required": ["kind","minReplicas","maxReplicas","initialReplicas","pollingMs","cooldownMs","triggers","settings"],
          "properties": {
           "kind": {
-           "enum": [
-            "aca"
-           ]
+           "enum": ["aca"]
           },
           "minReplicas": {
            "type": "integer",
@@ -1583,9 +1110,7 @@
           "http": {
            "type": "object",
            "additionalProperties": false,
-           "required": [
-            "concurrentRequests"
-           ],
+           "required": ["concurrentRequests"],
            "properties": {
             "concurrentRequests": {
              "type": "number",
@@ -1603,21 +1128,12 @@
              {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "source",
-               "target",
-               "activation",
-               "useCachedMetrics",
-               "type",
-               "allowIdleConsumers"
-              ],
+              "required": ["source","target","activation","useCachedMetrics","type","allowIdleConsumers"],
               "properties": {
                "source": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "node"
-                ],
+                "required": ["node"],
                 "properties": {
                  "node": {
                   "type": "string",
@@ -1645,9 +1161,7 @@
                 "type": "boolean"
                },
                "type": {
-                "enum": [
-                 "kafka"
-                ]
+                "enum": ["kafka"]
                },
                "allowIdleConsumers": {
                 "type": "boolean"
@@ -1657,20 +1171,12 @@
              {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "source",
-               "target",
-               "activation",
-               "useCachedMetrics",
-               "type"
-              ],
+              "required": ["source","target","activation","useCachedMetrics","type"],
               "properties": {
                "source": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "node"
-                ],
+                "required": ["node"],
                 "properties": {
                  "node": {
                   "type": "string",
@@ -1698,31 +1204,19 @@
                 "type": "boolean"
                },
                "type": {
-                "enum": [
-                 "azure-servicebus"
-                ]
+                "enum": ["azure-servicebus"]
                }
               }
              },
              {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "source",
-               "target",
-               "activation",
-               "useCachedMetrics",
-               "type",
-               "scaleOnInFlight",
-               "scaleOnDelayed"
-              ],
+              "required": ["source","target","activation","useCachedMetrics","type","scaleOnInFlight","scaleOnDelayed"],
               "properties": {
                "source": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "node"
-                ],
+                "required": ["node"],
                 "properties": {
                  "node": {
                   "type": "string",
@@ -1750,39 +1244,25 @@
                 "type": "boolean"
                },
                "type": {
-                "enum": [
-                 "aws-sqs-queue"
-                ]
+                "enum": ["aws-sqs-queue"]
                },
                "scaleOnInFlight": {
                 "type": "boolean"
                },
                "scaleOnDelayed": {
-                "enum": [
-                 false
-                ]
+                "enum": [false]
                }
               }
              },
              {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "source",
-               "target",
-               "activation",
-               "useCachedMetrics",
-               "type",
-               "protocol",
-               "excludeUnacknowledged"
-              ],
+              "required": ["source","target","activation","useCachedMetrics","type","protocol","excludeUnacknowledged"],
               "properties": {
                "source": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "node"
-                ],
+                "required": ["node"],
                 "properties": {
                  "node": {
                   "type": "string",
@@ -1810,15 +1290,10 @@
                 "type": "boolean"
                },
                "type": {
-                "enum": [
-                 "rabbitmq"
-                ]
+                "enum": ["rabbitmq"]
                },
                "protocol": {
-                "enum": [
-                 "http",
-                 "amqp"
-                ]
+                "enum": ["http","amqp"]
                },
                "excludeUnacknowledged": {
                 "type": "boolean"
@@ -1831,15 +1306,7 @@
           "settings": {
            "type": "object",
            "additionalProperties": false,
-           "required": [
-            "syncMs",
-            "tolerance",
-            "initialReadinessDelayMs",
-            "cpuInitializationPeriodMs",
-            "metrics",
-            "up",
-            "down"
-           ],
+           "required": ["syncMs","tolerance","initialReadinessDelayMs","cpuInitializationPeriodMs","metrics","up","down"],
            "properties": {
             "syncMs": {
              "type": "integer",
@@ -1868,33 +1335,20 @@
              "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-               "source",
-               "target",
-               "windowMs",
-               "metricDelayMs"
-              ],
+              "required": ["source","target","windowMs","metricDelayMs"],
               "properties": {
                "source": {
                 "anyOf": [
                  {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                   "kind",
-                   "resource"
-                  ],
+                  "required": ["kind","resource"],
                   "properties": {
                    "kind": {
-                    "enum": [
-                     "resource"
-                    ]
+                    "enum": ["resource"]
                    },
                    "resource": {
-                    "enum": [
-                     "cpu",
-                     "memory"
-                    ]
+                    "enum": ["cpu","memory"]
                    },
                    "container": {
                     "type": "string",
@@ -1906,20 +1360,13 @@
                  {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                   "kind",
-                   "metric"
-                  ],
+                  "required": ["kind","metric"],
                   "properties": {
                    "kind": {
-                    "enum": [
-                     "pods"
-                    ]
+                    "enum": ["pods"]
                    },
                    "metric": {
-                    "enum": [
-                     "busyThreads"
-                    ]
+                    "enum": ["busyThreads"]
                    }
                   }
                  }
@@ -1930,15 +1377,10 @@
                  {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                   "kind",
-                   "percentOfRequest"
-                  ],
+                  "required": ["kind","percentOfRequest"],
                   "properties": {
                    "kind": {
-                    "enum": [
-                     "utilization"
-                    ]
+                    "enum": ["utilization"]
                    },
                    "percentOfRequest": {
                     "type": "number",
@@ -1950,15 +1392,10 @@
                  {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                   "kind",
-                   "value"
-                  ],
+                  "required": ["kind","value"],
                   "properties": {
                    "kind": {
-                    "enum": [
-                     "averageValue"
-                    ]
+                    "enum": ["averageValue"]
                    },
                    "value": {
                     "type": "number",
@@ -1985,11 +1422,7 @@
             "up": {
              "type": "object",
              "additionalProperties": false,
-             "required": [
-              "stabilizationMs",
-              "selectPolicy",
-              "policies"
-             ],
+             "required": ["stabilizationMs","selectPolicy","policies"],
              "properties": {
               "stabilizationMs": {
                "type": "integer",
@@ -1997,11 +1430,7 @@
                "maximum": 600000
               },
               "selectPolicy": {
-               "enum": [
-                "Max",
-                "Min",
-                "Disabled"
-               ]
+               "enum": ["Max","Min","Disabled"]
               },
               "policies": {
                "type": "array",
@@ -2010,17 +1439,10 @@
                "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "type",
-                 "value",
-                 "periodMs"
-                ],
+                "required": ["type","value","periodMs"],
                 "properties": {
                  "type": {
-                  "enum": [
-                   "Pods",
-                   "Percent"
-                  ]
+                  "enum": ["Pods","Percent"]
                  },
                  "value": {
                   "type": "integer",
@@ -2040,11 +1462,7 @@
             "down": {
              "type": "object",
              "additionalProperties": false,
-             "required": [
-              "stabilizationMs",
-              "selectPolicy",
-              "policies"
-             ],
+             "required": ["stabilizationMs","selectPolicy","policies"],
              "properties": {
               "stabilizationMs": {
                "type": "integer",
@@ -2052,11 +1470,7 @@
                "maximum": 600000
               },
               "selectPolicy": {
-               "enum": [
-                "Max",
-                "Min",
-                "Disabled"
-               ]
+               "enum": ["Max","Min","Disabled"]
               },
               "policies": {
                "type": "array",
@@ -2065,17 +1479,10 @@
                "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                 "type",
-                 "value",
-                 "periodMs"
-                ],
+                "required": ["type","value","periodMs"],
                 "properties": {
                  "type": {
-                  "enum": [
-                   "Pods",
-                   "Percent"
-                  ]
+                  "enum": ["Pods","Percent"]
                  },
                  "value": {
                   "type": "integer",
@@ -2099,19 +1506,10 @@
         {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "kind",
-          "minReplicas",
-          "maxReplicas",
-          "initialReplicas",
-          "evaluationMs",
-          "rules"
-         ],
+         "required": ["kind","minReplicas","maxReplicas","initialReplicas","evaluationMs","rules"],
          "properties": {
           "kind": {
-           "enum": [
-            "appService"
-           ]
+           "enum": ["appService"]
           },
           "minReplicas": {
            "type": "integer",
@@ -2140,31 +1538,13 @@
            "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-             "metric",
-             "operator",
-             "threshold",
-             "windowMs",
-             "direction",
-             "changeType",
-             "value",
-             "cooldownMs"
-            ],
+            "required": ["metric","operator","threshold","windowMs","direction","changeType","value","cooldownMs"],
             "properties": {
              "metric": {
-              "enum": [
-               "cpu",
-               "memory",
-               "httpQueue"
-              ]
+              "enum": ["cpu","memory","httpQueue"]
              },
              "operator": {
-              "enum": [
-               "GreaterThan",
-               "GreaterThanOrEqual",
-               "LessThan",
-               "LessThanOrEqual"
-              ]
+              "enum": ["GreaterThan","GreaterThanOrEqual","LessThan","LessThanOrEqual"]
              },
              "threshold": {
               "type": "number",
@@ -2177,17 +1557,10 @@
               "maximum": 600000
              },
              "direction": {
-              "enum": [
-               "increase",
-               "decrease"
-              ]
+              "enum": ["increase","decrease"]
              },
              "changeType": {
-              "enum": [
-               "ChangeCount",
-               "PercentChangeCount",
-               "ExactCount"
-              ]
+              "enum": ["ChangeCount","PercentChangeCount","ExactCount"]
              },
              "value": {
               "type": "integer",
@@ -2207,23 +1580,10 @@
         {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "kind",
-          "minReplicas",
-          "maxReplicas",
-          "initialReplicas",
-          "targetConcurrencyPct",
-          "targetCpuPct",
-          "evaluationMs",
-          "cpuWindowMs",
-          "concurrencyWindowsMs",
-          "scaleInDelayMs"
-         ],
+         "required": ["kind","minReplicas","maxReplicas","initialReplicas","targetConcurrencyPct","targetCpuPct","evaluationMs","cpuWindowMs","concurrencyWindowsMs","scaleInDelayMs"],
          "properties": {
           "kind": {
-           "enum": [
-            "cloudRun"
-           ]
+           "enum": ["cloudRun"]
           },
           "minReplicas": {
            "type": "integer",
@@ -2296,13 +1656,7 @@
      "items": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-       "id",
-       "unit",
-       "amount",
-       "windowMs",
-       "algorithm"
-      ],
+      "required": ["id","unit","amount","windowMs","algorithm"],
       "properties": {
        "id": {
         "type": "string",
@@ -2310,14 +1664,7 @@
         "maxLength": 200
        },
        "unit": {
-        "enum": [
-         "requests",
-         "tokens",
-         "inputTokens",
-         "outputTokens",
-         "costPoints",
-         "bytes"
-        ]
+        "enum": ["requests","tokens","inputTokens","outputTokens","costPoints","bytes"]
        },
        "amount": {
         "type": "number",
@@ -2331,9 +1678,7 @@
        },
        "algorithm": {
         "type": "string",
-        "enum": [
-         "token-bucket"
-        ]
+        "enum": ["token-bucket"]
        },
        "burst": {
         "type": "number",
@@ -2412,11 +1757,7 @@
    "items": {
     "type": "object",
     "additionalProperties": false,
-    "required": [
-     "id",
-     "method",
-     "path"
-    ],
+    "required": ["id","method","path"],
     "properties": {
      "id": {
       "type": "string",
@@ -2424,16 +1765,7 @@
       "maxLength": 200
      },
      "method": {
-      "enum": [
-       "GET",
-       "POST",
-       "PUT",
-       "PATCH",
-       "DELETE",
-       "HEAD",
-       "OPTIONS",
-       "TRACE"
-      ]
+      "enum": ["GET","POST","PUT","PATCH","DELETE","HEAD","OPTIONS","TRACE"]
      },
      "path": {
       "type": "string",
@@ -2451,13 +1783,7 @@
         "items": {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "id",
-          "unit",
-          "amount",
-          "windowMs",
-          "algorithm"
-         ],
+         "required": ["id","unit","amount","windowMs","algorithm"],
          "properties": {
           "id": {
            "type": "string",
@@ -2465,14 +1791,7 @@
            "maxLength": 200
           },
           "unit": {
-           "enum": [
-            "requests",
-            "tokens",
-            "inputTokens",
-            "outputTokens",
-            "costPoints",
-            "bytes"
-           ]
+           "enum": ["requests","tokens","inputTokens","outputTokens","costPoints","bytes"]
           },
           "amount": {
            "type": "number",
@@ -2486,9 +1805,7 @@
           },
           "algorithm": {
            "type": "string",
-           "enum": [
-            "token-bucket"
-           ]
+           "enum": ["token-bucket"]
           },
           "burst": {
            "type": "number",
@@ -2566,10 +1883,7 @@
   },
   "scaling": {
    "type": "string",
-   "enum": [
-    "fixed",
-    "auto"
-   ]
+   "enum": ["fixed","auto"]
   },
   "maxConcurrency": {
    "type": "number",
@@ -2578,22 +1892,11 @@
   },
   "preset": {
    "type": "string",
-   "enum": [
-    "processor-lesson",
-    "device-size",
-    "lambda-account",
-    "stripe-live",
-    "stripe-sandbox",
-    "api-gateway-account",
-    "managed-measured"
-   ]
+   "enum": ["processor-lesson","device-size","lambda-account","stripe-live","stripe-sandbox","api-gateway-account","managed-measured"]
   },
   "presetRevision": {
    "type": "string",
-   "enum": [
-    "1",
-    "2026-10-14"
-   ]
+   "enum": ["1","2026-10-14"]
   },
   "connections": {
    "type": "integer",
@@ -2642,10 +1945,7 @@
   },
   "retry": {
    "type": "string",
-   "enum": [
-    "requeue",
-    "inplace"
-   ]
+   "enum": ["requeue","inplace"]
   },
   "retryBackoffMs": {
    "type": "number",
@@ -2680,11 +1980,7 @@
   },
   "size": {
    "type": "string",
-   "enum": [
-    "branch",
-    "campus",
-    "datacentre"
-   ]
+   "enum": ["branch","campus","datacentre"]
   },
   "gbps": {
    "type": "number",
@@ -2698,11 +1994,7 @@
   },
   "ha": {
    "type": "string",
-   "enum": [
-    "standalone",
-    "active-standby",
-    "active-active"
-   ]
+   "enum": ["standalone","active-standby","active-active"]
   },
   "failoverMs": {
    "type": "number",
@@ -2715,17 +2007,11 @@
   "trafficMix": {
    "type": "object",
    "additionalProperties": false,
-   "required": [
-    "mode",
-    "entries"
-   ],
+   "required": ["mode","entries"],
    "properties": {
     "mode": {
      "type": "string",
-     "enum": [
-      "shares",
-      "rates"
-     ]
+     "enum": ["shares","rates"]
     },
     "entries": {
      "type": "array",
@@ -2734,9 +2020,7 @@
      "items": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-       "routeId"
-      ],
+      "required": ["routeId"],
       "properties": {
        "routeId": {
         "type": "string",
@@ -2763,9 +2047,7 @@
   "routeTable": {
    "type": "object",
    "additionalProperties": false,
-   "required": [
-    "rules"
-   ],
+   "required": ["rules"],
    "properties": {
     "rules": {
      "type": "array",
@@ -2773,11 +2055,7 @@
      "items": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-       "id",
-       "match",
-       "targets"
-      ],
+      "required": ["id","match","targets"],
       "properties": {
        "id": {
         "type": "string",
@@ -2798,32 +2076,16 @@
           "maxItems": 8,
           "uniqueItems": true,
           "items": {
-           "enum": [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "HEAD",
-            "OPTIONS",
-            "TRACE"
-           ]
+           "enum": ["GET","POST","PUT","PATCH","DELETE","HEAD","OPTIONS","TRACE"]
           }
          },
          "path": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-           "kind",
-           "value"
-          ],
+          "required": ["kind","value"],
           "properties": {
            "kind": {
-            "enum": [
-             "exact",
-             "prefix",
-             "template"
-            ]
+            "enum": ["exact","prefix","template"]
            },
            "value": {
             "type": "string",
@@ -2866,10 +2128,7 @@
         "items": {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "edgeId",
-          "weight"
-         ],
+         "required": ["edgeId","weight"],
          "properties": {
           "edgeId": {
            "type": "string",
@@ -2890,13 +2149,7 @@
         "items": {
          "type": "object",
          "additionalProperties": false,
-         "required": [
-          "id",
-          "unit",
-          "amount",
-          "windowMs",
-          "algorithm"
-         ],
+         "required": ["id","unit","amount","windowMs","algorithm"],
          "properties": {
           "id": {
            "type": "string",
@@ -2904,14 +2157,7 @@
            "maxLength": 200
           },
           "unit": {
-           "enum": [
-            "requests",
-            "tokens",
-            "inputTokens",
-            "outputTokens",
-            "costPoints",
-            "bytes"
-           ]
+           "enum": ["requests","tokens","inputTokens","outputTokens","costPoints","bytes"]
           },
           "amount": {
            "type": "number",
@@ -2925,9 +2171,7 @@
           },
           "algorithm": {
            "type": "string",
-           "enum": [
-            "token-bucket"
-           ]
+           "enum": ["token-bucket"]
           },
           "burst": {
            "type": "number",
@@ -2948,9 +2192,7 @@
     "default": {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "targets"
-     ],
+     "required": ["targets"],
      "properties": {
       "targets": {
        "type": "array",
@@ -2959,10 +2201,7 @@
        "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-         "edgeId",
-         "weight"
-        ],
+        "required": ["edgeId","weight"],
         "properties": {
          "edgeId": {
           "type": "string",
@@ -2983,13 +2222,7 @@
        "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-         "id",
-         "unit",
-         "amount",
-         "windowMs",
-         "algorithm"
-        ],
+        "required": ["id","unit","amount","windowMs","algorithm"],
         "properties": {
          "id": {
           "type": "string",
@@ -2997,14 +2230,7 @@
           "maxLength": 200
          },
          "unit": {
-          "enum": [
-           "requests",
-           "tokens",
-           "inputTokens",
-           "outputTokens",
-           "costPoints",
-           "bytes"
-          ]
+          "enum": ["requests","tokens","inputTokens","outputTokens","costPoints","bytes"]
          },
          "amount": {
           "type": "number",
@@ -3018,9 +2244,7 @@
          },
          "algorithm": {
           "type": "string",
-          "enum": [
-           "token-bucket"
-          ]
+          "enum": ["token-bucket"]
          },
          "burst": {
           "type": "number",
@@ -3056,32 +2280,16 @@
      "maxItems": 8,
      "uniqueItems": true,
      "items": {
-      "enum": [
-       "GET",
-       "POST",
-       "PUT",
-       "PATCH",
-       "DELETE",
-       "HEAD",
-       "OPTIONS",
-       "TRACE"
-      ]
+      "enum": ["GET","POST","PUT","PATCH","DELETE","HEAD","OPTIONS","TRACE"]
      }
     },
     "path": {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "kind",
-      "value"
-     ],
+     "required": ["kind","value"],
      "properties": {
       "kind": {
-       "enum": [
-        "exact",
-        "prefix",
-        "template"
-       ]
+       "enum": ["exact","prefix","template"]
       },
       "value": {
        "type": "string",
@@ -3127,10 +2335,7 @@
    "additionalProperties": false,
    "properties": {
     "wait": {
-     "enum": [
-      "blocking",
-      "non-blocking"
-     ]
+     "enum": ["blocking","non-blocking"]
     },
     "replyMs": {
      "type": "number",
@@ -3152,12 +2357,7 @@
     "retry": {
      "type": "object",
      "additionalProperties": false,
-     "required": [
-      "maxAttempts",
-      "backoffMs",
-      "strategy",
-      "retryOn"
-     ],
+     "required": ["maxAttempts","backoffMs","strategy","retryOn"],
      "properties": {
       "maxAttempts": {
        "type": "integer",
@@ -3177,9 +2377,7 @@
       "budget": {
        "type": "object",
        "additionalProperties": false,
-       "required": [
-        "percent"
-       ],
+       "required": ["percent"],
        "properties": {
         "percent": {
          "type": "number",
@@ -3194,10 +2392,7 @@
        }
       },
       "strategy": {
-       "enum": [
-        "fixed",
-        "exponential"
-       ]
+       "enum": ["fixed","exponential"]
       },
       "jitter": {
        "type": "number",
@@ -3209,11 +2404,7 @@
        "maxItems": 3,
        "uniqueItems": true,
        "items": {
-        "enum": [
-         "throttled",
-         "transient",
-         "timeout"
-        ]
+        "enum": ["throttled","transient","timeout"]
        }
       },
       "idempotent": {
@@ -3233,9 +2424,7 @@
   },
   "groupOrigin": {
    "type": "string",
-   "enum": [
-    "inferred"
-   ]
+   "enum": ["inferred"]
   },
   "share": {
    "type": "number",
@@ -3281,71 +2470,42 @@
     "ingestUnit": "MB/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "log",
-    "event stream",
-    "confluent"
-   ]
+   "aliases": ["log","event stream","confluent"]
   },
   {
    "id": "kafka.cluster",
    "label": "Kafka Cluster",
    "vendor": "Apache Kafka",
    "role": "none",
-   "aliases": [
-    "broker",
-    "brokers",
-    "confluent"
-   ]
+   "aliases": ["broker","brokers","confluent"]
   },
   {
    "id": "kafka.connect",
    "label": "Kafka Connect",
    "vendor": "Apache Kafka",
    "role": "processor",
-   "aliases": [
-    "cdc",
-    "debezium",
-    "connector",
-    "sink",
-    "source"
-   ]
+   "aliases": ["cdc","debezium","connector","sink","source"]
   },
   {
    "id": "kafka.schema-registry",
    "label": "Schema Registry",
    "vendor": "Apache Kafka",
    "role": "none",
-   "aliases": [
-    "avro",
-    "protobuf",
-    "schema",
-    "sr"
-   ]
+   "aliases": ["avro","protobuf","schema","sr"]
   },
   {
    "id": "kafka.ksqldb",
    "label": "ksqlDB",
    "vendor": "Apache Kafka",
    "role": "processor",
-   "aliases": [
-    "ksql",
-    "streams",
-    "sql"
-   ]
+   "aliases": ["ksql","streams","sql"]
   },
   {
    "id": "azure.service-bus.queue",
    "label": "Service Bus Queue",
    "vendor": "Azure",
    "role": "queue",
-   "aliases": [
-    "sb",
-    "asb",
-    "servicebus",
-    "dlq",
-    "dead letter"
-   ]
+   "aliases": ["sb","asb","servicebus","dlq","dead letter"]
   },
   {
    "id": "azure.service-bus.topic",
@@ -3359,13 +2519,7 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "sb",
-    "asb",
-    "servicebus",
-    "subscription",
-    "pubsub"
-   ]
+   "aliases": ["sb","asb","servicebus","subscription","pubsub"]
   },
   {
    "id": "azure.event-hubs",
@@ -3379,12 +2533,7 @@
     "ingestUnit": "throughput-units",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "eh",
-    "eventhub",
-    "kafka",
-    "stream"
-   ]
+   "aliases": ["eh","eventhub","kafka","stream"]
   },
   {
    "id": "azure.event-grid",
@@ -3398,22 +2547,14 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "eg",
-    "events",
-    "pubsub",
-    "webhook"
-   ]
+   "aliases": ["eg","events","pubsub","webhook"]
   },
   {
    "id": "azure.storage-queue",
    "label": "Storage Queue",
    "vendor": "Azure",
    "role": "queue",
-   "aliases": [
-    "queue storage",
-    "asq"
-   ]
+   "aliases": ["queue storage","asq"]
   },
   {
    "id": "rabbitmq.exchange",
@@ -3427,33 +2568,21 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "amqp",
-    "rmq",
-    "rabbit",
-    "fanout"
-   ]
+   "aliases": ["amqp","rmq","rabbit","fanout"]
   },
   {
    "id": "rabbitmq.queue",
    "label": "RabbitMQ Queue",
    "vendor": "RabbitMQ",
    "role": "queue",
-   "aliases": [
-    "amqp",
-    "rmq",
-    "rabbit"
-   ]
+   "aliases": ["amqp","rmq","rabbit"]
   },
   {
    "id": "aws.sqs",
    "label": "Amazon SQS",
    "vendor": "AWS",
    "role": "queue",
-   "aliases": [
-    "simple queue service",
-    "fifo"
-   ]
+   "aliases": ["simple queue service","fifo"]
   },
   {
    "id": "aws.sns",
@@ -3467,12 +2596,7 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "simple notification service",
-    "pubsub",
-    "fanout",
-    "notification"
-   ]
+   "aliases": ["simple notification service","pubsub","fanout","notification"]
   },
   {
    "id": "aws.eventbridge",
@@ -3486,11 +2610,7 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "cloudwatch events",
-    "event bus",
-    "eb"
-   ]
+   "aliases": ["cloudwatch events","event bus","eb"]
   },
   {
    "id": "aws.kinesis",
@@ -3504,11 +2624,7 @@
     "ingestUnit": "MB/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "kds",
-    "firehose",
-    "stream"
-   ]
+   "aliases": ["kds","firehose","stream"]
   },
   {
    "id": "gcp.pubsub",
@@ -3522,11 +2638,7 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "pubsub",
-    "pub sub",
-    "google"
-   ]
+   "aliases": ["pubsub","pub sub","google"]
   },
   {
    "id": "nats.subject",
@@ -3540,9 +2652,7 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "jetstream"
-   ]
+   "aliases": ["jetstream"]
   },
   {
    "id": "redis.stream",
@@ -3556,10 +2666,7 @@
     "ingestUnit": "MB/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "xadd",
-    "stream"
-   ]
+   "aliases": ["xadd","stream"]
   },
   {
    "id": "confluent.cloud",
@@ -3573,39 +2680,21 @@
     "ingestUnit": "MB/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "cf",
-    "confluent platform",
-    "cp",
-    "kafka",
-    "managed kafka",
-    "ccloud"
-   ]
+   "aliases": ["cf","confluent platform","cp","kafka","managed kafka","ccloud"]
   },
   {
    "id": "kafka.streams",
    "label": "Kafka Streams",
    "vendor": "Apache Kafka",
    "role": "processor",
-   "aliases": [
-    "kstreams",
-    "streams",
-    "stream processing",
-    "stateful"
-   ]
+   "aliases": ["kstreams","streams","stream processing","stateful"]
   },
   {
    "id": "debezium",
    "label": "Debezium CDC",
    "vendor": "Debezium",
    "role": "source",
-   "aliases": [
-    "cdc",
-    "change data capture",
-    "outbox",
-    "binlog",
-    "wal"
-   ]
+   "aliases": ["cdc","change data capture","outbox","binlog","wal"]
   },
   {
    "id": "pulsar.topic",
@@ -3619,11 +2708,7 @@
     "ingestUnit": "MB/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "pulsar",
-    "pubsub",
-    "streamnative"
-   ]
+   "aliases": ["pulsar","pubsub","streamnative"]
   },
   {
    "id": "mqtt.broker",
@@ -3637,13 +2722,7 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "mqtt",
-    "mosquitto",
-    "emqx",
-    "hivemq",
-    "iot"
-   ]
+   "aliases": ["mqtt","mosquitto","emqx","hivemq","iot"]
   },
   {
    "id": "aws.msk",
@@ -3657,2247 +2736,1099 @@
     "ingestUnit": "MB/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "msk",
-    "managed kafka",
-    "kafka"
-   ]
+   "aliases": ["msk","managed kafka","kafka"]
   },
   {
    "id": "aws.mq",
    "label": "Amazon MQ",
    "vendor": "AWS",
    "role": "queue",
-   "aliases": [
-    "activemq",
-    "rabbitmq",
-    "jms",
-    "amqp",
-    "broker"
-   ]
+   "aliases": ["activemq","rabbitmq","jms","amqp","broker"]
   },
   {
    "id": "azure.functions",
    "label": "Azure Functions",
    "vendor": "Azure",
    "role": "processor",
-   "aliases": [
-    "function app",
-    "serverless",
-    "faas",
-    "lambda"
-   ]
+   "aliases": ["function app","serverless","faas","lambda"]
   },
   {
    "id": "azure.app-service",
    "label": "App Service",
    "vendor": "Azure",
    "role": "processor",
-   "aliases": [
-    "web app",
-    "webapp",
-    "hosting"
-   ]
+   "aliases": ["web app","webapp","hosting"]
   },
   {
    "id": "azure.container-apps",
    "label": "Container Apps",
    "vendor": "Azure",
    "role": "processor",
-   "aliases": [
-    "aca",
-    "containers",
-    "keda",
-    "serverless"
-   ]
+   "aliases": ["aca","containers","keda","serverless"]
   },
   {
    "id": "azure.aks",
    "label": "AKS",
    "vendor": "Azure",
    "role": "processor",
-   "aliases": [
-    "kubernetes",
-    "k8s",
-    "cluster"
-   ]
+   "aliases": ["kubernetes","k8s","cluster"]
   },
   {
    "id": "azure.logic-apps",
    "label": "Logic Apps",
    "vendor": "Azure",
    "role": "processor",
-   "aliases": [
-    "workflow",
-    "integration",
-    "low code"
-   ]
+   "aliases": ["workflow","integration","low code"]
   },
   {
    "id": "azure.signalr",
    "label": "SignalR Service",
    "vendor": "Azure",
    "role": "gateway",
-   "aliases": [
-    "websocket",
-    "realtime",
-    "push"
-   ]
+   "aliases": ["websocket","realtime","push"]
   },
   {
    "id": "aws.lambda",
    "label": "AWS Lambda",
    "vendor": "AWS",
    "role": "processor",
-   "aliases": [
-    "serverless",
-    "function",
-    "faas"
-   ]
+   "aliases": ["serverless","function","faas"]
   },
   {
    "id": "aws.ecs",
    "label": "Amazon ECS",
    "vendor": "AWS",
    "role": "processor",
-   "aliases": [
-    "fargate",
-    "containers"
-   ]
+   "aliases": ["fargate","containers"]
   },
   {
    "id": "aws.step-functions",
    "label": "Step Functions",
    "vendor": "AWS",
    "role": "processor",
-   "aliases": [
-    "sfn",
-    "state machine",
-    "workflow",
-    "orchestration"
-   ]
+   "aliases": ["sfn","state machine","workflow","orchestration"]
   },
   {
    "id": "k8s.pod",
    "label": "Kubernetes Pod",
    "vendor": "Kubernetes",
    "role": "processor",
-   "aliases": [
-    "kubernetes",
-    "k8s",
-    "container"
-   ]
+   "aliases": ["kubernetes","k8s","container"]
   },
   {
    "id": "k8s.deployment",
    "label": "Kubernetes Deployment",
    "vendor": "Kubernetes",
    "role": "processor",
-   "aliases": [
-    "kubernetes",
-    "k8s",
-    "replicaset"
-   ]
+   "aliases": ["kubernetes","k8s","replicaset"]
   },
   {
    "id": "docker.container",
    "label": "Docker Container",
    "vendor": "Docker",
    "role": "processor",
-   "aliases": [
-    "container",
-    "image"
-   ]
+   "aliases": ["container","image"]
   },
   {
    "id": "service.dotnet",
    "label": ".NET Service",
    "vendor": ".NET",
    "role": "processor",
-   "aliases": [
-    "csharp",
-    "c#",
-    "aspnet",
-    "asp.net",
-    "dotnet",
-    "microservice"
-   ]
+   "aliases": ["csharp","c#","aspnet","asp.net","dotnet","microservice"]
   },
   {
    "id": "service.java",
    "label": "Java Service",
    "vendor": "Java",
    "role": "processor",
-   "aliases": [
-    "spring",
-    "spring boot",
-    "jvm",
-    "kotlin",
-    "quarkus",
-    "microservice"
-   ]
+   "aliases": ["spring","spring boot","jvm","kotlin","quarkus","microservice"]
   },
   {
    "id": "service.node",
    "label": "Node.js Service",
    "vendor": "Node.js",
    "role": "processor",
-   "aliases": [
-    "nodejs",
-    "javascript",
-    "typescript",
-    "js",
-    "ts",
-    "express",
-    "nest",
-    "microservice"
-   ]
+   "aliases": ["nodejs","javascript","typescript","js","ts","express","nest","microservice"]
   },
   {
    "id": "service.python",
    "label": "Python Service",
    "vendor": "Python",
    "role": "processor",
-   "aliases": [
-    "fastapi",
-    "django",
-    "flask",
-    "py",
-    "microservice"
-   ]
+   "aliases": ["fastapi","django","flask","py","microservice"]
   },
   {
    "id": "service.go",
    "label": "Go Service",
    "vendor": "Go",
    "role": "processor",
-   "aliases": [
-    "golang",
-    "microservice"
-   ]
+   "aliases": ["golang","microservice"]
   },
   {
    "id": "flink",
    "label": "Apache Flink",
    "vendor": "Apache Flink",
    "role": "processor",
-   "aliases": [
-    "stream processing",
-    "streaming",
-    "cep",
-    "windowing"
-   ]
+   "aliases": ["stream processing","streaming","cep","windowing"]
   },
   {
    "id": "gcp.dataflow",
    "label": "Dataflow",
    "vendor": "Google Cloud",
    "role": "processor",
-   "aliases": [
-    "beam",
-    "apache beam",
-    "etl",
-    "pipeline",
-    "google"
-   ]
+   "aliases": ["beam","apache beam","etl","pipeline","google"]
   },
   {
    "id": "temporal",
    "label": "Temporal",
    "vendor": "Temporal",
    "role": "processor",
-   "aliases": [
-    "workflow",
-    "orchestration",
-    "durable execution",
-    "saga",
-    "cadence"
-   ]
+   "aliases": ["workflow","orchestration","durable execution","saga","cadence"]
   },
   {
    "id": "camunda",
    "label": "Camunda",
    "vendor": "Camunda",
    "role": "processor",
-   "aliases": [
-    "bpmn",
-    "workflow",
-    "orchestration",
-    "zeebe",
-    "process"
-   ]
+   "aliases": ["bpmn","workflow","orchestration","zeebe","process"]
   },
   {
    "id": "airflow",
    "label": "Apache Airflow",
    "vendor": "Apache Airflow",
    "role": "source",
-   "aliases": [
-    "dag",
-    "scheduler",
-    "etl",
-    "orchestration",
-    "mwaa",
-    "composer",
-    "cron"
-   ]
+   "aliases": ["dag","scheduler","etl","orchestration","mwaa","composer","cron"]
   },
   {
    "id": "gcp.cloud-run",
    "label": "Cloud Run",
    "vendor": "Google Cloud",
    "role": "processor",
-   "aliases": [
-    "serverless",
-    "containers",
-    "knative",
-    "google"
-   ]
+   "aliases": ["serverless","containers","knative","google"]
   },
   {
    "id": "gcp.cloud-functions",
    "label": "Cloud Functions",
    "vendor": "Google Cloud",
    "role": "processor",
-   "aliases": [
-    "serverless",
-    "function",
-    "faas",
-    "lambda",
-    "google"
-   ]
+   "aliases": ["serverless","function","faas","lambda","google"]
   },
   {
    "id": "gcp.gke",
    "label": "GKE",
    "vendor": "Google Cloud",
    "role": "processor",
-   "aliases": [
-    "kubernetes",
-    "k8s",
-    "cluster",
-    "google"
-   ]
+   "aliases": ["kubernetes","k8s","cluster","google"]
   },
   {
    "id": "azure.static-web-apps",
    "label": "Static Web Apps",
    "vendor": "Azure",
    "role": "processor",
-   "aliases": [
-    "swa",
-    "static site",
-    "spa",
-    "jamstack",
-    "hosting"
-   ]
+   "aliases": ["swa","static site","spa","jamstack","hosting"]
   },
   {
    "id": "vercel",
    "label": "Vercel",
    "vendor": "Vercel",
    "role": "processor",
-   "aliases": [
-    "nextjs",
-    "next.js",
-    "edge",
-    "frontend",
-    "hosting",
-    "serverless"
-   ]
+   "aliases": ["nextjs","next.js","edge","frontend","hosting","serverless"]
   },
   {
    "id": "netlify",
    "label": "Netlify",
    "vendor": "Netlify",
    "role": "processor",
-   "aliases": [
-    "jamstack",
-    "edge",
-    "frontend",
-    "hosting",
-    "serverless"
-   ]
+   "aliases": ["jamstack","edge","frontend","hosting","serverless"]
   },
   {
    "id": "cloudflare.workers",
    "label": "Cloudflare Workers",
    "vendor": "Cloudflare",
    "role": "processor",
-   "aliases": [
-    "workers",
-    "edge",
-    "serverless",
-    "cf workers",
-    "durable objects"
-   ]
+   "aliases": ["workers","edge","serverless","cf workers","durable objects"]
   },
   {
    "id": "graphql",
    "label": "GraphQL API",
    "vendor": "GraphQL",
    "role": "gateway",
-   "aliases": [
-    "gql",
-    "apollo",
-    "federation",
-    "schema",
-    "api"
-   ]
+   "aliases": ["gql","apollo","federation","schema","api"]
   },
   {
    "id": "grpc",
    "label": "gRPC Service",
    "vendor": "gRPC",
    "role": "processor",
-   "aliases": [
-    "protobuf",
-    "rpc",
-    "http2",
-    "proto",
-    "api"
-   ]
+   "aliases": ["protobuf","rpc","http2","proto","api"]
   },
   {
    "id": "postgres",
    "label": "PostgreSQL",
    "vendor": "PostgreSQL",
    "role": "store",
-   "aliases": [
-    "pg",
-    "postgresql",
-    "psql",
-    "rds",
-    "sql"
-   ]
+   "aliases": ["pg","postgresql","psql","rds","sql"]
   },
   {
    "id": "mysql",
    "label": "MySQL",
    "vendor": "MySQL",
    "role": "store",
-   "aliases": [
-    "mariadb",
-    "rds",
-    "sql"
-   ]
+   "aliases": ["mariadb","rds","sql"]
   },
   {
    "id": "sqlserver",
    "label": "SQL Server",
    "vendor": "Microsoft",
    "role": "store",
-   "aliases": [
-    "mssql",
-    "sql server",
-    "tsql",
-    "sql"
-   ]
+   "aliases": ["mssql","sql server","tsql","sql"]
   },
   {
    "id": "azure.sql",
    "label": "Azure SQL Database",
    "vendor": "Azure",
    "role": "store",
-   "aliases": [
-    "mssql",
-    "sql database",
-    "sql"
-   ]
+   "aliases": ["mssql","sql database","sql"]
   },
   {
    "id": "azure.cosmos-db",
    "label": "Cosmos DB",
    "vendor": "Azure",
    "role": "store",
-   "aliases": [
-    "cosmos",
-    "nosql",
-    "documentdb"
-   ]
+   "aliases": ["cosmos","nosql","documentdb"]
   },
   {
    "id": "azure.blob-storage",
    "label": "Blob Storage",
    "vendor": "Azure",
    "role": "store",
-   "aliases": [
-    "blob",
-    "storage account",
-    "object storage",
-    "adls",
-    "s3"
-   ]
+   "aliases": ["blob","storage account","object storage","adls","s3"]
   },
   {
    "id": "azure.redis",
    "label": "Azure Managed Redis",
    "vendor": "Azure",
    "role": "store",
-   "aliases": [
-    "cache",
-    "redis"
-   ]
+   "aliases": ["cache","redis"]
   },
   {
    "id": "mongodb",
    "label": "MongoDB",
    "vendor": "MongoDB",
    "role": "store",
-   "aliases": [
-    "mongo",
-    "nosql",
-    "document"
-   ]
+   "aliases": ["mongo","nosql","document"]
   },
   {
    "id": "redis.cache",
    "label": "Redis Cache",
    "vendor": "Redis",
    "role": "store",
-   "aliases": [
-    "cache",
-    "kv",
-    "key value",
-    "memcache"
-   ]
+   "aliases": ["cache","kv","key value","memcache"]
   },
   {
    "id": "elasticsearch",
    "label": "Elasticsearch",
    "vendor": "Elastic",
    "role": "store",
-   "aliases": [
-    "es",
-    "elastic",
-    "search",
-    "opensearch",
-    "elk"
-   ]
+   "aliases": ["es","elastic","search","opensearch","elk"]
   },
   {
    "id": "aws.s3",
    "label": "Amazon S3",
    "vendor": "AWS",
    "role": "store",
-   "aliases": [
-    "bucket",
-    "object storage",
-    "blob"
-   ]
+   "aliases": ["bucket","object storage","blob"]
   },
   {
    "id": "aws.dynamodb",
    "label": "Amazon DynamoDB",
    "vendor": "AWS",
    "role": "store",
-   "aliases": [
-    "dynamo",
-    "ddb",
-    "nosql",
-    "key value"
-   ]
+   "aliases": ["dynamo","ddb","nosql","key value"]
   },
   {
    "id": "snowflake",
    "label": "Snowflake",
    "vendor": "Snowflake",
    "role": "store",
-   "aliases": [
-    "warehouse",
-    "dwh",
-    "analytics"
-   ]
+   "aliases": ["warehouse","dwh","analytics"]
   },
   {
    "id": "adobe.aem",
    "label": "Adobe Experience Manager",
    "vendor": "Adobe",
    "role": "store",
-   "aliases": [
-    "aem",
-    "cms",
-    "content"
-   ]
+   "aliases": ["aem","cms","content"]
   },
   {
    "id": "databricks",
    "label": "Databricks",
    "vendor": "Databricks",
    "role": "store",
-   "aliases": [
-    "spark",
-    "lakehouse",
-    "delta"
-   ]
+   "aliases": ["spark","lakehouse","delta"]
   },
   {
    "id": "gcp.bigquery",
    "label": "BigQuery",
    "vendor": "Google Cloud",
    "role": "store",
-   "aliases": [
-    "bq",
-    "warehouse",
-    "dwh",
-    "analytics",
-    "google"
-   ]
+   "aliases": ["bq","warehouse","dwh","analytics","google"]
   },
   {
    "id": "gcp.spanner",
    "label": "Cloud Spanner",
    "vendor": "Google Cloud",
    "role": "store",
-   "aliases": [
-    "newsql",
-    "sql",
-    "google"
-   ]
+   "aliases": ["newsql","sql","google"]
   },
   {
    "id": "gcp.cloud-sql",
    "label": "Cloud SQL",
    "vendor": "Google Cloud",
    "role": "store",
-   "aliases": [
-    "postgres",
-    "mysql",
-    "sql",
-    "google"
-   ]
+   "aliases": ["postgres","mysql","sql","google"]
   },
   {
    "id": "gcp.firestore",
    "label": "Firestore",
    "vendor": "Google Cloud",
    "role": "store",
-   "aliases": [
-    "nosql",
-    "document",
-    "firebase",
-    "google"
-   ]
+   "aliases": ["nosql","document","firebase","google"]
   },
   {
    "id": "aws.redshift",
    "label": "Amazon Redshift",
    "vendor": "AWS",
    "role": "store",
-   "aliases": [
-    "warehouse",
-    "dwh",
-    "analytics"
-   ]
+   "aliases": ["warehouse","dwh","analytics"]
   },
   {
    "id": "aws.aurora",
    "label": "Amazon Aurora",
    "vendor": "AWS",
    "role": "store",
-   "aliases": [
-    "rds",
-    "postgres",
-    "mysql",
-    "sql",
-    "serverless"
-   ]
+   "aliases": ["rds","postgres","mysql","sql","serverless"]
   },
   {
    "id": "cassandra",
    "label": "Apache Cassandra",
    "vendor": "Apache Cassandra",
    "role": "store",
-   "aliases": [
-    "wide column",
-    "nosql",
-    "scylla",
-    "cql",
-    "keyspaces"
-   ]
+   "aliases": ["wide column","nosql","scylla","cql","keyspaces"]
   },
   {
    "id": "clickhouse",
    "label": "ClickHouse",
    "vendor": "ClickHouse",
    "role": "store",
-   "aliases": [
-    "olap",
-    "analytics",
-    "columnar"
-   ]
+   "aliases": ["olap","analytics","columnar"]
   },
   {
    "id": "supabase",
    "label": "Supabase",
    "vendor": "Supabase",
    "role": "store",
-   "aliases": [
-    "postgres",
-    "baas",
-    "auth"
-   ]
+   "aliases": ["postgres","baas","auth"]
   },
   {
    "id": "firebase",
    "label": "Firebase",
    "vendor": "Google Cloud",
    "role": "store",
-   "aliases": [
-    "baas",
-    "realtime",
-    "fcm",
-    "google"
-   ]
+   "aliases": ["baas","realtime","fcm","google"]
   },
   {
    "id": "minio",
    "label": "MinIO",
    "vendor": "MinIO",
    "role": "store",
-   "aliases": [
-    "s3",
-    "object storage",
-    "bucket",
-    "blob"
-   ]
+   "aliases": ["s3","object storage","bucket","blob"]
   },
   {
    "id": "pinecone",
    "label": "Pinecone",
    "vendor": "Pinecone",
    "role": "store",
-   "aliases": [
-    "vector",
-    "vector db",
-    "embeddings",
-    "rag",
-    "similarity"
-   ]
+   "aliases": ["vector","vector db","embeddings","rag","similarity"]
   },
   {
    "id": "azure.data-factory",
    "label": "Data Factory",
    "vendor": "Azure",
    "role": "processor",
-   "aliases": [
-    "adf",
-    "etl",
-    "elt",
-    "pipeline",
-    "integration"
-   ]
+   "aliases": ["adf","etl","elt","pipeline","integration"]
   },
   {
    "id": "azure.synapse",
    "label": "Synapse Analytics",
    "vendor": "Azure",
    "role": "store",
-   "aliases": [
-    "warehouse",
-    "dwh",
-    "analytics",
-    "spark"
-   ]
+   "aliases": ["warehouse","dwh","analytics","spark"]
   },
   {
    "id": "microsoft-fabric",
    "label": "Microsoft Fabric",
    "vendor": "Microsoft",
    "role": "store",
-   "aliases": [
-    "fabric",
-    "onelake",
-    "lakehouse",
-    "power bi",
-    "warehouse"
-   ]
+   "aliases": ["fabric","onelake","lakehouse","power bi","warehouse"]
   },
   {
    "id": "azure.api-management",
    "label": "API Management",
    "vendor": "Azure",
    "role": "gateway",
-   "aliases": [
-    "apim",
-    "api gateway",
-    "gateway"
-   ]
+   "aliases": ["apim","api gateway","gateway"]
   },
   {
    "id": "azure.front-door",
    "label": "Front Door",
    "vendor": "Azure",
    "role": "gateway",
-   "aliases": [
-    "afd",
-    "cdn",
-    "waf",
-    "edge"
-   ]
+   "aliases": ["afd","cdn","waf","edge"]
   },
   {
    "id": "azure.app-gateway",
    "label": "Application Gateway",
    "vendor": "Azure",
    "role": "gateway",
-   "aliases": [
-    "agw",
-    "appgw",
-    "waf",
-    "l7"
-   ]
+   "aliases": ["agw","appgw","waf","l7"]
   },
   {
    "id": "aws.api-gateway",
    "label": "Amazon API Gateway",
    "vendor": "AWS",
    "role": "gateway",
-   "aliases": [
-    "apigw",
-    "apigateway",
-    "rest api"
-   ]
+   "aliases": ["apigw","apigateway","rest api"]
   },
   {
    "id": "aws.elb",
    "label": "Elastic Load Balancing",
    "vendor": "AWS",
    "role": "gateway",
-   "aliases": [
-    "alb",
-    "nlb",
-    "load balancer",
-    "lb"
-   ]
+   "aliases": ["alb","nlb","load balancer","lb"]
   },
   {
    "id": "nginx",
    "label": "NGINX",
    "vendor": "NGINX",
    "role": "gateway",
-   "aliases": [
-    "ingress",
-    "reverse proxy",
-    "proxy",
-    "lb"
-   ]
+   "aliases": ["ingress","reverse proxy","proxy","lb"]
   },
   {
    "id": "kong",
    "label": "Kong Gateway",
    "vendor": "Kong",
    "role": "gateway",
-   "aliases": [
-    "api gateway",
-    "gateway"
-   ]
+   "aliases": ["api gateway","gateway"]
   },
   {
    "id": "cloudflare",
    "label": "Cloudflare",
    "vendor": "Cloudflare",
    "role": "gateway",
-   "aliases": [
-    "cdn",
-    "waf",
-    "dns",
-    "workers",
-    "edge"
-   ]
+   "aliases": ["cdn","waf","dns","workers","edge"]
   },
   {
    "id": "load-balancer",
    "label": "Load Balancer",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "lb",
-    "balancer"
-   ]
+   "aliases": ["lb","balancer"]
   },
   {
    "id": "envoy",
    "label": "Envoy Proxy",
    "vendor": "Envoy",
    "role": "gateway",
-   "aliases": [
-    "proxy",
-    "sidecar",
-    "mesh",
-    "l7"
-   ]
+   "aliases": ["proxy","sidecar","mesh","l7"]
   },
   {
    "id": "istio",
    "label": "Istio",
    "vendor": "Istio",
    "role": "gateway",
-   "aliases": [
-    "mesh",
-    "service mesh",
-    "sidecar",
-    "mtls"
-   ]
+   "aliases": ["mesh","service mesh","sidecar","mtls"]
   },
   {
    "id": "linkerd",
    "label": "Linkerd",
    "vendor": "Linkerd",
    "role": "gateway",
-   "aliases": [
-    "mesh",
-    "service mesh",
-    "mtls"
-   ]
+   "aliases": ["mesh","service mesh","mtls"]
   },
   {
    "id": "traefik",
    "label": "Traefik",
    "vendor": "Traefik",
    "role": "gateway",
-   "aliases": [
-    "ingress",
-    "reverse proxy",
-    "proxy",
-    "lb"
-   ]
+   "aliases": ["ingress","reverse proxy","proxy","lb"]
   },
   {
    "id": "haproxy",
    "label": "HAProxy",
    "vendor": "HAProxy",
    "role": "gateway",
-   "aliases": [
-    "lb",
-    "load balancer",
-    "proxy",
-    "l4"
-   ]
+   "aliases": ["lb","load balancer","proxy","l4"]
   },
   {
    "id": "generic.cdn",
    "label": "CDN",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "edge",
-    "cache",
-    "cloudfront",
-    "akamai",
-    "fastly"
-   ]
+   "aliases": ["edge","cache","cloudfront","akamai","fastly"]
   },
   {
    "id": "generic.dns",
    "label": "DNS",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "route 53",
-    "route53",
-    "domain",
-    "resolver"
-   ]
+   "aliases": ["route 53","route53","domain","resolver"]
   },
   {
    "id": "generic.firewall",
    "label": "Firewall / WAF",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "waf",
-    "firewall",
-    "security",
-    "shield",
-    "ddos"
-   ]
+   "aliases": ["waf","firewall","security","shield","ddos"]
   },
   {
    "id": "generic.router",
    "label": "Router",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "router",
-    "wan",
-    "edge",
-    "core",
-    "bgp",
-    "ospf",
-    "mpls",
-    "l3"
-   ]
+   "aliases": ["router","wan","edge","core","bgp","ospf","mpls","l3"]
   },
   {
    "id": "cisco.isr",
    "label": "Cisco ISR",
    "vendor": "Cisco",
    "role": "gateway",
-   "aliases": [
-    "isr",
-    "router",
-    "3825",
-    "3845",
-    "2800",
-    "2900",
-    "2911",
-    "3900",
-    "4000",
-    "4331",
-    "4451",
-    "c8200",
-    "c8300",
-    "c8500",
-    "catalyst 8000",
-    "asr",
-    "asr1000",
-    "ios",
-    "ios-xe",
-    "sd-wan",
-    "branch"
-   ]
+   "aliases": ["isr","router","3825","3845","2800","2900","2911","3900","4000","4331","4451","c8200","c8300","c8500","catalyst 8000","asr","asr1000","ios","ios-xe","sd-wan","branch"]
   },
   {
    "id": "juniper.mx",
    "label": "Juniper MX",
    "vendor": "Juniper",
    "role": "gateway",
-   "aliases": [
-    "mx",
-    "mx204",
-    "mx304",
-    "mx480",
-    "mx960",
-    "mx10004",
-    "router",
-    "junos",
-    "pe",
-    "bgp",
-    "mpls"
-   ]
+   "aliases": ["mx","mx204","mx304","mx480","mx960","mx10004","router","junos","pe","bgp","mpls"]
   },
   {
    "id": "generic.switch",
    "label": "Switch",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "switch",
-    "l2",
-    "l3",
-    "access",
-    "core",
-    "leaf",
-    "spine",
-    "tor",
-    "top of rack",
-    "vlan",
-    "ethernet"
-   ]
+   "aliases": ["switch","l2","l3","access","core","leaf","spine","tor","top of rack","vlan","ethernet"]
   },
   {
    "id": "cisco.catalyst",
    "label": "Cisco Catalyst",
    "vendor": "Cisco",
    "role": "gateway",
-   "aliases": [
-    "catalyst",
-    "c9200",
-    "c9300",
-    "c9500",
-    "9300",
-    "2960",
-    "3850",
-    "switch",
-    "access",
-    "core",
-    "campus"
-   ]
+   "aliases": ["catalyst","c9200","c9300","c9500","9300","2960","3850","switch","access","core","campus"]
   },
   {
    "id": "cisco.nexus",
    "label": "Cisco Nexus",
    "vendor": "Cisco",
    "role": "gateway",
-   "aliases": [
-    "nexus",
-    "n9k",
-    "9000",
-    "93180",
-    "9364",
-    "aci",
-    "nx-os",
-    "nxos",
-    "leaf",
-    "spine",
-    "switch",
-    "datacenter"
-   ]
+   "aliases": ["nexus","n9k","9000","93180","9364","aci","nx-os","nxos","leaf","spine","switch","datacenter"]
   },
   {
    "id": "arista.switch",
    "label": "Arista Switch",
    "vendor": "Arista",
    "role": "gateway",
-   "aliases": [
-    "arista",
-    "eos",
-    "7050",
-    "7280",
-    "7800",
-    "7060",
-    "720xp",
-    "leaf",
-    "spine",
-    "switch",
-    "datacenter"
-   ]
+   "aliases": ["arista","eos","7050","7280","7800","7060","720xp","leaf","spine","switch","datacenter"]
   },
   {
    "id": "juniper.ex",
    "label": "Juniper EX",
    "vendor": "Juniper",
    "role": "gateway",
-   "aliases": [
-    "ex",
-    "ex2300",
-    "ex3400",
-    "ex4100",
-    "ex4400",
-    "ex4650",
-    "switch",
-    "junos",
-    "mist",
-    "campus",
-    "access"
-   ]
+   "aliases": ["ex","ex2300","ex3400","ex4100","ex4400","ex4650","switch","junos","mist","campus","access"]
   },
   {
    "id": "juniper.qfx",
    "label": "Juniper QFX",
    "vendor": "Juniper",
    "role": "gateway",
-   "aliases": [
-    "qfx",
-    "qfx5120",
-    "qfx5130",
-    "qfx5220",
-    "qfx10000",
-    "leaf",
-    "spine",
-    "switch",
-    "junos",
-    "apstra"
-   ]
+   "aliases": ["qfx","qfx5120","qfx5130","qfx5220","qfx10000","leaf","spine","switch","junos","apstra"]
   },
   {
    "id": "aruba.cx",
    "label": "Aruba CX",
    "vendor": "HPE Aruba",
    "role": "gateway",
-   "aliases": [
-    "aruba",
-    "hpe",
-    "cx",
-    "6100",
-    "6300",
-    "8325",
-    "8360",
-    "procurve",
-    "aos-cx",
-    "switch",
-    "campus",
-    "access"
-   ]
+   "aliases": ["aruba","hpe","cx","6100","6300","8325","8360","procurve","aos-cx","switch","campus","access"]
   },
   {
    "id": "generic.ngfw",
    "label": "Firewall (NGFW)",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "ngfw",
-    "firewall",
-    "utm",
-    "next generation firewall",
-    "stateful",
-    "acl",
-    "perimeter",
-    "dmz"
-   ]
+   "aliases": ["ngfw","firewall","utm","next generation firewall","stateful","acl","perimeter","dmz"]
   },
   {
    "id": "paloalto.ngfw",
    "label": "Palo Alto NGFW",
    "vendor": "Palo Alto Networks",
    "role": "gateway",
-   "aliases": [
-    "palo",
-    "alto",
-    "pan",
-    "pa-440",
-    "pa-3400",
-    "pa-5400",
-    "pa-7500",
-    "pan-os",
-    "panos",
-    "ngfw",
-    "firewall"
-   ]
+   "aliases": ["palo","alto","pan","pa-440","pa-3400","pa-5400","pa-7500","pan-os","panos","ngfw","firewall"]
   },
   {
    "id": "fortinet.fortigate",
    "label": "FortiGate",
    "vendor": "Fortinet",
    "role": "gateway",
-   "aliases": [
-    "fortinet",
-    "fortigate",
-    "fortios",
-    "fgt",
-    "ngfw",
-    "firewall",
-    "utm",
-    "sd-wan"
-   ]
+   "aliases": ["fortinet","fortigate","fortios","fgt","ngfw","firewall","utm","sd-wan"]
   },
   {
    "id": "cisco.secure-firewall",
    "label": "Cisco Secure Firewall",
    "vendor": "Cisco",
    "role": "gateway",
-   "aliases": [
-    "asa",
-    "ftd",
-    "firepower",
-    "fmc",
-    "fpr",
-    "pix",
-    "5506",
-    "5525",
-    "ngfw",
-    "firewall"
-   ]
+   "aliases": ["asa","ftd","firepower","fmc","fpr","pix","5506","5525","ngfw","firewall"]
   },
   {
    "id": "checkpoint.quantum",
    "label": "Check Point Quantum",
    "vendor": "Check Point",
    "role": "gateway",
-   "aliases": [
-    "checkpoint",
-    "check point",
-    "quantum",
-    "gaia",
-    "ngfw",
-    "firewall",
-    "security gateway"
-   ]
+   "aliases": ["checkpoint","check point","quantum","gaia","ngfw","firewall","security gateway"]
   },
   {
    "id": "juniper.srx",
    "label": "Juniper SRX",
    "vendor": "Juniper",
    "role": "gateway",
-   "aliases": [
-    "srx",
-    "srx300",
-    "srx345",
-    "srx1500",
-    "srx4600",
-    "junos",
-    "ngfw",
-    "firewall",
-    "sd-wan"
-   ]
+   "aliases": ["srx","srx300","srx345","srx1500","srx4600","junos","ngfw","firewall","sd-wan"]
   },
   {
    "id": "generic.adc",
    "label": "ADC",
    "vendor": "Generic",
    "role": "gateway",
-   "aliases": [
-    "adc",
-    "load balancer",
-    "lb",
-    "hardware load balancer",
-    "l4",
-    "l7",
-    "vip",
-    "slb",
-    "gslb"
-   ]
+   "aliases": ["adc","load balancer","lb","hardware load balancer","l4","l7","vip","slb","gslb"]
   },
   {
    "id": "f5.bigip",
    "label": "F5 BIG-IP",
    "vendor": "F5",
    "role": "gateway",
-   "aliases": [
-    "f5",
-    "big-ip",
-    "bigip",
-    "ltm",
-    "gtm",
-    "asm",
-    "viprion",
-    "velos",
-    "rseries",
-    "irules",
-    "load balancer",
-    "adc"
-   ]
+   "aliases": ["f5","big-ip","bigip","ltm","gtm","asm","viprion","velos","rseries","irules","load balancer","adc"]
   },
   {
    "id": "netscaler.adc",
    "label": "NetScaler ADC",
    "vendor": "NetScaler",
    "role": "gateway",
-   "aliases": [
-    "netscaler",
-    "citrix",
-    "citrix adc",
-    "mpx",
-    "sdx",
-    "vpx",
-    "load balancer",
-    "adc",
-    "gslb"
-   ]
+   "aliases": ["netscaler","citrix","citrix adc","mpx","sdx","vpx","load balancer","adc","gslb"]
   },
   {
    "id": "grafana",
    "label": "Grafana",
    "vendor": "Grafana Labs",
    "role": "sink",
-   "aliases": [
-    "dashboard",
-    "dashboards",
-    "loki",
-    "tempo"
-   ]
+   "aliases": ["dashboard","dashboards","loki","tempo"]
   },
   {
    "id": "prometheus",
    "label": "Prometheus",
    "vendor": "Prometheus",
    "role": "sink",
-   "aliases": [
-    "metrics",
-    "prom"
-   ]
+   "aliases": ["metrics","prom"]
   },
   {
    "id": "datadog",
    "label": "Datadog",
    "vendor": "Datadog",
    "role": "sink",
-   "aliases": [
-    "dd",
-    "apm",
-    "monitoring"
-   ]
+   "aliases": ["dd","apm","monitoring"]
   },
   {
    "id": "azure.app-insights",
    "label": "Application Insights",
    "vendor": "Azure",
    "role": "sink",
-   "aliases": [
-    "appinsights",
-    "ai",
-    "azure monitor",
-    "telemetry"
-   ]
+   "aliases": ["appinsights","ai","azure monitor","telemetry"]
   },
   {
    "id": "opentelemetry",
    "label": "OpenTelemetry Collector",
    "vendor": "OpenTelemetry",
    "role": "processor",
-   "aliases": [
-    "otel",
-    "otlp",
-    "tracing",
-    "collector"
-   ]
+   "aliases": ["otel","otlp","tracing","collector"]
   },
   {
    "id": "splunk",
    "label": "Splunk",
    "vendor": "Splunk",
    "role": "sink",
-   "aliases": [
-    "logs",
-    "siem"
-   ]
+   "aliases": ["logs","siem"]
   },
   {
    "id": "loki",
    "label": "Loki",
    "vendor": "Grafana Labs",
    "role": "sink",
-   "aliases": [
-    "logs",
-    "grafana",
-    "logql"
-   ]
+   "aliases": ["logs","grafana","logql"]
   },
   {
    "id": "jaeger",
    "label": "Jaeger",
    "vendor": "Jaeger",
    "role": "sink",
-   "aliases": [
-    "tracing",
-    "traces",
-    "spans",
-    "distributed tracing"
-   ]
+   "aliases": ["tracing","traces","spans","distributed tracing"]
   },
   {
    "id": "kibana",
    "label": "Kibana",
    "vendor": "Elastic",
    "role": "sink",
-   "aliases": [
-    "elk",
-    "logs",
-    "dashboards",
-    "elastic"
-   ]
+   "aliases": ["elk","logs","dashboards","elastic"]
   },
   {
    "id": "new-relic",
    "label": "New Relic",
    "vendor": "New Relic",
    "role": "sink",
-   "aliases": [
-    "newrelic",
-    "nr",
-    "apm",
-    "monitoring"
-   ]
+   "aliases": ["newrelic","nr","apm","monitoring"]
   },
   {
    "id": "sentry",
    "label": "Sentry",
    "vendor": "Sentry",
    "role": "sink",
-   "aliases": [
-    "errors",
-    "exceptions",
-    "crash",
-    "apm"
-   ]
+   "aliases": ["errors","exceptions","crash","apm"]
   },
   {
    "id": "aws.cloudwatch",
    "label": "CloudWatch",
    "vendor": "AWS",
    "role": "sink",
-   "aliases": [
-    "logs",
-    "metrics",
-    "alarms",
-    "cw",
-    "monitoring"
-   ]
+   "aliases": ["logs","metrics","alarms","cw","monitoring"]
   },
   {
    "id": "azure.key-vault",
    "label": "Key Vault",
    "vendor": "Azure",
    "role": "none",
-   "aliases": [
-    "kv",
-    "akv",
-    "secrets",
-    "keyvault",
-    "kv refs",
-    "key vault references"
-   ]
+   "aliases": ["kv","akv","secrets","keyvault","kv refs","key vault references"]
   },
   {
    "id": "entra-id",
    "label": "Microsoft Entra ID",
    "vendor": "Microsoft",
    "role": "none",
-   "aliases": [
-    "aad",
-    "azure ad",
-    "active directory",
-    "oauth",
-    "oidc",
-    "identity",
-    "sso"
-   ]
+   "aliases": ["aad","azure ad","active directory","oauth","oidc","identity","sso"]
   },
   {
    "id": "vault",
    "label": "HashiCorp Vault",
    "vendor": "HashiCorp",
    "role": "none",
-   "aliases": [
-    "secrets",
-    "hashicorp"
-   ]
+   "aliases": ["secrets","hashicorp"]
   },
   {
    "id": "okta",
    "label": "Okta",
    "vendor": "Okta",
    "role": "none",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "sso",
-    "oidc",
-    "saml",
-    "identity",
-    "idp",
-    "mfa"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","sso","oidc","saml","identity","idp","mfa"]
   },
   {
    "id": "auth0",
    "label": "Auth0",
    "vendor": "Okta",
    "role": "none",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "oauth",
-    "oidc",
-    "login",
-    "identity",
-    "idp",
-    "ciam"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","oauth","oidc","login","identity","idp","ciam"]
   },
   {
    "id": "keycloak",
    "label": "Keycloak",
    "vendor": "Keycloak",
    "role": "none",
-   "aliases": [
-    "sso",
-    "oidc",
-    "saml",
-    "identity",
-    "idp",
-    "iam"
-   ]
+   "aliases": ["sso","oidc","saml","identity","idp","iam"]
   },
   {
    "id": "azure.app-config",
    "label": "App Configuration",
    "vendor": "Azure",
    "role": "none",
-   "aliases": [
-    "app config",
-    "appconfig",
-    "appcs",
-    "configuration",
-    "feature flags",
-    "kv refs",
-    "settings"
-   ]
+   "aliases": ["app config","appconfig","appcs","configuration","feature flags","kv refs","settings"]
   },
   {
    "id": "azure.managed-identity",
    "label": "Managed Identity",
    "vendor": "Azure",
    "role": "none",
-   "aliases": [
-    "mi",
-    "msi",
-    "workload identity",
-    "user assigned",
-    "system assigned",
-    "identity"
-   ]
+   "aliases": ["mi","msi","workload identity","user assigned","system assigned","identity"]
   },
   {
    "id": "aws.secrets-manager",
    "label": "Secrets Manager",
    "vendor": "AWS",
    "role": "none",
-   "aliases": [
-    "asm",
-    "secrets",
-    "rotation",
-    "credentials"
-   ]
+   "aliases": ["asm","secrets","rotation","credentials"]
   },
   {
    "id": "aws.parameter-store",
    "label": "Parameter Store",
    "vendor": "AWS",
    "role": "none",
-   "aliases": [
-    "ssm",
-    "systems manager",
-    "parameters",
-    "config",
-    "securestring"
-   ]
+   "aliases": ["ssm","systems manager","parameters","config","securestring"]
   },
   {
    "id": "aws.iam-role",
    "label": "IAM Role",
    "vendor": "AWS",
    "role": "none",
-   "aliases": [
-    "iam",
-    "role",
-    "irsa",
-    "execution role",
-    "task role",
-    "identity"
-   ]
+   "aliases": ["iam","role","irsa","execution role","task role","identity"]
   },
   {
    "id": "gcp.service-account",
    "label": "Service Account",
    "vendor": "Google Cloud",
    "role": "none",
-   "aliases": [
-    "gsa",
-    "iam",
-    "workload identity",
-    "gke",
-    "google",
-    "identity"
-   ]
+   "aliases": ["gsa","iam","workload identity","gke","google","identity"]
   },
   {
    "id": "gcp.secret-manager",
    "label": "Secret Manager",
    "vendor": "Google Cloud",
    "role": "none",
-   "aliases": [
-    "secrets",
-    "google"
-   ]
+   "aliases": ["secrets","google"]
   },
   {
    "id": "k8s.configmap",
    "label": "ConfigMap",
    "vendor": "Kubernetes",
    "role": "none",
-   "aliases": [
-    "configmap",
-    "config map",
-    "cm",
-    "kubernetes",
-    "k8s",
-    "config"
-   ]
+   "aliases": ["configmap","config map","cm","kubernetes","k8s","config"]
   },
   {
    "id": "k8s.secret",
    "label": "Kubernetes Secret",
    "vendor": "Kubernetes",
    "role": "none",
-   "aliases": [
-    "secret",
-    "kubernetes",
-    "k8s",
-    "csi",
-    "external secrets"
-   ]
+   "aliases": ["secret","kubernetes","k8s","csi","external secrets"]
   },
   {
    "id": "client.user",
    "label": "User",
    "vendor": "Client",
    "role": "source",
-   "aliases": [
-    "person",
-    "human",
-    "actor",
-    "customer"
-   ]
+   "aliases": ["person","human","actor","customer"]
   },
   {
    "id": "client.browser",
    "label": "Web Browser",
    "vendor": "Client",
    "role": "source",
-   "aliases": [
-    "spa",
-    "web",
-    "frontend",
-    "react"
-   ]
+   "aliases": ["spa","web","frontend","react"]
   },
   {
    "id": "client.mobile",
    "label": "Mobile App",
    "vendor": "Client",
    "role": "source",
-   "aliases": [
-    "ios",
-    "android",
-    "app",
-    "phone"
-   ]
+   "aliases": ["ios","android","app","phone"]
   },
   {
    "id": "client.iot",
    "label": "IoT Device",
    "vendor": "Client",
    "role": "source",
-   "aliases": [
-    "device",
-    "sensor",
-    "edge",
-    "telemetry"
-   ]
+   "aliases": ["device","sensor","edge","telemetry"]
   },
   {
    "id": "client.team",
    "label": "Team",
    "vendor": "Client",
    "role": "source",
-   "aliases": [
-    "users",
-    "people",
-    "group",
-    "team",
-    "ops",
-    "staff"
-   ]
+   "aliases": ["users","people","group","team","ops","staff"]
   },
   {
    "id": "generic.external-api",
    "label": "External API",
    "vendor": "Generic",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "http",
-    "rest"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","http","rest"]
   },
   {
    "id": "iterable",
    "label": "Iterable",
    "vendor": "Iterable",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "engagement",
-    "campaigns"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","engagement","campaigns"]
   },
   {
    "id": "braze",
    "label": "Braze",
    "vendor": "Braze",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "engagement",
-    "campaigns"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","engagement","campaigns"]
   },
   {
    "id": "segment",
    "label": "Segment",
    "vendor": "Segment",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "customer data",
-    "tracking",
-    "analytics"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","customer data","tracking","analytics"]
   },
   {
    "id": "shopify",
    "label": "Shopify",
    "vendor": "Shopify",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "commerce",
-    "store",
-    "orders"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","commerce","store","orders"]
   },
   {
    "id": "paypal",
    "label": "PayPal",
    "vendor": "PayPal",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "payments",
-    "checkout"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","payments","checkout"]
   },
   {
    "id": "adyen",
    "label": "Adyen",
    "vendor": "Adyen",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "payments",
-    "checkout"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","payments","checkout"]
   },
   {
    "id": "client.partner",
    "label": "Partner System",
    "vendor": "Client",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API"]
   },
   {
    "id": "stripe",
    "label": "Stripe",
    "vendor": "Stripe",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "payments",
-    "billing",
-    "checkout",
-    "pay"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","payments","billing","checkout","pay"]
   },
   {
    "id": "twilio",
    "label": "Twilio",
    "vendor": "Twilio",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "sms",
-    "voice",
-    "whatsapp",
-    "otp"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","sms","voice","whatsapp","otp"]
   },
   {
    "id": "sendgrid",
    "label": "SendGrid",
    "vendor": "Twilio",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "email",
-    "mail",
-    "smtp"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","email","mail","smtp"]
   },
   {
    "id": "salesforce",
    "label": "Salesforce",
    "vendor": "Salesforce",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "crm",
-    "sfdc"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","crm","sfdc"]
   },
   {
    "id": "hubspot",
    "label": "HubSpot",
    "vendor": "HubSpot",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "crm",
-    "marketing"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","crm","marketing"]
   },
   {
    "id": "slack",
    "label": "Slack",
    "vendor": "Slack",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "chat",
-    "notifications",
-    "alerts",
-    "chatops"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","chat","notifications","alerts","chatops"]
   },
   {
    "id": "github",
    "label": "GitHub",
    "vendor": "GitHub",
    "role": "source",
-   "aliases": [
-    "git",
-    "webhook",
-    "repo",
-    "gh"
-   ]
+   "aliases": ["git","webhook","repo","gh"]
   },
   {
    "id": "openai",
    "label": "OpenAI API",
    "vendor": "OpenAI",
    "role": "processor",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "llm",
-    "gpt",
-    "chatgpt",
-    "ai",
-    "embeddings"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","llm","gpt","chatgpt","ai","embeddings"]
   },
   {
    "id": "anthropic.claude",
    "label": "Claude API",
    "vendor": "Anthropic",
    "role": "processor",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "llm",
-    "claude",
-    "anthropic",
-    "ai"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","llm","claude","anthropic","ai"]
   },
   {
    "id": "generic.email",
    "label": "Email",
    "vendor": "Generic",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "mail",
-    "smtp",
-    "notification",
-    "sendgrid"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","mail","smtp","notification","sendgrid"]
   },
   {
    "id": "generic.sms",
    "label": "SMS",
    "vendor": "Generic",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "text",
-    "message",
-    "otp",
-    "phone"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","text","message","otp","phone"]
   },
   {
    "id": "generic.push",
    "label": "Mobile Push",
    "vendor": "Generic",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "push",
-    "notification",
-    "apns",
-    "fcm",
-    "mobile"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","push","notification","apns","fcm","mobile"]
   },
   {
    "id": "generic.marketing",
    "label": "Marketing Automation",
    "vendor": "Generic",
    "role": "sink",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "braze",
-    "customer.io",
-    "iterable",
-    "marketo",
-    "campaigns",
-    "crm"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","braze","customer.io","iterable","marketo","campaigns","crm"]
   },
   {
    "id": "generic.webhook",
    "label": "Webhook",
    "vendor": "Generic",
    "role": "source",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "callback",
-    "http",
-    "hook"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","callback","http","hook"]
   },
   {
    "id": "generic.llm",
    "label": "LLM API",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "external",
-    "third party",
-    "third-party API",
-    "3rd party",
-    "api",
-    "saas",
-    "webhook",
-    "vendor API",
-    "REST API",
-    "HTTP API",
-    "llm",
-    "ai",
-    "gpt",
-    "claude",
-    "model",
-    "genai"
-   ]
+   "aliases": ["external","third party","third-party API","3rd party","api","saas","webhook","vendor API","REST API","HTTP API","llm","ai","gpt","claude","model","genai"]
   },
   {
    "id": "generic.service",
    "label": "Service",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "microservice",
-    "api",
-    "app"
-   ]
+   "aliases": ["microservice","api","app"]
   },
   {
    "id": "generic.database",
    "label": "Database",
    "vendor": "Generic",
    "role": "store",
-   "aliases": [
-    "db",
-    "sql",
-    "store"
-   ]
+   "aliases": ["db","sql","store"]
   },
   {
    "id": "generic.queue",
    "label": "Queue",
    "vendor": "Generic",
    "role": "queue",
-   "aliases": [
-    "mq",
-    "message queue"
-   ]
+   "aliases": ["mq","message queue"]
   },
   {
    "id": "generic.topic",
@@ -5911,330 +3842,175 @@
     "ingestUnit": "messages/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "pubsub",
-    "pub sub",
-    "events"
-   ]
+   "aliases": ["pubsub","pub sub","events"]
   },
   {
    "id": "generic.scheduler",
    "label": "Scheduler",
    "vendor": "Generic",
    "role": "source",
-   "aliases": [
-    "cron",
-    "timer",
-    "job",
-    "batch"
-   ]
+   "aliases": ["cron","timer","job","batch"]
   },
   {
    "id": "github-actions",
    "label": "GitHub Actions",
    "vendor": "GitHub",
    "role": "source",
-   "aliases": [
-    "gha",
-    "ci",
-    "cd",
-    "cicd",
-    "pipeline",
-    "github"
-   ]
+   "aliases": ["gha","ci","cd","cicd","pipeline","github"]
   },
   {
    "id": "generic.batch-job",
    "label": "Batch Job",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "batch",
-    "job",
-    "etl",
-    "nightly",
-    "cron job",
-    "worker"
-   ]
+   "aliases": ["batch","job","etl","nightly","cron job","worker"]
   },
   {
    "id": "generic.file",
    "label": "File / Blob",
    "vendor": "Generic",
    "role": "store",
-   "aliases": [
-    "blob",
-    "file",
-    "object",
-    "storage",
-    "s3",
-    "nfs"
-   ]
+   "aliases": ["blob","file","object","storage","s3","nfs"]
   },
   {
    "id": "generic.warehouse",
    "label": "Data Warehouse",
    "vendor": "Generic",
    "role": "store",
-   "aliases": [
-    "dwh",
-    "olap",
-    "analytics",
-    "bi"
-   ]
+   "aliases": ["dwh","olap","analytics","bi"]
   },
   {
    "id": "generic.cache",
    "label": "Cache",
    "vendor": "Generic",
    "role": "store",
-   "aliases": [
-    "cache",
-    "memcached",
-    "in-memory",
-    "kv"
-   ]
+   "aliases": ["cache","memcached","in-memory","kv"]
   },
   {
    "id": "generic.search-index",
    "label": "Search Index",
    "vendor": "Generic",
    "role": "store",
-   "aliases": [
-    "search",
-    "index",
-    "lucene",
-    "opensearch",
-    "full text"
-   ]
+   "aliases": ["search","index","lucene","opensearch","full text"]
   },
   {
    "id": "generic.vector-db",
    "label": "Vector DB",
    "vendor": "Generic",
    "role": "store",
-   "aliases": [
-    "vector",
-    "embeddings",
-    "pgvector",
-    "weaviate",
-    "qdrant",
-    "milvus",
-    "rag"
-   ]
+   "aliases": ["vector","embeddings","pgvector","weaviate","qdrant","milvus","rag"]
   },
   {
    "id": "generic.ml-model",
    "label": "ML Model",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "ml",
-    "model",
-    "inference",
-    "ai",
-    "prediction"
-   ]
+   "aliases": ["ml","model","inference","ai","prediction"]
   },
   {
    "id": "terraform",
    "label": "Terraform",
    "vendor": "HashiCorp",
    "role": "source",
-   "aliases": [
-    "iac",
-    "infrastructure as code",
-    "tf",
-    "hcl",
-    "opentofu"
-   ]
+   "aliases": ["iac","infrastructure as code","tf","hcl","opentofu"]
   },
   {
    "id": "argocd",
    "label": "Argo CD",
    "vendor": "Argo",
    "role": "source",
-   "aliases": [
-    "argo",
-    "gitops",
-    "cd",
-    "deploy",
-    "kubernetes"
-   ]
+   "aliases": ["argo","gitops","cd","deploy","kubernetes"]
   },
   {
    "id": "generic.config-store",
    "label": "Config Store",
    "vendor": "Generic",
    "role": "none",
-   "aliases": [
-    "config",
-    "configuration",
-    "settings",
-    "feature flags",
-    "consul",
-    "etcd"
-   ]
+   "aliases": ["config","configuration","settings","feature flags","consul","etcd"]
   },
   {
    "id": "generic.secret-store",
    "label": "Secret Store",
    "vendor": "Generic",
    "role": "none",
-   "aliases": [
-    "secrets",
-    "vault",
-    "credentials",
-    "kms"
-   ]
+   "aliases": ["secrets","vault","credentials","kms"]
   },
   {
    "id": "generic.identity-provider",
    "label": "Identity Provider",
    "vendor": "Generic",
    "role": "none",
-   "aliases": [
-    "idp",
-    "sso",
-    "oauth",
-    "oidc",
-    "saml",
-    "identity",
-    "auth"
-   ]
+   "aliases": ["idp","sso","oauth","oidc","saml","identity","auth"]
   },
   {
    "id": "dbt",
    "label": "dbt",
    "vendor": "dbt Labs",
    "role": "processor",
-   "aliases": [
-    "dbt core",
-    "dbt cloud",
-    "transform",
-    "elt",
-    "models",
-    "marts",
-    "sql"
-   ]
+   "aliases": ["dbt core","dbt cloud","transform","elt","models","marts","sql"]
   },
   {
    "id": "airbyte",
    "label": "Airbyte",
    "vendor": "Airbyte",
    "role": "processor",
-   "aliases": [
-    "elt",
-    "etl",
-    "connector",
-    "fivetran",
-    "stitch",
-    "ingestion"
-   ]
+   "aliases": ["elt","etl","connector","fivetran","stitch","ingestion"]
   },
   {
    "id": "snowflake.snowpipe",
    "label": "Snowpipe Streaming",
    "vendor": "Snowflake",
    "role": "processor",
-   "aliases": [
-    "snowpipe",
-    "streaming ingest",
-    "loader",
-    "kafka connector",
-    "copy into"
-   ]
+   "aliases": ["snowpipe","streaming ingest","loader","kafka connector","copy into"]
   },
   {
    "id": "generic.reverse-etl",
    "label": "Reverse ETL",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "reverse etl",
-    "hightouch",
-    "census",
-    "activation",
-    "warehouse sync"
-   ]
+   "aliases": ["reverse etl","hightouch","census","activation","warehouse sync"]
   },
   {
    "id": "gcp.cloud-storage",
    "label": "Cloud Storage",
    "vendor": "Google Cloud",
    "role": "store",
-   "aliases": [
-    "gcs",
-    "bucket",
-    "object storage",
-    "blob",
-    "google"
-   ]
+   "aliases": ["gcs","bucket","object storage","blob","google"]
   },
   {
    "id": "looker",
    "label": "Looker",
    "vendor": "Google Cloud",
    "role": "sink",
-   "aliases": [
-    "bi",
-    "dashboard",
-    "lookml",
-    "looker studio",
-    "google"
-   ]
+   "aliases": ["bi","dashboard","lookml","looker studio","google"]
   },
   {
    "id": "tableau",
    "label": "Tableau",
    "vendor": "Tableau",
    "role": "sink",
-   "aliases": [
-    "bi",
-    "dashboard",
-    "visualization",
-    "reports"
-   ]
+   "aliases": ["bi","dashboard","visualization","reports"]
   },
   {
    "id": "aws.route53",
    "label": "Route 53",
    "vendor": "AWS",
    "role": "gateway",
-   "aliases": [
-    "route53",
-    "dns",
-    "failover",
-    "latency routing",
-    "global load balancer",
-    "health check"
-   ]
+   "aliases": ["route53","dns","failover","latency routing","global load balancer","health check"]
   },
   {
    "id": "azure.traffic-manager",
    "label": "Traffic Manager",
    "vendor": "Azure",
    "role": "gateway",
-   "aliases": [
-    "atm",
-    "dns",
-    "failover",
-    "global load balancer",
-    "geo routing"
-   ]
+   "aliases": ["atm","dns","failover","global load balancer","geo routing"]
   },
   {
    "id": "gcp.cloud-load-balancing",
    "label": "Cloud Load Balancing",
    "vendor": "Google Cloud",
    "role": "gateway",
-   "aliases": [
-    "glb",
-    "global load balancer",
-    "anycast",
-    "lb",
-    "google"
-   ]
+   "aliases": ["glb","global load balancer","anycast","lb","google"]
   },
   {
    "id": "generic.event-store",
@@ -6248,52 +4024,28 @@
     "ingestUnit": "MB/s",
     "producerSizeUnit": "kB"
    },
-   "aliases": [
-    "event sourcing",
-    "eventstoredb",
-    "kurrent",
-    "append only",
-    "ledger"
-   ]
+   "aliases": ["event sourcing","eventstoredb","kurrent","append only","ledger"]
   },
   {
    "id": "generic.projection",
    "label": "Projection",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "read model",
-    "cqrs",
-    "projector",
-    "materialized view",
-    "denormalizer"
-   ]
+   "aliases": ["read model","cqrs","projector","materialized view","denormalizer"]
   },
   {
    "id": "generic.saga",
    "label": "Saga Orchestrator",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "orchestrator",
-    "orchestration",
-    "compensation",
-    "process manager",
-    "workflow"
-   ]
+   "aliases": ["orchestrator","orchestration","compensation","process manager","workflow"]
   },
   {
    "id": "generic.rate-limiter",
    "label": "Rate Limiter",
    "vendor": "Generic",
    "role": "processor",
-   "aliases": [
-    "throttle",
-    "throttling",
-    "token bucket",
-    "quota",
-    "rate limit"
-   ]
+   "aliases": ["throttle","throttling","token bucket","quota","rate limit"]
   }
  ]
 }

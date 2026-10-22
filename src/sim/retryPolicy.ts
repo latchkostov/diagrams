@@ -20,55 +20,37 @@ export type OutcomeKind =
   | "invalid-admission";
 
 export interface ClassifiedOutcome {
-  kind: OutcomeKind;
-  class: RetryClass | undefined;
-  code: number | undefined;
-  breakerCounts: "success" | "failure" | "slow" | "ignored" | "not-recorded";
+  readonly kind: OutcomeKind;
+  readonly class: RetryClass | undefined;
+  readonly code: number | undefined;
+  readonly breakerCounts: "success" | "failure" | "slow" | "ignored" | "not-recorded";
 }
+
+/** Design section 2.1, one frozen row per terminal cause: classifying allocates nothing. */
+const CLASSIFIED = new Map(
+  (
+    [
+      ["success", undefined, undefined, "success"],
+      ["error", "transient", 500, "failure"],
+      ["callee-down", "transient", 503, "failure"],
+      ["upstream-timeout", "transient", 504, "failure"],
+      ["shed", "throttled", 503, "failure"],
+      ["quota", "throttled", 429, "failure"],
+      ["deadline", "timeout", 504, "slow"],
+      ["no-route", undefined, 404, "ignored"],
+      ["breaker-open", undefined, 503, "not-recorded"],
+      ["call-limit", undefined, undefined, "ignored"],
+      ["invalid-admission", undefined, undefined, "ignored"],
+    ] satisfies [OutcomeKind, RetryClass | undefined, number | undefined, ClassifiedOutcome["breakerCounts"]][]
+  ).map(([kind, retryClass, code, breakerCounts]): [OutcomeKind, ClassifiedOutcome] => [
+    kind,
+    Object.freeze({ kind, class: retryClass, code, breakerCounts }),
+  ]),
+);
 
 /** The only mapping from a terminal cause to retry, wire and breaker semantics (design section 2.1). */
 export function classifyOutcome(kind: OutcomeKind): ClassifiedOutcome {
-  let retryClass: RetryClass | undefined;
-  let code: number | undefined;
-  let breakerCounts: ClassifiedOutcome["breakerCounts"] = "ignored";
-  switch (kind) {
-    case "success":
-      breakerCounts = "success";
-      break;
-    case "error":
-      code = 500;
-      retryClass = "transient";
-      breakerCounts = "failure";
-      break;
-    case "callee-down":
-    case "upstream-timeout":
-      code = kind === "upstream-timeout" ? 504 : 503;
-      retryClass = "transient";
-      breakerCounts = "failure";
-      break;
-    case "shed":
-    case "quota":
-      code = kind === "shed" ? 503 : 429;
-      retryClass = "throttled";
-      breakerCounts = "failure";
-      break;
-    case "deadline":
-      code = 504;
-      retryClass = "timeout";
-      breakerCounts = "slow";
-      break;
-    case "no-route":
-      code = 404;
-      break;
-    case "breaker-open":
-      code = 503;
-      breakerCounts = "not-recorded";
-      break;
-    case "call-limit":
-    case "invalid-admission":
-      break;
-  }
-  return { kind, class: retryClass, code, breakerCounts };
+  return CLASSIFIED.get(kind)!;
 }
 
 /** k is one for the first retry. Integer multiplication keeps cross-engine determinism. */

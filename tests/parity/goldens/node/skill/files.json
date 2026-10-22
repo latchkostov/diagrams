@@ -4,5 +4,5 @@
   "reference/outputs.md": { "sha256": "9c5074ad1fa9e60005000e6a245060d5605c8b9cf5da8a67d44d2918e7100916", "bytes": 7463 },
   "reference/simulation.md": { "sha256": "27144ac558f3e52737fafccb48217368baf00ffba30166737b07998af5814c48", "bytes": 6957 },
   "reference/stencils.md": { "sha256": "4340628f78e229668ca42b4f8391457db94e5cda5f611fc12a35124b40c7698e", "bytes": 17492 },
-  "scripts/lib/spec.json": { "sha256": "e0053c8afa0767ed778d64415cdac81c9470b2c2fd47cc74cc4393d6f07815e9", "bytes": 120901 }
+  "scripts/lib/spec.json": { "sha256": "a7afbe74ba39bc82e964a32cca9153fc04b8ad8c48b9a715a3f3be213893f39f", "bytes": 104665 }
 }
