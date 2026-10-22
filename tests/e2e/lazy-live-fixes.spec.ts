@@ -230,7 +230,12 @@ test("pending script download freezes live controls and says so; Esc gives them 
   // The cancelled start's code arrives later: wait for it to download, run and paint, and slow motion stays off.
   const downloaded = page.waitForResponse((response) => SCRIPT.test(response.url()));
   script.release();
-  await (await downloaded).finished();
+  const module = await downloaded;
+  expect(await module.finished()).toBeNull();
+  // Network completion precedes module evaluation and the cancelled start's continuation.
+  await page.evaluate(async (url) => {
+    await import(url);
+  }, module.url());
   await page.evaluate(
     () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
   );

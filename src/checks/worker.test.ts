@@ -9,6 +9,70 @@ import { waitingFixture } from "../lab/waitingFixture";
 // A diagram with the capacity check turned off plans nothing: no saved simulation plays after an edit.
 
 describe("checks worker", () => {
+  it.each([false, true])(
+    "request-only findings and required plans reach the caller (worker fails: %s)",
+    async (fails) => {
+      vi.resetModules();
+      const posted: CheckResponse[] = [];
+      const scope = {
+        onmessage: null as null | ((e: { data: CheckRequest }) => void),
+        postMessage: (message: CheckResponse) => posted.push(message),
+      };
+      vi.stubGlobal("self", scope);
+      const requests: CheckRequest[] = [];
+      class ChecksWorker {
+        onmessage?: (e: { data: CheckResponse }) => void;
+        onerror?: (e: { preventDefault(): void; message: string }) => void;
+        terminate() {}
+        postMessage(request: CheckRequest) {
+          requests.push(request);
+          queueMicrotask(() => {
+            if (fails) this.onerror?.({ preventDefault() {}, message: "Download failed" });
+            else {
+              scope.onmessage!({ data: request });
+              this.onmessage?.({ data: posted.at(-1)! });
+            }
+          });
+        }
+      }
+      vi.stubGlobal("Worker", ChecksWorker);
+      const { registerScenarioPlanner, offThreadPlans } = await import("../lib/scenarioPlanner");
+      try {
+        await import("./worker");
+        const { requestChecksOffThread } = await import("../canvas/checks/runner");
+        const run = await import("./run");
+        const checks = vi.spyOn(run, "runChecks");
+        registerScenarioPlanner(async () => []);
+        const d = plannerFixture();
+        d.planning = { ...d.planning, revision: "p3-w1" };
+        d.nodes[0].id = "shoppers";
+        d.edges[0].from = "shoppers";
+        d.simulations![0].traffic[0].node = "shoppers";
+        // The blocked caller consults scenario sizing, which also sizes this independent HPA workload.
+        const blocked = waitingFixture();
+        blocked.nodes[0].props!.ratePerSec = 100;
+        d.nodes.push(...blocked.nodes);
+        d.edges.push(...blocked.edges);
+        const findings = await requestChecksOffThread(d);
+        expect(requests).toEqual([{ id: expect.any(Number), diagram: d, requests: true }]);
+        expect(findings.map((f) => f.id)).toEqual(["blocked-threads:caller", "call-timeout:call"]);
+        expect(findings.find((f) => f.id === "blocked-threads:caller")?.fix?.requestLabel).toEqual({ kind: "free" });
+        expect(checks).not.toHaveBeenCalled();
+        const plans = offThreadPlans(d)?.plans;
+        expect(plans?.[0]?.simulation).toBe("black-friday");
+        expect(plans).toHaveLength(d.simulations!.length);
+        expect(plans?.[0]?.suggestions[0]).toMatchObject({ kind: "max", to: 14 });
+        if (!fails) {
+          expect(posted).toEqual([{ id: requests[0].id, requestsOnly: findings, plans }]);
+        } else expect(posted).toEqual([]);
+      } finally {
+        registerScenarioPlanner(undefined);
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
   it("keeps worker and main-thread findings identical when waiting checks are turned off and back on", async () => {
     vi.resetModules();
     const posted: CheckResponse[] = [];

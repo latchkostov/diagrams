@@ -3,15 +3,18 @@ import type { DiagramFile } from "../model/types";
 import type { LiveState } from "./controller";
 import { simulationEdges } from "../sim/simulationEdges";
 import type { EdgeSimProps } from "../sim/types";
+import { callPolicy } from "../sim/callPolicy";
+import { stencilRole } from "../stencils/roles";
 
 /** The final run evidence, in real units. Authored expectation labels and IDs are never parsed as prose. */
 export function runEndResult(state: LiveState, diagram: DiagramFile): string | undefined {
   if (!state.run?.done) return;
   const effective = simulationEdges(diagram, state.running ?? undefined);
+  const nodes = new Map(effective.nodes.map((n) => [n.id, n]));
   const statusEdge = effective.edges.find((e) =>
     (e.props?.requestFilter as EdgeSimProps["requestFilter"])?.methods?.includes("GET"),
   );
-  const statusNode = statusEdge && effective.nodes.find((n) => n.id === statusEdge.to);
+  const statusNode = statusEdge && nodes.get(statusEdge.to);
   const status = statusNode && state.snapshot.nodes[statusNode.id];
   const call =
     statusEdge &&
@@ -21,11 +24,11 @@ export function runEndResult(state: LiveState, diagram: DiagramFile): string | u
   const gatewayEdge =
     call && effective.edges.find((e) => e.to === call.from && (e.props?.caller as EdgeSimProps["caller"])?.deadlineMs);
   const gatewayDeadline = (gatewayEdge?.props?.caller as EdgeSimProps["caller"])?.deadlineMs;
-  const name = effective.nodes.find((n) => n.id === call?.from)?.label ?? call?.from ?? "";
+  const name = (call && nodes.get(call.from)?.label) ?? call?.from ?? "";
   if (call && status && statusNode && policy?.poolConnections)
     return t("runResult.poolLesson", {
       name,
-      mode: policy.wait === "non-blocking" ? "free" : "held",
+      mode: callPolicy(nodes.get(call.from)?.stencil ?? "", policy).blocking ? "held" : "free",
       status: statusNode.label,
       count: status.processed,
     });
@@ -48,13 +51,22 @@ export function runEndResult(state: LiveState, diagram: DiagramFile): string | u
         count: status.processed,
       });
   }
-  const scaled = effective.nodes.find((n) => state.snapshot.nodes[n.id]?.threads && state.snapshot.nodes[n.id]?.fleet);
+  const scaled = effective.nodes.find(
+    (n) =>
+      state.snapshot.nodes[n.id]?.threads &&
+      state.snapshot.nodes[n.id]?.fleet &&
+      (state.configuration[n.id]?.autoscaling as import("../sim/types").NodeSimProps["autoscaling"])?.mode === "on",
+  );
   const fleet = scaled && state.snapshot.nodes[scaled.id].fleet;
-  const incoming = scaled && effective.edges.find((e) => e.to === scaled.id && state.snapshot.nodes[e.from]?.lag);
-  const broker = incoming && effective.nodes.find((n) => n.id === incoming.from);
+  const incoming =
+    scaled &&
+    effective.edges.find(
+      (e) => e.to === scaled.id && ["queue", "topic", "stream"].includes(stencilRole(nodes.get(e.from)?.stencil ?? "")),
+    );
+  const broker = incoming && nodes.get(incoming.from);
   if (scaled && fleet && broker) {
     const outgoing = effective.edges.find((e) => e.from === scaled.id && e.kind === "sync");
-    const free = (outgoing?.props?.caller as EdgeSimProps["caller"])?.wait === "non-blocking";
+    const free = outgoing && !callPolicy(scaled.stencil, outgoing.props?.caller as EdgeSimProps["caller"]).blocking;
     const a = state.configuration[scaled.id]?.autoscaling as import("../sim/types").NodeSimProps["autoscaling"];
     const busy =
       a?.mode === "on" &&

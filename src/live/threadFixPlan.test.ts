@@ -4,11 +4,12 @@ import busy from "../examples/scale-on-busy-threads.json";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { VerificationContext } from "../sim/replayControls";
 import * as headless from "../sim/headless";
-import { confirmedThreadFix, THREAD_FIX_LIMITS } from "./threadFixPlan";
+import { confirmedThreadFix, THREAD_FIX_LIMITS, timeoutReplay } from "./threadFixPlan";
 import { planScaling } from "../sim/scalingPlanner";
 import { LiveController } from "./controller";
 import { TroubleTracker } from "./useObservedTrouble";
 import { planDescriptor } from "../planning/scalingPlanText";
+import { waitingFixture } from "../lab/waitingFixture";
 
 /** A saved simulation's run with no live controls. */
 const saved = (diagram: DiagramFile, simulation: Simulation): VerificationContext => ({
@@ -62,6 +63,47 @@ it("confirms an affordable timeout and rejects a timeout that leaves the caller 
   expect(
     confirmedThreadFix({ ...request, trouble: { ...trouble, action: { ...trouble.action, deadlineMs: 1000 } } }),
   ).toEqual({ kind: "free-thread", edge: "pay" });
+});
+
+it("simulation-only traffic falls back from an unverified timeout to the next confirmed fix", async () => {
+  const d = waitingFixture();
+  d.nodes[0].props = { ratePerSec: 0 };
+  d.nodes[1].props!.concurrency = 100;
+  const simulation: Simulation = {
+    id: "slow",
+    title: "Slow call",
+    durationMs: 20000,
+    traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 120, durationMs: 20000 } }],
+    timeline: [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "partner", factor: 10 } } }],
+  };
+  d.simulations = [simulation];
+  expect(timeoutReplay(d, "call", 600, { work: Infinity })).toEqual({
+    settled: true,
+    delivered: 0,
+    timedOut: 0,
+    failed: 0,
+  });
+  const trouble = {
+    ...exhausted("caller", "call"),
+    action: { kind: "add-timeout" as const, edge: "call", deadlineMs: 600 },
+  };
+  const c = new LiveController(d);
+  const tracker = new TroubleTracker(c, async (request) => confirmedThreadFix(request));
+  const stop = tracker.subscribe(() => {});
+  try {
+    c.selectSimulation(simulation);
+    for (let i = 0; i < 150; i++) c.step(100);
+    await Promise.resolve();
+    expect(c.getState().snapshot.nodes.source.processed).toBeGreaterThan(0);
+    expect(confirmedThreadFix({ context: saved(d, simulation), trouble, time: 15000 })).toEqual({
+      kind: "free-thread",
+      edge: "call",
+    });
+    expect(tracker.current()?.action).toEqual({ kind: "free-thread", edge: "call" });
+  } finally {
+    stop();
+    c.dispose();
+  }
 });
 
 it("rejects an over-budget scenario rather than offering a speculative fix", () => {

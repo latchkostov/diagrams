@@ -72,7 +72,11 @@ for (const locale of ["en", "ar", "en-XA"]) {
     const detail = page.getByTestId("node-detail-checkout");
     const outcome = page.getByTestId("node-outcome-checkout");
     await expect(outcome).toBeVisible();
-    await page.getByTestId("node-live-focus-checkout").focus();
+    // Close the pointer-opened detail before testing the independent keyboard path.
+    await page.getByTestId("brand").hover();
+    await page.getByTestId("live-play").focus();
+    await expect(outcome).toHaveCount(0);
+    await page.getByTestId("rf__node-checkout").focus();
     await expect(outcome).toBeVisible();
     await expect(outcome).toHaveCount(1);
     if (locale === "en") {
