@@ -90,6 +90,35 @@ function cpuBoundRetry() {
   return d;
 }
 
+it.each([10, 1, 20])("standalone retry retains unfinished CPU without an outage (scale then %s)", (retryScale) => {
+  const d = cpuBoundRetry();
+  d.nodes[1].props!.failureRate = 1;
+  let state!: LedgerInvariantState;
+  const e = createEngine({
+    scale: 10,
+    verifyResources: assertResourceInvariants,
+    verifyLedger(s) {
+      state = s;
+      assertLedgerInvariants(s);
+    },
+  });
+  e.load(d);
+  e.inject("source", 1);
+  for (let tick = 0; tick < 100 && !e.snapshot().nodes.caller.failed; tick++) e.step(10);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 0, failed: 1 });
+  // The first attempt ran one member's CPU. The remaining nine members stay owed
+  // through backoff; retrying adds ten more, sized by the retained cohort.
+  expect(executedCpu(e)).toBe(100);
+  e.setScale(retryScale);
+  e.setNodeProps("caller", { failureRate: 0 });
+  e.step(20_000);
+  expect(executedCpu(e)).toBeCloseTo(2000);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1, deadLettered: 0, dropped: 0 });
+  expect(e.metrics().inSystem).toBe(0);
+  expect(state.ledger.reservations.size).toBe(0);
+  expect(state.partBudget.used).toBe(0);
+});
+
 it.each([10, 1, 20])(
   "a retry admitted during an outage charges its whole cohort's CPU after recovery (scale then %s)",
   (recoveryScale) => {

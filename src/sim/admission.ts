@@ -1,6 +1,6 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
-import { reserveCallerOccupancy, type CallerOccupancy } from "./ledger";
+import { allocationWeight, reserveCallerOccupancy, type CallerOccupancy } from "./ledger";
 import {
   normalizeCall,
   quotaKey,
@@ -186,8 +186,9 @@ function allocate(
     partial = true,
   }: { represented: number; maxWeight?: number; partial?: boolean },
 ): number | null {
-  let weight = Math.min(represented, maxWeight);
-  for (const [key, cap] of limits) weight = Math.min(weight, cap - (state.inFlight.get(key) ?? 0));
+  let room = Infinity;
+  for (const [key, cap] of limits) room = Math.min(room, cap - (state.inFlight.get(key) ?? 0));
+  let weight = partial ? allocationWeight(represented, room, maxWeight) : Math.min(represented, maxWeight, room);
   const minimum = Math.min(1, represented);
   if (weight + 1e-9 < minimum) return null;
   weight = Math.max(weight, minimum);

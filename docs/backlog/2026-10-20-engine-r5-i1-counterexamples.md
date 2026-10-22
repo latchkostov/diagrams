@@ -8,7 +8,7 @@ Latency p50/p95 comparisons apply only when every pool is divisible by N.
 Investigate the unresolved gaps below; do not filter generators, weaken admission invariants,
 or permit tiny, effectively permanent reservations. The wait-test wrapper rework belongs here too.
 
-The two remaining original minimal reproductions are named `it.fails` tests in `src/sim/scaleEquivalence.test.ts`,
+The remaining original managed-admission reproduction is a named `it.fails` test in `src/sim/scaleEquivalence.test.ts`,
 using `src/test/scaleEquivalence.ts`. A correction must remove the corresponding expected-failure
 marker. Existing gating properties stay unchanged; generated I1 is opt-in exploration with no quarantine predicate.
 These cases inject 100 real requests/s for 20 seconds, quantized at cohort boundaries, with seed 7.
@@ -37,10 +37,12 @@ Diagnostic parent: seed `20261018`, path
 
 ## Fractional capacity fragmentation
 
+Resolved in sampling PR 4: all three allocators share the approved packing rule, preserving
+the minimum-one-real-request guard. Ordinary I1 regressions pass at scales 1.1, 1.3 and 1.5.
 Two zero-work caller slots, one zero-work callee slot and one connection: scale 1 completes
-999; scale 1.1 completes 878.9. Allowed difference: 22.18. The earlier 1,998 / 1,098.9
-figures predated #222, when the connection pool was not executed. A cohort reserves 1.1 real units,
-leaving 0.9; the minimum-one-real-request gate refuses another cohort. This occurs without a
+999; scale 1.1 improves from 878.9 to 998.8. Allowed difference: 22.18. The earlier 1,998 / 1,098.9
+figures predated #222, when the connection pool was not executed. Previously a cohort reserved 1.1 real units,
+leaving 0.9; the minimum-one-real-request gate refused another cohort. This occurred without a
 retained thread hold and is independent of the zero-work admission-lag correction.
 Diagnostic parent: seed `20261018`, path `3:0:1:1:1:1:1:0:0:0:0:0:0:0:0:1`.
 Preserve the small-reservation guards when investigating fragmentation.
@@ -65,7 +67,8 @@ accuracy investigations open; PR 2 now resolves the sub-tick gap through tick-ph
 All are in `src/sim/scaleEquivalence.test.ts` with the unchanged I1 bound and exact siblings:
 
 - CPU callee (2 slots, 24 ms CPU) behind one connection, caller 2 slots, scale 2: 399 versus 286.
-- Same CPU fixture without a connection pool, scale 1.1: 570 versus 366.3.
+- Same CPU fixture without a connection pool, scale 1.1: 570 versus 664.4 after PR 4 packing
+  (previously 366.3); closer to the reference but still outside I1, pending the CPU-tail PR.
 - Lambda joining ordinary and fleet replies: resolved in PR 2; ordinary I1 guards pass at scales 2 and 4.
 - Slow 1-slot callee (30 ms), caller 4 slots, no pool or CPU, scale 10: 662 versus 570.
 

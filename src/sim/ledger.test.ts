@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { ADMISSION_LAG_MS, SampledLedger } from "./ledger";
+import { ADMISSION_LAG_MS, allocationWeight, reserveCallerOccupancy, SampledLedger } from "./ledger";
 import { countingReads, GROWTH_FACTOR } from "../test/complexity";
 import { drainRetiredLedger } from "../test/ledgerDrain";
 import { waitingFixture } from "../lab/waitingFixture";
@@ -16,6 +16,38 @@ import {
 } from "./resourceInvariants";
 
 const pool = (owner = "caller", startActive = 0) => ({ owner, scope: "pool" as const, edge: "call", startActive });
+
+it.each([
+  [1.1, 2, Infinity, 1],
+  [1.3, 2, Infinity, 1],
+  [1.5, 2, Infinity, 1],
+  [2.5, 3, Infinity, 1.5],
+  [2, 2.5, Infinity, 1.25],
+  [10, 2.5, 2, 1.25],
+  [0.5, 1.2, Infinity, 0.5],
+  [1.1, Infinity, Infinity, 1.1],
+  [1.1, 2.2, Infinity, 1.1],
+  [1.1, 3.2, Infinity, 1.1],
+])("allocationWeight packs N=%s into room=%s with cap=%s", (represented, room, cap, expected) => {
+  expect(allocationWeight(represented, room, cap)).toBe(expected);
+  expect(reserveCallerOccupancy(represented, room, { represented, weight: cap }).weight).toBe(expected);
+  expect(new SampledLedger().reserve(pool(), represented, room, cap)?.weight).toBe(expected);
+});
+
+it.each([0.5, 1.01, 1.1, 1.3, 1.5, 2, 2.5, 10])("allocation never grants below min(1, %s)", (represented) => {
+  const minimum = Math.min(1, represented);
+  for (const cap of [minimum / 2, minimum, represented, Infinity]) {
+    for (let units = 0; units <= 100; units++) {
+      const room = units / 10;
+      const weight = allocationWeight(represented, room, cap);
+      expect(weight).toBeLessThanOrEqual(Math.min(represented, room, cap));
+      const reservation = new SampledLedger().reserve(pool(), represented, room, cap);
+      if (reservation) expect(reservation.weight).toBeGreaterThanOrEqual(minimum);
+      if (Math.min(room, cap) >= minimum) expect(weight).toBeGreaterThanOrEqual(minimum);
+      else expect(reservation).toBeUndefined();
+    }
+  }
+});
 
 it("unadmitted recovered continuations yield to continuations holding request capacity", () => {
   // Seed 1475036957: send two off-thread calls, take their CPU-backed callee
@@ -124,8 +156,8 @@ it.each([1.5, 1])("a paused caller returns unused admitted slots after a shrink 
   const d = waitingFixture();
   d.nodes[1].stencil = "aws.lambda";
   d.nodes[1].props = {
-    concurrency: 2,
-    maxConcurrency: 2,
+    concurrency: 3,
+    maxConcurrency: 3,
     scaling: "fixed",
     jitter: 0,
     api: { latencyMs: 10 },

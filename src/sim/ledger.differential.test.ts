@@ -23,6 +23,7 @@ it.each(ledgerTraceCases.filter((s) => s.scale > 1))(
   "sampled calls preserve expected delivery and pause/resume timing: $name",
   (scenario) => {
     const actual = ledgerTrace(createEngine, scenario);
+    // Q3: packed fractional pools admit two cohorts at 10 ms; release rounding stays unchanged.
     const checkpoints = timing[scenario.name as keyof typeof timing] as [
       number,
       ReturnType<typeof ledgerTrace>[number],
