@@ -266,7 +266,8 @@ export const bundleApp = (root: string) =>
 /** Every generated file, by path under skills/livediagrams/. */
 export async function generateSkillFiles(root: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {
-    "scripts/lib/spec.json": JSON.stringify(spec(), null, 2) + "\n",
+    // Parsed by the scripts, not read: one space of indent stays legible and costs less of the download budget.
+    "scripts/lib/spec.json": JSON.stringify(spec(), null, 1) + "\n",
     "scripts/lib/app.mjs": await bundleApp(root),
     // The HTML export's injection. Its template and icons are released, not generated here (scripts/skill-viewer.ts).
     [INJECT]: await injectModule(root),

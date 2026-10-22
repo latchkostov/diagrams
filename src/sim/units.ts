@@ -5,6 +5,19 @@ export function resolveScale(value: number | undefined): number {
 export function resolveMultiplier(value: number | undefined, fallback = 1): number {
   return value !== undefined && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
+/**
+ * A dot carries `scale` real requests; a partial dot (split from one at a single instant) carries its own
+ * `represented`. That is the one represented size: every admission, thread, pool and CPU sizing starts
+ * from representedOf, and a counter adds unitsOf dots, so a split's parts always sum to its dot.
+ */
+export const representedOf = (m: { represented?: number } | undefined, scale: number): number =>
+  m?.represented ?? scale;
+export const unitsOf = (m: { represented?: number } | undefined, scale: number): number =>
+  m?.represented === undefined ? 1 : m.represented / scale;
+/** Partial dots leave roundoff in native counters; reports keep 1e-9 dots. */
+export const roundDots = (n: number): number => (Number.isInteger(n) ? n : Math.round(n * 1e9) / 1e9);
+export const roundCounts = <T extends object>(counts: T): T =>
+  Object.fromEntries(Object.entries(counts).map(([key, n]) => [key, roundDots(n)])) as T;
 /** Counters, rates, queue depth and lag have the same sampling weight. */
 export function toRealUnits(value: number, scale = 1): number {
   return value * resolveScale(scale);

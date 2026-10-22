@@ -481,6 +481,8 @@ export interface EngineOptions {
   verifyOutcomes?: (state: import("./resourceInvariants").OutcomeInvariantState) => void;
   /** Test-only I7 probe: release sampled holds at logical completion. */
   ledgerHold?: "none";
+  /** Test-only partial dots: every injected message carries this many real requests. */
+  injectRepresented?: number;
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */
