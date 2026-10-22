@@ -2930,6 +2930,29 @@ const en = {
   "threads.pillTimeout": "✕ {count, number} timed out",
   "threads.timeoutCount": "Timed out: {count, number}",
   "threads.lateCount": "Late replies discarded: {count, number}",
+  "threads.busyMetric": "threads busy",
+  "threads.waitingMetric": "threads waiting",
+  "waitChecks.blockedName": "Runs out of threads",
+  "waitChecks.blockedAbout":
+    "At the diagram's rates, waiting on calls dominates thread hold time and exhausts the pool. Uses the live callout's same-seed verified fix.",
+  "waitChecks.blindName": "CPU scaling misses waiting threads",
+  "waitChecks.blindAbout": "A same-seed scenario rerun confirms a busy-thread scaling policy for a waiting caller.",
+  "waitChecks.timeoutName": "Call has no timeout",
+  "waitChecks.timeoutAbout":
+    "A request to an outside API or model API has no deadline. Suggests the timeout the live callout uses, within the caller's thread budget.",
+  "waitChecks.done": "{fix}: done",
+  "waitChecks.deadlock": "Every thread can wait on the loop: deadlocked until a timeout breaks it.",
+  "waitChecks.blindTitle": "{name} scales on CPU, but its threads wait",
+  "waitChecks.timeoutTitle": "No timeout on the call to {name}",
+  "waitChecks.blocked":
+    "It holds a thread for {hold, number} ms per request ({waiting, number} ms waiting on {callee}). At {rate, number} req/s it needs {needed, number} threads; it has {slots, number} ({replicas, number} replicas × {concurrency, number}).",
+  "waitChecks.blind":
+    "{known, select, true {At full load it uses {cpu, number}% CPU against a {target, number}% target while the backlog grows.} other {CPU stays below its target while the backlog grows.}} A same-seed rerun confirmed scaling on busy threads.",
+  "waitChecks.timeout":
+    "{blocking, select, true {If it stalls, every thread waits.} other {If it stalls, the call stays in flight indefinitely.}}",
+  "waitChecks.why": "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work.",
+  "waitChecks.timeoutFix": "Add a {ms, number} ms timeout",
+  "waitChecks.replicasFix": "Add replicas ({count, number}; fixed fleet)",
   "threads.timedOutMetric": "timed out",
   "threads.deadlocked": "Deadlocked: every thread waits on a loop. A timeout breaks the wait.",
   "examples.paymentTimeoutSummary": "A slow provider: compare timeouts and pools while order status keeps working",

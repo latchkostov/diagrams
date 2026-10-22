@@ -112,8 +112,13 @@
    "backlog",
    "inFlight",
    "failed",
+   "timedOut",
+   "threadsBusy",
+   "threadsWaiting",
    "deadLettered",
    "dropped",
+   "blocked",
+   "rejected",
    "throughput",
    "lag"
   ],

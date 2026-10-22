@@ -223,10 +223,10 @@ export function* gatherEvidence(diagram: DiagramFile, opts: EvidenceOptions = {}
   const limit = opts.startWork ?? EVIDENCE_LIMITS.startWork;
   const sims = diagram.simulations ?? [];
   const ctx = buildContext(diagram);
-  // What each check would find with every check on: the counts are kept for all of them, so turning one on later
-  // shows its counts without another run. Queues nobody reads are watched for what's left in them.
-  const all = runChecks({ ...diagram, checks: undefined });
-  const watch = all.findings.filter((f) => f.rule === "no-reader").map((f) => f.target);
+  // Counts are kept for every check, so turning one on later shows its counts without another run. Queues nobody
+  // reads are watched for what's left in them, whether or not that check is on: the one check this needs (never the
+  // request checks, which may still be working off-thread when Run simulations starts here).
+  const watch = runChecks({ ...diagram, checks: undefined }, { rules: ["no-reader"] }).findings.map((f) => f.target);
 
   const runs: Counts[] = [];
   const unplayed: string[] = [];

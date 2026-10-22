@@ -66,6 +66,9 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
      (config, secret, identity, telemetry, deploy, depends), and `simulations` when the user wants to see the
      system run or asks "what happens if…" (see [reference/simulation.md](reference/simulation.md)).
 
+   For thread exhaustion, timeouts or connection pools, use `p3-w1` and read the Requests that wait section
+   in [reference/simulation.md](reference/simulation.md). Preserve older models unless the user asks to upgrade.
+
 5. **Lay it out.** Run `node scripts/layout.mjs <file>`. It fills in x and y and the boundary boxes with the
    app's own layout and updates the file in place.
 6. **Validate.** Run `node scripts/validate.mjs <file>`. Fix every error and run it again. Read the warnings.

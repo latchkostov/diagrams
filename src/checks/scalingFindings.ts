@@ -1,5 +1,5 @@
 import type { DiagramOp } from "../ai";
-import { scenarioPlans, type PlanSuggestion, type ScalingPlan } from "../sim/scalingPlanner";
+import type { PlanSuggestion, ScalingPlan } from "../sim/scalingPlanner";
 import type { CheckContext } from "./context";
 import type { Finding } from "./types";
 import { PLATFORM, planDescriptor, round } from "../planning/scalingPlanText";
@@ -22,6 +22,18 @@ const UNIT: Record<string, string> = {
   backlog: " messages",
 };
 const count = (n: number) => Math.round(n).toLocaleString("en-US");
+
+export function scalingFixLabel(s: NonNullable<Finding["scalingPlan"]>): string {
+  return s.kind === "busyThreads"
+    ? "Scale on busy threads"
+    : s.kind === "partitions"
+      ? `Set ${s.broker} partitions to ${s.to}`
+      : s.kind === "min"
+        ? `Set minimum to ${s.to}`
+        : s.kind === "target"
+          ? `Lower target to ${s.to}`
+          : `Raise maximum to ${s.to}`;
+}
 
 /** Deterministic English for agents and workers; the UI translates the structured `scalingPlan` instead. */
 export function planMessage(plan: ScalingPlan, s: PlanSuggestion, names: (id: string) => string): string {
@@ -66,7 +78,7 @@ export function planMessage(plan: ScalingPlan, s: PlanSuggestion, names: (id: st
 export function scalingFindings(ctx: CheckContext): Map<string, Finding> {
   const out = new Map<string, Finding>();
   // In the editor, only what the checks worker already worked out: never a simulation on the UI thread.
-  const plans = scenarioPlans(ctx.diagram) ?? [];
+  const plans = ctx.plans() ?? [];
   for (const plan of plans) {
     if (plan.status === "unavailable") {
       if (plan.reason === "policy") continue;
@@ -113,16 +125,7 @@ export function scalingFindings(ctx: CheckContext): Map<string, Finding> {
         ...(ops
           ? {
               fix: {
-                label:
-                  s.kind === "busyThreads"
-                    ? "Scale on busy threads"
-                    : s.kind === "partitions"
-                      ? `Set ${ctx.name(s.broker!)} partitions to ${s.to}`
-                      : s.kind === "min"
-                        ? `Set minimum to ${s.to}`
-                        : s.kind === "target"
-                          ? `Lower target to ${s.to}`
-                          : `Raise maximum to ${s.to}`,
+                label: scalingFixLabel(planDescriptor(plan, s, ctx.name)),
                 ops,
               },
             }

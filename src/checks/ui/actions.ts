@@ -2,8 +2,12 @@ import { applyOps } from "../../ai/ops";
 import type { EditorApi } from "../../editor/types";
 import type { CheckIgnore, DiagramChecks } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
-import { runChecks } from "../run";
+import { recheckRules, runChecks } from "../run";
+import { awaitRequestChecks, requestChecksNeeded } from "../../lib/requestCheckCache";
+import { simulationContent } from "../../sim/simulationContent";
 import type { CheckRuleId, Finding } from "../types";
+import { presentFinding } from "../presentation";
+import { t } from "../../i18n/core";
 
 // What a person does with a finding, each one undo step: apply its fix (the same ops agents send through
 // edit_diagram, applied by the ops core), ignore it here (with an optional reason) or turn its check off for
@@ -17,10 +21,26 @@ let seq = 0;
  * (a second click adds no second queue), and the fix applied is the one worked out now (a capacity fix sizes from
  * today's replicas, not the ones the cached check saw). `option` picks one of the fix's other options by its label.
  */
-export function applyFix(editor: EditorApi, finding: Finding, option?: string): boolean {
+export async function applyFix(editor: EditorApi, finding: Finding, option?: string): Promise<boolean> {
   if (!finding.fix?.ops) return false;
-  const current = editor.getDiagram();
-  const fresh = runChecks(current, { rules: [finding.rule] }).findings.find((f) => f.id === finding.id);
+  let current = editor.getDiagram();
+  // Its rule, and the rules it defers to: the finding is worked out as the card's full check worked it out.
+  const rules = recheckRules(finding.rule);
+  let requests: Finding[] | undefined;
+  if (requestChecksNeeded(current, rules)) {
+    const content = simulationContent(current);
+    try {
+      requests = await awaitRequestChecks(current);
+    } catch (error) {
+      notify(`Couldn't apply the fix: ${error instanceof Error ? error.message : "the diagram changed"}`, {
+        kind: "error",
+      });
+      return false;
+    }
+    current = editor.getDiagram();
+    if (simulationContent(current) !== content) return false;
+  }
+  const fresh = runChecks(current, { rules, requests }).findings.find((f) => f.id === finding.id);
   // One of the fix's other options, by its words (the same option worked out now).
   const chosen = option === undefined ? undefined : fresh?.fix?.options?.find((o) => o.label === option);
   const ops = option === undefined ? fresh?.fix?.ops : chosen?.ops;
@@ -35,15 +55,31 @@ export function applyFix(editor: EditorApi, finding: Finding, option?: string): 
   }
   const diff = editor.applyDiagram(result.diagram, { merge: `check:fix:${++seq}` });
   if (!diff.hasChanges) return false;
-  if (fresh?.scalingPlan?.kind === "busyThreads") {
+  if (
+    chosen?.requestLabel?.kind === "scale" ||
+    (option === undefined &&
+      (fresh?.scalingPlan?.kind === "busyThreads" || fresh?.fix?.planLabel?.kind === "busyThreads"))
+  ) {
     editor.select({ nodeIds: [finding.target] });
     editor.openInspector("autoscaling-target");
   }
   const added = diff.added.nodes.map((id) => result.diagram.nodes.find((n) => n.id === id)?.label).filter(Boolean);
-  const text = added.length ? `Added ${added.join(", ")}` : `${chosen?.label ?? fresh!.fix!.label}: done`;
+  const displayed = fresh?.requestFinding ? presentFinding(fresh) : fresh;
+  const displayedOption = fresh?.fix?.options?.findIndex((o) => o.label === option) ?? -1;
+  const label = displayed?.fix?.options?.[displayedOption]?.label ?? displayed?.fix?.label ?? "";
+  const text = added.length
+    ? `Added ${added.join(", ")}`
+    : fresh?.requestFinding
+      ? t("waitChecks.done", { fix: label })
+      : `${chosen?.label ?? fresh!.fix!.label}: done`;
   notify(text, {
     kind: "success",
-    action: { label: "Undo", run: () => editor.undo(), testId: "check-fix-undo", undoes: true },
+    action: {
+      label: fresh?.requestFinding ? t("shortcuts.undo") : "Undo",
+      run: () => editor.undo(),
+      testId: "check-fix-undo",
+      undoes: true,
+    },
   });
   return true;
 }

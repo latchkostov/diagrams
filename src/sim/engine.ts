@@ -3726,6 +3726,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       // Counters read as reports do, to 1e-9 dots, so a partial dot's exact total meets an expectation.
       if (metric.field === "timedOut")
         return roundDots(node.outgoing.reduce((sum, edge) => sum + edge.calls.timedOut, 0));
+      if (metric.field === "threadsWaiting") return waits() && node.waits ? node.threadWeight.wait / scale : 0;
+      if (metric.field === "threadsBusy")
+        return waits() && node.waits ? (node.threadWeight.work + node.threadWeight.wait) / scale : 0;
       if (metric.field === "backlog") {
         let backlog = node.pending.length + node.resume.length + node.staged;
         for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);

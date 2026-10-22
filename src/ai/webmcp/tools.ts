@@ -24,6 +24,8 @@ import { EDIT_TOOLS } from "./toolList";
 import { choicesFrom, type StencilChoice } from "../ui/apply";
 import { turnId } from "../ui/thread";
 import { scenarioPlanner } from "../../lib/scenarioPlanner";
+import { awaitRequestChecks, requestChecksNeeded } from "../../lib/requestCheckCache";
+import type { Finding } from "../../checks/types";
 
 export type ToolName = keyof typeof toolSchemas;
 
@@ -127,6 +129,41 @@ async function sizingReady(
   if (signal?.aborted) throw new Error(CANCELLED);
   still();
 }
+/**
+ * This diagram's request findings, from the checks worker (shared with background checks). Cancelling the call stops
+ * the wait, not the shared work. Whatever happens, nothing goes back unless the same diagram is still open and AI tools
+ * may still read it; a failure is reported in words that say nothing about the diagram.
+ */
+async function requestChecksReady(
+  host: WebMcpHost,
+  diagram: DiagramFile,
+  signal: AbortSignal | undefined,
+): Promise<Finding[]> {
+  const still = sameDocument(host);
+  if (signal?.aborted) throw new Error(CANCELLED);
+  const checks = awaitRequestChecks(diagram);
+  let findings: Finding[] | undefined;
+  let failure: unknown;
+  await new Promise<void>((resolve, reject) => {
+    const abort = () => reject(new Error(CANCELLED));
+    signal?.addEventListener("abort", abort, { once: true });
+    void checks
+      .then(
+        (found) => void (findings = found),
+        (err: unknown) => void (failure = err ?? new Error("failed")),
+      )
+      .finally(() => {
+        signal?.removeEventListener("abort", abort);
+        resolve();
+      });
+  });
+  if (signal?.aborted) throw new Error(CANCELLED);
+  still();
+  if (!findings) throw new Error(REQUEST_CHECKS_FAILED, { cause: failure });
+  return findings;
+}
+const REQUEST_CHECKS_FAILED = "The waiting-call checks couldn't finish. Call check_diagram again.";
+
 /** Whether a check reply includes the capacity rule, the one that reads scenario sizing. */
 const capacityRuns = (diagram: DiagramFile, rules: readonly CheckRuleId[] | undefined) =>
   (!rules || rules.includes("capacity")) && !diagram.checks?.off?.includes("capacity");
@@ -161,13 +198,18 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
         simulations?: boolean;
       };
       // The checks are a lazy chunk: loaded on the first call, never at startup.
-      const { runChecks, agentReport } = await import("../../checks");
+      const { runChecks, agentReport, askedWithEvidence } = await import("../../checks");
       // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
       const diagram = needEditor(host).getDiagram();
       const playing = simulations && !!diagram.simulations?.length;
-      // With simulations every check runs (their counts are classified against all of them).
+      // Request checks replay simulations off-thread: wait for this diagram's (a miss is never a clean result), then
+      // hand them to runChecks, so a later recheck or a full cache can't change what this call reads. With
+      // simulations every check runs (their counts are classified against all of them).
+      const requests = requestChecksNeeded(diagram, playing ? undefined : rules)
+        ? await requestChecksReady(host, diagram, signal)
+        : undefined;
       await sizingReady(host, diagram, capacityRuns(diagram, playing ? undefined : rules), signal);
-      if (!playing) return agentReport(runChecks(diagram, rules ? { rules } : {}), include);
+      if (!playing) return agentReport(runChecks(diagram, { ...(rules ? { rules } : {}), requests }), include);
       // Run simulations, as the Checks card does: in a worker, bounded (a minute of each, about 15 s in all). It takes
       // seconds, so everything checked at the start is checked again before anything about the diagram goes back.
       const still = sameDocument(host);
@@ -189,18 +231,11 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       if (signal?.aborted) throw new Error(CANCELLED);
       still();
       // Counts are classified against every check, then the reply keeps the rules asked for.
-      const { result, planned } = withEvidence(runChecks(diagram), evidence, diagram.checks);
-      const wanted = (f: { rule: CheckRuleId }) => !rules || rules.includes(f.rule);
-      return agentReport(
-        {
-          ...result,
-          findings: result.findings.filter(wanted),
-          ignored: result.ignored.filter(wanted),
-          ran: result.ran.filter((id) => !rules || rules.includes(id)),
-        },
-        include,
-        { evidence, planned },
-      );
+      const { result, planned } = withEvidence(runChecks(diagram, { requests }), evidence, diagram.checks);
+      // Findings for the rules asked for (capacity defers only to waiting checks that were asked for too), with the
+      // evidence the full classification attached.
+      const asked = rules ? runChecks(diagram, { rules, requests }) : undefined;
+      return agentReport(asked ? askedWithEvidence(result, asked, rules) : result, include, { evidence, planned });
     },
 
     find_stencils(input) {

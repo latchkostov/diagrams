@@ -3,7 +3,8 @@ import type { LiveController } from "./controller";
 import { TroubleWatcher, pickTrouble, type Trouble, type TroubleMemory } from "./observedTrouble";
 import { simulationEdges } from "../sim/simulationEdges";
 import { state as language } from "../i18n";
-import { threadFixOffThread } from "../canvas/checks/runner";
+import { threadFixOffThread, warmChecksWorker } from "../canvas/checks/runner";
+import { revisionAtLeast } from "../model/revisions";
 import type { ThreadFixRequest } from "./threadFixPlan";
 import type { TroubleAction } from "./observedTrouble";
 import type { LiveState } from "./controller";
@@ -39,6 +40,8 @@ export class TroubleTracker {
   constructor(
     private readonly controller: LiveController,
     private readonly verify: VerifyThreadFix = threadFixOffThread,
+    /** Readies the verifier before its first request, so a confirmed fix replaces Events sooner. */
+    private readonly warm: () => void = warmChecksWorker,
   ) {
     this.observe();
   }
@@ -49,6 +52,9 @@ export class TroubleTracker {
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     if (!this.unsubscribe) {
+      // Thread-exhaustion callouts (requests that wait) verify their fix in the checks worker: start it now, not when
+      // the first callout asks, so its download and start-up are not between the callout and its confirmed fix.
+      if (revisionAtLeast(this.controller.currentDiagram.planning?.revision, "p3-w1")) this.warm();
       const stop = this.controller.subscribe(this.observe);
       language.f.add(this.observe);
       this.unsubscribe = () => {

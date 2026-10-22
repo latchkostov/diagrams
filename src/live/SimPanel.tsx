@@ -71,6 +71,18 @@ const FIELDS: { value: MetricField; label: string }[] = [
     },
   },
   { value: "deadLettered", label: "dead-lettered" },
+  {
+    value: "threadsBusy",
+    get label() {
+      return translate("threads.busyMetric");
+    },
+  },
+  {
+    value: "threadsWaiting",
+    get label() {
+      return translate("threads.waitingMetric");
+    },
+  },
   { value: "dropped", label: "dropped" },
   { value: "blocked", label: "blocked" },
   { value: "rejected", label: "rejected" },

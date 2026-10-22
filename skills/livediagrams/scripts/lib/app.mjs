@@ -3350,7 +3350,21 @@ var kt = (e, t) => e.unit === t.unit && e.amount === t.amount && e.windowMs === 
 var At = {
 	roleOf: Ne,
 	isDlq: pe
-}, jt = (e) => Dt(e, At), Mt = "diagrams/v1", Nt = {
+}, jt = (e) => Dt(e, At), Mt = "diagrams/v1", Nt = [
+	"processed",
+	"backlog",
+	"inFlight",
+	"failed",
+	"timedOut",
+	"threadsBusy",
+	"threadsWaiting",
+	"deadLettered",
+	"dropped",
+	"blocked",
+	"rejected",
+	"throughput",
+	"lag"
+], Pt = {
 	type: "object",
 	additionalProperties: !1,
 	required: ["id", "maxInFlight"],
@@ -3358,7 +3372,7 @@ var At = {
 		id: N,
 		maxInFlight: Ve
 	}
-}, Pt = {
+}, Ft = {
 	type: "object",
 	additionalProperties: !1,
 	properties: {
@@ -3385,7 +3399,7 @@ var At = {
 			} : Ve]))
 		}
 	}
-}, Ft = {
+}, It = {
 	type: "array",
 	maxItems: 500,
 	items: {
@@ -3414,17 +3428,17 @@ var At = {
 				maxLength: 2e3,
 				pattern: "^/"
 			},
-			behaviour: Pt
+			behaviour: Ft
 		}
 	}
 };
-function It(e) {
-	a(e, Ft);
+function Lt(e) {
+	a(e, It);
 	let t = e;
-	for (let e of t) e.behaviour && zt(e.behaviour);
+	for (let e of t) e.behaviour && Bt(e.behaviour);
 	if (new Set(t.map((e) => e.id)).size !== t.length) throw Error("endpoints: endpoint ids must be unique within a node.");
 }
-var Lt = {
+var Rt = {
 	type: "object",
 	additionalProperties: !1,
 	properties: {
@@ -3472,7 +3486,7 @@ var Lt = {
 			maximum: 1e4
 		}
 	}
-}, Rt = {
+}, zt = {
 	type: "object",
 	required: ["revision"],
 	additionalProperties: !1,
@@ -3493,38 +3507,38 @@ var Lt = {
 		sharedAllocations: {
 			type: "array",
 			maxItems: 128,
-			items: Nt
+			items: Pt
 		}
 	}
 };
-function zt(e) {
-	a(e, Pt);
+function Bt(e) {
+	a(e, Ft);
 	let t = e.quotas ?? [];
 	if (new Set(t.map((e) => e.id)).size !== t.length) throw Error("api.quotas: quota ids must be unique within each API scope.");
 }
 //#endregion
 //#region src/model/simProps.ts
-var Bt = [
+var Vt = [
 	"lambda-account",
 	"stripe-live",
 	"stripe-sandbox",
 	"api-gateway-account",
 	"managed-measured"
-], Vt = "2026-10-14";
-function Ht(e) {
+], Ht = "2026-10-14";
+function Ut(e) {
 	if (!e || typeof e != "object" || Array.isArray(e)) return !1;
 	let t = e;
-	return t.preset === void 0 && t.presetRevision === void 0 ? !1 : typeof t.preset == "string" && Bt.includes(t.preset) ? t.presetRevision !== Vt : t.preset !== "processor-lesson" && t.preset !== "device-size" || t.presetRevision !== "1";
+	return t.preset === void 0 && t.presetRevision === void 0 ? !1 : typeof t.preset == "string" && Vt.includes(t.preset) ? t.presetRevision !== Ht : t.preset !== "processor-lesson" && t.preset !== "device-size" || t.presetRevision !== "1";
 }
-var Ut = {
+var Wt = {
 	type: "number",
 	minimum: 0,
 	maximum: P.ratePerSec
-}, Wt = {
+}, R = {
 	type: "number",
 	minimum: 0,
 	maximum: P.count
-}, R = {
+}, z = {
 	type: "integer",
 	minimum: 1,
 	maximum: P.count
@@ -3540,32 +3554,32 @@ var Ut = {
 	resources: p,
 	autoscaling: ie,
 	resumeAutoscaling: { type: "boolean" },
-	api: Pt,
-	endpoints: Ft,
+	api: Ft,
+	endpoints: It,
 	scaling: {
 		type: "string",
 		enum: ["fixed", "auto"]
 	},
-	maxConcurrency: Wt,
+	maxConcurrency: R,
 	preset: {
 		type: "string",
 		enum: [
 			"processor-lesson",
 			"device-size",
-			...Bt
+			...Vt
 		]
 	},
 	presetRevision: {
 		type: "string",
-		enum: ["1", Vt]
+		enum: ["1", Ht]
 	},
-	connections: R,
-	querySlots: R,
-	ingestUnits: R,
-	ratePerSec: Ut,
+	connections: z,
+	querySlots: z,
+	ingestUnits: z,
+	ratePerSec: Wt,
 	latencyMs: Gt,
-	concurrency: Wt,
-	replicas: Wt,
+	concurrency: R,
+	replicas: R,
 	jitter: Kt,
 	failureRate: Kt,
 	retry: {
@@ -3573,8 +3587,8 @@ var Ut = {
 		enum: ["requeue", "inplace"]
 	},
 	retryBackoffMs: Gt,
-	maxDeliveryCount: Wt,
-	partitions: Wt,
+	maxDeliveryCount: R,
+	partitions: R,
 	messageType: { type: "string" },
 	emits: { anyOf: [{ type: "string" }, {
 		type: "object",
@@ -3622,7 +3636,7 @@ var Ut = {
 		minLength: 1,
 		maxLength: 200
 	},
-	caller: Lt,
+	caller: Rt,
 	group: { type: "string" },
 	groupOrigin: {
 		type: "string",
@@ -3665,10 +3679,10 @@ function Zt(e) {
 }
 var Qt = {
 	...qt,
-	concurrency: R,
-	replicas: R,
-	maxDeliveryCount: R,
-	partitions: R
+	concurrency: z,
+	replicas: z,
+	maxDeliveryCount: z,
+	partitions: z
 };
 ({ ...Yt }), Object.fromEntries(Object.entries({
 	...Jt,
@@ -3685,8 +3699,8 @@ function en(e) {
 		if (n === void 0 || !Object.hasOwn(qt, t)) continue;
 		let e = qt[t];
 		try {
-			if (t === "endpoints") It(n);
-			else if (t === "api") zt(n);
+			if (t === "endpoints") Lt(n);
+			else if (t === "api") Bt(n);
 			else if (t === "trafficMix" || t === "routeTable") {
 				t === "trafficMix" ? Ct(n) : St(n);
 				continue;
@@ -3721,7 +3735,7 @@ var tn = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, nn = (e) => ty
 	"blue",
 	"purple",
 	"red"
-], z = {
+], B = {
 	maxAnnotations: 2e3,
 	maxAnnotationText: 1e4,
 	maxAnnotationSize: 2e4,
@@ -3740,7 +3754,7 @@ function fn(e, t = /* @__PURE__ */ new Set(), n = () => {}) {
 	if (u) return n(`was skipped: ${u}`), null;
 	if (t.has(i)) return n("was skipped: its id is already used by a node or another annotation."), null;
 	let d = typeof r.text == "string" ? r.text : typeof r.text == "number" ? String(r.text) : "";
-	d.length > z.maxAnnotationText && n(`had more than ${z.maxAnnotationText} characters; the rest was cut.`);
+	d.length > B.maxAnnotationText && n(`had more than ${B.maxAnnotationText} characters; the rest was cut.`);
 	let f = {
 		...r,
 		id: i,
@@ -3749,14 +3763,14 @@ function fn(e, t = /* @__PURE__ */ new Set(), n = () => {}) {
 		y: s,
 		width: c,
 		height: l,
-		text: d.slice(0, z.maxAnnotationText)
+		text: d.slice(0, B.maxAnnotationText)
 	};
 	return delete f.shape, delete f.color, delete f.textSize, delete f.group, a === "shape" && ln(an, r.shape) && (f.shape = r.shape), un(r.color) && (f.color = r.color), ln(on, r.textSize) && (f.textSize = r.textSize), typeof r.group == "string" && r.group && (f.group = r.group), f;
 }
 var pn = {
 	finite: "its geometry must be finite.",
 	"coordinate-budget": "it's outside the coordinate budget. Move the selection closer to the origin.",
-	size: `its size must be between 1 and ${z.maxAnnotationSize} pixels. Choose a smaller selection.`
+	size: `its size must be between 1 and ${B.maxAnnotationSize} pixels. Choose a smaller selection.`
 };
 function mn(e) {
 	let t = hn(e);
@@ -3768,11 +3782,11 @@ function hn({ x: e, y: t, width: n, height: r }) {
 		t,
 		n,
 		r
-	].every(Number.isFinite) ? Math.abs(e) > z.maxCoordinate || Math.abs(t) > z.maxCoordinate ? "coordinate-budget" : n < 1 || r < 1 || n > z.maxAnnotationSize || r > z.maxAnnotationSize ? "size" : null : "finite";
+	].every(Number.isFinite) ? Math.abs(e) > B.maxCoordinate || Math.abs(t) > B.maxCoordinate ? "coordinate-budget" : n < 1 || r < 1 || n > B.maxAnnotationSize || r > B.maxAnnotationSize ? "size" : null : "finite";
 }
 //#endregion
 //#region src/model/checks.ts
-var B = {
+var V = {
 	maxOff: 100,
 	maxIgnores: 2e3,
 	maxReason: 200,
@@ -3785,20 +3799,20 @@ function vn(e, t, n, r = /* @__PURE__ */ new Map()) {
 		return;
 	}
 	let i = 0, a = !1, o = (e, t) => e === void 0 ? [] : Array.isArray(e) ? (e.length > t && (a = !0), e.length > t ? e.slice(0, t) : e) : (i++, null), s = /* @__PURE__ */ new Set();
-	for (let t of o(e.off, B.maxOff) ?? []) typeof t != "string" || !gn.test(t) ? i++ : s.add(t);
+	for (let t of o(e.off, V.maxOff) ?? []) typeof t != "string" || !gn.test(t) ? i++ : s.add(t);
 	let c = /* @__PURE__ */ new Map();
-	read: for (let n of o(e.ignore, B.maxIgnores) ?? []) {
-		if (!_n(n) || typeof n.rule != "string" || !gn.test(n.rule) || typeof n.target != "string" || !n.target || n.target.length > B.maxTarget || n.reason !== void 0 && typeof n.reason != "string") {
+	read: for (let n of o(e.ignore, V.maxIgnores) ?? []) {
+		if (!_n(n) || typeof n.rule != "string" || !gn.test(n.rule) || typeof n.target != "string" || !n.target || n.target.length > V.maxTarget || n.reason !== void 0 && typeof n.reason != "string") {
 			i++;
 			continue;
 		}
 		let e = (e) => `${n.rule}\u0000${e}`;
 		if (c.has(e(n.target))) continue;
-		let o = typeof n.reason == "string" ? n.reason.slice(0, B.maxReason * 4).trim().slice(0, B.maxReason) : "";
+		let o = typeof n.reason == "string" ? n.reason.slice(0, V.maxReason * 4).trim().slice(0, V.maxReason) : "";
 		for (let i of [n.target, ...r.get(n.target) ?? []]) {
-			if (i.length > B.maxTarget) break;
+			if (i.length > V.maxTarget) break;
 			if (t.has(i)) {
-				if (c.size >= B.maxIgnores) {
+				if (c.size >= V.maxIgnores) {
 					a = !0;
 					break read;
 				}
@@ -3810,7 +3824,7 @@ function vn(e, t, n, r = /* @__PURE__ */ new Map()) {
 			}
 		}
 	}
-	if (i && n.push(`${i} malformed check setting${i === 1 ? " was" : "s were"} ignored.`), a && n.push(`Only the first ${B.maxOff} turned-off checks and ${B.maxIgnores} ignored findings were read.`), s.size || c.size) return {
+	if (i && n.push(`${i} malformed check setting${i === 1 ? " was" : "s were"} ignored.`), a && n.push(`Only the first ${V.maxOff} turned-off checks and ${V.maxIgnores} ignored findings were read.`), s.size || c.size) return {
 		...s.size ? { off: [...s] } : {},
 		...c.size ? { ignore: [...c.values()] } : {}
 	};
@@ -3892,14 +3906,14 @@ function xn(e, t) {
 }
 //#endregion
 //#region src/interop/native.ts
-var V = {
+var H = {
 	maxTextChars: 8e6,
 	maxInflatedBytes: 16e6,
 	maxDepth: 48,
 	maxNodes: 5e3,
 	maxEdges: 2e4,
 	maxGroups: 1e3,
-	...z,
+	...B,
 	maxSimulations: 200,
 	maxTimelineSteps: 1e4,
 	maxTrafficProfiles: 2e3,
@@ -3911,7 +3925,7 @@ var V = {
 	maxSimulationMs: 6e5,
 	maxPages: 100
 };
-function Sn(e, t = V.maxDepth) {
+function Sn(e, t = H.maxDepth) {
 	let n = [[e, 0]];
 	for (; n.length;) {
 		let [e, r] = n.pop();
@@ -3922,7 +3936,7 @@ function Sn(e, t = V.maxDepth) {
 	}
 	return !1;
 }
-var Cn = (e) => `It's too large to open (${(e / 1e6).toFixed(1)} MB; the limit is ${V.maxTextChars / 1e6} MB).`, H = (e) => typeof e == "object" && !!e && !Array.isArray(e), U = (e) => typeof e == "number" && Number.isFinite(e), wn = {}, Tn = class extends Error {};
+var Cn = (e) => `It's too large to open (${(e / 1e6).toFixed(1)} MB; the limit is ${H.maxTextChars / 1e6} MB).`, U = (e) => typeof e == "object" && !!e && !Array.isArray(e), W = (e) => typeof e == "number" && Number.isFinite(e), wn = {}, Tn = class extends Error {};
 function En(e) {
 	let t = e;
 	for (let e = 0; t.format !== "diagrams/v1" && t.format !== "diagrams/v2"; e++) {
@@ -3949,7 +3963,7 @@ var Dn = /* @__PURE__ */ new Set([
 	"neutral"
 ]), kn = (e, t, n) => `${e} #${t + 1}${typeof n == "string" && n ? ` ("${n}")` : ""}`;
 function An(e) {
-	if (!H(e)) return {
+	if (!U(e)) return {
 		ok: !1,
 		error: "That file doesn't contain a diagram object."
 	};
@@ -3962,7 +3976,7 @@ function An(e) {
 			error: e instanceof Error ? e.message : String(e)
 		};
 	}
-	if (n.format === "diagrams/v2" && (!H(n.planning) || !t(n.planning.revision, "p1"))) return {
+	if (n.format === "diagrams/v2" && (!U(n.planning) || !t(n.planning.revision, "p1"))) return {
 		ok: !1,
 		error: E`Unsupported planning revision. Reload Live Diagrams to open this file; its playback has not been changed.`
 	};
@@ -3971,7 +3985,7 @@ function An(e) {
 		error: E`Planning documents require diagrams/v2. Remove planning to retain legacy playback, or export with a current reader.`
 	};
 	if (n.planning !== void 0) try {
-		a(n.planning, Rt);
+		a(n.planning, zt);
 		for (let e of ["sharedQuotas", "sharedAllocations"]) {
 			let t = n.planning[e];
 			if (Array.isArray(t) && new Set(t.map((e) => e.id)).size !== t.length) return {
@@ -3992,27 +4006,27 @@ function An(e) {
 	let r = [
 		[
 			n.nodes,
-			V.maxNodes,
+			H.maxNodes,
 			"nodes"
 		],
 		[
 			n.edges,
-			V.maxEdges,
+			H.maxEdges,
 			"edges"
 		],
 		[
 			n.groups,
-			V.maxGroups,
+			H.maxGroups,
 			"groups"
 		],
 		[
 			n.annotations,
-			V.maxAnnotations,
+			H.maxAnnotations,
 			"annotations"
 		],
 		[
 			n.simulations,
-			V.maxSimulations,
+			H.maxSimulations,
 			"simulations"
 		]
 	];
@@ -4027,15 +4041,15 @@ function An(e) {
 			error: e
 		};
 		for (let e of n.simulations) {
-			if (!H(e)) continue;
-			let t = H(e.setup) && H(e.setup.props) ? e.setup.props : {};
-			for (let [e, n] of Object.entries(t)) if (Ht(n)) return {
+			if (!U(e)) continue;
+			let t = U(e.setup) && U(e.setup.props) ? e.setup.props : {};
+			for (let [e, n] of Object.entries(t)) if (Ut(n)) return {
 				ok: !1,
 				error: E(1700, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: e })
 			};
 			if (Array.isArray(e.timeline)) for (let t of e.timeline) {
-				let e = H(t) && H(t.action) ? t.action : void 0;
-				if (e?.do === "props" && Ht(e.props)) return {
+				let e = U(t) && U(t.action) ? t.action : void 0;
+				if (e?.do === "props" && Ut(e.props)) return {
 					ok: !1,
 					error: E(1700, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof e.node == "string" ? e.node : "(invalid node)" })
 				};
@@ -4044,7 +4058,7 @@ function An(e) {
 	}
 	if (Sn(n)) return {
 		ok: !1,
-		error: `It's nested too deeply to be a diagram (more than ${V.maxDepth} levels).`
+		error: `It's nested too deeply to be a diagram (more than ${H.maxDepth} levels).`
 	};
 	let i = [], o = { ...n }, s = new Set([
 		n.nodes,
@@ -4066,18 +4080,18 @@ function An(e) {
 	o.private === !1 ? delete o.private : o.private !== void 0 && o.private !== !0 && (i.push("\"private\" should be true or false; the diagram was kept private."), o.private = !0), o.direction !== void 0 && o.direction !== "LR" && o.direction !== "TB" && (i.push(`Unknown direction "${String(o.direction)}" was ignored.`), delete o.direction);
 	let f = [];
 	o.groups !== void 0 && (Array.isArray(o.groups) ? o.groups.forEach((e, t) => {
-		if (!H(e) || typeof e.id != "string" || !e.id || ![
+		if (!U(e) || typeof e.id != "string" || !e.id || ![
 			e.x,
 			e.y,
 			e.width,
 			e.height
-		].every(U) || e.width < 0 || e.height < 0 || [
+		].every(W) || e.width < 0 || e.height < 0 || [
 			e.x,
 			e.y,
 			e.width,
 			e.height
-		].some((e) => U(e) && Math.abs(e) > V.maxCoordinate)) {
-			i.push(`${kn("Group", t, H(e) ? e.id : void 0)} was skipped: it needs an id, x, y, width and height.`);
+		].some((e) => W(e) && Math.abs(e) > H.maxCoordinate)) {
+			i.push(`${kn("Group", t, U(e) ? e.id : void 0)} was skipped: it needs an id, x, y, width and height.`);
 			return;
 		}
 		let n = { ...e };
@@ -4088,11 +4102,11 @@ function An(e) {
 	let m = [], h = /* @__PURE__ */ new Set();
 	for (let e = 0; e < n.nodes.length; e++) {
 		let t = n.nodes[e];
-		if (!H(t) || typeof t.id != "string" || !t.id || typeof t.stencil != "string" || !U(t.x) || !U(t.y)) return {
+		if (!U(t) || typeof t.id != "string" || !t.id || typeof t.stencil != "string" || !W(t.x) || !W(t.y)) return {
 			ok: !1,
-			error: `Every node needs an id, a stencil, and numeric x and y. ${kn("Node", e, H(t) ? t.id : void 0)} doesn't.`
+			error: `Every node needs an id, a stencil, and numeric x and y. ${kn("Node", e, U(t) ? t.id : void 0)} doesn't.`
 		};
-		if (Math.abs(t.x) > V.maxCoordinate || Math.abs(t.y) > V.maxCoordinate) return {
+		if (Math.abs(t.x) > H.maxCoordinate || Math.abs(t.y) > H.maxCoordinate) return {
 			ok: !1,
 			error: `Node "${t.id}" exceeds the coordinate budget.`
 		};
@@ -4100,7 +4114,7 @@ function An(e) {
 			...t,
 			id: r
 		};
-		if (h.add(r), typeof a.label != "string" && (a.label = typeof a.label == "number" ? String(a.label) : ""), a.sublabel !== void 0 && typeof a.sublabel != "string" && delete a.sublabel, a.description !== void 0 && typeof a.description != "string" && delete a.description, a.group !== void 0 && !p.has(a.group) && (i.push(`Node "${t.id}" referred to a missing group and was taken out of it.`), delete a.group), a.props !== void 0 && !H(a.props) && delete a.props, Ht(a.props)) return {
+		if (h.add(r), typeof a.label != "string" && (a.label = typeof a.label == "number" ? String(a.label) : ""), a.sublabel !== void 0 && typeof a.sublabel != "string" && delete a.sublabel, a.description !== void 0 && typeof a.description != "string" && delete a.description, a.group !== void 0 && !p.has(a.group) && (i.push(`Node "${t.id}" referred to a missing group and was taken out of it.`), delete a.group), a.props !== void 0 && !U(a.props) && delete a.props, Ut(a.props)) return {
 			ok: !1,
 			error: E(1700, (e) => "Node “" + e.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: t.id })
 		};
@@ -4114,8 +4128,8 @@ function An(e) {
 	o.nodes = m;
 	let g = [], _ = /* @__PURE__ */ new Set(), v = /* @__PURE__ */ new Set(), y = /* @__PURE__ */ new Set();
 	o.annotations !== void 0 && (Array.isArray(o.annotations) ? o.annotations.forEach((e, t) => {
-		let n = kn("Annotation", t, H(e) ? e.id : void 0), r = fn(e, void 0, (e) => i.push(`${n} ${e}`));
-		r ? (r.id = d(r.id), r.group !== void 0 && !p.has(r.group) && delete r.group, y.add(r.id), r.kind === "shape" && v.add(r.id), g.push(r)) : H(e) && typeof e.id == "string" && _.add(e.id);
+		let n = kn("Annotation", t, U(e) ? e.id : void 0), r = fn(e, void 0, (e) => i.push(`${n} ${e}`));
+		r ? (r.id = d(r.id), r.group !== void 0 && !p.has(r.group) && delete r.group, y.add(r.id), r.kind === "shape" && v.add(r.id), g.push(r)) : U(e) && typeof e.id == "string" && _.add(e.id);
 	}) : i.push("The annotations field wasn't a list and was ignored.")), g.length ? o.annotations = g : delete o.annotations;
 	let b = /* @__PURE__ */ new Map();
 	for (let e of f) {
@@ -4146,9 +4160,9 @@ function An(e) {
 	};
 	for (let e = 0; e < w.length; e++) {
 		let t = w[e];
-		if (!H(t) || typeof t.id != "string" || typeof t.from != "string" || typeof t.to != "string") return {
+		if (!U(t) || typeof t.id != "string" || typeof t.from != "string" || typeof t.to != "string") return {
 			ok: !1,
-			error: `Every edge needs an id, a from and a to. ${kn("Edge", e, H(t) ? t.id : void 0)} doesn't.`
+			error: `Every edge needs an id, a from and a to. ${kn("Edge", e, U(t) ? t.id : void 0)} doesn't.`
 		};
 		if ([t.from, t.to].some((e) => _.has(e) && !h.has(e) && !y.has(e))) {
 			i.push(`Edge "${t.id}" ended on a skipped annotation and was skipped.`);
@@ -4170,7 +4184,7 @@ function An(e) {
 			...t,
 			id: d(t.id)
 		};
-		if (r.label !== void 0 && typeof r.label != "string" && delete r.label, r.kind !== void 0 && r.kind !== "async" && r.kind !== "sync" && delete r.kind, r.sourceSide !== void 0 && !Dn.has(r.sourceSide) && delete r.sourceSide, r.targetSide !== void 0 && !Dn.has(r.targetSide) && delete r.targetSide, r.props !== void 0 && !H(r.props) && delete r.props, Zt(r.props)) return {
+		if (r.label !== void 0 && typeof r.label != "string" && delete r.label, r.kind !== void 0 && r.kind !== "async" && r.kind !== "sync" && delete r.kind, r.sourceSide !== void 0 && !Dn.has(r.sourceSide) && delete r.sourceSide, r.targetSide !== void 0 && !Dn.has(r.targetSide) && delete r.targetSide, r.props !== void 0 && !U(r.props) && delete r.props, Zt(r.props)) return {
 			ok: !1,
 			error: E(1644, (e) => "Connection “" + e.id + "” needs a finite nonnegative networkDelayMs up to " + e.limit.toLocaleString("en") + ".", {
 				id: t.id,
@@ -4183,7 +4197,7 @@ function An(e) {
 		};
 		let o = r.props?.caller;
 		if (o !== void 0) try {
-			a(o, Lt, "caller");
+			a(o, Rt, "caller");
 		} catch {
 			return {
 				ok: !1,
@@ -4208,7 +4222,7 @@ function An(e) {
 			let e = [];
 			o.simulations.forEach((t, n) => {
 				let r = Hn(t);
-				r ? i.push(`${kn("Simulation", n, H(t) ? t.title ?? t.id : void 0)} was skipped: ${r}.`) : (e.push(t), i.push(...Un(t, h, o)));
+				r ? i.push(`${kn("Simulation", n, U(t) ? t.title ?? t.id : void 0)} was skipped: ${r}.`) : (e.push(t), i.push(...Un(t, h, o)));
 			});
 			let t = Gn(e);
 			if (t) return {
@@ -4266,42 +4280,30 @@ var Nn = /* @__PURE__ */ new Set([
 	"up",
 	"paused",
 	"down"
-]), In = /* @__PURE__ */ new Set([
-	"timedOut",
-	"processed",
-	"backlog",
-	"inFlight",
-	"failed",
-	"deadLettered",
-	"dropped",
-	"blocked",
-	"rejected",
-	"throughput",
-	"lag"
-]), Ln = (e) => e === void 0 || typeof e == "string", Rn = (e, t = 2 ** 53 - 1) => U(e) && e >= 0 && e <= t, W = (e) => Rn(e, V.maxSimulationMs), G = (e) => e === void 0 || W(e), zn = (e) => Rn(e, V.maxMessageCount) && Number.isSafeInteger(e), Bn = (e) => Rn(e, V.maxRatePerSec), Vn = (e) => Array.isArray(e) && e.every((e) => typeof e == "string");
+]), In = new Set(Nt), Ln = (e) => e === void 0 || typeof e == "string", Rn = (e, t = 2 ** 53 - 1) => W(e) && e >= 0 && e <= t, G = (e) => Rn(e, H.maxSimulationMs), K = (e) => e === void 0 || G(e), zn = (e) => Rn(e, H.maxMessageCount) && Number.isSafeInteger(e), Bn = (e) => Rn(e, H.maxRatePerSec), Vn = (e) => Array.isArray(e) && e.every((e) => typeof e == "string");
 function Hn(e) {
-	if (!H(e)) return "it isn't an object";
+	if (!U(e)) return "it isn't an object";
 	if (typeof e.id != "string" || !e.id || typeof e.title != "string") return "it needs an id and title";
-	if (!Ln(e.description) || e.seed !== void 0 && !U(e.seed) || !G(e.durationMs)) return "description, seed or durationMs is invalid";
-	if (e.scale !== void 0 && (!U(e.scale) || e.scale < 1)) return "scale must be at least 1";
-	if (e.multipliers !== void 0 && (!H(e.multipliers) || [e.multipliers.traffic, e.multipliers.capacity].some((e) => e !== void 0 && !Rn(e, 100)))) return "multipliers must be bounded nonnegative numbers";
+	if (!Ln(e.description) || e.seed !== void 0 && !W(e.seed) || !K(e.durationMs)) return "description, seed or durationMs is invalid";
+	if (e.scale !== void 0 && (!W(e.scale) || e.scale < 1)) return "scale must be at least 1";
+	if (e.multipliers !== void 0 && (!U(e.multipliers) || [e.multipliers.traffic, e.multipliers.capacity].some((e) => e !== void 0 && !Rn(e, 100)))) return "multipliers must be bounded nonnegative numbers";
 	if (!Array.isArray(e.traffic)) return "it needs a traffic list";
 	for (let t of e.traffic) {
-		if (!H(t) || typeof t.id != "string" || typeof t.node != "string" || !Ln(t.label) || !Ln(t.messageType)) return "every traffic entry needs string id, node, label and messageType fields";
+		if (!U(t) || typeof t.id != "string" || typeof t.node != "string" || !Ln(t.label) || !Ln(t.messageType)) return "every traffic entry needs string id, node, label and messageType fields";
 		let e = t.shape;
-		if (!H(e)) return "every traffic entry needs a shape";
+		if (!U(e)) return "every traffic entry needs a shape";
 		switch (e.kind) {
 			case "burst":
-				if (!zn(e.count) || !G(e.atMs) || !G(e.spreadMs)) return "burst count or timing is invalid or exceeds its budget";
+				if (!zn(e.count) || !K(e.atMs) || !K(e.spreadMs)) return "burst count or timing is invalid or exceeds its budget";
 				break;
 			case "constant":
-				if (!Bn(e.ratePerSec) || !G(e.fromMs) || !W(e.durationMs)) return "constant rate or timing is invalid or exceeds its budget";
+				if (!Bn(e.ratePerSec) || !K(e.fromMs) || !G(e.durationMs)) return "constant rate or timing is invalid or exceeds its budget";
 				break;
 			case "ramp":
-				if (!G(e.fromMs) || e.startRate !== void 0 && !Bn(e.startRate) || !Array.isArray(e.stages) || !e.stages.every((e) => H(e) && W(e.durationMs) && Bn(e.targetRate))) return "ramp stages need bounded durationMs and targetRate";
+				if (!K(e.fromMs) || e.startRate !== void 0 && !Bn(e.startRate) || !Array.isArray(e.stages) || !e.stages.every((e) => U(e) && G(e.durationMs) && Bn(e.targetRate))) return "ramp stages need bounded durationMs and targetRate";
 				break;
 			case "spike":
-				if (!Bn(e.baseRate) || !Bn(e.peakRate) || !W(e.atMs) || !W(e.peakMs) || !W(e.durationMs)) return "spike rates or timing are invalid or exceed their budget";
+				if (!Bn(e.baseRate) || !Bn(e.peakRate) || !G(e.atMs) || !G(e.peakMs) || !G(e.durationMs)) return "spike rates or timing are invalid or exceed their budget";
 				break;
 			default: return "every traffic entry needs a shape (burst, constant, ramp or spike)";
 		}
@@ -4309,7 +4311,7 @@ function Hn(e) {
 	if (e.timeline !== void 0) {
 		if (!Array.isArray(e.timeline)) return "the timeline must be a list";
 		for (let t of e.timeline) {
-			if (!H(t) || !W(t.atMs) || !H(t.action)) return "every timeline step needs bounded atMs and an action";
+			if (!U(t) || !G(t.atMs) || !U(t.action)) return "every timeline step needs bounded atMs and an action";
 			let e = t.action;
 			if (e.do !== "note" && e.do !== "fault" && typeof e.node != "string") return "a timeline action needs a node";
 			switch (e.do) {
@@ -4332,7 +4334,7 @@ function Hn(e) {
 					}
 					break;
 				case "inject":
-					if (!zn(e.count) || !Ln(e.messageType) || !G(e.spreadMs)) return "an inject action needs a bounded count, messageType and spreadMs";
+					if (!zn(e.count) || !Ln(e.messageType) || !K(e.spreadMs)) return "an inject action needs a bounded count, messageType and spreadMs";
 					break;
 				case "trace": break;
 				default: return "unknown timeline action";
@@ -4342,28 +4344,28 @@ function Hn(e) {
 	if (e.expectations !== void 0) {
 		if (!Array.isArray(e.expectations)) return "expectations must be a list";
 		for (let t of e.expectations) {
-			if (!H(t) || typeof t.id != "string" || typeof t.label != "string" || !H(t.metric) || !Nn.has(t.op) || !U(t.value)) return "every expectation needs an id, label, metric, operator and value";
+			if (!U(t) || typeof t.id != "string" || typeof t.label != "string" || !U(t.metric) || !Nn.has(t.op) || !W(t.value)) return "every expectation needs an id, label, metric, operator and value";
 			let e = t.metric;
 			if (e.system === void 0 ? typeof e.node != "string" || !In.has(e.field) || !Ln(e.group) : e.system !== "inSystem" || e.node !== void 0 || e.field !== void 0 || e.group !== void 0) return "invalid expectation metric";
-			if (t.when !== void 0 && !Pn.has(t.when) || !G(t.atMs) || t.when === "at" && !W(t.atMs)) return "invalid expectation when or atMs";
+			if (t.when !== void 0 && !Pn.has(t.when) || !K(t.atMs) || t.when === "at" && !G(t.atMs)) return "invalid expectation when or atMs";
 		}
 	}
 	if (e.setup !== void 0) {
-		if (!H(e.setup)) return "setup must be an object";
+		if (!U(e.setup)) return "setup must be an object";
 		if (e.setup.edges !== void 0) {
-			if (!H(e.setup.edges)) return "setup edges must map connection ids to caller policies";
+			if (!U(e.setup.edges)) return "setup edges must map connection ids to caller policies";
 			for (let t of Object.values(e.setup.edges)) {
-				if (!H(t) || Object.keys(t).some((e) => e !== "caller") || t.caller === void 0) return "setup edges must contain caller policies";
+				if (!U(t) || Object.keys(t).some((e) => e !== "caller") || t.caller === void 0) return "setup edges must contain caller policies";
 				try {
-					a(t.caller, Lt);
+					a(t.caller, Rt);
 				} catch {
 					return "setup edges must contain valid bounded caller policies";
 				}
 			}
 		}
-		if (e.setup.status !== void 0 && (!H(e.setup.status) || !Object.values(e.setup.status).every((e) => Fn.has(e)))) return "setup status must map node ids to up, paused or down";
+		if (e.setup.status !== void 0 && (!U(e.setup.status) || !Object.values(e.setup.status).every((e) => Fn.has(e)))) return "setup status must map node ids to up, paused or down";
 		if (e.setup.props !== void 0) {
-			if (!H(e.setup.props)) return "setup props must map node ids to valid engine properties";
+			if (!U(e.setup.props)) return "setup props must map node ids to valid engine properties";
 			for (let [t, n] of Object.entries(e.setup.props)) {
 				let e = en(n);
 				if (e) return `setup props for ${JSON.stringify(t)} must be valid engine properties (${e})`;
@@ -4387,9 +4389,9 @@ function Un(e, t, n) {
 }
 function Wn(e) {
 	let t = 0, n = 0, r = 0, i = 0;
-	for (let a of e) if (H(a)) {
-		if (t += Array.isArray(a.traffic) ? a.traffic.length : 0, n += Array.isArray(a.timeline) ? a.timeline.length : 0, i += Array.isArray(a.expectations) ? a.expectations.length : 0, t > V.maxTrafficProfiles || n > V.maxTimelineSteps || i > V.maxExpectations) return "The simulations exceed the document's traffic, timeline or expectation budget.";
-		for (let e of Array.isArray(a.traffic) ? a.traffic : []) if (H(e) && H(e.shape) && Array.isArray(e.shape.stages) && (r += e.shape.stages.length), r > V.maxRampStages) return "The simulations exceed the document's ramp-stage budget.";
+	for (let a of e) if (U(a)) {
+		if (t += Array.isArray(a.traffic) ? a.traffic.length : 0, n += Array.isArray(a.timeline) ? a.timeline.length : 0, i += Array.isArray(a.expectations) ? a.expectations.length : 0, t > H.maxTrafficProfiles || n > H.maxTimelineSteps || i > H.maxExpectations) return "The simulations exceed the document's traffic, timeline or expectation budget.";
+		for (let e of Array.isArray(a.traffic) ? a.traffic : []) if (U(e) && U(e.shape) && Array.isArray(e.shape.stages) && (r += e.shape.stages.length), r > H.maxRampStages) return "The simulations exceed the document's ramp-stage budget.";
 	}
 }
 function Gn(e) {
@@ -4406,15 +4408,15 @@ function Gn(e) {
 			for (let r of t.stages) e += Math.max(n, r.targetRate) * r.durationMs / 1e3, n = r.targetRate;
 		}
 		for (let { action: t } of o.timeline ?? []) t.do === "inject" && (e += t.count);
-		let s = U(o.scale) && o.scale >= 1 ? o.scale : 1;
+		let s = W(o.scale) && o.scale >= 1 ? o.scale : 1;
 		a += e * Math.max(1, o.multipliers?.traffic ?? 1) / s;
 	}
-	if (t > V.maxTrafficProfiles || n > V.maxTimelineSteps || r > V.maxRampStages || i > V.maxExpectations) return "The simulations exceed the document's traffic, timeline, ramp-stage or expectation budget.";
-	if (!Number.isFinite(a) || a > V.maxTrafficVolume) return "The simulations exceed the document's total traffic volume budget.";
+	if (t > H.maxTrafficProfiles || n > H.maxTimelineSteps || r > H.maxRampStages || i > H.maxExpectations) return "The simulations exceed the document's traffic, timeline, ramp-stage or expectation budget.";
+	if (!Number.isFinite(a) || a > H.maxTrafficVolume) return "The simulations exceed the document's total traffic volume budget.";
 }
 //#endregion
 //#region src/canvas/nodes/size.ts
-var K = {
+var q = {
 	minWidth: 220,
 	maxWidth: 260,
 	height: 72,
@@ -4422,16 +4424,16 @@ var K = {
 	labelChar: 7.5,
 	subChar: 6.3
 };
-function q(e, t) {
-	let n = K.maxWidth - K.chrome, r = e.length * K.labelChar, i = Math.min((t?.length ?? 0) * K.subChar, n);
+function J(e, t) {
+	let n = q.maxWidth - q.chrome, r = e.length * q.labelChar, i = Math.min((t?.length ?? 0) * q.subChar, n);
 	return {
-		width: Math.round(Math.min(K.maxWidth, Math.max(K.minWidth, K.chrome + Math.max(r, i)))),
-		height: K.height
+		width: Math.round(Math.min(q.maxWidth, Math.max(q.minWidth, q.chrome + Math.max(r, i)))),
+		height: q.height
 	};
 }
 //#endregion
 //#region src/canvas/geometry/labels.ts
-var J = {
+var Y = {
 	charW: 6,
 	lineH: 13,
 	padX: 7,
@@ -4443,7 +4445,7 @@ var J = {
 	maxLineChars: 34,
 	glyphLead: 16,
 	chip: 20
-}, Kn = (e) => e * J.charW + 2 * (J.padX + J.border) + 1, qn = (e) => e * J.lineH + 2 * (J.padY + J.border);
+}, Kn = (e) => e * Y.charW + 2 * (Y.padX + Y.border) + 1, qn = (e) => e * Y.lineH + 2 * (Y.padY + Y.border);
 function Jn(e, t) {
 	let n = e.split(/\s+/).filter(Boolean);
 	if (n.length < 2) return null;
@@ -4510,7 +4512,7 @@ function Zn({ nodes: e, edges: t, direction: n = "LR" }) {
 		}
 	}
 	let b = Math.max(...g.map((e) => e?.length ?? 0)), x = /* @__PURE__ */ new Map(), { origin: S } = Yn, C = Yn[n], w = n === "LR", T = new Map(e.map((e) => {
-		let t = q(e.label ?? "", e.sublabel);
+		let t = J(e.label ?? "", e.sublabel);
 		return [e.id, {
 			width: e.width ?? t.width,
 			height: e.height ?? t.height
@@ -4606,7 +4608,7 @@ function tr(e, t) {
 }
 //#endregion
 //#region src/canvas/placement.ts
-var nr = 80, rr = 40, ir = 12, Y = (e, t) => e.x < t.x + t.width && t.x < e.x + e.width && e.y < t.y + t.height && t.y < e.y + e.height, ar = (e = "LR", t = "downstream") => e === "TB" ? t === "upstream" ? "up" : "down" : t === "upstream" ? "left" : "right";
+var nr = 80, rr = 40, ir = 12, X = (e, t) => e.x < t.x + t.width && t.x < e.x + e.width && e.y < t.y + t.height && t.y < e.y + e.height, ar = (e = "LR", t = "downstream") => e === "TB" ? t === "upstream" ? "up" : "down" : t === "upstream" ? "left" : "right";
 function or(e, t, n, r, i = 0, a = nr) {
 	let o = r === "right" || r === "left", s = o ? r === "left" ? e.x - a - t.width : e.x + e.width + a : e.x + e.width / 2 - t.width / 2, c = o ? e.y + e.height / 2 - t.height / 2 : r === "up" ? e.y - 80 - t.height : e.y + e.height + 80;
 	for (let e = 0; e < ir && !mr({
@@ -4712,7 +4714,7 @@ function fr(e, t, { margin: n = 16, step: r = 20, maxRings: i = 40, accept: a, b
 		y: s.y - c,
 		width: s.width + c * 2,
 		height: s.height + c * 2
-	}, u = t.filter((e) => Y(l, e)), d = Math.max(...e.map((e) => Math.max(e.width, e.height))), f = new ur(u, Math.max(80, Math.min(640, d + n * 2))), p = e.length, m = e.map((e) => e.x - n), h = e.map((e) => e.y - n), g = e.map((e) => e.x + e.width + n), _ = e.map((e) => e.y + e.height + n), v = 0, y = (e, t) => {
+	}, u = t.filter((e) => X(l, e)), d = Math.max(...e.map((e) => Math.max(e.width, e.height))), f = new ur(u, Math.max(80, Math.min(640, d + n * 2))), p = e.length, m = e.map((e) => e.x - n), h = e.map((e) => e.y - n), g = e.map((e) => e.x + e.width + n), _ = e.map((e) => e.y + e.height + n), v = 0, y = (e, t) => {
 		for (let n = 0; n < p; n++) {
 			let r = f.hits(m[n] + e, h[n] + t, g[n] + e, _[n] + t, o.tests);
 			if (r === void 0) return;
@@ -4766,7 +4768,7 @@ function mr(e, t, n = 0) {
 		width: e.width + n * 2,
 		height: e.height + n * 2
 	};
-	return !t.some((e) => Y(r, e));
+	return !t.some((e) => X(r, e));
 }
 //#endregion
 //#region src/ai/place.ts
@@ -4774,7 +4776,7 @@ function hr(e, t) {
 	if (!e.groups?.length || t?.size === 0) return e;
 	let n = er(e.groups ?? [], [...e.nodes.map((e) => ({
 		...e,
-		...q(e.label, e.sublabel)
+		...J(e.label, e.sublabel)
 	})), ...e.annotations ?? []], t);
 	return n.size ? {
 		...e,
@@ -4826,12 +4828,12 @@ function gr(e, t, n = "auto", r = [], i = []) {
 	} else {
 		let t = [...s.filter((e) => !a.has(e.id)).map((e) => ({
 			...e,
-			...q(e.label, e.sublabel)
+			...J(e.label, e.sublabel)
 		})), ...e.annotations ?? []];
 		for (let r of s.filter((e) => a.has(e.id))) {
-			let i = q(r.label, r.sublabel), o = [...t, ...m(r)], c = n === "none" ? void 0 : e.edges.find((e) => e.from === r.id && !a.has(e.to) || e.to === r.id && !a.has(e.from)), l = c && s.find((e) => e.id === (c.from === r.id ? c.to : c.from)), u = l ? sr({
+			let i = J(r.label, r.sublabel), o = [...t, ...m(r)], c = n === "none" ? void 0 : e.edges.find((e) => e.from === r.id && !a.has(e.to) || e.to === r.id && !a.has(e.from)), l = c && s.find((e) => e.id === (c.from === r.id ? c.to : c.from)), u = l ? sr({
 				...l,
-				...q(l.label, l.sublabel)
+				...J(l.label, l.sublabel)
 			}, i, o, e.direction, c.from === r.id ? "upstream" : "downstream") : cr({
 				x: 150,
 				y: 100
@@ -4840,7 +4842,7 @@ function gr(e, t, n = "auto", r = [], i = []) {
 				y: u.y - i.height / 2,
 				...i
 			});
-			o.some((e) => Y(d(), e)) && (u = cr(u, i, o)), o.some((e) => Y(d(), e)) && (u = {
+			o.some((e) => X(d(), e)) && (u = cr(u, i, o)), o.some((e) => X(d(), e)) && (u = {
 				x: Math.max(0, ...o.map((e) => e.x + e.width)) + 80 + i.width / 2,
 				y: 100
 			}), r.x = Math.round(u.x - i.width / 2), r.y = Math.round(u.y - i.height / 2), t.push({
@@ -4855,22 +4857,22 @@ function gr(e, t, n = "auto", r = [], i = []) {
 		groups: e.groups?.map((e) => ({ ...e }))
 	}, _ = new Map(g.groups?.map((e) => [e.id, e])), v = s.map((e) => ({
 		...e,
-		...q(e.label, e.sublabel)
+		...J(e.label, e.sublabel)
 	})), y = new Map(v.map((e) => [e.id, e])), b = tr(d, [...v, ...e.annotations ?? []]), x = (e) => {
 		for (let [t, n] of b(e)) Object.assign(_.get(t), n);
 	}, S = /* @__PURE__ */ new Set([...r, ...s.filter((e) => a.has(e.id) && e.group).map((e) => e.group)]);
 	x(o ? void 0 : h(S));
 	for (let e of g.nodes) {
 		if (!o && !a.has(e.id)) continue;
-		let t = m(e, g.groups), n = q(e.label, e.sublabel);
-		if (!t.some((t) => Y({
+		let t = m(e, g.groups), n = J(e.label, e.sublabel);
+		if (!t.some((t) => X({
 			...e,
 			...n
 		}, t))) continue;
 		let r = [
 			...g.nodes.filter((t) => t.id !== e.id).map((e) => ({
 				...e,
-				...q(e.label, e.sublabel)
+				...J(e.label, e.sublabel)
 			})),
 			...g.annotations ?? [],
 			...t
@@ -4878,7 +4880,7 @@ function gr(e, t, n = "auto", r = [], i = []) {
 			x: e.x + n.width / 2,
 			y: e.y + n.height / 2
 		}, n, r);
-		r.some((e) => Y({
+		r.some((e) => X({
 			x: i.x - n.width / 2,
 			y: i.y - n.height / 2,
 			...n
@@ -4890,8 +4892,8 @@ function gr(e, t, n = "auto", r = [], i = []) {
 			y: e.y
 		}), e.group && x(h([e.group]));
 	}
-	return (g.nodes.some((e) => (o || a.has(e.id)) && m(e, g.groups).some((t) => Y(y.get(e.id), t))) || o && g.groups?.some((e, t, n) => n.some((n, r) => {
-		if (r <= t || !Y(e, n)) return !1;
+	return (g.nodes.some((e) => (o || a.has(e.id)) && m(e, g.groups).some((t) => X(y.get(e.id), t))) || o && g.groups?.some((e, t, n) => n.some((n, r) => {
+		if (r <= t || !X(e, n)) return !1;
 		let i = p ??= bn(d);
 		return !i(e.id, n.id) && !i(n.id, e.id);
 	}))) && _r(g, a, o, h(S)), g;
@@ -4929,13 +4931,13 @@ function _r(e, t, n, r) {
 		})), ...(l.get(e) ?? []).map((e) => ({
 			box: {
 				...e,
-				...q(e.label, e.sublabel)
+				...J(e.label, e.sublabel)
 			},
 			movable: n || t.has(e.id),
 			boundary: !1
 		}))], s = [...u.get(e) ?? [], ...i.filter((e) => !e.movable).map((e) => e.box)];
 		for (let { box: e, movable: t, boundary: n } of i) if (t) {
-			if (s.some((t) => Y(e, t))) {
+			if (s.some((t) => X(e, t))) {
 				let t = cr({
 					x: e.x + e.width / 2,
 					y: e.y + e.height / 2
@@ -4944,7 +4946,7 @@ function _r(e, t, n, r) {
 					x: t.x - e.width / 2,
 					y: t.y - e.height / 2
 				});
-				s.some((e) => Y(r(), e)) && (t = {
+				s.some((e) => X(r(), e)) && (t = {
 					x: Math.max(0, ...s.map((e) => e.x + e.width)) + 80 + e.width / 2,
 					y: t.y
 				});
@@ -4965,14 +4967,14 @@ function _r(e, t, n, r) {
 }
 //#endregion
 //#region src/ai/skill/layout.ts
-var X = (e) => typeof e == "object" && !!e && !Array.isArray(e), Z = (e) => typeof e == "number" && Number.isFinite(e), vr = [
+var Z = (e) => typeof e == "object" && !!e && !Array.isArray(e), Q = (e) => typeof e == "number" && Number.isFinite(e), vr = [
 	"x",
 	"y",
 	"width",
 	"height"
-], yr = (e) => vr.every((t) => Z(e[t]));
+], yr = (e) => vr.every((t) => Q(e[t]));
 function br(e, t = {}) {
-	if (!X(e)) return {
+	if (!Z(e)) return {
 		ok: !1,
 		error: "The file must hold one JSON object: the diagram."
 	};
@@ -4980,23 +4982,23 @@ function br(e, t = {}) {
 		ok: !1,
 		error: "The diagram needs a \"nodes\" list."
 	};
-	let n = e.nodes, r = Array.isArray(e.groups) ? e.groups : [], i = !!t.force || n.some((e) => X(e) && (!Z(e.x) || !Z(e.y))), a = An({
+	let n = e.nodes, r = Array.isArray(e.groups) ? e.groups : [], i = !!t.force || n.some((e) => Z(e) && (!Q(e.x) || !Q(e.y))), a = An({
 		...e,
-		nodes: n.map((e) => X(e) ? {
+		nodes: n.map((e) => Z(e) ? {
 			...e,
-			x: Z(e.x) ? e.x : 0,
-			y: Z(e.y) ? e.y : 0
+			x: Q(e.x) ? e.x : 0,
+			y: Q(e.y) ? e.y : 0
 		} : e),
-		...Array.isArray(e.groups) ? { groups: r.map((e) => X(e) ? {
+		...Array.isArray(e.groups) ? { groups: r.map((e) => Z(e) ? {
 			...e,
-			...Object.fromEntries(vr.map((t) => [t, Z(e[t]) ? e[t] : 0]))
+			...Object.fromEntries(vr.map((t) => [t, Q(e[t]) ? e[t] : 0]))
 		} : e) } : {}
 	});
 	if (!a.ok) return {
 		ok: !1,
 		error: a.error
 	};
-	let o = a.diagram, s = 0, c = Array.isArray(e.annotations) ? e.annotations.map((e) => fn(e) ? o.annotations?.[s++]?.id : void 0) : [], l = new Set(r.filter((e) => X(e) && !yr(e)).map((e) => e.id)), u;
+	let o = a.diagram, s = 0, c = Array.isArray(e.annotations) ? e.annotations.map((e) => fn(e) ? o.annotations?.[s++]?.id : void 0) : [], l = new Set(r.filter((e) => Z(e) && !yr(e)).map((e) => e.id)), u;
 	if (i) {
 		let e = o.nodes.map((e) => e.id);
 		o = gr(o, e, "full", [], e), u = (o.groups ?? []).map((e) => e.id);
@@ -5004,7 +5006,7 @@ function br(e, t = {}) {
 	let d = new Map(o.nodes.map((e) => [e.id, e])), f = new Map((o.groups ?? []).map((e) => [e.id, e])), p = {
 		...e,
 		nodes: n.map((e) => {
-			let t = X(e) && d.get(e.id);
+			let t = Z(e) && d.get(e.id);
 			return t ? {
 				...e,
 				x: t.x,
@@ -5013,8 +5015,8 @@ function br(e, t = {}) {
 		})
 	};
 	Array.isArray(e.groups) && (p.groups = r.map((e) => {
-		let t = X(e) && u.includes(e.id) ? f.get(e.id) : void 0;
-		return t && X(e) ? {
+		let t = Z(e) && u.includes(e.id) ? f.get(e.id) : void 0;
+		return t && Z(e) ? {
 			...e,
 			x: t.x,
 			y: t.y,
@@ -5025,7 +5027,7 @@ function br(e, t = {}) {
 	let m = [];
 	if (Array.isArray(e.annotations)) {
 		let t = new Map((o.annotations ?? []).map((e) => [e.id, e])), n = e.annotations.map((e, n) => {
-			let r = X(e) && yr(e) && t.get(c[n] ?? "");
+			let r = Z(e) && yr(e) && t.get(c[n] ?? "");
 			return r ? {
 				...e,
 				x: r.x,
@@ -5035,15 +5037,15 @@ function br(e, t = {}) {
 			...o.nodes.map((e) => ({
 				x: e.x,
 				y: e.y,
-				...q(e.label, e.sublabel)
+				...J(e.label, e.sublabel)
 			})),
 			...o.groups ?? [],
-			...n.filter((e) => X(e) && yr(e)).map((e) => e)
+			...n.filter((e) => Z(e) && yr(e)).map((e) => e)
 		], i = r.length ? Math.min(...r.map((e) => e.x)) : 40, a = r.length ? Math.max(...r.map((e) => e.y + e.height)) + 60 : 40;
 		p.annotations = n.map((e) => {
-			if (!X(e) || yr(e) || e.kind !== "note" && e.kind !== "text") return e;
+			if (!Z(e) || yr(e) || e.kind !== "note" && e.kind !== "text") return e;
 			let t = { ...e };
-			return (!Z(t.width) || t.width < 1) && (t.width = 240), (!Z(t.height) || t.height < 1) && (t.height = t.kind === "text" ? 80 : 160), (!Z(t.x) || !Z(t.y)) && (t.x = Math.round(i), t.y = Math.round(a), i += t.width + 40), typeof t.id == "string" && m.push(t.id), t;
+			return (!Q(t.width) || t.width < 1) && (t.width = 240), (!Q(t.height) || t.height < 1) && (t.height = t.kind === "text" ? 80 : 160), (!Q(t.x) || !Q(t.y)) && (t.x = Math.round(i), t.y = Math.round(a), i += t.width + 40), typeof t.id == "string" && m.push(t.id), t;
 		});
 	}
 	return {
@@ -5103,7 +5105,7 @@ var Ir = 6e5, Lr = 8, Rr = "livediagrams:e:v1", zr = class extends Error {
 	constructor(e = "That password doesn't open it. Check it and try again.") {
 		super(e), this.name = "WrongPasswordError";
 	}
-}, Q = class extends Error {
+}, $ = class extends Error {
 	reason;
 	constructor(e, t = `This encrypted diagram can't be read (${e}).`) {
 		super(t), this.name = "BadTokenError", this.reason = e;
@@ -5111,18 +5113,18 @@ var Ir = 6e5, Lr = 8, Rr = "livediagrams:e:v1", zr = class extends Error {
 };
 function Br(e) {
 	let t = e.trim();
-	if (t.length > V.maxTextChars) throw new Q("too-long");
+	if (t.length > H.maxTextChars) throw new $("too-long");
 	let n = t.split("."), r = n[0] ?? "";
-	if (/^v\d+$/.test(r) && r !== "v1") throw new Q("newer");
-	if (r !== "v1" || n.length !== 4 || n.some((e) => !/^[A-Za-z0-9_-]+$/.test(e))) throw new Q("damaged");
+	if (/^v\d+$/.test(r) && r !== "v1") throw new $("newer");
+	if (r !== "v1" || n.length !== 4 || n.some((e) => !/^[A-Za-z0-9_-]+$/.test(e))) throw new $("damaged");
 	let i;
 	try {
 		i = n.slice(1).map((e) => Fr(e));
 	} catch {
-		throw new Q("damaged");
+		throw new $("damaged");
 	}
 	let [a, o, s] = i;
-	if (a.length !== 16 || o.length !== 12 || s.length < 17) throw new Q("damaged");
+	if (a.length !== 16 || o.length !== 12 || s.length < 17) throw new $("damaged");
 	return {
 		version: r,
 		salt: a,
@@ -5192,7 +5194,7 @@ function Zr(e = crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(5))) {
 async function Qr(e, t) {
 	if (t.length < 8) throw Error("Use a password of at least 8 characters.");
 	let n = await Wr(await Ar(Tr(JSON.stringify(e))), t);
-	if (n.length > V.maxTextChars) throw Error("This diagram is too large to protect with a password.");
+	if (n.length > H.maxTextChars) throw Error("This diagram is too large to protect with a password.");
 	return {
 		version: 1,
 		encrypted: n,
@@ -5204,7 +5206,7 @@ async function $r(e, t, n) {
 	try {
 		r = await Gr(e, t);
 	} catch (e) {
-		throw e instanceof zr ? new Yr(Kr, !0) : e instanceof Q ? new Yr(qr) : new Yr(globalThis.crypto?.subtle ? qr : Jr);
+		throw e instanceof zr ? new Yr(Kr, !0) : e instanceof $ ? new Yr(qr) : new Yr(globalThis.crypto?.subtle ? qr : Jr);
 	}
 	try {
 		return Er(await jr(r, n));
@@ -5214,14 +5216,14 @@ async function $r(e, t, n) {
 }
 //#endregion
 //#region src/export/viewer/payload.ts
-var $ = {
-	diagramChars: V.maxTextChars,
+var ei = {
+	diagramChars: H.maxTextChars,
 	icons: 400,
 	iconChars: 2e5,
-	totalChars: V.maxTextChars + 4e6
-}, ei = "This file's diagram is damaged. Export it again from Live Diagrams.";
-function ti(e) {
-	if (e && e.length > $.totalChars) return {
+	totalChars: H.maxTextChars + 4e6
+}, ti = "This file's diagram is damaged. Export it again from Live Diagrams.";
+function ni(e) {
+	if (e && e.length > ei.totalChars) return {
 		ok: !1,
 		error: Cn(e.length)
 	};
@@ -5236,7 +5238,7 @@ function ti(e) {
 	} catch {
 		return {
 			ok: !1,
-			error: ei
+			error: ti
 		};
 	}
 	let r = n;
@@ -5252,10 +5254,10 @@ function ti(e) {
 		}
 	} : {
 		ok: !1,
-		error: ei
+		error: ti
 	};
 	let i = JSON.stringify(r.diagram ?? null).length;
-	if (i > $.diagramChars) return {
+	if (i > ei.diagramChars) return {
 		ok: !1,
 		error: Cn(i)
 	};
@@ -5265,7 +5267,7 @@ function ti(e) {
 		error: a.error
 	};
 	let o = {};
-	if (r.icons && typeof r.icons == "object") for (let [e, t] of Object.entries(r.icons).slice(0, $.icons)) typeof t == "string" && t.startsWith("data:image/") && t.length <= $.iconChars && (o[e] = t);
+	if (r.icons && typeof r.icons == "object") for (let [e, t] of Object.entries(r.icons).slice(0, ei.icons)) typeof t == "string" && t.startsWith("data:image/") && t.length <= ei.iconChars && (o[e] = t);
 	let s = r.options ?? {}, c = a.diagram.simulations ?? [];
 	return {
 		ok: !0,
@@ -5281,14 +5283,14 @@ function ti(e) {
 }
 //#endregion
 //#region src/interop/passwordStrength.ts
-var ni = new Set("password passw0rd qwerty qwertyuiop asdfgh asdfghjkl letmein welcome iloveyou admin administrator monkey dragon football baseball sunshine princess master shadow superman trustno changeme secret diagram diagrams livediagrams abcdefgh abcdefg abcdef".split(" "));
-function ri(e) {
+var ri = new Set("password passw0rd qwerty qwertyuiop asdfgh asdfghjkl letmein welcome iloveyou admin administrator monkey dragon football baseball sunshine princess master shadow superman trustno changeme secret diagram diagrams livediagrams abcdefgh abcdefg abcdef".split(" "));
+function ii(e) {
 	let t = e.normalize("NFC"), n = [...t];
 	if (n.length < 8) return {
 		level: "short",
 		hint: "Use at least 8 characters."
 	};
-	let r = t.toLowerCase().replace(/[^a-z]/g, ""), i = new Set(n).size, a = "abcdefghijklmnopqrstuvwxyz01234567890".includes(t.toLowerCase()), o = ni.has(r) || ni.has(t.toLowerCase()), s = /^\d+$/.test(t), c = /^[A-Za-z]+[\d\W_]{0,6}$/.test(t) && n.length < 14;
+	let r = t.toLowerCase().replace(/[^a-z]/g, ""), i = new Set(n).size, a = "abcdefghijklmnopqrstuvwxyz01234567890".includes(t.toLowerCase()), o = ri.has(r) || ri.has(t.toLowerCase()), s = /^\d+$/.test(t), c = /^[A-Za-z]+[\d\W_]{0,6}$/.test(t) && n.length < 14;
 	if (o || a || i <= 3 || s && n.length < 16 || c) return {
 		level: "weak",
 		hint: "Easy to guess. Try four or more random words."
@@ -5309,11 +5311,11 @@ function ri(e) {
 }
 //#endregion
 //#region src/model/faultRuntime.ts
-function ii(e, t) {
+function ai(e, t) {
 	let n = e.edges.find((e) => e.id === t);
 	if (!n || Ye(n)) return !1;
 	let r = e.nodes.find((e) => e.id === n.from)?.group, i = e.nodes.find((e) => e.id === n.to)?.group, a = new Set(e.groups?.map((e) => e.id));
 	return !!r && !!i && r !== i && a.has(r) && a.has(i);
 }
 //#endregion
-export { V as LIMITS, Lr as MIN_PASSWORD_LENGTH, $ as PAYLOAD_LIMITS, mn as annotationGeometryError, ii as canCutLink, un as isColorValue, br as layoutDiagram, Qr as lockPayload, Zr as lockedFileName, ti as parsePayload, ri as passwordStrength, Hn as simulationProblem, $r as unlockPayloadText, An as validateDiagram };
+export { H as LIMITS, Lr as MIN_PASSWORD_LENGTH, ei as PAYLOAD_LIMITS, mn as annotationGeometryError, ai as canCutLink, un as isColorValue, br as layoutDiagram, Qr as lockPayload, Zr as lockedFileName, ni as parsePayload, ii as passwordStrength, Hn as simulationProblem, $r as unlockPayloadText, An as validateDiagram };

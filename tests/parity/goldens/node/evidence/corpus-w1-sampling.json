@@ -11,6 +11,14 @@
   },
   "planned": [],
   "counted": 0,
-  "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+  "findings": [
+    { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "target": "call", "elements": ["call", "caller", "partner"] }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["call", "caller", "partner"] }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 2 saved simulations (at most 60 s each)."
+  }
 }

@@ -2,7 +2,7 @@ import { revisionAtLeast } from "../model/revisions";
 import { DRILL_PRESETS, faultProblem, faultTarget, type Fault } from "../model/faults";
 import { createResourceValidator } from "../model/resourceValidation";
 import { validateRouting } from "../model/routingValidation";
-import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
+import { DIAGRAM_FORMAT, METRIC_FIELDS, type Simulation, type DiagramFile } from "../model/types";
 import {
   propsProblem,
   SIM_LIMITS,
@@ -482,19 +482,7 @@ function repairRelation(e: Record<string, unknown>, warnings: string[]): void {
 const OPS = new Set(["<", "<=", "==", ">=", ">"]);
 const WHEN = new Set(["always", "eventually", "end", "at"]);
 const STATUS = new Set(["up", "paused", "down"]);
-const METRICS = new Set([
-  "timedOut",
-  "processed",
-  "backlog",
-  "inFlight",
-  "failed",
-  "deadLettered",
-  "dropped",
-  "blocked",
-  "rejected",
-  "throughput",
-  "lag",
-]);
+const METRICS: ReadonlySet<string> = new Set(METRIC_FIELDS);
 const optString = (v: unknown) => v === undefined || typeof v === "string";
 const nonnegative = (v: unknown, max = Number.MAX_SAFE_INTEGER): v is number => isNum(v) && v >= 0 && v <= max;
 const time = (v: unknown) => nonnegative(v, LIMITS.maxSimulationMs);

@@ -6,6 +6,9 @@ import type { CheckResult, Finding } from "../types";
 import { turnOn, unignore } from "./actions";
 import { FindingRow, type RowHost, type RowState } from "./FindingRow";
 import { SimulationsBar, type SimulationsHost } from "./SimulationsBar";
+import { presentRule } from "../presentation";
+import { useLocale } from "../../i18n";
+import { useFallbackOnUnmount, useSurvivingCheckFocus } from "./survivingFocus";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -27,7 +30,10 @@ export interface ChecksCardProps extends RowHost {
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-const ruleName = (id: string) => RULES.find((r) => r.id === id)?.name ?? id;
+const ruleName = (id: string) => {
+  const rule = RULES.find((r) => r.id === id);
+  return rule ? presentRule(rule).name : id;
+};
 
 /**
  * Arrow keys move between rows' heads; Home and End go to the first and last. Only from a head: in the Ignore
@@ -79,11 +85,14 @@ function useMaxHeight(card: RefObject<HTMLElement | null>, top: number): number 
 const PAGE = 40;
 
 export function ChecksCard(p: ChecksCardProps) {
+  useLocale();
   const onMount = useRef(p.onMount);
   useEffect(() => onMount.current?.(), []);
   const [foot, setFoot] = useState<"ignored" | "off" | "about" | null>(null);
   const [shown, setShown] = useState(PAGE);
   const self = useRef<HTMLElement>(null);
+  // A fix can remove several rows at once: focus goes on to a surviving row once the new rows exist.
+  useSurvivingCheckFocus((el) => (self.current?.contains(el) ? self.current : null));
   const maxHeight = useMaxHeight(self, p.top);
   // Closing with focus inside the card (Esc, ✕, a fix that ended it) hands focus back, never to the page.
   const returnFocus = useRef(p.returnFocus);
@@ -163,11 +172,13 @@ export function ChecksCard(p: ChecksCardProps) {
         <p className="checks-note" data-testid="checks-running">
           Checking…
         </p>
-      ) : r.findings.length ? (
+      ) : r.findings.length || r.omitted?.length ? (
+        // Findings too many to list are counted here: a bounded result never reads as all clear.
         <p className="checks-note" data-testid="checks-summary">
           {[
             warnings.length ? plural(warnings.length, "warning") : "",
             suggestions.length ? plural(suggestions.length, "suggestion") : "",
+            r.omitted?.length ? `${r.omitted.reduce((n, o) => n + o.count, 0)} more not listed` : "",
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -267,7 +278,7 @@ export function ChecksCard(p: ChecksCardProps) {
       )}
       {foot === "about" && (
         <ul className="checks-aside is-about" data-testid="checks-about">
-          {RULES.map((rule) => (
+          {RULES.map(presentRule).map((rule) => (
             <li key={rule.id}>
               <span>
                 <strong>{rule.name}.</strong> {rule.about}
@@ -290,8 +301,16 @@ export function InspectorFindings({
   host: RowHost & { open(): void };
   state: RowState;
 }) {
+  const self = useRef<HTMLDivElement>(null);
+  // A new result can remove the focused finding and the one focus moved on to: focus goes to a survivor, or, when
+  // the whole group goes, to the inspector's body (which stays), never the page.
+  useSurvivingCheckFocus((el) =>
+    self.current?.contains(el) ? self.current.closest<HTMLElement>("[data-check-fallback-scope]") : null,
+  );
+  useFallbackOnUnmount(self);
   return (
     <div
+      ref={self}
       className="insp-findings"
       role="list"
       aria-label="Checks"

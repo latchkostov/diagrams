@@ -102,17 +102,19 @@ it("shares one allocation budget across the baseline and candidates and refuses 
   const limit = THREAD_FIX_LIMITS.messages;
   try {
     expect(confirmedThreadFix(request)).toEqual(trouble.action);
-    expect(entries).toHaveLength(2);
-    expect(entries[0].budget).toBe(entries[1].budget);
+    // The baseline, the timeout's normal-reply replay (free play) and the candidate: one budget.
+    expect(entries).toHaveLength(3);
+    expect(new Set(entries.map((e) => e.budget)).size).toBe(1);
     expect(entries[1].remaining).toBeLessThan(limit);
     const baseline = limit - entries[1].remaining;
     THREAD_FIX_LIMITS.messages = baseline + 1;
     for (let repeat = 0; repeat < 2; repeat++) {
       entries.length = 0;
       expect(confirmedThreadFix(request)).toBeUndefined();
-      expect(entries).toHaveLength(2);
-      expect(entries[0].budget).toBe(entries[1].budget);
-      expect(entries[1].budget.remaining).toBeLessThan(0);
+      // The baseline spends it; the timeout's replay is refused, and so is the remaining candidate's.
+      expect(entries).toHaveLength(3);
+      expect(new Set(entries.map((e) => e.budget)).size).toBe(1);
+      expect(entries[2].budget.remaining).toBeLessThan(0);
     }
   } finally {
     THREAD_FIX_LIMITS.messages = limit;
