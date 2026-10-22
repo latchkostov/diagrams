@@ -14,8 +14,8 @@ export const representedOf = (m: { represented?: number } | undefined, scale: nu
   m?.represented ?? scale;
 export const unitsOf = (m: { represented?: number } | undefined, scale: number): number =>
   m?.represented === undefined ? 1 : m.represented / scale;
-/** Partial dots leave roundoff in native counters; reports keep 1e-9 dots. */
-export const roundDots = (n: number): number => (Number.isInteger(n) ? n : Math.round(n * 1e9) / 1e9);
+/** Partial dots leave roundoff in native counters; reports keep 1e-9 dots (and never -0). */
+export const roundDots = (n: number): number => (Number.isInteger(n) ? n : Math.round(n * 1e9) / 1e9 || 0);
 export const roundCounts = <T extends object>(counts: T): T =>
   Object.fromEntries(Object.entries(counts).map(([key, n]) => [key, roundDots(n)])) as T;
 /** Counters, rates, queue depth and lag have the same sampling weight. */

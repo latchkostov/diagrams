@@ -4,14 +4,14 @@ import { createEngine } from "./engine";
 import { assertLedgerInvariants, assertOutcomeInvariants, assertResourceInvariants } from "./resourceInvariants";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
-import { realSnapshot } from "./units";
+import { realSnapshot, roundDots } from "./units";
 import type { DiagramFile, SimRole } from "../model/types";
 import type { RouteTable } from "../model/requestRouting";
 import { routingFixture } from "../lab/routingFixture";
 import { waitingFixture } from "../lab/waitingFixture";
 import type { EdgeSimProps, SimEngine } from "./types";
 
-const round = (x: number | undefined) => (x === undefined ? x : +x.toFixed(6));
+const round = (x: number | undefined) => (x === undefined ? x : +x.toFixed(6) || 0);
 
 function run(diagram: DiagramFile, scale: number, burst: number, injectRepresented?: number) {
   const trace: unknown[] = [];
@@ -253,6 +253,9 @@ it("partial dots sum exactly in reports, whatever their roundoff", () => {
   expect(e.snapshot().nodes.sink.processed).toBe(1);
   expect(e.snapshot().edges.e.delivered).toBe(1);
   expect(realSnapshot(e.snapshot()).nodes.sink.processed).toBe(10);
+  // A gauge that returns to zero through fractional adds and subtracts reports 0, not -0.
+  expect(Object.is(roundDots(0.1 + 0.2 - 0.3 - 1e-12 + 1e-12 - 5.551115123125783e-17), 0)).toBe(true);
+  expect(Object.is(roundDots(-1e-17), 0)).toBe(true);
 });
 
 it("a partial dot of less than one request needs only its own room", () => {
