@@ -172,6 +172,8 @@ interface Shape {
   targets: Map<string, string>;
   deadlines: Map<string, number | undefined>;
   responses: Map<string, number>;
+  /** Each connection's network delay (one way), for playback's completion time (affordableTimeout). */
+  delays: Map<string, number>;
   sources: Map<string, string>;
   incomingTimeouts: Map<string, string[]>;
   outgoingCalls: Map<string, string[]>;
@@ -250,6 +252,9 @@ function shapeOf(d: DiagramFile): Shape {
     incomingTimeouts,
     outgoingCalls,
     responses: callResponses,
+    delays: new Map(
+      d.edges.map((e) => [e.id, typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0]),
+    ),
     sources: new Map(d.edges.map((e) => [e.id, e.from])),
     cyclic: new Set([...(plan?.nodes ?? [])].filter(([, n]) => !Number.isFinite(n.threadHoldMs)).map(([id]) => id)),
   };
@@ -322,7 +327,7 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
           before === undefined || total === undefined || elapsed <= 0
             ? 0
             : (Math.max(0, total - before) * 1000) / elapsed;
-        const deadlineMs = affordableTimeout(d.responses.get(edge) ?? 0, n.threads.slots, rate);
+        const deadlineMs = affordableTimeout(d.responses.get(edge) ?? 0, n.threads.slots, rate, d.delays.get(edge));
         const timeout = d.deadlines.get(edge) === undefined && stalled && deadlineMs !== undefined;
         const upstream = d.incomingTimeouts
           .get(id)

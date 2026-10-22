@@ -23,6 +23,7 @@ import { scalingFixLabel } from "./scalingFindings";
 import { resourcePlan } from "../sim/resourcePlanning";
 import { requestResponseMs } from "../sim/timing";
 import { activeCall } from "../sim/topology";
+import { fitsRef } from "./context";
 import type { Simulation } from "../model/types";
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -47,8 +48,23 @@ export function findingName(name: string): string {
  */
 export const REQUEST_FINDINGS_BUDGET = 1_000_000;
 
-/** Exact edit values from #225's selector, never another ranking or timeout formula. */
+/**
+ * Whether edit ops can name every element these change: an imported id longer than an op reference allows can't be
+ * edited by a fix (the finding stays, without one).
+ */
+const referable = (ops: readonly DiagramOp[]) => ops.every((o) => !("target" in o) || fitsRef(String(o.target)));
+
+/** Exact edit values from #225's selector, never another ranking or timeout formula. Only fixes ops can apply. */
 export function threadCheckFix(
+  d: CheckContext["diagram"],
+  action: TroubleAction | undefined,
+  edge?: DiagramEdge,
+): CheckFix | undefined {
+  const fix = threadFixOf(d, action, edge);
+  return fix?.ops && referable(fix.ops) ? fix : undefined;
+}
+
+function threadFixOf(
   d: CheckContext["diagram"],
   action: TroubleAction | undefined,
   edge?: DiagramEdge,
@@ -148,7 +164,12 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
         e.endpointId,
         Number(edge.props?.networkDelayMs) || 0,
       );
-      const deadline = affordableTimeout(response, n.waits?.slots ?? p.replicas * p.concurrency, n.offered);
+      const deadline = affordableTimeout(
+        response,
+        n.waits?.slots ?? p.replicas * p.concurrency,
+        n.offered,
+        Number(edge.props?.networkDelayMs) || 0,
+      );
       const callee = name(e.to);
       const descriptor: NonNullable<Finding["requestFinding"]> = {
         kind: "timeout",
@@ -249,19 +270,26 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
     const fix = threadCheckFix(d, action, input);
     if (fix) {
       const options: NonNullable<CheckFix["options"]> = [];
+      // Every option's ops must name what they change, as the fix's must.
+      const offer = (option: NonNullable<CheckFix["options"]>[number]) => {
+        if (referable(option.ops)) options.push(option);
+      };
       if (action?.kind === "scale-threads") {
-        const free = threadCheckFix(d, { kind: "free-thread", edge: edge.id }, input)!;
-        options.push({ ...free, short: free.label, ops: free.ops! });
+        const free = threadCheckFix(d, { kind: "free-thread", edge: edge.id }, input);
+        if (free?.ops) offer({ ...free, short: free.label, ops: free.ops });
       }
       const scale = scaleFix(ctx, n, p.autoscaling?.mode === "on");
       if (scale?.ops) {
         const replicas = scale.ops.flatMap((o) =>
           o.op === "update" && o.target === node.id ? [o.props?.replicas] : [],
         )[0];
-        options.push({
+        // Sizing a consumer can add partitions to the broker it reads: the chip says so, never only "Add replicas".
+        const brokers = scale.brokerChanges;
+        offer({
           label: scale.label,
-          short: typeof replicas === "number" ? "Add replicas" : scale.label,
+          short: typeof replicas === "number" && !brokers ? "Add replicas" : scale.label,
           ...(typeof replicas === "number" ? { requestLabel: { kind: "replicas" as const, value: replicas } } : {}),
+          ...(brokers ? { brokerChanges: brokers } : {}),
           ops: scale.ops,
         });
       }
@@ -271,7 +299,7 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
           .flatMap((p) => p.suggestions)
           .find((s) => s.node === node.id && s.kind === "busyThreads" && s.fix && s.verified);
         if (suggestion?.fix)
-          options.push({
+          offer({
             label: "Scale on busy threads",
             short: "Scale on busy threads",
             requestLabel: { kind: "scale" },

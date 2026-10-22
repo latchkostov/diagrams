@@ -1,6 +1,7 @@
 import { explanationRate } from "../planning/format";
 import { t } from "../i18n/core";
 import { formatNumber } from "../i18n/number";
+import { formatList } from "../i18n/format";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
 import type { Finding } from "./types";
 import { planFixLabel, planSentence } from "../planning/scalingPlanText";
@@ -61,11 +62,18 @@ export function presentFinding(finding: Finding): Finding {
                 : finding.fix.requestLabel
                   ? requestLabel(finding.fix.requestLabel)
                   : finding.fix.label,
-              options: finding.fix.options?.map((o) => ({
-                ...o,
-                label: o.requestLabel ? requestLabel(o.requestLabel) : o.label,
-                short: o.requestLabel ? requestLabel(o.requestLabel) : o.short,
-              })),
+              options: finding.fix.options?.map((o) => {
+                // Sizing that also adds partitions names each broker change beside the replicas, in label and chip.
+                const words = o.requestLabel
+                  ? formatList([
+                      requestLabel(o.requestLabel),
+                      ...(o.brokerChanges ?? []).map((c) =>
+                        t("broker.fix", { name: c.name, kind: assignmentLabel(c.spec), count: c.count }),
+                      ),
+                    ])
+                  : undefined;
+                return { ...o, label: words ?? o.label, short: words ?? o.short };
+              }),
             },
           }
         : {}),

@@ -2,9 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import type { DiagramFile } from "../model/types";
 import type { Finding } from "./types";
-import { runChecks, summarize } from "./run";
+import { onlyRules, runChecks, summarize } from "./run";
+import { presentFinding } from "./presentation";
+import busy from "../examples/scale-on-busy-threads.json";
 import { agentReport } from "./report";
 import * as timeout from "../live/affordableTimeout";
+import { affordableTimeout, playbackResponseMs } from "../live/affordableTimeout";
+import { createSimulationRun } from "../sim/simulation";
+import { applyOps } from "../ai";
 import { buildContext } from "./context";
 import { requestFindings } from "./requestFindings";
 import { registerRequestChecks, awaitRequestChecks, requestCheckResult } from "../lib/requestCheckCache";
@@ -453,5 +458,145 @@ describe("overlapping request-check attempts", () => {
     failOlder();
     await expect(first).rejects.toThrow("old");
     expect(requestCheckResult(d)).toEqual({ status: "ready", findings: newer });
+  });
+});
+
+describe("timeouts against playback's ticks", () => {
+  /** The caller at 150 req/s with `threads`, an API answering in `latencyMs` over `networkDelayMs` each way. */
+  function timed(latencyMs: number, networkDelayMs: number, threads: number): DiagramFile {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 150;
+    d.nodes[1].props = { replicas: 1, concurrency: threads, latencyMs: 0, jitter: 0 };
+    d.nodes[2].props = { latencyMs, api: { latencyMs }, jitter: 0 };
+    d.edges[1].props = { networkDelayMs };
+    return d;
+  }
+  const play = (d: DiagramFile) => {
+    const run = createSimulationRun(d, {
+      id: "steady",
+      title: "Steady",
+      seed: 1,
+      durationMs: 2000,
+      traffic: [{ id: "t", node: "source", shape: { kind: "constant", ratePerSec: 150, durationMs: 2000 } }],
+    });
+    for (let i = 0; i < 200; i++) run.step(10);
+    return run.engine.measure({ node: "caller", field: "timedOut" });
+  };
+
+  it("an offered timeout never times out a normal reply, tick-aligned or not", () => {
+    // The review's case: 11 ms behind four threads afforded 20 ms, and every reply landed on the deadline.
+    expect(runChecks(timed(11, 0, 4), { rules: ["call-timeout"] }).findings[0].fix).toBeUndefined();
+    let offered = 0;
+    for (const threads of [4, 40])
+      for (const net of [0, 1, 3, 10, 12])
+        for (const latency of [1, 5, 9, 10, 11, 15, 19, 21, 29, 33]) {
+          const d = timed(latency, net, threads);
+          const finding = runChecks(d, { rules: ["call-timeout"] }).findings[0];
+          if (!finding.fix?.ops) continue;
+          offered++;
+          const fixed = applyOps(d, finding.fix.ops);
+          if (!fixed.ok) throw new Error("The fix didn't apply");
+          expect({ threads, net, latency, timedOut: play(fixed.diagram) }).toEqual({
+            threads,
+            net,
+            latency,
+            timedOut: 0,
+          });
+        }
+    expect(offered).toBeGreaterThan(20);
+  }, 60_000); // About 50 two-second runs.
+
+  it("the callout's Add a timeout uses the same playback completion", () => {
+    expect(playbackResponseMs(11)).toBe(20);
+    expect(playbackResponseMs(13, 3)).toBe(23);
+    expect(playbackResponseMs(30, 12)).toBe(42);
+    expect(affordableTimeout(11, 4, 150)).toBeUndefined();
+    expect(affordableTimeout(9, 4, 150)).toBe(20);
+    expect(affordableTimeout(9, 4, 150, 1)).toBeUndefined();
+  });
+});
+
+describe("review round 4", () => {
+  it.each([
+    ["a zero share", { share: 0 }],
+    ["a deny rule", { deny: true }],
+  ])("a blocking loop through %s can't deadlock", (_, props) => {
+    const d = waitingFixture();
+    d.edges.push({ id: "self", from: "caller", to: "caller", kind: "sync", props: { ...props } });
+    const finding = () => runChecks(d, { rules: ["sync-cycle"] }).findings.find((f) => f.target === "caller");
+    expect(finding()).toBeDefined();
+    expect(finding()?.threadDeadlock).toBeUndefined();
+    d.edges.find((e) => e.id === "self")!.props = {};
+    expect(finding()?.threadDeadlock).toBe(true);
+  });
+
+  it("request fixes only name elements edit ops can reference", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 1;
+    const long = `c${"x".repeat(200)}`;
+    d.edges[1].id = long;
+    expect(validateDiagram(d).ok).toBe(true);
+    const finding = runChecks(d, { rules: ["call-timeout"] }).findings[0];
+    expect(finding.id).toBe(`call-timeout:${long}`);
+    expect(finding.fix).toBeUndefined();
+    // A blocked caller with a long id keeps its finding; no fix or option targets it.
+    const blocked = exhausted();
+    const caller = `s${"y".repeat(200)}`;
+    blocked.nodes[1].id = caller;
+    for (const e of blocked.edges) {
+      if (e.from === "caller") e.from = caller;
+      if (e.to === "caller") e.to = caller;
+    }
+    const found = runChecks(blocked, { rules: ["blocked-threads"] }).findings[0];
+    expect(found.id).toBe(`blocked-threads:${caller}`);
+    const targets = [found.fix, ...(found.fix?.options ?? [])].flatMap((f) =>
+      (f?.ops ?? []).map((o) => ("target" in o ? String(o.target) : "")),
+    );
+    expect(targets.every((t) => t.length <= 200)).toBe(true);
+    expect(targets).not.toContain(caller);
+  });
+
+  it("check_diagram with simulations keeps only the requested rules' omitted counts", async () => {
+    const d = manyCalls(1_500);
+    d.simulations = [{ id: "s", title: "S", seed: 1, durationMs: 1000, traffic: [] }];
+    const tool = toolFor(() => d);
+    const reply = JSON.stringify(await tool.run({ rules: ["no-reader"], simulations: true }));
+    expect(reply).not.toContain("not listed");
+    const all = JSON.stringify(await tool.run({ simulations: true }));
+    expect(all).toContain("more call-timeout findings not listed");
+    const result = runChecks(d);
+    expect(onlyRules(result, ["no-reader"])).toEqual({ findings: [], ignored: [], off: [], ran: ["no-reader"] });
+    expect(onlyRules(result, ["call-timeout"]).omitted).toEqual(result.omitted);
+  });
+
+  it("request checks run no other rule and plan nothing they don't read", async () => {
+    vi.stubGlobal("Worker", undefined);
+    registerScenarioPlanner(async () => []);
+    const d = plannerFixture();
+    d.planning = { ...d.planning, revision: "p3-w1" };
+    d.nodes[1].label = "Request-only worker";
+    const run = await import("./run");
+    const planner = await import("../sim/scalingPlanner");
+    const checks = vi.spyOn(run, "runChecks");
+    const plans = vi.spyOn(planner, "planScaling");
+    const { requestChecksOffThread } = await import("../canvas/checks/runner");
+    expect(await requestChecksOffThread(d)).toEqual(requestFindings(buildContext(d)));
+    expect(checks).not.toHaveBeenCalled();
+    expect(plans).not.toHaveBeenCalled();
+  });
+
+  it("a replica alternative that adds partitions says so", () => {
+    const d = structuredClone(busy) as DiagramFile;
+    Object.assign(
+      d.nodes.find((n) => n.id === "applications")!,
+      { stencil: "kafka.topic", props: { partitions: 4 } },
+    );
+    const finding = runChecks(d, { rules: ["blocked-threads"] }).findings[0];
+    const option = finding.fix?.options?.find((o) => o.requestLabel?.kind === "replicas");
+    expect(option?.brokerChanges?.[0]?.name).toBe("Applications");
+    expect(option?.short).toBe(option?.label);
+    const shown = presentFinding(finding).fix!.options!.find((o) => o.requestLabel?.kind === "replicas")!;
+    expect(shown.label).toContain("Applications");
+    expect(shown.short).toBe(shown.label);
   });
 });

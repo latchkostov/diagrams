@@ -81,6 +81,24 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
 }
 
 /**
+ * A result as if only `rules` had been asked for (default: all): its findings, ignored findings, rules that ran and
+ * omitted counts, together. For a result worked out with more rules (Run simulations classifies against every one).
+ */
+export function onlyRules(result: CheckResult, rules?: readonly CheckRuleId[]): CheckResult {
+  if (!rules) return result;
+  const wanted = (f: { rule: CheckRuleId }) => rules.includes(f.rule);
+  const { omitted, ...rest } = result;
+  const kept = omitted?.filter(wanted) ?? [];
+  return {
+    ...rest,
+    findings: result.findings.filter(wanted),
+    ignored: result.ignored.filter(wanted),
+    ran: result.ran.filter((id) => rules.includes(id)),
+    ...(kept.length ? { omitted: kept } : {}),
+  };
+}
+
+/**
  * The rules a recheck of one rule's finding runs: the rule, and the rules it defers to (capacity leaves a caller to
  * the waiting checks when they run). Rules turned off stay off, so the finding comes out as the full check had it.
  */

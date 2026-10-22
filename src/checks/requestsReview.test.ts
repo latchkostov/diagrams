@@ -126,6 +126,8 @@ it("endpoint timing preserves downstream residence and API/model default work", 
 
 it("an unrelated freed cycle does not hide a blocking deadlock", () => {
   const d = waitingFixture();
+  // Services on both loops: an API (a sink) or a store never calls back in playback, so no thread could wait there.
+  for (const n of d.nodes) if (n.id === "partner" || n.id === "result") n.stencil = "generic.service";
   d.edges = [
     { id: "ab", from: "caller", to: "partner", kind: "sync" },
     { id: "ba", from: "partner", to: "caller", kind: "sync", props: { caller: { wait: "blocking" } } },

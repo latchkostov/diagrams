@@ -96,6 +96,33 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await expect(page.getByTestId("autoscaling-target")).toBeFocused();
   });
 
+  test(`replica alternative replaces autoscaling with a fixed fleet in one undo step in ${locale}`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      ({ key, d, locale }) => {
+        localStorage.setItem(key, JSON.stringify(d));
+        localStorage.setItem("diagrams.locale", locale);
+      },
+      { key: STORAGE_KEYS.autosavePrefix + "scale-on-busy-threads", d: busy, locale },
+    );
+    await gotoCanvas(page, "scale-on-busy-threads");
+    await page.getByTestId("checks-count").focus();
+    await page.keyboard.press("Enter");
+    const replicas = page.getByTestId("check-fix-option-1-blocked-threads:caller");
+    await expect(replicas).toBeEnabled();
+    if (locale === "en") await expect(replicas).toHaveText("Add replicas (12; fixed fleet)");
+    await replicas.focus();
+    await page.keyboard.press("Enter");
+    const caller = async () => (await savedDiagram(page)).nodes.find((n) => n.id === "caller")?.props;
+    await expect.poll(caller).toMatchObject({ replicas: 12, autoscaling: { mode: "off" } });
+    await page.getByTestId("check-fix-undo").focus();
+    await page.keyboard.press("Enter");
+    const original = busy.nodes.find((n) => n.id === "caller")?.props;
+    await expect.poll(async () => (await caller())?.replicas).toBe(original?.replicas);
+    expect((await caller())?.autoscaling).toEqual(original?.autoscaling);
+  });
+
   test(`an inspector alternative that removes two findings keeps keyboard focus in ${locale}`, async ({ page }) => {
     await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
     // One of Your diagrams, so the fix edits it in place (an example's first edit opens a copy, unselected).

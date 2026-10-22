@@ -31,6 +31,8 @@ export interface CheckFix {
 
 export interface CheckFixOption {
   requestLabel?: CheckFix["requestLabel"];
+  /** Partition changes this option makes too (a consumer's sizing), named in its translated words. */
+  brokerChanges?: CheckFix["brokerChanges"];
   /** The change in words ("Put API Management in front"). */
   label: string;
   /** The chip's words: what's different about this option ("API Management"). */

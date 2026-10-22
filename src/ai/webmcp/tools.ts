@@ -198,7 +198,7 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
         simulations?: boolean;
       };
       // The checks are a lazy chunk: loaded on the first call, never at startup.
-      const { runChecks, agentReport } = await import("../../checks");
+      const { runChecks, agentReport, onlyRules } = await import("../../checks");
       // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
       const diagram = needEditor(host).getDiagram();
       const playing = simulations && !!diagram.simulations?.length;
@@ -232,17 +232,7 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       still();
       // Counts are classified against every check, then the reply keeps the rules asked for.
       const { result, planned } = withEvidence(runChecks(diagram, { requests }), evidence, diagram.checks);
-      const wanted = (f: { rule: CheckRuleId }) => !rules || rules.includes(f.rule);
-      return agentReport(
-        {
-          ...result,
-          findings: result.findings.filter(wanted),
-          ignored: result.ignored.filter(wanted),
-          ran: result.ran.filter((id) => !rules || rules.includes(id)),
-        },
-        include,
-        { evidence, planned },
-      );
+      return agentReport(onlyRules(result, rules), include, { evidence, planned });
     },
 
     find_stencils(input) {

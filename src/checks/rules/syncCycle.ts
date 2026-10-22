@@ -1,4 +1,4 @@
-import type { CompiledEdge } from "../../sim/topology";
+import { activeCall, type CompiledEdge } from "../../sim/topology";
 import { edgeName } from "../context";
 import { stronglyConnected } from "../graph";
 import type { CheckRule, Finding } from "../types";
@@ -56,6 +56,8 @@ export const syncCycle: CheckRule = {
         id,
         edges
           .filter((e) => {
+            // Only calls playback makes can hold a thread: not dead-letter routes, deny rules or zero shares.
+            if (!activeCall(ctx.role(id), e)) return false;
             const policy = callPolicy(
               ctx.nodes.get(id)!.stencil,
               ctx.edges.get(e.id)?.props?.caller as EdgeSimProps["caller"],

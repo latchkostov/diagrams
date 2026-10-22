@@ -79,3 +79,23 @@ own findings again; that section is now identical to master's. No other golden c
   gap. Every caller still gets its own attempt's result.
 
 No golden changed in this round.
+
+## Fourth review round
+
+- **Timeouts against playback's ticks.** The one timeout function (Checks and the callout's Add a timeout) now
+  compares against playback's completion of a normal reply, tick rounding and network legs included, and offers a
+  value only when it's strictly later. An 11 ms API behind four threads at 150 req/s no longer gets a 20 ms timeout
+  that every reply would hit. A sweep applies each offered fix and plays it: no normal reply times out.
+- **Replica alternative.** When sizing a consumer also adds partitions, the chip, its accessible name, tooltip and
+  toast name the broker change; a browser test applies it by keyboard, checks the scaler is off with the fixed
+  count, and undoes both in one step.
+- **Deadlock wording** only counts calls playback makes (shared `activeCall`): a loop through a zero-share, denied
+  or dead-letter connection, or back from an API or store, isn't a thread deadlock. The existing mixed-cycle test
+  now uses services on both loops, as playback requires for a call back.
+- **Referable fixes.** A request fix or option whose ops would name an id longer than edit ops accept isn't
+  offered; the finding stays.
+- **Agents.** `check_diagram` with simulations projects findings, ignored, ran and omitted counts together for the
+  requested rules (`onlyRules`). Request checks fetched for an agent or a fix run no other rule (a worker operation
+  of their own), and plan scenarios only when a blocked caller's fix reads them.
+
+No golden changed.

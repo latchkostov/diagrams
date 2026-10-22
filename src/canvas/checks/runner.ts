@@ -46,9 +46,32 @@ function getWorker(): Worker | null {
   return worker;
 }
 
-/** Provider for awaitRequestChecks: the same transport and fallback as background checks. */
+/**
+ * Provider for awaitRequestChecks: request findings only, in the checks worker (else here, the same function), with no
+ * other rule run and scenario sizing only if a blocked caller's verified fix reads it.
+ */
 export async function requestChecksOffThread(diagram: DiagramFile): Promise<Finding[]> {
-  return (await computeChecksOffThread(diagram)).requests;
+  const w = typeof Worker === "function" ? getWorker() : null;
+  if (w) {
+    const id = ++seq;
+    const request: CheckRequest = { id, diagram, requests: true };
+    try {
+      const response = await new Promise<CheckResponse>((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        w.postMessage(request);
+      });
+      if ("requestsOnly" in response) {
+        if (response.plans) rememberPlans(diagram, response.plans);
+        return response.requestsOnly;
+      }
+    } catch {
+      // Fall through: the worker failed; the main thread works them out.
+    }
+  }
+  const { executeRequestChecks } = await import("../../checks/execute");
+  const { requests, plans } = executeRequestChecks(diagram);
+  if (plans) rememberPlans(diagram, plans);
+  return requests;
 }
 
 /**
