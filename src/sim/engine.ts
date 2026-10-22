@@ -1871,6 +1871,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (branch.retryEvent === undefined) return;
     removeDue(logical, branch.retryEvent, logicalIndices);
     branch.retryEvent = undefined;
+    // A cancelled backoff leaves its failed attempt as the branch's last; a paused caller keeps the call.
+    if (branch.state === "backoff") branch.state = "failed";
     // Released as charged: a partial dot's dots change with a live scale edit.
     edge.calls.backingOff! -= branch.backoffDots ?? 0;
     branch.backoffDots = undefined;

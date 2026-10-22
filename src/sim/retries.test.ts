@@ -658,3 +658,27 @@ it.each(["p3-w1", "p3-w2"] as const)(
     }
   },
 );
+
+it("a sibling failure while the caller is paused cancels backoff without leaving a stale backoff branch", () => {
+  const d = retryFixture({ ...naiveRetry, backoffMs: 1000 }, "non-blocking");
+  d.nodes.push({
+    ...d.nodes[2],
+    id: "sibling",
+    props: { concurrency: 100, latencyMs: 100, failureRate: 1, jitter: 0 },
+  });
+  d.edges.push({ id: "sibling", from: "caller", to: "sibling", kind: "sync", props: { travelMs: 10 } });
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(70);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ backingOff: 1 });
+  e.setNodeStatus("caller", "paused");
+  // The sibling's failure decides the paused call; its retry is cancelled while the call stays open.
+  e.step(500);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ retried: 1, backingOff: 0 });
+  e.setNodeStatus("caller", "up");
+  e.step(3000);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 2, backingOff: 0, held: 0 });
+  expect(e.snapshot().nodes.caller.failed).toBe(1);
+  expect(e.snapshot().inSystem).toBe(0);
+});

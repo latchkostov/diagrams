@@ -18,8 +18,10 @@ explicitly and replies with it unless an outage or termination ends it first.
   previously an unclassified failure that upstream callers retried as transient.
 - A backoff releases exactly the dots it charged to its connection's `backingOff`, so a partial dot no longer
   drives the gauge negative across a live scale edit.
+- A backoff cancelled while its caller is paused (a sibling failed the call) leaves the branch `failed`, not a
+  `backoff` with no retry event (R6, found by the new pause and outage property, seed -1141814932).
 
 **Skill download.** The engine change grew the skill ZIP to 835,158 B against the unchanged 835,000 B cap.
 `scripts/lib/spec.json` now keeps arrays of plain values on one line (still one space of indent), which brings
-the ZIP to 834,417 B. Only `node/skill/files.json` changes among the goldens (the `spec.json` hash and size);
+the ZIP to 834,430 B. Only `node/skill/files.json` changes among the goldens (the `spec.json` hash and size);
 no `w2-*` or other golden changes.
