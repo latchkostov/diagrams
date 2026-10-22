@@ -4,6 +4,50 @@ import zone from "../examples/zone-outage-drill.json";
 import serverless from "../examples/aws-serverless-orders.json";
 import { LiveController } from "./controller";
 import { runEndResult } from "./runEndResult";
+import busy from "../examples/scale-on-busy-threads.json";
+import payment from "../examples/slow-payment-provider.json";
+
+it("uses the caller stencil's default wait in a pool run result", () => {
+  const diagram = structuredClone(payment) as DiagramFile;
+  diagram.nodes.find((n) => n.id === "checkout")!.stencil = "azure.logic-apps";
+  const simulation = diagram.simulations!.find((s) => s.id === "pool-40")!;
+  delete simulation.setup!.edges!.pay.caller!.wait;
+  const c = new LiveController(diagram);
+  try {
+    c.selectSimulation(simulation);
+    c.seek(30000);
+    expect(runEndResult(c.getState(), diagram)).toContain("threads freed while waiting for the pool");
+  } finally {
+    c.dispose();
+  }
+});
+
+it.each(["fixed fleet", "source input"])("keeps a %s out of the scaling summary", (kind) => {
+  const diagram = busy as DiagramFile;
+  const c = new LiveController(diagram);
+  try {
+    c.selectSimulation(diagram.simulations![0]);
+    c.seek(50000);
+    const state = c.getState();
+    expect(runEndResult(state, diagram)).toContain("scaled on CPU");
+    const fixed = {
+      ...state,
+      configuration: {
+        ...state.configuration,
+        caller: { ...state.configuration.caller, autoscaling: { mode: "off" } },
+      },
+    };
+    const source = {
+      ...diagram,
+      nodes: diagram.nodes.map((n) => (n.id === "applications" ? { ...n, stencil: "client.user" } : n)),
+    };
+    expect(runEndResult(kind === "fixed fleet" ? fixed : state, kind === "source input" ? source : diagram)).toBe(
+      "No messages lost; other expectations failed",
+    );
+  } finally {
+    c.dispose();
+  }
+});
 
 it("names the largest real loss and does not celebrate a failed zero-loss goal", () => {
   const diagram = zone as DiagramFile;

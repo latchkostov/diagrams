@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport } from "./fixtures";
+import { waitForBackgroundChecks } from "./checks-readiness";
 
 // The request-check store (src/lib/requestCheckCache.ts) is a chunk of its own, loaded with the first check: never
 // at startup or with the canvas. While it downloads, and when its download fails, the editor stays as it was:
@@ -61,8 +62,15 @@ test("a held request-check store keeps the editor usable, and the checks arrive 
     expect(svg).toContain("Decision service");
     expect(store.requested()).toBe(true);
     await page.keyboard.press("Escape");
+    await label.focus();
+    await label.evaluate((el: HTMLInputElement) => el.setSelectionRange(2, 7));
     store.release();
+    await waitForBackgroundChecks(page);
     await expect(page.getByTestId("checks-count")).toBeVisible();
+    await expect(label).toBeFocused();
+    expect(await label.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([2, 7]);
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("inspector-field-sublabel")).toBeFocused();
     expectNoErrors(consoleErrors);
   } finally {
     store.release();
@@ -91,6 +99,7 @@ test("a failed request-check store download offers Retry by keyboard, and the ch
   await expect(page.getByTestId("checks-card")).toBeVisible();
   await expect(canvas).toBeFocused();
   // Retry runs the background check that failed too: its warnings show without an edit.
+  await waitForBackgroundChecks(page);
   await expect(page.getByTestId("checks-summary")).toBeVisible();
   await expect(canvas).toBeFocused();
 });

@@ -155,6 +155,41 @@ for (const disabled of [false, true]) {
   });
 }
 
+test("simulation-only traffic withholds an unverified timeout and applies the next confirmed fix", async ({ page }) => {
+  const d = waitingFixture();
+  d.nodes[0].props = { ratePerSec: 0 };
+  d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
+  d.simulations = [
+    {
+      id: "slow",
+      title: "Slow call",
+      durationMs: 20000,
+      traffic: [{ id: "traffic", node: "source", shape: { kind: "constant", ratePerSec: 120, durationMs: 20000 } }],
+      timeline: [{ atMs: 0, action: { do: "fault", fault: { kind: "slow", node: "partner", factor: 10 } } }],
+    },
+  ];
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1&sim=slow");
+  await pauseClock(page);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(11000);
+  await page.getByTestId("live-play").click();
+  const action = page.getByTestId("trouble-action");
+  await expect(action).toHaveAttribute("data-action", "free-thread");
+  await expect(action).toHaveText("Free the thread while waiting");
+  await action.focus();
+  await action.press("Enter");
+  await page.clock.runFor(400);
+  await expect
+    .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller)
+    .toEqual({ wait: "non-blocking" });
+  expect((await savedDiagram(page)).edges[1].props?.caller).toBeUndefined();
+});
+
 for (const simulation of ["no-timeouts", "timeout-600"]) {
   test(`slow payment provider: ${simulation}`, async ({ page }) => {
     await page.clock.install();

@@ -14,6 +14,8 @@ import { LatencyReadout } from "./LatencyReadout";
 import { ThreadCeiling } from "./ThreadCeiling";
 import type { BadgeProps } from "./NodeBadges";
 import { nodeOutcome } from "./nodeOutcome";
+import { callPolicy } from "../sim/callPolicy";
+import type { EdgeSimProps } from "../sim/types";
 
 const doneLabel: Record<SimRole, string> = {
   source: "Sent",
@@ -201,19 +203,17 @@ export function NodeDetails({
           {pools.map((e) => {
             const calls = live.controller.getState().snapshot.edges[e.id]?.calls;
             const queued = live.controller.queuedCalls(e.id);
-            const caller = e.props?.caller as { poolConnections: number; wait?: string };
+            const caller = callPolicy(node.data.stencil, e.props?.caller as EdgeSimProps["caller"]);
             const values = {
               working: s.threads?.working ?? 0,
               count: calls?.inFlight ?? 0,
               queued,
-              pool: caller.poolConnections,
+              pool: caller.pool!,
               name: diagram.nodes.find((n) => n.id === e.to)?.label ?? e.to,
             };
             return (
               <p key={e.id} data-testid={`pool-detail-${e.id}`}>
-                {caller.wait === "non-blocking"
-                  ? t("threads.poolFreeDetail", values)
-                  : t("threads.poolHeldDetail", values)}
+                {caller.blocking ? t("threads.poolHeldDetail", values) : t("threads.poolFreeDetail", values)}
               </p>
             );
           })}

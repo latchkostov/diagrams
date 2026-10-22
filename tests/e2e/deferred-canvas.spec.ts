@@ -242,6 +242,8 @@ test("cancelling a stalled geometry download releases the canvas and permits ret
     await expect(editor).toBeFocused();
     await page.keyboard.type("Still editable");
     await page.keyboard.press("Escape");
+    await expect(page.getByTestId("annotation-triangle")).toContainText("Still editable");
+    await expect.poll(async () => (await savedDiagram(page)).annotations?.[0].text).toBe("Still editable");
     const response = page.waitForResponse((response) => /\/assets\/extendedGeometry-[^/]+\.js$/.test(response.url()));
     held.resolve(undefined);
     await (await response).finished();
@@ -254,11 +256,20 @@ test("cancelling a stalled geometry download releases the canvas and permits ret
       )
       .toBe("polygon");
     expect(downloads).toBe(0);
+    await page.evaluate(() => {
+      const decode = HTMLImageElement.prototype.decode;
+      HTMLImageElement.prototype.decode = function () {
+        if (this.src.startsWith("data:image/svg+xml"))
+          document.documentElement.dataset.retrySvg = decodeURIComponent(this.src.slice(this.src.indexOf(",") + 1));
+        return decode.call(this);
+      };
+    });
     await page.getByTestId("file-button").click();
     const downloaded = page.waitForEvent("download");
     await page.getByTestId("export-png").click();
     expect(await (await downloaded).failure()).toBeNull();
     expect(downloads).toBe(1);
+    expect(await page.evaluate(() => document.documentElement.dataset.retrySvg)).toContain("Still editable");
   } finally {
     held.resolve(undefined);
   }
