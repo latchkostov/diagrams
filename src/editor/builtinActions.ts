@@ -909,6 +909,14 @@ export function builtinActions(): Action[] {
               },
             ]
           : [];
+        if (effective?.editable && revisionAtLeast(ctx.editor.getDiagram().planning?.revision, "p3-w2")) {
+          waiting.push({
+            type: "item",
+            id: "edge.breaker",
+            label: effective.caller.breaker ? t("resilience.removeBreaker") : t("resilience.addBreaker"),
+            run: () => effective.set({ breaker: effective.caller.breaker ? null : {} }),
+          });
+        }
         return ctx.mode === "live"
           ? waiting
           : [

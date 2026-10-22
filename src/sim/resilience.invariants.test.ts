@@ -6,7 +6,7 @@ import { createEngine } from "./engine";
 import { assertResilienceInvariants } from "./resilienceInvariants";
 import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
 
-it("R1, R2, R5, R6 survive sampled branches, budgets, pools, failures, outage and checkpoint replay", () => {
+it("R1–R3, R5, R6 survive sampled branches, budgets, pools, failures, outage and checkpoint replay", () => {
   fc.assert(
     fc.property(arbResilienceDiagram, ({ diagram, scale }) => {
       const e = createEngine({
@@ -31,6 +31,7 @@ it("R1, R2, R5, R6 survive sampled branches, budgets, pools, failures, outage an
       e.restore(cp);
       expect(advance()).toEqual(expected);
       expect(e.snapshot().edges).toEqual(expected.edges);
+      expect(e.snapshot().inSystem).toBe(0);
     }),
     { numRuns: propertyRuns(30) },
   );
@@ -74,8 +75,10 @@ it("every reply is classified by its own attempt across pause, outage, drain and
         const finish = () => {
           apply(half, transitions.length);
           for (const id of tiers) e.setNodeStatus(id, "up");
-          // Timeouts don't cancel work, so a storm across layers may still be draining; R6 checks it once idle.
-          e.step(30_000);
+          // Require eventual recovery, rather than leaving R6 conditional on an idle state never reached.
+          for (const id of tiers) e.setNodeProps(id, { failureRate: 0 });
+          for (let i = 0; i < 600 && e.snapshot().inSystem; i++) e.step(1000);
+          expect(e.snapshot().inSystem).toBe(0);
           return e.snapshot();
         };
         const half = transitions.length >> 1;

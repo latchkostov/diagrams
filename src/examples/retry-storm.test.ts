@@ -26,12 +26,17 @@ it.each([1, 7, 17, 42, 99])("retry storm outcome bands at seed %s", (seed) => {
     expect(blip.edges.pay.calls!.retried).toBeGreaterThan(0);
     expect(blip.nodes.shop.throughput).toBeGreaterThanOrEqual(270);
     let peak = 0;
+    const transitions: { at: number; state: string }[] = [];
     let recoveredAt: number | undefined;
     let clearedBacklog = 0;
     let storm = blip;
     for (let ms = 3100; ms <= 60000; ms += 100) {
       run.step(100);
       const snapshot = run.engine.snapshot();
+      const breaker = snapshot.edges.pay.breaker?.state;
+      if (breaker && breaker !== transitions.at(-1)?.state) {
+        transitions.push({ at: ms, state: breaker });
+      }
       peak = Math.max(peak, snapshot.nodes.payments.backlog);
       if (ms === 8000) clearedBacklog = snapshot.nodes.payments.backlog;
       if (ms === 15000) storm = snapshot;
@@ -55,12 +60,26 @@ it.each([1, 7, 17, 42, 99])("retry storm outcome bands at seed %s", (seed) => {
           at15: storm.nodes.payments,
           peak,
           recoveredAt,
+          transitions,
           endBacklog: final.nodes.payments.backlog,
           goodput: final.nodes.shop.throughput,
           calls: final.edges.pay.calls,
         }),
       );
-    if (simulation.id === "retry-budget") {
+    if (simulation.id === "circuit-breaker") {
+      expect(recoveredAt).toBeGreaterThanOrEqual(18000);
+      expect(recoveredAt).toBeLessThanOrEqual(18400);
+      expect(peak).toBeGreaterThan(650);
+      expect(peak).toBeLessThan(710);
+      expect(transitions.map((v) => v.state)).toEqual(["closed", "open", "half-open", "open", "half-open", "closed"]);
+      expect(transitions[1].at).toBeGreaterThanOrEqual(5100);
+      expect(transitions[1].at).toBeLessThanOrEqual(5500);
+      expect(final.nodes.payments.backlog).toBeLessThan(100);
+      expect(final.nodes.shop.throughput).toBeGreaterThanOrEqual(270);
+      expect(final.edges.pay.calls!.shortCircuited).toBeGreaterThan(0);
+      expect(final.edges.pay.breaker!.state).toBe("closed");
+      expect(run.state().expectations.every((e) => e.status === "pass")).toBe(true);
+    } else if (simulation.id === "retry-budget") {
       expect(clearedBacklog).toBeGreaterThan(1250);
       expect(clearedBacklog).toBeLessThan(1400);
       expect(peak).toBeGreaterThan(3800);

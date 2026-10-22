@@ -10,7 +10,7 @@ import { confirmedThreadFix } from "../live/threadFixPlan";
 import { threadCheckFix } from "./requestFindings";
 import { planScaling } from "../sim/scalingPlanner";
 import { LiveController } from "../live/controller";
-import { TroubleTracker } from "../live/useObservedTrouble";
+import { TroubleTracker } from "../live/troubleTracker";
 import { createEditor, type EditorDeps } from "../editor/useEditor";
 import { toFlow } from "../canvas/convert";
 import type { ReactFlowInstance } from "@xyflow/react";

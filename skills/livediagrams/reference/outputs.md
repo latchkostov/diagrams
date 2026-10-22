@@ -1,34 +1,30 @@
 # Outputs: what to hand back
 
-Every output starts from the same validated, laid-out `<name>.diagram.json`. Ask which one the user wants unless
-they already said, and offer them in this order.
+Start with a validated, laid-out `<name>.diagram.json`. Ask which output the user wants unless
+already specified; offer these in order:
 
-| Output                | Who can open it               | Needs the internet | Editable       |
-| --------------------- | ----------------------------- | ------------------ | -------------- |
-| Interactive HTML file | only people who have the file | no                 | no (read-only) |
-| …with a password      | only people with the password | no                 | no (read-only) |
-| Diagram file          | only people who have the file | to open the app    | yes            |
-| Image (PNG or SVG)    | only people who have the file | to open the app    | no             |
-| Share link            | **anyone who has the link**   | yes                | yes            |
-
-A **link with a password** (anyone with the link _and_ the password can open it) is made in the app only, never by a
-script here: open the diagram file at livediagrams.dev and use **File > Share… > Link with password…**. The app's
-Share… lists its ways out safest first too, with the public ones (the share link and a public embed) last.
+| Output                  | Who can open it                   | Internet        | Editable |
+| ----------------------- | --------------------------------- | --------------- | -------- |
+| Interactive HTML        | anyone with the file              | no              | no       |
+| Password-protected HTML | anyone with the file and password | no              | no       |
+| Diagram file            | anyone with the file              | to open the app | yes      |
+| PNG or SVG              | anyone with the file              | to open the app | no       |
+| Share link              | **anyone with the link**          | yes             | yes      |
 
 ## Choosing for the user
 
-- **Work and company diagrams.** If the user mentions their work, employer, team, a client or customer, or the
-  system sounds internal (internal service names, real hosts, account or cluster names), recommend the
-  Interactive HTML file or the diagram file. Set `"private": true` in the diagram: the app then keeps it on the
-  device when it's opened (no share links, no cloud saves, no AI tools). Offer a password on the HTML file too
-  (below): files get forwarded, and with one nobody can read it without the password. If they want a link anyway, the safer one is a link
-  with a password, made in the app (above); a Private diagram gets no link at all.
-- **Private diagrams** (`"private": true`) never get a share link. `share-link.mjs` refuses them; don't build one by
-  hand either. The HTML file and the diagram file are fine: handing over a file is the user's own choice.
-- **Public or personal diagrams** (a blog post, a tutorial, an open-source project): any output is fine. A share link
-  is the quickest to pass around.
-- **Several at once** is fine: the diagram file to keep editing, plus the HTML file to send to the team.
-- If you can't ask (no one to answer), make the HTML file and say how to get the others.
+For work, employer, team, client or customer systems, or internal names, hosts, accounts or clusters,
+recommend HTML or a diagram file. Set `"private": true`: the app keeps it on the device, with no
+share links, cloud saves or AI tools. Offer HTML encryption because files get forwarded.
+Private diagrams never get share links, including hand-built ones; `share-link.mjs` refuses them.
+Files remain the user's choice.
+
+For public or personal diagrams, any output is fine. Several outputs are fine too: a diagram file
+for editing and HTML for the team. If nobody can answer, make HTML and explain the alternatives.
+
+A link with a password is made **in the app only**: open the diagram and use
+**File > Share… > Link with password…**. Anyone with both can open it; a Private diagram gets no link.
+The app lists public links and embeds last.
 
 ## Interactive HTML file
 
@@ -36,70 +32,60 @@ Share… lists its ways out safest first too, with the public ones (the share li
 node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
 ```
 
-One self-contained `.html` file, the same file as the app's **File > Export as > Interactive HTML…**: the diagram
-read-only (pan, zoom, fit) with live playback of its simulations (pick one, play, pause, speed, trace). It holds the
-viewer, the diagram, its simulations, the icons it uses and the fonts, under a strict Content-Security-Policy:
-**it makes no network requests at all**, works offline and from disk, and stores nothing in the browser. It's
-about 1.2 MB.
+This is the app's **File > Export as > Interactive HTML…** output: one read-only file with pan,
+zoom, fit and simulation playback, selection, pause, speed and trace. It bundles the diagram,
+viewer, simulations, used icons and fonts under strict CSP. It makes **no network requests**,
+works offline/from disk and stores nothing in the browser. The script also works offline.
+`scripts/lib/` contains the generated viewer and icons; don't read these large files.
 
-- It validates the diagram first, like `validate.mjs`, and refuses to write a file the viewer wouldn't open.
-- `--out`: a file ending in `.html`, or a folder for `<title>.html`. By default it writes `<title>.html` beside the
-  diagram.
-- It never replaces a file: if the name is taken it writes the next free one (`<title> (2).html`) and says so on
-  stderr. A `--out` file that exists is refused; add `--force` to replace it.
-- `--theme`: `light` (default) or `dark`.
-- `--banner`: a line across the top, such as `"Confidential: internal use only"`. Add one for work diagrams.
-- `--title`: the page's title and file name (the diagram's title by default).
-- `--sim <id>`: the simulation that plays when the file opens (the first one by default). `--no-autoplay` opens the
-  static diagram instead. Every simulation is in the file either way.
-- The script itself works offline: the viewer and the icons are bundled in `scripts/lib/`. Don't read those files;
-  they're large and generated.
+- Validation runs first; the script refuses a diagram the viewer cannot open.
+- `--out`: an HTML file or a folder; default `<title>.html` beside the diagram. Taken default names
+  become `<title> (2).html`, with a stderr notice. An explicit existing file requires `--force`.
+- `--theme`: light (default) or dark. `--banner`: a top line; use `"Confidential: internal use only"`
+  for work. `--title`: overrides the diagram title for the page and filename.
+- `--sim <id>`: initially selected simulation (default first). `--no-autoplay`: open static.
+  Every simulation remains included.
 
-Tell the user where the file is and that only people who have it can open it, so they should share it where their
-team already controls access (SharePoint, Confluence, an intranet, a private repository) or open it from disk. It
-opens in any modern browser.
+Give the path and say anyone with the file can open it. Recommend sharing where the team already
+controls access: SharePoint, Confluence, an intranet or private repository. Any modern browser
+can open the file from disk.
 
 ### A password on the file
 
-`--password` encrypts the file the way the app's **Require a password** does (and its links with a password: AES-256-GCM,
-the key from PBKDF2-SHA-256 at 600,000 iterations). Nothing of the diagram is readable without the password, not
-even its title: the file is named `Diagram (password protected) <random>.html`, a few random letters so two never collide. Opened, it asks for the password, says when
-it's wrong, and decrypts in the browser, offline. It's still one file that makes no network requests.
+`--password` uses the app's AES-256-GCM encryption with PBKDF2-SHA-256 at 600,000 iterations.
+Nothing, including the title, is readable without the password. The filename is
+`Diagram (password protected) <random>.html` to avoid collisions. The file asks for the password,
+reports wrong passwords and decrypts offline in the browser without network access.
 
-The password never goes on the command line: shell history, the process list and your transcript would keep it.
-The script refuses `--password=…` and a value after `--password`. It reads the password from:
+Never ask for a password in chat, invent one or put it in a command: transcripts, shell history
+and process lists retain it. The script refuses `--password=…` and a following password argument.
+It reads `LIVEDIAGRAMS_HTML_PASSWORD` when already set by the user; otherwise a terminal prompt
+asks twice without echoing. Only run it yourself when that environment variable is already set;
+never set or echo it. Otherwise give the user:
 
-1. `LIVEDIAGRAMS_HTML_PASSWORD`, if it's set in the environment the script runs in; else
-2. a prompt in the terminal that doesn't echo what's typed, asked twice (a typo can't be undone).
+```sh
+node <skill folder>/scripts/export-html.mjs <file> --password
+```
 
-So, for a password:
-
-- **Don't ask for it in the chat** and don't make one up. Give the user the command to run in their own terminal:
-  `node <skill folder>/scripts/export-html.mjs <file> --password`. It asks them for it.
-- Run it yourself only when `LIVEDIAGRAMS_HTML_PASSWORD` is already set where you run commands (the user set it).
-  Never set it yourself or echo it.
-- At least 8 characters; several random words work well. The script warns about one that's easy to guess.
-- Tell the user to send the password separately from the file, and that it can't be recovered: if it's lost, they
-  export again. Anyone with the file and the password can open it.
+Require at least 8 characters; several random words are good. Weak passwords produce a warning.
+Tell the user to send the password separately. It cannot be recovered; if lost, export again.
+Anyone with the file and password can open it.
 
 ## Diagram file
 
-The `.diagram.json` you wrote. It's lossless (simulations included) and the way to keep editing: at
-[livediagrams.dev](https://www.livediagrams.dev), **File > Open…** (or drop the file on the page). The app reads it
-in the browser; nothing is uploaded. Give the user the path.
+Give the `.diagram.json` path. It preserves simulations and remains editable. Open at
+[livediagrams.dev](https://www.livediagrams.dev) using **File > Open…** or drop it onto the page.
+The browser reads it; nothing is uploaded.
 
 ## Image
 
-No script here renders an image, so don't make one up (no hand-drawn SVG or ASCII art passed off as the export).
-Tell the user how to export it from the app:
+No script renders images. Never pass off hand-drawn SVG or ASCII art as an export. Explain:
 
-1. Open the diagram file at [livediagrams.dev](https://www.livediagrams.dev) with **File > Open…** (read in the
-   browser, not uploaded).
-2. **File > Export PNG** for a 2× PNG, or **File > Export as > Image…** for PNG or SVG with a size and a transparent
-   background.
+1. Open the diagram at [livediagrams.dev](https://www.livediagrams.dev) with **File > Open…**.
+2. Use **File > Export PNG** for a 2× PNG, or **File > Export as > Image…** for PNG/SVG, sizing
+   and transparency.
 
-If you have a browser tool, you can open the Interactive HTML file from disk and take a screenshot instead: say it's
-a screenshot.
+A browser tool can screenshot an Interactive HTML file from disk; label that output a screenshot.
 
 ## Share link
 
@@ -107,11 +93,8 @@ a screenshot.
 node scripts/share-link.mjs <file> [--base <url>]
 ```
 
-It prints a `https://www.livediagrams.dev/#d=…` link. The whole diagram travels in the link's `#` fragment, which
-browsers never send to a server, so nothing is uploaded. But **anyone who has the link can open the diagram**: chat
-history, email and link previews keep it. Say so when you give it.
-
-- Give it as a Markdown link titled with the diagram's title.
-- If the script warns that the link is over 8,000 characters, chat apps may cut it off: offer the diagram file
-  instead.
-- It refuses a diagram with errors and a private diagram.
+It prints `https://www.livediagrams.dev/#d=…`. The diagram is in the URL fragment, which browsers
+never send to servers. Nothing is uploaded, but **anyone with the link can open it**; chat history,
+email and previews retain it. Say so, and give a Markdown link titled with the diagram's title.
+If the script warns about exceeding 8,000 characters, offer the diagram file: chat apps may
+truncate links. Invalid and Private diagrams are refused.

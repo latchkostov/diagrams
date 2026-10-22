@@ -29,6 +29,7 @@ export const arbResilienceDiagram = fc
           ...edge.props,
           caller: {
             ...caller,
+            breaker: failureRate >= 0.5 ? { minimumCalls: 2, openMs: 200, halfOpenCalls: 3 } : undefined,
             deadlineMs: base.deadlineMs ?? 200,
             retry: { ...policy, retryOn: ["throttled", "transient", "timeout"] } satisfies RetryPolicy,
           },

@@ -10,7 +10,10 @@ import type { TroubleAction } from "./observedTrouble";
 // callout's own lazy chunk (src/live/TroubleCallout.tsx imports it and hands it to the click), so the live view never
 // downloads it until a callout is on screen, and it is always there, synchronously, when its button is pressed.
 
-export type ThreadFixAction = Extract<TroubleAction, { kind: "free-thread" | "add-timeout" | "scale-threads" }>;
+export type ThreadFixAction = Extract<
+  TroubleAction,
+  { kind: "free-thread" | "add-timeout" | "scale-threads" | "resilience" }
+>;
 
 export interface ThreadFixContext {
   editor: EditorApi;
@@ -30,7 +33,12 @@ export const applyThreadFix: ApplyThreadFix = ({ editor, controller, interaction
     editor.undo();
     interaction?.dispatch({ type: "callout.closed", hadFocus, undo: true });
   };
-  if (action.kind === "free-thread") {
+  if (action.kind === "resilience") {
+    const effective = effectiveCallerPolicy(editor, action.edge);
+    if (!effective?.editable) return;
+    effective.set(action.caller);
+    sayThreadFix(undo, label, effective.simulation);
+  } else if (action.kind === "free-thread") {
     const effective = effectiveCallerPolicy(editor, action.edge);
     if (!effective?.editable) return;
     effective.set({ wait: "non-blocking" });

@@ -1,0 +1,76 @@
+import { Dropdown } from "../../components/Dropdown";
+import { Disclosure } from "./Disclosure";
+import { Field } from "./fields";
+import { SimInput } from "./SimulationFields";
+import { t } from "../../i18n";
+import type { BreakerPolicy } from "../../model/admission";
+
+/** Ships with Request fields; neither the canvas nor Live downloads these controls. */
+export function BreakerFields({
+  breaker,
+  set,
+}: {
+  breaker?: BreakerPolicy | null;
+  set: (breaker: BreakerPolicy | null) => void;
+}) {
+  return (
+    <>
+      <Field label={t("resilience.breaker")} hint={t("resilience.breakerHint")}>
+        <Dropdown
+          testId="inspector-field-breaker"
+          aria-label={t("resilience.breaker")}
+          value={breaker ? "on" : "off"}
+          items={[
+            { value: "off", label: t("resilience.off") },
+            { value: "on", label: t("resilience.on") },
+          ]}
+          onChange={(value) => set(value === "on" ? {} : null)}
+        />
+      </Field>
+      {breaker && (
+        <Disclosure id="breaker-details" title={t("resilience.breakerDetails")}>
+          <p className="insp-note">{t("resilience.breakerDefaults")}</p>
+          {(
+            [
+              ["failurePercent", t("resilience.failurePercent"), 50, 1, 100, 1, "%"],
+              ["windowMs", t("resilience.windowMs"), 10000, 1000, 60000, 1000, "ms"],
+              ["minimumCalls", t("resilience.minimumCalls"), 20, 1, 1000000, 1, ""],
+              ["openMs", t("resilience.openMs"), 5000, 0, 600000, 1, "ms"],
+              ["halfOpenCalls", t("resilience.halfOpenCalls"), 5, 1, 10000, 1, ""],
+              ["slowCallMs", t("resilience.slowCallMs"), undefined, 0, 600000, 1, "ms"],
+              ["slowPercent", t("resilience.slowPercent"), 100, 1, 100, 1, "%"],
+            ] as const
+          ).map(([key, label, fallback, min, max, step, unit]) => (
+            <SimInput
+              key={key}
+              name={`breaker-${key}`}
+              integer
+              field={{
+                label,
+                kind: "number",
+                min,
+                max,
+                step,
+                unit,
+                placeholder: fallback === undefined ? t("resilience.off") : String(fallback),
+                hint: "",
+              }}
+              value={breaker[key]}
+              onChange={(v) => {
+                if (
+                  v === undefined ||
+                  (typeof v === "number" &&
+                    v >= min &&
+                    v <= max &&
+                    Number.isInteger(v) &&
+                    (key !== "windowMs" || v % 1000 === 0))
+                )
+                  set({ ...breaker, [key]: v });
+              }}
+            />
+          ))}
+        </Disclosure>
+      )}
+    </>
+  );
+}

@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 import payment from "../examples/slow-payment-provider.json";
 import type { DiagramFile } from "../model/types";
 import { LiveController } from "./controller";
-import { TroubleTracker } from "./useObservedTrouble";
+import { TroubleTracker } from "./troubleTracker";
 
 // A thread-exhaustion callout shows Events until the checks worker confirms a fix: the worker starts when live view
 // starts watching (requests that wait), so its download and start-up don't delay the first confirmed fix.

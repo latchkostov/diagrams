@@ -305,6 +305,9 @@ describe("production bundle split", () => {
       ["fault step editor", /[/\\]src[/\\]live[/\\]FaultStep\.tsx$/],
       ["drill presets", /[/\\]src[/\\]live[/\\]faults\.ts$/],
       ["simulation warnings", /[/\\]src[/\\]live[/\\]validate\.ts$/],
+      ["trouble detection and messages", /[/\\]src[/\\]live[/\\](?:troubleTracker|observedTrouble)\.ts$/],
+      ["breaker inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]BreakerFields\.tsx$/],
+      ["call pill formatting", /[/\\]src[/\\]live[/\\]CallPills\.tsx$/],
     ];
     expect(found(bundled(closure([live!])), editor)).toEqual([]);
     // Keep the editor available on demand, rather than deleting it to satisfy the split.

@@ -4,7 +4,7 @@ import payment from "../examples/slow-payment-provider.json";
 import { TroubleWatcher, type TroubleAction } from "./observedTrouble";
 import type { ThreadFixRequest } from "./threadFixPlan";
 import { LiveController } from "./controller";
-import { TroubleTracker } from "./useObservedTrouble";
+import { TroubleTracker } from "./troubleTracker";
 
 // PR #225 delta review: outstanding fix verifications stay bounded. One request may be in flight per tracker; the
 // latest revision goes next, and nothing in between ever reaches the worker.

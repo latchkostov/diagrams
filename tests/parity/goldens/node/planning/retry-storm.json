@@ -1,5 +1,5 @@
 {
-  "autoScale": { "freePlay": 5, "three-quick-retries": 5, "jittered-backoff": 5, "retry-budget": 5 },
+  "autoScale": { "freePlay": 5, "three-quick-retries": 5, "jittered-backoff": 5, "retry-budget": 5, "circuit-breaker": 5 },
   "brokerAssignments": { "brokers": {}, "consumers": {} },
   "edit": {
     "configured": true,
@@ -168,7 +168,8 @@
   "simulations": {
     "three-quick-retries": { "configured": "(same as edit)", "simulation": "three-quick-retries", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
     "jittered-backoff": { "configured": "(same as edit)", "simulation": "jittered-backoff", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
-    "retry-budget": { "configured": "(same as edit)", "simulation": "retry-budget", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
+    "retry-budget": { "configured": "(same as edit)", "simulation": "retry-budget", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "circuit-breaker": { "configured": "(same as edit)", "simulation": "circuit-breaker", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
   },
   "capacity": {
     "freePlay": {
@@ -286,6 +287,21 @@
       }
     },
     "retry-budget": {
+      "tone": "warn",
+      "top": "orders",
+      "headline": "Nobody reads Orders",
+      "detail": "No readers. Add a reader.",
+      "fix": null,
+      "addConsumer": "orders",
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "300/s · no limit", { "modeled": false }],
+        "checkout": ["ok", "1% · 300/s of 27k/s"],
+        "payments": ["ok", "50% · 300/s of 600/s"],
+        "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+      }
+    },
+    "circuit-breaker": {
       "tone": "warn",
       "top": "orders",
       "headline": "Nobody reads Orders",

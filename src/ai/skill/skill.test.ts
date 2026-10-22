@@ -84,7 +84,7 @@ function unplaced(d: object): Record<string, unknown> {
 }
 
 describe("generated skill files", () => {
-  it("spec.json keeps lists of plain values on one line and parses back to the same data", () => {
+  it("spec.json keeps machine-read data compact and parses back to the same data", () => {
     const value = {
       plain: ["a", 1, true, null, "comma, and ]bracket"],
       nested: [["x"], { k: ["y", "z"] }],
@@ -93,7 +93,7 @@ describe("generated skill files", () => {
     };
     const text = specJson(value);
     expect(JSON.parse(text)).toEqual(value);
-    expect(text).toContain('"k": ["y","z"]');
+    expect(text).toBe(JSON.stringify(value) + "\n");
     const spec = readFileSync(path.join(root, SKILL_DIR, "scripts/lib/spec.json"), "utf8");
     expect(specJson(JSON.parse(spec))).toBe(spec);
   });

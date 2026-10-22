@@ -9,7 +9,8 @@ import type { EditorApi } from "../../editor/types";
 import { notify } from "../../interop/ui/toast";
 import { addConsumer, addDeadLetterQueue } from "../addConsumer";
 import { capacitySaveCandidate, capacitySaveError } from "../capacityPersistence";
-import { troubleLeads, type Trouble, type TroubleAction } from "../observedTrouble";
+import type { Trouble, TroubleAction } from "../observedTrouble";
+import { troubleLeads } from "../troubleLeads";
 import { writeLiveParams } from "../urlParams";
 import { useObservedTrouble } from "../useObservedTrouble";
 
@@ -107,7 +108,13 @@ export function useLiveFixes({
   // ---------------------------------------------------------------- what playback shows going wrong
 
   // The run's trouble the plan can't see (a node down, messages lost, a lag that keeps rising), for the callout.
-  const { trouble: observed, dismiss: dismissTrouble, shown: troubleShown } = useObservedTrouble(controller);
+  const {
+    trouble: observed,
+    dismiss: dismissTrouble,
+    shown: troubleShown,
+    failed: troubleDownloadFailed,
+    retry: retryTroubleDownload,
+  } = useObservedTrouble(controller);
   const [dismissedFault, setDismissedFault] = useState<string | null>(null);
   const top = capacity?.top;
   const capacityFault: Trouble | undefined =
@@ -145,7 +152,12 @@ export function useLiveFixes({
           flash(t("liveSession.addedDeadLetter"));
           revealAdded();
         }
-      } else if (action.kind === "free-thread" || action.kind === "add-timeout" || action.kind === "scale-threads") {
+      } else if (
+        action.kind === "free-thread" ||
+        action.kind === "add-timeout" ||
+        action.kind === "scale-threads" ||
+        action.kind === "resilience"
+      ) {
         // The callout's chunk brought the code its button runs (src/live/threadFixes.ts).
         if (editor && applyFix) applyFix({ editor, controller, interaction }, action, label);
       } else if (action.kind === "events") showEvents(action.node);
@@ -177,13 +189,14 @@ export function useLiveFixes({
   // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
   const troubleActionHere = (t: Trouble) =>
     !presenting &&
-    ((t.action.kind !== "free-thread" && t.action.kind !== "add-timeout") ||
+    ((t.action.kind !== "free-thread" && t.action.kind !== "add-timeout" && t.action.kind !== "resilience") ||
       !!(editor && effectiveCallerPolicy(editor, t.action.edge)?.editable)) &&
     (editor ||
       (t.action.kind !== "add-consumer" &&
         t.action.kind !== "add-dlq" &&
         t.action.kind !== "free-thread" &&
         t.action.kind !== "scale-threads" &&
+        t.action.kind !== "resilience" &&
         t.action.kind !== "add-timeout"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
@@ -213,6 +226,8 @@ export function useLiveFixes({
     addReader,
     runTroubleAction,
     troubleOnScreen,
+    troubleDownloadFailed,
+    retryTroubleDownload,
     troubleAnnouncement,
     troubleActionHere,
     troubleShown,

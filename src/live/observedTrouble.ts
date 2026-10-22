@@ -1,3 +1,4 @@
+import { revisionAtLeast } from "../model/revisions";
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { brokerFeeds, compileTopology, deadLetterRoutes, type CompiledGroup } from "../sim/topology";
@@ -22,8 +23,14 @@ import { requestResponseMs } from "../sim/timing";
 export const WINDOW_MS = 10_000;
 const SAMPLE_MS = 1_000;
 
-export type TroubleKind = "down" | "dropping" | "threads-exhausted" | "lag";
+export type TroubleKind = "down" | "retry-storm" | "dropping" | "threads-exhausted" | "lag";
 export type TroubleAction =
+  | {
+      kind: "resilience";
+      edge: string;
+      step: import("./resilienceFixPlan").ResilienceStep;
+      caller: NonNullable<EdgeSimProps["caller"]>;
+    }
   | {
       kind: "scale-threads";
       changes: { node: string; props: Record<string, unknown> }[];
@@ -70,15 +77,25 @@ export interface WatchedNode {
 }
 export interface WatchedFrame {
   faults?: readonly Fault[];
+  lastFaultClear?: number;
   expectedTimeouts?: ReadonlySet<string>;
   time: number;
   /** Real messages per dot (default 1). */
   scale?: number;
   nodes: Record<string, WatchedNode>;
-  edges?: Record<string, { calls?: { timedOut: number } }>;
+  edges?: Record<
+    string,
+    {
+      calls?: Pick<NonNullable<import("../sim/types").EdgeSimState["calls"]>, "timedOut"> & {
+        failed?: number;
+      } & Partial<import("../sim/types").RetryCallCounts>;
+    }
+  >;
 }
 
 interface Sample {
+  failedCalls: Map<string, number>;
+  fault: boolean;
   exhausted: Map<string, { edge: string; count: number }>;
   time: number;
   lag: Map<string, number>;
@@ -89,7 +106,13 @@ interface Sample {
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["queue", "topic", "stream"]);
 const maxLag = (n: WatchedNode) => Math.max(n.backlog ?? 0, ...Object.values(n.lag), 0);
-const KIND_ORDER: Record<TroubleKind, number> = { down: 0, "threads-exhausted": 1, dropping: 2, lag: 3 };
+const KIND_ORDER: Record<TroubleKind, number> = {
+  down: 0,
+  "retry-storm": 1,
+  "threads-exhausted": 2,
+  dropping: 3,
+  lag: 4,
+};
 
 /**
  * Samples snapshots about once a simulated second and reports the trouble they show, worst first: down, then
@@ -99,11 +122,15 @@ const KIND_ORDER: Record<TroubleKind, number> = { down: 0, "threads-exhausted": 
  */
 export class TroubleWatcher {
   private samples: Sample[] = [];
+  private fault = false;
+  private cleared?: number;
   private last: { statuses: string; losses: string; diagram: DiagramFile; troubles: Trouble[] } | undefined;
 
   reset(): void {
     this.samples = [];
     this.last = undefined;
+    this.fault = false;
+    this.cleared = undefined;
   }
 
   /** Whether the history spans the window: until then a trend can't be seen, so its absence proves nothing. */
@@ -117,7 +144,14 @@ export class TroubleWatcher {
     const last = this.samples.at(-1);
     // A jump (a seek, a restart, a stalled tab) isn't a trend: start the history again.
     const jumped = !!last && (frame.time < last.time || frame.time - last.time > 3 * SAMPLE_MS);
-    if (jumped) this.samples = [];
+    if (jumped) {
+      this.samples = [];
+      this.fault = false;
+      this.cleared = undefined;
+    }
+    if (this.fault && !frame.faults?.length) this.cleared = frame.time;
+    this.fault = !!frame.faults?.length;
+    frame = { ...frame, lastFaultClear: this.cleared };
     let sampled = false;
     if (!last || jumped || frame.time - last.time >= SAMPLE_MS) {
       const lag = new Map<string, number>(),
@@ -135,7 +169,21 @@ export class TroubleWatcher {
         if (n.processed !== undefined)
           arrivals.set(id, n.processed + (n.failed ?? 0) + (n.inFlight ?? 0) + (n.backlog ?? 0));
       }
-      this.samples.push({ time: frame.time, lag, dropped, outageDropped, exhausted, arrivals });
+      this.samples.push({
+        time: frame.time,
+        lag,
+        dropped,
+        outageDropped,
+        exhausted,
+        arrivals,
+        failedCalls: new Map(
+          Object.entries(frame.edges ?? {}).map(([id, e]) => [
+            id,
+            (e.calls?.failed ?? 0) - (e.calls?.shortCircuited ?? 0),
+          ]),
+        ),
+        fault: !!frame.faults?.length,
+      });
       while (this.samples.length > 2 && this.samples[1].time <= frame.time - WINDOW_MS) this.samples.shift();
       sampled = true;
     }
@@ -180,6 +228,7 @@ interface Shape {
   incomingTimeouts: Map<string, string[]>;
   outgoingCalls: Map<string, string[]>;
   cyclic: Set<string>;
+  resilience: boolean;
 }
 
 const shapes = new WeakMap<DiagramFile, Shape>();
@@ -241,6 +290,7 @@ function shapeOf(d: DiagramFile): Shape {
         memberships.set(member, list);
       }
   const shape: Shape = {
+    resilience: revisionAtLeast(d.planning?.revision, "p3-w2"),
     order: new Map(d.nodes.map((n, i) => [n.id, i])),
     name: (id) => labels.get(id) ?? id,
     role,
@@ -276,6 +326,38 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
   const spanned = oldest && frame.time - oldest.time >= WINDOW_MS - SAMPLE_MS;
   // Lag must rise by more than noise: a few dots at this scale, and a fifth of what was there.
   const threshold = (before: number) => Math.max(10, 3 * (frame.scale ?? 1), 0.2 * before);
+
+  if (d.resilience)
+    for (const [edge, value] of Object.entries(frame.edges ?? {})) {
+      const c = value.calls,
+        target = d.targets.get(edge),
+        caller = d.sources.get(edge);
+      if (!c || !target || !caller || !c.windowRequests || !c.windowAttempts) continue;
+      const ratio = c.windowAttempts / c.windowRequests;
+      const failed = (c.failed ?? 0) - (c.shortCircuited ?? 0) - (oldest?.failedCalls.get(edge) ?? 0);
+      const rising = (frame.nodes[target]?.backlog ?? 0) > (recent?.lag.get(target) ?? 0);
+      const clear = frame.lastFaultClear;
+      const stuck = clear !== undefined && !frame.faults?.length && (c.windowSucceeded ?? 0) < 0.5 * c.windowRequests;
+      if (ratio < 2 || failed <= 0.5 * c.windowAttempts || (!rising && !stuck)) continue;
+      const headline = t("resilience.storm", { name: name(target) });
+      const detail = t("resilience.stormDetail", {
+        caller: name(caller),
+        ratio: ratio.toFixed(1),
+        percent: Math.round((100 * failed) / c.windowAttempts),
+      });
+      out.push({
+        key: `retry-storm:${edge}`,
+        kind: "retry-storm",
+        node: caller,
+        headline,
+        announce: headline,
+        detail:
+          stuck && frame.time - clear! > 5000
+            ? t("resilience.stormStuck", { detail, seconds: Math.floor((frame.time - clear!) / 1000) })
+            : detail,
+        action: { kind: "resilience", edge, step: "breaker", caller: { breaker: {} } },
+      });
+    }
 
   for (const [id, n] of Object.entries(frame.nodes)) {
     const r = d.role.get(id);
@@ -472,18 +554,4 @@ export function pickTrouble(current: readonly Trouble[], memory: TroubleMemory, 
   return selectTrouble(current, memory);
 }
 
-/**
- * Whether the trouble leads the capacity callout when both could show: always, unless it\'s a rising lag the plan
- * already diagnoses with its own action: the same broker (nobody reads it, or it\'s the bottleneck) or one of the
- * consumers behind it over capacity. An unrelated overload elsewhere never hides it.
- */
-export function troubleLeads(
-  trouble: Trouble,
-  view: { tone: string; top?: { id: string }; addConsumer?: string } | null,
-): boolean {
-  if (!view || trouble.kind !== "lag") return true;
-  if (view.addConsumer === trouble.node) return false;
-  const top = view.top?.id;
-  const overloaded = view.tone === "over" || view.tone === "hot";
-  return !(overloaded && !!top && (top === trouble.node || !!trouble.related?.includes(top)));
-}
+export { troubleLeads } from "./troubleLeads";

@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "00750f7a6872b42e6cb10d799a31040f67883b06e15f8ef98d0512d8f52ca8ee", "bytes": 12585 },
+  "file": { "sha256": "86956ab63565b24f53ad54245b3a7b942ae2a40aea253d37b2e111b23635913b", "bytes": 12574 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -60,8 +60,8 @@
       ],
       "simulations": [
         {
-          "id": "retry-budget",
-          "title": "A retry budget",
+          "id": "circuit-breaker",
+          "title": "A circuit breaker",
           "seed": 7,
           "scale": 1,
           "durationMs": 60000,
@@ -77,7 +77,8 @@
                     "maxBackoffMs": 1000,
                     "jitter": 1,
                     "budget": { "percent": 20, "minPerSec": 10 }
-                  }
+                  },
+                  "breaker": {}
                 }
               }
             }
@@ -96,19 +97,19 @@
             { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
             {
               "atMs": 1200,
-              "action": { "do": "note", "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "Retries absorb a brief blip. The circuit breaker watches settled attempts.", "focus": ["payments", "checkout"] }
             },
             {
               "atMs": 3500,
-              "action": { "do": "note", "text": "The budget limits extra attempts over ten seconds, instead of retrying every timeout twice.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "The slowdown pushes calls past their timeout. Once failures fill the window, the breaker opens and fails fast.", "focus": ["payments", "checkout"] }
             },
             {
               "atMs": 9000,
-              "action": { "do": "note", "text": "At 8 s, Payments is fast again with about 1,300 queued requests still to finish.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "Payments is fast again. The open breaker gives its queue room to drain before testing five calls.", "focus": ["payments", "checkout"] }
             },
             {
               "atMs": 15000,
-              "action": { "do": "note", "text": "About 3,000 requests remain queued. The budget lets abandoned work drain; Shop recovers around 38 s.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "The breaker tests a few calls after each pause. If they still fail, it opens again so the queue can keep draining.", "focus": ["payments", "checkout"] }
             }
           ],
           "expectations": [
@@ -137,7 +138,7 @@
               "when": "end"
             }
           ],
-          "description": "A 20% budget limits extra attempts over ten seconds. Queued work peaks around 4,000; Shop recovers to at least 270/s with fewer than 100 queued around 38 s. All chips pass at 60 s."
+          "description": "A circuit breaker fails fast while Payments drains abandoned work, then tests recovery with five calls."
         }
       ]
     },

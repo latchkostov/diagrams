@@ -4,7 +4,7 @@ import payment from "../examples/slow-payment-provider.json";
 import type { TroubleAction } from "./observedTrouble";
 import type { ThreadFixRequest } from "./threadFixPlan";
 import { LiveController } from "./controller";
-import { TroubleTracker } from "./useObservedTrouble";
+import { TroubleTracker } from "./troubleTracker";
 
 const diagram: DiagramFile = {
   format: "diagrams/v1",

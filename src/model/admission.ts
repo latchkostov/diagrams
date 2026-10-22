@@ -41,3 +41,14 @@ export interface RetryPolicy {
   retryOn: ("throttled" | "transient" | "timeout")[];
   idempotent?: boolean;
 }
+
+/** One connection, shared across replicas. Shortened resilience4j defaults suit short lessons. */
+export interface BreakerPolicy {
+  failurePercent?: number;
+  slowCallMs?: number;
+  slowPercent?: number;
+  windowMs?: number;
+  minimumCalls?: number;
+  openMs?: number;
+  halfOpenCalls?: number;
+}

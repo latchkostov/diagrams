@@ -10,6 +10,7 @@ import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
 import { BottleneckCallout } from "./lazyBottleneckCallout";
 import { lazyComponent } from "../lib/lazyLoad";
+import { TroubleDownloadError } from "./TroubleDownloadError";
 const TroubleCallout = lazyComponent(() => import("./TroubleCallout").then((m) => m.TroubleCallout));
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";
@@ -177,6 +178,8 @@ export function LiveSession({
     addReader,
     runTroubleAction,
     troubleOnScreen,
+    troubleDownloadFailed,
+    retryTroubleDownload,
     troubleAnnouncement,
     troubleActionHere,
     troubleShown,
@@ -303,7 +306,9 @@ export function LiveSession({
         )}
         {/* Mounted empty first, so the cause is heard when it's written; it changes only with the cause. */}
         <span ref={troubleAnnouncement} className="sr-only" role="status" data-testid="trouble-announce" />
-        {troubleOnScreen ? (
+        {troubleDownloadFailed && !capturing && !presenting && !panel.open ? (
+          <TroubleDownloadError retry={retryTroubleDownload} />
+        ) : troubleOnScreen ? (
           <TroubleCallout
             trouble={troubleOnScreen}
             onShown={troubleShown}

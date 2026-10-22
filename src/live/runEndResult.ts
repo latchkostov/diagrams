@@ -10,6 +10,38 @@ import { stencilRole } from "../stencils/roles";
 export function runEndResult(state: LiveState, diagram: DiagramFile): string | undefined {
   if (!state.run?.done) return;
   const effective = simulationEdges(diagram, state.running ?? undefined);
+  const resilience = effective.edges.find(
+    (e) =>
+      (e.props?.caller as EdgeSimProps["caller"])?.retry && (state.snapshot.edges[e.id]?.calls?.windowRetried ?? 0) > 0,
+  );
+  if (resilience) {
+    const calls = state.snapshot.edges[resilience.id]?.calls;
+    const target = state.snapshot.nodes[resilience.to];
+    const ratio = calls?.windowRequests ? calls.windowAttempts! / calls.windowRequests : 1;
+    if (target && ratio >= 2 && target.backlog > 0)
+      return t("resilience.runStuck", {
+        name: effective.nodes.find((n) => n.id === resilience.to)?.label ?? resilience.to,
+        ratio: ratio.toFixed(1),
+      });
+  }
+  const recovered = effective.edges.find((e) => (state.snapshot.edges[e.id]?.calls?.shortCircuited ?? 0) > 0);
+  if (recovered) {
+    const target = state.snapshot.nodes[recovered.to],
+      calls = state.snapshot.edges[recovered.id]?.calls;
+    if (
+      target &&
+      target.status === "up" &&
+      state.snapshot.edges[recovered.id]?.breaker?.state === "closed" &&
+      (calls?.windowRequests ?? 0) > 0 &&
+      (calls?.windowSucceeded ?? 0) > 0 &&
+      target.backlog < (target.threads?.slots ?? 48) &&
+      (calls?.windowSucceeded ?? 0) >= 0.9 * (calls?.windowRequests ?? Infinity)
+    )
+      return t("resilience.runRecovered", {
+        name: effective.nodes.find((n) => n.id === recovered.to)?.label ?? recovered.to,
+        count: calls!.shortCircuited!,
+      });
+  }
   const nodes = new Map(effective.nodes.map((n) => [n.id, n]));
   const statusEdge = effective.edges.find((e) =>
     (e.props?.requestFilter as EdgeSimProps["requestFilter"])?.methods?.includes("GET"),

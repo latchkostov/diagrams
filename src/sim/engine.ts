@@ -127,7 +127,8 @@ import {
   type OutcomeKind,
 } from "./retryPolicy";
 import { retryBudgetPermits } from "./admission";
-import type { RetryPolicy } from "../model/admission";
+import type { RetryPolicy, BreakerPolicy } from "../model/admission";
+import { createBreaker, breakerPermits, breakerRecord, breakerView, type BreakerState } from "./breaker";
 import { STEP } from "./timing";
 
 import type {
@@ -400,6 +401,7 @@ interface Logical {
   visualAt?: number;
 }
 interface Edge {
+  breaker?: { policy: BreakerPolicy; state: BreakerState };
   policy?: CallPolicy;
   poolUsed: number;
   poolPending: { id: number; end: number; call: Call; message: Message; admissibleActive: number }[];
@@ -551,6 +553,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   // playback has no history map and drained checkpoints retain no attempt history.
   let outcomeChecks = new Map<number, Attempt<Message>>();
   let nextLogical = 1;
+  let breakerDispatches: import("./resilienceInvariants").ResilienceState["breakerDispatches"][number][] = [];
   let budgetDecisions: import("./resilienceInvariants").ResilienceState["budgetDecisions"][number][] = [];
   const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
   const retries = () => revisionAtLeast(planning?.revision, "p3-w2");
@@ -1846,7 +1849,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       branches: new Map(
         requests.map((e) => [
           e.id,
-          { state: "queued", expiresAt: time + (e.policy?.deadlineMs ?? Infinity), ...(e.retry ? { attempt: 1 } : {}) },
+          {
+            state: "queued",
+            expiresAt: time + (e.policy?.deadlineMs ?? Infinity),
+            ...(e.retry ? { attempt: 1, countedAt: time } : {}),
+            ...(e.breaker ? { attemptStartedAt: time } : {}),
+          },
         ]),
       ),
       blockingRemaining: requests.filter((e) => e.policy?.blocking).length,
@@ -1900,6 +1908,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         retryCount(edge, "requests", branch);
         retryCount(edge, "attempts", branch);
       }
+      if (!permitBreaker(call, edge, branch)) continue;
       pushDue(
         edge.poolPending,
         {
@@ -1917,9 +1926,68 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return true;
   }
 
+  function logBreaker(edge: Edge, previous: BreakerState["state"]): void {
+    if (edge.breaker!.state.state !== previous) {
+      const view = breakerView(edge.breaker!.state, edge.breaker!.policy, time);
+      log(
+        "status",
+        edge.from,
+        undefined,
+        `${edge.from.label} → ${edge.to.label} breaker ${edge.breaker!.state.state === "open" ? "opened" : edge.breaker!.state.state === "half-open" ? "testing" : "closed"}${view.state === "open" ? ` (${Math.round(view.failurePercent)}% failing over ${(edge.breaker!.policy.windowMs ?? 10000) / 1000} s)` : ""}`,
+      );
+    }
+  }
+
+  function finishBreaker(call: Call, edge: Edge, cause: OutcomeKind): void {
+    const branch = call.branches.get(edge.id)!;
+    if (!edge.breaker || !branch.breakerPermit) return;
+    const previous = edge.breaker.state.state;
+    breakerRecord(
+      edge.breaker.state,
+      edge.breaker.policy,
+      time,
+      cause,
+      time - branch.attemptStartedAt!,
+      branch.breakerPermit,
+    );
+    branch.breakerPermit = undefined;
+    logBreaker(edge, previous);
+  }
+
+  function permitBreaker(call: Call, edge: Edge, message: Message): boolean {
+    if (!edge.breaker) return true;
+    const branch = call.branches.get(edge.id)!;
+    const { state, policy } = edge.breaker;
+    if (branch.breakerPermit?.generation === state.generation && state.state !== "open") return true;
+    const previous = state.state;
+    branch.breakerPermit = breakerPermits(state, policy, time, sizeOf(message));
+    branch.attemptStartedAt ??= time;
+    logBreaker(edge, previous);
+    if (branch.breakerPermit) return true;
+    // Reclassify this logical attempt as a local short circuit.
+    edge.calls.shortCircuited! += dotsOf(message);
+    edge.calls.attempts! -= dotsOf(message);
+    const bucket = edge.retry!.window.buckets[Math.floor(branch.countedAt! / 1000) % 10];
+    if (bucket?.second === Math.floor(branch.countedAt! / 1000)) bucket.attempts -= sizeOf(message);
+    if (edge.poolPendingIndices.has(call.id)) cancelPending(edge, call.id);
+    else gone(edge.from, message, "end", "breaker open");
+    scheduleLogical({
+      id: nextLogical++,
+      end: time,
+      edge,
+      call: call.id,
+      ok: false,
+      outcome: classifyOutcome("breaker-open"),
+      code: 503,
+      represented: message.represented,
+      callAttempt: branch.attempt,
+    });
+    return false;
+  }
+
   function dispatchCalls(edge: Edge): void {
     if (edge.from.status === "down" || earlyPoolWakes?.has(edge)) return;
-    while (edge.poolPending.length && edge.poolUsed < (edge.policy?.pool ?? Infinity)) {
+    while (edge.poolPending.length) {
       const next = edge.poolPending[0];
       if (
         !calls.has(next.call.id) ||
@@ -1930,6 +1998,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         gone(edge.from, next.message, "end", "call already failed");
         continue;
       }
+      if (!permitBreaker(next.call, edge, next.message)) continue;
       // Only a finite pool narrows the cohort; an unbounded pool ignores width.
       const finite = Number.isFinite(edge.policy?.pool);
       const reservation = ledger.reserve(
@@ -1954,6 +2023,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       edge.poolLeases.set(call.id, reservation.id);
       const branch = call.branches.get(edge.id)!;
       branch.state = "sent";
+      if (TEST_ORACLES && opts.verifyResilience && edge.breaker)
+        breakerDispatches.push({
+          state: edge.breaker.state.state,
+          sent: edge.breaker.state.sent,
+          probes: edge.breaker.policy.halfOpenCalls ?? 5,
+          units: sizeOf(message),
+        });
       branch.pool = reservation.id;
       edge.calls.inFlight += occupancyFraction(reservation);
       if (!edge.policy?.blocking) edge.from.freeFlight += occupancyFraction(reservation);
@@ -2052,6 +2128,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // A logical attempt includes its scheduled backoff and pool wait, even if a
     // sibling subsequently cancels it. Wire dispatch is tracked by inFlight.
     retryCount(edge, "attempts", message);
+    branch.countedAt = time;
     branch.backoffDots = dotsOf(message);
     edge.calls.backingOff! += branch.backoffDots;
     scheduleLogical({ id: branch.retryEvent, end: time + delay, edge, call: call.id, retry: true });
@@ -2077,6 +2154,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const timing = call.branches.get(edge.id)!;
     cancelRetry(call, edge);
     timing.attempt!++;
+    timing.attemptStartedAt = time;
     timing.state = "queued";
     timing.expiresAt = time + (edge.policy?.deadlineMs ?? Infinity);
     const message = {
@@ -2089,6 +2167,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       callDepth: call.depth,
       callAttempt: timing.attempt,
     };
+    if (!permitBreaker(call, edge, message)) return;
     pushDue(
       edge.poolPending,
       { id: call.id, end: call.id, call, message, admissibleActive: edge.from.activeMs },
@@ -2228,6 +2307,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const hasDeadline = [...call.branches.values()].some((branch) => Number.isFinite(branch.expiresAt));
     for (const id of call.branches.keys()) {
       const edge = faultEdges.get(id)!;
+      finishBreaker(call, edge, "call-limit");
       cancelDeadline(call, edge);
       cancelRetry(call, edge);
       cancelPending(edge, call.id);
@@ -2408,6 +2488,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           event.code = 504;
           edge!.calls.late += dotsOf(event);
         }
+        if (edge && call && !call.attempt.outcome && call.outstanding.has(edge.id))
+          finishBreaker(
+            call,
+            edge,
+            event.ok ? "success" : event.timeout ? "deadline" : (event.outcome?.kind ?? "error"),
+          );
         if (edge) {
           const lease = ledger.get(edge.poolLeases.get(event.call));
           if (lease)
@@ -3887,7 +3973,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       });
     }
     if (TEST_ORACLES && opts.verifyResilience) {
-      opts.verifyResilience({ time, inSystem, edges, calls: calls.values(), logical, budgetDecisions });
+      opts.verifyResilience({ time, inSystem, edges, calls: calls.values(), logical, budgetDecisions, breakerDispatches });
+      breakerDispatches = [];
       budgetDecisions = [];
     }
     if (TEST_ORACLES)
@@ -4039,6 +4126,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     assignReplicas(new Set(nodes.keys()));
     for (const edge of edges) {
       edge.calls = { inFlight: 0, held: 0, timedOut: 0, failed: 0, late: 0, ...(edge.retry ? emptyRetryCounts() : {}) };
+      if (edge.breaker) edge.breaker.state = createBreaker();
       if (edge.retry) {
         edge.retry.window = createRetryWindow();
         edge.retry.stream = undefined;
@@ -4391,10 +4479,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             if (to.role === "processor") to.callTarget = true;
           }
         }
+        const breaker = (props?.caller as import("./types").EdgeSimProps["caller"])?.breaker;
         const retry = (props?.caller as import("./types").EdgeSimProps["caller"])?.retry;
-        if (retries() && callEligible(from.role, edge) && retry) {
+        if (retries() && callEligible(from.role, edge) && (retry || breaker)) {
           classifies = true;
-          edge.retry = { policy: structuredClone(retry), window: createRetryWindow() };
+          edge.retry = {
+            policy: structuredClone(retry ?? { maxAttempts: 1, backoffMs: 0, strategy: "fixed", retryOn: [] }),
+            window: createRetryWindow(),
+          };
+          if (breaker) edge.breaker = { policy: structuredClone(breaker), state: createBreaker() };
           Object.assign(edge.calls, emptyRetryCounts());
         }
         if (props && routes) {
@@ -4564,6 +4657,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           id: edge.id,
           delivered: roundDots(edge.delivered),
           active: edge.active,
+          ...(edge.breaker ? { breaker: breakerView(edge.breaker.state, edge.breaker.policy, time) } : {}),
           ...(waits() && edge.sync
             ? { calls: roundCalls({ ...edge.calls, ...(edge.retry ? retryWindowView(edge) : {}) }) }
             : {}),

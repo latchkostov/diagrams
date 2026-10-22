@@ -8,7 +8,7 @@ import { realSnapshot } from "../sim/units";
 import { affordableTimeout } from "./affordableTimeout";
 import { TroubleWatcher } from "./observedTrouble";
 import { LiveController } from "./controller";
-import { TroubleTracker } from "./useObservedTrouble";
+import { TroubleTracker } from "./troubleTracker";
 import { runEndResult } from "./runEndResult";
 import { timeoutOutcome } from "./timeoutOutcome";
 import { runChecks } from "../checks/run";

@@ -1,6 +1,11 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { RetryPolicy } from "../model/admission";
 
+/** Concurrency-like, whole-dot gate until throttle splitting lands: overshoot is less than one dot. */
+export function breakerProbePermits(room: number, represented: number): boolean {
+  return allocationWeight(represented, room) + 1e-9 >= Math.min(1, represented);
+}
+
 /** Token-like gate: a retry either spends its whole represented cohort or nothing. */
 export function retryBudgetPermits(
   budget: RetryPolicy["budget"],

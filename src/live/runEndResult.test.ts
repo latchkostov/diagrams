@@ -6,6 +6,40 @@ import { LiveController } from "./controller";
 import { runEndResult } from "./runEndResult";
 import busy from "../examples/scale-on-busy-threads.json";
 import payment from "../examples/slow-payment-provider.json";
+import storm from "../examples/retry-storm.json";
+
+it.each([
+  { status: "up", requests: 0, succeeded: 0 },
+  { status: "down", requests: 100, succeeded: 100 },
+  { status: "up", requests: 100, succeeded: 0 },
+])("never certifies recovery from absent or unhealthy traffic: %j", ({ status, requests, succeeded }) => {
+  const state = {
+    run: { done: true, expectations: [] },
+    configuration: {},
+    snapshot: {
+      nodes: { payments: { status, backlog: 0, dropped: 0 } },
+      edges: {
+        pay: {
+          breaker: { state: "closed" },
+          calls: { shortCircuited: 100, windowRequests: requests, windowSucceeded: succeeded },
+        },
+      },
+    },
+  } as unknown as import("./controller").LiveState;
+  expect(runEndResult(state, storm as DiagramFile)).not.toContain("recovered");
+});
+
+it.each(["three-quick-retries", "circuit-breaker"])("the retry storm ends with its measured lesson: %s", (id) => {
+  const diagram = storm as DiagramFile;
+  const c = new LiveController(diagram);
+  try {
+    c.selectSimulation(diagram.simulations!.find((s) => s.id === id)!);
+    c.seek(60000);
+    expect(runEndResult(c.getState(), diagram)).toContain(id === "circuit-breaker" ? "recovered" : "stayed overloaded");
+  } finally {
+    c.dispose();
+  }
+});
 
 it("uses the caller stencil's default wait in a pool run result", () => {
   const diagram = structuredClone(payment) as DiagramFile;

@@ -1,0 +1,200 @@
+{
+  "run": {
+    "time": 60000,
+    "totalMs": 60000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "goodput", "label": "Shop goodput â‰¥ 270/s at the end", "status": "pass", "value": 299.99999999999716 },
+      { "id": "backlog", "label": "Payments backlog < 100 at the end", "status": "pass", "value": 3 },
+      { "id": "amplification", "label": "Checkout attempts per request < 1.5 at the end", "status": "pass", "value": 1 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "checkouts" },
+      { "atMs": 1000, "kind": "fault", "label": "Fail: Payments" },
+      { "atMs": 1200, "kind": "note", "label": "Retries absorb a brief blip. The circuit breaker watches settled attempts." },
+      { "atMs": 2000, "kind": "fault", "label": "Fail: Payments" },
+      { "atMs": 3000, "kind": "fault", "label": "Slow down: Payments" },
+      { "atMs": 3500, "kind": "note", "label": "The slowdown pushes calls past their timeout. Once failures fill the window, the breaker opens and fails fast." },
+      { "atMs": 8000, "kind": "fault", "label": "Slow down: Payments" },
+      { "atMs": 9000, "kind": "note", "label": "Payments is fast again. The open breaker gives its queue room to drain before testing five calls." },
+      { "atMs": 15000, "kind": "note", "label": "The breaker tests a few calls after each pause. If they still fail, it opens again so the queue can keep draining." },
+      { "atMs": 60000, "kind": "traffic", "label": "checkouts ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shop": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [4, 4, 0] },
+        "payments": { "replicas": [4, 4, 0] },
+        "orders": { "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 1070,
+      "nodes": {
+        "shop": { "processed": 894, "failed": 2094, "dropped": 2094, "throughput": 0.29075404899838714, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 894, "failed": 2094, "dropped": 2094, "backlog": 3, "inFlight": 6, "throughput": 0.29075404899838714, "replicas": [4, 4, 0] },
+        "payments": { "processed": 1710, "failed": 30, "dropped": 30, "backlog": 104, "inFlight": 48, "throughput": 130.70838429037747, "replicas": [4, 4, 0] },
+        "orders": { "processed": 894, "backlog": 894, "throughput": 0.32133291926575913, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2258,
+      "nodes": {
+        "shop": { "processed": 2153, "failed": 3808, "dropped": 3808, "throughput": 295.47960618030174, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 2153, "failed": 3808, "dropped": 3808, "backlog": 3, "inFlight": 6, "throughput": 295.47960618030174, "replicas": [4, 4, 0] },
+        "payments": { "processed": 3132, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 295.5909979338307, "replicas": [4, 4, 0] },
+        "orders": { "processed": 2123, "backlog": 2123, "throughput": 295.00419221222063, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 5258,
+      "nodes": {
+        "shop": { "processed": 5153, "failed": 3808, "dropped": 3808, "throughput": 299.999794774438, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 5153, "failed": 3808, "dropped": 3808, "backlog": 3, "inFlight": 6, "throughput": 299.999794774438, "replicas": [4, 4, 0] },
+        "payments": { "processed": 6132, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 299.999799831616, "replicas": [4, 4, 0] },
+        "orders": { "processed": 5123, "backlog": 5123, "throughput": 299.99977319067733, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 8258,
+      "nodes": {
+        "shop": { "processed": 8153, "failed": 3808, "dropped": 3808, "throughput": 299.99999999068297, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 8153, "failed": 3808, "dropped": 3808, "backlog": 3, "inFlight": 6, "throughput": 299.99999999068297, "replicas": [4, 4, 0] },
+        "payments": { "processed": 9132, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 299.99999999091256, "replicas": [4, 4, 0] },
+        "orders": { "processed": 8123, "backlog": 8123, "throughput": 299.99999998970304, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 11258,
+      "nodes": {
+        "shop": { "processed": 11153, "failed": 3808, "dropped": 3808, "throughput": 299.99999999999716, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 11153, "failed": 3808, "dropped": 3808, "backlog": 3, "inFlight": 6, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+        "payments": { "processed": 12132, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+        "orders": { "processed": 11123, "backlog": 11123, "throughput": 299.99999999999716, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 14258,
+      "nodes": {
+        "shop": { "processed": 14153, "failed": 3808, "dropped": 3808, "throughput": 299.99999999999716, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 14153, "failed": 3808, "dropped": 3808, "backlog": 3, "inFlight": 6, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+        "payments": { "processed": 15132, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+        "orders": { "processed": 14123, "backlog": 14123, "throughput": 299.99999999999716, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 14258,
+    "real": {
+      "shop": { "processed": 14153, "failed": 3808, "dropped": 3808, "throughput": 299.99999999999716, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 14153, "failed": 3808, "dropped": 3808, "backlog": 3, "inFlight": 6, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+      "payments": { "processed": 15132, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+      "orders": { "processed": 14123, "backlog": 14123, "throughput": 299.99999999999716, "noConsumer": true, "replicas": [1, 1, 0] }
+    },
+    "edges": { "checkouts": 17997, "pay": 15189, "orders-flow": 14123 }
+  },
+  "events": {
+    "total": 138505,
+    "byKind": { "inject": 18000, "deliver": 47309, "process": 57561, "fail": 7646, "drop": 7646, "retry": 338, "status": 5 },
+    "byNode": {
+      "shop": { "inject": 18000, "process": 14153, "fail": 3808, "drop": 3808 },
+      "checkout": { "deliver": 17997, "process": 14153, "retry": 338, "fail": 3808, "drop": 3808, "status": 5 },
+      "payments": { "deliver": 15189, "process": 15132, "fail": 30, "drop": 30 },
+      "orders": { "deliver": 14123, "process": 14123 }
+    },
+    "perSecond": [
+      "dc0f1daaad4f",
+      "5d666e57e522",
+      "188246f9c75e",
+      "61482926c82c",
+      "b013b8571ccf",
+      "78de1d8c962f",
+      "e3237185230a",
+      "d5464096ed37",
+      "c1d00d0402a8",
+      "8af2f5cb40f7",
+      "6ef13c1bae90",
+      "fa38dc9a5bce",
+      "304d0675cd69",
+      "657bedd55119",
+      "8eaa88154969",
+      "2e86e5e85e8e",
+      "e79eee1baf8c",
+      "9d656f8d9699",
+      "d5e20873151d",
+      "1d7bd7114fe8",
+      "7aea67a0351e",
+      "44c4fc46c723",
+      "b84c9bec31d9",
+      "f9e7c2716bc5",
+      "0f6d9949e3dd",
+      "d0bc17755cd1",
+      "4f2b7d177c39",
+      "2e386cd9746a",
+      "f02d8fdbd536",
+      "631d8e3d23cb",
+      "1f07dab9e868",
+      "363976f12c85",
+      "5b3448e4a8af",
+      "0017b824aed1",
+      "fe8f5e55ce05",
+      "1ca472e82203",
+      "9f568b6ec901",
+      "ffffda9c455e",
+      "3698a868e225",
+      "8be8e5d9d526",
+      "ff9d7b9a0cff",
+      "11a63b1b3aa6",
+      "c5d3397c78ac",
+      "3148da0c3937",
+      "b3634e2dd478",
+      "bf9d634c7b23",
+      "f05abbe881eb",
+      "1077beac7ebf",
+      "bc355a2ae59f",
+      "c39583154766",
+      "15fb11ea952b",
+      "6182f0c9f36b",
+      "f6da40b64c1b",
+      "27a4c9e2df73",
+      "054df271b204",
+      "9149f65a482a",
+      "26c81f416c51",
+      "3942c085aa05",
+      "f58d7dfe97e7",
+      "af56b831e25e",
+      "a93b50f51624"
+    ]
+  },
+  "notes": [
+    { "atMs": 1200, "text": "Retries absorb a brief blip. The circuit breaker watches settled attempts.", "focus": ["payments", "checkout"] },
+    { "atMs": 3500, "text": "The slowdown pushes calls past their timeout. Once failures fill the window, the breaker opens and fails fast.", "focus": ["payments", "checkout"] },
+    { "atMs": 9000, "text": "Payments is fast again. The open breaker gives its queue room to drain before testing five calls.", "focus": ["payments", "checkout"] },
+    { "atMs": 15000, "text": "The breaker tests a few calls after each pause. If they still fail, it opens again so the queue can keep draining.", "focus": ["payments", "checkout"] }
+  ],
+  "latency": {
+    "journeys": { "done": 17115, "retried": 26, "deadLettered": 0, "dropped": 3020, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 17115, "min": 40, "mean": 196.94829097283085, "p50": 230, "p90": 230, "max": 410 },
+    "waitMs": {
+      "checkout": { "count": 34230, "min": 0, "mean": 47.22085889570552, "p50": 20, "p90": 110, "max": 290 },
+      "payments": { "count": 14147, "min": 0, "mean": 9.98162154520393, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "checkout": { "count": 14121, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payments": { "count": 14121, "min": 80, "mean": 80, "p50": 80, "p90": 80, "max": 80 }
+    }
+  }
+}

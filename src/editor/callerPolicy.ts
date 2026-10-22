@@ -37,6 +37,7 @@ export function effectiveCallerPolicy(
           ...override?.caller,
           ...patch,
           ...(Object.hasOwn(patch ?? {}, "deadlineMs") && patch?.deadlineMs === undefined ? { deadlineMs: null } : {}),
+          ...(Object.hasOwn(patch ?? {}, "breaker") && patch?.breaker === undefined ? { breaker: null } : {}),
         }).filter(([, v]) => v !== undefined),
       );
       if (saved) {

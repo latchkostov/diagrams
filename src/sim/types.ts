@@ -141,6 +141,7 @@ export interface RetryCallCounts {
 }
 
 export interface EdgeSimState {
+  breaker?: import("./breaker").BreakerView;
   calls?: { inFlight: number; held: number; timedOut: number; failed: number; late: number } & Partial<RetryCallCounts>;
   id: string;
   /** Total messages that have finished travelling this edge. */
@@ -279,6 +280,8 @@ export interface EdgeSimProps {
     replyMs?: number;
     deadlineMs?: number | null;
     retry?: import("../model/admission").RetryPolicy;
+    /** null explicitly disables an inherited diagram breaker in a saved simulation. */
+    breaker?: import("../model/admission").BreakerPolicy | null;
     poolConnections?: number;
   };
   /** Log consumer group, pub/sub subscription or exchange binding name. Each name receives a copy; readers sharing a name compete. Queues always compete; DLQ routes never subscribe. Default = edge id. */

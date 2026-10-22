@@ -3,9 +3,15 @@ import type { LogicalBranch } from "./attempt";
 import type { EdgeSimState } from "./types";
 
 export interface ResilienceState {
+  breakerDispatches: readonly { state: string; sent: number; probes: number; units: number }[];
   time: number;
   inSystem: number;
-  edges: Iterable<{ id: string; retry?: { policy: RetryPolicy }; calls: NonNullable<EdgeSimState["calls"]> }>;
+  edges: Iterable<{
+    id: string;
+    retry?: { policy: RetryPolicy };
+    breaker?: { state: { inFlight: number } };
+    calls: NonNullable<EdgeSimState["calls"]>;
+  }>;
   calls: Iterable<{ branches: ReadonlyMap<string, LogicalBranch> }>;
   logical: readonly { id: number; retry?: boolean }[];
   budgetDecisions: readonly {
@@ -36,6 +42,10 @@ export function assertResilienceInvariants(state: ResilienceState): void {
       } else check(branch.retryEvent === undefined, "R6 stale retry event");
     }
   check(events.size === 0, "R6 orphan retry event");
+  for (const gate of state.breakerDispatches) {
+    check(gate.state !== "open", "R3 dispatch while open");
+    if (gate.state === "half-open") check(gate.sent < gate.probes + gate.units + 1e-8, "R3 probe gate");
+  }
   for (const gate of state.budgetDecisions) {
     const allowance = Math.max((gate.budget.minPerSec ?? 10) * 10, (gate.budget.percent / 100) * gate.requests);
     check(gate.retried + gate.units <= allowance + 1e-8, "R2 retry budget");
@@ -45,7 +55,10 @@ export function assertResilienceInvariants(state: ResilienceState): void {
       const c = edge.calls;
       check(Math.abs(c.requests! + c.retried! - c.attempts! - c.shortCircuited!) < 1e-7, "R5 conservation");
       check(c.backingOff! >= -1e-8, "R6 negative backoff");
-      if (!state.inSystem) check(c.backingOff === 0 && c.held === 0, "R6 idle holds");
+      if (!state.inSystem) {
+        check(c.backingOff === 0 && c.held === 0, "R6 idle holds");
+        check(!edge.breaker?.state.inFlight, "R6 idle probes");
+      }
     }
   if (!state.inSystem) check(backingOff === 0, "R6 idle retry events");
 }

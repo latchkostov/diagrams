@@ -7,7 +7,7 @@ import * as headless from "../sim/headless";
 import { confirmedThreadFix, THREAD_FIX_LIMITS, timeoutReplay } from "./threadFixPlan";
 import { planScaling } from "../sim/scalingPlanner";
 import { LiveController } from "./controller";
-import { TroubleTracker } from "./useObservedTrouble";
+import { TroubleTracker } from "./troubleTracker";
 import { planDescriptor } from "../planning/scalingPlanText";
 import { waitingFixture } from "../lab/waitingFixture";
 

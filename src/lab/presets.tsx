@@ -1,5 +1,5 @@
 import { waitingFixture } from "./waitingFixture";
-import { resilienceFixture } from "./resilienceFixture";
+import { resilienceFixture, breakerFixture } from "./resilienceFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
 import slowPayment from "../examples/slow-payment-provider.json";
 import { faultDrillFixture } from "./faultDrillFixture";
@@ -693,6 +693,21 @@ const livePresets: Preset[] = [
         diagram={resilienceFixture()}
         presenting={!!v.livepresent}
         initial={{ traffic: true, seekMs: 2000, paused: true }}
+      />
+    ),
+  },
+  {
+    kind: "render",
+    id: "live-breaker",
+    title: "Live: circuit breaker",
+    group: "Simulation",
+    description: "A failing dependency opens its breaker; the existing call pill shows fast failures.",
+    controls: [livePresent],
+    render: (v) => (
+      <LiveLabStage
+        diagram={breakerFixture()}
+        presenting={!!v.livepresent}
+        initial={{ traffic: true, seekMs: 500, paused: true }}
       />
     ),
   },
