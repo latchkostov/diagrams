@@ -1,4 +1,5 @@
 import { resilienceFixture } from "../../src/lab/resilienceFixture";
+import type { RetryPolicy } from "../../src/model/admission";
 import {
   test,
   expect,
@@ -10,6 +11,53 @@ import {
   waitForStableViewport,
   expectNoErrors,
 } from "./fixtures";
+
+for (const initiallyOff of [false, true]) {
+  test(`re-enabling retries retains custom settings (initially off: ${initiallyOff})`, async ({ page }) => {
+    const d = resilienceFixture();
+    const custom: RetryPolicy = {
+      maxAttempts: initiallyOff ? 1 : 5,
+      backoffMs: 370,
+      strategy: "exponential",
+      maxBackoffMs: 930,
+      jitter: 0.3,
+      retryOn: ["transient", "timeout"],
+      idempotent: true,
+      budget: { percent: 37, minPerSec: 4 },
+    };
+    d.edges[1].props = { ...d.edges[1].props, caller: { wait: "blocking", retry: custom } };
+    await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+      key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+      d,
+    });
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    await page.getByTestId("edge-call").dblclick();
+    await page.getByTestId("inspector-section-edge-simulation").click();
+    const retries = page.getByTestId("inspector-field-retries");
+    if (!initiallyOff) {
+      await retries.focus();
+      await retries.press("Enter");
+      await page.keyboard.press("Home");
+      await page.keyboard.press("Enter");
+      await expect
+        .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
+        .toMatchObject({ retry: { ...custom, maxAttempts: 1 } });
+    }
+    await retries.focus();
+    await retries.press("Enter");
+    await page.keyboard.press("Home");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
+      .toMatchObject({ retry: { ...custom, maxAttempts: 3 } });
+    await page.getByTestId("inspector-section-retry-details").click();
+    await expect(page.getByTestId("inspector-field-retry-backoff")).toHaveValue("370");
+    await expect(page.getByTestId("inspector-field-retry-budget-percent")).toHaveValue("37");
+  });
+}
 
 for (const locale of ["en", "ar", "en-XA"]) {
   test(`retry inspector has keyboard paths and undo in ${locale}`, async ({ page, consoleErrors }) => {

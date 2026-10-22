@@ -3,18 +3,72 @@ import { STEP } from "./timing";
 
 export type RetryClass = RetryPolicy["retryOn"][number];
 
-/** An attempt's own timeout differs from a 504 propagated from downstream. */
-export function classifyOutcome(outcome: {
-  ok?: boolean;
-  code?: number;
-  timeout?: boolean;
-  local?: boolean;
-}): RetryClass | undefined {
-  if (outcome.ok || outcome.local) return undefined;
-  if (outcome.timeout) return "timeout";
-  if (outcome.code === 429) return "throttled";
-  if (outcome.code !== undefined && outcome.code >= 500 && outcome.code <= 599) return "transient";
-  return undefined;
+/** Terminal causes survive reply propagation, including local safeguards with no HTTP code.
+ * Error includes service failures and API errors; down includes boundary outages;
+ * quota includes managed concurrency; call-limit includes depth and open-call limits. */
+export type OutcomeKind =
+  | "success"
+  | "error"
+  | "callee-down"
+  | "upstream-timeout"
+  | "shed"
+  | "quota"
+  | "deadline"
+  | "no-route"
+  | "breaker-open"
+  | "call-limit"
+  | "invalid-admission";
+
+export interface ClassifiedOutcome {
+  kind: OutcomeKind;
+  class: RetryClass | undefined;
+  code: number | undefined;
+  breakerCounts: "success" | "failure" | "slow" | "ignored" | "not-recorded";
+}
+
+/** The only mapping from a terminal cause to retry, wire and breaker semantics (design section 2.1). */
+export function classifyOutcome(kind: OutcomeKind): ClassifiedOutcome {
+  let retryClass: RetryClass | undefined;
+  let code: number | undefined;
+  let breakerCounts: ClassifiedOutcome["breakerCounts"] = "ignored";
+  switch (kind) {
+    case "success":
+      breakerCounts = "success";
+      break;
+    case "error":
+      code = 500;
+      retryClass = "transient";
+      breakerCounts = "failure";
+      break;
+    case "callee-down":
+    case "upstream-timeout":
+      code = kind === "upstream-timeout" ? 504 : 503;
+      retryClass = "transient";
+      breakerCounts = "failure";
+      break;
+    case "shed":
+    case "quota":
+      code = kind === "shed" ? 503 : 429;
+      retryClass = "throttled";
+      breakerCounts = "failure";
+      break;
+    case "deadline":
+      code = 504;
+      retryClass = "timeout";
+      breakerCounts = "slow";
+      break;
+    case "no-route":
+      code = 404;
+      break;
+    case "breaker-open":
+      code = 503;
+      breakerCounts = "not-recorded";
+      break;
+    case "call-limit":
+    case "invalid-admission":
+      break;
+  }
+  return { kind, class: retryClass, code, breakerCounts };
 }
 
 /** k is one for the first retry. Integer multiplication keeps cross-engine determinism. */

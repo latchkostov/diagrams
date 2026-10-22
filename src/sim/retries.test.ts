@@ -1,8 +1,10 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import * as waitingModule from "./waitingPlan";
+import * as topologyModule from "./topology";
 import { waitingFixture } from "../lab/waitingFixture";
 import type { RetryPolicy } from "../model/admission";
 import { createEngine, randomDraws } from "./engine";
-import { backoffDelay, classifyOutcome, createRetryWindow, recordRetryWindow, retryWindow } from "./retryPolicy";
+import { backoffDelay, createRetryWindow, recordRetryWindow, retryWindow } from "./retryPolicy";
 import { retryBudgetPermits } from "./admission";
 import { realSnapshot } from "./units";
 import { analyzeCapacity } from "./capacity";
@@ -29,6 +31,227 @@ export function retryFixture(policy = naiveRetry, wait: "blocking" | "non-blocki
   return d;
 }
 
+it.each(["quota", "concurrency"])("managed API %s refusal retries after real capacity returns", (limit) => {
+  const d = retryFixture({ ...naiveRetry, backoffMs: 1000, retryOn: ["throttled"] });
+  d.nodes[2].stencil = "generic.external-api";
+  d.nodes[2].props = {
+    jitter: 0,
+    api: {
+      latencyMs: 30,
+      errorRate: 0,
+      maxInFlight: limit === "concurrency" ? 1 : 10,
+      quotas: [
+        {
+          id: "requests",
+          unit: "requests",
+          amount: limit === "quota" ? 1 : 10,
+          windowMs: 1000,
+          algorithm: "token-bucket",
+        },
+      ],
+    },
+  };
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 2);
+  e.step(3000);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ requests: 2, attempts: 3, retried: 1, succeeded: 2 });
+  expect(e.snapshot().nodes.partner.rejected).toBe(1);
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it.each(["p3-w1", "p3-w2"] as const)("%s keeps managed-router refusal codes revision-gated", (revision) => {
+  const d = retryFixture({ ...naiveRetry, backoffMs: 2000, retryOn: ["throttled"] });
+  d.planning = { revision, requestRoutes: [] };
+  d.nodes[2].stencil = "nginx";
+  d.nodes[2].props = {
+    jitter: 0,
+    api: { maxInFlight: 1, latencyMs: 100, errorRate: 0 },
+    routeTable: { rules: [], default: { targets: [{ edgeId: "provider", weight: 1 }] } },
+  };
+  d.edges[1].props!.travelMs = 1000;
+  d.edges.push({ id: "provider", from: "partner", to: "result", kind: "sync", props: { travelMs: 0 } });
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 2);
+  e.step(50);
+  expect(e.snapshot().nodes.partner.rejectionReasons).toEqual({ concurrency: 1 });
+  e.step(1000);
+  const replies = e.frame().particles.filter((particle) => particle.kind === "reply" && particle.edgeId === "call");
+  expect(replies.length).toBeGreaterThan(0);
+  expect(replies.some((particle) => particle.code === 429)).toBe(revision === "p3-w2");
+  e.step(7000);
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("an external API Take down fault retries as transient and recovers during backoff", () => {
+  const d = retryFixture({ ...naiveRetry, retryOn: ["transient"] });
+  d.nodes[2].stencil = "generic.external-api";
+  d.nodes[2].props = { jitter: 0, api: { latencyMs: 30, errorRate: 0 } };
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  // The same status operation as Fault > Take down on the API node.
+  e.setNodeStatus("partner", "down");
+  e.inject("source", 1);
+  e.step(50);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ retried: 1, backingOff: 1 });
+  e.setNodeStatus("partner", "up");
+  const checkpoint = e.checkpoint();
+  e.step(1000);
+  const final = e.snapshot();
+  expect(final.edges.call.calls).toMatchObject({ attempts: 2, retried: 1, succeeded: 1 });
+  expect(final.inSystem).toBe(0);
+  e.restore(checkpoint);
+  e.step(1000);
+  expect(e.snapshot()).toEqual(final);
+});
+
+it.each(["generic.service", "generic.database", "generic.external-api", "generic.llm", "nginx"])(
+  "%s outages all reach transient-only retry decisions",
+  (stencil) => {
+    const d = retryFixture({ ...naiveRetry, retryOn: ["transient"] });
+    d.nodes[2].stencil = stencil;
+    d.nodes[2].props = { jitter: 0, latencyMs: 30, api: { latencyMs: 30, errorRate: 0 } };
+    const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+    e.load(d);
+    e.setNodeStatus("partner", "down");
+    e.inject("source", 1);
+    e.step(1000);
+    expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 3, retried: 2, failed: 3 });
+    expect(e.snapshot().inSystem).toBe(0);
+  },
+);
+
+it("a gateway's downstream 504 retries as transient, rather than as the outer call's own timeout", () => {
+  const d = retryFixture({ ...naiveRetry, retryOn: ["transient"] });
+  d.nodes[2].stencil = "nginx";
+  d.nodes[2].props = { jitter: 0, latencyMs: 0 };
+  d.nodes[3].props = { jitter: 0, latencyMs: 100 };
+  d.edges.push({
+    id: "downstream",
+    from: "partner",
+    to: "result",
+    kind: "sync",
+    props: { travelMs: 0, caller: { deadlineMs: 20, wait: "blocking" } },
+  });
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1000);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 3, retried: 2, timedOut: 0, failed: 3 });
+  expect(e.snapshot().edges.downstream.calls).toMatchObject({ timedOut: 3 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("invalid managed admission data remains terminal even with every retry class enabled", () => {
+  const d = retryFixture();
+  d.nodes[2].stencil = "generic.external-api";
+  d.nodes[2].props = {
+    api: { quotas: [{ id: "tokens", unit: "tokens", amount: 1, windowMs: 1000, algorithm: "token-bucket" }] },
+  };
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1000);
+  expect(e.snapshot().nodes.partner.rejectionReasons).toEqual({ "unknown tokens cost": 1 });
+  expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 1, retried: 0, failed: 1 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("an API boundary outage takes the same transient retry path as a node outage", () => {
+  const d = retryFixture({ ...naiveRetry, retryOn: ["transient"] });
+  d.nodes[2].stencil = "generic.external-api";
+  d.nodes[2].props = { jitter: 0, api: { latencyMs: 30, errorRate: 0 } };
+  d.nodes[2].group = "provider";
+  d.groups = [{ id: "provider", label: "Provider", x: 600, y: 100, width: 300, height: 300 }];
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.setFault({ kind: "boundary", boundary: "provider", down: true });
+  e.inject("source", 1);
+  e.step(1000);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 3, retried: 2, failed: 3 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("router no-route replies stay terminal under every retry class", () => {
+  const d = retryFixture();
+  d.planning!.requestRoutes = [];
+  d.nodes[2].stencil = "nginx";
+  d.nodes[2].props = { latencyMs: 0, jitter: 0, routeTable: { rules: [] } };
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1000);
+  expect(e.snapshot().nodes.partner.rejected).toBe(1);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 1, retried: 0, failed: 1 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it.each(["generic.external-api", "generic.llm"])(
+  "%s endpoint error rates agree in planning and playback",
+  (stencil) => {
+    const d = retryFixture({ ...naiveRetry, retryOn: ["transient"] });
+    d.nodes[0].props!.ratePerSec = 10;
+    d.nodes[2].stencil = stencil;
+    d.nodes[2].props = {
+      jitter: 0,
+      api: { latencyMs: 30, errorRate: 0 },
+      endpoints: [{ id: "selected", method: "GET", path: "/selected", behaviour: { errorRate: 1 } }],
+    };
+    d.edges[1].props!.endpointId = "selected";
+    const plan = analyzeCapacity(d);
+    expect(plan.connections.call).toBe(30);
+    expect(plan.nodes.caller.waits!.callMs).toBe(290);
+    d.nodes[0].props!.ratePerSec = 0;
+    const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+    e.load(d);
+    e.inject("source", 1);
+    e.step(1000);
+    expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 3, retried: 2, failed: 3 });
+    expect(e.snapshot().inSystem).toBe(0);
+  },
+);
+
+it("real call-depth exhaustion propagates through the chain without transient retries", () => {
+  const d = retryFixture({ ...naiveRetry, retryOn: ["transient"] });
+  d.nodes[2].props = { concurrency: 100, latencyMs: 0, jitter: 0, failureRate: 0 };
+  d.edges[1].props!.caller = { wait: "blocking", retry: { ...naiveRetry, retryOn: ["transient"] } };
+  for (let i = 0; i < 18; i++) {
+    const from = i === 0 ? "partner" : `depth-${i - 1}`;
+    d.nodes.push({ ...d.nodes[2], id: `depth-${i}` });
+    d.edges.push({ id: `depth-call-${i}`, from, to: `depth-${i}`, kind: "sync", props: { travelMs: 0 } });
+  }
+  const e = createEngine({ seed: 7, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(3000);
+  expect(e.snapshot().events.some((event) => event.text.includes("call depth limit"))).toBe(true);
+  expect(e.snapshot().edges.call.calls).toMatchObject({ attempts: 1, retried: 0, failed: 1 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("stable retry rates reuse the waiting plan and its compiled topology across solver iterations", () => {
+  const d = retryFixture({ ...naiveRetry, budget: { percent: 20, minPerSec: 0 } });
+  d.nodes[0].props!.ratePerSec = 10;
+  // Unrelated propagation keeps the solver active after the retried call's demand stabilizes.
+  for (let i = 0; i < 32; i++) {
+    d.nodes.push({ ...d.nodes[3], id: `tail-${i}` });
+    d.edges.push({ id: `tail-${i}`, from: i ? `tail-${i - 1}` : "result", to: `tail-${i}` });
+  }
+  const waiting = vi.spyOn(waitingModule, "waitingPlan");
+  const compile = vi.spyOn(topologyModule, "compileTopology");
+  try {
+    const plan = analyzeCapacity(d);
+    expect(plan.converged).toBe(true);
+    expect(plan.iterations).toBeGreaterThan(10);
+    expect(waiting).toHaveBeenCalledTimes(2);
+    expect(compile).toHaveBeenCalledTimes(1);
+  } finally {
+    waiting.mockRestore();
+    compile.mockRestore();
+  }
+});
+
 it("fixed, exponential, capped, equal and full jitter use the logical tick", () => {
   expect([1, 2, 3, 4].map((k) => backoffDelay(naiveRetry, k))).toEqual([100, 100, 100, 100]);
   const exponential = { ...naiveRetry, strategy: "exponential" as const, maxBackoffMs: 250 };
@@ -37,14 +260,6 @@ it("fixed, exponential, capped, equal and full jitter use the logical tick", () 
   expect(backoffDelay({ ...naiveRetry, jitter: 1 }, 1, 0.99)).toBe(10);
   expect(backoffDelay({ ...naiveRetry, backoffMs: 0 }, 1)).toBe(10);
   expect(backoffDelay({ ...exponential, maxBackoffMs: undefined }, 9)).toBe(2000);
-});
-
-it("classifies local timeouts separately from propagated 504s and never retries 404 or limits", () => {
-  expect(classifyOutcome({ code: 504, timeout: true })).toBe("timeout");
-  for (const code of [500, 503, 504]) expect(classifyOutcome({ code })).toBe("transient");
-  expect(classifyOutcome({ code: 429 })).toBe("throttled");
-  for (const outcome of [{ code: 404 }, { code: 503, local: true }, {}, { ok: true, code: 500 }])
-    expect(classifyOutcome(outcome)).toBeUndefined();
 });
 
 it("the ten-second budget charges whole real cohorts, with a floor and expiring buckets", () => {

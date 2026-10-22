@@ -1,6 +1,6 @@
 import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
-import { waitingPlan, type WaitCapacity } from "./waitingPlan";
+import { compileWaitingPlan, waitingPlan, type WaitCapacity } from "./waitingPlan";
 import { simulationEdges } from "./simulationEdges";
 import { replyCpuMs } from "./callPolicy";
 import { resolvedTiming } from "./timing";
@@ -259,7 +259,9 @@ export function analyzeCapacity(
     });
   }
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
-  let waiting = waitingPlan(diagram, waitProps);
+  const compiled = compileTopology(diagram);
+  const waitGraph = compileWaitingPlan(diagram, compiled);
+  let waiting = waitingPlan(diagram, waitProps, {}, waitGraph);
   for (const [id, wait] of waiting.nodes)
     if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
   for (const entry of entries.values()) {
@@ -274,7 +276,6 @@ export function analyzeCapacity(
         },
       };
   }
-  const compiled = compileTopology(diagram);
   const baseIterationCap = iterationBound(
     entries.keys(),
     compiled.edges.filter((edge) => !edge.deny && !edge.dlq),
@@ -643,12 +644,16 @@ export function analyzeCapacity(
     }
     rates = next;
     if (hasRetryBudget) {
-      for (const id of new Set([...Object.keys(priorRetryRequests), ...Object.keys(retryRequests)]))
-        error = Math.max(error, Math.abs((retryRequests[id] ?? 0) - (priorRetryRequests[id] ?? 0)));
-      priorRetryRequests = retryRequests;
-      waiting = waitingPlan(diagram, waitProps, retryRequests);
-      for (const [id, wait] of waiting.nodes)
-        if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
+      let retryError = 0;
+      for (const id of waiting.amplification.keys())
+        retryError = Math.max(retryError, Math.abs((retryRequests[id] ?? 0) - (priorRetryRequests[id] ?? 0)));
+      error = Math.max(error, retryError);
+      if (retryError) {
+        priorRetryRequests = retryRequests;
+        waiting = waitingPlan(diagram, waitProps, retryRequests, waitGraph);
+        for (const [id, wait] of waiting.nodes)
+          if (entries.get(id)?.role === "processor" || wait.poolCeiling !== undefined) entries.get(id)!.wait = wait;
+      }
     }
     if (error < 1e-7 && !capped) {
       converged = true;

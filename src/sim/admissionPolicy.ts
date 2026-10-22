@@ -1,5 +1,14 @@
 import type { AdmissionPolicy, AdmissionState } from "./admission";
-import type { ApiEndpoint, Quota } from "../model/admission";
+import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
+
+/** Endpoint overrides inherit the node API's latency, errors and individual workload costs. */
+export function resolveApiBehaviour(api: ApiBehaviour, endpoint?: ApiEndpoint) {
+  return {
+    latencyMs: endpoint?.behaviour?.latencyMs ?? api.latencyMs,
+    errorRate: endpoint?.behaviour?.errorRate ?? api.errorRate,
+    costPerRequest: { ...api.costPerRequest, ...endpoint?.behaviour?.costPerRequest },
+  };
+}
 
 /** Tagged identities shared by steady-state planning and simulation. IDs are opaque user content. */
 export type AdmissionScope = readonly ["node"] | readonly ["endpoint", string] | readonly ["rule", string];
@@ -52,17 +61,18 @@ export function normalizeCall(
   endpoint?: ApiEndpoint,
 ): CompiledCall {
   const behaviour = endpoint?.behaviour;
+  const effective = resolveApiBehaviour(policy.api, endpoint);
   const call: CompiledCall = {
     requirements: [],
     limits: new Map(),
-    latencyMs: behaviour?.latencyMs ?? policy.api.latencyMs,
-    errorRate: behaviour?.errorRate ?? policy.api.errorRate,
+    latencyMs: effective.latencyMs,
+    errorRate: effective.errorRate,
   };
   if (policy.invalid) {
     call.rejected = "invalid admission data";
     return call;
   }
-  const costs = { ...policy.api.costPerRequest, ...behaviour?.costPerRequest };
+  const costs = effective.costPerRequest;
   const requirements = new Map<string, Requirement>();
   for (const [api, scope] of [
     [policy.api, ["node"]],

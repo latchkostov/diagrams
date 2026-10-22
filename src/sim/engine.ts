@@ -122,6 +122,8 @@ import {
   retryWindow,
   type RetryWindow,
   type RetryDisposition,
+  type ClassifiedOutcome,
+  type OutcomeKind,
 } from "./retryPolicy";
 import { retryBudgetPermits } from "./admission";
 import type { RetryPolicy } from "../model/admission";
@@ -221,6 +223,7 @@ interface Delivery {
   original: Message;
 }
 interface Work extends ExecutionWork<Group> {
+  outcome?: ClassifiedOutcome;
   failureCode?: number;
   timeoutOrigin?: string;
   attempt?: Attempt<Message>;
@@ -354,6 +357,7 @@ interface Call extends LogicalCall {
   brokerHeld?: boolean;
 }
 interface Logical {
+  outcome?: ClassifiedOutcome;
   backoffMs?: number;
   retry?: boolean;
   callAttempt?: number;
@@ -1532,7 +1536,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return !work.delivery || !!work.held || hold(work.delivery.group, node, work);
   }
 
-  function answer(work: Work, ok: boolean, code?: number): void {
+  function recordOutcome(work: Work, kind: OutcomeKind): ClassifiedOutcome {
+    const outcome = classifyOutcome(kind);
+    work.outcome = outcome;
+    if (retries() && hasRetryPolicy) work.failureCode = outcome.code;
+    return outcome;
+  }
+
+  function recordSettlement(node: Node, work: Work, ok: boolean): void {
+    if (!work.outcome) recordOutcome(work, ok ? "success" : node.status === "down" ? "callee-down" : "error");
+  }
+
+  function answer(work: Work, ok: boolean, kind?: OutcomeKind): void {
+    // A child's deadline is an upstream 504 at its caller, rather than that caller's own timeout.
+    const cause = kind ?? work.outcome?.kind ?? (ok ? "success" : "error");
+    const outcome = recordOutcome(work, cause === "deadline" ? "upstream-timeout" : cause);
+    const code = work.failureCode;
     if (waits() && work.via?.sync && work.message.returnCall !== undefined) {
       const edge = work.via;
       const start = Math.max(time, work.message.visualAt ?? time);
@@ -1546,6 +1565,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           backoffMs: work.message.backoffMs,
           ok,
           code,
+          outcome,
           timeoutOrigin: work.timeoutOrigin,
           visualAt: start + Math.max(STEP, edge.travelMs),
           represented: work.message.represented,
@@ -1659,6 +1679,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const depth = (message.callDepth ?? 0) + 1;
     if (depth > 16 || calls.size >= 100_000) {
       log("status", node, message, depth > 16 ? "call depth limit" : "open call limit reached");
+      recordOutcome(work, "call-limit");
       settleWork(node, work, false);
       return true;
     }
@@ -1737,21 +1758,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         },
         edge.poolPendingIndices,
       );
-      const timing = call.branches.get(edge.id)!;
-      if (Number.isFinite(timing.expiresAt)) {
-        timing.deadlineEvent = nextLogical++;
-        scheduleLogical({
-          id: timing.deadlineEvent,
-          end: timing.expiresAt,
-          edge,
-          call: call.id,
-          timeout: true,
-          ok: false,
-          code: 504,
-          represented: branch.represented,
-          callAttempt: branch.callAttempt,
-        });
-      }
+      scheduleDeadline(call, edge, branch);
       dispatchCalls(edge);
     }
     return true;
@@ -1854,7 +1861,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!retry || call.attempt.outcome || call.node.status === "down") return false;
     const branch = call.branches.get(edge.id)!;
     const policy = retry.policy;
-    const kind = classifyOutcome(event);
+    const kind = event.outcome?.class;
     if (!kind || !policy.retryOn.includes(kind) || branch.attempt! >= Math.min(policy.maxAttempts, 10)) return false;
     const message = call.work.message;
     const w = retryWindow(retry.window, time);
@@ -1929,21 +1936,28 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       { id: call.id, end: call.id, call, message, admissibleActive: edge.from.activeMs },
       edge.poolPendingIndices,
     );
-    if (Number.isFinite(timing.expiresAt)) {
-      timing.deadlineEvent = nextLogical++;
-      scheduleLogical({
-        id: timing.deadlineEvent,
-        end: timing.expiresAt,
-        edge,
-        call: call.id,
-        timeout: true,
-        ok: false,
-        code: 504,
-        represented: message.represented,
-        callAttempt: timing.attempt,
-      });
-    }
+    scheduleDeadline(call, edge, message);
     dispatchCalls(edge);
+  }
+
+  /** Initial attempts and retries start the same classified, per-attempt deadline. */
+  function scheduleDeadline(call: Call, edge: Edge, message: Message): void {
+    const timing = call.branches.get(edge.id)!;
+    if (!Number.isFinite(timing.expiresAt)) return;
+    const outcome = classifyOutcome("deadline");
+    timing.deadlineEvent = nextLogical++;
+    scheduleLogical({
+      id: timing.deadlineEvent,
+      end: timing.expiresAt,
+      edge,
+      call: call.id,
+      timeout: true,
+      ok: false,
+      outcome,
+      code: outcome.code,
+      represented: message.represented,
+      callAttempt: message.callAttempt,
+    });
   }
 
   function cancelDeadline(call: Call, edge: Edge): void {
@@ -2035,6 +2049,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function settleAttempt(call: Call, ok: boolean, releaseNow = false): void {
     const { node, work } = call;
+    if (!call.attempt.outcome) recordSettlement(node, work, ok);
     const a = call.attempt;
     decide(a, ok, work.failureCode);
     const hasDeadline = [...call.branches.values()].some((branch) => Number.isFinite(branch.expiresAt));
@@ -2211,7 +2226,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ) {
           event.timeout = true;
           event.ok = false;
-          event.code = 504;
+          event.outcome = classifyOutcome("deadline");
+          event.code = event.outcome.code;
           edge!.calls.late += dotsOf(event);
         }
         if (edge) {
@@ -2232,6 +2248,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (!event.ok) {
           edge!.calls.failed += dotsOf(event);
           if (maybeRetry(call, edge!, event)) continue;
+          call.work.outcome = event.outcome;
           call.work.failureCode = event.code;
           call.work.timeoutOrigin = event.timeout ? edge!.id : event.timeoutOrigin;
         }
@@ -2245,7 +2262,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         call.work.message.visualAt = Math.max(call.work.message.visualAt ?? 0, event.visualAt ?? time);
         if (call.work.outputMessage)
           call.work.outputMessage.visualAt = Math.max(call.work.outputMessage.visualAt ?? 0, event.visualAt ?? time);
-        if (event.timeout) decide(call.attempt, false, 504, call.branches.get(edge!.id)!.expiresAt);
+        if (event.timeout) decide(call.attempt, false, event.outcome!.code, call.branches.get(edge!.id)!.expiresAt);
         if (!event.ok || !call.outstanding.size) settleAttempt(call, !!event.ok);
       } else if (edge && event.message) {
         edge.to.incoming--;
@@ -2355,7 +2372,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function fail(node: Node, work: Work, retry: RetryDisposition): void {
-    if (retries() && hasRetryPolicy) work.failureCode ??= node.status === "down" ? 503 : 500;
     if (retry !== "inplace") finishResident(node, work);
     // A queued retained attempt can fail again while down. Retention belongs only to this attempt.
     work.retained = false;
@@ -2369,6 +2385,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         step(work.message, "retry", work.delivery.broker.id, { attempt: work.message.attempts });
       if (retry === "inplace") {
         work.failureCode = undefined;
+        work.outcome = undefined;
         work.timeoutOrigin = undefined;
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.waitRemaining = node.props.retryBackoffMs;
@@ -2405,7 +2422,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
     } else {
       endAdmission(work);
-      answer(work, false, work.failureCode);
+      answer(work, false);
       if (node.props.admission && node.status !== "down") gone(node, work.message, "end", "processing failed");
       else
         drop(
@@ -2420,6 +2437,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function settleWork(node: Node, work: Work, ok: boolean, allowRetry = true): void {
     finishThreadWork(node, work);
+    recordSettlement(node, work, ok);
     if (waits()) {
       const a = attempt(node, work);
       if (!commitAttempt(a, ok)) return;
@@ -2439,6 +2457,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (work.continuation) {
       wakeDelivery(work);
       const ok = work.continuation.ok && node.status !== "down";
+      if (node.status === "down") recordOutcome(work, "callee-down");
       work.continuation = undefined;
       settleWork(node, work, ok);
       return;
@@ -2447,7 +2466,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (work.delivery || node.role === "processor") settleWork(node, work, false);
       else {
         acknowledge(node, work);
-        answer(work, false, work.failureCode);
+        answer(work, false, "callee-down");
         drop(node, work.message, "node down", work.via);
       }
       return;
@@ -2541,8 +2560,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         return false;
       }
       retireThread(node, work);
+      const kind = quotaReason(outcome.rejected) || outcome.rejected === "concurrency" ? "quota" : "invalid-admission";
       if (node.table) {
-        refuse(node, work, outcome.rejected, quotaReason(outcome.rejected) ? 429 : undefined, work.route?.rule);
+        refuse(node, work, outcome.rejected, kind, work.route?.rule);
         return false;
       }
       if (waits() && !commitAttempt(attempt(node, work), false)) return false;
@@ -2551,7 +2571,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + units;
       log("reject", node, work.message, outcome.rejected);
       acknowledge(node, work);
-      answer(work, false, work.failureCode);
+      answer(work, false, kind);
       gone(node, work.message, "reject", outcome.rejected);
       return false;
     }
@@ -2647,7 +2667,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const choice = chooseAction(node.table!, message.request, !!work.via?.sync);
     if ("legacy" in choice) return true;
     if ("reject" in choice) {
-      refuse(node, work, choice.reject, 404);
+      refuse(node, work, choice.reject, "no-route");
       return false;
     }
     const { action, rule } = choice;
@@ -2663,7 +2683,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       total += target.weight;
     }
     if (!eligible.length) {
-      refuse(node, work, "route-no-eligible-target", 404, rule);
+      refuse(node, work, "route-no-eligible-target", "no-route", rule);
       return false;
     }
     let index = 0;
@@ -2686,7 +2706,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!node.props.admission && work.route.quotas.length) {
       const refused = attemptQuotas(admission, work.route.quotas, time, sizeOf(message));
       if (refused) {
-        refuse(node, work, refused, 429, rule);
+        refuse(node, work, refused, "quota", rule);
         return false;
       }
     }
@@ -2697,7 +2717,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    * A router refuses a request: counted once as rejected (never dropped, failed or blocked), with its reason and
    * route, a visual refused reply where the request edge has replies, and the branch ends (lineage released).
    */
-  function refuse(node: Node, work: Work, reason: string, code: number | undefined, rule?: string): void {
+  function refuse(node: Node, work: Work, reason: string, kind: OutcomeKind, rule?: string): void {
+    const outcome = recordOutcome(work, kind);
+    const code = quotaReason(reason) || kind === "no-route" ? outcome.code : work.failureCode;
     if (waits()) {
       const a = attempt(node, work);
       if (!commitAttempt(a, false, code)) return;
@@ -2711,7 +2733,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (message.request) countRoute(message.request).rejected += units;
     log("reject", node, message, reason);
     acknowledge(node, work);
-    answer(work, false, code);
+    work.failureCode = code;
+    answer(work, false);
     gone(node, message, "reject", reason, rule === undefined ? undefined : { rule });
   }
 

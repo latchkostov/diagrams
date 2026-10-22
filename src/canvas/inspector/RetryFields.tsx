@@ -31,7 +31,7 @@ export function RetryFields({
               label: t("resilience.attempts", { count }),
             })),
           ]}
-          onChange={(value) => set({ ...(enabled ? retry : recommendedRetry(method)), maxAttempts: Number(value) })}
+          onChange={(value) => update({ maxAttempts: Number(value) })}
         />
       </Field>
       {enabled && (

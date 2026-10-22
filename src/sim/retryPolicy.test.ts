@@ -1,5 +1,27 @@
 import { expect, it, vi } from "vitest";
-import { retryDisposition } from "./retryPolicy";
+import { classifyOutcome, retryDisposition, type ClassifiedOutcome, type OutcomeKind } from "./retryPolicy";
+
+// Record makes a newly added terminal cause a compile-time failure until its semantics are asserted here.
+const terminalCases = {
+  success: [undefined, undefined, "success"],
+  error: ["transient", 500, "failure"],
+  "callee-down": ["transient", 503, "failure"],
+  "upstream-timeout": ["transient", 504, "failure"],
+  shed: ["throttled", 503, "failure"],
+  quota: ["throttled", 429, "failure"],
+  deadline: ["timeout", 504, "slow"],
+  "no-route": [undefined, 404, "ignored"],
+  "breaker-open": [undefined, 503, "not-recorded"],
+  "call-limit": [undefined, undefined, "ignored"],
+  "invalid-admission": [undefined, undefined, "ignored"],
+} satisfies Record<
+  OutcomeKind,
+  [ClassifiedOutcome["class"], ClassifiedOutcome["code"], ClassifiedOutcome["breakerCounts"]]
+>;
+
+it.each(Object.entries(terminalCases))("classifies the terminal %s path", (kind, [retryClass, code, breakerCounts]) => {
+  expect(classifyOutcome(kind as OutcomeKind)).toEqual({ kind, class: retryClass, code, breakerCounts });
+});
 
 it.each([
   { delivery: false, inplace: true, attempts: 0, maxDeliveryCount: 2, retain: true, expected: "none" },

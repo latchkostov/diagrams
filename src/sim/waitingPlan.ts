@@ -1,4 +1,5 @@
-import { expectedRetries } from "./retryPolicy";
+import { resolveApiBehaviour } from "./admissionPolicy";
+import { classifyOutcome, expectedRetries } from "./retryPolicy";
 import type { RetryPolicy } from "../model/admission";
 import { revisionAtLeast } from "../model/revisions";
 import type { DiagramFile } from "../model/types";
@@ -19,50 +20,55 @@ export interface WaitCapacity {
   poolCeiling?: number;
 }
 
-/** Reverse topological evaluation, O(nodes + connections), including deep graphs and cycles. */
-export function waitingPlan(
-  diagram: DiagramFile,
-  resolved: Record<string, ResolvedProps>,
-  requestRates: Readonly<Record<string, number>> = {},
-) {
-  const result = new Map<string, WaitCapacity>();
-  const amplification = new Map<string, { policy: RetryPolicy; probability: number }>();
-  if (!revisionAtLeast(diagram.planning?.revision, "p3-w1")) return { nodes: result, amplification, converged: true };
-  const topology = compileTopology(diagram);
+/** Rate-independent graph metadata, shared by every retry-budget solver pass. */
+export function compileWaitingPlan(diagram: DiagramFile, topology = compileTopology(diagram)) {
   const inputs = new Map(diagram.edges.map((e) => [e.id, e]));
   const stencils = new Map(diagram.nodes.map((n) => [n.id, n.stencil]));
   const roles = new Map(diagram.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
-  const delays = new Map(
-    diagram.edges.map((e) => [e.id, typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0]),
-  );
   const remaining = new Map<string, number>();
   const parents = new Map<
     string,
     { node: string; delay: number; endpoint?: string; policy: CallPolicy; edge: string; retry?: RetryPolicy }[]
   >();
+  for (const node of diagram.nodes) remaining.set(node.id, 0);
+  for (const edge of topology.edges) {
+    if (!activeCall(roles.get(edge.from)!, edge)) continue;
+    const props = inputs.get(edge.id)?.props;
+    const caller = props?.caller as EdgeSimProps["caller"];
+    const delay = typeof props?.networkDelayMs === "number" ? props.networkDelayMs : 0;
+    remaining.set(edge.from, (remaining.get(edge.from) ?? 0) + 1);
+    const list = parents.get(edge.to) ?? [];
+    list.push({
+      edge: edge.id,
+      retry: revisionAtLeast(diagram.planning?.revision, "p3-w2") ? caller?.retry : undefined,
+      node: edge.from,
+      delay: 2 * Math.max(0, delay),
+      endpoint: edge.endpointId,
+      policy: callPolicy(stencils.get(edge.from)!, caller),
+    });
+    parents.set(edge.to, list);
+  }
+  return { remaining, parents, roles };
+}
+
+/** Reverse topological evaluation, O(nodes + connections), including deep graphs and cycles. */
+export function waitingPlan(
+  diagram: DiagramFile,
+  resolved: Record<string, ResolvedProps>,
+  requestRates: Readonly<Record<string, number>> = {},
+  graph = compileWaitingPlan(diagram),
+) {
+  const result = new Map<string, WaitCapacity>();
+  const amplification = new Map<string, { policy: RetryPolicy; probability: number }>();
+  if (!revisionAtLeast(diagram.planning?.revision, "p3-w1")) return { nodes: result, amplification, converged: true };
+  const { parents, roles } = graph;
+  const remaining = new Map(graph.remaining);
   const callMs = new Map<string, number>();
   const response = new Map<string, number>();
   const failures = new Map<string, number>();
   const replies = new Map<string, { ms: number; count: number; pool: number }>();
   const pools = new Map<string, number>();
   const queue: string[] = [];
-  for (const node of diagram.nodes) remaining.set(node.id, 0);
-  for (const edge of topology.edges) {
-    if (!activeCall(roles.get(edge.from)!, edge)) continue;
-    remaining.set(edge.from, (remaining.get(edge.from) ?? 0) + 1);
-    const list = parents.get(edge.to) ?? [];
-    list.push({
-      edge: edge.id,
-      retry: revisionAtLeast(diagram.planning?.revision, "p3-w2")
-        ? (inputs.get(edge.id)?.props?.caller as EdgeSimProps["caller"])?.retry
-        : undefined,
-      node: edge.from,
-      delay: 2 * Math.max(0, delays.get(edge.id) ?? 0),
-      endpoint: edge.endpointId,
-      policy: callPolicy(stencils.get(edge.from)!, inputs.get(edge.id)?.props?.caller as EdgeSimProps["caller"]),
-    });
-    parents.set(edge.to, list);
-  }
   for (const [id, count] of remaining) if (!count) queue.push(id);
   for (let head = 0; head < queue.length; head++) {
     const id = queue[head];
@@ -93,11 +99,16 @@ export function waitingPlan(
       let duration = outcome.responseMs;
       let poolDuration = duration;
       if (parent.retry) {
-        const retryClass = outcome.timedOut ? "timeout" : "transient";
+        const retryClass = classifyOutcome(outcome.timedOut ? "deadline" : "error").class!;
         const p = parent.retry.retryOn.includes(retryClass)
           ? outcome.failed
             ? 1
-            : (props.admission?.api.errorRate ?? props.failureRate)
+            : ((props.admission
+                ? resolveApiBehaviour(
+                    props.admission.api,
+                    props.admission.endpoints.find((endpoint) => endpoint.id === parent.endpoint),
+                  ).errorRate
+                : undefined) ?? props.failureRate)
           : 0;
         const expected = expectedRetries(parent.retry, p, requestRates[parent.edge] ?? Infinity);
         amplification.set(parent.edge, { policy: parent.retry, probability: p });
