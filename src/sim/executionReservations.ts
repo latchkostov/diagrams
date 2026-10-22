@@ -4,7 +4,7 @@ import { reacquire, releaseAdmission } from "./admission";
 import { acquireReplica, releaseReplica, type Fleet } from "./autoscaling";
 import type { ResolvedProps } from "./defaults";
 import { SampledLedger, type Reservation } from "./ledger";
-import { clearResourceWork, deliveryGroup, type CpuTail, type ResourceWork } from "./resourceWork";
+import { clearResourceWork, deliveryGroup, yieldsToFirstWaves, type CpuTail, type ResourceWork } from "./resourceWork";
 import { sampledParts, releaseCpuParts } from "./sampledResources";
 import { STEP } from "./timing";
 
@@ -202,6 +202,9 @@ export function createExecutionReservations<
     work.cpuParts = tail.cpuParts;
     work.cpuRemaining = tail.cpuRemaining;
     work.replica = tail.replica;
+    // This CPU becomes continuation backlog and participates in the first-wave loop.
+    work.cpuOwed = work.fractionalTail = undefined;
+    tail.cpuOwed = tail.fractionalTail = undefined;
     tail.cpuParts = tail.cpuRemaining = tail.replica = undefined;
     node.threadTails.delete(tail.id);
     releaseThread(tail);
@@ -340,10 +343,14 @@ export function createExecutionReservations<
         group: deliveryGroup(work),
         cpuParts: work.cpuParts,
         cpuRemaining: work.cpuRemaining,
+        cpuOwed: work.cpuOwed,
+        // Classified here when the tail forms and detaches in one tick: the work still knows its request CPU.
+        fractionalTail: yieldsToFirstWaves(work, node.props.resources?.cpuMsPerMessage ?? 0),
         replica: work.replica,
       });
       work.cpuParts = undefined;
       work.replica = undefined;
+      work.cpuOwed = work.fractionalTail = undefined;
     }
     releaseReplica(node.fleet, work.replica, node.props.concurrency);
     work.replica = undefined;
@@ -356,11 +363,15 @@ export function createExecutionReservations<
     if (!r) return;
     work.thread = undefined;
     r.group = work.delivery?.group;
-    if (node.cpuTail.delete(work)) node.cpuTail.add(r);
+    const tail = node.cpuTail.delete(work);
+    if (tail) node.cpuTail.add(r);
     r.cpuParts = work.cpuParts;
     r.cpuRemaining = work.cpuRemaining;
+    r.cpuOwed = work.cpuOwed;
+    r.fractionalTail = tail ? yieldsToFirstWaves(work, node.props.resources?.cpuMsPerMessage ?? 0) : undefined;
     r.replica = work.replica;
     work.cpuParts = work.cpuRemaining = work.replica = work.logicalCpuRemaining = work.cpuBacklog = undefined;
+    work.cpuOwed = work.fractionalTail = undefined;
     node.threadTails.set(r.id, r);
     work.localThread = r.id;
     if (immediate || !usesLedger(node) || context.immediateHolds()) ledger.release(r);

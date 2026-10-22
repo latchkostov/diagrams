@@ -31,7 +31,10 @@ The general scale-equivalence bound below is an accuracy target, not a guarantee
 A dot represents `N` requests and reserves weight `w <= N` in real units, limited by available
 capacity and its parent's reservation. Admission requires room for at least `min(1, N)` real units.
 Logical CPU work is `w * cpuMsPerMessage`; remaining cohort CPU stays in tails and competes for the
-same fleet CPU budget after the first wave finishes. Numbered tails retain replica ownership until
+same fleet CPU budget after the first wave finishes. A tail of one or more whole requests takes its
+fair share of each tick ahead of first waves. A tail that forms with less than one request's CPU is
+the cohort's fractional part: it yields to first waves, takes what they leave, and the fair share it
+missed is owed and charged first next tick. Numbered tails retain replica ownership until
 spent or drain grace expires. Logical outcomes are written once; later tail cleanup cannot reverse them.
 
 For logical hold `H`, ordinary blocking turnaround includes `T = H + ADMISSION_LAG_MS`, where

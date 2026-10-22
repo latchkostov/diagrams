@@ -2,12 +2,160 @@ import { expect, it } from "vitest";
 import { createEngine } from "./engine";
 import { waitingFixture } from "../lab/waitingFixture";
 import { resourceLesson } from "../model/autoscaling";
+import { cohortArrivals, constantRateRuns, expectScaleEquivalent, sameArrivals } from "../test/scaleEquivalence";
+import type { ResourceWork } from "./resourceWork";
 import {
   assertResourceInvariants,
   assertLedgerInvariants,
   type LedgerInvariantState,
   type ResourceState,
 } from "./resourceInvariants";
+
+function contentionFixture(slots = 2) {
+  const d = waitingFixture();
+  d.nodes[1].props = { concurrency: slots, replicas: 1, latencyMs: 0, jitter: 0 };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = {
+    concurrency: slots,
+    replicas: 1,
+    latencyMs: 0,
+    jitter: 0,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 24, startup: { delayMs: 0, jitterFraction: 0 } },
+  };
+  d.edges[1].props = { travelMs: 10, networkDelayMs: 10, caller: { wait: "blocking", replyMs: 0 } };
+  return d;
+}
+
+/** Callee first-wave residence (ms from gaining CPU to the end of its first wave), in real requests. */
+function calleeResidence(scale: number, perTick: readonly number[]): Record<number, number> {
+  const open = new Map<ResourceWork, number>();
+  const residence = new Map<number, number>();
+  const e = createEngine({
+    seed: 7,
+    scale,
+    maxParticles: 0,
+    verifyResources(s) {
+      assertResourceInvariants(s);
+      const live = new Set<ResourceWork & { cohort?: number }>([...s.nodes].find((n) => n.id === "partner")!.working);
+      for (const work of live)
+        if ((work.logicalCpuRemaining ?? 0) > 1e-8 && !open.has(work)) open.set(work, s.time - 10);
+      for (const [work, start] of open)
+        if (!live.has(work) || (work.logicalCpuRemaining ?? 0) <= 1e-8) {
+          const ms = s.time - start;
+          residence.set(ms, (residence.get(ms) ?? 0) + ((work as { cohort?: number }).cohort ?? 1));
+          open.delete(work);
+        }
+    },
+  });
+  e.load(contentionFixture());
+  for (const count of perTick) {
+    if (count) e.inject("source", count);
+    e.step(10);
+  }
+  return Object.fromEntries([...residence].map(([ms, real]) => [ms, Math.round(real * 1e6) / 1e6]));
+}
+
+// The CPU design's case: at t0+50 the next first wave needs 8 ms of the tick's 10 and the previous
+// cohort's fractional tail needs 2.4. Charged first, the tail pushed that wave a tick late every cycle.
+it.each([1.1, 1.5])("a fractional tail never delays the next first wave at scale %s", (scale) => {
+  const cohorts = cohortArrivals(scale);
+  expect(calleeResidence(1, sameArrivals(cohorts, scale))).toEqual({ 50: 570 });
+  expect(calleeResidence(scale, cohorts)).toEqual({ 50: scale === 1.1 ? 569.8 : 570 });
+});
+
+// A tail of whole requests stands for requests that share the CPU fairly at scale one: it keeps its
+// fair share ahead of first waves and never owes. Only a tail below one request yields and repays.
+it.each([
+  [1.1, true],
+  [1.5, true],
+  [3, false],
+  [10, false],
+])("at scale %s the callee's tails are fractional: %s", (scale, fractional) => {
+  // A tail is classified when the node next charges it; record each one once it has been.
+  const classified = new Map<ResourceWork, boolean>();
+  let owed = false;
+  const e = createEngine({
+    seed: 7,
+    scale,
+    maxParticles: 0,
+    verifyResources(s) {
+      assertResourceInvariants(s);
+      for (const tail of [...s.nodes].find((n) => n.id === "partner")!.cpuTail ?? []) {
+        if (tail.fractionalTail !== undefined) classified.set(tail, tail.fractionalTail);
+        owed ||= (tail.cpuOwed ?? 0) > 0;
+      }
+    },
+  });
+  e.load(contentionFixture());
+  for (const count of cohortArrivals(scale)) {
+    if (count) e.inject("source", count);
+    e.step(10);
+  }
+  expect(classified.size).toBeGreaterThan(0);
+  expect(new Set(classified.values())).toEqual(new Set([fractional]));
+  expect(owed).toBe(fractional);
+});
+
+it.each([1, 1.1, 1.5])("sampled CPU utilisation matches scale one at scale %s", (scale) => {
+  let state!: ResourceState;
+  const e = createEngine({
+    seed: 7,
+    scale,
+    maxParticles: 0,
+    verifyResources(s) {
+      state = s;
+      assertResourceInvariants(s);
+      if (scale === 1) for (const node of s.nodes) expect(node.cpuTail?.size ?? 0).toBe(0);
+    },
+  });
+  e.load(contentionFixture());
+  for (const count of cohortArrivals(scale)) {
+    if (count) e.inject("source", count);
+    e.step(10);
+  }
+  const cpu = [...state.nodes].find((node) => node.id === "partner")!.fleet!.totalCpu;
+  expect(Math.abs(cpu / 20_000 - 0.685)).toBeLessThanOrEqual(0.005);
+});
+
+it("owed tail CPU survives checkpoint and restore", () => {
+  let state!: ResourceState;
+  const e = createEngine({
+    seed: 7,
+    scale: 1.1,
+    maxParticles: 0,
+    verifyResources(s) {
+      state = s;
+      assertResourceInvariants(s);
+    },
+  });
+  e.load(contentionFixture());
+  let sawOwed = false;
+  for (const count of cohortArrivals(1.1)) {
+    if (count) e.inject("source", count);
+    e.step(10);
+    if ([...state.nodes].some((node) => [...(node.cpuTail ?? [])].some((tail) => (tail.cpuOwed ?? 0) > 0))) {
+      sawOwed = true;
+      break;
+    }
+  }
+  expect(sawOwed).toBe(true);
+  const checkpoint = e.checkpoint();
+  e.step(2_000);
+  const finished = e.snapshot();
+  const cpu = [...state.nodes].find((node) => node.id === "partner")!.fleet!.totalCpu;
+  e.restore(checkpoint);
+  e.step(2_000);
+  expect(e.snapshot()).toEqual(finished);
+  expect([...state.nodes].find((node) => node.id === "partner")!.fleet!.totalCpu).toBe(cpu);
+});
+
+it.each([1.1, 2.5, 10])("saturated CPU stays within I1 at scale %s", (scale) => {
+  const d = contentionFixture(16);
+  d.nodes = [d.nodes[0], { ...d.nodes[2], id: "caller" }];
+  d.edges = [d.edges[0]];
+  const runs = constantRateRuns(d, scale);
+  expectScaleEquivalent(runs.baseline, runs.sampled, 16);
+});
 
 it("enabling CPU resources on an admitted partial callee preserves its real first wave", () => {
   const d = waitingFixture();
